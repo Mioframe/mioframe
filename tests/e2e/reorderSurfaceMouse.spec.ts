@@ -247,27 +247,42 @@ test.describe('activation isolation', () => {
     await closeBottomSheet(page, /database views sheet/i);
 
     sheet = await openViewsSheet(page);
-    const firstRow = sheet.getByRole('button', { name: firstViewName });
-    const secondRow = sheet.getByRole('button', { name: secondViewName });
+    const firstRow = findListRow(sheet, firstViewName);
+    const secondRow = findListRow(sheet, secondViewName);
+    const firstAction = firstRow.getByRole('button', { name: firstViewName });
+    const secondAction = secondRow.getByRole('button', { name: secondViewName });
 
     await secondRow.scrollIntoViewIfNeeded();
     await firstRow.scrollIntoViewIfNeeded();
 
     const firstBox = await firstRow.boundingBox();
-    const secondBox = await secondRow.boundingBox();
-    if (!firstBox || !secondBox) {
+    const secondActionBox = await secondAction.boundingBox();
+    if (!firstBox || !secondActionBox) {
       throw new Error('missing bounding box for view row');
     }
 
-    const dragSurfaceX = secondBox.x + secondBox.width / 2;
+    const dragSurfaceX = secondActionBox.x + secondActionBox.width / 2;
+    const dragStartY = secondActionBox.y + secondActionBox.height / 2;
 
     // Drag the second (not the currently selected first) view: this is the only way a later
     // "release did not activate a row" assertion actually exercises isolation between the
     // dragged row and the selected row, rather than trivially holding because they're the same.
-    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2);
+    await page.mouse.move(dragSurfaceX, dragStartY);
     await page.mouse.down();
-    await page.mouse.move(dragSurfaceX, secondBox.y + secondBox.height / 2 - 8, { steps: 4 });
-    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 2, { steps: 12 });
+    await page.mouse.move(dragSurfaceX, dragStartY - 8, { steps: 4 });
+    await expect(secondRow).toHaveClass(/md-state_dragged/);
+
+    // Move beyond the target row's center and wait for the first row to be visibly displaced.
+    // This proves that the browser accepted the reorder intent before pointer release instead of
+    // racing mouseup against dnd-kit's final pointermove processing on slower mobile runners.
+    await page.mouse.move(dragSurfaceX, firstBox.y + firstBox.height / 4, { steps: 12 });
+    await expect
+      .poll(async () => {
+        const displacedFirstBox = await firstRow.boundingBox();
+        return Boolean(displacedFirstBox && displacedFirstBox.y > firstBox.y + firstBox.height / 2);
+      })
+      .toBe(true);
+
     await page.mouse.up();
 
     await expect
@@ -279,14 +294,8 @@ test.describe('activation isolation', () => {
 
     // The drag release must not have activated/selected any row: the view selected before the
     // drag stays current, regardless of where the dragged row now sits in the list.
-    await expect(sheet.getByRole('button', { name: firstViewName })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
-    await expect(sheet.getByRole('button', { name: secondViewName })).not.toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    await expect(firstAction).toHaveAttribute('aria-current', 'true');
+    await expect(secondAction).not.toHaveAttribute('aria-current', 'true');
 
     await closeBottomSheet(page, /database views sheet/i);
   });
