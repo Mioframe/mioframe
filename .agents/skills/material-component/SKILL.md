@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use when creating, repairing, aligning, migrating, continuing, or materially improving one official Material component family. Orchestrates concern-scoped target research, focused specialist audits, one correction unit, bounded independent reviews, complete PR review, and verification.'
+description: 'Use when creating, repairing, aligning, migrating, continuing, or materially improving one official Material component family. Orchestrates concern-scoped target research, focused specialist audits, dependency closure, one correction unit, bounded independent reviews, complete PR review, and verification.'
 ---
 
 # Material component orchestrator
@@ -18,7 +18,7 @@ Record:
 
 Use `align-existing` whenever an implementation exists.
 
-## Concern plan
+## Concern and dependency plan
 
 Before delegation, classify each lane as required or not required with a reason:
 
@@ -26,10 +26,19 @@ Before delegation, classify each lane as required or not required with a reason:
 - semantics/API lane;
 - token lane;
 - Web implementation lane;
+- required direct dependencies and their owners;
+- dependency closure: `closed` or `blocked`;
 - exact foundation prerequisite;
+- exact canonical-family prerequisite;
 - adoption scope.
 
-For focused correction, invoke only affected lanes and direct dependencies. New families, full owner migration, or explicit full-family audit normally require all applicable lanes.
+Inventory every dependency needed by the supported public surface. Classify it as canonical Material foundation, canonical Material family, temporary legacy Material, project extension, or generic non-Material foundation.
+
+A required temporary legacy Material dependency, unresolved reference/system token group, unowned shared Material behavior, known-defective dependency, family-private deep import, hidden required fallback, or parallel active owner blocks dependency closure.
+
+When the missing contract is cross-family and family-agnostic, delegate the smallest coherent currently required prerequisite to `material-foundation`. When it belongs to another official component family, require that family's ready public contract or remove/defer the dependent extension. Do not classify another component family as foundation.
+
+For focused correction, invoke only affected lanes and direct dependencies. New families, full owner migration, adoption, or explicit full-family audit normally require all applicable lanes and closed dependencies.
 
 ## Orchestration
 
@@ -41,7 +50,7 @@ concern-scoped material-canonical-target when required
    material-web-audit
 → material-component-contract
 → material-component-review with Review scope: contract-gate
-→ material-foundation for an approved exact prerequisite
+→ complete material-foundation or canonical-family prerequisite when required
 → material-component-implementation for one approved unit
 → material-component-adoption only for approved migration/cleanup
 → material-component-review with Review scope: correction-final
@@ -49,15 +58,16 @@ concern-scoped material-canonical-target when required
 → verification
 ```
 
-Production edits are forbidden before `contract gate passed`.
+Production edits are forbidden before `contract gate passed`. Component implementation does not begin while a required prerequisite is pending or blocked.
 
 Only this orchestrator:
 
 - selects concern lanes and synthesizes their results;
+- inventories direct dependencies and owns dependency-closure status;
 - writes family workflow state and roadmap facts;
 - selects one correction unit;
 - reopens target/contract when new evidence invalidates a locked claim;
-- distinguishes correction completion, family alignment, and PR merge readiness;
+- distinguishes correction completion, dependency closure, family alignment, and PR merge readiness;
 - decides whether to advance or stop.
 
 Internal roles and stage skills do not invoke each other or update the roadmap.
@@ -73,7 +83,9 @@ For each bounded target, semantics, token, Web, or correction-review role provid
 - applicable instructions;
 - required result format.
 
-For `material-pr-review`, provide the actual PR base/head, complete changed-file list, complete diff/patch evidence, resulting changed-owner files, representative affected consumers, correction-review result, operator evidence, and verification result.
+For a foundation prerequisite provide its exact required family-agnostic contract, current legacy owner, affected families, required proof, and completion condition. It returns control after one complete prerequisite.
+
+For `material-pr-review`, provide the actual PR base/head, complete changed-file list, complete diff/patch evidence, resulting changed-owner files, dependency inventory/closure result, representative affected consumers, correction-review result, operator evidence, and verification result.
 
 Do not pass preferred conclusions, implementation reasoning, unrelated README history, or complete family context to a bounded role. Complete PR context is reserved for `material-pr-review` only.
 
@@ -95,7 +107,7 @@ Do not run repeated full target/audit passes without contradictory evidence.
 
 ## Workflow state
 
-Keep one current `MATERIAL WORKFLOW STATE` block using the canonical fields. The README records current truth only. Remove superseded review narratives, shell transcripts, exact route ledgers, and historical round-by-round reasoning.
+Keep one current `MATERIAL WORKFLOW STATE` block using the canonical fields, including dependency closure and prerequisite status. The README records current truth only. Remove superseded review narratives, shell transcripts, exact route ledgers, and historical round-by-round reasoning.
 
 After each stage:
 
@@ -113,6 +125,7 @@ After each stage:
 - contract synthesis and correction selection → `material-component-contract`;
 - production/proof implementation → `material-component-implementation`;
 - reference/system or cross-family foundation correction → `material-foundation`;
+- another official family prerequisite → that family's `material-component` workflow;
 - consumer migration/obsolete ownership → `material-component-adoption`;
 - correction gate → `material-component-review`;
 - complete merge readiness → `material-pr-review`.
@@ -121,10 +134,10 @@ A finding outside a role's lane returns to this orchestrator; the role does not 
 
 ## Stop conditions
 
-Stop for unresolved official evidence, platform applicability, required scenario, ownership, dependency direction, public contract, token graph, browser evidence, foundation blast radius, independent context, incomplete PR diff evidence, repeated review failure, operator rejection, or required verification failure.
+Stop for unresolved official evidence, platform applicability, required scenario, ownership, open required dependency closure, dependency direction, public contract, token graph, browser evidence, foundation blast radius, independent context, incomplete PR diff evidence, repeated review failure, operator rejection, or required verification failure.
 
 A defect in the resulting base-to-head PR remains PR-owned even when it predates the latest correction round on the feature branch.
 
 ## Result
 
-Report family, objective, concern plan, target slices, selected audit results, correction contract/review result, completed correction unit, correction-final result, complete PR-review verdict, family alignment, operator status, verification, remaining gaps, and exact next action or blocker.
+Report family, objective, concern/dependency plan, target slices, selected audit results, dependency closure and completed prerequisites, correction contract/review result, completed correction unit, correction-final result, complete PR-review verdict, family alignment, operator status, verification, remaining gaps, and exact next action or blocker.
