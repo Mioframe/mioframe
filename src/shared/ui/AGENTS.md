@@ -5,16 +5,19 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Routing
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material families.
-- Use `material-component` as the sole implementation entry point for exactly one official Material family.
-- Use `material-component-review` only for independent review-only assessment without production changes.
-- Use `material-foundation` for focused convergence of a real cross-family Material foundation contract.
+- Use `material-component` as the sole implementation entry point for exactly one official Material family. A family name is sufficient input; the agent autonomously discovers and completes the required work.
+- Use `material-component-review` only for one independent correction contract or correction-final review.
+- Use `material-family-review` only for independent final review after the family orchestrator reports no known required gap.
+- Use `material-foundation` for autonomous convergence of one real cross-family Material contract or exact delegated prerequisite.
 - Use `material3-guidelines` for official source lookup, component choice, usage, and composition.
-- Use `material-library-status` only for concise read-only roadmap, PR, and verification status.
-- Inside `src/shared/ui/material`, follow its `AGENTS.md`; it owns internal Material stages and detailed workflow routing.
+- Use `material-library-status` only for concise read-only family, correction, roadmap, and verification status.
+- Inside `src/shared/ui/material`, follow its `AGENTS.md`; it owns detailed Material workflow routing.
 
-A component or family name is sufficient input. When none is supplied, `material-component` may continue only the one active family recorded by the roadmap. Resolve the canonical target, current defects, foundations, consumers, owners, files, and proof from official sources and repository evidence rather than asking the user to design the component.
+When no family is supplied, `material-component` may continue only the one active family recorded by the roadmap. Do not ask the user to design variants, API, foundations, files, tests, or consumers when official sources and repository evidence can resolve them.
 
-Implementation and review are separate entry points. Do not invoke internal Material stage skills directly.
+Implementation, bounded correction review, and complete family review are separate responsibilities. Internal Material concern and stage skills are invoked only by the orchestrators.
+
+Portable `.agents/skills` and repository documents own the workflow. Tool-specific agent directories, model configuration, permissions, Git state, and publication workflow are not policy owners.
 
 ## Boundaries
 
@@ -26,8 +29,10 @@ Implementation and review are separate entry points. Do not invoke internal Mate
 - Existing official Material directories outside the canonical root are legacy owners. They may be assessed and corrected in place through `material-component` until a complete relocation is safe. Do not create parallel active owners or force relocation before correctness.
 - Shared UI must not import product layers or domain models.
 
-Do not create Material registries, inventories, durable audits, separate checklists, alignment scorecards, progress ledgers, or duplicate workflow policy outside the Material root.
+Do not create Material registries, inventories, durable audits, review histories, separate checklists, alignment scorecards, progress ledgers, or duplicate workflow policy outside the Material root.
 
 ## Verification
 
-Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Final completion of each correction objective requires repository verification; full family completion additionally requires an `aligned` family status.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract.
+
+A Material correction requires correction review. Full family completion requires closed dependencies, one canonical owner, independent family review, required operator visual acceptance, and final repository verification.

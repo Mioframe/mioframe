@@ -18,9 +18,9 @@ src/shared/ui/material/
   index.ts        # after a real public export exists
 ```
 
-- `docs` contains the minimal durable library policy and current roadmap;
+- `docs` contains minimal durable library policy and the current roadmap;
 - `foundation` contains proven cross-family contracts, including canonical reference/system token owners;
-- `components` contains official public Material families and their family-local component tokens;
+- `components` contains official public Material families and family-local component tokens;
 - `patterns` contains accepted reusable official Material compositions;
 - family/domain contracts, implementation owners, token files, styles, stories, fixtures, and focused tests stay beside their owner.
 
@@ -37,7 +37,7 @@ Start with [`docs/README.md`](./docs/README.md). The canonical set is intentiona
 - [`foundation-development.md`](./docs/foundation-development.md);
 - [`roadmap.md`](./docs/roadmap.md).
 
-Do not create parallel registries, inventories, audits, separate checklists, alignment scorecards, progress ledgers, or duplicated workflow documents. Canonical target, current-state assessment, alignment classifications, public token surface, private routing responsibilities, decomposition, proof, and correction units belong inside the owning family or foundation README.
+Do not create parallel registries, inventories, audits, review histories, separate checklists, alignment scorecards, progress ledgers, or duplicated workflow documents. Current target decisions, classifications, durable contracts, proof obligations, correction units, and remaining gaps belong inside the owning family or foundation README.
 
 ## Dependency direction
 
@@ -61,7 +61,7 @@ Token dependencies follow the same direction:
 reference → system → component → private route → rendered property
 ```
 
-Official tokens keep exact `--md-ref-*`, `--md-sys-*`, and `--md-comp-*` names. Public Mioframe extensions use `--mio-*`. Owner-local implementation routes use `--md-private-*` and are not public API. Ambiguous aliases such as `--md-button-*` are not allowed in canonical Material code.
+Official tokens keep exact `--md-ref-*`, `--md-sys-*`, and `--md-comp-*` names. Public Mioframe extensions use `--mio-*`. Owner-local implementation routes use `--md-private-*` and are not public API. Ambiguous aliases such as `--md-button-*` are forbidden in canonical Material code.
 
 ## Public API
 
@@ -71,32 +71,41 @@ The intended external entry point is:
 import { MDButton } from '@shared/ui/material';
 ```
 
-Create or migrate consumers to it only when the relevant canonical owner is ready for their required contract. External consumers use the curated root API; internal Material code uses owning local entry points; private files and `--md-private-*` routes remain private.
+Create or migrate consumers to it only when the relevant canonical owner and every dependency required by those consumers are ready. External consumers use the curated root API; internal Material code uses owning local entry points; private files and `--md-private-*` routes remain private.
 
 ## Development
 
-`material-component` is the only implementation entry point. For an existing family it uses `align-existing` by default:
+`material-component` is the only component-family implementation entry point. A family name is sufficient input. The agent autonomously:
 
 ```text
-independent canonical target
-→ current implementation and token-graph assessment
-→ alignment map
-→ bounded correction units
-→ required foundation convergence
-→ proof-first owner corrections
-→ affected representative consumers
-→ conditional adoption and obsolete-owner removal
-→ independent review
-→ final verification
-→ next correction unit or family completion
+resumes or initializes family state
+→ builds one bounded orientation
+→ selects affected concern lanes
+→ obtains missing or invalidated target/audit evidence
+→ closes exact foundation and official-family prerequisites
+→ implements and reviews successive bounded corrections
+→ migrates ready consumers and removes obsolete ownership
+→ repeats without restarting accepted research
+→ runs independent family review
+→ runs final verification
 ```
+
+`material-foundation` owns the equivalent workflow for a real cross-family contract or an exact delegated prerequisite.
+
+Portable read-only skills own bounded source, semantics, token, Web, correction-review, and family-review responsibilities. They may run in isolated contexts when supported, but tool-specific agent configuration is not part of the Material architecture.
+
+Contract synthesis, correction selection, implementation, adoption, family state updates, and continuation remain in the main orchestrator context because those phases share substantial state.
+
+A focused correction does not trigger a complete family audit unless contradictory evidence widens the scope. New families and complete family alignment normally require all applicable lanes.
 
 Current implementation is editable evidence, not Material authority and not disposable by default. Preserve confirmed owners, correct explicit gaps, and replace only the smallest owner when incremental repair would add more workaround logic.
 
-One PR may finish a family or one complete correction objective. A correction may merge while the family remains `converging` only when the repository is independently valid, remaining gaps are explicit and non-blocking, and the roadmap records one exact next action.
+Public Vue artifacts remain thin composition roots. Non-trivial token, visual, and motion contracts have explicit owners. Official component tokens live in one family token file by default; state selection and final rendered properties remain in implementation styles. File count is not a goal.
 
-Public Vue artifacts remain thin composition roots. Non-trivial token, visual, and motion contracts have explicit owners. Official component tokens live in one family token file by default; state selection and final rendered properties remain in implementation styles. Deterministic logic and lifecycle are separated only when ownership and proof become clearer; file count is not a goal.
+## Completion
 
-`material-component-contract`, `material-component-implementation`, and `material-component-adoption` are internal stages, not alternative entry points. Adoption is conditional rather than mandatory for every focused correction.
+A family is complete only when its supported surface, canonical ownership, dependency closure, prerequisites, consumers, cleanup, proof, documentation, operator-visible comparison, independent family review, and final verification are complete.
 
-Review-only assessment uses `material-component-review` from an independent context and does not edit production files. It reports current correction completion separately from overall family alignment. The active family and one next action are recorded in [`docs/roadmap.md`](./docs/roadmap.md).
+Each correction gate and final family review permits one initial review and at most one substantive re-review. A second failure stops the workflow. Mechanical documentation fixes do not restart complete target or audit work.
+
+The active family, blocker, and one next action are recorded in [`docs/roadmap.md`](./docs/roadmap.md).

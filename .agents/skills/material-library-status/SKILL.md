@@ -1,6 +1,6 @@
 ---
 name: material-library-status
-description: 'Use for a concise read-only Material library convergence and evidence-gate status report.'
+description: 'Use for a concise read-only Material library convergence, active correction, family-readiness, roadmap, operator-evidence, and verification status report.'
 ---
 
 # Material library status
@@ -8,26 +8,25 @@ description: 'Use for a concise read-only Material library convergence and evide
 Read only:
 
 1. `src/shared/ui/material/docs/roadmap.md`;
-2. the active family workflow-state block, target, alignment map, token/style/motion contracts, and implementation when needed;
-3. current PR and verification state when available.
+2. the active family or foundation workflow-state block;
+3. current durable contract, dependency, proof, operator, and verification facts needed for the report.
 
 Report:
 
-- active family and mode;
-- current correction objective and current stage;
-- canonical target status and unresolved source/platform decisions;
-- assessment completeness;
-- contract-gate status;
-- token graph status, public/private token surface, and static guard result when applicable;
-- current correction unit and proof lane;
-- implementation and conditional adoption status;
-- motion audit, final-gate, and operator visual status;
-- family alignment status: `aligned`, `converging`, or `blocked`;
-- exact blocker;
-- confirmed owners preserved and owners still requiring correction;
-- one exact next gate, correction unit, or action;
-- pending foundation, token migration, consumer, cleanup, visual, or verification work.
+- active family or foundation domain, mode, objective, and selected concern lanes;
+- current stage and target claims requiring work;
+- semantics, token, and Web audit status for selected lanes;
+- dependency closure and active prerequisite stack;
+- correction contract-gate status;
+- current correction unit and proof lanes;
+- implementation, adoption, and obsolete-owner cleanup status;
+- correction-final review status;
+- final family-review status when applicable;
+- token guard, browser evidence, operator visual status, and repository verification;
+- family alignment: `aligned`, `converging`, or `blocked`;
+- remaining required gaps;
+- exact blocker and one next action.
 
-Do not equate a completed correction objective with full family alignment. Do not treat green CI, stable snapshots, relocation, consumer migration, same-context self-review, declaration presence, or an unpassed contract gate as Material correctness.
+Do not equate one correction's completion with family alignment. Do not treat green checks, stable snapshots, relocation, consumer migration, declaration presence, or same-context review as correctness.
 
-Do not modify repository files, infer unrecorded progress, execute implementation stages, or create inventories, registries, audits, checklists, scorecards, stage trackers, or parallel status records.
+Do not inspect or report Git, branch, commit, pull-request, or merge state. Do not modify files, infer unrecorded progress, execute stages, or create inventories, audits, review histories, checklists, scorecards, stage trackers, or parallel status records.

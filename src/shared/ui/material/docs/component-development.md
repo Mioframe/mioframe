@@ -1,230 +1,245 @@
 # Material component convergence workflow
 
-This is the single canonical workflow for an official public Material component family.
+This is the canonical workflow for creating, repairing, migrating, or completing one official public Material component family from only its family name or an explicitly bounded objective.
 
-It improves new, partially correct, or badly misaligned implementations without treating legacy code as authority and without requiring full-family rewrites. Correct owners remain; wrong owners converge through bounded complete corrections.
+The coding agent owns technical discovery, architecture, decomposition, implementation, proof, documentation, and continuation. The operator owns Git operations and repository publication workflow.
+
+## Universal agent model
+
+Repository-owned policy lives in:
+
+- scoped `AGENTS.md` files for short routing and stable invariants;
+- `.agents/skills/*/SKILL.md` for reusable workflows and specialist contracts;
+- this documentation for durable architecture and convergence rules;
+- the owning family README for current family state and accepted facts.
+
+No tool-specific agent directory is a policy owner. Any runtime may execute a portable skill in the main context or in an isolated agent context.
+
+Use the main orchestrator context for phases that share substantial state: orientation, contract synthesis, correction selection, implementation, adoption, state updates, and workflow advancement.
+
+Use an isolated read-only context when research, browser evidence, or independent review would otherwise flood the orchestrator context. The isolated role returns only its structured result and cannot delegate further.
 
 ## Sequence
 
 ```text
-material-component
-→ task lock
-→ isolated material-canonical-target
-→ target lock
-→ isolated material-current-state-audit
-→ material-component-contract
-→ independent contract-gate review
-→ material-foundation when required
-→ one material-component-implementation correction unit
-→ affected consumer and visual validation
-→ conditional material-component-adoption
-→ independent final-gate review
-→ verification
-→ next correction unit or family completion
+material-component <family>
+→ resume or initialize family state
+→ one bounded family orientation
+→ concern-lane and dependency plan
+→ concern-scoped material-canonical-target when required
+→ selected isolated audits
+   - material-semantics-audit
+   - material-token-audit
+   - material-web-audit
+→ synthesize highest-priority complete correction contract
+→ independent contract gate
+→ complete exact foundation or official-family prerequisite when required
+→ implement one bounded correction unit
+→ conditional adoption and obsolete-owner cleanup
+→ focused proof
+→ independent correction-final gate
+→ refresh affected state only
+→ repeat correction selection while required gaps remain
+→ independent material-family-review
+→ final verification
 ```
 
-Production edits are forbidden until the contract gate passes.
+Production edits are forbidden before the correction contract gate passes. Required prerequisites complete before the calling correction continues.
 
-`material-component` is the only orchestrator. It owns synthesis, stage transitions, family README and roadmap writes, and the decision to advance or stop. Internal roles and stages do not invoke each other.
+## Responsibility model
 
-## Cross-agent isolation
+`material-component` is the sole family writer and orchestrator. It:
 
-Reusable role procedures are portable Agent Skills under `.agents/skills`. Claude Code may execute them through thin `.claude/agents` adapters with tool restrictions and skill preloading. Codex may execute the same skills in separate agent threads or isolated worktrees.
+- resolves the family, mode, supported scenarios, current owner, and public surface;
+- builds and maintains the bounded orientation map;
+- selects concern lanes;
+- inventories dependencies and owns dependency-closure status;
+- synthesizes specialist results;
+- chooses the next correction unit;
+- invokes and returns from exact prerequisites;
+- implements corrections and adoption;
+- updates family state and roadmap facts;
+- decides whether to continue, reopen a decision, complete, or stop.
 
-Use isolated read-only contexts for canonical target research, current-state audit, contract review, and final review. Pass bounded scope, scenarios, platforms, repository ref, applicable instructions, and required result format. Do not pass preferred conclusions or implementation reasoning to reviewers. Never use concurrent writers on the same owner or worktree.
+Read-only concern skills:
 
-## Task and workflow state
+- `material-canonical-target`: official target claims for the delegated concern only;
+- `material-semantics-audit`: API, native/form/event semantics, accessibility, state, extensions, consumers, and dependencies;
+- `material-token-audit`: token taxonomy, ownership, graph direction, routing, and rendered proof;
+- `material-web-audit`: DOM, CSS ownership, layout, adaptive behavior, motion, lifecycle, and browser/visual proof;
+- `material-component-review`: one proposed or implemented correction unit;
+- `material-family-review`: the complete resulting family state after no known required gap remains.
 
-Lock one family, mode (`new-component`, `align-existing`, or `focused-correction`), objective, required scenarios, applicable platforms, and non-goals.
+A specialist never edits files, chooses another concern, updates roadmap state, or invokes another role.
 
-Existing families use `align-existing`. Relocation, API preservation, decomposition, adoption, and cleanup are actions, not modes or proof.
+## Family orientation
 
-The owning README begins with:
+Perform one bounded orientation before detailed research:
 
 ```text
-MATERIAL WORKFLOW STATE
+FAMILY ORIENTATION
 Family:
-Mode:
-Current objective:
-Current stage: target | assessment | contract-review | foundation | implementation | adoption | final-review | verification
-Canonical target status: draft | locked | reopened
-Assessment status: not-started | complete | blocked
-Contract review status: not-started | passed | failed
-Current correction unit: none | <exact unit>
-Implementation status: not-started | complete | blocked
-Final review status: not-started | passed | failed
-Operator visual status: not-required | required | accepted | rejected
-Family alignment status: aligned | converging | blocked
-Next gate:
-Blocker: none | <exact blocker>
+Mode: new-component | align-existing | focused-correction
+Canonical owner:
+Legacy or missing owners:
+Public entry points:
+Family files:
+Direct dependencies:
+Representative consumers:
+Proof owners:
+Locked target claims:
+Known unresolved concerns:
 ```
 
-Workflow state, detailed README sections, and roadmap must agree. Stale or contradictory state blocks progression.
+Read applicable instructions and Material documents first, then the owning README, implementation, direct dependencies, public exports, representative consumers, and applicable proof. Expand repository search only for a named dependency, compatibility path, or ownership question.
 
-## Canonical target
+Do not rebuild the full orientation after every correction. Refresh only changed or invalidated facts.
 
-Run `material-canonical-target` before current component implementation, component tests, stories, snapshots, or prior family conclusions can determine the target.
+## Concern plan
 
-Record supported and unsupported surface, public semantics, invalid combinations, anatomy, state, accessibility, exact official token paths and meanings, rendered properties, motion, adaptive behavior, platforms, dependencies, source names, and verification dates.
-
-Every contradiction, absence, inference, or platform-specific statement receives:
+Record:
 
 ```text
-SOURCE DECISION
-Concern:
-Applicable platform:
-Source A and statement:
-Source B and statement:
-Conflict or missing evidence:
-Narrower applicable authority:
-Decision:
-Rationale:
-Status: resolved | unresolved
+CONCERN PLAN
+Objective:
+Required scenarios and platforms:
+Non-goals:
+Target claims requiring research:
+Semantics lane: required | not-required — reason
+Token lane: required | not-required — reason
+Web lane: required | not-required — reason
+Required direct dependencies:
+Dependency closure: closed | blocked
+Foundation prerequisite: none | <exact contract>
+Official-family prerequisite: none | <exact public contract>
+Adoption scope: none | <exact consumers/owners>
 ```
 
-Token presence does not prove support. Token absence does not cancel explicit guidance. Android, iOS, and Web rules are not interchangeable without an explicit decision. Required unresolved decisions block dependent work. New evidence reopens the target.
+Rules:
 
-## Current-state assessment
+- new families and complete family alignment require every applicable lane;
+- a focused correction runs only affected lanes and direct dependencies;
+- token changes require the token lane and also the Web lane when rendered behavior changes;
+- DOM, layout, styling, motion, responsive, or browser lifecycle changes require the Web lane;
+- API, native semantics, accessibility, state ownership, extensions, or consumer contracts require the semantics lane;
+- each role reports cross-lane dependencies to the orchestrator instead of absorbing them.
 
-After target lock, run `material-current-state-audit` against the complete current and previous ownership.
+## Dependency closure and prerequisites
 
-Every applicable concern is classified as `confirmed-compliant`, `project-extension`, `misaligned`, `unresolved`, `obsolete`, or `not-applicable` with a reason. Mandatory concerns are:
+A supported scenario resolves each required dependency to one ready owner:
 
-- API, defaults, invalid combinations, and attributes;
-- native, keyboard, form, event-propagation, and accessibility semantics;
-- anatomy, DOM, target area, and unnecessary nodes;
-- semantic and transient state, precedence, interruption, cancellation, and cleanup;
-- token taxonomy, naming, location, dependency graph, public/private surface, and rendered-property routing;
-- geometry, typography, icon placement, RTL, responsive behavior, and text scaling;
-- motion implementation and browser lifecycle;
-- project extensions;
-- Material and generic dependencies;
-- owners, exports, consumers, aliases, and obsolete paths;
-- unit, component, browser, visual, consumer, and verification evidence.
+- canonical Material foundation;
+- canonical official Material family public contract;
+- valid generic non-Material foundation;
+- explicit Mioframe extension owner.
 
-`confirmed-compliant` requires resolved applicable authority, matching implementation, correct ownership, faithful proof in the correct lane, and no unresolved contradiction.
+Classify each dependency as `canonical-foundation`, `canonical-family`, `temporary-legacy-material`, `project-extension`, or `generic-foundation`.
 
-`project-extension` additionally requires a current Mioframe scenario, explicit owner, Material compatibility, valid dependencies, and separate proof. A known defect prevents completion.
+Closure is blocked by required temporary legacy Material ownership, missing or unresolved reference/system tokens, unowned shared behavior, known-defective contracts, private cross-family imports, hidden required fallbacks, dependency cycles, or parallel active owners.
 
-Classify proof as canonical, compatibility-only, implementation-detail, legacy-defect preservation, or obsolete. Existing tests, stories, snapshots, consumers, names, and green CI are evidence only.
+For a family-agnostic cross-family contract, invoke `material-foundation` for the smallest complete required slice. For another official component, invoke or resume that family's `material-component` workflow only until the exact required public contract is ready. Return to the calling family afterward.
 
-Classify each dependency as canonical Material, temporary legacy Material, project extension, or generic non-Material foundation.
+Maintain a prerequisite stack and stop on a cycle with the exact dependency chain.
 
-## Token architecture audit
+## Evidence reuse
 
-Follow [`tokens.md`](./tokens.md). The current-state auditor, implementation stage, and final reviewer independently reconstruct the token graph from code.
+A fresh context resets reasoning, not independently confirmed repository facts.
 
-The audit must classify every Material-related custom property as:
+Reuse a locked claim until its applicability changes or authoritative, implementation, proof, reviewer, or operator evidence contradicts it. A new session, new correction unit, mechanical documentation change, or unrelated concern does not invalidate accepted evidence.
 
-- exact official reference token;
-- exact official system token;
-- exact official component token;
-- explicit Mioframe system/component extension token;
-- owner-local private route;
-- invalid or obsolete alias.
+Canonical target research runs only for missing or invalidated claims. Implementation executes the locked concern contracts and proof lanes; it does not rerun audits unless new contradictory evidence explicitly reopens a lane.
 
-For each supported token route, report exact declaration owner and location, dependencies, public/private status, final rendered property, state/configuration selection, fallback behavior, proof, and classification.
+## Contract synthesis and correction order
 
-Reject or classify as misaligned:
+Synthesize only the selected target and audit results plus dependency closure. Choose the smallest complete highest-priority correction:
 
-- invented or shortened official-looking `--md-*` names;
-- ambiguous aliases such as `--md-<component>-*` that are neither exact tokens nor private routes;
-- component tokens declared outside the owning family token file;
-- reference/system tokens declared inside a component family;
-- project extensions placed in the official `--md-*` namespace;
-- `--md-private-*` routes exposed or consumed as public API;
-- cross-family component-token dependencies;
-- upward dependency edges, circular references, unresolved required references, or duplicate component-token declarations;
-- declared component tokens that do not reach supported rendered behavior;
-- multi-hop private chains where one final owner-local route is sufficient;
-- required values hidden by fallbacks;
-- token-driven shorthand values whose parsed/computed longhands are not proved;
-- value-kind mismatch between token and final CSS property.
-
-The stage result contains exact route evidence. The family README records only supported public token groups, extension tokens, intentionally unsupported official surface, private routing responsibilities, proof obligations, classifications, and unresolved gaps.
-
-Token correctness requires source evidence, the static token architecture guard, and rendered proof. None substitutes for the others.
-
-## Motion implementation audit
-
-The current-state auditor, implementation stage, and final reviewer independently scan the complete family and directly owned dependencies for all CSS transitions and animations, keyframes, WAAPI or JS animation routes, frames, timers, classes, completion listeners, `will-change`, motion custom properties, and reduced-motion overrides.
-
-The stage result reports each discovered route with its location, owner, target, trigger, animated properties or keyframes, timing, token route, initial and final values, interruption/reversal/cancellation/cleanup, reduced-motion result, performance risk, proof, and classification.
-
-The owning README records only the durable motion contract: supported state edges, required visible result, owner, official timing/easing or platform decision, lifecycle semantics, proof owner, classification, and unresolved gaps.
-
-Do not copy exact selectors, declarations, keyframe references, token route lists, or runtime route lists into the README. Code remains the implementation record; each audit reconstructs the exact inventory.
-
-Reject or classify as misaligned:
-
-- `transition: all`;
-- declared tokens that do not drive rendered motion;
-- unused or unreachable keyframes;
-- declarations on the wrong rendered owner or shadowed by cascade;
-- shorthand resets or duplicate conflicting declarations;
-- unstable initial/final values;
-- easing whose output domain is incompatible with the animated property;
-- undefined rapid-input, interruption, reversal, cancellation, disable, or unmount behavior;
-- stale classes, listeners, timers, frames, or WAAPI animations;
-- reduced-motion behavior that loses the final state or preserves unnecessary long motion;
-- layout/paint-heavy animation without a required visual contract and bounded performance reasoning;
-- broad or permanent `will-change` without evidence;
-- proof that only asserts token, declaration, keyframe text, snapshots, or framework/browser internals.
-
-Token-driven transition and animation routes use explicit longhands unless a shorthand is demonstrably clearer and fully proved. Static proof may protect exact token-to-declaration routing. User-visible acquisition, completion, interruption, reversal, cancellation, and reduced-motion lifecycle require browser proof through public input.
-
-## Decomposition and correction units
-
-Map each concern to one owner with inputs, outputs, dependencies, observable contract, primary proof, and co-location rationale. Split by ownership and proof, not line count. Do not retain monoliths by habit or add wrappers and DOM merely for separation.
-
-Official component-token declarations and rendered implementation styles are separate owners when the token set is non-trivial. One family token file is the default; split further only for independent loading, ownership, or proof.
-
-Correction priority is:
-
-1. unresolved required source or platform decisions;
+1. unresolved required source or platform decision;
 2. wrong family, dependency, or foundation ownership;
 3. native semantics, event propagation, accessibility, and form behavior;
 4. public API and invalid combinations;
 5. state ownership;
 6. anatomy and DOM;
-7. token ownership, naming, placement, dependency graph, and rendered-property routing;
+7. token ownership, naming, placement, graph, and rendered routing;
 8. geometry, responsive behavior, typography, RTL, and text scaling;
 9. motion implementation and browser lifecycle;
 10. project extensions;
 11. adoption;
 12. obsolete-owner removal.
 
-Do not bypass a higher-priority blocker with an easier local improvement. Styling or motion built on an invalid token graph waits until that graph is corrected.
+A lower-priority correction cannot bypass a higher-priority blocker affecting the same supported surface.
 
-Each correction unit records expected behavior, current defect, owner, dependencies, blast radius, proof lane, prepared failing observation, affected token graph, affected motion contract, compatibility impact, visible impact, operator requirement, and completion condition.
+## Convergence loop
 
-Rewrite only the smallest owner when incremental repair would preserve wrong ownership or add more workaround logic.
+After each accepted correction-final review:
+
+1. update only affected orientation and durable contract facts;
+2. reclassify remaining required concerns;
+3. select the next highest-priority complete correction;
+4. continue without rerunning full orientation or accepted audits.
+
+The workflow does not stop after one correction while a known required gap remains.
+
+## Workflow state
+
+The owning README contains one compact current-state block:
+
+```text
+MATERIAL WORKFLOW STATE
+Family:
+Mode:
+Current objective:
+Current stage: orientation | target | assessment | contract-review | prerequisite | implementation | adoption | correction-review | family-review | verification
+Canonical target status: draft | locked | reopened
+Selected concern status:
+Dependency closure: closed | blocked
+Prerequisite stack: none | <ordered stack and state>
+Current correction unit: none | <exact unit>
+Implementation status: not-started | complete | blocked
+Correction review status: not-started | passed | failed
+Family review status: not-started | complete | blocked
+Operator visual status: not-required | required | accepted | rejected
+Family alignment status: aligned | converging | blocked
+Remaining required gaps: none | <exact gaps>
+Next action:
+Blocker: none | <exact blocker>
+```
+
+The README stores current target decisions, classifications, durable contracts, proof obligations, correction unit, dependency status, and remaining gaps. It does not store review history, shell transcripts, search output, exact route ledgers, stage diaries, or scorecards.
+
+## Review budgets
+
+Each correction contract and correction-final gate allows one initial independent review and at most one substantive re-review. The final family review follows the same budget.
+
+A second failed review stops with consolidated blockers. Mechanical wording, count, or cross-reference fixes receive an orchestrator consistency check rather than another broad review. A recurring root ownership or architecture failure after two correction rounds reopens architecture.
 
 ## Proof lanes
 
-- unit/component proof: deterministic API, normalization, native attributes, state precedence, token naming/location/dependency graph, and narrow routing;
-- browser proof: computed token routes, inheritance/overrides, shorthand parsing, layout, focus, keyboard, form behavior, propagation, pointer/touch, target area, responsive behavior, animation lifecycle, and reduced motion;
-- visual proof: screenshots only;
-- consumer proof: integration and compatibility.
+- unit/component: deterministic API, state normalization, native attributes, token graph structure, dependency mapping, and narrow routing;
+- browser: computed values, inheritance, layout, focus, keyboard, forms, propagation, pointer/touch, adaptive behavior, animation lifecycle, cancellation, and reduced motion;
+- visual: screenshots and official comparison only;
+- consumer: integration and compatibility;
+- architecture: applicable repository guards and single-owner/dependency invariants.
 
-Visual specs do not contain behavior success criteria or large computed-style matrices. Visible changes require official comparison, baseline handling, and honest operator-acceptance status.
+Visible changes require explicit operator comparison. Browser behavior is not proved by screenshots alone.
 
-## Gates
+## Final family review
 
-The contract gate independently validates target provenance, source decisions, platform applicability, concern coverage, classifications, dependencies, token architecture, correction priority, proof lane, compatibility, motion-audit completeness, workflow state, and that production work did not precede approval.
+Run `material-family-review` only when the orchestrator has no known required gap. It independently checks the complete supported surface, ownership, dependencies, public contract, implementation, consumers, cleanup, proof, documentation, and verification obligations.
 
-Implementation executes exactly one approved correction unit. New invalidating evidence returns work to contract while preserving unaffected confirmed work.
+The family review does not inspect Git history or decide pull-request merge readiness.
 
-Adoption runs only when ownership, public-entry migration, or obsolete-owner removal is in scope and every moved consumer receives a ready contract.
+## Completion
 
-The final gate reviews the complete family and resulting PR, independently reconstructs the token graph and motion code inventory, and determines separately whether the correction objective is mergeable and whether the family is `aligned`, `converging`, or `blocked`.
+Family completion requires:
 
-## Completion and recovery
+- explicit supported scenarios and unsupported surface;
+- no required `misaligned`, `unresolved`, `obsolete`, or `temporary-legacy-material` concern;
+- closed dependency graph and completed prerequisites;
+- valid token, DOM, semantic, style, and motion contracts;
+- one canonical owner and intended public API;
+- complete requested adoption and obsolete-owner cleanup;
+- sufficient proof and accepted operator comparison when required;
+- `material-family-review: complete`;
+- final repository verification.
 
-A bounded correction may merge while the family remains `converging` only when the repository is independently valid and remaining gaps are explicit, non-blocking, and outside the objective.
-
-Family completion requires no required `misaligned`, `unresolved`, or `obsolete` concern, a passed token architecture guard, a passed motion audit, one canonical owner, required consumers on that owner, required operator acceptance, independent final review, and final verification.
-
-New evidence returns work to the owning stage. A fresh isolated context resets reasoning, not confirmed repository progress. Hidden source conflicts, omitted concerns, token routes, or motion routes, wrong proof lanes, stale workflow state, same-context self-review, or repeated ineffective correction rounds block progression.
-
-Do not create duplicate contracts, durable audits, registries, scorecards, checklists, or progress ledgers.
+Do not create duplicate contracts, durable audits, registries, inventories, scorecards, checklists, progress ledgers, or workflow-history documents.

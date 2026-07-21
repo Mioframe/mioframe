@@ -1,20 +1,26 @@
 ---
 name: material-component-implementation
-description: 'Internal Material stage used only by material-component after an independent contract gate passes. Executes exactly one approved correction unit with locked ownership, token, proof, compatibility, visual, and motion contracts.'
+description: 'Internal Material procedure used only by material-component after an independent contract gate passes and all required prerequisites are complete. Executes exactly one approved correction unit using the locked concern contracts, owners, proof lanes, compatibility decisions, and dependency requirements.'
 ---
 
 # Material component implementation
 
-Internal stage only. Follow `src/shared/ui/material/docs/component-development.md`, `src/shared/ui/material/docs/tokens.md`, and the passed contract package.
+Run inside the `material-component` orchestrator context. This procedure is not an independent agent entry point because planning, implementation, adoption, and continuation share substantial family state.
 
 Required entry state:
 
 ```text
 Canonical target status: locked
-Assessment status: complete
+Selected concern results: complete
+Dependency closure: closed | not-required-for-bounded-unit
+Foundation prerequisite: none | complete
+Official-family prerequisite: none | complete
 Contract review status: passed
 Current correction unit: <exact unit>
+Locked proof lanes: <exact lanes>
 ```
+
+A new component, canonical owner migration, adoption, or family-alignment unit requires closed dependencies. A focused unit may use `not-required-for-bounded-unit` only when it neither depends on the unresolved route nor creates or adopts a canonical owner.
 
 ## Responsibility
 
@@ -23,128 +29,98 @@ Execute exactly one approved correction unit:
 ```text
 prepare locked proof
 → confirm expected failure when applicable
-→ smallest approved owner correction or local replacement
+→ smallest approved owner correction
 → focused verification
-→ affected browser and representative-consumer validation
-→ visual handoff when required
-→ README evidence update
+→ affected browser, consumer, and visual validation
+→ concise current-state update
 ```
 
-Do not select another gap or change the objective.
-
-The canonical target, source decisions, classifications, dependency types, correction priority, implementation owner, proof lane, compatibility decision, durable token contract, durable motion contract, and operator requirement remain locked. New invalidating evidence returns the workflow to contract.
+Do not select another gap, broaden the concern plan, or repair an unrelated finding. New invalidating evidence returns to the orchestrator with the exact owning concern and reopens only that lane.
 
 ## Supporting skills
 
-- Use `material-foundation` when reference/system token ownership or a real cross-family token prerequisite must change.
-- Use `vue-component-implementation` for `.vue` or UI-composable changes.
-- Use `ui-browser-behavior` whenever computed token behavior, layout, focus, input lifecycle, responsive behavior, transition, animation, WAAPI, or reduced motion is changed or confirmed.
-- Use `visual-regression-testing` whenever accepted visible output or motion appearance changes.
-- Use the proof skill selected by the locked proof lane.
+- `material-foundation` completes an approved cross-family prerequisite before entry;
+- another official Material family prerequisite completes through that family's public workflow before entry;
+- `vue-component-implementation` supports `.vue` or UI-composable mechanics;
+- `ui-browser-behavior` supports changed DOM, layout, interaction, transition, animation, WAAPI, or reduced-motion proof;
+- `visual-regression-testing` supports accepted visible regression protection;
+- use only the proof skill selected by the locked contract.
 
 ## Ownership
 
-- Preserve independently confirmed owners unless new evidence invalidates them.
-- Correct incrementally when ownership is sound and the defect is local.
-- Replace only the smallest owner when repair would preserve wrong ownership or add workaround logic.
-- Keep public Vue artifacts thin composition roots.
-- Keep official family token declarations in one owner-local `<family>.tokens.css` by default.
-- Keep private routing and final rendered declarations in implementation styles.
-- Separate deterministic logic, lifecycle, tokens, styles, rendered-property routing, and motion only when ownership or proof becomes clearer.
+- Preserve independently confirmed owners outside the correction unit.
+- Correct incrementally when ownership is sound; replace only the smallest wrong owner.
+- Keep public Vue artifacts thin.
+- Keep official family tokens in the owner-local token file and private routing/final declarations in implementation styles.
+- Keep reference/system tokens and real cross-family contracts in canonical foundation owners.
+- Depend on another component family through its ready public contract; never move it into foundation.
+- Keep state selectors, layout, transitions, animations, private routes, and rendered properties out of token files.
 - Do not add wrappers or DOM nodes merely for separation.
-- Keep temporary legacy Material dependencies explicit.
+- Do not introduce new temporary legacy Material dependencies.
 
-## Token graph audit
+## Dependency execution
 
-Before token/style/motion edits and again before exit, reconstruct the exact graph across the complete family and directly owned dependencies.
+Before editing, confirm each required dependency still resolves to the approved ready owner. Return blocked when:
 
-For every Material-related custom property verify:
+- a required foundation or official-family prerequisite is incomplete;
+- the supported route still imports a temporary legacy Material owner;
+- a ready canonical prerequisite exists but the family still consumes its legacy path;
+- a replacement leaves parallel active owners;
+- a hidden fallback masks a missing required token or behavior;
+- a dependency cycle exists;
+- a dependency has a known defect affecting the correction scenario.
 
-- exact classification: official reference/system/component token, Mioframe extension token, private route, invalid alias, or obsolete;
-- declaration owner and allowed location;
-- public/private status;
-- direct dependencies and allowed direction;
-- duplicate declarations, unresolved required references, fallback behavior, and cycles;
-- configuration/state selection;
-- final rendered property or narrow foundation bridge;
-- expected value kind and actual CSS use;
-- static, browser, and consumer proof.
+A retained legacy compatibility entry point may forward to the canonical owner but cannot retain a parallel implementation.
 
-Implementation requirements:
+## Locked concern execution
 
-- keep exact official names; do not shorten or invent `--md-*` aliases;
-- use `--mio-sys-*` or `--mio-comp-<family>-*` only for approved public project extensions;
-- use `--md-private-<owner>-*` only for owner-local non-public routing;
-- do not add component tokens to foundation or reference/system tokens to a family;
-- do not add new canonical tokens to legacy `src/shared/lib/md/tokens.css`;
-- remove ambiguous aliases such as `--md-<component>-*` unless they are a documented external compatibility surface with exact consumers and a removal plan;
-- keep dependency edges downward and forbid cycles or cross-family component-token references;
-- do not use fallbacks to hide missing required declarations;
-- every declared component token reaches supported rendered behavior;
-- prefer direct token-to-property routing; use one private hop only when configuration/state selection or a foundation bridge requires it;
-- a second private hop requires an independently changing owner and explicit contract justification;
-- token-driven transition and animation use explicit longhands;
-- verify final computed longhands when custom-property substitution can invalidate or reset a shorthand;
-- verify the token value kind is valid for the final CSS property.
+Do not invoke `material-canonical-target`, `material-semantics-audit`, `material-token-audit`, or `material-web-audit` again during implementation. Execute the already locked contracts and proof lanes.
 
-Run the static token architecture guard for any token declaration, name, dependency, or route change. Static success does not replace official-source or rendered proof.
+- semantics lane: implement and prove the changed API, native, accessibility, state, extension, or consumer contract;
+- token lane: implement the approved bounded graph change and run the static token guard;
+- Web lane: implement the approved DOM, style, layout, motion, and lifecycle change and run browser proof.
 
-Report exact graph evidence in the stage result; do not mirror every declaration or edge into the family README.
+Reopen a specialist lane only when implementation exposes concrete contradictory evidence that invalidates a locked decision. Return that evidence to the orchestrator instead of silently redesigning the unit.
 
-## Motion code audit
+### Token lane requirements
 
-Before motion edits and again before exit, reconstruct the exact code inventory across the complete family and directly owned dependencies:
+When selected:
 
-- transition and animation shorthand/longhands;
-- keyframe definitions and references;
-- WAAPI or JS routes;
-- frames, timers, animation classes, and completion listeners;
-- `will-change`;
-- motion custom properties and uses;
-- reduced-motion overrides.
+- exact official, Mioframe extension, or private namespace and owner;
+- valid dependency direction with no cycles or cross-family component edges;
+- no unresolved required reference, dead component token, hidden fallback, or unnecessary private hop;
+- token files contain declarations and configuration scoping only;
+- final value kind and rendered property are valid;
+- token-driven transition or animation parsing is proved through computed longhands when applicable.
 
-Compare actual routes with the locked durable motion contract. Requirements:
+### Web lane requirements
 
-- enumerate transition/animation longhands; `transition: all` is forbidden;
-- declared motion tokens drive actual rendered behavior or are removed/classified unsupported;
-- keyframes are reachable from supported states;
-- declarations live on the rendered-property owner and are not shadowed or reset accidentally;
-- initial and final values are stable;
-- easing output is compatible with the animated property's valid domain;
-- rapid input, retargeting, reversal, interruption, cancellation, disable, and unmount follow the contract;
-- runtime animations, frames, timers, classes, and listeners are cleaned up;
-- reduced motion preserves final semantic and visible state;
-- expensive layout/paint animation has a required visual reason and bounded performance analysis;
-- `will-change` is narrow and temporary unless a persistent need is proven;
-- synchronous layout read/write loops and per-frame reactive churn are avoided;
-- declaration existence, keyframe text, snapshots, framework behavior, or browser internals are not accepted as lifecycle proof.
+When selected:
 
-Static proof may verify exact token-to-declaration routing. User-visible animation lifecycle requires browser proof through public input.
+- correct DOM/style owner, cascade, layout, stacking, clipping, RTL, and responsive behavior;
+- explicit transition or animation routes with stable endpoints;
+- easing compatible with the animated property's value domain;
+- defined rapid input, interruption, reversal, cancellation, cleanup, and reduced-motion behavior;
+- no `transition: all`, dead motion route, stale runtime resource, broad permanent `will-change`, or unjustified expensive animation;
+- browser proof through public input for changed observable lifecycle.
+
+If required browser evidence cannot be produced or inspected, return blocked rather than inferring success from declarations or screenshots.
 
 ## Visible and consumer impact
 
-When visible output changes, prepare the canonical Storybook surface, official comparison, baseline handling, and operator handoff. Never report operator acceptance without an explicit result.
+Prepare official comparison and operator handoff only when visible output changes. Validate only materially affected consumer categories. Do not patch consumers around a wrong library contract.
 
-Validate every materially affected consumer category when API, native behavior, propagation, layout interaction, token inheritance/override behavior, visible output, motion, or extension behavior changes. Do not patch consumers around a wrong library contract.
+## Documentation
 
-## State update
+Update current contract evidence, dependency closure, prerequisite status, classifications, and remaining gaps only. Do not add review history, shell transcripts, exact route inventories, file counts, or superseded reasoning.
 
-Update implementation evidence and alignment classifications in the family README without changing locked contract decisions.
-
-Set:
-
-```text
-Current stage: adoption | final-review
-Implementation status: complete | blocked
-Operator visual status: not-required | required | accepted | rejected
-Next gate: conditional adoption | independent final review
-```
-
-The implementation stage does not update the roadmap or invoke another stage.
+Return control to the orchestrator for conditional adoption, correction review, and next-unit selection. Do not invoke another stage directly.
 
 ## Exit gate
 
-Pass only when the approved unit meets its completion condition, proof passes in the locked lane, ownership and dependency boundaries hold, the final token graph matches the durable token contract, the static token guard passes when applicable, the final motion audit matches the durable motion contract, affected consumers work without workarounds, visible evidence is honest, and the repository remains valid even when the family is still `converging`.
+Pass only when the approved unit meets its completion condition, every required dependency resolves to the approved ready owner, locked proof lanes pass, changed ownership is valid, applicable guards pass, affected consumers work, visible evidence is honest, and no blocker inside the unit remains.
+
+A finding outside the unit returns to the orchestrator as a remaining family concern. It is not silently fixed or discarded.
 
 ## Result
 
@@ -152,38 +128,30 @@ Pass only when the approved unit meets its completion condition, proof passes in
 MATERIAL STAGE RESULT
 Family:
 Stage: implementation
+Correction unit:
 Status: complete | blocked
-Exit gate: passed | failed
-Correction unit result:
-Family alignment status: aligned | converging | blocked
-Preserved owners:
-Replaced owners:
-Dependency result:
+Locked lanes:
+Dependency closure:
+Prerequisite result:
+Changed owners:
 Proof result:
-Token graph audit: passed | failed
-Token route findings:
 Static token guard: passed | failed | not-applicable
-Motion code audit: passed | failed
-Motion route findings:
+Browser evidence: sufficient | insufficient | not-applicable
 Consumer result:
 Visual/operator result:
-README evidence changes:
-Remaining known gaps:
+Remaining family concerns returned to orchestrator: none | <exact concerns>
 Blocker: none | <exact blocker>
 ```
 
 ## Forbidden
 
-- direct user invocation;
-- edits before a passed contract gate;
-- changing locked contract decisions in place;
-- implementing another or lower-priority gap;
-- exact code-route or token-graph ledgers in documentation;
-- invented token namespaces, upward/cyclic token graphs, dead component tokens, fallback-masked required references, or unnecessary alias chains;
-- tests protecting implementation details or known defects as canonical behavior;
-- browser assertions in visual specs;
-- `transition: all`, dead motion tokens, unused keyframes, conflicting or shadowed motion routes, stale runtime resources, or broad persistent `will-change`;
-- visible changes without required operator handoff;
-- consumer migration or obsolete-owner removal unless adoption owns it;
-- roadmap updates or another stage invocation;
-- speculative abstractions, token managers, registries, generators, or unnecessary DOM.
+- direct user invocation or edits before contract approval and prerequisite completion;
+- changing locked decisions or implementing another gap;
+- invoking or repeating specialist audits without contradictory evidence;
+- state, layout, or motion declarations inside token files;
+- invented namespaces, invalid graph edges, dead tokens, hidden required fallbacks, or unnecessary aliases;
+- canonical owners or migrated consumers that retain required temporary legacy Material dependencies;
+- moving another component family into foundation;
+- declaration-only motion proof, `transition: all`, conflicting routes, stale runtime resources, or broad permanent `will-change`;
+- tests of framework, browser-engine, or third-party internals;
+- roadmap advancement, independent review, Git operations, or speculative infrastructure.

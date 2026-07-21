@@ -50,7 +50,24 @@ project-specific shared UI and product layers
 - External consumers use the curated Material public API when the owner is ready.
 - Internal Material modules use local owning entry points, not the root barrel.
 
-Every shared dependency used by a family is classified as canonical Material, temporary legacy Material, project extension, or generic non-Material foundation. Repeated use does not make a Material component generic foundation.
+Every shared dependency used by a family is classified as canonical Material foundation, canonical Material family, temporary legacy Material, project extension, or generic non-Material foundation. Repeated use does not make a Material component generic foundation.
+
+## Dependency closure
+
+A family is not a ready canonical production owner merely because its own files are under `material/components`.
+
+Before a new owner is exported, adopted, or used to replace a legacy owner, every dependency required by its supported surface must resolve to exactly one ready owner:
+
+- canonical Material foundation;
+- canonical Material family public contract;
+- valid generic non-Material foundation;
+- explicit Mioframe extension owner.
+
+A required temporary legacy Material dependency, missing reference/system token owner, unowned shared Material behavior, known-defective dependency, family-private deep import, hidden required fallback, or parallel active owner keeps dependency closure blocked.
+
+When the missing contract is family-agnostic and cross-family, migrate the smallest coherent required slice to `material/foundation` before component implementation or adoption continues. When it belongs to another official component family, require that family's ready public contract or defer/remove the dependent extension. Do not create foundation merely to avoid depending on another component family.
+
+Foundation migration must leave one active declaration/behavior owner. A legacy entry point may temporarily forward to the canonical owner for compatibility, but it must not retain a parallel implementation.
 
 ## Ownership
 
@@ -98,7 +115,7 @@ Compatibility is evidence to plan migration, not authority to preserve a wrong c
 
 ## Convergence invariant
 
-Existing implementation is editable current-state evidence. Preserve independently confirmed owners, correct misaligned owners through bounded complete units, block or narrow unresolved surface, and remove obsolete ownership after replacement.
+Existing implementation is editable current-state evidence. Preserve independently confirmed owners, correct misaligned owners through bounded complete units, close required dependencies before adoption, block or narrow unresolved surface, and remove obsolete ownership after replacement.
 
 The full sequence, classifications, correction priority, proof lanes, responsibility isolation, and recovery rules are owned only by [`component-development.md`](./component-development.md) and [`foundation-development.md`](./foundation-development.md). Executable stage responsibilities are owned by the corresponding `.agents/skills`.
 
