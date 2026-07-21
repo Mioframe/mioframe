@@ -2,226 +2,142 @@
 
 This is the single workflow for real cross-family Material foundation contracts.
 
-## Purpose
+Foundation exists only when a current component or unavoidable Material/platform contract needs one family-agnostic owner and that owner is simpler than family-local substitutes.
 
-Foundation provides one accepted owner for behavior or rendering inherently shared by current Material families. It is not a universal framework built before components.
-
-Create, expand, or correct a foundation only when a current component or unavoidable Material/platform contract requires it, the concern is family-agnostic, an existing owner is insufficient, shared ownership is simpler than family-local substitutes, and ownership, proof, affected families, and blast radius remain explicit.
-
-A first component may justify foundation work only when the concern is already inherently cross-family and a family-local implementation would create the wrong owner.
-
-## Foundation ownership
+## Ownership
 
 Foundation may own:
 
-- official reference and system tokens, theme roles, and real cross-family Mioframe system extensions;
-- centralized Material authoring units;
-- typography, shape, elevation, and motion roles;
-- generic interaction-state acquisition, state layer, ripple, and focus;
-- Material Symbols rendering;
-- Material-facing overlay adapters;
-- shared accessibility, density, target-area, layout, or adaptive contracts when a real runtime owner is required.
+- official reference/system tokens, theme roles, and real cross-family Mioframe system extensions;
+- typography, shape, elevation, motion, state-layer, ripple, focus, symbols, overlay adapters, or platform bridges with current cross-family scenarios;
+- shared accessibility, density, target-area, or adaptive contracts when a runtime owner is required.
 
-Foundation does not own:
+Foundation does not own component tokens, family-private routes, component API/anatomy/state, product behavior, or generic browser mechanisms that already have a correct non-Material owner.
 
-- component `--md-comp-*` or `--mio-comp-*` tokens;
-- family-private `--md-private-<family>-*` routes;
-- component API, anatomy, semantic state, invalid combinations, or state precedence;
-- product workflow, placement, information architecture, or screen layout;
-- behavior used by only one family without a proven cross-family contract;
-- generic DOM, event, geometry, lifecycle, focus, teleport, or browser mechanisms that already have a correct non-Material owner.
+Foundation code does not import or name consuming families. Families map their semantics into narrow family-agnostic contracts.
 
-Foundation code does not import or name consuming families. Families map their semantics and component tokens into narrow family-agnostic contracts.
-
-All token work follows [`tokens.md`](./tokens.md). `src/shared/lib/md/tokens.css` is a temporary legacy owner; new canonical work must not add component tokens, private Web adaptations, or new token categories there.
-
-## Evidence-gated workflow
+## Sequence
 
 ```text
 material-foundation
-→ task lock
-→ isolated canonical foundation target
-→ target lock
-→ isolated current-state audit
+→ domain/task lock
+→ concern plan
+→ concern-scoped material-canonical-target when required
+→ selected isolated audits:
+   material-semantics-audit for public/lifecycle/consumer contracts
+   material-token-audit for reference/system graph work
+   material-web-audit for rendered/platform/motion behavior
 → domain contract synthesis
-→ independent foundation contract gate
+→ independent correction contract gate
 → one correction-unit implementation
-→ affected family and consumer validation
-→ conditional cleanup
-→ independent final gate
+→ affected-family validation and cleanup
+→ independent correction final gate
+→ return to calling component or complete standalone PR review
 → verification
 ```
 
-Production edits are forbidden until the foundation contract gate passes.
+Production edits are forbidden before the contract gate passes.
 
-The main foundation session is the sole orchestrator and writer. Use delegated agents or fresh isolated sessions for target research, current-state audit, contract review, and final review. Researchers and reviewers are read-only. Never use concurrent writers on the same owner or worktree.
+## Concern plan
 
-## Task lock and workflow state
+Record domain, mode (`new-foundation`, `align-existing`, or `focused-correction`), objective, required cross-family scenarios, affected families, platforms, non-goals, actual PR base/head, and selected concern lanes.
 
-Lock one domain, mode (`new-foundation`, `align-existing`, or `focused-correction`), correction objective, required scenarios, affected families, applicable platforms, and non-goals.
+Run only lanes affected by the objective and direct dependencies. A token-only correction does not require a full lifecycle or motion audit unless rendered behavior changes. A platform/motion correction does not require re-deriving unrelated token groups.
 
-Use `align-existing` whenever an owner already exists. Relocation, additive capability, replacement, and cleanup are actions, not modes or proof.
+When invoked by `material-component`, foundation scope is limited to the exact approved prerequisite and returns control afterward.
 
-The domain README begins with:
+## Target and evidence reuse
 
-```text
-MATERIAL FOUNDATION WORKFLOW STATE
-Domain:
-Mode:
-Current objective:
-Current stage: target | assessment | contract-review | implementation | final-review | verification
-Canonical target status: draft | locked | reopened
-Assessment status: not-started | complete | blocked
-Contract review status: not-started | passed | failed
-Current correction unit: none | <exact unit>
-Implementation status: not-started | complete | blocked
-Final review status: not-started | passed | failed
-Operator visual status: not-required | required | accepted | rejected
-Domain alignment status: aligned | converging | blocked
-Next gate:
-Blocker: none | <exact blocker>
-```
+Use `material-canonical-target` only for claims affected by the objective or contradictory evidence. Existing implementation, tests, consumers, and reuse count do not define the target.
 
-Workflow state and detailed README sections must agree. Stale or contradictory state blocks progression.
+Locked claims outside the concern set remain locked. Do not repeatedly re-derive them without a contradiction.
 
-## Canonical foundation target
+Token presence does not prove runtime support. Platform guidance is not transferable without an explicit decision.
 
-Before target lock, inspect repository rules, required cross-family scenarios, applicable official Material sources, and unavoidable platform contracts. Existing implementation, tests, stories, snapshots, consumers, and prior conclusions must not determine the target.
+## Selected audits
 
-Confirm that the concern belongs in foundation rather than a component family or an existing generic owner.
+Each selected role runs read-only in a separate context and reports only its concern lane.
 
-Record applicable platforms, public/private/testing/browser-adaptation contracts, deterministic behavior, reactive lifecycle, rendered output, exact token categories and names, motion, affected-family obligations, dependency direction, official sources, verification dates, and unresolved decisions.
+- semantics: public/family-facing contract, lifecycle ownership, affected families, extensions, dependencies, and proof;
+- token: reference/system/Mioframe-system taxonomy, location, graph direction, theme overrides, migration ownership, static/rendered proof;
+- Web: rendered artifacts, CSS ownership, platform adaptation, motion lifecycle, browser and visual proof.
 
-For every contradiction, absence, inference, or platform-specific rule, use the source-decision format required by the component workflow.
+A role reports another-lane dependency to the orchestrator instead of absorbing it.
 
-Token presence does not prove a runtime contract. Token absence does not cancel explicit guidance. Android, iOS, and Web rules are not interchangeable without an explicit decision. Required unresolved decisions block dependent implementation.
+## Foundation contract
 
-## Current-state audit
+Synthesize only selected target/audit results. Confirm that foundation ownership is required now and that an existing family or generic owner is insufficient.
 
-After target lock, inspect and classify every applicable concern:
+Select the smallest complete unit in this order:
 
-- current public, private, testing, and browser contracts;
-- deterministic logic and normalization;
-- reactive state and lifecycle;
-- rendered artifacts, styles, tokens, and motion;
-- token taxonomy, naming, location, dependency direction, cycles, unresolved references, and public/private surface;
-- accessibility and platform adaptations;
-- dependency direction and local substitutes;
-- affected families and representative consumers;
-- unit, bridge, browser, visual, consumer, and verification proof;
-- exports, aliases, obsolete owners, and cleanup obligations.
+1. unresolved required source/platform decision;
+2. wrong foundation/family/generic ownership;
+3. public or family-facing contract;
+4. reference/system token naming, location, graph, and migration ownership;
+5. deterministic state and precedence;
+6. reactive/browser lifecycle;
+7. rendered-property, style, and motion routing;
+8. platform adaptation or project extension;
+9. affected-family adoption;
+10. obsolete-owner removal.
 
-Classify each concern as `confirmed-compliant`, `project-extension`, `misaligned`, `unresolved`, `obsolete`, or `not-applicable` with a reason.
+Do not bypass a higher-priority blocker affecting the same cross-family contract.
 
-`confirmed-compliant` requires resolved applicable authority, matching implementation, correct cross-family ownership, faithful proof in the correct lane, a valid token graph when applicable, and no unresolved contradiction.
+## Token foundation rules
 
-A Web/platform adaptation or project extension additionally requires a current scenario, explicit owner, valid dependencies, no conflict with Material, and separate proof. A known defect prevents completion.
-
-Passing tests, widespread reuse, stable snapshots, or generic naming do not establish correctness.
-
-Classify dependencies as canonical Material, temporary legacy Material, project extension, or generic non-Material infrastructure. Classify existing proof as canonical, compatibility-only, implementation-detail, legacy-defect preservation, or obsolete.
-
-## Token foundation contract
-
-For a token-domain correction, audit the complete graph slice:
+For token work follow `tokens.md`:
 
 ```text
 reference source
 → reference token
 → system token or Mioframe system extension
-→ affected component token routes
+→ family-local component token
 → rendered proof
 ```
 
-Requirements:
+Reference/system tokens live in foundation token files. Component tokens remain family-local. Official tokens do not depend on Mioframe extensions/private routes. Dependencies do not point upward or across families. Required references resolve without hidden fallbacks. Cycles and parallel active owners are forbidden.
 
-- exact official names remain exact;
-- reference/system declarations live in canonical foundation token files;
-- theme overrides change system roles, not component tokens;
-- official tokens never depend on Mioframe extensions or private routes;
-- component tokens stay family-local;
-- private Web adaptations are not placed in reference/system token files;
-- dependencies never point upward or across component families;
-- required references resolve without fallback masking;
-- cycles are forbidden;
-- a coherent group moves from the legacy owner in one valid correction, without duplicate active declarations;
-- affected families prove integration and computed behavior.
+Move a coherent group from the legacy owner in one valid correction. Do not introduce runtime token managers, registries, resolvers, or generators.
 
-The domain README records semantic groups, public surface, theme behavior, dependency direction, migration state, proof obligations, and gaps. It does not copy every declaration or graph edge.
+## Review budget
 
-## Domain README and decomposition
+Contract and correction-final gates each allow one initial review and at most one substantive re-review. A second failure stops the workflow with consolidated blockers.
 
-Create `foundation/<domain>/README.md` only when a real runtime, public, private, testing, or correction contract exists. Do not pre-create domains or status records.
+Mechanical documentation fixes do not trigger another full review. Do not restart complete source or affected-family research for wording, counts, or cross-references.
 
-Map each responsibility to one owner with inputs, outputs, dependencies, observable contract, primary proof, and co-location rationale.
+The same root architecture problem surviving two correction rounds requires architecture reconsideration.
 
-Reference tokens, system tokens/theme overrides, browser adaptations, rendered artifacts, lifecycle, motion, and testing bridges are separate owners when they have different reasons to change or proof. Do not split by line count or create a runtime token registry, manager, resolver, or generated abstraction without a current need.
+## Implementation and proof
 
-## Correction priority
+Implement one approved correction unit. Run only selected-lane checks and every materially distinct affected-family route.
 
-Select the highest-priority complete unit:
-
-1. unresolved required source or platform decisions;
-2. incorrect foundation, family, generic, or dependency ownership;
-3. public or family-facing contract;
-4. reference/system token naming, location, dependency graph, and migration ownership;
-5. deterministic state and precedence;
-6. reactive lifecycle and browser behavior;
-7. rendered-property, style, and motion routing;
-8. platform adaptations and project extensions;
-9. affected-family adoption;
-10. obsolete-owner removal.
-
-Do not bypass a higher-priority blocker with an easier local improvement. Component styling or motion cannot rely on a known-invalid foundation token route.
-
-Each unit records expected behavior, current defect, owner, dependencies, affected families, blast radius, proof lane, prepared failing observation, affected token graph, compatibility impact, visible impact, operator requirement, and completion condition.
-
-Correct incrementally when ownership is sound. Replace only the smallest owner when repair would preserve wrong ownership or add workaround logic.
-
-## Proof lanes
-
-- deterministic/static proof: token naming, placement, graph direction, cycles, unresolved references, pure mappings, and public/private bridges;
-- browser proof: computed token values, theme overrides, inheritance, focus, pointer, overlay, lifecycle, cancellation, viewport behavior, and platform adaptation;
+- static/deterministic proof: names, locations, graph direction, cycles, mappings, bridges;
+- browser proof: computed values, theme overrides, inheritance, lifecycle, cancellation, viewport/platform behavior;
 - visual proof: screenshots only;
-- affected-family or consumer proof: routing, integration, compatibility, and blast radius.
+- affected-family proof: integration, compatibility, and blast radius.
 
-Visible changes require official comparison, baseline handling, and honest operator-acceptance status.
+Visible changes require official comparison and explicit operator status.
 
-## Foundation contract gate
+## Documentation
 
-Before production, an independent read-only review validates target provenance, cross-family ownership, source decisions, complete assessment, token architecture, dependencies, correction priority, proof lane, failing observation, blast radius, workflow state, and absence of production edits before approval.
+Create a foundation README only for a real contract. Store current target, owner, durable public/private contract, proof obligations, correction unit, and remaining gaps.
 
-Implementation starts only after `Contract review status: passed`.
+Do not store review history, shell transcripts, exact graph/route ledgers, repeated source narratives, file counts, or stage-by-stage diary text.
 
-## Implementation and affected families
+## Completion
 
-Implement exactly one approved correction unit. Target, classifications, ownership, dependencies, token graph, blast radius, and proof lane remain locked. New invalidating evidence returns work to contract.
+A bounded foundation correction may complete while the domain remains `converging` only when the resulting repository/PR is valid and remaining gaps are explicit and non-blocking.
 
-Run the static token architecture guard for token changes. Validate every materially different affected-family route and representative consumer. A family proves its integration; the foundation proves the generic contract.
-
-Remove local substitutes, obsolete owners, stale exports, or compatibility paths only when the objective replaces them and exactly one active owner remains.
-
-## Final gate and completion
-
-After implementation and cleanup, a different independent read-only context reviews the complete domain, token graph, affected families, proof, visible evidence, workflow state, and resulting patch.
-
-A bounded correction may complete while the domain remains `converging` only when the repository is valid and remaining gaps are explicit and non-blocking.
-
-Domain completion requires no required `misaligned`, `unresolved`, or `obsolete` concern, a passed token architecture guard where applicable, one owner per contract, no family-specific knowledge or local substitutes, required operator acceptance, independent final review, and final verification.
-
-When invoked by `material-component`, return control to the component orchestrator. Do not update the component roadmap or start component implementation.
+Completion requires valid ownership, applicable architecture guards, affected-family proof, cleanup of replaced owners, required operator acceptance, correction review, complete PR review when standalone, and final verification.
 
 ## Forbidden
 
-- target and current-state assessment in one context;
-- production edits before independent contract review;
-- hidden source conflicts or platform assumptions;
-- same-context final approval;
-- foundation justified only by duplication, reuse count, or hypothetical future need;
-- component tokens, family-private routes, API, anatomy, or state inside foundation;
-- invented official-looking token names, upward/cyclic token dependencies, parallel token owners, or fallback-masked required references;
-- runtime token registries, managers, generic resolvers, cross-family state machines, or duplicate theme/overlay/state/ripple/focus/icon/motion systems;
-- wrong proof lanes or visible changes without operator handoff;
-- accidental monoliths, mechanical fragmentation, unnecessary wrappers or DOM;
-- full-domain rewrites without owner-level justification;
-- knowingly broken intermediate states.
+- target and implementation assessment in one context;
+- production edits before contract approval;
+- full-domain audits for a bounded concern without contradictory evidence;
+- same-context approval or more than one substantive re-review per gate;
+- foundation justified only by duplication, reuse count, or hypothetical need;
+- family tokens/private routes/API/anatomy/state in foundation;
+- invented token names, upward/cyclic dependencies, parallel owners, or fallback-masked requirements;
+- duplicate generic systems, unnecessary wrappers/DOM, full-domain rewrites, or knowingly broken intermediate states;
+- durable audits, review histories, registries, checklists, scorecards, or progress ledgers.
