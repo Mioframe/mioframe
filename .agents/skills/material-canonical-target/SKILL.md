@@ -1,45 +1,43 @@
 ---
 name: material-canonical-target
-description: 'Internal read-only role for resolving the canonical Material target for one component family or foundation domain before current implementation, tests, stories, snapshots, or prior conclusions are inspected. Use only when material-component or material-foundation delegates isolated target research.'
+description: 'Internal read-only role for resolving only the delegated canonical Material concern set before current implementation or proof is inspected. Use when material-component or material-foundation needs a new target slice, an invalidated claim, or a full target for a new family.'
 ---
 
 # Material canonical target
 
-Produce an implementation-independent target for exactly one Material component family or foundation domain.
+Resolve exactly the delegated target slice. Do not automatically research the complete family.
 
 ## Inputs
 
 Receive only:
 
-- the family or foundation domain;
-- confirmed required user scenarios;
+- family or foundation domain;
+- exact concern set and required scenarios;
 - applicable platforms;
+- already locked target claims that are outside the concern set;
 - repository instruction paths;
 - official Material source access.
 
-Do not inspect current or proposed implementation, component-specific tests, stories, snapshots, prior family conclusions, or patch reasoning before returning the target.
+For a new family or full owner migration, the concern set may be the complete supported surface. For a focused correction, research only claims affected by the objective or contradictory evidence.
+
+Do not inspect current/proposed implementation, component tests, stories, snapshots, prior reasoning, or patch details before returning the target slice.
 
 ## Responsibility
 
-Use `src/shared/ui/material/docs/sources.md`, `src/shared/ui/material/docs/tokens.md`, and current official Material evidence to resolve:
+Resolve only the delegated concerns:
 
-- applicable platforms;
-- supported and unsupported surface;
+- supported and unsupported behavior;
 - public semantics and invalid combinations;
-- anatomy and accessibility;
-- state and interaction behavior;
-- exact official reference/system/component token paths required by the supported scenarios;
-- semantic meaning and value kind of each required token group;
-- intentionally unsupported official token surface;
-- required rendered properties, motion, and adaptive behavior;
-- required Material or generic dependencies;
-- exact unresolved decisions.
+- anatomy, accessibility, state, rendered behavior, motion, or adaptive rules when in scope;
+- exact official token paths, meanings, and value kinds when in scope;
+- applicable platform and dependency requirements;
+- source conflicts and unresolved decisions.
 
-For every contradiction, absence, inference, or platform-specific rule, return a source decision with both claims, applicability, narrower authority, decision, rationale, and `resolved` or `unresolved` status.
+For each contradiction, absence, inference, or platform-specific rule, return a source decision with claims, applicability, narrower authority, decision, rationale, and status.
 
-Token presence does not prove supported behavior. Token absence does not cancel explicit guidance. Do not invent or shorten an official-looking token name. Android, iOS, and Web guidance are not interchangeable without an explicit decision.
+Token presence does not prove supported behavior. Token absence does not cancel explicit guidance. Android, iOS, and Web guidance are not interchangeable.
 
-Do not decide private CSS routing or file decomposition. Return canonical token semantics and required public surface only; current-state and contract stages own implementation mapping.
+Do not re-derive already locked claims outside the delegated concern set unless new evidence directly contradicts them. Report the contradiction and stop instead of silently widening scope.
 
 ## Result
 
@@ -47,29 +45,25 @@ Do not decide private CSS routing or file decomposition. Return canonical token 
 MATERIAL ROLE RESULT
 Role: canonical-target
 Scope: component | foundation
-Target:
+Concern set:
 Status: complete | blocked
-Applicable platforms:
-Supported surface:
-Unsupported surface:
-Canonical contracts:
-Official token groups and exact paths:
-Token value kinds and rendered meanings:
-Intentionally unsupported token surface:
+Target claims: <concise, concern-scoped>
+Official token groups/value kinds: not-applicable | <exact groups>
 Source decisions:
-Required dependencies:
-Unresolved decisions:
+Dependencies:
+Contradictions with locked claims: none | <exact contradiction>
 Sources and verification dates:
 Blocker: none | <exact blocker>
 ```
 
+Keep the result concise. Do not include review history, implementation suggestions, file counts, or unrelated source summaries.
+
 ## Forbidden
 
-- repository edits;
-- current implementation or proof inspection;
-- legacy behavior used to fill missing official evidence;
-- invented, shortened, or project-specific values in the official `--md-*` namespace;
-- private routing or file-layout decisions;
-- architecture or implementation planning beyond required dependency facts;
-- delegation;
-- declaring unresolved evidence resolved from memory or convenience.
+- repository edits or delegation;
+- current implementation/proof inspection;
+- complete-family research for a bounded concern without a contradiction;
+- legacy behavior used to fill official evidence gaps;
+- invented official-looking tokens or values;
+- private routing, file decomposition, correction selection, or implementation planning;
+- repeated verification of an already locked claim without new contradictory evidence.
