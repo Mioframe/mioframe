@@ -1,105 +1,128 @@
 ---
 name: material-component
-description: 'Use when creating, repairing, aligning, migrating, continuing, or materially improving one official Material component family. Orchestrates the canonical evidence-gated workflow, isolated role handoffs, bounded correction units, independent reviews, conditional adoption, and verification.'
+description: 'Use when creating, repairing, aligning, migrating, continuing, or materially improving one official Material component family. Orchestrates concern-scoped target research, focused specialist audits, one correction unit, bounded independent reviews, complete PR review, and verification.'
 ---
 
 # Material component orchestrator
 
-This is the sole implementation entry point for one official Material component family. Use `material-component-review` for review-only requests.
-
-Follow `src/shared/ui/material/docs/component-development.md` as the single canonical workflow and `src/shared/ui/material/docs/tokens.md` for token architecture. Do not restate or alter their classifications, correction priority, proof lanes, token taxonomy, or completion rules here.
+This is the sole implementation entry point for one official Material component family. Follow `src/shared/ui/material/docs/component-development.md` and `src/shared/ui/material/docs/tokens.md`.
 
 ## Task lock
 
-Resolve and record one:
+Record:
 
-- family;
-- mode: `new-component`, `align-existing`, or `focused-correction`;
-- correction objective;
-- required scenarios and platforms;
-- non-goals;
+- family and mode: `new-component`, `align-existing`, or `focused-correction`;
+- correction objective, required scenarios/platforms, and non-goals;
+- actual PR base/head and every public owner affected by the complete PR;
 - current stage and next gate.
 
-Use `align-existing` whenever an implementation exists. Relocation, decomposition, API preservation, adoption, and cleanup are actions, not modes or proof.
+Use `align-existing` whenever an implementation exists.
 
-A family name is optional only when `docs/roadmap.md` already identifies one active family.
+## Concern plan
+
+Before delegation, classify each lane as required or not required with a reason:
+
+- canonical target claims requiring new research;
+- semantics/API lane;
+- token lane;
+- Web implementation lane;
+- exact foundation prerequisite;
+- adoption scope.
+
+For focused correction, invoke only affected lanes and direct dependencies. New families, full owner migration, or explicit full-family audit normally require all applicable lanes.
 
 ## Orchestration
 
-Execute exactly this sequence:
-
 ```text
-material-canonical-target in an isolated read-only context
-→ target lock
-→ material-current-state-audit in a separate read-only context
-→ material-component-contract synthesis
+concern-scoped material-canonical-target when required
+→ selected isolated audits:
+   material-semantics-audit
+   material-token-audit
+   material-web-audit
+→ material-component-contract
 → material-component-review with Review scope: contract-gate
-→ material-foundation when an exact prerequisite is approved
-→ material-component-implementation for one approved correction unit
-→ material-component-adoption only when ownership migration or cleanup is in scope
-→ material-component-review with Review scope: final-gate in a different context
+→ material-foundation for an approved exact prerequisite
+→ material-component-implementation for one approved unit
+→ material-component-adoption only for approved migration/cleanup
+→ material-component-review with Review scope: correction-final
+→ material-pr-review against actual base/head
 → verification
-→ next correction unit or family completion
 ```
 
 Production edits are forbidden before `contract gate passed`.
 
 Only this orchestrator:
 
-- synthesizes role and stage results;
-- writes the family workflow state and roadmap;
-- selects the next stage or correction unit;
-- reopens the target or contract when evidence invalidates a locked decision;
-- decides whether the objective or family is complete.
+- selects concern lanes and synthesizes their results;
+- writes family workflow state and roadmap facts;
+- selects one correction unit;
+- reopens target/contract when new evidence invalidates a locked claim;
+- distinguishes correction completion, family alignment, and PR merge readiness;
+- decides whether to advance or stop.
 
 Internal roles and stage skills do not invoke each other or update the roadmap.
 
-## Cross-agent isolation
+## Handoffs
 
-Canonical role procedures live in portable `.agents/skills`:
+For each read-only role provide only:
 
-- `material-canonical-target`;
-- `material-current-state-audit`;
-- `material-component-review`.
+- exact concern set;
+- required scenarios/platforms;
+- current repository ref and bounded paths;
+- relevant locked target claims;
+- applicable instructions;
+- required result format.
 
-Claude Code may use thin `.claude/agents` adapters that preload these skills and restrict tools. Codex may run the same skills in separate agent threads or isolated worktrees. Tool-specific adapters are not policy owners.
+Do not pass preferred conclusions, implementation reasoning, unrelated README history, or complete family context to a bounded role.
 
-For every isolated handoff provide only the bounded scope, required scenarios, platforms, repository ref, applicable instruction paths, and required result format. Do not pass preferred conclusions or implementation reasoning to reviewers.
+Claude Code may use thin `.claude/agents` adapters that preload portable skills. Codex may run the same skills in separate agent threads or isolated worktrees. Tool-specific adapters are not policy owners.
 
-Researchers and reviewers are read-only. Never use concurrent writers on the same owner or worktree. The orchestrator validates every returned claim and remains responsible for the decision.
+When required independent execution is unavailable, stop; do not weaken the gate.
 
-When isolated execution is unavailable, stop with `independent review handoff required`; do not weaken the gate.
+## Review budget
+
+For each of contract gate, correction final gate, and PR review:
+
+- allow one initial review;
+- allow at most one re-review after substantive corrections;
+- if the second review fails, stop with consolidated blockers;
+- do not launch a new full review for wording, count, stale cross-reference, or other mechanical correction that does not change a contract decision or observable result;
+- if the same root architecture problem survives two correction rounds, return to architecture rather than patching again.
+
+Do not run repeated full target/audit passes without contradictory evidence.
 
 ## Workflow state
 
-Keep one coherent `MATERIAL WORKFLOW STATE` block in the owning README using the fields defined by `component-development.md`.
+Keep one current `MATERIAL WORKFLOW STATE` block using the canonical fields. The README records current truth only. Remove superseded review narratives, shell transcripts, exact route ledgers, and historical round-by-round reasoning.
 
 After each stage:
 
-1. validate the returned exit gate;
-2. update only orchestrator-owned state fields and roadmap facts;
-3. confirm detailed README sections do not contradict the state block;
+1. validate the exit gate;
+2. update orchestrator-owned state fields and current contract facts;
+3. ensure README and roadmap agree;
 4. invoke only the recorded next gate.
 
-A stale README or roadmap blocks progression.
+## Routing
 
-## Correction routing
+- official target/source decision → `material-canonical-target` then `material-component-contract`;
+- API/native/accessibility/state/extension/consumer assessment → `material-semantics-audit`;
+- token graph assessment → `material-token-audit`;
+- DOM/CSS/layout/motion/browser assessment → `material-web-audit`;
+- contract synthesis and correction selection → `material-component-contract`;
+- production/proof implementation → `material-component-implementation`;
+- reference/system or cross-family foundation correction → `material-foundation`;
+- consumer migration/obsolete ownership → `material-component-adoption`;
+- correction gate → `material-component-review`;
+- complete merge readiness → `material-pr-review`.
 
-Route findings to one owner:
-
-- target, source decision, classification, dependency, supported surface, token public surface, token taxonomy decision, contract, decomposition, correction priority, or proof lane → `material-component-contract`;
-- production, DOM, styles, state implementation, token declaration placement, private routing, rendered-property routing, motion implementation, Storybook, static token guard, or proof implementation → `material-component-implementation`;
-- reference/system token ownership or cross-family token dependency → `material-foundation`;
-- consumers, parallel owners, import migration, obsolete paths, aliases, or cleanup → `material-component-adoption`.
-
-Run the applicable independent gate again after corrections.
+A finding outside a role's lane returns to this orchestrator; the role does not absorb it.
 
 ## Stop conditions
 
-Stop for an exact unresolved blocker in official evidence, platform applicability, required scenario, ownership, dependency direction, token architecture, public contract, foundation blast radius, proof ownership, independent context, repeated correction failure, visual acceptance, or verification.
+Stop for unresolved official evidence, platform applicability, required scenario, ownership, dependency direction, public contract, token graph, browser evidence, foundation blast radius, independent context, repeated review failure, operator rejection, or required verification failure.
 
-A fresh context resets reasoning, not independently confirmed repository progress.
+A defect in the resulting base-to-head PR remains PR-owned even when it predates the latest correction round on the feature branch.
 
 ## Result
 
-Report family, mode, objective, current workflow state, target and assessment results, contract-gate result, token graph result, completed correction unit, preserved or replaced owners, foundation and consumer impact, proof result, final-gate result, family alignment status, operator visual status, verification, remaining gaps, next action, and exact blocker or `none`.
+Report family, objective, concern plan, target slices, selected audit results, correction contract/review result, completed correction unit, correction-final result, complete PR-review verdict, family alignment, operator status, verification, remaining gaps, and exact next action or blocker.
