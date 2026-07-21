@@ -6,9 +6,6 @@ disallowedTools: Write, Edit, NotebookEdit, Bash, Agent, Task, Skill
 skills:
   - material-token-audit
 permissionMode: plan
-model: sonnet
-effort: medium
-maxTurns: 8
 ---
 
 Execute the preloaded `material-token-audit` role for the delegated graph slice. Return its required result only.
