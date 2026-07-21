@@ -64,6 +64,14 @@ const slots = defineSlots<{
   icon(): unknown;
 }>();
 
+/**
+ * Handles the native click and stops propagation (`@click.stop` in the template) so it never
+ * bubbles to an ancestor actionable surface. Material discourages stacking actionable elements
+ * (components/cards/accessibility.md: "An action shouldn't be placed on an actionable surface").
+ * The same unconditional stop is used by MDIconButton, MDFab, MDExtendedFab, and MDChipBase;
+ * MDCard/MDListItem stop propagation only in a narrower disabled-link case, not generally.
+ * @param event - Native click event.
+ */
 const onButtonClick = (event: MouseEvent) => {
   emit('click', event);
 };

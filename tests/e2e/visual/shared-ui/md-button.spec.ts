@@ -1079,43 +1079,41 @@ test('MDButton shape morph and color transitions use the documented Expressive W
   expect(durationFor('background-color')).toBe('0.15s');
 });
 
-test('MDButton label wraps across two lines under a narrowed containing block instead of overflowing', async ({
+test('MDButton keeps a long label on a single line and grows wider instead of wrapping or truncating it', async ({
   page,
 }) => {
-  await openStory(page, 'material-3-components-buttons-mdbutton--label-reflow');
+  await openStory(page, 'material-3-components-buttons-mdbutton--label-no-wrap');
 
   await Promise.all(
     (
       [
-        { testId: 'reflow-small', singleLineHeight: 40 },
-        { testId: 'reflow-medium', singleLineHeight: 56 },
+        { testId: 'no-wrap-small', singleLineHeight: 40 },
+        { testId: 'no-wrap-medium', singleLineHeight: 56 },
       ] as const
     ).map(async ({ testId, singleLineHeight }) => {
       const button = page.getByTestId(testId);
       const label = button.locator('.md-button__label-text');
 
       const whiteSpace = await label.evaluate((el) => getComputedStyle(el).whiteSpace);
-      expect(whiteSpace).not.toBe('nowrap');
+      expect(whiteSpace).toBe('nowrap');
 
       const buttonBox = await button.boundingBox();
-      const labelBox = await label.boundingBox();
-      expect(buttonBox).not.toBeNull();
-      expect(labelBox).not.toBeNull();
-      if (buttonBox == null || labelBox == null) {
+      if (buttonBox == null) {
         throw new Error(`Missing bounding box for ${testId}.`);
       }
 
-      // The label wraps onto more than one line, and the button grows to contain it — the fixed
-      // single-line height no longer clips or overflows the wrapped text.
-      expect(buttonBox.height).toBeGreaterThan(singleLineHeight);
-      expect(buttonBox.height).toBeGreaterThanOrEqual(labelBox.height);
+      // The label stays on one line and the button grows wider than its narrow containing
+      // block to fit it — the fixed single-line height never grows to accommodate wrapped text.
+      expect(buttonBox.height).toBe(singleLineHeight);
 
       // No content is hidden: the full label text is present and not CSS-truncated.
       const labelContent = await label.evaluate((el) => ({
         text: el.textContent,
         textOverflow: getComputedStyle(el).textOverflow,
       }));
-      expect(labelContent.text).toBe('This label is intentionally long enough to require wrapping');
+      expect(labelContent.text).toBe(
+        'This label is intentionally long enough to overflow a narrow container',
+      );
       expect(labelContent.textOverflow).not.toBe('ellipsis');
     }),
   );

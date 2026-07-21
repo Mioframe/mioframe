@@ -15,38 +15,52 @@ Canonical library rules:
 MATERIAL WORKFLOW STATE
 Family: Button
 Mode: align-existing
-Current objective: Correct Button's token architecture — ambiguous private-route naming and
-  missing component-token file placement — so the repository's own static token-architecture
-  guard (scripts/materialTokenArchitecture.test.mjs) passes for this family, per an
-  independently locked canonical target and an independent current-state audit run in isolated
-  contexts (not the same context that previously authored and self-approved this README).
+Current objective: Continue Button's correction backlog one bounded unit at a time. Unit 1
+  (token architecture — ambiguous private-route naming, missing component-token file placement,
+  dead spring tokens), Unit 2 (click-propagation `@click.stop` rationale + ancestor-listener
+  proof), Unit 3 (dangling `--md-state-outline-color` reference removed from `MDButton.css`), and
+  Unit 4 (Web label-text wrapping reverted to the official single-line rule) are all complete.
+  Units 2-4 each closed what was, at the time, backlog item 1. This pass also corrected
+  `docs/roadmap.md`, found stale after a merge (`a4b6defd`) overwrote its already-current
+  `converging` state with an older, pre-Unit-1 `blocked` description from a parallel branch —
+  verified directly via `git show`/`git diff` against commit `a81a9759`, not inferred.
 Current stage: verification
-Canonical target status: locked
+Canonical target status: locked (unchanged by Units 2-4 — no target/token/API surface affected;
+  Unit 4 corrected rendered behavior toward the already-locked target, not the target itself)
 Assessment status: complete
-Contract review status: passed (revision 6, sixth independent isolated review round; see
-  "Contract-gate review history" below)
-Current correction unit: Token ownership, naming, and dead-declaration cleanup, including the one
-  test that only proves a dead declaration's existence (see Correction units) — behavior-
-  preserving for every rendered CSS property; one obsolete unit test is removed, not weakened.
-Implementation status: complete
-Final review status: passed, with required follow-up applied (see "Final-gate review" below) —
-  independent reviewer confirmed the correction objective mergeable, independently reconstructed
-  the token graph and motion inventory with no discrepancy from this document, and determined
-  `converging` is the correct family alignment status; it also found this roadmap file stale
-  (fixed in this pass) and one inflated figure in this README (corrected in this pass).
-Operator visual status: not-required (this correction unit changed no rendered value; the full
-  existing visual suite — 224 specs, minus the one removed obsolete test — passed with zero diffs;
-  22/22 unit and component-contract tests passed unchanged)
+Contract review status: Unit 1 passed (revision 6, sixth independent isolated review round; see
+  "Contract-gate review history" below). Unit 2 passed (revision 2, after revision 1 was rejected
+  for inaccurate comment wording — see "Correction units" below). Unit 3 passed (single review
+  round). Unit 4 passed (single contract-gate round; correction-final review's one finding —
+  README/backlog documentation lagging the already-correct implementation — closed in this
+  revision).
+Current correction unit: none in flight — all four completed units are independently final-gate
+  reviewed and merged into this working tree.
+Implementation status: complete for Units 1-4
+Final review status: Unit 1 passed, with required follow-up applied (see "Final-gate review"
+  below). Unit 2 passed correction-final review — independent reviewer confirmed citation
+  accuracy, DOM-connected test methodology, button-family suite 23/23, unchanged token guard
+  output, and zero eslint warnings. Unit 3 passed contract-gate review — independent reviewer
+  confirmed `outline-style` is never set for `.md-button` (so the removed `outline-color` had zero
+  rendered effect under any state/browser), no test asserted on it, and the full 224-spec visual
+  suite passed with zero diffs after removal. Unit 4 passed correction-final review after this
+  revision closed the documentation-lag gap it found; the implementation, story/test replacement,
+  full-suite zero-diff proof, and consumer-safety claim it also checked were all confirmed sound
+  on the first pass.
+Operator visual status: not-required for Units 1-3 (none changed rendered output). Unit 4
+  intentionally changed rendered output (label no longer wraps) — proof is the full 224-spec
+  visual suite passing with zero diffs anywhere outside the intentional `md-button.spec.ts`
+  change, i.e. no other Button visual state moved; no separate operator screenshot comparison was
+  requested for this bounded CSS-property-level revert given that complete automated proof.
 Family alignment status: converging
-Next gate: none for this correction unit — complete. Backlog item 7 (pre-existing, out-of-scope
-  ambient-styling token-taxonomy gap) requires a `material-foundation`-level or repository-wide
-  decision before the family can reach `aligned`; the remaining 6 backlog items each require their
+Next gate: none in flight. Backlog item 4 (pre-existing, out-of-scope ambient-styling
+  token-taxonomy gap) requires a `material-foundation`-level or repository-wide decision before
+  the family can reach `aligned`; the remaining 3 Button-owned backlog items each require their
   own future `material-component Button` pass through this same isolated sequence.
-Blocker: none for this correction unit. Family completion (`aligned`) remains blocked on: final
+Blocker: none for any completed unit. Family completion (`aligned`) remains blocked on: final
   `pnpm verify` failing on the 3 pre-existing, out-of-Button-scope residual errors documented in
-  "New evidence found during implementation" (backlog item 7); and the 6 other open backlog items.
-  None of these implicate or reopen the completed correction unit, which is independently verified
-  mergeable.
+  "New evidence found during implementation" (backlog item 4); and the 3 other open backlog items.
+  None of these implicate or reopen any completed correction unit.
 ```
 
 ### Final-gate review
@@ -222,9 +236,9 @@ consistency, having no Bash access to run these two commands itself in its isola
 gaps it flagged as unverified are closed by the orchestrator's direct verification above.)
 
 ```text
-MDButton.css:123: '--md-content-color' is not an allowed official, Mioframe, or private namespace
-MDButton.css:129: '--md-symbol-size' is not an allowed official, Mioframe, or private namespace
-MDButton.css:158: '--md-circular-progress-color' is not an allowed official, Mioframe, or private namespace
+MDButton.css:122: '--md-content-color' is not an allowed official, Mioframe, or private namespace
+MDButton.css:128: '--md-symbol-size' is not an allowed official, Mioframe, or private namespace
+MDButton.css:157: '--md-circular-progress-color' is not an allowed official, Mioframe, or private namespace
 ```
 
 These are not Button-owned tokens or private routes. `--md-content-color` and `--md-symbol-size`
@@ -546,12 +560,25 @@ Required correction: none
 
 Concern: Click event propagation (`@click.stop` in `MDButton.vue`)
 Canonical target: not addressed by the official Buttons pages; a repository-audit concern.
-Current behavior: `MDButton.vue` stops native click propagation, documented only by a one-line
-code comment; no test exercises an ancestor listener to prove the intent is correct and no
-rationale is recorded anywhere durable.
-Classification: unresolved
-Required correction: none proposed by this contract — deferred to the correction-unit backlog
-below; out of scope for the current token-ownership correction unit.
+Current behavior: `MDButton.vue` stops native click propagation via `onButtonClick`, now
+documented by a TSDoc comment above the handler (script-side, not a template HTML comment — an
+earlier attempt placed the comment directly in `<template>` and broke Vue's single-root-node
+detection, causing `wrapper.classes()` to return `[]` for several existing tests; moved to
+script). The comment cites the real source (`components/cards/accessibility.md`: "An action
+shouldn't be placed on an actionable surface") and correctly scopes which sibling primitives
+share the exact unconditional convention (`MDIconButton`, `MDFab`, `MDExtendedFab`, `MDChipBase`)
+versus which only stop propagation in a narrower disabled-link case (`MDCard`, `MDListItem`).
+`MDButton.test.ts` now has a dedicated test ("stops the native click from bubbling to an ancestor
+listener") that mounts the button DOM-attached with a real ancestor click listener and proves the
+listener never fires while the button's own `click` still emits.
+Classification: confirmed-compliant
+Primary proof: `MDButton.test.ts` ("stops the native click from bubbling to an ancestor
+listener"); independently reviewed by a correction-final `material-component-review` pass, which
+confirmed the citation accuracy, the DOM-connected test methodology, zero eslint warnings, the
+button-family suite (23/23) passing, and the token architecture guard unchanged (still exactly
+the 3 pre-existing, out-of-Button-scope residual errors).
+Required correction: none — completed this pass. No public API, prop, emit, slot, CSS, or token
+changed; `.stop` itself is unchanged, only documented and tested.
 
 Concern: `aria-label` / accessible name; `aria-pressed` for toggle
 Canonical target: accessible name matches visible label; `aria-pressed` per Source decision above.
@@ -657,15 +684,30 @@ Required correction: none
 Concern: Label-text wrapping on Web
 Canonical target: labels must never truncate or wrap on Web — always a single line (see "Why
 this contract replaces the prior one").
-Current behavior: `.md-button` uses `min-height`; `__label-text` uses `white-space: normal;
-  overflow-wrap: anywhere`, deliberately allowing multi-line wrapping, with a dedicated
-`LabelReflow` story and Playwright test asserting the wrap behavior exists.
-Classification: misaligned
-Primary proof: the existing proof (`LabelReflow` story, its Playwright test) is real and passing
-but proves the deviation, not compliance with the Web single-line rule.
-Required correction: none proposed by this contract — deferred to the correction-unit backlog
-below; reverting rendered/visual behavior is out of scope for the current behavior-preserving
-token-ownership correction unit.
+Current behavior: resolved this pass (Unit 4, see Correction units). `.md-button` reverted from
+`min-height` back to fixed `height`; `__label-text` reverted from `white-space: normal;
+  overflow-wrap: anywhere; text-align: center;` back to `white-space: nowrap;` only (`text-align`
+was redundant for single-line text — the flex parent `.md-button__content` already centers via
+`justify-content`/`align-items`). The `LabelReflow` story/test, which only proved the wrapping
+deviation, were replaced with `LabelNoWrap` (`MDButton.stories.ts`) and a rewritten Playwright
+test (`md-button.spec.ts`, "keeps a long label on a single line and grows wider instead of
+wrapping or truncating it") proving the corrected contract: under a narrow containing block, the
+label stays single-line (computed `white-space: nowrap`), the button's height stays fixed at the
+single-line value for its size, and the full label text renders with no `text-overflow: ellipsis`
+— the button is allowed to render wider than its container rather than wrap or truncate,
+consistent with the official Guidelines page's "A button container's width shouldn't be narrower
+than its label text" guidance.
+Classification: confirmed-compliant
+Primary proof: `md-button.spec.ts` "MDButton keeps a long label on a single line and grows wider
+instead of wrapping or truncating it" — independently confirmed to genuinely fail against the
+prior reflow CSS and pass against the reverted CSS, not a superficial rewrite. Full 224-spec
+visual suite passed with zero diffs elsewhere; 23/23 unit and component-contract tests passed
+unchanged; eslint clean.
+Required correction: none — completed this pass. No consumer regression: independently verified
+all real (non-story/non-test) `MDButton` usages under `src/pages`/`src/widgets`/`src/features`/
+`src/entities` use short static labels except one dynamic database-column-name label
+(`DatabaseFilterAddButton.vue`), which renders inside a `flex-wrap: wrap` container — a wider
+button wraps to a new row, it does not clip or overflow.
 
 Concern: RTL icon mirroring
 Canonical target: leading icon mirrors to the right in RTL.
@@ -788,13 +830,17 @@ the same system-level tokens directly, independent of Button's own now-removed p
 foundation location; these, not the spring tokens, actually drive `.md-button`'s `transition`
 shorthand. No duplicate declarations found.
 
-`--md-state-outline-color` (referenced at `MDButton.css:69`, `outline-color:
-var(--md-state-outline-color)`) — classification `unresolved`: this name is never declared
-anywhere in the repository (grep-confirmed); it is a dangling/orphaned reference the static guard
-does not catch (its unresolved-reference check does not extend to a `--md-*`-shaped var() target
-used directly in a regular CSS property rather than another custom-property declaration). Found
-by revision-1's independent contract-gate review, not by this pass's own audit. Not included in
-the current correction unit — see Correction units backlog.
+`--md-state-outline-color` — resolved this pass (Unit 3, see Correction units): the line
+(`outline-color: var(--md-state-outline-color);`, formerly `MDButton.css:69`) was removed
+entirely rather than defining the token, after independently confirming it was genuinely dead —
+`.md-button` never sets `outline-style` or the `outline` shorthand anywhere (`outline-style`'s
+CSS initial value is `none`, so a lone `outline-color` has zero rendered effect regardless of
+whether the referenced custom property resolves), and Button's visible focus feedback is owned
+entirely by `MDStateLayer`'s background-opacity change, reinforced by a repository-wide global
+`*:focus-visible { outline: none; }` reset in `src/shared/ui/State/md-focus-indicator.css`
+(unrelated to Button specifically). Classification: was `unresolved` (found by revision-1's
+independent contract-gate review, not this family's own original audit), now `confirmed-compliant`
+— dangling reference removed, not merely documented.
 
 ## Motion routes (independently reconstructed this pass)
 
@@ -819,7 +865,7 @@ smoothly, no explicit cancellation logic needed). No `prefers-reduced-motion` ov
 this route either. Proof: `MDButton.test.ts`'s four loading-state cases assert the DOM/class
 result of toggling `loading`, not the transition's computed timing; no dedicated browser-lane
 proof reads the transition's computed longhands for this specific route — an evidence gap, not a
-known defect, added to the backlog below (item 6). Found missing from this document by
+known defect, added to the backlog below (item 5). Found missing from this document by
 revision-2's independent contract-gate review.
 
 `MDStateLayer` background transition, ripple (WAAPI), and the loading indicator's SVG
@@ -830,7 +876,7 @@ Button-owned CSS.
 
 ## Correction units
 
-**Current unit (this pass): Token ownership, naming, and dead-declaration cleanup.** See "Token
+**Unit 1 (complete): Token ownership, naming, and dead-declaration cleanup.** See "Token
 architecture correction" above for the full defect and required correction. Behavior-preserving;
 proof is the static guard plus a zero-diff full suite run. Status: implemented — `button.tokens.css`
 created, the ten `--md-button-*` names renamed to `--md-private-button-*`, the ten dead spring
@@ -838,7 +884,51 @@ component tokens and their sole proving test removed. Proof: static guard now sh
 for all three originally-approved defect classes (3 unrelated pre-existing residual errors remain
 — see "New evidence found during implementation"); 22/22 unit and component-contract tests passed
 unchanged; full 224-spec visual suite (223 after the one intentional removal) passed with zero
-diffs. Awaiting independent final-gate review.
+diffs. Independent final-gate review passed (see "Final-gate review" above).
+
+**Unit 2 (complete): Click-propagation `@click.stop` rationale and ancestor-listener proof.**
+Backlog item 1 (now removed from the backlog list, see below). Behavior-preserving — `.stop`
+itself unchanged, no public API/CSS/token change. Implemented: a TSDoc rationale comment above
+`onButtonClick` in `MDButton.vue` citing `components/cards/accessibility.md` ("An action
+shouldn't be placed on an actionable surface") and correctly scoping which sibling primitives
+share the exact unconditional stop-propagation convention; a new `MDButton.test.ts` test
+("stops the native click from bubbling to an ancestor listener") proving the behavior with a
+real DOM-attached ancestor listener. Proof: button-family suite 23/23 passed; token architecture
+guard unchanged (still exactly the same 3 pre-existing out-of-scope errors); eslint clean.
+Independent contract-gate review (revision 1 failed on inaccurate comment wording — the proposed
+text wrongly claimed `MDCard`/`MDListItem` shared the exact same unconditional convention and cited
+an unattributed "Material prohibition" instead of the real Cards-accessibility source; corrected
+before implementation) and independent correction-final review (passed) both complete.
+
+**Unit 3 (complete): Removed the dangling `--md-state-outline-color` reference.** Formerly
+backlog item 1 (after Unit 2). Behavior-preserving — `outline-color: var(--md-state-outline-color);`
+(formerly `MDButton.css:69`) deleted outright rather than defining the token, after independently
+confirming it was genuinely dead: `.md-button` never sets `outline-style`/the `outline` shorthand
+anywhere, so a lone `outline-color` has zero rendered effect regardless of what the (never
+declared) custom property would resolve to; Button's visible focus feedback is owned entirely by
+`MDStateLayer`. Proof: full 224-spec visual suite passed with zero diffs (`pnpm verify --only
+visual`); button-family suite 23/23 passed; token architecture guard unchanged (still exactly the
+same 3 pre-existing out-of-scope errors, only shifted by the removed line). Independent
+contract-gate review passed (single round).
+
+**Unit 4 (complete): Reverted Web label-text wrapping to the official single-line rule.**
+Formerly backlog item 1 (after Unit 3). Genuine rendered-behavior change, not
+behavior-preserving — this is the intentional correction of a real `misaligned` defect (see "Why
+this contract replaces the prior one" and the resolved "200% text-size / label-wrapping guidance
+is stated only for Android" Source Decision). Implemented: `.md-button` reverted from
+`min-height` back to fixed `height`; `__label-text` reverted from `white-space: normal;
+overflow-wrap: anywhere; text-align: center;` back to `white-space: nowrap;` only. The
+`LabelReflow` story/test (which only proved the wrapping deviation) were replaced with
+`LabelNoWrap` (`MDButton.stories.ts`) and a rewritten Playwright test (`md-button.spec.ts`)
+proving the corrected contract — see the "Label-text wrapping on Web" concern above for full
+detail. Proof: full 224-spec visual suite passed with zero diffs anywhere outside the intentional
+button-spec change; button-family suite 23/23 passed unchanged; eslint clean; independently
+confirmed the new test genuinely fails against the old reflow CSS and passes against the reverted
+CSS (not a superficial rewrite). No real consumer regression (see concern above). Independent
+contract-gate review passed (single round, including independent re-verification of both official
+source quotes and a consumer-safety spot check) and independent correction-final review passed
+(after this README/backlog update closed the one gap it found — documentation lagging the
+already-correct implementation).
 
 **Backlog (not started, not approved for implementation — each requires its own contract-gate
 pass through this same sequence before any production edit). Listed by finding order, not strict
@@ -848,39 +938,24 @@ orchestrator pass can sequence them correctly instead of trusting a claimed orde
 inaccurate — categories were not actually monotonic — so this revision states categories
 explicitly instead of asserting an order):**
 
-1. Click-propagation `@click.stop` — undocumented rationale, no test proves the intended
-   ancestor-listener behavior (priority category 3: native semantics/event propagation — the
-   highest-priority open item in this backlog, but classified `unresolved`/evidence-gap rather
-   than a scoped, ready correction, so it did not block selecting this pass's unit).
-2. Dangling `--md-state-outline-color` reference at `MDButton.css:69` (never declared anywhere)
-   — needs investigation into whether the native `:focus-visible` outline it targets has any
-   current visible effect before a fix can be scoped (priority category 7: token ownership/
-   naming/routing — same category as this pass's unit, deferred because it needs its own
-   investigation first). Found by revision-1's contract-gate review, not by this family's own
-   audit.
-3. Web label-text wrapping — the `LabelReflow` behavior contradicts the Web-scoped official
-   single-line rule; likely requires reverting to the pre-existing `nowrap`/fixed-height behavior
-   and removing the `LabelReflow` story/test, but that determination and its consumer/visual
-   impact need their own contract pass, not asserted here (priority category 8: geometry/
-   typography).
-4. RTL icon-mirroring browser proof — evidence gap, not a known defect (priority category 8:
+1. RTL icon-mirroring browser proof — evidence gap, not a known defect (priority category 8:
    geometry/RTL).
-5. Spring-to-CSS motion mapping for the pressed/selected shape morph (Source decision, unresolved)
+2. Spring-to-CSS motion mapping for the pressed/selected shape morph (Source decision, unresolved)
    — likely a `material-foundation` prerequisite since the same system spring tokens are shared
    with `MDIconButton.vue` (priority category 9: motion implementation).
-6. Browser-lane proof for the loading-state `__icon`/`__label-text` opacity fade's computed
+3. Browser-lane proof for the loading-state `__icon`/`__label-text` opacity fade's computed
    transition timing (see Motion routes above) — evidence gap, not a known defect (priority
    category 9: motion implementation/lifecycle). Found missing by revision-2's contract-gate
    review.
-7. Pre-existing, repository-wide `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-
+4. Pre-existing, repository-wide `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-
 color` generic ambient-styling contract has no accepted category in `docs/tokens.md`'s taxonomy
    and fails the static guard for `MDButton.css` (see "New evidence found during implementation"
    above). Not Button-owned; requires a `material-foundation`-level or repository-wide decision,
    not a Button-family correction unit (priority category 2: wrong/undecided foundation ownership
    — this is the highest-priority open backlog item by category, but is explicitly a foundation
    concern, not a Button correction, so it does not block Button's own family completion the way
-   an unresolved Button-owned category-2 gap would). Found during this pass's implementation, after
-   the correction unit itself was already approved and executed.
+   an unresolved Button-owned category-2 gap would). Found during the token-ownership pass's
+   implementation, after that correction unit itself was already approved and executed.
 
 A "disabled container opacity/tint for `color="text"`" item previously appeared here as backlog
 item 2 in revision 3. Revision 4's independent contract-gate review found, against the live
@@ -888,11 +963,26 @@ per-state token table, that this was not a real defect — see "Contract-gate re
 the corrected "Disabled container opacity/tint" concern above. The item has been removed, not
 merely reclassified.
 
+The click-propagation `@click.stop` item (formerly backlog item 1: undocumented rationale, no
+ancestor-listener test) is complete — see the "Click event propagation" concern above
+(`confirmed-compliant`, independently correction-final reviewed) and "Correction units" below.
+Removed from this list, not merely reclassified.
+
+The dangling `--md-state-outline-color` reference item (formerly backlog item 1 after the above
+removal) is complete — the dead `outline-color` declaration was removed from `MDButton.css`
+(see the token graph entry above and "Correction units" below, Unit 3). Removed from this list,
+not merely reclassified.
+
+The Web label-text wrapping item (formerly backlog item 1 after the above two removals) is
+complete — the `LabelReflow` behavior was reverted to the official single-line rule (see the
+"Label-text wrapping on Web" concern above and "Correction units" below, Unit 4). Removed from
+this list, not merely reclassified.
+
 Extensions preserved unchanged: `loading?: number | boolean`.
 
-Required unresolved decisions blocking only their own dependent work (do not block the current
+Required unresolved decisions blocking only their own dependent work (do not block a Button
 correction unit): SD1 (family-specific touch-target citation — resolved to a documentation
-correction only, no code impact), SD3 (spring-to-CSS mapping — blocks backlog item 5 only).
+correction only, no code impact), SD3 (spring-to-CSS mapping — blocks backlog item 2 only).
 
 Do not select a second family until Button reaches a terminal `aligned` state (per
 `docs/roadmap.md`).

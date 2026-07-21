@@ -1096,28 +1096,30 @@ export const TargetLayers: Story = {
 };
 
 /**
- * Official Buttons accessibility guidance: labels should fit within two lines after 200% text
- * scaling. Constraining the button's containing block reproduces the same effective narrowing a
- * real large-text-zoom environment causes, without depending on the test runner's font-scaling
- * support. Each fixture's `max-width` is intentionally narrower than the label's unwrapped width.
+ * Official Buttons guidelines: label text must never truncate or wrap on Web — it should always
+ * be fully visible on a single line. The Android-specific "fit within two lines after 200% text
+ * scaling" accessibility statement does not apply here (see README Source Decision 2). Each
+ * fixture's `max-width` is intentionally narrower than the label's unwrapped width, so the
+ * container's own boundary provides no clipping — the button is expected to render wider than
+ * its containing block rather than wrap or truncate the label.
  */
-export const LabelReflow: Story = {
+export const LabelNoWrap: Story = {
   render: () => ({
     components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-label-reflow" class="visual-checker-backdrop">
+      <div data-testid="visual-md-button-label-no-wrap" class="visual-checker-backdrop">
         <div class="visual-row">
           <div style="max-width: 160px;">
             <MDButton
-              data-testid="reflow-small"
-              label="This label is intentionally long enough to require wrapping"
+              data-testid="no-wrap-small"
+              label="This label is intentionally long enough to overflow a narrow container"
               size="small"
             />
           </div>
           <div style="max-width: 220px;">
             <MDButton
-              data-testid="reflow-medium"
-              label="This label is intentionally long enough to require wrapping"
+              data-testid="no-wrap-medium"
+              label="This label is intentionally long enough to overflow a narrow container"
               size="medium"
             >
               <template #icon>+</template>

@@ -10,27 +10,31 @@ Active family: `Button`
 
 Intended mode: `align-existing`
 
-Family alignment status: `blocked`
+Family alignment status: `converging`
 
-Blocker: the prospective canonical Button owner does not yet close every dependency required by its supported surface. It still relies on legacy Material state-layer/ripple ownership, legacy global reference/system and motion routes, a non-canonical Progress Indicator dependency for loading, and unresolved symbol/outline styling ownership. Previous broad review also missed the concrete shape-transition defect and consumed excessive agent context.
+Blocker: four correction units are complete and independently reviewed (see
+`components/button/README.md`): token ownership/naming/dead-declaration cleanup; the
+click-propagation `@click.stop` rationale and ancestor-listener proof; the dangling
+`--md-state-outline-color` reference removal; and the Web label-text-wrapping revert to the
+official single-line rule. Directly re-run this pass
+(`pnpm exec vitest run scripts/materialTokenArchitecture.test.mjs`) confirms the guard still
+reports exactly the same 3 residual, pre-existing, out-of-Button-scope errors the README
+documents — `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-color`, the
+established public styling contract of `MDSymbol`/`MDCircularProgressIndicator`, not Button-owned
+tokens. This keeps final `pnpm verify` red and blocks `aligned`, but does not reopen any completed
+correction unit.
 
 ## Next action
 
-Run `material-component Button`.
+Two independent tracks remain (Button has not reached `aligned`):
 
-The orchestrator must resume valid existing work, build one bounded orientation, select the necessary semantics/token/Web concern lanes, close exact foundation and official-family prerequisites, and continue successive correction units without restarting accepted research.
-
-Button cannot become canonical or aligned while any required dependency remains `temporary-legacy-material`, missing, defective, privately imported, fallback-masked, cyclic, or parallel-owned. Loading requires a ready canonical Progress Indicator public contract or an explicit decision to defer/remove that extension.
-
-The calibration succeeds only when the agent independently:
-
-- preserves confirmed valid implementation instead of restarting by default;
-- detects the shape-transition property/easing defect without an operator hint;
-- closes or exactly blocks every dependency required by the supported Button surface;
-- keeps state selection, layout, and motion out of token files;
-- runs the token architecture guard and applicable focused proof;
-- continues through all known required correction units;
-- reaches independent `material-family-review: complete` and final verification.
+1. Foundation-level or repository-wide decision (backlog item 4 in the README, priority category
+   2 by ownership but explicitly not a Button-family concern) on how to classify the pre-existing
+   ambient-styling contract above. Route through `material-foundation`, not `material-component
+Button`.
+2. Button's remaining 3-item backlog (RTL icon-mirroring browser proof, the spring-to-CSS motion
+   mapping, the loading-motion browser-proof gap) — each requires its own `material-component
+Button` pass through the full isolated sequence; do not bundle items.
 
 Do not select a second family until Button reaches a terminal `aligned` state.
 

@@ -56,7 +56,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--md-private-button-height);
+  height: var(--md-private-button-height);
   padding-left: var(--md-private-button-padding-left);
   padding-right: var(--md-private-button-padding-right);
   border: var(--md-private-button-border-width) var(--md-private-button-border-style)
@@ -66,7 +66,6 @@
   background: var(--md-private-button-rendered-container-color);
   box-shadow: var(--md-private-button-rendered-elevation);
   color: var(--md-private-button-rendered-label-color);
-  outline-color: var(--md-state-outline-color);
   vertical-align: middle;
   cursor: pointer;
   user-select: none;
@@ -134,9 +133,7 @@
   }
 
   &__label-text {
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: center;
+    white-space: nowrap;
     color: rgb(
       from var(--md-private-button-rendered-label-color) r g b /
         var(--md-private-button-label-opacity, 1)

@@ -97,6 +97,26 @@ describe('MDButton', () => {
     expect(wrapper.emitted('click')).toBeUndefined();
   });
 
+  it('stops the native click from bubbling to an ancestor listener', async () => {
+    const ancestorListener = vi.fn();
+    const host = document.createElement('div');
+    host.addEventListener('click', ancestorListener);
+    document.body.append(host);
+
+    const wrapper = mount(MDButton, {
+      props: { label: 'Save' },
+      attachTo: host,
+    });
+
+    await wrapper.get('button').trigger('click');
+
+    expect(wrapper.emitted('click')).toHaveLength(1);
+    expect(ancestorListener).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+    host.remove();
+  });
+
   it('exposes aria-pressed only for variant="toggle" and reflects selected', () => {
     const defaultWrapper = mountButton();
     expect(defaultWrapper.get('button').attributes('aria-pressed')).toBeUndefined();
