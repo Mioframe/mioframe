@@ -6,15 +6,16 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material families.
 - Use `material-component` as the sole implementation entry point for exactly one official Material family.
-- Use `material-component-review` only for independent review-only assessment without production changes.
+- Use `material-component-review` only for one independent correction contract or correction-final review.
+- Use `material-pr-review` only for complete base-to-head Material PR merge readiness.
 - Use `material-foundation` for focused convergence of a real cross-family Material foundation contract.
 - Use `material3-guidelines` for official source lookup, component choice, usage, and composition.
-- Use `material-library-status` only for concise read-only roadmap, PR, and verification status.
+- Use `material-library-status` only for concise read-only concern-lane, correction, PR, roadmap, and verification status.
 - Inside `src/shared/ui/material`, follow its `AGENTS.md`; it owns internal Material stages and detailed workflow routing.
 
-A component or family name is sufficient input. When none is supplied, `material-component` may continue only the one active family recorded by the roadmap. Resolve the canonical target, current defects, foundations, consumers, owners, files, and proof from official sources and repository evidence rather than asking the user to design the component.
+A component or family name is sufficient input. When none is supplied, `material-component` may continue only the one active family recorded by the roadmap. Resolve only the target claims and concern lanes required by the objective and direct dependencies; do not ask the user to design the component or automatically re-audit the complete family.
 
-Implementation and review are separate entry points. Do not invoke internal Material stage skills directly.
+Implementation, correction review, and complete PR review are separate responsibilities. Do not invoke internal Material stage or concern skills directly.
 
 ## Boundaries
 
@@ -26,8 +27,8 @@ Implementation and review are separate entry points. Do not invoke internal Mate
 - Existing official Material directories outside the canonical root are legacy owners. They may be assessed and corrected in place through `material-component` until a complete relocation is safe. Do not create parallel active owners or force relocation before correctness.
 - Shared UI must not import product layers or domain models.
 
-Do not create Material registries, inventories, durable audits, separate checklists, alignment scorecards, progress ledgers, or duplicate workflow policy outside the Material root.
+Do not create Material registries, inventories, durable audits, review histories, separate checklists, alignment scorecards, progress ledgers, or duplicate workflow policy outside the Material root.
 
 ## Verification
 
-Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Final completion of each correction objective requires repository verification; full family completion additionally requires an `aligned` family status.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Final completion of each correction objective requires correction review; merge readiness requires complete PR review and repository verification; full family completion additionally requires an `aligned` family status.
