@@ -9,7 +9,7 @@ The workflow separates responsibility by concern as well as by stage. No read-on
 ```text
 material-component
 → task and PR scope lock
-→ concern-lane selection
+→ concern-lane and dependency-closure plan
 → concern-scoped material-canonical-target when required
 → selected isolated audits
    - material-semantics-audit
@@ -17,7 +17,7 @@ material-component
    - material-web-audit
 → material-component-contract synthesis
 → independent correction contract gate
-→ exact foundation prerequisite when required
+→ complete exact foundation prerequisite when required
 → one material-component-implementation correction unit
 → conditional material-component-adoption
 → independent correction final gate
@@ -25,11 +25,11 @@ material-component
 → verification
 ```
 
-Production edits are forbidden before the correction contract gate passes.
+Production edits are forbidden before the correction contract gate passes. A required foundation prerequisite is completed and independently reviewed before component implementation continues.
 
 ## Responsibility model
 
-`material-component` is the only orchestrator. It selects lanes, synthesizes results, writes workflow state and roadmap facts, and decides whether to advance or stop. Internal roles do not invoke each other.
+`material-component` is the only orchestrator. It selects lanes, inventories dependencies, synthesizes results, writes workflow state and roadmap facts, and decides whether to advance or stop. Internal roles do not invoke each other.
 
 Read-only concern roles:
 
@@ -56,7 +56,10 @@ Target claims requiring research:
 Semantics lane: required | not-required — reason
 Token lane: required | not-required — reason
 Web lane: required | not-required — reason
+Required direct dependencies: <owner and contract for each>
+Dependency closure: closed | blocked
 Foundation prerequisite: none | <exact prerequisite>
+Canonical-family prerequisite: none | <exact family contract>
 Adoption scope: none | <exact owners/consumers>
 ```
 
@@ -67,7 +70,35 @@ Rules:
 - DOM, style, layout, or motion changes require the Web lane;
 - API, native semantics, accessibility, state ownership, extensions, or consumer contract changes require the semantics lane;
 - new families, full owner migrations, or explicit full-family audits require all applicable lanes;
+- every dependency required by the supported public surface is inventoried before contract synthesis;
 - no role may absorb another lane merely because it discovers a dependency; report the dependency to the orchestrator.
+
+## Dependency closure
+
+A family may become the canonical production owner or receive migrated consumers only when every required dependency resolves to one ready owner:
+
+- canonical Material foundation;
+- canonical Material family public contract;
+- valid generic non-Material foundation;
+- explicit Mioframe extension owner.
+
+Classify each direct dependency as `canonical-foundation`, `canonical-family`, `temporary-legacy-material`, `project-extension`, or `generic-foundation`, and record its owner, required contract, readiness, proof, and replacement obligation.
+
+A dependency is not closed when any required route uses:
+
+- a temporary legacy Material owner;
+- a missing or unresolved reference/system token group;
+- an unowned shared Material custom property or behavior;
+- a parallel active owner;
+- a known-defective dependency contract;
+- a family-private deep import;
+- a hidden fallback masking an absent required value.
+
+When the missing contract is family-agnostic and cross-family, create one exact blocking `material-foundation` prerequisite. When it belongs to another official component family, require that family's ready public contract or remove/defer the dependent extension. Do not misclassify a component, such as Progress Indicator, as foundation merely because another component uses it.
+
+The prerequisite is the smallest coherent currently required slice. Do not build speculative foundation or migrate unrelated legacy categories.
+
+A focused correction may complete while unrelated dependency debt remains only when it does not create or adopt a canonical owner, does not claim the family aligned, and does not depend on that debt for the corrected scenario. New-component, owner-migration, adoption, and family-alignment work require closed dependencies.
 
 ## Evidence reuse
 
@@ -99,6 +130,8 @@ Current objective:
 Current stage: target | assessment | contract-review | foundation | implementation | adoption | correction-review | pr-review | verification
 Canonical target status: draft | locked | reopened
 Assessment status: not-started | complete | blocked
+Dependency closure: closed | blocked
+Foundation prerequisite: none | pending | complete | blocked
 Contract review status: not-started | passed | failed
 Current correction unit: none | <exact unit>
 Implementation status: not-started | complete | blocked
@@ -110,7 +143,7 @@ Next gate:
 Blocker: none | <exact blocker>
 ```
 
-The README stores current target decisions, classifications, durable contracts, proof obligations, correction unit, and remaining gaps. It must not contain review-round history, shell transcripts, exact route ledgers, repeated source narratives, or counts that do not affect the contract.
+The README stores current target decisions, classifications, durable contracts, dependency-closure status, proof obligations, correction unit, and remaining gaps. It must not contain review-round history, shell transcripts, exact route ledgers, repeated source narratives, or counts that do not affect the contract.
 
 ## Target research
 
@@ -126,11 +159,9 @@ Each selected audit runs in a separate read-only context and returns only its la
 
 `project-extension` additionally requires a current Mioframe scenario, explicit owner, compatible dependencies, and separate proof. A known defect prevents completion.
 
-Dependencies are classified as canonical Material, temporary legacy Material, project extension, or generic non-Material foundation.
-
 ## Contract synthesis
 
-`material-component-contract` receives the concern plan, target slices, and only the selected audit results. It must not perform another broad audit.
+`material-component-contract` receives the concern plan, target slices, dependency inventory, and only the selected audit results. It must not perform another broad audit.
 
 Select the smallest complete highest-priority correction unit. Priority remains:
 
@@ -147,7 +178,7 @@ Select the smallest complete highest-priority correction unit. Priority remains:
 11. adoption;
 12. obsolete-owner removal.
 
-A lower-priority improvement cannot bypass a higher-priority blocker affecting the same PR-owned public surface.
+A lower-priority improvement cannot bypass a higher-priority blocker affecting the same PR-owned public surface. A component correction cannot proceed past a required missing foundation or canonical-family prerequisite.
 
 ## Review budgets and stop conditions
 
@@ -159,11 +190,11 @@ Each gate allows one initial review and at most one correction re-review.
 - A reviewer must not restart complete source research because of a typo, stale cross-reference, wording correction, or file count.
 - Role outputs are concise structured results. Consolidate related findings; do not create narrative review history.
 
-Stop immediately for missing required evidence, unresolved platform applicability, unclear ownership, invalid token graph, incomplete browser evidence, unavailable independent context, operator rejection, or failed required verification.
+Stop immediately for missing required evidence, unresolved platform applicability, unclear ownership, open required dependency closure, invalid token graph, incomplete browser evidence, unavailable independent context, operator rejection, or failed required verification.
 
 ## Proof lanes
 
-- unit/component: deterministic API, state normalization, native attributes, token graph structure, and narrow routing;
+- unit/component: deterministic API, state normalization, native attributes, token graph structure, dependency mapping, and narrow routing;
 - browser: computed token values, inheritance, layout, focus, keyboard, forms, propagation, pointer/touch, responsive behavior, animation lifecycle, and reduced motion;
 - visual: screenshots only;
 - consumer: integration and compatibility.
@@ -172,15 +203,15 @@ Visible changes require official comparison and explicit operator status. Browse
 
 ## Correction and adoption review
 
-The correction contract gate reviews the proposed unit and selected lane evidence only. The correction final gate reviews the implemented unit, affected owners, affected consumers, and required proof. Neither gate decides complete PR merge readiness.
+The correction contract gate reviews the proposed unit, dependency closure, foundation prerequisite, and selected lane evidence. The correction final gate reviews the implemented unit, resulting dependencies, affected owners, affected consumers, and required proof. Neither gate decides complete PR merge readiness.
 
-Adoption runs only when ownership migration or cleanup is explicitly in scope and moved consumers receive a ready contract.
+Adoption runs only when ownership migration or cleanup is explicitly in scope, moved consumers receive a ready contract, and every dependency needed by those consumers is closed.
 
 ## PR review
 
 After correction final review, run `material-pr-review` against the actual PR base and head.
 
-It reviews every owner and consumer changed by the PR, all PR-owned unresolved concerns, migration completeness, architecture guards, proof coverage, workflow state, and PR metadata. Feature-branch history cannot make a resulting PR defect `pre-existing` or `out of scope`.
+It reviews every owner and consumer changed by the PR, dependency closure, all PR-owned unresolved concerns, migration completeness, architecture guards, proof coverage, workflow state, and PR metadata. Feature-branch history cannot make a resulting PR defect `pre-existing` or `out of scope`.
 
 A bounded correction may be complete while the PR remains unmergeable.
 
@@ -188,6 +219,6 @@ A bounded correction may be complete while the PR remains unmergeable.
 
 Changed Material CSS, Vue styles, token files, or shared Material token foundations must trigger the repository token architecture guard in focused verification. Green CI is not sufficient when an applicable guard was skipped.
 
-Family completion requires no required `misaligned`, `unresolved`, or `obsolete` concern, valid token and motion contracts, one canonical owner, completed adoption/cleanup, required operator acceptance, passed PR review, and final verification.
+Family completion requires no required `misaligned`, `unresolved`, `obsolete`, or `temporary-legacy-material` dependency, valid token and motion contracts, one canonical owner, completed prerequisites/adoption/cleanup, required operator acceptance, passed PR review, and final verification.
 
 Do not create duplicate contracts, durable audits, registries, scorecards, checklists, progress ledgers, or workflow-history documents.
