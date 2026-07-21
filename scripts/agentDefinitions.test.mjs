@@ -26,7 +26,7 @@ function topLevelKeys(frontmatter) {
 }
 
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
