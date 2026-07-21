@@ -18,12 +18,14 @@ Mode: align-existing
 Current objective: Continue Button's correction backlog one bounded unit at a time. Unit 1
   (token architecture — ambiguous private-route naming, missing component-token file placement,
   dead spring tokens), Unit 2 (click-propagation `@click.stop` rationale + ancestor-listener
-  proof), Unit 3 (dangling `--md-state-outline-color` reference removed from `MDButton.css`), and
-  Unit 4 (Web label-text wrapping reverted to the official single-line rule) are all complete.
-  Units 2-4 each closed what was, at the time, backlog item 1. This pass also corrected
-  `docs/roadmap.md`, found stale after a merge (`a4b6defd`) overwrote its already-current
-  `converging` state with an older, pre-Unit-1 `blocked` description from a parallel branch —
-  verified directly via `git show`/`git diff` against commit `a81a9759`, not inferred.
+  proof), Unit 3 (dangling `--md-state-outline-color` reference removed from `MDButton.css`),
+  Unit 4 (Web label-text wrapping reverted to the official single-line rule), Unit 5 (RTL
+  leading-icon-mirroring browser proof), and Unit 6 (loading-state opacity-fade transition-timing
+  browser proof) are all complete. Units 2-6 each closed what was, at the time, backlog item 1.
+  This pass also corrected `docs/roadmap.md`, found stale after a merge (`a4b6defd`) overwrote its
+  already-current `converging` state with an older, pre-Unit-1 `blocked` description from a
+  parallel branch — verified directly via `git show`/`git diff` against commit `a81a9759`, not
+  inferred.
 Current stage: verification
 Canonical target status: locked (unchanged by Units 2-4 — no target/token/API surface affected;
   Unit 4 corrected rendered behavior toward the already-locked target, not the target itself)
@@ -33,10 +35,12 @@ Contract review status: Unit 1 passed (revision 6, sixth independent isolated re
   for inaccurate comment wording — see "Correction units" below). Unit 3 passed (single review
   round). Unit 4 passed (single contract-gate round; correction-final review's one finding —
   README/backlog documentation lagging the already-correct implementation — closed in this
-  revision).
-Current correction unit: none in flight — all four completed units are independently final-gate
+  revision). Unit 5 passed (single correction-final round, additive test/story-only change, no
+  contract-gate needed — no ownership, export, or dependency change to canonicalize). Unit 6
+  passed (single correction-final round, additive test-only change, no contract-gate needed).
+Current correction unit: none in flight — all six completed units are independently final-gate
   reviewed and merged into this working tree.
-Implementation status: complete for Units 1-4
+Implementation status: complete for Units 1-6
 Final review status: Unit 1 passed, with required follow-up applied (see "Final-gate review"
   below). Unit 2 passed correction-final review — independent reviewer confirmed citation
   accuracy, DOM-connected test methodology, button-family suite 23/23, unchanged token guard
@@ -46,20 +50,34 @@ Final review status: Unit 1 passed, with required follow-up applied (see "Final-
   suite passed with zero diffs after removal. Unit 4 passed correction-final review after this
   revision closed the documentation-lag gap it found; the implementation, story/test replacement,
   full-suite zero-diff proof, and consumer-safety claim it also checked were all confirmed sound
-  on the first pass.
-Operator visual status: not-required for Units 1-3 (none changed rendered output). Unit 4
-  intentionally changed rendered output (label no longer wraps) — proof is the full 224-spec
-  visual suite passing with zero diffs anywhere outside the intentional `md-button.spec.ts`
-  change, i.e. no other Button visual state moved; no separate operator screenshot comparison was
-  requested for this bounded CSS-property-level revert given that complete automated proof.
+  on the first pass. Unit 5 passed correction-final review (independent isolated context) —
+  reviewer traced the actual CSS (`flex-direction` never set, no `direction`/`margin-left`/
+  `margin-right` override anywhere in `MDButton.css`) and confirmed the new test's two assertions
+  are genuinely direction-dependent (would fail against `row-reverse`, a hardcoded `direction`, or
+  a manual icon-swap), the story ID matches sibling naming convention, and the diff is purely
+  additive with zero rename/removal risk. Unit 6 passed correction-final review (isolated
+  context) — reviewer traced the actual CSS (`&__icon`/`&__label-text` both declare
+  `transition: opacity var(--md-private-motion-expressive-fast-effects-duration) ...`
+  unconditionally, not gated behind `.md-button_loading &`) and the token source
+  (`--md-private-motion-expressive-fast-effects-duration: 150ms` in
+  `src/shared/lib/md/tokens.css`), confirmed the new test's comma-separated transition-list
+  parsing genuinely fails if the opacity duration changed or `transition` were removed, and
+  confirmed the diff is a single additive test block with no other change.
+Operator visual status: not-required for Units 1-3, 5, and 6 (none changed rendered output;
+  Units 5-6 are new browser-lane assertions over already-rendered behavior). Unit 4 intentionally
+  changed rendered output (label no longer wraps) — proof is the full 224-spec visual suite
+  passing with zero diffs anywhere outside the intentional `md-button.spec.ts` change, i.e. no
+  other Button visual state moved; no separate operator screenshot comparison was requested for
+  this bounded CSS-property-level revert given that complete automated proof.
 Family alignment status: converging
-Next gate: none in flight. Backlog item 4 (pre-existing, out-of-scope ambient-styling
+Next gate: none in flight. Backlog item 2 (pre-existing, out-of-scope ambient-styling
   token-taxonomy gap) requires a `material-foundation`-level or repository-wide decision before
-  the family can reach `aligned`; the remaining 3 Button-owned backlog items each require their
-  own future `material-component Button` pass through this same isolated sequence.
+  the family can reach `aligned`; the remaining Button-owned backlog item (spring-to-CSS motion
+  mapping) requires its own future `material-component Button` pass, likely via a
+  `material-foundation` prerequisite for the shared spring-token contract.
 Blocker: none for any completed unit. Family completion (`aligned`) remains blocked on: final
   `pnpm verify` failing on the 3 pre-existing, out-of-Button-scope residual errors documented in
-  "New evidence found during implementation" (backlog item 4); and the 3 other open backlog items.
+  "New evidence found during implementation" (backlog item 2); and the 1 other open backlog item.
   None of these implicate or reopen any completed correction unit.
 ```
 
@@ -712,10 +730,19 @@ button wraps to a new row, it does not clip or overflow.
 Concern: RTL icon mirroring
 Canonical target: leading icon mirrors to the right in RTL.
 Current behavior: icon-then-label in a flex row with symmetric padding/radius; default flexbox
-`row` direction is writing-mode-relative, so RTL should mirror without extra code, but no RTL
-story or browser assertion exists.
-Classification: unresolved
-Required correction: none proposed — evidence gap, not a known defect; deferred to backlog.
+`row` direction is writing-mode-relative, so RTL mirrors without extra code. Resolved this pass
+(Unit 5, see Correction units): a new `RtlIconMirroring` story (`MDButton.stories.ts`) renders the
+same button under `dir="ltr"` and `dir="rtl"` wrappers, and a new Playwright test
+(`md-button.spec.ts`, "mirrors the leading icon to the right of the label under dir=\"rtl\"")
+reads both fixtures' icon/label bounding-box x-positions, proving `iconLeft < labelLeft` under LTR
+and `iconLeft > labelLeft` under RTL — a genuinely direction-dependent assertion, independently
+confirmed (correction-final review) to fail against `row-reverse`, a hardcoded `direction`, or a
+manual icon-swap.
+Classification: confirmed-compliant
+Primary proof: `md-button.spec.ts` "MDButton mirrors the leading icon to the right of the label
+under dir=\"rtl\""
+Required correction: none — completed this pass. No production code changed (test/story-only
+addition); no consumer regression possible.
 
 Concern: `__target` hit-area span and its cited authority
 Canonical target: see Source decision (SD1) above — general foundation guidance; both
@@ -862,11 +889,14 @@ pair as the color transition above; trigger is the `.md-button_loading &` select
 surface). Owner: `MDButton.css`. Initial/final values: opacity 1 <-> 0. Interruption/reversal:
 standard CSS transition reverses on class removal (loading toggling off mid-fade reverses
 smoothly, no explicit cancellation logic needed). No `prefers-reduced-motion` override exists for
-this route either. Proof: `MDButton.test.ts`'s four loading-state cases assert the DOM/class
-result of toggling `loading`, not the transition's computed timing; no dedicated browser-lane
-proof reads the transition's computed longhands for this specific route — an evidence gap, not a
-known defect, added to the backlog below (item 5). Found missing from this document by
-revision-2's independent contract-gate review.
+this route either. Resolved this pass (Unit 6, see Correction units): `MDButton.test.ts`'s four
+loading-state cases still only assert the DOM/class result of toggling `loading`; a new Playwright
+test (`md-button.spec.ts`, "loading-state icon and label opacity fade uses the documented
+fast-effects duration") now reads `.md-button__icon`/`.md-button__label-text`'s computed
+`transition-property`/`-duration`/`-timing-function` directly (parsing the comma-separated
+multi-property shorthand to locate the `opacity` entry specifically, not a hardcoded index),
+confirming both resolve to the same 150ms fast-effects pair already proven for the color/
+background transitions above.
 
 `MDStateLayer` background transition, ripple (WAAPI), and the loading indicator's SVG
 `<animate>`/`<animateTransform>` are foundation-owned (`@shared/ui/State`,
@@ -930,24 +960,59 @@ source quotes and a consumer-safety spot check) and independent correction-final
 (after this README/backlog update closed the one gap it found — documentation lagging the
 already-correct implementation).
 
+**Unit 5 (complete): RTL leading-icon-mirroring browser proof.** Formerly backlog item 1 (after
+Unit 4). Pure evidence-gap closure, not a defect fix — the existing implementation already
+satisfied the canonical target (`.md-button__content`'s unset, writing-mode-relative
+`flex-direction: row` mirrors icon-then-label DOM order under `dir="rtl"` with no RTL-specific
+code), but no story or browser assertion proved it. Implemented: a new `RtlIconMirroring` export
+in `MDButton.stories.ts` rendering the same button under `dir="ltr"` and `dir="rtl"` wrapper
+`<div>`s, and a new Playwright test in `md-button.spec.ts` ("mirrors the leading icon to the right
+of the label under dir=\"rtl\"") reading both fixtures' `.md-button__icon`/`.md-button__label-text`
+bounding-box x-positions and asserting `iconLeft < labelLeft` under LTR, `iconLeft > labelLeft`
+under RTL. No production code changed (test/story-only addition). Proof: full visual suite passed
+225/225 (224 + this new test) with zero diffs (`pnpm verify --only visual --files
+MDButton.stories.ts md-button.spec.ts`). Independent correction-final review (isolated context,
+no contract-gate needed since there is no ownership/export/dependency change to canonicalize)
+confirmed: the two assertions are genuinely direction-dependent (traced against the actual CSS —
+no `flex-direction`, `direction`, `margin-left`, or `margin-right` override anywhere in
+`MDButton.css` — and would fail against `row-reverse`, a hardcoded `direction`, or a manual
+icon-swap); the story ID matches sibling naming convention; the diff is purely additive (31 + 28
+lines, zero renames/removals). The reviewer also flagged an off-by-one in this document's backlog
+priority-category numbers (see Backlog below), corrected in this revision.
+
+**Unit 6 (complete): Loading-state opacity-fade transition-timing browser proof.** Formerly
+backlog item 2 (after Unit 5's removal). Pure evidence-gap closure, not a defect fix — see the
+"Loading-state icon/label opacity fade" entry under Motion routes above for the full claim and
+implementation detail. Implemented: one new Playwright test in `md-button.spec.ts`
+("loading-state icon and label opacity fade uses the documented fast-effects duration") reusing
+the existing `LoadingColorRouting` story fixture (no story change) to read
+`.md-button__icon`/`.md-button__label-text`'s computed transition longhands. No production code
+changed (test-only addition). Proof: full visual suite passed 226/226 (225 + this new test) with
+zero diffs (`pnpm verify --only visual --files tests/e2e/visual/shared-ui/md-button.spec.ts`).
+Independent correction-final review (isolated context, no contract-gate needed) confirmed: the
+comma-separated transition-list parsing correctly locates the `opacity` entry rather than
+assuming a fixed index (so it would genuinely fail if the duration changed or `transition` were
+removed); the `transition` declaration on `&__icon`/`&__label-text` is unconditional, not gated
+behind `.md-button_loading &`, so reading it from the already-loading fixture is equivalent to the
+general (always-present) contract; `--md-private-motion-expressive-fast-effects-duration` traces
+to `150ms` in `src/shared/lib/md/tokens.css`, matching the `0.15s` literal already asserted for the
+sibling color/background transitions; the diff is a single additive test block.
+
 **Backlog (not started, not approved for implementation — each requires its own contract-gate
 pass through this same sequence before any production edit). Listed by finding order, not strict
 priority rank; each entry states its own `component-development.md` priority category so the next
 orchestrator pass can sequence them correctly instead of trusting a claimed ordering here
 (revision-2's contract-gate review found the priority-order claim in an earlier draft of this list
 inaccurate — categories were not actually monotonic — so this revision states categories
-explicitly instead of asserting an order):**
+explicitly instead of asserting an order. This revision also corrects an off-by-one in the
+category numbers themselves, flagged by Unit 5's independent reviewer: `component-development.md`
+lists category 7 as "layout, typography, RTL, and scaling" and category 8 as "motion and browser
+lifecycle" — the prior revision had misnumbered these 8 and 9 respectively):**
 
-1. RTL icon-mirroring browser proof — evidence gap, not a known defect (priority category 8:
-   geometry/RTL).
-2. Spring-to-CSS motion mapping for the pressed/selected shape morph (Source decision, unresolved)
+1. Spring-to-CSS motion mapping for the pressed/selected shape morph (Source decision, unresolved)
    — likely a `material-foundation` prerequisite since the same system spring tokens are shared
-   with `MDIconButton.vue` (priority category 9: motion implementation).
-3. Browser-lane proof for the loading-state `__icon`/`__label-text` opacity fade's computed
-   transition timing (see Motion routes above) — evidence gap, not a known defect (priority
-   category 9: motion implementation/lifecycle). Found missing by revision-2's contract-gate
-   review.
-4. Pre-existing, repository-wide `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-
+   with `MDIconButton.vue` (priority category 8: motion implementation).
+2. Pre-existing, repository-wide `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-
 color` generic ambient-styling contract has no accepted category in `docs/tokens.md`'s taxonomy
    and fails the static guard for `MDButton.css` (see "New evidence found during implementation"
    above). Not Button-owned; requires a `material-foundation`-level or repository-wide decision,
@@ -956,6 +1021,16 @@ color` generic ambient-styling contract has no accepted category in `docs/tokens
    concern, not a Button correction, so it does not block Button's own family completion the way
    an unresolved Button-owned category-2 gap would). Found during the token-ownership pass's
    implementation, after that correction unit itself was already approved and executed.
+
+The RTL icon-mirroring browser-proof item (formerly backlog item 1: evidence gap, no RTL story or
+browser assertion) is complete — see the "RTL icon mirroring" concern above (`confirmed-compliant`,
+independently correction-final reviewed) and "Correction units" below, Unit 5. Removed from this
+list, not merely reclassified.
+
+The loading-state opacity-fade transition-timing browser-proof item (formerly backlog item 2,
+after the RTL item's removal) is complete — see the "Loading-state icon/label opacity fade" entry
+under Motion routes above (proof now exists) and "Correction units" below, Unit 6. Removed from
+this list, not merely reclassified.
 
 A "disabled container opacity/tint for `color="text"`" item previously appeared here as backlog
 item 2 in revision 3. Revision 4's independent contract-gate review found, against the live
@@ -982,7 +1057,7 @@ Extensions preserved unchanged: `loading?: number | boolean`.
 
 Required unresolved decisions blocking only their own dependent work (do not block a Button
 correction unit): SD1 (family-specific touch-target citation — resolved to a documentation
-correction only, no code impact), SD3 (spring-to-CSS mapping — blocks backlog item 2 only).
+correction only, no code impact), SD3 (spring-to-CSS mapping — blocks backlog item 1 only).
 
 Do not select a second family until Button reaches a terminal `aligned` state (per
 `docs/roadmap.md`).

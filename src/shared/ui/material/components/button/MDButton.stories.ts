@@ -1130,3 +1130,31 @@ export const LabelNoWrap: Story = {
     `,
   }),
 };
+
+/**
+ * The leading icon is not an independent trailing-icon feature — anatomy names one optional
+ * leading icon only. `MDButton.vue` renders icon-then-label with no directional CSS (default
+ * `flex-direction: row`, which is writing-mode/direction relative), so under `dir="rtl"` the
+ * icon should mirror to the visual right of the label without any RTL-specific code.
+ */
+export const RtlIconMirroring: Story = {
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-rtl-icon-mirroring" class="visual-checker-backdrop">
+        <div class="visual-row">
+          <div dir="ltr">
+            <MDButton data-testid="rtl-icon-ltr" label="Save">
+              <template #icon>+</template>
+            </MDButton>
+          </div>
+          <div dir="rtl">
+            <MDButton data-testid="rtl-icon-rtl" label="Save">
+              <template #icon>+</template>
+            </MDButton>
+          </div>
+        </div>
+      </div>
+    `,
+  }),
+};

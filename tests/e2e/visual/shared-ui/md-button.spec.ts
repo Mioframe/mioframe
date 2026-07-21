@@ -1119,6 +1119,63 @@ test('MDButton keeps a long label on a single line and grows wider instead of wr
   );
 });
 
+test('MDButton loading-state icon and label opacity fade uses the documented fast-effects duration', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--loading-color-routing');
+
+  const readOpacityTransition = (selector: string) =>
+    page
+      .getByTestId('button-loading-color')
+      .locator(selector)
+      .evaluate((el) => {
+        const style = getComputedStyle(el);
+        const properties = style.transitionProperty.split(',').map((value) => value.trim());
+        const durations = style.transitionDuration.split(',').map((value) => value.trim());
+        const index = properties.indexOf('opacity');
+        return { duration: durations[index], easing: style.transitionTimingFunction };
+      });
+
+  const icon = await readOpacityTransition('.md-button__icon');
+  const labelText = await readOpacityTransition('.md-button__label-text');
+
+  // Same 150ms fast-effects duration/easing pair already proven for the color/background/border
+  // transitions above ('MDButton shape morph and color transitions...'), read here from the
+  // actual `.md-button__icon`/`.md-button__label-text` computed longhands rather than the class
+  // toggle MDButton.test.ts already covers.
+  expect(icon.duration).toBe('0.15s');
+  expect(labelText.duration).toBe('0.15s');
+  expect(icon.easing).toBe(labelText.easing);
+});
+
+test('MDButton mirrors the leading icon to the right of the label under dir="rtl"', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--rtl-icon-mirroring');
+
+  const readIconAndLabelLeft = async (testId: string) => {
+    const button = page.getByTestId(testId);
+    const [iconBox, labelBox] = await Promise.all([
+      button.locator('.md-button__icon').boundingBox(),
+      button.locator('.md-button__label-text').boundingBox(),
+    ]);
+    if (iconBox == null || labelBox == null) {
+      throw new Error(`Missing icon or label box for ${testId}.`);
+    }
+    return { iconLeft: iconBox.x, labelLeft: labelBox.x };
+  };
+
+  const ltr = await readIconAndLabelLeft('rtl-icon-ltr');
+  const rtl = await readIconAndLabelLeft('rtl-icon-rtl');
+
+  // LTR: leading icon renders to the left of the label (DOM order, default row direction).
+  expect(ltr.iconLeft).toBeLessThan(ltr.labelLeft);
+  // RTL: the same leading icon mirrors to the right of the label with no RTL-specific code —
+  // `flex-direction: row` is writing-mode/direction relative, so DOM order alone reverses the
+  // visual placement under `dir="rtl"`.
+  expect(rtl.iconLeft).toBeGreaterThan(rtl.labelLeft);
+});
+
 test('MDStateLayer state-layer transition uses the Button family fast-effects mapping', async ({
   page,
 }) => {
