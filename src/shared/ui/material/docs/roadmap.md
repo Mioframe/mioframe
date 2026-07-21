@@ -8,32 +8,30 @@ Last updated: 2026-07-21
 
 Active family: `Button`
 
-Intended mode: `align-existing`
+Intended invocation scope: `full-family`
 
 Family alignment status: `blocked`
 
-Blocker: the prospective canonical Button owner does not yet close every dependency required by its supported surface. It still relies on legacy Material state-layer/ripple ownership, legacy global reference/system and motion routes, a non-canonical Progress Indicator dependency for loading, and unresolved symbol/outline styling ownership. Previous broad review also missed the concrete shape-transition defect and consumed excessive agent context.
+Blocker: the previous calibration terminated in an internal `converging` state after bounded corrections even though required dependency closure, family review, and final verification were incomplete. Persisted Button workflow state is therefore not authoritative and must be normalized from current code before another correction is selected.
 
 ## Next action
 
-Run `material-component Button`.
+Run `material-component Button` after updating the Button branch with this workflow.
 
-The orchestrator must resume valid existing work, build one bounded orientation, select the necessary semantics/token/Web concern lanes, close exact foundation and official-family prerequisites, and continue successive correction units without restarting accepted research.
+The orchestrator must:
 
-Button cannot become canonical or aligned while any required dependency remains `temporary-legacy-material`, missing, defective, privately imported, fallback-masked, cyclic, or parallel-owned. Loading requires a ready canonical Progress Indicator public contract or an explicit decision to defer/remove that extension.
+- treat the family-only invocation as `full-family`;
+- reconstruct canonical ownership, public exports, actual imports, consumers, legacy-owner state, and dependency closure from code;
+- preserve independently confirmed target/behavior facts but discard stale scope, alignment, next-action, and review-history conclusions;
+- execute exact foundation or official-family prerequisites inside the same orchestration;
+- continue successive correction units without restarting accepted research;
+- stop only at `aligned` or an exact external blocker;
+- require independent family review, Material boundary/token guards, operator evidence when applicable, and final verification.
 
-The calibration succeeds only when the agent independently:
-
-- preserves confirmed valid implementation instead of restarting by default;
-- detects the shape-transition property/easing defect without an operator hint;
-- closes or exactly blocks every dependency required by the supported Button surface;
-- keeps state selection, layout, and motion out of token files;
-- runs the token architecture guard and applicable focused proof;
-- continues through all known required correction units;
-- reaches independent `material-family-review: complete` and final verification.
+Calibration is successful only when the agent independently finds the current highest-priority architecture and behavior gaps instead of following a defect list from this roadmap.
 
 Do not select a second family until Button reaches a terminal `aligned` state.
 
 ## Update rule
 
-Update this file only when the active family, family alignment status, blocker, or one next action changes.
+Update this file only when the active family, alignment status, blocker, or one next action changes.
