@@ -8,36 +8,30 @@ Last updated: 2026-07-21
 
 Active family: `Button`
 
-Intended mode: `align-existing`
+Intended invocation scope: `full-family`
 
-Family alignment status: `converging`
+Family alignment status: `blocked`
 
-Blocker: four correction units are complete and independently reviewed (see
-`components/button/README.md`): token ownership/naming/dead-declaration cleanup; the
-click-propagation `@click.stop` rationale and ancestor-listener proof; the dangling
-`--md-state-outline-color` reference removal; and the Web label-text-wrapping revert to the
-official single-line rule. Directly re-run this pass
-(`pnpm exec vitest run scripts/materialTokenArchitecture.test.mjs`) confirms the guard still
-reports exactly the same 3 residual, pre-existing, out-of-Button-scope errors the README
-documents — `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-color`, the
-established public styling contract of `MDSymbol`/`MDCircularProgressIndicator`, not Button-owned
-tokens. This keeps final `pnpm verify` red and blocks `aligned`, but does not reopen any completed
-correction unit.
+Blocker: the previous calibration terminated in an internal `converging` state after bounded corrections even though required dependency closure, family review, and final verification were incomplete. Persisted Button workflow state is therefore not authoritative and must be normalized from current code before another correction is selected.
 
 ## Next action
 
-Two independent tracks remain (Button has not reached `aligned`):
+Run `material-component Button` after updating the Button branch with this workflow.
 
-1. Foundation-level or repository-wide decision (backlog item 4 in the README, priority category
-   2 by ownership but explicitly not a Button-family concern) on how to classify the pre-existing
-   ambient-styling contract above. Route through `material-foundation`, not `material-component
-Button`.
-2. Button's remaining 3-item backlog (RTL icon-mirroring browser proof, the spring-to-CSS motion
-   mapping, the loading-motion browser-proof gap) — each requires its own `material-component
-Button` pass through the full isolated sequence; do not bundle items.
+The orchestrator must:
+
+- treat the family-only invocation as `full-family`;
+- reconstruct canonical ownership, public exports, actual imports, consumers, legacy-owner state, and dependency closure from code;
+- preserve independently confirmed target/behavior facts but discard stale scope, alignment, next-action, and review-history conclusions;
+- execute exact foundation or official-family prerequisites inside the same orchestration;
+- continue successive correction units without restarting accepted research;
+- stop only at `aligned` or an exact external blocker;
+- require independent family review, Material boundary/token guards, operator evidence when applicable, and final verification.
+
+Calibration is successful only when the agent independently finds the current highest-priority architecture and behavior gaps instead of following a defect list from this roadmap.
 
 Do not select a second family until Button reaches a terminal `aligned` state.
 
 ## Update rule
 
-Update this file only when the active family, family alignment status, blocker, or one next action changes.
+Update this file only when the active family, alignment status, blocker, or one next action changes.
