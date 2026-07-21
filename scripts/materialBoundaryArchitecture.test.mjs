@@ -88,12 +88,10 @@ function classifyForbiddenImport(filePath, specifier) {
   return null;
 }
 
-function analyzeFiles(files) {
+function analyzeSources(sources) {
   const errors = [];
 
-  for (const filePath of files) {
-    const content = fs.readFileSync(filePath, 'utf8');
-
+  for (const { filePath, content } of sources) {
     for (const specifier of extractSpecifiers(content)) {
       const reason = classifyForbiddenImport(filePath, specifier);
       if (reason) {
@@ -105,27 +103,26 @@ function analyzeFiles(files) {
   return [...new Set(errors)].sort();
 }
 
+function repositorySources() {
+  return walkFiles(MATERIAL_ROOT).map((filePath) => ({
+    filePath,
+    content: fs.readFileSync(filePath, 'utf8'),
+  }));
+}
+
 describe('Material library boundary architecture', () => {
   it('detects legacy alias and relative owner imports', () => {
-    const fixtureRoot = path.join(MATERIAL_ROOT, 'components', 'fixture');
-    const fixturePath = path.join(fixtureRoot, 'Fixture.vue');
-    const errors = analyzeFiles(
-      [
-        {
-          path: fixturePath,
-          content: '',
-        },
-      ].map(({ path: filePath, content }) => {
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
-        fs.writeFileSync(
-          filePath,
-          `${content}<script setup>\nimport { MDStateLayer } from '@shared/ui/State';\nimport { MD_TYPESCALE } from '@shared/lib/md';\nimport Legacy from '../../../State/Legacy.vue';\n</script>`,
-        );
-        return filePath;
-      }),
-    );
-
-    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+    const fixturePath = path.join(MATERIAL_ROOT, 'components', 'fixture', 'Fixture.vue');
+    const errors = analyzeSources([
+      {
+        filePath: fixturePath,
+        content: `<script setup>
+import { MDStateLayer } from '@shared/ui/State';
+import { MD_TYPESCALE } from '@shared/lib/md';
+import Legacy from '../../../State/Legacy.vue';
+</script>`,
+      },
+    ]);
 
     expect(errors).toEqual([
       expect.stringContaining("forbidden '../../../State/Legacy.vue'"),
@@ -135,6 +132,6 @@ describe('Material library boundary architecture', () => {
   });
 
   it('keeps canonical Material source independent from legacy shared UI owners', () => {
-    expect(analyzeFiles(walkFiles(MATERIAL_ROOT))).toEqual([]);
+    expect(analyzeSources(repositorySources())).toEqual([]);
   });
 });
