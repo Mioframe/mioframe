@@ -17,4 +17,4 @@ Canonical source policy lives in `src/shared/ui/material/docs/sources.md`. Libra
 - Record exact source pages and snapshot or verification dates in the owning family or foundation contract.
 - Treat repository code, tests, stories, snapshots, and third-party implementations as evidence, not Material authority.
 
-For official family implementation, return resolved evidence to `material-component-contract`; do not create or advance a parallel plan. For review-only work, return evidence to `material-component-review`. For a cross-family foundation change, use `material-foundation`.
+For official family implementation, return resolved evidence to the active `material-component` orchestrator. For a cross-family foundation change, return it to `material-foundation`. For bounded review-only work, return evidence to the invoking correction or family reviewer. Do not create or advance a parallel implementation plan.
