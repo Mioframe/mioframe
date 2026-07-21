@@ -12,11 +12,15 @@ Review the complete PR against its base after correction-level final review. Thi
 Receive:
 
 - PR base and head refs;
+- complete base-to-head changed-file list and diff/patch evidence;
 - family, PR objective, required scenarios, and non-goals;
 - locked family contract and accepted source decisions;
 - correction-review result;
-- operator evidence;
+- current resulting files for every changed owner and representative affected consumer;
+- operator evidence and verification result;
 - applicable repository instructions.
+
+Return `not enough information to decide` when the changed-file list or diff/patch evidence is incomplete. Do not obtain broader shell access merely to reconstruct missing handoff data.
 
 ## Responsibility
 
@@ -60,6 +64,7 @@ MATERIAL PR REVIEW
 PR:
 Family:
 Verdict:
+Diff evidence: complete | incomplete
 Blockers: <consolidated, maximum 10>
 Major issues: <consolidated, maximum 10>
 Minor issues:
@@ -76,5 +81,6 @@ Required next action:
 - approving only the latest correction unit;
 - treating feature-branch history as the PR base;
 - broad re-research of accepted target claims without contradictory evidence;
+- requesting shell/write tools instead of blocking on incomplete handoff evidence;
 - durable review-history documents, route ledgers, or scorecards;
 - merge approval based only on green CI.
