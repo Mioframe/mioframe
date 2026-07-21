@@ -45,7 +45,8 @@ Internal Material code uses local owning entry points. Private files and `--md-p
 - `material-component` owns complete convergence of one component family.
 - `material-foundation` owns one real cross-family foundation contract.
 - Read-only specialist skills own bounded research, audits, and reviews.
-- The owning README stores compact current state; detailed execution stays in the skills.
+- Owner README files store durable contracts only; execution state remains in the active orchestrator context.
+- `docs/roadmap.md` stores only the active family, alignment status, exact external blocker, and one next action.
 
 Canonical guidance:
 
@@ -56,11 +57,12 @@ Canonical guidance:
 - [`docs/foundation-development.md`](./docs/foundation-development.md)
 - [`docs/roadmap.md`](./docs/roadmap.md)
 
-Do not create parallel registries, audits, review histories, checklists, scorecards, or duplicated workflow documents.
+Do not create workflow-state blocks, backlogs, review histories, shell transcripts, registries, audits, checklists, scorecards, or duplicated workflow documents.
 
 ## Verification
 
 - `scripts/materialBoundaryArchitecture.test.mjs` enforces the Material ownership boundary.
 - `scripts/materialTokenArchitecture.test.mjs` enforces token namespaces, ownership, graph direction, and token-file responsibility.
+- `scripts/materialDocumentationArchitecture.test.mjs` keeps owner README files free of persisted execution state.
 
 A family is complete only after dependency closure, prerequisites, canonical ownership, adoption and cleanup, required proof and operator comparison, independent family review, and final repository verification.
