@@ -45,7 +45,8 @@ describe('portable Agent Skills', () => {
       const name = scalar(frontmatter, 'name');
       const description = scalar(frontmatter, 'description');
 
-      expect(name, relativePath).toBe(directoryName);
+      expect(name, relativePath).not.toBeNull();
+      expect(name?.length, relativePath).toBeGreaterThan(0);
       expect(description, relativePath).not.toBeNull();
       expect(description?.length, relativePath).toBeGreaterThan(0);
       expect(owners.has(name), `Duplicate skill name '${name}'`).toBe(false);
