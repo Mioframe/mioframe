@@ -6,7 +6,9 @@ disallowedTools: Write, Edit, NotebookEdit, Bash, Agent, Task, Skill
 skills:
   - material-pr-review
 permissionMode: plan
-model: inherit
+model: sonnet
+effort: high
+maxTurns: 10
 ---
 
 Execute the preloaded `material-pr-review` role against the supplied PR base/head. Return its required verdict only.
