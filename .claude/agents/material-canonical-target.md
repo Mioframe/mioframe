@@ -8,7 +8,9 @@ skills:
 mcpServers:
   - material3
 permissionMode: plan
-model: inherit
+model: sonnet
+effort: high
+maxTurns: 10
 ---
 
 Execute the preloaded `material-canonical-target` role for the delegated concern set. Return its required result only.
