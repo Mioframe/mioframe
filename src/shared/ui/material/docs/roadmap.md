@@ -12,7 +12,7 @@ Intended mode: `align-existing`
 
 Family alignment status: `blocked`
 
-Blocker: PR #157 demonstrated that a single implementation context can still confirm legacy assumptions, hide source conflicts, choose a lower-priority correction, and review its own result. PR #155 must land the evidence-gated workflow with responsibility isolation, canonical-target lock, complete current-state coverage, independent contract review before production, and independent final review.
+Blocker: PR #157 demonstrated that a single implementation context can confirm legacy assumptions, hide source conflicts, accept an invalid token graph, choose a lower-priority correction, and review its own result. PR #155 must land responsibility isolation, canonical-target lock, complete token/current-state audits, independent contract review before production, and independent final review.
 
 ## Next action
 
@@ -22,18 +22,11 @@ After the updated PR #155 workflow is available to the Button branch, start a fr
 material-component Button
 ```
 
-The orchestrator must:
+The orchestrator must delegate an implementation-independent target, lock source and token decisions, obtain a separate complete current-state/token/motion audit, synthesize the alignment map without production edits, pass an independent contract gate, execute only the highest-priority correction unit, and use a different independent final reviewer.
 
-1. delegate canonical target research to a read-only isolated context that does not inspect the current Button implementation or proof;
-2. lock the target and source-decision matrix;
-3. delegate a complete current-state audit to a different read-only context;
-4. synthesize the alignment and dependency maps without production edits;
-5. run an independent `contract-gate` review;
-6. proceed with only the highest-priority approved correction unit;
-7. run a different independent `final-gate` review after implementation;
-8. preserve valid repository progress and correct only owners proven wrong.
+For Button, token ownership and routing are blocking concerns before shape motion or other styling corrections. The contract must classify exact official component tokens, invalid aliases, private routes, the temporary legacy system-token owner, dead spring-token surface, and the shortest route to each rendered property. Static token validation and computed browser proof are both required.
 
-Claude Code may use the project agents under `.claude/agents/`. Codex may use separate agent threads or isolated worktrees. If delegation is unavailable, use fresh isolated sessions and keep every gate.
+Claude Code may use the project adapters under `.claude/agents/`. Codex may use the same portable role skills in separate agent threads or isolated worktrees. If delegation is unavailable, use fresh isolated sessions and keep every gate.
 
 The calibration fails as a workflow defect if the agent:
 
@@ -41,9 +34,11 @@ The calibration fails as a workflow defect if the agent:
 - hides a conflict between prose, diagrams, specs, accessibility guidance, or tokens;
 - applies Android, iOS, or Web guidance to another platform without an explicit decision;
 - omits API, propagation, accessibility, DOM, state, token, motion, extension, dependency, consumer, or proof concerns;
-- treats passing tests, snapshots, consumers, or token names as authority;
+- treats passing tests, snapshots, consumers, declarations, or token-looking names as authority;
+- accepts invented `--md-*` aliases, wrong token placement, invalid dependency direction, dead component tokens, or private routes as public API;
+- builds styling or motion on a token graph that has not passed source, static, and rendered proof;
 - misclassifies a legacy Material component as generic foundation;
-- selects an easier lower-priority improvement around a blocking source, ownership, semantics, or dependency gap;
+- selects an easier lower-priority improvement around a blocking source, ownership, semantics, token, or dependency gap;
 - places browser behavior assertions in visual proof;
 - edits production before the contract gate passes;
 - lets the implementation context approve its own contract or patch;

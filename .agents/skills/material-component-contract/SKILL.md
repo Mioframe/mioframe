@@ -1,123 +1,100 @@
 ---
 name: material-component-contract
-description: 'Internal-only Material stage. Never use directly for a user request. Use exclusively when material-component delegates synthesis of an isolated canonical target and current-state audit into a complete alignment map, dependency map, prioritized correction units, and locked proof lanes.'
+description: 'Internal Material stage used only by material-component to synthesize a completed material-canonical-target result and a separate material-current-state-audit result into one family contract, alignment map, dependency map, prioritized correction unit, and locked proof lane before independent review.'
 ---
 
 # Material component contract
 
-Internal stage only. `material-component` must lock family, mode, objective, required scenarios, applicable platforms, and non-goals before invoking it.
+Internal stage only. Follow `src/shared/ui/material/docs/component-development.md` and `src/shared/ui/material/docs/tokens.md`; do not redefine their workflow or token architecture.
 
 ## Required inputs
 
-Read:
+Receive:
 
-- root and applicable nested `AGENTS.md` files;
-- `src/shared/ui/material/docs/architecture.md`;
-- `src/shared/ui/material/docs/sources.md`;
-- `src/shared/ui/material/docs/component-development.md`;
-- the read-only canonical-target result produced without implementation inspection;
-- the read-only current-state audit produced after target lock;
-- current repository evidence needed to verify both results.
+- locked task scope from `material-component`;
+- completed `material-canonical-target` result;
+- completed `material-current-state-audit` result;
+- current repository ref and applicable instructions;
+- owning family README or temporary legacy contract.
 
-Do not perform both investigations in one undifferentiated pass. If either isolated result is missing, return a blocker.
+Block when target and current-state research were not isolated, either result is incomplete, or production/proof changes for the proposed unit preceded the contract gate.
 
-## Canonical target lock
+## Responsibility
 
-Confirm the target was resolved before current component implementation, component tests, stories, snapshots, or prior family conclusions were inspected.
+Synthesize, validate, and write the single family contract and workflow record.
 
-Record:
+Resolve:
 
-- applicable platforms;
-- supported and unsupported surface;
-- public API and invalid combinations;
-- native semantics, form behavior, accessibility, anatomy, state, tokens, rendered properties, motion, adaptive behavior, and dependencies;
-- official source names and verification dates;
-- every unresolved source decision.
+- canonical supported and unsupported surface;
+- source decisions and platform applicability;
+- complete concern classifications;
+- dependency classifications and ownership;
+- proof classifications;
+- token taxonomy, public surface, private routing responsibility, and graph defects;
+- implementation decomposition;
+- durable style and motion contracts;
+- highest-priority complete correction unit;
+- proof lane, compatibility impact, visual impact, operator requirement, and completion condition;
+- remaining known gaps and next gate.
 
-For every contradiction, absence, inference, or platform-specific rule, record:
-
-```text
-SOURCE DECISION
-Concern:
-Applicable platform:
-Source A and statement:
-Source B and statement:
-Conflict or missing evidence:
-Narrower applicable authority:
-Decision:
-Rationale:
-Status: resolved | unresolved
-```
-
-Do not cancel explicit guidance only because a token is absent. Do not infer support only because a token exists. Do not apply Android, iOS, or Web guidance across platforms without an explicit decision. Reconcile diagrams, prose, specs, accessibility guidance, and tokens together.
-
-Required unresolved decisions block dependent correction units. New evidence reopens the target; it is never silently inserted during implementation.
-
-## Complete current-state assessment
-
-After target lock, cover every category below or mark it `not-applicable` with a reason:
-
-- API, defaults, invalid combinations, and attributes;
-- native, keyboard, form, and event-propagation semantics;
-- accessibility, focus, disabled behavior, and platform adaptations;
-- anatomy, DOM, target area, and unnecessary nodes;
-- semantic and transient state, precedence, cancellation, interruption, and cleanup;
-- tokens, configuration, state routing, rendered properties, and public overrides;
-- geometry, typography, icon placement, RTL, responsive behavior, and text scaling;
-- motion, rapid input, interruption, and reduced motion;
-- project extensions and their scenarios;
-- external Material component dependencies;
-- generic foundation dependencies;
-- owners, exports, consumers, aliases, and obsolete paths;
-- unit, component, browser, visual, consumer, and verification proof.
-
-For each concern record canonical target, current behavior, classification, owner, dependency classification, proof classification, and exact correction.
-
-Classify proof as `canonical-proof`, `compatibility-proof`, `implementation-detail-test`, `legacy-defect-preservation`, or `obsolete`.
+Do not copy role claims without checking them against repository evidence and official sources.
 
 ## Classification rules
 
-`confirmed-compliant` requires all of:
+Use the classifications and correction priority defined by `component-development.md`.
 
-- a resolved official requirement for the applicable platform;
-- matching implementation evidence;
-- correct ownership and dependency direction;
-- faithful observable proof in the correct proof lane;
-- no unresolved contradicting source.
+`confirmed-compliant` requires resolved applicable authority, matching implementation, correct ownership, faithful proof in the correct lane, a valid token graph when applicable, and no unresolved contradiction.
 
-`project-extension` additionally requires a current Mioframe scenario, explicit owner, Material compatibility, valid dependencies, and separate proof. A known defect in the extension or dependency prevents completion.
+`project-extension` additionally requires a current Mioframe scenario, explicit owner, Material compatibility, valid dependencies, an allowed `--mio-*` namespace when public, and separate proof. A known defect prevents completion.
 
-Consumer dependence, passing tests, stable snapshots, or official-looking names never upgrade a concern.
+Classify every shared dependency as canonical Material, temporary legacy Material, project extension, or generic non-Material foundation. Repeated use does not establish foundation ownership.
 
-Every shared dependency is classified as:
+Classify existing proof as canonical, compatibility-only, implementation-detail, legacy-defect preservation, or obsolete.
 
-- `canonical-material-dependency`;
-- `temporary-legacy-material-dependency`;
-- `project-extension-dependency`;
-- `generic-non-material-foundation`.
+## Token contract
 
-Repeated use does not make a Material component generic foundation.
+Validate that the current-state audit covered every Material-related custom-property declaration and reference in scope. Use the detailed graph as transient evidence.
 
-## Correction units
+Write only durable token facts to the family README:
 
-Select the smallest complete unit in this priority order:
+- supported official token groups and exact path families;
+- intentionally unsupported official token surface;
+- public Mioframe extension tokens;
+- private routing responsibilities and final rendered-property owners;
+- static, browser, and consumer proof obligations;
+- alignment classifications and unresolved gaps.
 
-1. unresolved required source or platform decisions;
-2. wrong family, dependency, or foundation ownership;
-3. native semantics, event propagation, accessibility, and form behavior;
-4. public API and invalid combinations;
-5. state ownership;
-6. anatomy and DOM;
-7. token and rendered-property routing;
-8. geometry, responsive behavior, typography, RTL, and text scaling;
-9. motion and browser lifecycle;
-10. project extensions;
-11. adoption;
-12. obsolete-owner removal.
+Do not copy every declaration, selector, or graph edge into the README.
 
-A lower-priority improvement cannot bypass a higher-priority blocker affecting the same surface.
+A token concern cannot be `confirmed-compliant` when the audit reports an invented/shortened official-looking name, ambiguous `--md-<component>-*` alias, wrong declaration location, official/project namespace collision, public private-route dependency, cross-family component-token edge, upward dependency, cycle, unresolved required reference, fallback-masked requirement, duplicate component-token declaration, dead component token, unnecessary private chain, token-driven shorthand without computed-longhand proof, or value-kind mismatch.
 
-Each unit records:
+Lock the smallest valid route for the correction unit:
+
+```text
+official/project token declaration
+→ allowed dependencies
+→ optional single owner-local private route
+→ final rendered property
+→ static and rendered proof
+```
+
+A second private hop requires an independently changing owner or narrow foundation bridge and explicit justification.
+
+## Motion contract
+
+Validate that the current-state audit covered every motion route in code. Use its detailed route inventory as transient evidence.
+
+Write only durable motion facts to the family README: supported state edges, visible result, owner, official timing/easing or platform decision, lifecycle semantics, proof owner, classification, and unresolved gaps.
+
+Do not copy exact selectors, declarations, keyframe references, token route lists, or runtime route lists into the README.
+
+A motion concern cannot be `confirmed-compliant` when the audit reports a dead token, unused keyframe, `transition: all`, wrong owner, cascade conflict, shorthand reset, unstable endpoints, easing incompatible with the property domain, missing lifecycle behavior, stale runtime resource, incorrect reduced motion, unjustified expensive property, broad persistent `will-change`, or declaration-only proof.
+
+## Correction unit
+
+Select the smallest complete highest-priority unit allowed by the canonical workflow.
+
+Record:
 
 ```text
 CORRECTION UNIT
@@ -130,52 +107,39 @@ Dependencies and blast radius:
 Primary proof lane:
 Why that lane owns the behavior:
 Prepared failing observation:
+Affected token graph: none | <exact graph slice>
+Affected motion contract: none | <exact concern>
 Compatibility impact:
 Visible impact:
 Operator acceptance required: yes | no
 Completion condition:
 ```
 
-Proof lanes:
+A lower-priority improvement cannot bypass a higher-priority blocker affecting the same supported surface. Styling or motion cannot proceed on top of a known-invalid token graph.
 
-- unit/component for deterministic contracts and non-browser wiring;
-- browser for layout, focus, keyboard, propagation, pointer/touch, target area, responsive behavior, and motion lifecycle;
-- visual for screenshots only;
-- consumer for integration and compatibility.
+## README state
 
-Visual specs must not contain browser-behavior success criteria or large computed-style matrices.
+Update one coherent `MATERIAL WORKFLOW STATE` block and the applicable target, source-decision, assessment, alignment, dependency, decomposition, token/style/motion contract, proof, correction-unit, and remaining-gap sections.
 
-## Workflow state and README
-
-Write the single family README with one current state block:
+Set:
 
 ```text
-MATERIAL WORKFLOW STATE
-Family:
-Mode:
-Current objective:
 Current stage: contract-review
 Canonical target status: locked | reopened
 Assessment status: complete | blocked
 Contract review status: not-started | failed
-Current correction unit: none | <exact unit>
 Implementation status: not-started
 Final review status: not-started
-Operator visual status: not-required | required
-Family alignment status: aligned | converging | blocked
 Next gate: independent contract review
-Blocker: none | <exact blocker>
 ```
 
-The README also contains target, source decisions, full alignment map, dependency classification, decomposition, proof map, correction units, compatibility impact, representative consumers, and remaining gaps.
-
-Do not leave contradictory stage descriptions or stale roadmap state.
+The roadmap and README must not contradict each other.
 
 ## Exit gate
 
-Return `Status: complete` only when the contract package is ready for independent contract review. This does not authorize production edits.
+Pass only when target provenance and source decisions are credible, every mandatory concern is classified, dependencies and proof are classified, the transient token graph and motion audit are complete, durable contracts are accurate, decomposition has explicit owners, the highest-priority complete correction unit is selected, proof and compatibility decisions are locked, workflow state is coherent, and the package is ready for independent contract review.
 
-Pass only when target lock is credible, source conflicts are explicit, mandatory concerns are complete, classifications and dependencies are justified, the highest-priority unit is selected, proof lane is locked, and workflow state is consistent.
+Passing this stage does not authorize production edits.
 
 ## Result
 
@@ -187,18 +151,19 @@ Status: complete | blocked
 Exit gate: passed | failed
 Current objective result: ready for contract review | blocked
 Family alignment status: aligned | converging | blocked
-Evidence:
-Canonical target status:
+Canonical target result:
+Assessment result:
 Source decisions:
-Assessment completeness:
 Alignment classifications:
 Dependency classifications:
-Correction priority:
+Proof classifications:
+Token graph evidence: complete | incomplete
+Durable token contract:
+Motion audit evidence: complete | incomplete
+Durable motion contract:
 Current correction unit:
 Proof lane:
-Representative consumers:
 Remaining known gaps:
-Next correction unit:
 Blocker: none | <exact blocker>
 ```
 
@@ -206,13 +171,13 @@ Blocker: none | <exact blocker>
 
 - direct user invocation;
 - production, proof, story, snapshot, or consumer edits;
-- one-pass target and legacy assessment without isolation;
+- target and current-state research in one unisolated pass;
 - deriving target from existing behavior;
-- hidden source conflicts or platform assumptions;
-- omitted concern categories;
+- hidden source conflicts or omitted concerns;
+- exact implementation-route or token-graph ledgers in the README;
+- invented token namespaces, runtime token registries, or compatibility aliases without current consumers;
 - blanket preservation or rewrite decisions;
-- legacy proof treated as authority;
 - lower-priority correction around a higher-priority blocker;
 - wrong proof lane;
-- roadmap updates or starting another stage;
-- duplicate contracts, durable audits, registries, or progress ledgers.
+- roadmap advancement or another stage invocation;
+- duplicate contracts, durable audits, registries, checklists, scorecards, or progress ledgers.
