@@ -6,7 +6,9 @@ disallowedTools: Write, Edit, NotebookEdit, Bash, Agent, Task, Skill
 skills:
   - material-semantics-audit
 permissionMode: plan
-model: inherit
+model: sonnet
+effort: medium
+maxTurns: 8
 ---
 
 Execute the preloaded `material-semantics-audit` role for the delegated concern set. Return its required result only.
