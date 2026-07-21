@@ -26,7 +26,7 @@ function topLevelKeys(frontmatter) {
 }
 
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
@@ -119,10 +119,7 @@ describe('Claude project agent adapters', () => {
       'material-semantics-auditor.md',
       { skill: 'material-semantics-audit', effort: 'medium', maxTurns: 8 },
     ],
-    [
-      'material-token-auditor.md',
-      { skill: 'material-token-audit', effort: 'medium', maxTurns: 8 },
-    ],
+    ['material-token-auditor.md', { skill: 'material-token-audit', effort: 'medium', maxTurns: 8 }],
     ['material-web-auditor.md', { skill: 'material-web-audit', effort: 'high', maxTurns: 10 }],
   ]);
 
@@ -139,7 +136,9 @@ describe('Claude project agent adapters', () => {
       const tools = scalar(frontmatter, 'tools') ?? '';
 
       expect(listItemExists(frontmatter, 'skills', config.skill), relativePath).toBe(true);
-      expect(fs.existsSync(path.join(SKILLS_ROOT, config.skill, 'SKILL.md')), relativePath).toBe(true);
+      expect(fs.existsSync(path.join(SKILLS_ROOT, config.skill, 'SKILL.md')), relativePath).toBe(
+        true,
+      );
       expect(scalar(frontmatter, 'permissionMode'), relativePath).toBe('plan');
       expect(scalar(frontmatter, 'model'), relativePath).toBe('sonnet');
       expect(scalar(frontmatter, 'effort'), relativePath).toBe(config.effort);
