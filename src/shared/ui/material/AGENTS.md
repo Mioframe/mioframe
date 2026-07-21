@@ -9,7 +9,7 @@ The library is a reusable implementation tool, not a product layer. Material pro
 - `docs/architecture.md` — boundary, ownership, dependency direction, decomposition, and public API;
 - `docs/tokens.md` — token taxonomy, naming, location, dependency graph, routing, and verification;
 - `docs/sources.md` — official Material evidence and source-conflict rules;
-- `docs/component-development.md` — canonical component convergence workflow;
+- `docs/component-development.md` — canonical component convergence workflow and agent responsibility model;
 - `docs/foundation-development.md` — canonical cross-family foundation workflow;
 - `docs/roadmap.md` — active family, blocker, and one next action;
 - the owning family or foundation README — current contract and workflow state.
@@ -19,10 +19,13 @@ Read only documents required by the current task.
 ## Routing
 
 - `material-component` is the sole implementation orchestrator for one official component family.
-- `material-component-review` is the independent read-only contract or final review entry point.
+- `material-canonical-target` researches only delegated official target claims.
+- `material-semantics-audit`, `material-token-audit`, and `material-web-audit` own separate read-only concern lanes and run only when selected by the orchestrator.
+- `material-component-review` reviews one correction contract or implemented correction unit.
+- `material-pr-review` reviews complete PR merge readiness against the actual base/head.
 - `material-foundation` owns one proven cross-family Material prerequisite or correction.
 - `material3-guidelines` resolves official component choice and source evidence.
-- Internal target, audit, contract, implementation, and adoption skills run only when delegated by an orchestrator.
+- Internal contract, implementation, and adoption skills run only when delegated by an orchestrator.
 - Vue and testing skills run only for the locked implementation owner and proof lane.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
@@ -62,10 +65,10 @@ Official token names and dependency direction follow `docs/tokens.md`. New canon
 
 ## Durable records
 
-The owning family or foundation README is the single current contract and workflow-state record. Do not create separate registries, inventories, durable audits, checklists, scorecards, progress ledgers, or duplicate workflow policy.
+The owning family or foundation README is the single current contract and workflow-state record. It contains current truth only. Do not create separate registries, inventories, durable audits, review histories, shell transcripts, checklists, scorecards, progress ledgers, or duplicate workflow policy.
 
 `AGENTS.md` routes work and states stable local invariants. Detailed procedures belong to the canonical workflow documents and skills.
 
 ## Completion
 
-A correction objective requires its contract gate, implementation evidence, independent final review, affected consumer/visual handling, and repository verification. Full family completion additionally requires an `aligned` status and one canonical owner.
+A correction objective requires its contract gate, implementation evidence, correction final review, complete PR review, affected consumer/visual handling, and repository verification. Full family completion additionally requires an `aligned` status and one canonical owner.
