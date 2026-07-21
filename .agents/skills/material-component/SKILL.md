@@ -1,40 +1,70 @@
 ---
 name: material-component
-description: 'Use when creating, repairing, aligning, migrating, continuing, or completing one official Material component family. Given only the family name, autonomously researches the canonical target, audits current ownership and implementation, closes prerequisites, implements successive bounded corrections, verifies the family, and stops only when the requested family scope is complete or exactly blocked.'
+description: 'Use when creating, repairing, aligning, migrating, continuing, or completing one official Material component family. A family-only invocation is full-family work: autonomously validates current ownership, closes required prerequisites, implements successive bounded corrections, and stops only when aligned or exactly blocked.'
 ---
 
 # Material component orchestrator
 
-This is the sole implementation entry point for one official Material component family. The operator supplies only the family name or an explicit bounded objective. The agent owns all technical discovery, architecture, decomposition, implementation, proof, documentation, and continuation decisions inside that Material scope.
+This is the sole implementation entry point for one official Material component family. The operator supplies the family name or an explicit bounded objective. The agent owns technical discovery, architecture, decomposition, prerequisites, implementation, proof, documentation, and continuation inside that Material scope.
 
-Follow `src/shared/ui/material/docs/component-development.md`, `src/shared/ui/material/docs/architecture.md`, `src/shared/ui/material/docs/tokens.md`, and the applicable nested `AGENTS.md` files.
+Follow `src/shared/ui/material/docs/component-development.md`, `src/shared/ui/material/docs/architecture.md`, `src/shared/ui/material/docs/tokens.md`, and applicable nested `AGENTS.md` files.
 
 Git operations, branch management, commits, pushes, pull requests, and merge decisions are outside this workflow.
 
-## Start or resume
+## Invocation scope
 
-Determine from the repository:
+Resolve scope from the current invocation, not from persisted README or roadmap text:
 
-- canonical family name and current owner or absence;
-- mode: `new-component`, `align-existing`, or `focused-correction`;
-- required user and consumer scenarios;
-- supported and explicitly unsupported surface;
-- current family workflow state and reusable locked evidence;
-- current and intended public entry points;
-- direct foundation, component-family, generic, and project-extension dependencies;
-- applicable proof and operator-visible comparison requirements.
+- a family name only, such as `material-component Button`, means `full-family`;
+- `focused-correction` is allowed only when the operator explicitly names a bounded objective;
+- a prerequisite call from another family is `prerequisite-contract` and ends only when that exact public contract is ready or externally blocked.
 
-A family name is sufficient input. Do not ask the operator to define variants, API, files, dependencies, tests, or expected defects when official sources and repository evidence can resolve them.
+For `full-family`, `converging` is an internal state, never a terminal result. The only terminal results are:
+
+- `aligned` after complete dependency closure, family review, operator evidence when required, and final verification;
+- `blocked` by an exact external condition allowed under Stop conditions.
+
+A correction unit is a bounded implementation/review unit, not an invocation boundary. Do not stop merely because one unit passed or a later unit belongs to foundation or another Material family.
+
+## Resume and canonicalization preflight
+
+Persisted family state is reusable evidence, not authority. Before selecting a correction, reconstruct current truth from code:
+
+```text
+CANONICALIZATION PREFLIGHT
+Family:
+Invocation scope: full-family | focused-correction | prerequisite-contract
+Candidate canonical owner:
+Public export present: yes | no
+Migrated consumers: none | <bounded summary>
+Legacy owner state: active | forwarding-only | removed | absent
+Direct imports and injected dependencies:
+Required CSS/token dependencies:
+Legacy Material dependencies:
+Dependency closure: closed | blocked
+Persisted workflow state: valid | stale | conflicting
+```
+
+Always revalidate canonical ownership from current imports, public exports, dependencies, and consumers. Previously accepted behavior or proof does not validate a previously accepted architecture decision.
+
+When persisted state conflicts with code or current workflow rules:
+
+- preserve independently confirmed target and behavior facts;
+- discard stale objective, next action, scope, alignment, review-history, or dependency conclusions;
+- replace the README workflow block with current truth before continuing.
+
+README or roadmap text cannot narrow a `full-family` invocation, classify a used dependency as outside orchestration, or turn an internal prerequisite into a future operator task.
 
 ## One bounded orientation
 
-Before detailed research, build one concise orientation map:
+After preflight, build one concise orientation map:
 
 ```text
 FAMILY ORIENTATION
 Family:
-Mode:
-Canonical owner:
+Invocation scope:
+Mode: new-component | align-existing | focused-correction
+Candidate canonical owner:
 Legacy or missing owners:
 Public entry points:
 Family files:
@@ -45,16 +75,9 @@ Locked target claims:
 Known unresolved concerns:
 ```
 
-Read in this order:
+Read applicable instructions and Material documents, the owning README, current implementation, public exports, direct dependencies, representative consumers, and applicable proof. Expand repository search only for a named dependency, compatibility path, or ownership question.
 
-1. applicable `AGENTS.md` files;
-2. task-relevant Material architecture, source, token, workflow, and roadmap documents;
-3. the owning family README when present;
-4. current implementation, public exports, and direct dependencies;
-5. representative consumers and applicable proof;
-6. broader repository search only for a named dependency, compatibility path, or ownership question.
-
-Do not repeat full orientation after each correction. Refresh only facts invalidated by changed code or new evidence.
+Do not rebuild full orientation after each correction. Refresh only invalidated facts.
 
 ## Concern plan
 
@@ -64,33 +87,33 @@ Classify each concern as required or not required with a reason:
 - semantics/API/native/accessibility/state/consumer lane;
 - token graph and ownership lane;
 - Web DOM/CSS/layout/motion/browser lane;
-- direct dependency closure;
+- complete dependency closure for the supported surface;
 - exact foundation prerequisite;
 - exact official component-family prerequisite;
 - adoption and obsolete-owner cleanup.
 
-New families and complete family alignment normally require all applicable lanes. A focused correction invokes only affected lanes and direct dependencies.
+`full-family` and `new-component` require every applicable lane. `focused-correction` runs only affected lanes and direct dependencies, except canonicalization triggers below always widen dependency scope.
 
 ## Isolated specialist work
 
-Use isolated read-only agent contexts when the runtime supports them and the work would otherwise flood the orchestrator context with source pages, repository search results, browser evidence, or review details. Otherwise execute the same portable skill sequentially with the same bounded input and output contract.
+Use isolated read-only contexts when supported and the work would otherwise flood the orchestrator with source pages, repository searches, browser evidence, or review details. Otherwise execute the same portable skill sequentially with the same bounded contract.
 
-Available read-only skills:
+Read-only skills:
 
-- `material-canonical-target` — delegated official target claims only;
-- `material-semantics-audit` — API, semantics, accessibility, state, extensions, consumers, and dependencies;
-- `material-token-audit` — token taxonomy, ownership, graph, and rendered token proof;
-- `material-web-audit` — DOM, CSS, layout, motion, lifecycle, and browser proof;
-- `material-component-review` — independent review of one proposed or implemented correction;
-- `material-family-review` — independent final review of the complete resulting family state.
+- `material-canonical-target`;
+- `material-semantics-audit`;
+- `material-token-audit`;
+- `material-web-audit`;
+- `material-component-review`;
+- `material-family-review`.
 
-Each specialist receives only the exact concern set, required scenarios, bounded paths, applicable locked claims, and required structured result. Specialists do not edit, delegate, choose the next correction, update roadmap state, or absorb another concern lane.
+Specialists receive exact concerns, scenarios, paths, locked claims, and structured result. They do not edit, delegate, select the next correction, update workflow state, or absorb another concern lane.
 
-Contract synthesis, correction selection, implementation, adoption, state updates, and workflow advancement stay in this orchestrator context because those phases share substantial state.
+Contract synthesis, correction selection, implementation, adoption, state updates, prerequisite advancement, and continuation stay in this orchestrator context.
 
 ## Dependency closure
 
-Inventory every dependency required by the supported surface. Classify it as:
+Inventory every dependency required by the supported surface and classify it as:
 
 - `canonical-foundation`;
 - `canonical-family`;
@@ -98,20 +121,51 @@ Inventory every dependency required by the supported surface. Classify it as:
 - `project-extension`;
 - `generic-foundation`.
 
-Dependency closure is blocked by a required temporary legacy Material owner, missing or unresolved reference/system token group, unowned shared Material behavior, known-defective dependency, family-private deep import, hidden required fallback, dependency cycle, or parallel active owner.
+A dependency used by this family remains inside this orchestration even when another owner must implement it. Owner scope and orchestration scope are different.
 
-For a family-agnostic cross-family contract, run the smallest complete `material-foundation` prerequisite. For another official Material component, run or resume that family's `material-component` workflow only until the exact required public contract is ready, then return to the calling family. Another component family is never foundation.
+Closure is blocked by required temporary legacy Material ownership, missing or unresolved reference/system tokens, unowned shared Material behavior, known-defective contracts, private cross-family imports, hidden required fallbacks, dependency cycles, or parallel active owners.
 
-Track the active prerequisite stack. Stop on a dependency cycle and report the exact cycle instead of recursively expanding work.
+When closure is blocked:
+
+- do not select a lower-priority local correction for the same supported surface;
+- invoke the smallest complete `material-foundation` prerequisite for a family-agnostic contract;
+- invoke or resume the owning `material-component` for another official Material family until the exact public contract is ready;
+- return to the calling family automatically after the prerequisite;
+- stop only for an exact external blocker or dependency cycle.
+
+An internal prerequisite is work to execute, not a terminal blocker and not a future independent track for the operator.
+
+Track the active prerequisite stack and stop on a cycle with the exact chain.
+
+## Canonicalization triggers
+
+The following automatically widen the current correction and its independent review to complete dependency closure for the supported surface:
+
+- creating or preserving a candidate canonical owner;
+- creating or changing the Material root export;
+- migrating any consumer to the candidate owner;
+- deleting or forwarding the legacy owner;
+- claiming canonical, aligned, migrated, or adoption-complete status.
+
+While dependency closure is blocked, it is forbidden to:
+
+- introduce or retain the candidate in the Material root public API as ready;
+- migrate additional consumers;
+- remove the only complete legacy owner;
+- declare adoption complete;
+- treat legacy dependencies as out of scope.
+
+If these actions already exist when resuming, the highest-priority work is to close dependencies or safely roll back premature canonicalization, not to continue a lower-priority local backlog.
 
 ## Convergence loop
 
 ```text
-resume or initialize family state
+resolve invocation scope
+→ canonicalization preflight
 → bounded orientation
 → select affected concern lanes
-→ obtain only missing or invalidated target/audit evidence
-→ synthesize the highest-priority complete correction contract
+→ obtain only missing or invalidated evidence
+→ synthesize highest-priority complete correction contract
 → independent contract review
 → complete exact prerequisite when required
 → implement one bounded correction unit
@@ -120,86 +174,84 @@ resume or initialize family state
 → independent correction-final review
 → update current family state
 → select next required correction without restarting orientation
-→ when no required gaps remain, independent material-family-review
+→ repeat while any required gap or internal prerequisite remains
+→ independent material-family-review
 → final verification
 ```
 
 After an accepted correction:
 
-1. update only affected orientation and durable contract facts;
-2. classify remaining required concerns;
-3. choose the highest-priority complete next correction;
-4. continue in the same workflow until complete or exactly blocked.
+1. update only affected facts;
+2. re-run the canonicalization/dependency preflight when ownership, exports, imports, consumers, or prerequisites changed;
+3. classify remaining required concerns;
+4. choose the highest-priority complete next unit;
+5. continue in the same invocation.
 
-Do not end after one correction while known required gaps remain.
+Do not end while a required gap, internal prerequisite, failed boundary guard, or repairable verification failure remains.
 
-## Evidence reuse and invalidation
+## Evidence reuse and review budget
 
-Reuse a locked claim until one of these occurs:
+Reuse locked claims until source, implementation, proof, reviewer, platform, supported-surface, or operator evidence contradicts them. A new session or correction unit does not invalidate accepted evidence.
 
-- the supported surface changes;
-- newer or more applicable official evidence contradicts it;
-- implementation or proof contradicts the recorded claim;
-- a new platform scenario changes applicability;
-- an independent reviewer reports a concrete contradiction;
-- operator visual comparison rejects the result.
+Implementation does not rerun specialist audits without concrete contradictory evidence.
 
-A new session, a new correction unit, mechanical documentation edits, or an unrelated concern change do not invalidate accepted evidence.
-
-Implementation must execute locked concern contracts and proof lanes. It must not rerun specialist audits unless new contradictory evidence explicitly reopens that lane.
-
-## Review budget
-
-Each correction contract and correction-final gate allows one initial independent review and at most one substantive re-review. A second failure returns consolidated blockers and stops that correction path.
-
-Mechanical wording, count, or cross-reference fixes do not trigger another full review. If the same ownership or architecture defect survives two correction rounds, reopen the architecture decision instead of adding another workaround.
-
-The final family review runs only when the orchestrator has no known required gap. It may run once and once again after substantive final corrections.
+Each correction contract and correction-final gate allows one initial review and at most one substantive re-review. A second failure stops that correction path with consolidated blockers. If the same ownership or architecture defect survives two correction rounds, reopen architecture instead of adding another workaround.
 
 ## Workflow state
 
-Keep one compact `MATERIAL WORKFLOW STATE` block in the owning family README. Store current truth only:
+Keep one compact current-state block in the owning README:
 
-- family, mode, objective, and current stage;
-- canonical target and selected concern status;
-- dependency closure and prerequisite stack;
-- current correction unit;
-- implementation, correction-review, proof, and operator status;
-- family alignment;
-- remaining required gaps;
-- exact next action or blocker.
+```text
+MATERIAL WORKFLOW STATE
+Family:
+Invocation scope:
+Mode:
+Current objective:
+Current stage:
+Canonical target status:
+Candidate canonical owner:
+Dependency closure: closed | blocked
+Prerequisite stack: none | <ordered stack>
+Current correction unit: none | <exact unit>
+Implementation status:
+Correction review status:
+Family review status:
+Operator visual status:
+Family alignment status: aligned | converging | blocked
+Remaining required gaps: none | <exact gaps>
+Next action:
+Blocker: none | <external blocker only>
+```
 
-Do not store review history, shell transcripts, complete search output, exact route inventories, stage diaries, scorecards, or repeated source narratives.
+Store current truth only. Remove review history, shell transcripts, search output, route inventories, stage diaries, scorecards, superseded objectives, and future-pass narratives.
 
-## Completion
+## Completion and stop conditions
 
-The family is complete only when:
+`full-family` completes only when:
 
-- supported scenarios and non-goals are explicit;
-- all required concerns are compliant or explicitly unsupported by a valid decision;
-- dependency closure is complete;
+- all required concerns are compliant or validly unsupported;
+- complete dependency closure is closed;
 - required foundation and official-family prerequisites are ready;
 - one canonical owner and intended public contract remain;
-- consumers in the requested family scope use ready contracts;
-- obsolete replaced ownership is removed or forwarding-only;
-- required unit, browser, consumer, visual, and architecture proof passes;
-- operator-visible comparison is accepted when required;
-- independent `material-family-review` returns `complete`;
-- final repository verification passes.
+- consumers use ready contracts;
+- obsolete ownership is removed or forwarding-only;
+- required unit, browser, consumer, visual, boundary, and architecture proof passes;
+- operator comparison is accepted when required;
+- `material-family-review` returns `complete`;
+- final `pnpm verify` passes.
 
-## Stop conditions
+Stop only for an exact unresolved official-source conflict, product decision, platform applicability question, unsafe dependency cycle, unavailable required browser/visual evidence, repeated independent review failure, operator rejection, or verification failure that cannot be corrected within the family or its exact prerequisites.
 
-Stop only for an exact unresolved official-source conflict, product decision, platform applicability question, unsafe ownership or dependency cycle, unavailable required browser/visual evidence, repeated independent review failure, operator rejection, or required verification failure.
+Do not stop for a known next correction, an internal prerequisite, ownership outside the family, stale persisted state, or a repairable red check.
 
 ## Result
-
-Report:
 
 ```text
 MATERIAL COMPONENT RESULT
 Family:
+Invocation scope:
 Mode:
-Status: complete | blocked
+Status: aligned | blocked
 Canonical owner:
 Supported surface:
 Completed correction units:
@@ -209,6 +261,6 @@ Family review:
 Operator visual status:
 Verification:
 Remaining required gaps: none | <exact gaps>
-Blocker: none | <exact blocker>
-Next action: none | <exact action>
+Blocker: none | <exact external blocker>
+Next action: none | <exact action required to unblock>
 ```
