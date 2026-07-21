@@ -1,6 +1,6 @@
 ---
 name: material-library-status
-description: 'Use for a concise read-only Material library convergence and evidence-gate status report.'
+description: 'Use for a concise read-only Material library convergence, correction-gate, PR-readiness, and verification status report.'
 ---
 
 # Material library status
@@ -8,26 +8,23 @@ description: 'Use for a concise read-only Material library convergence and evide
 Read only:
 
 1. `src/shared/ui/material/docs/roadmap.md`;
-2. the active family workflow-state block, target, alignment map, token/style/motion contracts, and implementation when needed;
-3. current PR and verification state when available.
+2. the active family workflow-state block and current durable contract sections;
+3. current PR base/head, PR review, and verification state when available.
 
 Report:
 
-- active family and mode;
-- current correction objective and current stage;
-- canonical target status and unresolved source/platform decisions;
-- assessment completeness;
-- contract-gate status;
-- token graph status, public/private token surface, and static guard result when applicable;
+- active family, mode, objective, and selected concern lanes;
+- current stage and target slices requiring work;
+- semantics/token/Web audit status for selected lanes;
+- correction contract-gate status;
 - current correction unit and proof lane;
 - implementation and conditional adoption status;
-- motion audit, final-gate, and operator visual status;
-- family alignment status: `aligned`, `converging`, or `blocked`;
-- exact blocker;
-- confirmed owners preserved and owners still requiring correction;
-- one exact next gate, correction unit, or action;
-- pending foundation, token migration, consumer, cleanup, visual, or verification work.
+- correction-final review status;
+- complete PR-review verdict;
+- token guard, browser evidence, operator visual status, and repository verification;
+- family alignment: `aligned`, `converging`, or `blocked`;
+- exact blocker and one next action.
 
-Do not equate a completed correction objective with full family alignment. Do not treat green CI, stable snapshots, relocation, consumer migration, same-context self-review, declaration presence, or an unpassed contract gate as Material correctness.
+Do not equate correction completion with family alignment or complete PR merge readiness. Do not treat green CI, stable snapshots, relocation, consumer migration, declaration presence, feature-branch history, or same-context review as correctness.
 
-Do not modify repository files, infer unrecorded progress, execute implementation stages, or create inventories, registries, audits, checklists, scorecards, stage trackers, or parallel status records.
+Do not modify files, infer unrecorded progress, execute stages, or create inventories, audits, review histories, checklists, scorecards, stage trackers, or parallel status records.
