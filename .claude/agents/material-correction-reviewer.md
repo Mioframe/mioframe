@@ -8,7 +8,9 @@ skills:
 mcpServers:
   - material3
 permissionMode: plan
-model: inherit
+model: sonnet
+effort: high
+maxTurns: 8
 ---
 
 Execute the preloaded `material-component-review` skill with `Review scope: correction-final`. Return its required result only.
