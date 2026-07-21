@@ -109,19 +109,21 @@ describe('Material library boundary architecture', () => {
   it('detects legacy alias and relative owner imports', () => {
     const fixtureRoot = path.join(MATERIAL_ROOT, 'components', 'fixture');
     const fixturePath = path.join(fixtureRoot, 'Fixture.vue');
-    const errors = analyzeFiles([
-      {
-        path: fixturePath,
-        content: '',
-      },
-    ].map(({ path: filePath, content }) => {
-      fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(
-        filePath,
-        `${content}<script setup>\nimport { MDStateLayer } from '@shared/ui/State';\nimport { MD_TYPESCALE } from '@shared/lib/md';\nimport Legacy from '../../../State/Legacy.vue';\n</script>`,
-      );
-      return filePath;
-    }));
+    const errors = analyzeFiles(
+      [
+        {
+          path: fixturePath,
+          content: '',
+        },
+      ].map(({ path: filePath, content }) => {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        fs.writeFileSync(
+          filePath,
+          `${content}<script setup>\nimport { MDStateLayer } from '@shared/ui/State';\nimport { MD_TYPESCALE } from '@shared/lib/md';\nimport Legacy from '../../../State/Legacy.vue';\n</script>`,
+        );
+        return filePath;
+      }),
+    );
 
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
 
