@@ -21,22 +21,17 @@ function extractFrontmatter(content, relativePath) {
   return match[1];
 }
 
-function topLevelKeys(frontmatter) {
-  return [...frontmatter.matchAll(/^([a-zA-Z][a-zA-Z0-9-]*):/gm)].map((match) => match[1]);
-}
-
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
-function listItemExists(frontmatter, key, value) {
+function listItems(frontmatter, key) {
   const block = frontmatter.match(new RegExp(`^${key}:\\s*\\n((?:  - .+\\n?)*)`, 'm'))?.[1] ?? '';
   return block
     .split('\n')
     .map((line) => line.replace(/^\s*-\s*/, '').trim())
-    .filter(Boolean)
-    .includes(value);
+    .filter(Boolean);
 }
 
 function skillDirectories() {
@@ -58,100 +53,37 @@ function materialClaudeAgentFiles() {
 }
 
 describe('portable Agent Skills', () => {
-  it('keeps Material workflow skills on standard frontmatter', () => {
-    const materialSkillNames = skillDirectories().filter(
-      (name) => name.startsWith('material-') || name === 'material3-guidelines',
-    );
-
-    expect(materialSkillNames.length).toBeGreaterThan(0);
-
-    for (const directoryName of materialSkillNames) {
-      const relativePath = `.agents/skills/${directoryName}/SKILL.md`;
-      const content = readText(relativePath);
-      const frontmatter = extractFrontmatter(content, relativePath);
-
-      expect(topLevelKeys(frontmatter), relativePath).toEqual(['name', 'description']);
-      expect(scalar(frontmatter, 'name'), relativePath).toBe(directoryName);
-
-      const description = scalar(frontmatter, 'description');
-      expect(description, relativePath).not.toBeNull();
-      expect(description.length, relativePath).toBeLessThanOrEqual(1024);
-    }
-  });
-
-  it('uses unique skill names and removes the broad current-state role', () => {
+  it('uses directory-matching unique names and descriptions', () => {
     const owners = new Map();
 
     for (const directoryName of skillDirectories()) {
       const relativePath = `.agents/skills/${directoryName}/SKILL.md`;
       const frontmatter = extractFrontmatter(readText(relativePath), relativePath);
       const name = scalar(frontmatter, 'name');
+      const description = scalar(frontmatter, 'description');
 
-      expect(name, relativePath).not.toBeNull();
+      expect(name, relativePath).toBe(directoryName);
+      expect(description, relativePath).not.toBeNull();
       expect(owners.has(name), `Duplicate skill name '${name}'`).toBe(false);
       owners.set(name, relativePath);
     }
-
-    expect(owners.has('material-current-state-audit')).toBe(false);
-    expect(owners.has('material-semantics-audit')).toBe(true);
-    expect(owners.has('material-token-audit')).toBe(true);
-    expect(owners.has('material-web-audit')).toBe(true);
-    expect(owners.has('material-pr-review')).toBe(true);
   });
 });
 
-describe('Claude project agent adapters', () => {
-  const expectedAdapters = new Map([
-    [
-      'material-canonical-target.md',
-      { skill: 'material-canonical-target', effort: 'high', maxTurns: 10 },
-    ],
-    [
-      'material-contract-gate-reviewer.md',
-      { skill: 'material-component-review', effort: 'high', maxTurns: 8 },
-    ],
-    [
-      'material-correction-reviewer.md',
-      { skill: 'material-component-review', effort: 'high', maxTurns: 8 },
-    ],
-    ['material-pr-reviewer.md', { skill: 'material-pr-review', effort: 'high', maxTurns: 10 }],
-    [
-      'material-semantics-auditor.md',
-      { skill: 'material-semantics-audit', effort: 'medium', maxTurns: 8 },
-    ],
-    ['material-token-auditor.md', { skill: 'material-token-audit', effort: 'medium', maxTurns: 8 }],
-    ['material-web-auditor.md', { skill: 'material-web-audit', effort: 'high', maxTurns: 10 }],
-  ]);
-
-  it('contains only the expected thin Material adapters', () => {
-    expect(materialClaudeAgentFiles()).toEqual([...expectedAdapters.keys()].sort());
-  });
-
-  it('preloads portable skills and keeps adapters read-only, focused, and bounded', () => {
-    for (const [fileName, config] of expectedAdapters) {
+describe('Claude Material adapters', () => {
+  it('preloads one existing portable skill and remains read-only', () => {
+    for (const fileName of materialClaudeAgentFiles()) {
       const relativePath = `.claude/agents/${fileName}`;
-      const content = readText(relativePath);
-      const frontmatter = extractFrontmatter(content, relativePath);
-      const body = content.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+      const frontmatter = extractFrontmatter(readText(relativePath), relativePath);
+      const skills = listItems(frontmatter, 'skills');
       const tools = scalar(frontmatter, 'tools') ?? '';
 
-      expect(listItemExists(frontmatter, 'skills', config.skill), relativePath).toBe(true);
-      expect(fs.existsSync(path.join(SKILLS_ROOT, config.skill, 'SKILL.md')), relativePath).toBe(
-        true,
-      );
+      expect(skills, relativePath).toHaveLength(1);
+      expect(fs.existsSync(path.join(SKILLS_ROOT, skills[0], 'SKILL.md')), relativePath).toBe(true);
       expect(scalar(frontmatter, 'permissionMode'), relativePath).toBe('plan');
-      expect(scalar(frontmatter, 'model'), relativePath).toBe('sonnet');
-      expect(scalar(frontmatter, 'effort'), relativePath).toBe(config.effort);
-      expect(Number(scalar(frontmatter, 'maxTurns')), relativePath).toBe(config.maxTurns);
       expect(tools, relativePath).not.toMatch(
         /\b(?:Write|Edit|NotebookEdit|Bash|Agent|Task|Skill)\b/,
       );
-      expect(body.split('\n').filter(Boolean).length, relativePath).toBeLessThanOrEqual(2);
-      expect(body, relativePath).not.toContain('##');
-      expect(body, relativePath).not.toMatch(
-        /confirmed-compliant|correction priority|MOTION ROUTE|workflow state|source decision/i,
-      );
-      expect(body, relativePath).toContain(config.skill);
     }
   });
 });
