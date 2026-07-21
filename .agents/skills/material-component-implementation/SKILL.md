@@ -1,6 +1,6 @@
 ---
 name: material-component-implementation
-description: 'Internal Material stage used only by material-component after an independent contract gate passes. Executes exactly one approved correction unit and only the concern lanes, owners, proof, compatibility, visual, token, and motion contracts locked for that unit.'
+description: 'Internal Material stage used only by material-component after an independent contract gate passes and all required prerequisites are complete. Executes exactly one approved correction unit and only the concern lanes, owners, proof, compatibility, visual, token, motion, and dependency contracts locked for that unit.'
 ---
 
 # Material component implementation
@@ -12,10 +12,15 @@ Required entry state:
 ```text
 Canonical target status: locked
 Assessment status: complete
+Dependency closure: closed | not-required-for-bounded-unit
+Foundation prerequisite: none | complete
+Canonical-family prerequisite: none | complete
 Contract review status: passed
 Current correction unit: <exact unit>
 Required concern lanes: <exact lanes>
 ```
+
+A `new-component`, canonical owner migration, adoption, or family-alignment unit requires `Dependency closure: closed`. A focused unit may use `not-required-for-bounded-unit` only when it neither depends on the unresolved route nor creates/adopts a canonical owner.
 
 ## Responsibility
 
@@ -36,7 +41,8 @@ The target slices, classifications, dependency types, correction priority, owner
 
 ## Supporting skills
 
-- `material-foundation` for an approved reference/system or cross-family prerequisite;
+- `material-foundation` is completed before entry for an approved reference/system or cross-family prerequisite;
+- another official Material family prerequisite is completed through that family's public workflow before entry;
 - `vue-component-implementation` for `.vue` or UI-composable changes;
 - `ui-browser-behavior` for changed computed styles, DOM/layout, interaction, transition, animation, WAAPI, or reduced motion;
 - `visual-regression-testing` for accepted visible changes;
@@ -48,9 +54,24 @@ The target slices, classifications, dependency types, correction priority, owner
 - Correct incrementally when ownership is sound; replace only the smallest wrong owner.
 - Keep public Vue artifacts thin.
 - Keep official family tokens in the owner-local token file and private routing/final declarations in implementation styles.
+- Keep reference/system tokens and real cross-family contracts in canonical foundation owners.
+- Do not move another component family into foundation; depend on its ready public contract or defer the dependent extension.
 - Do not move state selectors, layout, transitions, or rendered properties into token files.
 - Do not add wrappers or DOM nodes merely for separation.
-- Keep temporary legacy Material dependencies explicit.
+- Do not introduce new temporary legacy Material dependencies.
+
+## Dependency execution
+
+Before editing, confirm every required dependency listed by the contract still resolves to the approved ready owner. Block and return to the orchestrator when:
+
+- the required foundation or canonical-family prerequisite is incomplete;
+- implementation still imports a temporary legacy Material owner for the supported route;
+- the canonical prerequisite exists but the component still uses the legacy path instead of its public contract;
+- a replacement leaves parallel active owners;
+- a hidden fallback masks a missing required token or behavior;
+- a dependency has a known defect affecting the correction scenario.
+
+When a legacy compatibility entry point must remain for other consumers, it may forward to the canonical owner but cannot retain a parallel implementation.
 
 ## Selected-lane execution
 
@@ -92,13 +113,13 @@ Prepare official comparison, baselines, and operator handoff only when visible o
 
 ## Documentation
 
-Update current contract evidence and classifications only. Do not add review history, shell transcripts, exact route inventories, file counts, or superseded reasoning.
+Update current contract evidence, dependency closure, prerequisite status, and classifications only. Do not add review history, shell transcripts, exact route inventories, file counts, or superseded reasoning.
 
 Set next stage to conditional adoption or `correction-review`. The implementation stage does not update the roadmap or invoke another stage.
 
 ## Exit gate
 
-Pass only when the approved unit meets its completion condition, selected-lane proof passes, changed ownership/dependencies are valid, applicable guards pass, affected consumers work, visible evidence is honest, and no newly discovered blocker within the correction unit remains.
+Pass only when the approved unit meets its completion condition, every dependency required by the unit resolves to the approved ready owner, selected-lane proof passes, changed ownership/dependencies are valid, applicable guards pass, affected consumers work, visible evidence is honest, and no newly discovered blocker within the correction unit remains.
 
 A finding outside the correction unit returns to the orchestrator for PR review or a future unit; it does not get silently fixed or mislabeled as outside the PR.
 
@@ -111,6 +132,8 @@ Stage: implementation
 Correction unit:
 Status: complete | blocked
 Selected lanes:
+Dependency closure:
+Prerequisite result:
 Changed owners:
 Proof result:
 Static token guard: passed | failed | not-applicable
@@ -123,11 +146,13 @@ Blocker: none | <exact blocker>
 
 ## Forbidden
 
-- direct user invocation or edits before contract approval;
+- direct user invocation or edits before contract approval/prerequisite completion;
 - changing locked decisions or implementing another gap;
 - complete-family re-audit for a bounded unit;
 - state/layout/motion declarations inside token files;
 - invented namespaces, invalid graph edges, dead tokens, hidden required fallbacks, or unnecessary alias chains;
+- new canonical owners or migrated consumers that still depend on required temporary legacy Material owners;
+- moving another component family into foundation;
 - declaration-only motion proof, `transition: all`, conflicting/shadowed routes, stale runtime resources, or broad permanent `will-change`;
 - tests preserving known defects or framework/browser internals;
 - consumer migration/cleanup unless adoption owns it;
