@@ -14,8 +14,7 @@ Receive:
 - family or foundation domain;
 - exact token concern set and supported scenarios;
 - locked canonical token names, meanings, and value kinds;
-- current repository ref;
-- declaration, implementation, and proof paths to inspect;
+- bounded current-state declaration, implementation, consumer, and proof paths to inspect;
 - applicable repository instructions.
 
 Do not audit unrelated API, layout, or motion behavior. Report a Web or semantics dependency instead of absorbing it.
@@ -30,12 +29,12 @@ Reconstruct every declaration and `var()` edge in the delegated graph slice:
 - public/private status;
 - direct dependencies and dependency direction;
 - duplicate declarations, unresolved references, fallbacks, and cycles;
-- configuration/state selector that chooses the route;
+- configuration or state selector that chooses the route;
 - final rendered property or narrow foundation bridge;
 - expected value kind and actual CSS grammar;
 - static guard, browser, and consumer proof.
 
-Report invented names, ambiguous aliases, wrong placement, namespace collisions, public private-route dependencies, upward or cross-family edges, cycles, fallback-masked requirements, duplicate/dead component tokens, unnecessary private hops, token-driven shorthand without computed-longhand proof, and required reference/system groups that remain in a temporary legacy or parallel owner.
+Report invented names, ambiguous aliases, wrong placement, namespace collisions, public private-route dependencies, upward or cross-family edges, cycles, fallback-masked requirements, duplicate or dead component tokens, unnecessary private hops, token-driven shorthand without computed-longhand proof, and required reference/system groups that remain in a temporary legacy or parallel owner.
 
 Component tokens remain family-local. Missing or legacy reference/system token groups are exact foundation blockers. Another component family's component tokens must not be copied into foundation or the consuming family.
 
@@ -70,8 +69,9 @@ Blocker: none | <exact blocker>
 - canonical-token changes;
 - full-family semantics or motion review;
 - correction-unit selection or implementation;
-- accepting required reference/system values from an unresolved temporary legacy or parallel owner for canonical ownership/adoption;
+- accepting required reference/system values from an unresolved temporary legacy or parallel owner for canonical ownership or adoption;
 - copying another component family's tokens into foundation;
 - copying the exact graph into the README;
 - repeating confirmed source research without contradictory evidence;
+- Git, branch, commit, pull-request, or merge analysis;
 - runtime token managers, registries, generators, or speculative abstractions.
