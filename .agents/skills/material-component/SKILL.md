@@ -64,7 +64,7 @@ Internal roles and stage skills do not invoke each other or update the roadmap.
 
 ## Handoffs
 
-For each read-only role provide only:
+For each bounded target, semantics, token, Web, or correction-review role provide only:
 
 - exact concern set;
 - required scenarios/platforms;
@@ -73,11 +73,13 @@ For each read-only role provide only:
 - applicable instructions;
 - required result format.
 
-Do not pass preferred conclusions, implementation reasoning, unrelated README history, or complete family context to a bounded role.
+For `material-pr-review`, provide the actual PR base/head, complete changed-file list, complete diff/patch evidence, resulting changed-owner files, representative affected consumers, correction-review result, operator evidence, and verification result.
+
+Do not pass preferred conclusions, implementation reasoning, unrelated README history, or complete family context to a bounded role. Complete PR context is reserved for `material-pr-review` only.
 
 Claude Code may use thin `.claude/agents` adapters that preload portable skills. Codex may run the same skills in separate agent threads or isolated worktrees. Tool-specific adapters are not policy owners.
 
-When required independent execution is unavailable, stop; do not weaken the gate.
+When required independent execution or handoff evidence is unavailable, stop; do not weaken the gate.
 
 ## Review budget
 
@@ -119,7 +121,7 @@ A finding outside a role's lane returns to this orchestrator; the role does not 
 
 ## Stop conditions
 
-Stop for unresolved official evidence, platform applicability, required scenario, ownership, dependency direction, public contract, token graph, browser evidence, foundation blast radius, independent context, repeated review failure, operator rejection, or required verification failure.
+Stop for unresolved official evidence, platform applicability, required scenario, ownership, dependency direction, public contract, token graph, browser evidence, foundation blast radius, independent context, incomplete PR diff evidence, repeated review failure, operator rejection, or required verification failure.
 
 A defect in the resulting base-to-head PR remains PR-owned even when it predates the latest correction round on the feature branch.
 
