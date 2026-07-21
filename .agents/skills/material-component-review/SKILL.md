@@ -1,97 +1,47 @@
 ---
 name: material-component-review
-description: 'Use for an independent read-only contract-gate or correction-final review of one bounded Material correction. Independently reconstructs actual imports and widens to complete dependency closure whenever canonical ownership, root exports, consumer migration, legacy removal, adoption, or alignment is involved.'
+description: 'Use for an independent read-only contract or correction-final review. Reconstructs actual imports and dependency closure whenever canonical ownership, exports, adoption, or legacy removal is involved.'
 ---
 
 # Material correction review
 
-Review one correction in one scope:
-
-- `contract-gate` before production edits;
-- `correction-final` after prerequisites, implementation, focused proof, and conditional adoption.
-
-Use `material-family-review` only after the orchestrator reports no known required family gap.
+Review one correction as `contract-gate` before production edits or `correction-final` after prerequisites, implementation, proof, and conditional adoption. Use `material-family-review` only after no known required family gap remains.
 
 ## Independence and inputs
 
-Run in a fresh read-only context that did not author the contract or implementation. When isolated contexts are unavailable, use a separate read-only pass with no edit tools and no prior implementation reasoning.
+Run in a fresh read-only context without prior implementation reasoning. Receive the family/invocation/review scope, objective, scenarios/platforms, selected evidence, supplied dependency inventory, correction contract, prerequisites, affected owners/exports/consumers, and proof.
 
-Receive:
-
-- family, invocation scope, review scope, correction objective, and concern plan;
-- required scenarios and platforms;
-- selected target slices and specialist results;
-- supplied dependency inventory and closure decision;
-- correction contract and exact prerequisites;
-- affected owners, exports, consumers, and proof.
-
-The supplied dependency inventory is a claim to verify, not trusted input. Independently inspect the actual candidate owner imports, injected dependencies, style sources, token references, public exports, representative consumers, and legacy-owner state.
+The supplied inventory is a claim. Independently inspect actual candidate-owner imports, injected dependencies, style sources, token references, public exports, representative consumers, legacy-owner state, and applicable guards.
 
 Do not receive narrative review history, preferred conclusions, Git state, or PR context.
 
 ## Automatic scope widening
 
-Review scope automatically includes complete dependency closure for the supported surface when the correction or current state does any of the following:
+Review complete dependency closure for the supported surface whenever current/proposed state creates or preserves a canonical owner, root export, consumer migration, legacy removal/forwarding, or readiness/adoption/alignment claim.
 
-- creates or preserves a candidate canonical owner;
-- creates or changes the Material root export;
-- migrates any consumer to the candidate owner;
-- deletes or forwards the legacy owner;
-- claims canonical, migrated, adoption-complete, converging-ready, or aligned status.
-
-For these triggers, bounded correction wording cannot exclude a dependency actually used by the candidate owner. A finding is not `outside this unit` merely because another foundation or Material family owns the fix.
+Bounded wording cannot exclude an actually used dependency. A finding is not outside the correction because foundation or another family owns the fix.
 
 ## Contract gate
 
-Verify:
+Verify correct invocation scope; current code was reconstructed rather than resumed from README state; selected evidence/lanes are sufficient; actual dependencies are complete and classified; internal dependencies become executable prerequisites; another component is not misclassified as foundation; the correction is highest priority; and production edits did not precede approval.
 
-- invocation scope is correct: a family-only request is `full-family`, not focused work;
-- persisted README/roadmap state was checked against current code and stale scope or conclusions were discarded;
-- selected target and specialist work are sufficient;
-- no required concern lane was omitted;
-- the actual dependency inventory is complete;
-- each dependency has owner, classification, readiness, proof, and replacement obligation;
-- temporary legacy Material, missing, defective, cyclic, private, fallback-masked, or parallel required dependencies become exact prerequisites or external blockers;
-- another official component family is not misclassified as foundation;
-- a dependency owned elsewhere remains inside the calling family's orchestration;
-- the correction is the highest-priority complete unit;
-- no lower-priority local correction bypasses blocked dependency ownership for the same supported surface;
-- production edits did not precede approval;
-- workflow state records current truth without history or future-pass narratives.
+The owner README must contain durable contract facts only. Workflow state, backlog, review history, shell output, commit narratives, and future passes are blockers, not inputs to validate.
 
-Return `contract-gate-passed`, `contract-gate-failed`, `blocked-insufficient-evidence`, or `blocked-independent-review-unavailable`.
+Return a passed/failed contract gate or an exact insufficient-evidence/independence blocker.
 
 ## Correction final
 
-Independently verify:
+Verify the implemented correction, prerequisite completion, resulting owners/imports, exports/consumers/legacy state, cleanup, Material guards, and required unit/browser/consumer/visual/operator proof.
 
-- the implemented correction and changed owners;
-- actual prerequisite completion and resulting dependency owners;
-- absence of required temporary legacy imports or routes for the corrected/canonical surface;
-- direct dependencies, exports, consumers, and legacy-owner state;
-- required unit, browser, consumer, visual, boundary, architecture, and operator proof;
-- selected token, DOM, style, motion, semantic, and lifecycle routes;
-- cleanup and workflow-state accuracy.
+Canonicalization cannot pass with open dependency closure. Premature canonicalization requires closure or safe rollback before lower-priority work.
 
-A canonical owner, root export, consumer migration, legacy-owner removal, adoption, or alignment result cannot pass with open dependency closure.
+A passed correction does not authorize termination of `full-family` while gaps or internal prerequisites remain. Return them to the orchestrator with continuation required.
 
-If premature canonicalization already exists, return a blocker requiring dependency closure or safe rollback before lower-priority work.
+Browser evidence must prove observable behavior; declarations or screenshots alone are insufficient when lifecycle behavior is required.
 
-For `full-family`, a passed correction does not authorize termination while required gaps or internal prerequisites remain. Return them to the orchestrator and require continuation.
+## Budget and result
 
-When browser evidence is required but unavailable, return `blocked-insufficient-browser-evidence` unless existing evidence proves the observable result.
-
-## Review budget
-
-Run once initially and at most once after substantive corrections. A second failed review returns consolidated blockers and stops that correction path.
-
-Mechanical fixes that do not change target, ownership, correction scope, proof, dependency closure, or observable behavior receive an orchestrator consistency check instead of another broad review.
-
-## Findings
-
-Consolidate into blockers, major issues, and minor issues. Maximum 12 actionable findings. Each finding states requirement, current evidence, mismatch, affected scenario, required final state, and owning correction concern.
-
-## Result
+Run once and at most once after substantive correction. A second failure returns consolidated blockers. Mechanical wording fixes receive a local consistency check.
 
 ```text
 MATERIAL CORRECTION REVIEW
@@ -103,21 +53,20 @@ Canonicalization trigger: yes | no
 Status: complete | blocked
 Gate result:
 Actual dependency closure:
-Supplied inventory discrepancy: none | <missing/misclassified dependencies>
+Supplied inventory discrepancy:
+Documentation guard:
 Prerequisite result:
 Proof result:
 Continuation required: yes | no
-Remaining family concerns: none | <exact concerns>
+Remaining family concerns:
 Blocker: none | <exact blocker>
 ```
 
 ## Forbidden
 
-- repository modifications, delegation, correction invocation, or workflow advancement;
-- trusting the supplied dependency inventory without inspecting actual imports;
-- accepting a used dependency as outside scope because another owner implements it;
-- accepting canonical export, migration, legacy removal, adoption, or alignment with open closure;
-- complete family verdict;
-- broad unrelated audit without contradictory evidence;
-- Git, branch, commit, pull-request, or merge analysis;
-- durable audits, histories, ledgers, checklists, registries, or scorecards.
+- repository edits, delegation, or workflow advancement;
+- trusting supplied closure without current import inspection;
+- accepting used dependencies as outside orchestration;
+- approving canonicalization/adoption/removal with open closure;
+- approving persisted execution state in owner docs;
+- complete family verdict, broad unrelated audit, Git/PR analysis, or durable review records.
