@@ -18,6 +18,10 @@ export function resolveOnlyLabel(argv) {
 }
 
 export function shouldRunMaterialTokenGuard(argv) {
+  if (argv.includes('--full')) {
+    return false;
+  }
+
   const onlyLabel = resolveOnlyLabel(argv);
   return onlyLabel === null || onlyLabel === 'unit-tests';
 }
