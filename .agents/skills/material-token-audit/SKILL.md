@@ -1,6 +1,6 @@
 ---
 name: material-token-audit
-description: 'Internal read-only role for auditing only token taxonomy, ownership, dependency direction, public/private routing, static validation, and rendered token proof for a bounded Material concern set. Use only when material-component or material-foundation delegates the token lane.'
+description: 'Internal read-only role for auditing only token taxonomy, ownership, dependency direction, public/private routing, foundation readiness, static validation, and rendered token proof for a bounded Material concern set. Use only when material-component or material-foundation delegates the token lane.'
 ---
 
 # Material token audit
@@ -18,7 +18,7 @@ Receive:
 - declaration, implementation, and proof paths to inspect;
 - applicable repository instructions.
 
-Do not audit unrelated API, layout, or motion behavior. Report a web or semantics dependency instead of absorbing it.
+Do not audit unrelated API, layout, or motion behavior. Report a Web or semantics dependency instead of absorbing it.
 
 ## Responsibility
 
@@ -26,6 +26,7 @@ Reconstruct every declaration and `var()` edge in the delegated graph slice:
 
 - classification: `md-ref`, `md-sys`, `md-comp`, `mio-sys`, `mio-comp`, private route, invalid alias, or obsolete;
 - declaration owner and allowed location;
+- owner readiness: canonical foundation, family-local, temporary legacy, missing, defective, or parallel;
 - public/private status;
 - direct dependencies and dependency direction;
 - duplicate declarations, unresolved references, fallbacks, and cycles;
@@ -34,7 +35,9 @@ Reconstruct every declaration and `var()` edge in the delegated graph slice:
 - expected value kind and actual CSS grammar;
 - static guard, browser, and consumer proof.
 
-Report invented names, ambiguous aliases, wrong placement, namespace collisions, public private-route dependencies, upward or cross-family edges, cycles, fallback-masked requirements, duplicate/dead component tokens, unnecessary private hops, and token-driven shorthand without computed-longhand proof.
+Report invented names, ambiguous aliases, wrong placement, namespace collisions, public private-route dependencies, upward or cross-family edges, cycles, fallback-masked requirements, duplicate/dead component tokens, unnecessary private hops, token-driven shorthand without computed-longhand proof, and required reference/system groups that remain in a temporary legacy or parallel owner.
+
+Component tokens remain family-local. Missing or legacy reference/system token groups are exact foundation blockers. Another component family's component tokens must not be copied into foundation or the consuming family.
 
 ## Evidence discipline
 
@@ -53,8 +56,11 @@ Graph slice:
 Status: complete | blocked
 Static token guard: passed | failed | unavailable
 Findings: <consolidated, maximum 12>
+Reference/system owner readiness:
+Foundation prerequisite: none | <exact coherent group>
+Dependency closure contribution: closed | blocked
 Rendered-proof gaps:
-External lane blockers: none | web | semantics | foundation | <exact blocker>
+External lane blockers: none | web | semantics | foundation | canonical-family | <exact blocker>
 Blocker: none | <exact blocker>
 ```
 
@@ -64,6 +70,8 @@ Blocker: none | <exact blocker>
 - canonical-token changes;
 - full-family semantics or motion review;
 - correction-unit selection or implementation;
+- accepting required reference/system values from an unresolved temporary legacy or parallel owner for canonical ownership/adoption;
+- copying another component family's tokens into foundation;
 - copying the exact graph into the README;
 - repeating confirmed source research without contradictory evidence;
 - runtime token managers, registries, generators, or speculative abstractions.
