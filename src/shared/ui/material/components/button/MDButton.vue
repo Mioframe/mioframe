@@ -150,4 +150,5 @@ if (import.meta.env.DEV) {
   </button>
 </template>
 
+<style scoped src="./button.tokens.css"></style>
 <style scoped src="./MDButton.css"></style>

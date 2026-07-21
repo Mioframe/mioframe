@@ -4,27 +4,52 @@ This file records only the active family, current blocker, and one next action. 
 
 ## Current state
 
-Last updated: 2026-07-20
+Last updated: 2026-07-21
 
 Active family: `Button`
 
 Intended mode: `align-existing`
 
-Family alignment status: `blocked`
+Family alignment status: `converging`
 
-Blocker: PR #157 demonstrated that a single implementation context can confirm legacy assumptions, hide source conflicts, accept an invalid token graph, choose a lower-priority correction, and review its own result. PR #155 must land responsibility isolation, canonical-target lock, complete token/current-state audits, independent contract review before production, and independent final review.
+Blocker: the token-ownership/naming/dead-declaration-cleanup correction unit is complete. It went
+through six independent contract-gate review rounds (revisions 1-6, each in a separate isolated
+context — rounds 1-2 found real implementation-risk gaps, rounds 3-4 found real factual errors in
+the target/current-state text from ungrounded sibling-style generalizations, round 5 found only
+mechanical documentation staleness after a proactive full re-verification sweep), then passed, was
+implemented, and passed an independent final-gate review (also flagging and triggering fixes for
+two minor accuracy issues, both applied). Implementation revealed one new, pre-existing,
+out-of-Button-scope finding: `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-color`
+in `MDButton.css` are the established public styling contract of `MDSymbol` and
+`MDCircularProgressIndicator` (used identically across ~30 other files in `src/shared/ui`), not
+Button-owned tokens, but they still fail the static token-architecture guard because
+`docs/tokens.md`'s taxonomy has no accepted category for a generic cross-component contract.
+Button is the first official family relocated into the Material root, so this is the first time
+the guard has checked a file with this pre-existing pattern; it predates this branch's work
+entirely (the file does not exist on `origin/develop`). This keeps final `pnpm verify` red and
+blocks `aligned`, but does not reopen or invalidate the completed correction unit — see
+`components/button/README.md`'s "New evidence found during implementation" and backlog item 7 for
+full detail.
 
 ## Next action
 
-After the updated PR #155 workflow is available to the Button branch, start a fresh orchestrator session and run:
+Two independent tracks remain, neither of which is "select a different family" (Button has not
+reached `aligned`):
 
-```text
-material-component Button
-```
-
-The orchestrator must delegate an implementation-independent target, lock source and token decisions, obtain a separate complete current-state/token/motion audit, synthesize the alignment map without production edits, pass an independent contract gate, execute only the highest-priority correction unit, and use a different independent final reviewer.
-
-For Button, token ownership and routing are blocking concerns before shape motion or other styling corrections. The contract must classify exact official component tokens, invalid aliases, private routes, the temporary legacy system-token owner, dead spring-token surface, and the shortest route to each rendered property. Static token validation and computed browser proof are both required.
+1. **Foundation-level or repository-wide decision** (backlog item 7, priority category 2 by
+   ownership but explicitly not a Button-family concern): decide how to classify the pre-existing
+   `--md-content-color`/`--md-symbol-size`/`--md-circular-progress-color` generic ambient-styling
+   contract — e.g. formally accept it as documented `--mio-sys-*` extensions, or add an explicit,
+   documented guard allowance for consuming (not declaring new) established pre-Material generic
+   contracts. This is required before Button (or any future Material family relocated into the
+   root) can pass a fully clean `pnpm verify` and reach `aligned`. Route through `material-
+foundation`, not `material-component Button`.
+2. **Button's remaining 6-item backlog** (click-propagation rationale, the dangling
+   `--md-state-outline-color` reference, the label-wrapping reversal, RTL browser proof, the
+   spring-to-CSS motion mapping, and the loading-motion browser-proof gap): each requires its own
+   future `material-component Button` pass through the full isolated target/audit/contract/
+   contract-gate/implementation/final-gate sequence — do not bundle multiple backlog items into one
+   correction unit.
 
 Claude Code may use the project adapters under `.claude/agents/`. Codex may use the same portable role skills in separate agent threads or isolated worktrees. If delegation is unavailable, use fresh isolated sessions and keep every gate.
 

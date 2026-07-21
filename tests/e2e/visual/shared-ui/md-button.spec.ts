@@ -1059,33 +1059,6 @@ test('MDButton container shadow-color routes an override into the shared elevati
   expect(normalizeColorString(overriddenBridge)).toBe('1 2 3');
 });
 
-test('MDButton per-size spring component tokens resolve to the fast-spatial system tokens', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdbutton--size-geometry-matrix');
-  const button = page.getByTestId('geometry-small-round');
-
-  const [stiffness, damping] = await button.evaluate((el) => {
-    const style = getComputedStyle(el);
-    return [
-      style
-        .getPropertyValue(
-          '--md-comp-button-small-pressed-container-corner-size-motion-spring-stiffness',
-        )
-        .trim(),
-      style
-        .getPropertyValue(
-          '--md-comp-button-small-pressed-container-corner-size-motion-spring-damping',
-        )
-        .trim(),
-    ];
-  });
-
-  expect(stiffness).toBe('800');
-  // Chromium serializes a bare custom-property number token without its leading zero.
-  expect(damping).toBe('.6');
-});
-
 test('MDButton shape morph and color transitions use the documented Expressive Web motion durations', async ({
   page,
 }) => {
