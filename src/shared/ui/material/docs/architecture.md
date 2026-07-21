@@ -2,9 +2,9 @@
 
 ## Purpose
 
-`src/shared/ui/material` is Mioframe's isolated Material 3 Expressive implementation library. It is a shared implementation tool, not a product layer, application shell, or independent product goal.
+`src/shared/ui/material` is Mioframe's isolated Material 3 Expressive implementation library. It is a shared implementation tool, not a product layer or application shell.
 
-Product code determines required scenarios, compatibility obligations, and priority. It does not determine internal Material ownership, dependency direction, or public APIs around one domain workflow.
+Product code determines required scenarios and priority. It does not determine internal Material ownership, dependency direction, or public APIs.
 
 ## Canonical boundary
 
@@ -17,114 +17,73 @@ src/shared/ui/material/
   index.ts
 ```
 
-- `foundation` contains proven cross-family Material contracts;
+- `foundation` contains proven cross-family contracts;
 - `components` contains official public Material families;
-- `patterns` contains accepted reusable official Material compositions;
-- `docs` contains minimal durable architecture, token, source, workflow, and roadmap records;
-- `index.ts` is the curated public entry point after real exports exist.
+- `patterns` contains accepted reusable Material compositions;
+- `docs` contains minimal architecture, token, source, workflow, and roadmap records;
+- `index.ts` is the curated public entry point after owners are ready.
 
-Existing Material code outside this root is legacy ownership, not authority and not disposable by default. Correct it in place while exactly one active owner remains. Relocate only when the canonical owner can replace the legacy path in one complete valid change.
-
-A temporary legacy family contract may live under `docs/legacy/<family>.md` and moves beside the canonical owner during relocation.
+Existing Material code outside this root is legacy ownership, not authority. Correct it while one active owner remains; relocate only when the canonical owner can replace it completely.
 
 ## Dependency direction
 
 ```text
 Vue and browser platform
-        ↓
-generic shared/lib infrastructure
-        ↓
-material/foundation
-        ↓
-material/components
-        ↓
-material/patterns
-        ↓
-project-specific shared UI and product layers
+→ generic shared/lib infrastructure
+→ material/foundation
+→ material/components
+→ material/patterns
+→ project-specific UI
 ```
 
-- Material production does not import product layers, domains, routes, services, workers, stores, app shells, or project-specific presentation components.
-- Foundation does not import components or patterns.
-- A family does not deep-import another family's private files.
-- Patterns use public component and foundation contracts only.
-- External consumers use the curated Material public API when the owner is ready.
-- Internal Material modules use local owning entry points, not the root barrel.
+Material production does not import product layers or legacy Material owners. Foundation does not import components/patterns. Families do not deep-import another family's private files. External consumers use the curated public API only when the owner is ready.
 
-Every shared dependency used by a family is classified as canonical Material foundation, canonical Material family, temporary legacy Material, project extension, or generic non-Material foundation. Repeated use does not make a Material component generic foundation.
+Every dependency used by a family is classified as canonical foundation, canonical family, temporary legacy Material, project extension, or generic non-Material foundation. Reuse alone does not make a component a foundation.
 
 ## Dependency closure
 
-A family is not a ready canonical production owner merely because its own files are under `material/components`.
+A family is not ready merely because its files are under `material/components`.
 
-Before a new owner is exported, adopted, or used to replace a legacy owner, every dependency required by its supported surface must resolve to exactly one ready owner:
+Before export, adoption, or legacy replacement, every dependency required by the supported surface must resolve to exactly one ready canonical foundation, official family public contract, generic foundation, or explicit Mioframe extension owner.
 
-- canonical Material foundation;
-- canonical Material family public contract;
-- valid generic non-Material foundation;
-- explicit Mioframe extension owner.
+Temporary legacy ownership, missing reference/system tokens, unowned shared behavior, defective dependencies, private cross-family imports, hidden fallbacks, cycles, or parallel owners block closure.
 
-A required temporary legacy Material dependency, missing reference/system token owner, unowned shared Material behavior, known-defective dependency, family-private deep import, hidden required fallback, or parallel active owner keeps dependency closure blocked.
+A family-agnostic cross-family gap routes through the smallest complete `material-foundation` prerequisite. Another official component remains a separate family prerequisite. Required prerequisites stay inside the caller's orchestration and return automatically.
 
-When the missing contract is family-agnostic and cross-family, migrate the smallest coherent required slice to `material/foundation` before component implementation or adoption continues. When it belongs to another official component family, require that family's ready public contract or defer/remove the dependent extension. Do not create foundation merely to avoid depending on another component family.
-
-Foundation migration must leave one active declaration/behavior owner. A legacy entry point may temporarily forward to the canonical owner for compatibility, but it must not retain a parallel implementation.
+A retained legacy entry point may forward to the canonical owner but cannot keep a parallel implementation.
 
 ## Ownership
 
-A component family owns:
+A component family owns its public API, semantics, accessibility, anatomy/DOM, family state, component tokens, private routing, rendered properties, geometry, typography, RTL, motion, local stories/proof, extensions, compatibility, and consumer migration.
 
-- public API, defaults, invalid combinations, and attributes;
-- native, form, keyboard, event, and accessibility semantics;
-- anatomy and DOM;
-- semantic and transient state owned by the family;
-- exact official component-token declarations and family extension tokens;
-- private token routing and final rendered-property ownership;
-- family-specific geometry, responsive behavior, typography, RTL, text scaling, and motion;
-- owner-local stories, fixtures, and proof;
-- compatibility and consumer-migration obligations;
-- project extensions explicitly attached to the family.
+A foundation domain owns only a genuinely cross-family family-agnostic contract. It does not exist merely to remove duplication or predict reuse.
 
-A foundation domain owns only a genuinely cross-family, family-agnostic contract. It must not exist merely to remove duplication or predict reuse.
+Reference/system token ownership, component-token placement, extension namespaces, private routing, graph direction, and verification are defined by [`tokens.md`](./tokens.md).
 
-Reference/system token ownership, component token placement, extension namespaces, private routing, dependency direction, and token verification are defined only by [`tokens.md`](./tokens.md).
+## Decomposition and public API
 
-## Decomposition
+Map each concern to one owner with inputs, outputs, allowed dependencies, observable contract, proof, and co-location rationale.
 
-Map each concern to one owner with inputs, outputs, allowed dependencies, observable contract, primary proof, and co-location rationale.
+Public Vue components are thin composition roots. Deterministic normalization may use owner-local TypeScript; reactive browser lifecycle uses focused composables. Token values and implementation routing/styles remain separate when they have distinct ownership.
 
-- Public Vue components are thin composition roots.
-- Deterministic normalization and state precedence use owner-local TypeScript when independently testable.
-- Reactive browser lifecycle uses focused composables.
-- Official tokens, private routes, rendered styles, and motion have explicit owners.
-- One stylesheet is valid only when its concerns genuinely change and are proved together.
-- Do not split by line count, preserve monoliths by habit, or add wrappers and DOM merely for separation.
+Prefer native semantics, explicit props/emits/slots/events, consumer-controlled state, narrow foundation inputs, exact token meanings, and one rendered-property owner.
 
-A token file and an implementation stylesheet are separate owners when one defines stable design values and the other defines state selection, layout, browser adaptation, or rendered behavior. Do not split a token file further without independent loading, ownership, or proof.
-
-## Public API
-
-Public APIs are narrow, explicit, and based on official semantics rather than one consumer or legacy shape.
-
-Prefer native HTML semantics, explicit props/emits/slots/attributes/events, consumer-controlled semantic state, family-agnostic foundation inputs, exact token meanings, and one final rendered-property owner.
-
-Only exact supported official tokens and explicit `--mio-*` extensions are public custom-property API. `--md-private-*` routes are implementation details.
-
-Avoid broad option bags, product adapters, universal bases, managers, registries, generic resolvers, speculative extension points, hidden controlled-state copies, unnecessary DOM, ambiguous custom-property namespaces, and permanent compatibility aliases.
-
-Compatibility is evidence to plan migration, not authority to preserve a wrong contract.
+Avoid broad option bags, product adapters, universal bases, managers, registries, generic resolvers, speculative extension points, hidden controlled-state copies, unnecessary DOM, ambiguous token namespaces, and permanent compatibility aliases.
 
 ## Convergence invariant
 
-Existing implementation is editable current-state evidence. Preserve independently confirmed owners, correct misaligned owners through bounded complete units, close required dependencies before adoption, block or narrow unresolved surface, and remove obsolete ownership after replacement.
+Existing code, tests, stories, consumers, and snapshots are editable evidence. Preserve confirmed owners, correct the smallest complete highest-priority gap, close dependencies before adoption, and remove obsolete ownership after replacement.
 
-The full sequence, classifications, correction priority, proof lanes, responsibility isolation, and recovery rules are owned only by [`component-development.md`](./component-development.md) and [`foundation-development.md`](./foundation-development.md). Executable stage responsibilities are owned by the corresponding `.agents/skills`.
+The executable process is owned by `material-component`, `material-foundation`, and their bounded stage/review skills.
 
 ## Durable records
 
-The owning family or foundation README is the single current contract and workflow-state record. Exact implementation details remain owned by code and proof; do not mirror selectors, declarations, token route lists, or runtime routes as a manually synchronized code ledger.
+Owner README files store only durable supported surface, API, semantics, ownership, token/style/motion contracts, extensions, unsupported behavior, compatibility, and proof obligations.
 
-Do not create separate audits, registries, scorecards, checklists, or progress ledgers.
+Current stage, correction unit, prerequisite stack, backlog, review results/history, shell output, commit narratives, and future passes are transient execution state and must not be persisted in owner documentation.
+
+`docs/roadmap.md` stores only the active family, alignment status, exact external blocker, and one next action. Code and proof own exact implementation details.
 
 ## Simplicity gate
 
-Before adding an abstraction, layer, file, state owner, foundation, pattern, compatibility mechanism, or workflow role, prove that an existing mechanism is insufficient, a current requirement needs it, ownership remains explicit, total complexity decreases, and the result is easier to understand, test, and change.
+Before adding an abstraction, layer, file, state owner, foundation, pattern, compatibility mechanism, or workflow role, prove an existing mechanism is insufficient, a current requirement needs it, ownership remains explicit, total complexity decreases, and the result is easier to understand, test, and change.

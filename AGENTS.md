@@ -14,7 +14,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - A Material family or foundation name is sufficient input. The coding agent owns source research, architecture, correction selection, prerequisites, implementation, proof, documentation, and continuation. Git operations and repository publication workflow remain outside Material skills.
 - For Material work, read only the task-relevant canonical documents under `src/shared/ui/material/docs`. Update `roadmap.md` only when its active family, alignment status, blocker, or single next correction action changes.
 - Official Material components target the current canonical Material 3 Expressive contract. Existing repository code and proof are current-state evidence, not Material authority and not disposable by default. The coding agent must close every non-visual evidence gate; the operator normally performs only prepared visual comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
-- Do not create separate Material registries, inventories, durable audit documents, review histories, checklists, alignment scorecards, progress ledgers, or duplicated workflow policy. Concern-scoped target decisions, current classifications, durable contracts, proof obligations, correction units, and remaining gaps belong only in canonical family/domain README files.
+- Do not create separate Material registries, inventories, durable audit documents, review histories, checklists, alignment scorecards, progress ledgers, or duplicated workflow policy. Canonical family/domain README files contain durable contracts only; current correction, prerequisite, review, backlog, and continuation state must not be persisted. `roadmap.md` contains only active family status, an exact external blocker, and one next action.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
@@ -53,7 +53,7 @@ Dependency rules:
 
 Use the applicable skill instead of duplicating its rules in the task:
 
-- `material-library-status`: concise read-only Material roadmap, current concern lanes, correction, family readiness, and verification status;
+- `material-library-status`: concise read-only Material status reconstructed from roadmap, current code, guards, proof, and verification;
 - `material-component`: sole autonomous convergence orchestrator for one official Material family;
 - `material-component-review`: independent correction contract-gate or correction-final review without production changes;
 - `material-family-review`: independent complete current-family readiness review after no known required gap remains;
