@@ -26,7 +26,7 @@ function topLevelKeys(frontmatter) {
 }
 
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
@@ -79,7 +79,7 @@ describe('portable Agent Skills', () => {
     }
   });
 
-  it('uses unique skill names', () => {
+  it('uses unique skill names and removes the broad current-state role', () => {
     const owners = new Map();
 
     for (const directoryName of skillDirectories()) {
@@ -91,6 +91,12 @@ describe('portable Agent Skills', () => {
       expect(owners.has(name), `Duplicate skill name '${name}'`).toBe(false);
       owners.set(name, relativePath);
     }
+
+    expect(owners.has('material-current-state-audit')).toBe(false);
+    expect(owners.has('material-semantics-audit')).toBe(true);
+    expect(owners.has('material-token-audit')).toBe(true);
+    expect(owners.has('material-web-audit')).toBe(true);
+    expect(owners.has('material-pr-review')).toBe(true);
   });
 });
 
@@ -98,15 +104,18 @@ describe('Claude project agent adapters', () => {
   const expectedAdapters = new Map([
     ['material-canonical-target.md', 'material-canonical-target'],
     ['material-contract-gate-reviewer.md', 'material-component-review'],
-    ['material-current-state-auditor.md', 'material-current-state-audit'],
-    ['material-final-reviewer.md', 'material-component-review'],
+    ['material-correction-reviewer.md', 'material-component-review'],
+    ['material-pr-reviewer.md', 'material-pr-review'],
+    ['material-semantics-auditor.md', 'material-semantics-audit'],
+    ['material-token-auditor.md', 'material-token-audit'],
+    ['material-web-auditor.md', 'material-web-audit'],
   ]);
 
   it('contains only the expected thin Material adapters', () => {
     expect(materialClaudeAgentFiles()).toEqual([...expectedAdapters.keys()].sort());
   });
 
-  it('preloads portable skills and keeps adapters read-only', () => {
+  it('preloads portable skills and keeps adapters read-only and policy-free', () => {
     for (const [fileName, skillName] of expectedAdapters) {
       const relativePath = `.claude/agents/${fileName}`;
       const content = readText(relativePath);
