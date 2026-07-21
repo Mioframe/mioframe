@@ -12,30 +12,28 @@ Intended mode: `align-existing`
 
 Family alignment status: `blocked`
 
-Blocker: PR #157 created a prospective canonical Button owner without closing the dependencies required by its supported surface. It still uses legacy Material state-layer/ripple and Progress Indicator owners, global legacy reference/system and motion routes, and unowned symbol/outline styling contracts. The previous workflow also consumed a full five-hour agent budget through repeated broad review while missing the concrete shape-transition defect and complete PR blockers. PR #155 must land focused agent ownership, bounded reviews, dependency closure, a separate complete PR review, concise current-state documentation, and automatic token-guard execution.
+Blocker: the prospective canonical Button owner does not yet close every dependency required by its supported surface. It still relies on legacy Material state-layer/ripple ownership, legacy global reference/system and motion routes, a non-canonical Progress Indicator dependency for loading, and unresolved symbol/outline styling ownership. Previous broad review also missed the concrete shape-transition defect and consumed excessive agent context.
 
 ## Next action
 
-After PR #157 is updated onto the latest PR #155 workflow, continue from valid repository progress; do not restart the family by default.
+Run `material-component Button`.
 
-Run `material-component Button` with an explicit concern and dependency plan:
+The orchestrator must resume valid existing work, build one bounded orientation, select the necessary semantics/token/Web concern lanes, close exact foundation and official-family prerequisites, and continue successive correction units without restarting accepted research.
 
-- semantics lane for PR-owned API/native/extension/consumer blockers and dependency classification;
-- token lane for Button component tokens, required reference/system token groups, and rendered routing;
-- Web lane for DOM/CSS ownership, shape transition, reduced motion, RTL, and browser proof;
-- exact `material-foundation` prerequisites for required family-agnostic state-layer/ripple, token, motion, focus, or symbol contracts that still have legacy or missing owners;
-- a ready canonical Progress Indicator family contract for loading, or defer/remove the loading extension until that family is ready;
-- correction review for one approved unit;
-- complete `material-pr-review` before merge readiness.
+Button cannot become canonical or aligned while any required dependency remains `temporary-legacy-material`, missing, defective, privately imported, fallback-masked, cyclic, or parallel-owned. Loading requires a ready canonical Progress Indicator public contract or an explicit decision to defer/remove that extension.
 
-Do not migrate consumers or declare Button canonical/aligned while any required dependency remains `temporary-legacy-material`, missing, defective, privately imported, fallback-masked, or parallel-owned.
+The calibration succeeds only when the agent independently:
 
-The orchestrator may run each review gate once and one substantive re-review at most. A second failure stops with consolidated blockers. Mechanical documentation corrections do not trigger another full source/audit pass.
-
-The calibration succeeds only when the agent preserves independently confirmed work, closes or blocks every dependency required by Button's supported surface, detects the shape-transition property/easing defect without a user hint, keeps state selection out of token files, runs the token architecture guard through focused `pnpm verify`, and separates correction completion from complete PR merge readiness.
+- preserves confirmed valid implementation instead of restarting by default;
+- detects the shape-transition property/easing defect without an operator hint;
+- closes or exactly blocks every dependency required by the supported Button surface;
+- keeps state selection, layout, and motion out of token files;
+- runs the token architecture guard and applicable focused proof;
+- continues through all known required correction units;
+- reaches independent `material-family-review: complete` and final verification.
 
 Do not select a second family until Button reaches a terminal `aligned` state.
 
 ## Update rule
 
-Update this file only when active family, family alignment status, blocker, or one next action changes.
+Update this file only when the active family, family alignment status, blocker, or one next action changes.
