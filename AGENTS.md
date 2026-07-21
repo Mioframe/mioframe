@@ -10,7 +10,8 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
 - All Material-owned implementation, documentation, family/domain contracts, stories, fixtures, and focused tests live under `src/shared/ui/material`. Repository-level rules and skills may route into that boundary but must not become parallel Material fact owners.
-- For Material implementation and iterative alignment, use `material-component`; for focused cross-family foundation convergence, use `material-foundation`; use `material-component-review` for one bounded correction gate and `material-pr-review` for complete base-to-head merge readiness. Internal Material stage and concern skills are delegated only by the orchestrators and are not direct user entry points.
+- For Material implementation and iterative alignment, use `material-component`; for real cross-family foundation convergence, use `material-foundation`; use `material-component-review` for one bounded correction gate and `material-family-review` for complete current family readiness. Internal Material stage and concern skills are delegated only by the orchestrators and are not direct user entry points.
+- A Material family or foundation name is sufficient input. The coding agent owns source research, architecture, correction selection, prerequisites, implementation, proof, documentation, and continuation. Git operations and repository publication workflow remain outside Material skills.
 - For Material work, read only the task-relevant canonical documents under `src/shared/ui/material/docs`. Update `roadmap.md` only when its active family, alignment status, blocker, or single next correction action changes.
 - Official Material components target the current canonical Material 3 Expressive contract. Existing repository code and proof are current-state evidence, not Material authority and not disposable by default. The coding agent must close every non-visual evidence gate; the operator normally performs only prepared visual comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
 - Do not create separate Material registries, inventories, durable audit documents, review histories, checklists, alignment scorecards, progress ledgers, or duplicated workflow policy. Concern-scoped target decisions, current classifications, durable contracts, proof obligations, correction units, and remaining gaps belong only in canonical family/domain README files.
@@ -52,12 +53,12 @@ Dependency rules:
 
 Use the applicable skill instead of duplicating its rules in the task:
 
-- `material-library-status`: concise read-only Material roadmap, selected concern lanes, current correction, PR readiness, alignment, and verification status;
-- `material-component`: sole convergence orchestrator for one official Material family;
+- `material-library-status`: concise read-only Material roadmap, current concern lanes, correction, family readiness, and verification status;
+- `material-component`: sole autonomous convergence orchestrator for one official Material family;
 - `material-component-review`: independent correction contract-gate or correction-final review without production changes;
-- `material-pr-review`: independent complete base-to-head Material PR merge-readiness review;
+- `material-family-review`: independent complete current-family readiness review after no known required gap remains;
 - `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
-- `material-foundation`: focused cross-family Material token, theme, units, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, and adaptive contract convergence;
+- `material-foundation`: autonomous cross-family Material token, theme, units, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, and adaptive contract convergence;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
