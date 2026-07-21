@@ -7,8 +7,8 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 - `docs/architecture.md` for ownership and dependency direction;
 - `docs/tokens.md` for token rules;
 - `docs/sources.md` for official evidence;
-- `docs/component-development.md` or `docs/foundation-development.md` for the applicable convergence model;
-- `docs/roadmap.md` and the owning README for current state only.
+- `docs/component-development.md` or `docs/foundation-development.md` for the convergence model;
+- `docs/roadmap.md` for active status and the owning README for durable contract facts.
 
 Read only what the current task requires.
 
@@ -28,7 +28,7 @@ Tool-specific agent configuration, Git state, and publication workflow are not M
 - A family-only invocation is full-family work. Required prerequisites remain inside that orchestration and return to the caller.
 - Canonical export, adoption, and legacy-owner removal require closed dependencies.
 - One correction unit is active at a time, but the orchestrator continues while required gaps remain.
-- The owning README contains compact current truth only; no histories, ledgers, registries, or duplicate workflow policy.
+- Owner README files contain durable contracts only. Current stage, backlog, review history, shell output, and future passes are forbidden.
 
 Detailed execution belongs to the relevant skill. Do not restate it in local documents or task reports.
 
