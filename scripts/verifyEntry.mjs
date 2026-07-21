@@ -3,8 +3,8 @@ import { pathToFileURL } from 'node:url';
 
 /**
  * Resolve the focused verify label from CLI arguments.
- * @param {string[]} argv Raw verify CLI arguments.
- * @returns {string | null} Focused label, or null for an ordinary verify run.
+ * @param argv Raw verify CLI arguments.
+ * @returns Focused label, or null for an ordinary verify run.
  */
 export function resolveOnlyLabel(argv) {
   for (let index = 0; index < argv.length; index += 1) {
@@ -25,8 +25,8 @@ export function resolveOnlyLabel(argv) {
 /**
  * Decide whether this verify invocation needs the focused Material token guard.
  * Full verification already runs the complete Vitest suite, including the guard.
- * @param {string[]} argv Raw verify CLI arguments.
- * @returns {boolean} Whether to run the guard before the normal verify planner.
+ * @param argv Raw verify CLI arguments.
+ * @returns Whether to run the guard before the normal verify planner.
  */
 export function shouldRunMaterialTokenGuard(argv) {
   if (argv.includes('--full')) {
@@ -52,8 +52,8 @@ function run(command, args) {
 
 /**
  * Run the focused Material token guard when required, then delegate to verify.mjs.
- * @param {string[]} [argv] Raw verify CLI arguments.
- * @returns {number} Process exit status.
+ * @param [argv] Raw verify CLI arguments.
+ * @returns Process exit status.
  */
 export function runVerifyEntry(argv = process.argv.slice(2)) {
   if (shouldRunMaterialTokenGuard(argv)) {
