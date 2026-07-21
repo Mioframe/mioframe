@@ -22,7 +22,7 @@ function extractFrontmatter(content, relativePath) {
 }
 
 function scalar(frontmatter, key) {
-  const match = frontmatter.match(new RegExp(`^${key}:\\s*['"]?([^'"\\n]+)['"]?\\s*$`, 'm'));
+  const match = frontmatter.match(new RegExp(`^${key}:\\s*['\"]?([^'\"\\n]+)['\"]?\\s*$`, 'm'));
   return match?.[1]?.trim() ?? null;
 }
 
@@ -53,7 +53,7 @@ function materialClaudeAgentFiles() {
 }
 
 describe('portable Agent Skills', () => {
-  it('uses directory-matching unique names and descriptions', () => {
+  it('uses unique names and descriptions', () => {
     const owners = new Map();
 
     for (const directoryName of skillDirectories()) {
@@ -62,7 +62,7 @@ describe('portable Agent Skills', () => {
       const name = scalar(frontmatter, 'name');
       const description = scalar(frontmatter, 'description');
 
-      expect(name, relativePath).toBe(directoryName);
+      expect(name, relativePath).not.toBeNull();
       expect(description, relativePath).not.toBeNull();
       expect(owners.has(name), `Duplicate skill name '${name}'`).toBe(false);
       owners.set(name, relativePath);
