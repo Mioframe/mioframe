@@ -1,6 +1,6 @@
 # Material foundation development
 
-This document defines the durable convergence model for one real cross-family Material contract. The executable procedure is owned by `.agents/skills/material-foundation/SKILL.md`.
+This document defines the durable convergence model for one real cross-family Material contract.
 
 Foundation exists only when a current component or unavoidable Material/platform contract needs one family-agnostic owner and that owner is simpler than family-local alternatives.
 
@@ -8,74 +8,82 @@ Foundation exists only when a current component or unavoidable Material/platform
 
 Foundation may own official reference/system tokens and real cross-family typography, shape, elevation, motion, state-layer, ripple, focus, symbol, overlay, accessibility, density, target-area, or adaptive contracts.
 
-It does not own component-family tokens/API/anatomy/state, product behavior, or generic browser mechanisms that already have a correct owner. Foundation code does not name consuming families; families map semantics into narrow family-agnostic contracts.
+It does not own component-family tokens/API/anatomy/state, product behavior, or generic browser mechanisms that already have a correct owner. Another official component family is not foundation.
+
+## Entry modes
+
+For a standalone foundation request, `material-foundation <domain>` is the coordination-only root. It owns the bounded contract, complete foundation stack, delegation, result validation, final verification, and compact roadmap state, but writes no production code.
+
+When a foundation owner is required by `material-component`, no second foundation root is created. The component root pushes that exact foundation owner onto its existing stack and remains the sole coordinator and roadmap writer.
+
+In both modes, the current deepest foundation owner is implemented by a fresh isolated writable `material-component-implementation` context with `Owner kind: foundation`. A different fresh isolated read-only `material-component-review` context performs mandatory correction-final review.
+
+If a fresh writable or review context is unavailable, the owning root checkpoints with the exact isolation reason. There is no same-context fallback.
 
 ## Sequence
 
 ```text
-current-state preflight
-→ bounded domain orientation and concern plan
-→ missing target/audit evidence only
-→ smallest complete domain contract
-→ independent contract review
-→ one canonical owner correction
-→ direct-consumer and affected-family validation
-→ legacy cleanup or forwarding/import-only compatibility
-→ independent correction review
-→ next required unit or return to caller
-→ final verification
+owning root validates deepest owner and locks bounded foundation contract
+→ fresh writable material-component-implementation context
+→ one canonical foundation owner correction
+→ affected-family and direct-consumer proof
+→ fresh read-only material-component-review correction-final
+→ owning root accepts and pops, or retries once in a new writable context
 ```
-
-When delegated by `material-component`, scope is the exact required prerequisite. When supported, run it in a fresh focused writable context. One implementation unit owns one canonical foundation owner plus only its minimum compatibility/adoption edits; nested owners return through the caller stack.
-
-When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. One owner per correction does not mean one owner per physical session. Lack of subagents is not a blocker and does not permit a broad multi-owner correction.
-
-A delegated foundation prerequisite remains inside the root family operation. It must never become a separate operator command. When a real physical session boundary prevents continuation, return the deepest unfinished owner to the root orchestrator; only the root roadmap may persist the compact continuation stack.
 
 ## Contract and correction
 
-Confirm foundation ownership is required now and an existing family/generic owner is insufficient. Another official component family is not foundation.
+The owning root confirms foundation ownership is required now and an existing family/generic owner is insufficient. The writable owner context must return any invalidated assumption before editing rather than redesigning the contract locally.
 
-Select work in this order: source/platform decision; ownership; public family-facing contract; reference/system token graph; deterministic state; lifecycle; rendered/style/motion routing; platform adaptation; direct-consumer compatibility; affected-family adoption; obsolete-owner removal.
+For token work:
 
-For token work, preserve `reference → system → family-local component → rendered proof`, move the smallest coherent required group, keep one active canonical owner under Material foundation, and forbid upward/cross-family/cyclic/fallback-masked dependencies. Legacy styles may import canonical declarations but must not continue to own or redeclare them.
+- preserve `reference → system → family-local component → rendered proof`;
+- move the smallest coherent required group;
+- keep one active canonical owner under Material foundation;
+- forbid upward, cross-family, cyclic, or fallback-masked dependencies;
+- allow legacy styles to import canonical declarations but not redeclare them;
+- prove affected-family computed behavior.
 
-For shared behavior, define one narrow contract, revalidate rather than copy legacy behavior unchanged, replace the complete semantics/lifecycle required by current scenarios, inspect every direct consumer of the changed contract, update affected families, retain only forwarding compatibility, remove parallel ownership, and prove public-input behavior.
+For shared behavior:
 
-Relocation, a new directory/barrel, forwarding exports, migrated imports, or green path guards are not canonicalization. A moved implementation remains incomplete while it has known defects, legacy-owned tokens, missing semantics/lifecycle proof, incompatible consumers, or no independent review.
+- define one narrow public contract;
+- revalidate semantics and lifecycle instead of copying legacy behavior unchanged;
+- inspect every direct consumer of the changed contract;
+- update affected families through the canonical contract;
+- retain only forwarding compatibility and remove parallel ownership;
+- prove public-input behavior, browser lifecycle, and reduced motion where applicable.
 
-A delegated prerequisite is complete only when the canonical owner owns the full required contract and recursive dependencies, caller and direct consumers use it compatibly without legacy/private imports, replaced ownership is singular, retained compatibility only forwards/imports, applicable guards/proof pass, and no known required defect remains.
+Relocation, a new directory/barrel, forwarding exports, migrated imports, or green path guards are not canonicalization.
 
-## Evidence and review
+## Stack and nested owners
 
-Reuse accepted evidence until contradicted. Use bounded read-only contexts for research/audits/reviews. Each gate permits one initial review and at most one substantive re-review. Repeated architecture failure requires reconsideration, not another workaround.
+Only the current deepest owner may be implemented or reviewed. If another canonical owner is required, stop the correction and return the exact nested prerequisite to the owning root. Do not implement two owners in one writable context.
 
-Visible changes require operator comparison. Applicable static, browser, visual, direct-consumer, affected-family, and architecture proof must pass.
+A parent or calling family cannot advance until the nested owner has focused proof and a separate accepted correction-final review.
 
 ## Documentation
 
-Create a foundation README only for a real durable contract. Store owner, public/private contract, semantics, token/style/motion rules, supported scenarios, compatibility surface, and durable proof obligations only.
+Create or update a foundation README only for durable owner, API, semantics, token/style/motion, compatibility, unsupported-surface, and proof facts.
 
-Do not persist current stage, correction, backlog, remaining-work lists, review history, shell output, commit narratives, route ledgers, or future passes. The only durable orchestration state is the root roadmap's compact continuation stack, written and validated by the root component orchestrator.
+Do not persist current stage, findings, backlog, review history, shell output, or future passes. Only the owning root roadmap stores the compact continuation stack and physical checkpoint reason.
 
 ## Completion
 
-A delegated prerequisite returns `complete` only for the exact ready canonical contract, then control returns to the caller. A repairable nested gap returns as continued internal work. A physical session boundary returns as `checkpoint-required` to the root orchestrator, not to the operator.
+An implementation result is not readiness. Readiness exists only after a different fresh read-only reviewer accepts the exact foundation owner correction.
 
-Domain completion additionally requires canonical affected-family consumption, direct-consumer compatibility, cleanup/forwarding-only legacy replacement, required proof/operator comparison, review, and final verification.
+A repairable gap or nested owner remains internal work. A physical session boundary returns as a checkpoint to the owning root, never as a separate operator command.
 
 ## Forbidden
 
-- production edits before contract approval;
+- implementation in a root or reviewer context;
+- self-review or readiness claims;
+- a second root or roadmap writer for a foundation prerequisite inside a component operation;
+- local redesign of the root-locked foundation contract;
 - broad domain work for a bounded prerequisite;
-- foundation justified only by duplication or hypothetical reuse;
-- another family’s private/component ownership in foundation;
-- relocation-only completion or copied known defects;
+- another family’s component/private ownership in foundation;
+- relocation-only completion or copied legacy defects;
 - legacy-owned active declarations used by canonical Material;
-- invented names, cycles, parallel owners, hidden fallbacks, runtime managers/registries/resolvers;
-- returning complete while caller or direct consumers still use an incompatible or legacy contract;
-- several canonical owners in one correction unit;
-- asking the operator to invoke a delegated foundation prerequisite;
+- several canonical owners in one correction;
+- asking the operator to invoke a delegated prerequisite;
 - a separate foundation continuation ledger;
-- persisted execution histories, backlogs, checklists, scorecards, or ledgers;
 - Git, branch, commit, PR, or merge operations.

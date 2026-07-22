@@ -9,6 +9,16 @@ const ROADMAP_PATH = path.join(MATERIAL_ROOT, 'docs', 'roadmap.md');
 const OWNER_ROOTS = ['components', 'foundation', 'patterns'].map((name) =>
   path.join(MATERIAL_ROOT, name),
 );
+const CHECKPOINT_REASONS = new Set([
+  'none',
+  'context-exhausted',
+  'runtime-exhausted',
+  'user-interrupted',
+  'isolated-writable-context-unavailable',
+  'isolated-review-context-unavailable',
+  'required-tool-unavailable',
+  'required-evidence-unavailable',
+]);
 
 const OWNER_FORBIDDEN = [
   ['workflow-state marker', /\bMATERIAL WORKFLOW STATE\b/i],
@@ -22,7 +32,7 @@ const OWNER_FORBIDDEN = [
   ],
   [
     'dynamic workflow field',
-    /^\s*(?:Current objective|Current stage|Current correction unit|Next gate|Contract review status|Final review status|Family review status|Family alignment status|Prerequisite stack|Continuation stack|Completed correction units|Remaining required gaps|Next action|Blocker):/im,
+    /^\s*(?:Current objective|Current stage|Current correction unit|Next gate|Contract review status|Final review status|Family review status|Family alignment status|Alignment status|Prerequisite stack|Continuation stack|Checkpoint reason|Completed correction units|Remaining required gaps|Next action|Blocker):/im,
   ],
 ];
 
@@ -66,14 +76,15 @@ function analyzeRoadmap(content) {
   const expected = [
     '# Material library roadmap',
     '## Current state',
-    /^Active family: `[^`]+`$/,
-    /^Family alignment status: `(aligned|converging|blocked)`$/,
+    /^Active root: `[^`]+`$/,
+    /^Alignment status: `(aligned|converging|blocked)`$/,
     /^Continuation stack: `(?:none|[^`]+)`$/,
+    /^Checkpoint reason: `[^`]+`$/,
     /^External blocker: .+$/,
     '## Next action',
     /^(?![-*+]\s|\d+\.\s).+$/,
     '## Update rule',
-    'Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.',
+    'Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.',
   ];
 
   if (lines.length !== expected.length) {
@@ -88,11 +99,27 @@ function analyzeRoadmap(content) {
     }
   });
 
-  const family = lines[2]?.match(/^Active family: `([^`]+)`$/)?.[1];
-  const status = lines[3]?.match(/^Family alignment status: `(aligned|converging|blocked)`$/)?.[1];
+  const activeRoot = lines[2]?.match(/^Active root: `([^`]+)`$/)?.[1];
+  const status = lines[3]?.match(/^Alignment status: `(aligned|converging|blocked)`$/)?.[1];
   const stack = lines[4]?.match(/^Continuation stack: `([^`]+)`$/)?.[1];
-  const blocker = lines[5]?.replace(/^External blocker:\s*/, '').trim();
-  const nextAction = lines[7] ?? '';
+  const checkpointReason = lines[5]?.match(/^Checkpoint reason: `([^`]+)`$/)?.[1];
+  const blocker = lines[6]?.replace(/^External blocker:\s*/, '').trim();
+  const nextAction = lines[8] ?? '';
+
+  if (checkpointReason && !CHECKPOINT_REASONS.has(checkpointReason)) {
+    errors.push('roadmap checkpoint reason must use the allowed physical-reason enum');
+  }
+  if (checkpointReason && checkpointReason !== 'none') {
+    if (status !== 'converging') {
+      errors.push('a physical checkpoint reason requires converging status');
+    }
+    if (stack === 'none') {
+      errors.push('a physical checkpoint reason requires a non-empty continuation stack');
+    }
+  }
+  if (status !== 'converging' && checkpointReason !== 'none') {
+    errors.push('aligned or blocked roadmap status requires Checkpoint reason: none');
+  }
 
   if (status === 'blocked' && blocker?.toLowerCase() === 'none') {
     errors.push('blocked roadmap status requires an exact external blocker');
@@ -112,25 +139,28 @@ function analyzeRoadmap(content) {
 
   if (stack && stack !== 'none') {
     const owners = stack.split(' > ').map((owner) => owner.trim());
-    if (!family || owners[0] !== family || owners.some((owner) => !owner)) {
-      errors.push('continuation stack must start with the active root family');
+    if (!activeRoot || owners[0] !== activeRoot || owners.some((owner) => !owner)) {
+      errors.push('continuation stack must start with the active root');
     }
   }
 
-  if (status === 'converging' && family) {
-    const requiredPrefix = `Resume \`material-component ${family}\``;
-    if (!nextAction.startsWith(requiredPrefix)) {
-      errors.push('converging roadmap next action must resume the active root family');
+  if (status === 'converging') {
+    const resume = nextAction.match(
+      /^Resume `(material-component|material-foundation) ([^`]+)`(?:;|\.|$)/,
+    );
+    if (!resume || resume[2] !== activeRoot) {
+      errors.push('converging roadmap next action must resume the active root command');
     }
-  }
 
-  if (/\bmaterial-foundation\b/.test(nextAction)) {
-    errors.push('roadmap next action must not delegate an internal foundation prerequisite');
-  }
-
-  const nestedComponent = nextAction.match(/\bmaterial-component\s+([^`;,.]+)/)?.[1]?.trim();
-  if (nestedComponent && family && nestedComponent !== family) {
-    errors.push('roadmap next action must not delegate a nested component prerequisite');
+    const commands = [
+      ...nextAction.matchAll(/\b(material-component|material-foundation)\s+([^`;,.]+)/g),
+    ];
+    const hasNestedCommand = commands.some(
+      (match, index) => index > 0 || !activeRoot || match[2].trim() !== activeRoot,
+    );
+    if (hasNestedCommand) {
+      errors.push('roadmap next action must not delegate an internal prerequisite');
+    }
   }
 
   return errors.sort();
@@ -175,9 +205,10 @@ TASK RESULT
 
 ## Current state
 
-Active family: \`Button\`
-Family alignment status: \`converging\`
+Active root: \`Button\`
+Alignment status: \`converging\`
 Continuation stack: \`Button > Progress Indicator\`
+Checkpoint reason: \`context-exhausted\`
 External blocker: none
 
 1. Completed token migration
@@ -189,7 +220,7 @@ Run another pass.
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
 `),
     ).not.toEqual([]);
   });
@@ -199,37 +230,59 @@ Keep only the active root family, alignment status, one continuation stack, exac
 
 ## Current state
 
-Active family: \`Button\`
-Family alignment status: \`converging\`
+Active root: \`Button\`
+Alignment status: \`converging\`
 Continuation stack: \`Button > Progress Indicator\`
+Checkpoint reason: \`context-exhausted\`
 External blocker: none
 
 ## Next action
 
-Run \`material-component Progress Indicator\`, then resume Button.
+Resume \`material-component Button\`; then run \`material-foundation tokens\`.
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
 `);
 
     expect(errors).toEqual([
-      expect.stringContaining('converging roadmap next action must resume the active root family'),
-      expect.stringContaining(
-        'roadmap next action must not delegate a nested component prerequisite',
-      ),
+      expect.stringContaining('roadmap next action must not delegate an internal prerequisite'),
     ]);
   });
 
-  it('accepts one minimal root-family continuation checkpoint', () => {
+  it('rejects checkpointing without an allowed physical reason', () => {
     expect(
       analyzeRoadmap(`# Material library roadmap
 
 ## Current state
 
-Active family: \`Button\`
-Family alignment status: \`converging\`
+Active root: \`Button\`
+Alignment status: \`converging\`
+Continuation stack: \`Button > foundation/tokens\`
+Checkpoint reason: \`next-owner-is-large\`
+External blocker: none
+
+## Next action
+
+Resume \`material-component Button\`; continue from the deepest unfinished owner.
+
+## Update rule
+
+Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
+`),
+    ).toEqual([expect.stringContaining('allowed physical-reason enum')]);
+  });
+
+  it('accepts one minimal component-root continuation checkpoint', () => {
+    expect(
+      analyzeRoadmap(`# Material library roadmap
+
+## Current state
+
+Active root: \`Button\`
+Alignment status: \`converging\`
 Continuation stack: \`Button > Progress Indicator > foundation/tokens\`
+Checkpoint reason: \`isolated-review-context-unavailable\`
 External blocker: none
 
 ## Next action
@@ -238,7 +291,30 @@ Resume \`material-component Button\`; validate the stack against current code an
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
+`),
+    ).toEqual([]);
+  });
+
+  it('accepts one minimal standalone-foundation continuation checkpoint', () => {
+    expect(
+      analyzeRoadmap(`# Material library roadmap
+
+## Current state
+
+Active root: \`tokens\`
+Alignment status: \`converging\`
+Continuation stack: \`tokens > system/elevation\`
+Checkpoint reason: \`context-exhausted\`
+External blocker: none
+
+## Next action
+
+Resume \`material-foundation tokens\`; validate the stack against current code and continue from the deepest unfinished owner.
+
+## Update rule
+
+Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
 `),
     ).toEqual([]);
   });

@@ -1,46 +1,57 @@
 ---
 name: material-family-review
-description: 'Use for an independent read-only final review of one full Material family reconstructed from current code, recursive prerequisites, consumers, guards, proof, and verification.'
+description: 'Mandatory fresh read-only final review of one complete Material family after the continuation stack is empty and every owner correction has independent acceptance.'
 ---
 
 # Material family review
 
-Review the complete current state of one official Material family after its `full-family` orchestrator reports no known required gap or internal prerequisite. Do not use Git/PR context or implementation reasoning.
+Review the complete current state of one official Material family only after the root orchestrator reports no known required gap or internal prerequisite.
 
-## Inputs and reconstruction
+## Independence
 
-Receive the supported surface, scenarios/platforms, durable owner README contract, implementation/public entries, supplied dependency/prerequisite results, consumers, proof/operator status, and repository rules.
+Run in a fresh isolated read-only context that did not orchestrate, design, implement, or correction-review this family operation.
 
-Independently inspect current code and reconstruct:
+Required declaration:
+
+```text
+Review context: fresh-isolated-read-only
+Prior family context reused: no
+Repository writes available: no
+```
+
+If a fresh read-only context is unavailable, return `not-run` with checkpoint reason `isolated-review-context-unavailable`. Do not perform final review in the root or any owner context.
+
+## Reconstruction
+
+Receive the supported surface, scenarios/platforms, durable owner README, implementation/public entries, accepted owner review results, consumers, proof/operator status, and repository rules.
+
+Independently reconstruct from current code:
 
 - canonical owner/public export and legacy-owner state;
-- actual implementations, imports, injected dependencies, styles, and token declarations/references;
-- foundation/official-family owners and their recursive readiness;
-- boundary, token, and documentation guard results;
-- all direct consumers of changed public contracts or extensions and broader adoption scope;
-- supported/unsupported surface and proof obligations.
+- implementations, imports, styles, and token declarations/references;
+- recursive foundation and official-family readiness;
+- every direct consumer of changed contracts or extensions;
+- boundary, token, documentation, browser, visual, and verification proof;
+- continuation stack and roadmap validity.
 
-Supplied inventories, continuation stacks, and prerequisite results are claims, not authority. A used dependency cannot be excluded because another owner implements it.
-
-## Review scope
-
-Verify one valid canonical owner/API; no premature export/adoption/removal; API/native/accessibility/state semantics; DOM/layout/adaptation; token/style/motion ownership; every actual dependency and nested prerequisite; no temporary legacy/private/fallback/cyclic/defective/parallel ownership; complete direct-consumer compatibility and adoption/cleanup; sufficient proof/operator evidence; and final verification.
-
-A prerequisite is not ready because files moved, a forwarding barrel exists, imports migrated, or path guards pass. Inspect its own Material contract, token declarations, semantics/lifecycle, direct consumers, compatibility route, proof, and independent owner review. Known defects or legacy-owned canonical tokens block the calling family.
-
-The owner README must contain durable contract facts only. Workflow state, backlog, correction/review history, shell output, commit narratives, and future passes are blockers even when their claims happen to be accurate.
-
-The roadmap must contain only the active root family, alignment status, one continuation stack, exact external blocker, and one next action. Final family review requires `Continuation stack: none`; a non-empty stack proves that the logical operation is still converging.
-
-Existing tests, stories, snapshots, declarations, and green guards are evidence, not Material authority.
+Supplied inventories and accepted results are claims, not authority.
 
 ## Completion
 
-Return `complete` only when invocation scope was `full-family`, all required concerns are compliant or validly unsupported, recursive dependency closure/prerequisites and Material guards pass, every required Material dependency has a ready canonical owner, one canonical family owner remains, all direct consumers of changed contracts are compatible, adoption/cleanup and required proof are complete, operator comparison is accepted when required, documentation is valid, the continuation stack is empty, and final `pnpm verify` passed.
+Return `complete` only when:
 
-Return `complete-with-explicitly-unsupported-surface` only for optional, explicit, unused capability. Return `blocked` for any required defect, relocation-only prerequisite, legacy-owned canonical token, incompatible direct consumer, premature canonicalization, open dependency/prerequisite, non-empty continuation stack, failed guard, invalid documentation, missing proof, operator rejection, or verification failure. Return `not-enough-evidence` when current state cannot be inspected.
+- invocation scope is `full-family`;
+- continuation stack is `none`;
+- every owner correction has a fresh read-only `correction-final: complete` result;
+- recursive dependency closure is complete;
+- canonical ownership, API, semantics, lifecycle, accessibility, tokens, styles, motion, and platform adaptation are valid;
+- all direct consumers are compatible;
+- adoption, cleanup, legacy disposition, and required proof are complete;
+- operator comparison is accepted when required;
+- documentation is durable and accurate;
+- final `pnpm verify` passed.
 
-`converging` and `checkpointed` are not final verdicts.
+Return `blocked` for any required defect, incomplete owner review, non-empty stack, legacy-owned canonical token, incompatible consumer, missing proof, invalid documentation, or failed verification. Return `not-enough-evidence` when current state cannot be inspected. Return `not-run` when isolation is unavailable.
 
 ## Result
 
@@ -48,10 +59,13 @@ Return `complete-with-explicitly-unsupported-surface` only for optional, explici
 MATERIAL FAMILY REVIEW
 Family:
 Invocation scope:
-Verdict: complete | complete-with-explicitly-unsupported-surface | blocked | not-enough-evidence
+Review context: fresh-isolated-read-only
+Prior family context reused: no
+Repository writes available: no
+Verdict: complete | complete-with-explicitly-unsupported-surface | blocked | not-enough-evidence | not-run
 Canonical ownership result:
 Actual recursive dependency closure:
-Prerequisite owner readiness:
+Accepted owner review chain:
 Canonical token ownership:
 Continuation stack:
 Boundary/token/documentation guards:
@@ -67,16 +81,14 @@ Blockers: none | <findings>
 Major issues: none | <findings>
 Minor issues: none | <findings>
 Required next action: none | <exact correction returned to root orchestrator>
+Checkpoint reason: none | isolated-review-context-unavailable | required-tool-unavailable | required-evidence-unavailable
 ```
-
-Run once and at most once after substantive final corrections. A second failure returns consolidated blockers. Do not create a durable review document.
 
 ## Forbidden
 
 - repository edits, delegation, implementation, or Git/PR analysis;
-- trusting supplied closure, continuation, or prerequisite status without current owner inspection;
-- approving only the latest correction;
-- approving relocation-only prerequisites, incompatible direct consumers, legacy-owned canonical tokens, invalid owner docs/roadmap, temporary/defective dependencies, premature canonicalization, failed guards, or red verification;
-- approving a family while its continuation stack is non-empty;
-- broad repeated research without contradiction;
+- review by the root or any implementation/correction-review context;
+- trusting supplied closure or accepted-review claims without inspection;
+- approving a family with a non-empty stack or missing owner review;
+- approving relocation-only prerequisites, incompatible consumers, stale docs, failed guards, or red verification;
 - durable audits, histories, ledgers, checklists, registries, or scorecards.

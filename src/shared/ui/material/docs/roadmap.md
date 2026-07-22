@@ -2,11 +2,13 @@
 
 ## Current state
 
-Active family: `Button`
+Active root: `Button`
 
-Family alignment status: `converging`
+Alignment status: `converging`
 
 Continuation stack: `Button > foundation/tokens`
+
+Checkpoint reason: `none`
 
 External blocker: none
 
@@ -16,4 +18,4 @@ Resume `material-component Button`; validate the continuation stack against curr
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.

@@ -1,98 +1,100 @@
 ---
 name: material-component-implementation
-description: 'Internal Material procedure used only by material-component after contract review and required prerequisites. Executes one approved canonical owner correction without bypassing recursive dependency closure.'
+description: 'Internal Material owner implementation procedure. Runs only in a fresh isolated writable context for one approved deepest-owner correction and cannot declare readiness.'
 ---
 
-# Material component implementation
+# Material owner implementation
 
-Run inside the `material-component` orchestrator context after target/audit evidence, recursive dependency closure, required prerequisites, and contract review are ready.
+Run only when delegated by `material-component` or `material-foundation` after a locked correction contract is ready.
 
-`not-required-for-bounded-unit` is allowed only for an explicit operator-requested focused correction that neither creates/preserves/adopts/removes canonical ownership nor touches an unresolved route. A family-only invocation or already canonicalized surface requires closed recursive dependency closure before lower-priority implementation.
+This skill must execute in a fresh isolated writable context. It must not run in the root orchestrator context or in any context that will perform correction review.
 
 ## Responsibility
 
-Execute exactly one approved correction for one canonical owner:
+Implement exactly one approved correction for the current deepest unfinished canonical owner:
 
 ```text
-prepare locked proof
+receive locked owner contract
+→ validate current code and prerequisites
+→ prepare focused proof
 → confirm expected failure when applicable
-→ smallest approved owner correction
-→ focused verification
-→ boundary, browser, direct-consumer, and visual validation
-→ structured result to the orchestrator
+→ implement the smallest complete owner correction
+→ run focused verification
+→ return an implementation result to the root orchestrator
 ```
 
-A writable prerequisite context owns one canonical owner plus only the minimum forwarding, cleanup, and consumer edits required to adopt that owner. If another canonical owner is required, return it to the orchestrator as a nested prerequisite instead of implementing both in one context.
+The implementation context owns one canonical owner plus only the minimum forwarding, cleanup, and direct-consumer edits required for that owner. If another canonical owner is required, do not implement it in this context. Return the exact nested prerequisite so the root can push it onto the stack.
 
-Do not select another gap or redesign the contract. New contradictory evidence returns to the orchestrator and reopens only the owning lane.
+The implementation context may update the owner's durable README only when the public, semantic, token, style, motion, compatibility, unsupported-surface, or proof contract changed. It must not update `roadmap.md`.
 
-## Dependency and readiness gate
+## Entry gate
 
-Before editing, confirm actual implementation, imports, style/token declarations and references, public exports, all direct consumers of changed public contracts or extensions, guards, and prerequisite owners still match the contract.
+Before editing, confirm:
 
-Return blocked when a required prerequisite is incomplete, only relocated, or unreviewed; a canonical route imports a temporary legacy owner; canonical tokens remain actively declared by a legacy owner; a Material guard fails; canonical consumption still uses a legacy path; replacement leaves parallel owners; a fallback masks a missing contract; a cycle/known defect exists; direct consumers are semantically incompatible; or premature canonicalization is not being closed or safely rolled back.
+- this context is `fresh-isolated-writable`;
+- the delegated owner is the current deepest unfinished owner;
+- the correction contract and selected evidence are locked;
+- required child owners are already independently ready;
+- actual implementation, imports, token declarations/references, exports, direct consumers, guards, and legacy paths still match the contract.
 
-A dependency implemented by foundation or another family remains part of the caller's orchestration. Do not report it as outside scope or defer it to the operator.
+Return `checkpoint-required` with `isolated-writable-context-unavailable` if a fresh writable context was not created. Never fall back to implementation in the root context.
 
-Moving legacy files, adding forwarding exports/barrels, migrating imports, and passing boundary guards are migration mechanics, not canonical readiness. Revalidate and correct the moved artifact against its own Material contract before returning it as a completed prerequisite.
+Return `blocked` when the contract is invalidated, a nested prerequisite is incomplete, canonical tokens remain legacy-owned, a required dependency is defective or unreviewed, direct consumers are incompatible, a cycle exists, or safe implementation requires another owner.
 
-## Ownership and proof
+## Proof and ownership
 
-- Keep public Vue artifacts thin.
-- Keep component tokens family-local; reference/system/shared behavior belongs to canonical foundation owners.
-- Depend on another family through its independently reviewed ready public contract.
-- Keep state selection, layout, motion, private routes, and rendered properties out of token files.
-- Do not add wrappers or DOM nodes merely for separation.
+- Keep public Vue artifacts thin and avoid unnecessary DOM nodes.
+- Keep component tokens family-local; reference/system/shared behavior belongs to foundation.
+- Use another family only through its independently reviewed public contract.
+- Test observable owner behavior and direct-consumer compatibility, not framework/browser internals.
+- Browser proof must cover lifecycle behavior when semantics depend on motion, interruption, reversal, cancellation, cleanup, or reduced motion.
+- Relocation, forwarding, migrated imports, declarations, and green path guards are migration evidence, not readiness.
 
-Semantics proof covers API/native/accessibility/state and all direct consumer behavior affected by the changed contract. Token proof covers canonical declaration ownership, namespaces, graph direction, cycles, dead tokens, fallback, grammar, and computed routing. Web proof covers DOM/style/layout/RTL/adaptation, stable motion endpoints, interruption/reversal/cancellation/cleanup/reduced motion, and public-input browser behavior. Declaration presence, path changes, or screenshots alone are insufficient.
+## Review boundary
 
-Visible changes require prepared operator comparison. Consumer migration or legacy-owner removal is forbidden while recursive closure is blocked.
+This context may report that the correction is implemented, but it must not report the owner as ready, complete, canonicalized, aligned, or accepted.
 
-## Documentation and continuation
+After implementation, return control to the root. The root must create a new isolated read-only `material-component-review` context. Only that reviewer may accept readiness and allow the stack entry to be popped.
 
-Update an owner README only for durable contract changes. Never write current stage, correction status, backlog, review history, shell output, or future passes there.
-
-Return control to the orchestrator for adoption, review, refreshed preflight, and next-unit selection. Completing one owner correction does not complete a `full-family` invocation.
+If review rejects the correction, a new fresh writable context receives the consolidated findings. Do not continue patching in the original implementation context.
 
 ## Result
 
 ```text
-MATERIAL STAGE RESULT
-Family:
+MATERIAL OWNER IMPLEMENTATION RESULT
+Owner kind: component | foundation
+Family/domain:
 Invocation scope:
-Stage: implementation
 Correction unit:
-Implementation owner:
-Canonicalization trigger:
-Status: complete | blocked
-Actual dependency closure:
-Prerequisite result:
+Execution context: fresh-isolated-writable
+Status: implemented | blocked | checkpoint-required
+Deepest owner confirmed: yes | no
+Locked contract preserved: yes | no
+Nested prerequisite discovered: none | <exact owner>
 Canonical contract result:
 Token ownership result:
 Semantics/lifecycle result:
 Changed owners:
-Boundary guard:
-Proof result:
+Focused proof result:
 Browser evidence:
 Direct consumer result:
 Legacy owner result:
-Visual/operator result:
-Continuation required: yes | no
-Remaining family concerns:
+Owner README result:
+Readiness claim: forbidden
+Review required: yes
+Remaining owner gaps: none | <exact gaps>
 Blocker: none | <exact blocker>
+Checkpoint reason: none | isolated-writable-context-unavailable | context-exhausted | runtime-exhausted | user-interrupted | required-tool-unavailable | required-evidence-unavailable
 ```
 
 ## Forbidden
 
-- direct invocation or edits before approval/prerequisites;
-- implementing several canonical owners in one writable context;
-- lower-priority work around open recursive dependency closure;
-- changing locked decisions or repeating audits without contradiction;
+- running in the root orchestrator or reviewer context;
+- implementing a parent while a deeper owner is unfinished;
+- implementing multiple canonical owners;
+- self-review or readiness claims;
+- production edits before locked contract approval;
+- changing architecture decisions without returning to the root;
 - relocation-only completion or copying known legacy defects;
-- canonical routes or tokens with required legacy owners;
-- migration/removal with open closure;
-- moving another component family into foundation;
-- declaration-only motion proof, `transition: all`, stale resources, or broad permanent `will-change`;
-- tests of framework/browser/third-party internals;
-- persisted execution state, review history, backlog, or shell output in owner docs;
-- roadmap advancement, independent review, Git operations, or speculative infrastructure.
+- migration/removal with open child closure;
+- roadmap updates, independent review, Git operations, or workflow-policy edits.

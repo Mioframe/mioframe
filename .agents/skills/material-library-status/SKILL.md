@@ -1,6 +1,6 @@
 ---
 name: material-library-status
-description: 'Use for a concise read-only Material library status report reconstructed from roadmap, current code, guards, proof, verification, and an optional validated continuation checkpoint.'
+description: 'Use for a concise read-only Material library status report reconstructed from roadmap, current code, accepted owner reviews, guards, proof, verification, and an optional validated physical checkpoint.'
 ---
 
 # Material library status
@@ -9,26 +9,37 @@ Read only:
 
 1. `src/shared/ui/material/docs/roadmap.md`;
 2. the active owner README for durable contract facts only;
-3. current canonical owner, exports, actual implementations/imports, all direct consumers of changed public contracts or extensions, broader adoption scope, legacy-owner state, guards, proof, operator evidence, and verification.
+3. current canonical owners, exports, implementations/imports, direct consumers, broader adoption scope, legacy-owner state, accepted owner review results, guards, proof, operator evidence, and verification.
 
 Report:
 
-- active root family/domain and invocation scope;
-- candidate canonical owner, public export, consumers, and legacy-owner state;
+- active root label, root kind (`material-component` or `material-foundation`), and invocation scope;
+- root-to-deepest unfinished continuation stack validated against current code;
+- checkpoint reason and whether it is one allowed physical reason;
+- current deepest owner and whether it has a fresh writable implementation result;
+- whether a different fresh read-only correction reviewer accepted that owner;
 - actual recursive dependency closure and required prerequisites;
-- prerequisite owner readiness, including token ownership and semantics/lifecycle;
-- roadmap continuation stack and whether current code confirms, shortens, replaces, or invalidates it;
-- current highest-priority correction inferred from code;
-- direct-consumer compatibility, adoption/cleanup, review, guard, browser, operator, and verification status;
+- canonical token ownership and semantics/lifecycle readiness;
+- direct-consumer compatibility, adoption/cleanup, browser/operator proof, guards, and verification;
 - alignment: `aligned`, `converging`, or `blocked`;
-- exact external blocker and one root-family next action.
+- exact external blocker and one same-root next action.
 
-A family-only invocation is one logical `full-family` operation. `converging` and a continuation checkpoint are nonterminal and not successful completion.
+Only the deepest unfinished owner may be active. A parent owner cannot be reported ready while a deeper stack entry remains.
 
-Owner README files must not contain persisted execution state. The roadmap may contain only one compact root-to-deepest unfinished continuation stack. Treat it as a hint: validate it against code and derive completed work from implementation, imports, guards, and proof.
+Implementation does not establish readiness. Missing, same-context, or `not-run` correction review keeps the owner unfinished.
 
-Do not classify a used dependency outside orchestration because another owner implements it. Do not equate one correction, focused green tests, relocation, barrel creation, forwarding, consumer migration, snapshots, declarations, or green path guards with readiness.
+A continuation checkpoint is valid only with one of:
 
-The next action for a converging family must resume the same root `material-component <family>` command. Never tell the operator to invoke a nested component family or `material-foundation` separately.
+- `context-exhausted`;
+- `runtime-exhausted`;
+- `user-interrupted`;
+- `isolated-writable-context-unavailable`;
+- `isolated-review-context-unavailable`;
+- `required-tool-unavailable`;
+- `required-evidence-unavailable`.
 
-Do not inspect/report Git, branch, commit, PR, or merge state. Do not modify files, execute stages, create audits/histories/checklists/scorecards/trackers, or persist a parallel status record.
+A large owner, many consumers, or repairable verification failure is not a checkpoint reason.
+
+The next action for a converging operation must resume the same root command recorded by the roadmap. Never tell the operator to invoke a nested family or foundation owner separately.
+
+Do not modify files, execute stages, inspect Git/PR state, or persist a parallel status record.
