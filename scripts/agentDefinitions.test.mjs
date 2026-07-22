@@ -60,6 +60,7 @@ describe('portable Agent Skills', () => {
     const implementation = readText('.agents/skills/material-component-implementation/SKILL.md');
     const correctionReview = readText('.agents/skills/material-component-review/SKILL.md');
     const familyReview = readText('.agents/skills/material-family-review/SKILL.md');
+    const componentContractTesting = readText('.agents/skills/component-contract-testing/SKILL.md');
 
     expect(componentRoot).toContain('coordination-only root');
     expect(componentRoot).toContain('must not edit production code');
@@ -91,9 +92,16 @@ describe('portable Agent Skills', () => {
 
     expect(correctionReview).toContain('Review context: fresh-isolated-read-only');
     expect(correctionReview).toContain('Implementation context reused: no');
+    expect(correctionReview).toContain('Unresolved gap reconciliation:');
+    expect(correctionReview).toContain('Sentinel/value-state compatibility:');
     expect(correctionReview).toContain('Stack transition authorized: yes | no');
 
     expect(familyReview).toContain('Review context: fresh-isolated-read-only');
     expect(familyReview).toContain('Prior family context reused: no');
+    expect(familyReview).toContain('Unresolved gap reconciliation:');
+    expect(familyReview).toContain('Sentinel/value-state compatibility:');
+
+    expect(componentContractTesting).toMatch(/sentinel or boundary semantics/i);
+    expect(componentContractTesting).toMatch(/documented invalid-value behavior/i);
   });
 });
