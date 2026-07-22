@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MATERIAL_ROOT = path.join(ROOT, 'src', 'shared', 'ui', 'material');
 const TYPESCALE_FILE = 'src/shared/ui/material/foundation/typescale/typescale.css';
+const COMPONENT_PREFIX = 'src/shared/ui/material/components/';
 const TYPESCALE_PROPERTIES = new Set([
   'font-family',
   'font-weight',
@@ -60,13 +61,17 @@ function analyzeStyle(file, source) {
     });
   }
 
-  root.walkDecls(/^--md-private-.*-rendered-/, (declaration) => {
-    if (/var\(\s*--md-private-/.test(declaration.value)) {
-      errors.push(
-        `${location(file, declaration)}: rendered private route '${declaration.prop}' must not add another private hop`,
-      );
-    }
-  });
+  // Component state selectors must override one final private route directly. Foundation bridges
+  // are outside this check because they may intentionally connect independently owned concerns.
+  if (file.startsWith(COMPONENT_PREFIX)) {
+    root.walkDecls(/^--md-private-.*-rendered-/, (declaration) => {
+      if (/var\(\s*--md-private-/.test(declaration.value)) {
+        errors.push(
+          `${location(file, declaration)}: rendered private route '${declaration.prop}' must not add another private hop`,
+        );
+      }
+    });
+  }
 
   return errors;
 }
@@ -92,7 +97,7 @@ describe('Material style ownership', () => {
     expect(errors.some((error) => error.includes("must not own 'margin'"))).toBe(true);
   });
 
-  it('rejects base-state-rendered private alias chains', () => {
+  it('rejects base-state-rendered private alias chains in component styles', () => {
     const errors = analyzeStyle(
       'src/shared/ui/material/components/button/MDButton.css',
       '.md-button { --md-private-button-label-color: red; --md-private-button-rendered-label-color: var(--md-private-button-label-color); color: var(--md-private-button-rendered-label-color); }',
@@ -101,6 +106,15 @@ describe('Material style ownership', () => {
     expect(errors).toEqual([
       expect.stringContaining("rendered private route '--md-private-button-rendered-label-color'"),
     ]);
+  });
+
+  it('does not apply the component-route rule to foundation bridges', () => {
+    expect(
+      analyzeStyle(
+        'src/shared/ui/material/foundation/state/state.css',
+        '.state { --md-private-state-rendered-color: var(--md-private-state-layer-color); }',
+      ),
+    ).toEqual([]);
   });
 
   it('keeps canonical Material styles within these ownership boundaries', () => {
