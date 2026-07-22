@@ -42,13 +42,16 @@ Internal Material code uses local owning entry points. Private files and `--md-p
 
 ## Development
 
-- `material-component` owns one logical complete convergence operation for a component family, including recursive prerequisites.
-- The operation continues through multiple reviewed owner units in one session when possible.
-- If a real physical session boundary prevents continuation, the root orchestrator records one compact validated continuation stack and the operator resumes the same root `material-component <family>` command.
-- `material-foundation` owns one real cross-family foundation contract and returns delegated work to the root family.
-- Read-only specialist skills own bounded research, audits, and reviews.
+- `material-component` is a coordination-only root for one logical family convergence operation.
+- Only the deepest unfinished owner may be changed.
+- Component owners are implemented in fresh isolated writable `material-component-implementation` contexts.
+- Foundation owners are implemented in fresh isolated writable `material-foundation` contexts.
+- Every owner correction is accepted only by a different fresh isolated read-only `material-component-review` context.
+- Final family readiness is accepted only by another fresh isolated read-only `material-family-review` context.
+- The root orchestrator edits no production code and cannot substitute for an unavailable owner or review context.
+- If a real physical boundary prevents continuation, the root records one compact continuation stack and one exact checkpoint reason; the operator resumes the same root `material-component <family>` command.
 - Owner README files store durable contracts only.
-- `docs/roadmap.md` stores only the active root family, alignment status, one root-to-deepest unfinished continuation stack, exact external blocker, and one next action.
+- `docs/roadmap.md` stores only the active root family, alignment status, one root-to-deepest unfinished continuation stack, one checkpoint reason, exact external blocker, and one next action.
 
 Canonical guidance:
 
@@ -65,6 +68,7 @@ Do not create workflow-state blocks, completed-unit histories, backlogs, review 
 
 - `scripts/materialBoundaryArchitecture.test.mjs` enforces the Material ownership boundary.
 - `scripts/materialTokenArchitecture.test.mjs` enforces token namespaces, ownership, graph direction, and token-file responsibility.
-- `scripts/materialDocumentationArchitecture.test.mjs` keeps owner README files free of persisted execution state and restricts roadmap continuation to the root family.
+- `scripts/materialDocumentationArchitecture.test.mjs` keeps owner README files free of execution state and validates the root checkpoint contract.
+- `scripts/agentDefinitions.test.mjs` enforces separation between root orchestration, writable owner implementation, and read-only review.
 
-A family is complete only after dependency closure, prerequisites, canonical ownership, adoption and cleanup, required proof and operator comparison, independent family review, and final repository verification. A checkpoint is nonterminal and not merge readiness.
+A family is complete only after an empty continuation stack, accepted independent owner reviews, dependency closure, canonical ownership, adoption and cleanup, required proof and operator comparison, independent family review, and final repository verification. A checkpoint is nonterminal and not merge readiness.
