@@ -13,7 +13,7 @@ Read only:
 
 Report:
 
-- active root family/domain and invocation scope;
+- active root label, root kind (`material-component` or `material-foundation`), and invocation scope;
 - root-to-deepest unfinished continuation stack validated against current code;
 - checkpoint reason and whether it is one allowed physical reason;
 - current deepest owner and whether it has a fresh writable implementation result;
@@ -22,7 +22,7 @@ Report:
 - canonical token ownership and semantics/lifecycle readiness;
 - direct-consumer compatibility, adoption/cleanup, browser/operator proof, guards, and verification;
 - alignment: `aligned`, `converging`, or `blocked`;
-- exact external blocker and one root-family next action.
+- exact external blocker and one same-root next action.
 
 Only the deepest unfinished owner may be active. A parent owner cannot be reported ready while a deeper stack entry remains.
 
@@ -40,6 +40,6 @@ A continuation checkpoint is valid only with one of:
 
 A large owner, many consumers, or repairable verification failure is not a checkpoint reason.
 
-The next action for a converging family must resume the same root `material-component <family>` command. Never tell the operator to invoke a nested family or `material-foundation` separately.
+The next action for a converging operation must resume the same root command recorded by the roadmap. Never tell the operator to invoke a nested family or foundation owner separately.
 
 Do not modify files, execute stages, inspect Git/PR state, or persist a parallel status record.
