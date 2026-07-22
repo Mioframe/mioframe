@@ -71,13 +71,15 @@ test.describe('fixed-position reorder surface under a transformed ancestor', () 
     // over it.
     await expect(lastItem).toBeInViewport();
 
+    // Capture the stopped position before release so movement between pointer-up and the first
+    // sampled frame cannot become the test's new baseline.
+    const scrollTopBeforeRelease = await ancestor.evaluate((el) => el.scrollTop);
     await page.mouse.up();
 
-    // Releasing the pointer stops the ancestor from drifting further.
-    const scrollTopAtRelease = await ancestor.evaluate((el) => el.scrollTop);
     const releaseSamples = await sampleScrollTop(ancestor);
     for (const sample of releaseSamples) {
-      expect(Math.abs(sample - scrollTopAtRelease)).toBeLessThanOrEqual(1);
+      expect(Math.abs(sample - scrollTopBeforeRelease)).toBeLessThanOrEqual(1);
     }
+    await expect(firstItem).not.toHaveClass(/_dragging/);
   });
 });
