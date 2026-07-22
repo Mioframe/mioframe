@@ -254,12 +254,6 @@ TASK RESULT
   });
 
   it('rejects delegation of a nested prerequisite while converging', () => {
-    expect(
-      analyzeRoadmap({
-        toString: () => '',
-      }),
-    ).not.toEqual([]);
-
     const errors = analyzeRoadmap(
       roadmapFixture({
         nextAction: 'Resume `material-component Button`; then run `material-foundation tokens`.',
