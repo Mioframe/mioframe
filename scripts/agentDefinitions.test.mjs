@@ -53,4 +53,36 @@ describe('portable Agent Skills', () => {
       owners.set(name, relativePath);
     }
   });
+
+  it('keeps Material orchestration, owner implementation, and review in separate contexts', () => {
+    const orchestrator = readText('.agents/skills/material-component/SKILL.md');
+    const implementation = readText('.agents/skills/material-component-implementation/SKILL.md');
+    const foundation = readText('.agents/skills/material-foundation/SKILL.md');
+    const correctionReview = readText('.agents/skills/material-component-review/SKILL.md');
+    const familyReview = readText('.agents/skills/material-family-review/SKILL.md');
+
+    expect(orchestrator).toContain('coordination-only root');
+    expect(orchestrator).toContain('must not edit production code');
+    expect(orchestrator).toContain('Only the deepest unfinished owner');
+    expect(orchestrator).toContain('fresh isolated writable owner context');
+    expect(orchestrator).toContain('fresh isolated read-only review context');
+    expect(orchestrator).toContain('Checkpoint reason: none | context-exhausted');
+    expect(orchestrator).not.toContain(
+      'execute the same owner units sequentially in the current runtime',
+    );
+
+    expect(implementation).toContain('Execution context: fresh-isolated-writable');
+    expect(implementation).toContain('Readiness claim: forbidden');
+    expect(implementation).toContain('Review required: yes');
+
+    expect(foundation).toContain('Execution context: fresh-isolated-writable');
+    expect(foundation).toContain('Readiness claim: forbidden');
+
+    expect(correctionReview).toContain('Review context: fresh-isolated-read-only');
+    expect(correctionReview).toContain('Implementation context reused: no');
+    expect(correctionReview).toContain('Stack transition authorized: yes | no');
+
+    expect(familyReview).toContain('Review context: fresh-isolated-read-only');
+    expect(familyReview).toContain('Prior family context reused: no');
+  });
 });
