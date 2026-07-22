@@ -69,7 +69,9 @@ describe('portable Agent Skills', () => {
     expect(componentRoot).toMatch(/real Agent\/subagent delegation primitive/i);
     expect(componentRoot).toMatch(/One outer root owns the entire recursive operation/i);
     expect(componentRoot).toContain('## Owner convergence pass');
-    expect(componentRoot).toMatch(/same implementation context performs one consolidated correction pass/i);
+    expect(componentRoot).toMatch(
+      /same implementation context performs one consolidated correction pass/i,
+    );
     expect(componentRoot).toMatch(/same read-only reviewer re-reviews once/i);
     expect(componentRoot).toContain('## Preflight cadence');
     expect(componentRoot).toMatch(/Do not repeat the full repository\/family preflight/i);
@@ -81,7 +83,9 @@ describe('portable Agent Skills', () => {
     expect(componentRoot).not.toMatch(/new implementation context per small finding/i);
 
     expect(foundationRoot).toContain('coordination-only root');
-    expect(foundationRoot).toMatch(/same implementation context performs one consolidated correction pass/i);
+    expect(foundationRoot).toMatch(
+      /same implementation context performs one consolidated correction pass/i,
+    );
     expect(foundationRoot).toMatch(/same reviewer re-reviews once/i);
     expect(foundationRoot).toMatch(/Do not run full `pnpm verify` after each owner/i);
 
