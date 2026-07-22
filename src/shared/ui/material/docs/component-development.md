@@ -57,7 +57,9 @@ The prerequisite must meet the same readiness standard as a directly requested M
 
 Moving legacy files, creating a canonical directory or barrel, forwarding exports, migrating imports, or passing path guards does not establish readiness.
 
-When supported, run each prerequisite in a fresh focused writable context. One context owns one canonical prerequisite owner plus only the minimum compatibility and adoption edits required for it. Split nested owners through the orchestrator rather than combining them into one broad implementation pass.
+When supported, run each prerequisite in a fresh focused writable context. One implementation unit owns one canonical prerequisite owner plus only the minimum compatibility and adoption edits required for it. Split nested owners through the orchestrator rather than combining them into one broad implementation pass.
+
+When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. Lack of subagents is not a blocker and does not permit combining several owners into one correction.
 
 Wrong ownership, temporary legacy Material, legacy-owned canonical token declarations, missing tokens, defective contracts, incompatible consumers, private cross-family imports, hidden fallbacks, cycles, and parallel owners block lower-priority work on the same surface.
 
