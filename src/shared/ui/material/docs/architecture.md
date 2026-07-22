@@ -4,7 +4,7 @@
 
 `src/shared/ui/material` is Mioframe's isolated Material 3 Expressive implementation library. It is a shared implementation tool, not a product layer or application shell.
 
-Product code determines required scenarios and priority. It does not determine internal Material ownership, dependency direction, or public APIs.
+Product code determines required scenarios and priority. It does not determine internal Material ownership, dependency direction, public APIs, or workflow readiness.
 
 ## Canonical boundary
 
@@ -60,6 +60,19 @@ A foundation domain owns only a genuinely cross-family family-agnostic contract.
 
 Reference/system token ownership, component-token placement, extension namespaces, private routing, graph direction, and verification are defined by [`tokens.md`](./tokens.md).
 
+## Execution ownership
+
+Workflow responsibility is separated from code ownership:
+
+- the root `material-component` context coordinates and writes only the compact roadmap state;
+- a fresh isolated writable owner context implements exactly one current deepest owner;
+- a different fresh isolated read-only reviewer decides whether that owner is ready;
+- another fresh isolated read-only reviewer decides final family readiness.
+
+The root must not edit production code or review its own delegated work. An implementation context must not declare readiness. A reviewer must not edit. If a required isolated context cannot be created, the operation checkpoints with the exact physical reason instead of falling back to one context.
+
+The continuation stack is root-to-deepest unfinished owner. A parent cannot be changed or reported ready while a deeper child remains. A stack entry is removed only after focused proof and an accepted independent correction-final review.
+
 ## Decomposition and public API
 
 Map each concern to one owner with inputs, outputs, allowed dependencies, observable contract, proof, and co-location rationale.
@@ -70,21 +83,13 @@ Prefer native semantics, explicit props/emits/slots/events, consumer-controlled 
 
 Avoid broad option bags, product adapters, universal bases, managers, registries, generic resolvers, speculative extension points, hidden controlled-state copies, unnecessary DOM, ambiguous token namespaces, and permanent compatibility aliases.
 
-## Convergence invariant
-
-Existing code, tests, stories, consumers, and snapshots are editable evidence. Preserve confirmed owners, correct the smallest complete highest-priority gap, close dependencies before adoption, and remove obsolete ownership after replacement.
-
-One logical `material-component <family>` operation may span physical sessions only when a real execution boundary prevents safe continuation. One owner remains the correction boundary, but a session continues through multiple reviewed owner units when possible.
-
-The executable process is owned by `material-component`, `material-foundation`, and their bounded stage/review skills.
-
 ## Durable records
 
 Owner README files store only durable supported surface, API, semantics, ownership, token/style/motion contracts, extensions, unsupported behavior, compatibility, and proof obligations.
 
 Current stage, correction unit, detailed prerequisite state, backlog, completed-unit history, review results/history, shell output, commit narratives, and future passes must not be persisted in owner documentation.
 
-`docs/roadmap.md` stores only the active root family, alignment status, one validated root-to-deepest unfinished continuation stack, exact external blocker, and one next action that resumes the root family. The stack is a resumption hint and must be checked against code; code and proof remain the source of truth for completed work and implementation details.
+`docs/roadmap.md` stores only the active root family, alignment status, one validated root-to-deepest unfinished continuation stack, one checkpoint reason, exact external blocker, and one next action that resumes the root family. Code and accepted proof remain the source of truth.
 
 ## Simplicity gate
 
