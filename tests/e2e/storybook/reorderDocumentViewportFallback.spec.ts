@@ -6,13 +6,15 @@ const STORY_ID = 'shared-lib-reorder-reorderdocumentviewportstoryharness--defaul
 const CONTAINER_SELECTOR = '[aria-label="Document viewport reorder items"]';
 const ANCESTOR_SELECTOR = '[aria-label="Reorder scroll ancestor"]';
 
-const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): void => {
-  for (const sample of samples) {
-    expect(
-      Math.abs(sample - baseline),
-      `scrollTop samples: ${samples.join(', ')}, baseline: ${baseline}`,
-    ).toBeLessThanOrEqual(1);
-  }
+const assertNoForwardScrollAfterRelease = (samples: number[], baseline: number): void => {
+  expect(samples).not.toHaveLength(0);
+  const message = `scrollTop samples: ${samples.join(', ')}, pre-release baseline: ${baseline}`;
+
+  expect(Math.max(...samples) - baseline, message).toBeLessThanOrEqual(1);
+  expect(baseline - Math.min(...samples), message).toBeLessThanOrEqual(3);
+
+  const settledTail = samples.slice(-4);
+  expect(Math.max(...settledTail) - Math.min(...settledTail), message).toBeLessThanOrEqual(1);
 };
 
 const assertViewportSettlesWithoutResuming = (samples: number[]): void => {
@@ -265,24 +267,20 @@ test.describe('document viewport autoscroll fallback', () => {
     expect(progression.remainingRoom).toBeGreaterThan(4);
     assertViewportSettlesWithoutResuming(progression.samples);
 
-    // 7. Releasing the pointer keeps all three levels stopped and runs drag cleanup.
+    // 7. Capture the stopped drag positions before release. After pointer-up, the browser may make
+    // a small reverse settling correction, but none of the three levels may resume forward
+    // autoscroll from the still-edge-adjacent pointer position.
+    const containerBaseline = await container.evaluate((el) => el.scrollTop);
+    const ancestorBaseline = await ancestor.evaluate((el) => el.scrollTop);
+    const documentBaseline = await documentViewport.evaluate((el) => el.scrollTop);
+
     await page.mouse.up();
+    await expect(firstItem).not.toHaveClass(/_dragging/);
 
     const releaseSamples = await sampleReleaseScrollTops(page);
 
-    const containerBaseline = releaseSamples.container.at(0);
-    const ancestorBaseline = releaseSamples.ancestor.at(0);
-    const documentBaseline = releaseSamples.document.at(0);
-    if (
-      containerBaseline === undefined ||
-      ancestorBaseline === undefined ||
-      documentBaseline === undefined
-    ) {
-      throw new Error('missing post-release scrollTop baseline');
-    }
-
-    assertScrollTopHoldsAtBaseline(releaseSamples.container, containerBaseline);
-    assertScrollTopHoldsAtBaseline(releaseSamples.ancestor, ancestorBaseline);
-    assertScrollTopHoldsAtBaseline(releaseSamples.document, documentBaseline);
+    assertNoForwardScrollAfterRelease(releaseSamples.container, containerBaseline);
+    assertNoForwardScrollAfterRelease(releaseSamples.ancestor, ancestorBaseline);
+    assertNoForwardScrollAfterRelease(releaseSamples.document, documentBaseline);
   });
 });
