@@ -89,7 +89,6 @@ const animateValue = computed(
       :cy="center"
       :r="radius"
       fill="none"
-      stroke="blue"
       :stroke-width="width"
       :stroke-linecap="strokeLinecap"
       :stroke-dasharray="progressDasharray"

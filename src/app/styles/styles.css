@@ -2,6 +2,7 @@
 @import 'modern-normalize/modern-normalize.css';
 @import '../../shared/lib/md/index.css';
 @import '../../shared/ui/material/foundation/typescale/typescale.css';
+@import '../../shared/ui/material/foundation/motion/motion.css';
 
 html,
 body,

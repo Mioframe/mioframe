@@ -1,0 +1,18 @@
+/*
+ * Private Web platform adaptation of the Material 3 Expressive spring curves
+ * (`md.sys.motion.spring.fast.spatial.damping/stiffness`, currently declared in
+ * `src/shared/lib/md/tokens.css` as legacy `md.sys.*` system tokens). CSS transitions cannot
+ * derive a curve from numeric stiffness/damping at runtime, so these are the fixed, documented
+ * Web conversion of the fast-spatial and fast-effects springs, not a dynamic regeneration of the
+ * curve. Not public `--md-sys-*` duration/easing tokens because Material 3 Expressive Web
+ * publishes no such public alias for spring-driven motion.
+ *
+ * Family-agnostic: shared by every actionable-surface family shape-morph/color transition
+ * (Button, FAB, Extended FAB, Icon Button), so it is owned here rather than by one family.
+ */
+:root {
+  --md-private-motion-expressive-fast-spatial-duration: 350ms;
+  --md-private-motion-expressive-fast-spatial-easing: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --md-private-motion-expressive-fast-effects-duration: 150ms;
+  --md-private-motion-expressive-fast-effects-easing: cubic-bezier(0.31, 0.94, 0.34, 1);
+}

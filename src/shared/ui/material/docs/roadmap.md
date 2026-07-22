@@ -10,7 +10,7 @@ External blocker: none
 
 ## Next action
 
-Run `material-component Button` to reconstruct the current implementation, recursively canonicalize every required Material dependency, and continue until the Button family is `aligned` or an exact external blocker is found.
+Run `material-component progress-indicator` to canonicalize Button's unconverged `loading` dependency (`MDCircularProgressIndicator`: no README/tests, only one mapped token), then resume `material-component Button`.
 
 ## Update rule
 
