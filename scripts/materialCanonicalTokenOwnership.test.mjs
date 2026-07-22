@@ -84,7 +84,11 @@ function analyze(sources) {
 
       for (const match of declaration.value.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)/g)) {
         if (tokenType(match[1])) {
-          references.push({ name: match[1], file: baseFile(file), line: declaration.source?.start?.line ?? 0 });
+          references.push({
+            name: match[1],
+            file: baseFile(file),
+            line: declaration.source?.start?.line ?? 0,
+          });
         }
       }
     });
@@ -116,12 +120,20 @@ function analyze(sources) {
       const tokenFile = record.file.endsWith('.tokens.css');
       if (['md-ref', 'md-sys'].includes(type)) {
         if (!record.file.startsWith(`${MATERIAL_PREFIX}foundation/`) || !tokenFile) {
-          errors.push(`${record.file}:${record.line}: '${reference.name}' must be foundation-owned`);
+          errors.push(
+            `${record.file}:${record.line}: '${reference.name}' must be foundation-owned`,
+          );
         }
       } else if (type === 'md-comp') {
         const family = reference.name.match(/^--md-comp-([a-z0-9]+(?:-[a-z0-9]+)*)-/)?.[1];
-        if (!family || !record.file.startsWith(`${MATERIAL_PREFIX}components/${family}/`) || !tokenFile) {
-          errors.push(`${record.file}:${record.line}: '${reference.name}' must be owned by its component family`);
+        if (
+          !family ||
+          !record.file.startsWith(`${MATERIAL_PREFIX}components/${family}/`) ||
+          !tokenFile
+        ) {
+          errors.push(
+            `${record.file}:${record.line}: '${reference.name}' must be owned by its component family`,
+          );
         }
       }
     }
@@ -147,9 +159,7 @@ describe('Canonical Material token ownership', () => {
       },
     ]);
 
-    expect(errors).toEqual([
-      expect.stringContaining("without a canonical Material token owner"),
-    ]);
+    expect(errors).toEqual([expect.stringContaining('without a canonical Material token owner')]);
   });
 
   it('accepts a singular canonical owner', () => {
