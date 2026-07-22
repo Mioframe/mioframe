@@ -1,97 +1,76 @@
 ---
 name: material-component-adoption
-description: 'Internal Material procedure used only inside material-component for root export, consumer migration, compatibility forwarding, and obsolete-owner removal after recursive dependency and owner readiness are independently established.'
+description: 'Internal Material implementation stage used only inside a fresh isolated writable owner context for export, consumer migration, compatibility forwarding, and obsolete-owner cleanup.'
 ---
 
 # Material component adoption
 
-Run inside the `material-component` orchestrator context. Adoption shares current preflight, correction contract, recursive dependency graph, consumer scope, implementation, and continuation state.
+Run only inside the same fresh isolated writable owner context that implemented the current deepest-owner correction. It must not run in the root orchestrator or reviewer context.
 
-Use it when a correction creates/changes a Material root export, migrates consumers, forwards/removes a legacy owner, or cleans compatibility paths.
+Use it when the approved owner correction creates or changes a Material root export, migrates consumers, forwards or removes a legacy owner, or cleans compatibility paths.
 
 ## Entry gate
 
-Before any adoption edit, independently confirm from current code:
+Before any adoption edit, confirm:
 
-- candidate canonical owner and actual implementation;
-- complete recursive dependency closure for the supported surface;
-- completed and independently reviewed foundation and official-family prerequisites;
-- canonical token declaration ownership;
-- valid semantics/lifecycle and all direct-consumer compatibility for changed contracts or extensions;
-- passing Material boundary, token, and documentation architecture guards;
-- intended public export, exact consumer scope, and legacy-owner state.
+- execution context is `fresh-isolated-writable`;
+- this is the same owner correction and locked contract as the implementation result;
+- the owner is still the deepest unfinished stack entry;
+- recursive child dependencies and prerequisites are independently ready;
+- canonical token ownership is valid;
+- every direct consumer of the changed public contract or extension is enumerated;
+- the intended public export and exact legacy-owner disposition are locked.
 
-A declared `Dependency closure: closed`, relocated directory, forwarding barrel, migrated import, or green path guard is not sufficient without current owner/readiness evidence.
-
-When consumers are already migrated or the legacy owner already removed while closure/readiness is blocked, adoption status is invalid. The orchestrator must complete recursive canonicalization or safely roll back premature adoption before lower-priority work.
+A relocated directory, forwarding barrel, migrated import, or green path guard is not readiness evidence.
 
 ## Responsibility
 
-For the approved correction:
+For the approved owner correction:
 
-1. create or update the public export only for a ready owner;
-2. migrate only consumers whose required contracts are ready;
-3. inspect all direct consumers of changed public contracts or extensions for semantic compatibility;
-4. preserve accepted product scenarios except named intentional deltas;
-5. run migration-specific integration and compatibility proof;
-6. remove replaced implementation, declarations, exports, proof, contracts, aliases, and compatibility paths;
-7. retain a legacy entry point only as forwarding/import-only compatibility when required.
+1. create or update a public export only when child closure is complete;
+2. migrate only consumers covered by the locked contract;
+3. preserve accepted product behavior except named intentional deltas;
+4. run migration-specific compatibility proof;
+5. remove replaced implementation, declarations, exports, proof, aliases, and obsolete paths;
+6. retain a legacy entry point only as forwarding/import-only compatibility when required.
 
-A dependency remains in the calling orchestration even when foundation or another family owns its implementation.
+If a consumer reveals an incompatible contract or another canonical owner, stop and return the exact finding to the root. Do not add a consumer-specific Material adapter or continue into another owner.
 
-Do not make a new import path point at an uncorrected relocated legacy implementation. A canonical directory or barrel is not evidence of readiness.
+## Exit boundary
 
-If a consumer exposes unsupported capability or an incompatible public/dependency contract, return it to the orchestrator as required work. Do not add a consumer-specific Material adapter.
-
-## Exit gate
-
-Pass only when:
-
-- every in-scope and direct contract consumer uses the intended ready owner compatibly;
-- complete recursive dependency closure remains closed;
-- canonical token declarations and runtime ownership remain valid;
-- Material boundary/token/documentation guards pass;
-- required product scenarios are preserved;
-- no obsolete active owner or declaration covered by the correction remains;
-- retained compatibility is forwarding/import-only;
-- no parallel active owner exists;
-- for `full-family`, remaining consumers/ownership gaps require continued orchestration rather than termination.
+This stage may report adoption edits as implemented, but it cannot declare the owner ready. Readiness still requires a different fresh isolated read-only correction-final review.
 
 ## Result
 
 ```text
-MATERIAL STAGE RESULT
+MATERIAL ADOPTION IMPLEMENTATION RESULT
 Family:
 Invocation scope:
-Stage: adoption
 Correction unit:
-Status: complete | blocked
+Execution context: fresh-isolated-writable
+Status: implemented | blocked | checkpoint-required
+Deepest owner confirmed: yes | no
 Actual recursive dependency closure:
-Prerequisite owner readiness:
 Canonical token ownership:
-Boundary/token/documentation guards:
 Public export result:
 Migrated consumers:
 Direct consumer compatibility:
 Consumer proof:
 Removed obsolete ownership:
 Retained forwarding-only paths:
-Continuation required: yes | no
-Remaining consumers or gaps:
+Readiness claim: forbidden
+Review required: yes
+Remaining owner gaps:
 Blocker: none | <exact blocker>
+Checkpoint reason: none | context-exhausted | runtime-exhausted | user-interrupted | required-tool-unavailable | required-evidence-unavailable
 ```
-
-Return control to the orchestrator for correction-final review, preflight refresh, and continuation.
 
 ## Forbidden
 
-- direct user invocation or separate agent delegation;
-- root export, migration, forwarding, or removal with open recursive closure or unready prerequisite owner;
-- trusting stale README closure, relocation, barrels, or path guards without current implementation evidence;
-- consumer migration onto temporary legacy, missing, defective, private, fallback-masked, cyclic, parallel, or relocation-only dependencies;
-- treating a used dependency as outside orchestration;
-- silent public-contract, dependency, decomposition, or implementation changes;
+- execution in the root orchestrator or reviewer context;
+- self-review or readiness claims;
+- adoption while a deeper owner remains unfinished;
+- root export, migration, forwarding, or removal with open child closure;
+- consumer migration onto temporary, defective, private, cyclic, parallel, or relocation-only dependencies;
 - consumer-specific Material APIs or adapters;
-- permanent aliases or deferred cleanup inside the correction;
-- selecting the next correction, updating roadmap state, invoking review/verification, or starting another family;
-- Git, branch, commit, pull-request, or merge operations.
+- selecting another correction, updating roadmap state, invoking review, or Git/PR operations.
