@@ -1,127 +1,112 @@
 # Material component development
 
-This document defines the durable convergence model for one official Material component family. The executable procedure is owned by `.agents/skills/material-component/SKILL.md`; stage and review skills own only their local contracts.
+This document defines the durable convergence model for one official Material component family. The executable procedure is owned by `.agents/skills/material-component/SKILL.md`.
 
 ## Invocation
 
 - `material-component <family>` means one logical full-family convergence operation.
-- A focused correction requires an explicit bounded operator objective.
-- Required Material dependencies are recursively canonicalized inside the same root operation, then control returns automatically to the calling family.
-- A physical agent session may checkpoint and resume the same root operation when an actual context/runtime boundary prevents safe continuation.
+- Required Material dependencies are recursively canonicalized inside the same root operation.
+- The operator always resumes the same root command and never invokes an internal prerequisite separately.
+- A physical session may checkpoint only for a real execution boundary.
 
-A correction unit is an implementation and review boundary, not the end of a session or invocation. Continue through multiple reviewed owner units while the session can safely proceed. `converging` and `checkpointed` are nonterminal.
+## Responsibility separation
+
+Every correction uses three different contexts:
+
+1. the root orchestrator reconstructs state, orders the stack, delegates work, validates results, and updates the compact roadmap;
+2. a fresh isolated writable owner context implements exactly one deepest-owner correction;
+3. a different fresh isolated read-only reviewer accepts or rejects readiness.
+
+The root orchestrator does not edit production code, tests, stories, tokens, exports, consumers, legacy owners, or owner README files. The implementation context cannot review itself or declare readiness. The reviewer cannot edit.
+
+If a required isolated context is unavailable, the operation checkpoints with an exact physical reason. It must not fall back to implementation or review in the root context.
 
 ## Sequence
 
 ```text
 current-state preflight and checkpoint validation
-→ bounded orientation and concern selection
-→ missing target/audit evidence only
-→ highest-priority complete correction contract
-→ independent contract review
-→ recursive exact prerequisites when required
-→ one bounded canonical owner implementation and proof
-→ conditional adoption and cleanup
-→ independent correction review
-→ next owner without restarting accepted work
-→ final family review
+→ construct root-to-deepest unfinished stack
+→ select only the deepest owner
+→ lock one bounded correction contract
+→ fresh writable owner implementation
+→ focused proof
+→ fresh read-only correction-final review
+→ pop accepted owner or retry once in a new writable context
+→ refresh stack and continue
+→ fresh read-only final family review
 → pnpm verify
 ```
 
 ## Current-state preflight
 
-Before selecting work, reconstruct from code:
+Reconstruct from code:
 
 - candidate and legacy owners and actual implementations;
 - public exports and migrated consumers;
-- real imports, injected dependencies, styles, token declarations and references;
-- dependency ownership and readiness;
+- imports, injected dependencies, styles, token declarations and references;
+- recursive dependency ownership and readiness;
 - all direct consumers of changed public contracts or extensions;
 - boundary/token/documentation guards and relevant proof.
 
-Owner README files contain durable contracts only. They are evidence, not execution state or architecture authority.
+Owner README files contain durable contracts only. The roadmap stack is a resumption hint, not authority. Validate it against current code and discard stale entries.
 
-`roadmap.md` may contain one minimal continuation stack from the root family to the deepest unfinished owner. It is a resumption hint, not a completion ledger. Validate it against code, discard stale entries, and derive completed work from implementation and proof.
+## Strict continuation stack
 
-After preflight, start the highest-priority implementation or prerequisite. A component run does not rewrite workflow skills or global process documentation unless the operator explicitly requested workflow work.
+The stack is ordered root-to-deepest unfinished owner. Only the deepest owner may be contracted, implemented, or reviewed.
+
+A parent owner must not be changed, migrated, exported, removed, or reported ready while a child entry remains unfinished.
+
+Remove an entry only when:
+
+- one fresh writable context returned an implementation result;
+- focused proof passed;
+- a different fresh read-only reviewer returned `correction-final: complete`;
+- direct-consumer compatibility and legacy disposition were accepted.
+
+After removal, refresh the graph and continue from the new deepest owner.
 
 ## Recursive dependency closure
 
-Every dependency required by the supported surface resolves to one ready canonical foundation, official family public contract, generic non-Material foundation, or explicit Mioframe extension owner.
+Every used Material dependency resolves to a ready canonical foundation, official family public contract, generic non-Material foundation, or explicit Mioframe extension owner.
 
-A used Material dependency remains inside the calling family workflow even when another owner implements it. If a ready canonical owner does not exist, run the owning `material-foundation` or `material-component` workflow depth-first and return automatically.
+If a ready owner does not exist:
 
-The prerequisite must meet the same readiness standard as a directly requested Material artifact:
+- family-agnostic contract → exact `material-foundation` owner correction;
+- official component family → nested `material-component` operation;
+- nested prerequisites execute depth-first and return automatically.
 
-- one canonical owner and complete recursive dependencies;
-- correct token declaration ownership;
-- valid public API, semantics, lifecycle, accessibility, and platform behavior;
-- compatibility of all direct consumers of the changed contract;
-- forwarding/import-only legacy compatibility with no parallel active implementation;
-- focused proof and independent review.
+Readiness requires canonical ownership, complete child dependencies, correct tokens, valid API/semantics/lifecycle/accessibility/platform behavior, all direct consumers, compatibility cleanup, focused proof, and independent review.
 
-Moving legacy files, creating a canonical directory or barrel, forwarding exports, migrating imports, or passing path guards does not establish readiness.
+Relocation, forwarding, barrels, migrated imports, and green path guards are not readiness.
 
-When supported, run each prerequisite in a fresh focused writable context. One implementation unit owns one canonical prerequisite owner plus only the minimum compatibility and adoption edits required for it. Split nested owners through the orchestrator rather than combining them into one broad implementation pass.
+## Review
 
-When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. Lack of subagents is not a blocker and does not permit combining several owners into one correction.
+The correction reviewer receives structured contract, implementation result, selected evidence, proof, and consumer inventory. It independently inspects current code and does not receive the implementer's reasoning transcript.
 
-The size of a dependency or its consumer count does not make it external. Internal prerequisites remain owned by the root invocation.
+The reviewer verdict is the only authority that permits a stack pop. Missing, same-context, or `not-run` review leaves the owner unfinished.
 
-Wrong ownership, temporary legacy Material, legacy-owned canonical token declarations, missing tokens, defective contracts, incompatible consumers, private cross-family imports, hidden fallbacks, cycles, and parallel owners block lower-priority work on the same surface.
-
-Creating or preserving a canonical owner, root export, migrated consumer, forwarding legacy owner, or alignment claim requires complete recursive dependency closure.
-
-Forwarding-only compatibility may exist as a temporary working-branch checkpoint while `converging`; it is never readiness or merge approval.
-
-## Correction and review
-
-Select one smallest complete correction at a time in this order:
-
-1. unresolved source or platform decision;
-2. ownership and dependencies;
-3. semantics and accessibility;
-4. public API and state;
-5. DOM and anatomy;
-6. token graph;
-7. layout, typography, RTL, and scaling;
-8. motion and browser lifecycle;
-9. extensions, adoption, and cleanup.
-
-Independent review verifies actual implementations and owners for the affected surface. Canonicalization or adoption widens review to recursive dependency closure and direct-consumer compatibility; a bounded scope cannot hide a real dependency.
-
-Reuse accepted evidence until contradicted. Each gate permits one initial review and at most one substantive re-review. Repeated ownership failure reopens architecture instead of adding workarounds.
+A final family review runs in another fresh read-only context only after the stack is empty and every owner review is accepted.
 
 ## Continuation checkpoint
 
-A checkpoint is allowed only when context/runtime exhaustion, user interruption, unavailable required tools/evidence, or another external execution boundary prevents safe continuation.
+Allowed reasons:
 
-When possible, finish and review the active owner unit first. Record only:
+- `context-exhausted`;
+- `runtime-exhausted`;
+- `user-interrupted`;
+- `isolated-writable-context-unavailable`;
+- `isolated-review-context-unavailable`;
+- `required-tool-unavailable`;
+- `required-evidence-unavailable`.
 
-- active root family;
-- alignment status;
-- root-to-deepest unfinished continuation stack;
-- exact external blocker or `none`;
-- one next action that resumes the same root `material-component <family>` command.
+A large owner, many consumers, an internal prerequisite, or a repairable red check is not a checkpoint reason.
 
-Do not store completed units, findings, tests run, shell output, estimates, or a dependency backlog. Code remains the source of truth.
+Record only active root family, alignment status, continuation stack, checkpoint reason, exact external blocker, and one next action that resumes the root command.
 
-Discovery of a large prerequisite, a repairable red guard, or another official family is not enough to checkpoint while the session can continue.
+## Completion
 
-## Documentation
+`aligned` requires an empty stack, accepted owner reviews, closed recursive dependencies, valid contracts and consumers, adoption/cleanup, required proof/operator comparison, fresh final family review, and passing `pnpm verify`.
 
-- Owner README: durable supported surface, public API, semantics, ownership, token/style/motion contracts, extensions, unsupported behavior, and durable proof obligations only.
-- Roadmap: active root family, alignment status, one validated continuation stack, exact external blocker, and one next action only.
-- Detailed correction and review state remains transient and reconstructable from code.
+`blocked` requires an exact external condition that cannot be resolved inside the recursive operation.
 
-Do not persist workflow-state blocks, backlogs, completed-unit history, shell output, commit narratives, stage diaries, scorecards, or future-pass plans.
-
-## Results
-
-`aligned` requires closed recursive dependencies, canonical prerequisite owners, valid semantic/token/DOM/style/motion contracts, direct-consumer compatibility, adoption and cleanup, sufficient proof, required operator acceptance, `material-family-review: complete`, and passing `pnpm verify`.
-
-`blocked` requires an exact external condition that cannot be resolved inside the family or recursive prerequisites.
-
-`checkpointed` is a nonterminal physical-session result. Resume with the same root `material-component <family>` command. Never ask the operator to invoke a nested family or foundation skill.
-
-`partial` is not a valid Material full-family result. A known next correction, internal prerequisite, relocation-only dependency, ownership outside the family, stale documentation, or repairable verification failure means continue while the session can proceed.
+`checkpointed` is nonterminal and requires one exact allowed physical reason. `partial` is not a valid Material full-family result.
