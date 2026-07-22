@@ -5,7 +5,7 @@ description: 'Use when creating, repairing, aligning, migrating, continuing, or 
 
 # Material component orchestrator
 
-This is the coordination-only root for one official Material component family. The operator supplies a family name or an explicit bounded objective. The root owns current-state reconstruction, dependency ordering, delegation, result validation, continuation, final review, and roadmap state.
+This is the coordination-only root for one official Material component family. The operator supplies a family name or an explicit bounded objective. The root owns current-state reconstruction, the complete recursive owner stack, dependency ordering, delegation, result validation, continuation, final review, and roadmap state.
 
 The root context must not edit production code, tests, stories, tokens, exports, consumers, legacy owners, or owner README files. Its only repository write is the compact `src/shared/ui/material/docs/roadmap.md` state when that state changes. Git and publication workflow are outside this skill.
 
@@ -29,6 +29,8 @@ Every correction uses three distinct responsibilities:
 3. **Fresh isolated read-only review context** — independently inspects current code and returns the only accepted readiness verdict.
 
 The implementation and review contexts must be newly created for that correction and must not share the implementer's reasoning transcript. A context that edited the correction cannot review it. Sequential self-implementation or self-review in the root context is forbidden.
+
+One outer root orchestrator owns the entire recursive operation and is the sole roadmap writer. Nested official families are stack owners, not additional root orchestrators.
 
 If a required isolated writable or review context cannot be created, checkpoint with the corresponding physical reason. Do not replace the missing context with the root agent.
 
@@ -73,11 +75,13 @@ After popping an owner, refresh the graph and continue with the new deepest owne
 
 Classify every dependency required by the supported surface as `canonical-foundation`, `canonical-family`, `temporary-legacy-material`, `project-extension`, or `generic-foundation`.
 
-If no ready canonical owner exists:
+If no ready canonical owner exists, push its exact owner onto the same root continuation stack:
 
-- family-agnostic contract → delegate one exact `material-foundation` prerequisite in a fresh isolated writable context;
-- another official component family → delegate a nested `material-component` root operation in a fresh isolated orchestrator context;
-- nested prerequisites execute depth-first and return automatically.
+- family-agnostic contract → one exact foundation owner, implemented by a fresh isolated writable `material-foundation` context when deepest;
+- another official component family → one exact component-family owner, implemented by a fresh isolated writable `material-component-implementation` context when deepest;
+- any child dependencies discovered for that owner are pushed after it and execute depth-first.
+
+Do not create a second root orchestrator or a second roadmap writer for a nested family. The outer root retains the complete stack and automatically returns to each parent after accepted child review.
 
 A prerequisite is ready only when its canonical owner, own dependencies, tokens, semantics/lifecycle, public contract, all direct consumers, compatibility path, proof, and independent review are complete. Relocation, forwarding, barrels, migrated imports, or green path guards do not establish readiness.
 
@@ -162,6 +166,7 @@ Next action: none | resume material-component <root family> | <exact external un
 
 - production edits from the root orchestrator context;
 - implementation and review by the same context;
+- multiple root orchestrators or roadmap writers in one recursive operation;
 - readiness without a fresh read-only correction review;
 - changing a parent while a deeper unfinished owner remains;
 - `partial` as a Material full-family result;
