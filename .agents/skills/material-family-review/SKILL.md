@@ -20,7 +20,7 @@ Independently inspect current code and reconstruct:
 - all direct consumers of changed public contracts or extensions and broader adoption scope;
 - supported/unsupported surface and proof obligations.
 
-Supplied inventories and prerequisite results are claims, not authority. A used dependency cannot be excluded because another owner implements it.
+Supplied inventories, continuation stacks, and prerequisite results are claims, not authority. A used dependency cannot be excluded because another owner implements it.
 
 ## Review scope
 
@@ -28,17 +28,19 @@ Verify one valid canonical owner/API; no premature export/adoption/removal; API/
 
 A prerequisite is not ready because files moved, a forwarding barrel exists, imports migrated, or path guards pass. Inspect its own Material contract, token declarations, semantics/lifecycle, direct consumers, compatibility route, proof, and independent owner review. Known defects or legacy-owned canonical tokens block the calling family.
 
-The owner README must contain durable contract facts only. Workflow state, backlog, correction/review history, shell output, commit narratives, and future passes are blockers even when their claims happen to be accurate. The roadmap must contain only the active family, alignment status, exact external blocker, and one next action.
+The owner README must contain durable contract facts only. Workflow state, backlog, correction/review history, shell output, commit narratives, and future passes are blockers even when their claims happen to be accurate.
+
+The roadmap must contain only the active root family, alignment status, one continuation stack, exact external blocker, and one next action. Final family review requires `Continuation stack: none`; a non-empty stack proves that the logical operation is still converging.
 
 Existing tests, stories, snapshots, declarations, and green guards are evidence, not Material authority.
 
 ## Completion
 
-Return `complete` only when invocation scope was `full-family`, all required concerns are compliant or validly unsupported, recursive dependency closure/prerequisites and Material guards pass, every required Material dependency has a ready canonical owner, one canonical family owner remains, all direct consumers of changed contracts are compatible, adoption/cleanup and required proof are complete, operator comparison is accepted when required, documentation is valid, and final `pnpm verify` passed.
+Return `complete` only when invocation scope was `full-family`, all required concerns are compliant or validly unsupported, recursive dependency closure/prerequisites and Material guards pass, every required Material dependency has a ready canonical owner, one canonical family owner remains, all direct consumers of changed contracts are compatible, adoption/cleanup and required proof are complete, operator comparison is accepted when required, documentation is valid, the continuation stack is empty, and final `pnpm verify` passed.
 
-Return `complete-with-explicitly-unsupported-surface` only for optional, explicit, unused capability. Return `blocked` for any required defect, relocation-only prerequisite, legacy-owned canonical token, incompatible direct consumer, premature canonicalization, open dependency/prerequisite, failed guard, invalid documentation, missing proof, operator rejection, or verification failure. Return `not-enough-evidence` when current state cannot be inspected.
+Return `complete-with-explicitly-unsupported-surface` only for optional, explicit, unused capability. Return `blocked` for any required defect, relocation-only prerequisite, legacy-owned canonical token, incompatible direct consumer, premature canonicalization, open dependency/prerequisite, non-empty continuation stack, failed guard, invalid documentation, missing proof, operator rejection, or verification failure. Return `not-enough-evidence` when current state cannot be inspected.
 
-`converging` is not a final verdict.
+`converging` and `checkpointed` are not final verdicts.
 
 ## Result
 
@@ -51,6 +53,7 @@ Canonical ownership result:
 Actual recursive dependency closure:
 Prerequisite owner readiness:
 Canonical token ownership:
+Continuation stack:
 Boundary/token/documentation guards:
 Public contract and semantics result:
 Token/style/motion result:
@@ -63,7 +66,7 @@ Verification result:
 Blockers: none | <findings>
 Major issues: none | <findings>
 Minor issues: none | <findings>
-Required next action: none | <exact correction>
+Required next action: none | <exact correction returned to root orchestrator>
 ```
 
 Run once and at most once after substantive final corrections. A second failure returns consolidated blockers. Do not create a durable review document.
@@ -71,8 +74,9 @@ Run once and at most once after substantive final corrections. A second failure 
 ## Forbidden
 
 - repository edits, delegation, implementation, or Git/PR analysis;
-- trusting supplied closure or prerequisite status without current owner inspection;
+- trusting supplied closure, continuation, or prerequisite status without current owner inspection;
 - approving only the latest correction;
 - approving relocation-only prerequisites, incompatible direct consumers, legacy-owned canonical tokens, invalid owner docs/roadmap, temporary/defective dependencies, premature canonicalization, failed guards, or red verification;
+- approving a family while its continuation stack is non-empty;
 - broad repeated research without contradiction;
 - durable audits, histories, ledgers, checklists, registries, or scorecards.

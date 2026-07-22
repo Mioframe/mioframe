@@ -42,11 +42,13 @@ Internal Material code uses local owning entry points. Private files and `--md-p
 
 ## Development
 
-- `material-component` owns complete convergence of one component family.
-- `material-foundation` owns one real cross-family foundation contract.
+- `material-component` owns one logical complete convergence operation for a component family, including recursive prerequisites.
+- The operation continues through multiple reviewed owner units in one session when possible.
+- If a real physical session boundary prevents continuation, the root orchestrator records one compact validated continuation stack and the operator resumes the same root `material-component <family>` command.
+- `material-foundation` owns one real cross-family foundation contract and returns delegated work to the root family.
 - Read-only specialist skills own bounded research, audits, and reviews.
-- Owner README files store durable contracts only; execution state remains in the active orchestrator context.
-- `docs/roadmap.md` stores only the active family, alignment status, exact external blocker, and one next action.
+- Owner README files store durable contracts only.
+- `docs/roadmap.md` stores only the active root family, alignment status, one root-to-deepest unfinished continuation stack, exact external blocker, and one next action.
 
 Canonical guidance:
 
@@ -57,12 +59,12 @@ Canonical guidance:
 - [`docs/foundation-development.md`](./docs/foundation-development.md)
 - [`docs/roadmap.md`](./docs/roadmap.md)
 
-Do not create workflow-state blocks, backlogs, review histories, shell transcripts, registries, audits, checklists, scorecards, or duplicated workflow documents.
+Do not create workflow-state blocks, completed-unit histories, backlogs, review histories, shell transcripts, registries, audits, checklists, scorecards, or duplicated workflow documents. A continuation stack is a resumption pointer, not a progress ledger.
 
 ## Verification
 
 - `scripts/materialBoundaryArchitecture.test.mjs` enforces the Material ownership boundary.
 - `scripts/materialTokenArchitecture.test.mjs` enforces token namespaces, ownership, graph direction, and token-file responsibility.
-- `scripts/materialDocumentationArchitecture.test.mjs` keeps owner README files free of persisted execution state.
+- `scripts/materialDocumentationArchitecture.test.mjs` keeps owner README files free of persisted execution state and restricts roadmap continuation to the root family.
 
-A family is complete only after dependency closure, prerequisites, canonical ownership, adoption and cleanup, required proof and operator comparison, independent family review, and final repository verification.
+A family is complete only after dependency closure, prerequisites, canonical ownership, adoption and cleanup, required proof and operator comparison, independent family review, and final repository verification. A checkpoint is nonterminal and not merge readiness.

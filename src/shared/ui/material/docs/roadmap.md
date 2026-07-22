@@ -6,12 +6,14 @@ Active family: `Button`
 
 Family alignment status: `converging`
 
+Continuation stack: `Button > Progress Indicator > foundation/tokens`
+
 External blocker: none
 
 ## Next action
 
-Run `material-component progress-indicator` to canonicalize Button's unconverged `loading` dependency (`MDCircularProgressIndicator`: no README/tests, only one mapped token), then resume `material-component Button`.
+Resume `material-component Button`; validate the continuation stack against current code and continue from the deepest unfinished owner until aligned, externally blocked, or a real physical session boundary.
 
 ## Update rule
 
-Keep only the active family, alignment status, exact external blocker, and one next action.
+Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
