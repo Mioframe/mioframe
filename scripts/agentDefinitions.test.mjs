@@ -66,6 +66,7 @@ describe('portable Agent Skills', () => {
     expect(componentRoot).toContain('Only the deepest unfinished owner');
     expect(componentRoot).toMatch(/fresh isolated writable owner context/i);
     expect(componentRoot).toMatch(/fresh isolated read-only review context/i);
+    expect(componentRoot).toMatch(/Agent\/subagent delegation primitive/i);
     expect(componentRoot).toMatch(
       /one outer root orchestrator owns the entire recursive operation/i,
     );
@@ -80,6 +81,7 @@ describe('portable Agent Skills', () => {
     expect(foundationRoot).toContain('material-component-implementation');
     expect(foundationRoot).toContain('material-component-review');
     expect(foundationRoot).toMatch(/fresh isolated read-only/i);
+    expect(foundationRoot).toMatch(/Agent\/subagent delegation primitive/i);
     expect(foundationRoot).not.toContain('Execution context: fresh-isolated-writable');
 
     expect(implementation).toContain('Owner kind: component | foundation');
