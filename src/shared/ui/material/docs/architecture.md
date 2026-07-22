@@ -48,9 +48,9 @@ Before export, adoption, or legacy replacement, every dependency required by the
 
 Temporary legacy ownership, missing reference/system tokens, unowned shared behavior, defective dependencies, private cross-family imports, hidden fallbacks, cycles, or parallel owners block closure.
 
-A family-agnostic cross-family gap routes through the smallest complete `material-foundation` prerequisite. Another official component remains a separate family prerequisite. Required prerequisites stay inside the caller's orchestration and return automatically.
+A family-agnostic cross-family gap routes through the smallest complete `material-foundation` prerequisite. Another official component remains a separate family prerequisite. Required prerequisites stay inside the caller's logical full-family operation and return automatically.
 
-A retained legacy entry point may forward to the canonical owner but cannot keep a parallel implementation.
+A retained legacy entry point may forward to the canonical owner but cannot keep a parallel implementation. Forwarding-only compatibility may exist as a nonterminal working-branch checkpoint; it is not readiness.
 
 ## Ownership
 
@@ -74,15 +74,17 @@ Avoid broad option bags, product adapters, universal bases, managers, registries
 
 Existing code, tests, stories, consumers, and snapshots are editable evidence. Preserve confirmed owners, correct the smallest complete highest-priority gap, close dependencies before adoption, and remove obsolete ownership after replacement.
 
+One logical `material-component <family>` operation may span physical sessions only when a real execution boundary prevents safe continuation. One owner remains the correction boundary, but a session continues through multiple reviewed owner units when possible.
+
 The executable process is owned by `material-component`, `material-foundation`, and their bounded stage/review skills.
 
 ## Durable records
 
 Owner README files store only durable supported surface, API, semantics, ownership, token/style/motion contracts, extensions, unsupported behavior, compatibility, and proof obligations.
 
-Current stage, correction unit, prerequisite stack, backlog, review results/history, shell output, commit narratives, and future passes are transient execution state and must not be persisted in owner documentation.
+Current stage, correction unit, detailed prerequisite state, backlog, completed-unit history, review results/history, shell output, commit narratives, and future passes must not be persisted in owner documentation.
 
-`docs/roadmap.md` stores only the active family, alignment status, exact external blocker, and one next action. Code and proof own exact implementation details.
+`docs/roadmap.md` stores only the active root family, alignment status, one validated root-to-deepest unfinished continuation stack, exact external blocker, and one next action that resumes the root family. The stack is a resumption hint and must be checked against code; code and proof remain the source of truth for completed work and implementation details.
 
 ## Simplicity gate
 
