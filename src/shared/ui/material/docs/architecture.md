@@ -48,7 +48,9 @@ Before export, adoption, or legacy replacement, every dependency required by the
 
 Temporary legacy ownership, missing reference/system tokens, unowned shared behavior, defective dependencies, private cross-family imports, hidden fallbacks, cycles, or parallel owners block closure.
 
-A family-agnostic cross-family gap routes through the smallest complete `material-foundation` prerequisite. Another official component remains a separate family prerequisite. Required prerequisites stay inside the caller's logical full-family operation and return automatically.
+Inside a component operation, a family-agnostic cross-family gap is pushed as the smallest complete foundation owner on the same component root stack. Another official component is pushed as a separate family owner on that stack. No prerequisite creates another root or roadmap writer; accepted children return automatically to their parent.
+
+A standalone foundation request uses its own `material-foundation` coordination root only when no component root already owns the operation.
 
 A retained legacy entry point may forward to the canonical owner but cannot keep a parallel implementation. Forwarding-only compatibility may exist as a nonterminal working-branch checkpoint; it is not readiness.
 
@@ -64,12 +66,14 @@ Reference/system token ownership, component-token placement, extension namespace
 
 Workflow responsibility is separated from code ownership:
 
-- the root `material-component` context coordinates and writes only the compact roadmap state;
-- a fresh isolated writable owner context implements exactly one current deepest owner;
-- a different fresh isolated read-only reviewer decides whether that owner is ready;
-- another fresh isolated read-only reviewer decides final family readiness.
+- `material-component` coordinates an official component-family operation;
+- `material-foundation` coordinates a standalone exact foundation-domain operation;
+- only one applicable root owns the complete recursive stack and compact roadmap state;
+- a fresh isolated writable `material-component-implementation` context implements exactly one current deepest component or foundation owner;
+- a different fresh isolated read-only `material-component-review` context decides whether that owner is ready;
+- another fresh isolated read-only reviewer decides final component-family readiness.
 
-The root must not edit production code or review its own delegated work. An implementation context must not declare readiness. A reviewer must not edit. If a required isolated context cannot be created, the operation checkpoints with the exact physical reason instead of falling back to one context.
+A root must not edit production code or review its own delegated work. An implementation context must not declare readiness. A reviewer must not edit. If a required isolated context cannot be created, the operation checkpoints with the exact physical reason instead of falling back to one context.
 
 The continuation stack is root-to-deepest unfinished owner. A parent cannot be changed or reported ready while a deeper child remains. A stack entry is removed only after focused proof and an accepted independent correction-final review.
 
@@ -89,7 +93,7 @@ Owner README files store only durable supported surface, API, semantics, ownersh
 
 Current stage, correction unit, detailed prerequisite state, backlog, completed-unit history, review results/history, shell output, commit narratives, and future passes must not be persisted in owner documentation.
 
-`docs/roadmap.md` stores only the active root family, alignment status, one validated root-to-deepest unfinished continuation stack, one checkpoint reason, exact external blocker, and one next action that resumes the root family. Code and accepted proof remain the source of truth.
+`docs/roadmap.md` stores only the active root label, alignment status, one validated root-to-deepest unfinished continuation stack, one checkpoint reason, exact external blocker, and one next action that resumes the same root command. Code and accepted proof remain the source of truth.
 
 ## Simplicity gate
 
