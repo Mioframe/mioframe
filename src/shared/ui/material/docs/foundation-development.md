@@ -14,7 +14,7 @@ It does not own component-family tokens/API/anatomy/state, product behavior, or 
 
 When delegated by `material-component`, foundation is the current deepest unfinished owner and remains inside the same root operation.
 
-The foundation correction runs in a fresh isolated writable context. It owns exactly one canonical foundation owner plus minimum compatibility and direct-consumer edits. It cannot review itself or declare readiness.
+The root orchestrator locks the bounded foundation contract and selected evidence. The foundation correction then runs in a fresh isolated writable context. It owns exactly one canonical foundation owner plus minimum compatibility and direct-consumer edits. It cannot redesign the root contract, review itself, or declare readiness.
 
 After implementation and focused proof, the root creates a different fresh isolated read-only `material-component-review` context with `Owner kind: foundation`. Only `correction-final: complete` permits the root to pop the foundation owner and return to its parent.
 
@@ -23,10 +23,9 @@ If a fresh writable or review context is unavailable, the root checkpoints with 
 ## Sequence
 
 ```text
-validate deepest owner and current state
-→ bounded foundation contract and source evidence
-→ independent contract gate
-→ fresh writable owner implementation
+root validates deepest owner and locks bounded foundation contract
+→ fresh writable owner validates current code
+→ one canonical owner correction
 → affected-family and direct-consumer proof
 → fresh read-only correction-final review
 → return accepted or rejected result to root
@@ -34,7 +33,7 @@ validate deepest owner and current state
 
 ## Contract and correction
 
-Confirm foundation ownership is required now and an existing family/generic owner is insufficient.
+The root confirms foundation ownership is required now and an existing family/generic owner is insufficient. The writable owner context must return any invalidated assumption before editing rather than redesigning the contract locally.
 
 For token work:
 
@@ -78,6 +77,7 @@ A repairable gap or nested owner returns as continued internal work. A physical 
 
 - implementation in the root or reviewer context;
 - self-review or readiness claims;
+- local redesign of the root-locked foundation contract;
 - broad domain work for a bounded prerequisite;
 - another family’s component/private ownership in foundation;
 - relocation-only completion or copied legacy defects;
