@@ -55,32 +55,34 @@ describe('portable Agent Skills', () => {
   });
 
   it('keeps Material orchestration, owner implementation, and review in separate contexts', () => {
-    const orchestrator = readText('.agents/skills/material-component/SKILL.md');
+    const componentRoot = readText('.agents/skills/material-component/SKILL.md');
+    const foundationRoot = readText('.agents/skills/material-foundation/SKILL.md');
     const implementation = readText('.agents/skills/material-component-implementation/SKILL.md');
-    const foundation = readText('.agents/skills/material-foundation/SKILL.md');
     const correctionReview = readText('.agents/skills/material-component-review/SKILL.md');
     const familyReview = readText('.agents/skills/material-family-review/SKILL.md');
 
-    expect(orchestrator).toContain('coordination-only root');
-    expect(orchestrator).toContain('must not edit production code');
-    expect(orchestrator).toContain('Only the deepest unfinished owner');
-    expect(orchestrator).toMatch(/fresh isolated writable owner context/i);
-    expect(orchestrator).toMatch(/fresh isolated read-only review context/i);
-    expect(orchestrator).toMatch(
-      /one outer root orchestrator owns the entire recursive operation/i,
-    );
-    expect(orchestrator).toContain('Checkpoint reason: none | context-exhausted');
-    expect(orchestrator).not.toContain(
+    expect(componentRoot).toContain('coordination-only root');
+    expect(componentRoot).toContain('must not edit production code');
+    expect(componentRoot).toContain('Only the deepest unfinished owner');
+    expect(componentRoot).toMatch(/fresh isolated writable owner context/i);
+    expect(componentRoot).toMatch(/fresh isolated read-only review context/i);
+    expect(componentRoot).toMatch(/one outer root orchestrator owns the entire recursive operation/i);
+    expect(componentRoot).toContain('Checkpoint reason: none | context-exhausted');
+    expect(componentRoot).not.toContain(
       'execute the same owner units sequentially in the current runtime',
     );
-    expect(orchestrator).not.toMatch(/nested `material-component` root operation/i);
+    expect(componentRoot).not.toMatch(/nested `material-component` root operation/i);
 
+    expect(foundationRoot).toContain('coordination-only root');
+    expect(foundationRoot).toContain('must not edit production code');
+    expect(foundationRoot).toContain('material-component-implementation');
+    expect(foundationRoot).toContain('different fresh isolated read-only');
+    expect(foundationRoot).not.toContain('Execution context: fresh-isolated-writable');
+
+    expect(implementation).toContain('Owner kind: component | foundation');
     expect(implementation).toContain('Execution context: fresh-isolated-writable');
     expect(implementation).toContain('Readiness claim: forbidden');
     expect(implementation).toContain('Review required: yes');
-
-    expect(foundation).toContain('Execution context: fresh-isolated-writable');
-    expect(foundation).toContain('Readiness claim: forbidden');
 
     expect(correctionReview).toContain('Review context: fresh-isolated-read-only');
     expect(correctionReview).toContain('Implementation context reused: no');
