@@ -48,7 +48,9 @@ Before returning `complete`:
 - classify each as explicitly unsupported outside the claimed surface, a required open gap that keeps the owner on the stack, or an exact external blocker;
 - reject an empty child stack while a claimed/supported scenario still has an unresolved implementation, motion, accessibility, platform, or proof gap;
 - for any public value where `undefined`, `false`, `0`, boundary values, or invalid/out-of-range values have distinct meaning, enumerate those states and inspect every direct consumer for truthiness, coercion, range, and sentinel mismatches;
-- require focused proof for every distinct supported value state and the documented invalid-value behavior.
+- require focused proof for every distinct supported value state and the documented invalid-value behavior;
+- treat every component that consumes a created, moved, forwarded, or behaviorally changed foundation/family owner as part of that owner's compatibility scope, regardless of the consumer's official family label;
+- reject readiness when a changed-owner consumer has a focused or full-verification regression.
 
 ## Contract gate
 
@@ -71,13 +73,13 @@ Verify the implemented owner correction against current code:
 - recursive child readiness;
 - canonical token declarations and dependency direction;
 - API/native/accessibility/state semantics and lifecycle;
-- all direct consumers of changed contracts or extensions;
+- all direct consumers of changed contracts or extensions, including consumers in other official Material families;
 - compatibility and legacy-owner disposition;
 - required unit, browser, consumer, visual, and operator proof;
 - durable README accuracy;
 - relevant Material guards.
 
-Known defects, unresolved required gaps, sentinel/value-state incompatibilities, incompatible consumers, stale contract documentation, insufficient available proof, missing browser behavior proof, or legacy-owned canonical tokens return `blocked` with consolidated findings. Unavailable required tooling/evidence returns `not-run` with the exact checkpoint reason.
+Known defects, unresolved required gaps, sentinel/value-state incompatibilities, incompatible consumers, stale contract documentation, insufficient available proof, missing browser behavior proof, changed-owner consumer regressions, or legacy-owned canonical tokens return `blocked` with consolidated findings. Unavailable required tooling/evidence returns `not-run` with the exact checkpoint reason.
 
 A passed correction does not complete the root family. It only permits the root orchestrator to pop this exact owner and continue.
 
@@ -102,6 +104,7 @@ Canonical token ownership:
 Public contract and semantics:
 Unresolved gap reconciliation:
 Sentinel/value-state compatibility:
+Changed-owner consumer compatibility:
 Direct consumer compatibility:
 Legacy owner result:
 Documentation result:
@@ -120,6 +123,7 @@ Checkpoint reason: none | isolated-review-context-unavailable | required-tool-un
 - trusting supplied dependency, proof, or readiness claims;
 - accepting a parent while a deeper child owner remains unfinished;
 - accepting an owner with an unresolved required gap or unverified sentinel/value-state semantics;
+- excluding a direct consumer because it belongs to another official Material family;
 - accepting relocation, forwarding, barrels, migrated imports, or green guards as readiness;
 - accepting changed public contracts without every enumerable direct consumer;
 - returning a nested operator command;
