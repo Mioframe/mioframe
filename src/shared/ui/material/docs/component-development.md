@@ -6,7 +6,7 @@ This document defines the durable convergence model for one official Material co
 
 - `material-component <family>` means full-family convergence.
 - A focused correction requires an explicit bounded operator objective.
-- A delegated dependency call completes only the exact prerequisite contract, then returns to the calling family.
+- Required Material dependencies are recursively canonicalized inside the same full-family invocation, then control returns automatically to the calling family.
 
 A correction unit is an implementation and review boundary, not the end of the invocation. `converging` is internal progress only.
 
@@ -18,8 +18,8 @@ current-state preflight
 → missing target/audit evidence only
 → highest-priority complete correction contract
 → independent contract review
-→ exact prerequisite when required
-→ one bounded implementation and proof
+→ recursive exact prerequisites when required
+→ one bounded canonical owner implementation and proof
 → conditional adoption and cleanup
 → independent correction review
 → next correction without restarting accepted work
@@ -31,23 +31,39 @@ current-state preflight
 
 Before selecting work, reconstruct from code:
 
-- candidate and legacy owners;
+- candidate and legacy owners and actual implementations;
 - public exports and migrated consumers;
-- real imports, injected dependencies, styles, and token references;
+- real imports, injected dependencies, styles, token declarations and references;
 - dependency ownership and readiness;
-- boundary/token guards and relevant proof.
+- all direct consumers of changed public contracts or extensions;
+- boundary/token/documentation guards and relevant proof.
 
 Owner README files contain durable contracts only. They are evidence, not execution state or architecture authority. Current correction, prerequisite, review, and continuation state stays in the active orchestrator context.
 
-## Dependency closure
+## Recursive dependency closure
 
 Every dependency required by the supported surface resolves to one ready canonical foundation, official family public contract, generic non-Material foundation, or explicit Mioframe extension owner.
 
-A used dependency remains inside the calling family workflow even when another owner implements it. Complete exact prerequisites depth-first and return automatically. When supported, run each prerequisite in a fresh focused writable context; otherwise execute the owning skill sequentially.
+A used Material dependency remains inside the calling family workflow even when another owner implements it. If a ready canonical owner does not exist, run the owning `material-foundation` or `material-component` workflow depth-first and return automatically.
 
-Wrong ownership, temporary legacy Material, missing tokens, defective contracts, private cross-family imports, hidden fallbacks, cycles, and parallel owners block lower-priority work on the same surface.
+The prerequisite must meet the same readiness standard as a directly requested Material artifact:
 
-Creating or preserving a canonical owner, root export, migrated consumer, forwarding legacy owner, or alignment claim requires complete dependency closure.
+- one canonical owner and complete recursive dependencies;
+- correct token declaration ownership;
+- valid public API, semantics, lifecycle, accessibility, and platform behavior;
+- compatibility of all direct consumers of the changed contract;
+- forwarding/import-only legacy compatibility with no parallel active implementation;
+- focused proof and independent review.
+
+Moving legacy files, creating a canonical directory or barrel, forwarding exports, migrating imports, or passing path guards does not establish readiness.
+
+When supported, run each prerequisite in a fresh focused writable context. One implementation unit owns one canonical prerequisite owner plus only the minimum compatibility and adoption edits required for it. Split nested owners through the orchestrator rather than combining them into one broad implementation pass.
+
+When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. Lack of subagents is not a blocker and does not permit combining several owners into one correction.
+
+Wrong ownership, temporary legacy Material, legacy-owned canonical token declarations, missing tokens, defective contracts, incompatible consumers, private cross-family imports, hidden fallbacks, cycles, and parallel owners block lower-priority work on the same surface.
+
+Creating or preserving a canonical owner, root export, migrated consumer, forwarding legacy owner, or alignment claim requires complete recursive dependency closure.
 
 ## Correction and review
 
@@ -63,7 +79,7 @@ Select one smallest complete correction at a time in this order:
 8. motion and browser lifecycle;
 9. extensions, adoption, and cleanup.
 
-Independent review verifies actual imports and owners for the affected surface. Canonicalization or adoption widens review to complete dependency closure; a bounded scope cannot hide a real dependency.
+Independent review verifies actual implementations and owners for the affected surface. Canonicalization or adoption widens review to recursive dependency closure and direct-consumer compatibility; a bounded scope cannot hide a real dependency.
 
 Reuse accepted evidence until contradicted. Each gate permits one initial review and at most one substantive re-review. Repeated ownership failure reopens architecture instead of adding workarounds.
 
@@ -77,6 +93,6 @@ Do not persist workflow-state blocks, backlog, correction/review history, shell 
 
 ## Terminal results
 
-Full-family completion is `aligned` only after closed dependencies, completed prerequisites, one canonical owner, valid semantic/token/DOM/style/motion contracts, adoption and cleanup, sufficient proof, required operator acceptance, `material-family-review: complete`, and passing `pnpm verify`.
+Full-family completion is `aligned` only after closed recursive dependencies, canonical prerequisite owners, valid semantic/token/DOM/style/motion contracts, direct-consumer compatibility, adoption and cleanup, sufficient proof, required operator acceptance, `material-family-review: complete`, and passing `pnpm verify`.
 
-Return `blocked` only for an exact external condition that cannot be resolved inside the family or its prerequisites. A known next correction, internal prerequisite, ownership outside the family, stale documentation, or repairable verification failure means continue.
+Return `blocked` only for an exact external condition that cannot be resolved inside the family or recursive prerequisites. A known next correction, internal prerequisite, relocation-only dependency, ownership outside the family, stale documentation, or repairable verification failure means continue.

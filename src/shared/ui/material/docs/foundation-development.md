@@ -18,32 +18,37 @@ current-state preflight
 → missing target/audit evidence only
 → smallest complete domain contract
 → independent contract review
-→ one correction or delegated prerequisite
-→ affected-family validation and legacy cleanup/forwarding
+→ one canonical owner correction
+→ direct-consumer and affected-family validation
+→ legacy cleanup or forwarding/import-only compatibility
 → independent correction review
 → next required unit or return to caller
 → final verification
 ```
 
-When delegated by `material-component`, scope is the exact required prerequisite. When supported, run it in a fresh focused writable context and return only its structured result; otherwise execute sequentially.
+When delegated by `material-component`, scope is the exact required prerequisite. When supported, run it in a fresh focused writable context. One implementation unit owns one canonical foundation owner plus only its minimum compatibility/adoption edits; nested owners return through the caller stack.
+
+When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. Lack of subagents is not a blocker and does not permit a broad multi-owner correction.
 
 ## Contract and correction
 
 Confirm foundation ownership is required now and an existing family/generic owner is insufficient. Another official component family is not foundation.
 
-Select work in this order: source/platform decision; ownership; public family-facing contract; reference/system token graph; deterministic state; lifecycle; rendered/style/motion routing; platform adaptation; affected-family adoption; obsolete-owner removal.
+Select work in this order: source/platform decision; ownership; public family-facing contract; reference/system token graph; deterministic state; lifecycle; rendered/style/motion routing; platform adaptation; direct-consumer compatibility; affected-family adoption; obsolete-owner removal.
 
-For token work, preserve `reference → system → family-local component → rendered proof`, move the smallest coherent required group, keep one active owner, and forbid upward/cross-family/cyclic/fallback-masked dependencies.
+For token work, preserve `reference → system → family-local component → rendered proof`, move the smallest coherent required group, keep one active canonical owner under Material foundation, and forbid upward/cross-family/cyclic/fallback-masked dependencies. Legacy styles may import canonical declarations but must not continue to own or redeclare them.
 
-For shared behavior, define one narrow contract, replace the complete behavior required by current scenarios, update affected families, retain only forwarding compatibility, remove parallel ownership, and prove public-input behavior.
+For shared behavior, define one narrow contract, revalidate rather than copy legacy behavior unchanged, replace the complete semantics/lifecycle required by current scenarios, inspect every direct consumer of the changed contract, update affected families, retain only forwarding compatibility, remove parallel ownership, and prove public-input behavior.
 
-A delegated prerequisite is complete only when the canonical owner owns the full required contract, the caller consumes it without legacy/private imports, replaced ownership is singular, retained compatibility only forwards, applicable guards/proof pass, and no known defect remains.
+Relocation, a new directory/barrel, forwarding exports, migrated imports, or green path guards are not canonicalization. A moved implementation remains incomplete while it has known defects, legacy-owned tokens, missing semantics/lifecycle proof, incompatible consumers, or no independent review.
+
+A delegated prerequisite is complete only when the canonical owner owns the full required contract and recursive dependencies, caller and direct consumers use it compatibly without legacy/private imports, replaced ownership is singular, retained compatibility only forwards/imports, applicable guards/proof pass, and no known required defect remains.
 
 ## Evidence and review
 
 Reuse accepted evidence until contradicted. Use bounded read-only contexts for research/audits/reviews. Each gate permits one initial review and at most one substantive re-review. Repeated architecture failure requires reconsideration, not another workaround.
 
-Visible changes require operator comparison. Applicable static, browser, visual, affected-family, and architecture proof must pass.
+Visible changes require operator comparison. Applicable static, browser, visual, direct-consumer, affected-family, and architecture proof must pass.
 
 ## Documentation
 
@@ -53,7 +58,7 @@ Do not persist current stage, correction, calling-family stack, backlog, remaini
 
 ## Completion
 
-A delegated prerequisite returns `complete` only for the exact ready contract, then control returns to the caller. Domain completion additionally requires canonical affected-family consumption, cleanup/forwarding-only legacy replacement, required proof/operator comparison, review, and final verification.
+A delegated prerequisite returns `complete` only for the exact ready canonical contract, then control returns to the caller. Domain completion additionally requires canonical affected-family consumption, direct-consumer compatibility, cleanup/forwarding-only legacy replacement, required proof/operator comparison, review, and final verification.
 
 ## Forbidden
 
@@ -61,7 +66,10 @@ A delegated prerequisite returns `complete` only for the exact ready contract, t
 - broad domain work for a bounded prerequisite;
 - foundation justified only by duplication or hypothetical reuse;
 - another family’s private/component ownership in foundation;
+- relocation-only completion or copied known defects;
+- legacy-owned active declarations used by canonical Material;
 - invented names, cycles, parallel owners, hidden fallbacks, runtime managers/registries/resolvers;
-- returning complete while the caller still uses the required legacy owner;
+- returning complete while caller or direct consumers still use an incompatible or legacy contract;
+- several canonical owners in one correction unit;
 - persisted execution state, histories, backlogs, checklists, scorecards, or ledgers;
 - Git, branch, commit, PR, or merge operations.
