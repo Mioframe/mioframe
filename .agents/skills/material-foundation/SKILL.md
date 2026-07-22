@@ -1,137 +1,109 @@
 ---
 name: material-foundation
-description: 'Use for one real cross-family Material contract or an exact delegated prerequisite. Reconstructs current truth, canonicalizes the required owner, and returns to the calling family without becoming a separate operator command.'
+description: 'Use for one real cross-family Material contract or an exact delegated prerequisite. Runs as a fresh isolated writable owner context and returns implementation evidence for independent review.'
 ---
 
-# Material foundation orchestrator
+# Material foundation owner implementation
 
-Follow `src/shared/ui/material/docs/foundation-development.md`, `architecture.md`, and `tokens.md`.
+Use standalone for one exact cross-family correction or when `material-component` delegates the current deepest prerequisite. Follow `src/shared/ui/material/docs/foundation-development.md`, `architecture.md`, and `tokens.md`.
 
-Use standalone for one real cross-family correction or when `material-component` delegates an exact prerequisite. The workflow owns technical discovery, architecture, implementation, affected-family and consumer proof, and continuation for that contract. Git and publication workflow are outside scope.
+This skill is an owner implementation context, not the root family orchestrator and not a reviewer. It must run in a fresh isolated writable context and must return to the calling root after one owner correction.
 
 ## Scope
 
-Lock the domain, mode, exact required family-agnostic contract, current owner and implementation, affected scenarios/families, direct consumers, platforms, non-goals, completion condition, and selected concern lanes.
+Lock the exact family-agnostic contract, current owner, affected scenarios/families, direct consumers, platforms, non-goals, completion condition, and selected evidence.
 
-Existing reuse, a new directory, forwarding export, or migrated import does not prove foundation ownership or readiness. Another official component family is not foundation. A Button dependency on Progress Indicator requires that family’s ready public contract or an explicit product decision to remove the extension.
+A delegated prerequisite remains inside the root family operation. Its size or consumer count does not make it an operator task.
 
-When delegated, implement the smallest coherent contract required by the caller, but implement that contract completely. Do not expand into an unrelated full foundation migration.
+Another official component family is not foundation. A component dependency requires that family's independently reviewed public contract or an explicit product decision to remove the dependency.
 
-A delegated prerequisite remains inside the root family operation. Its size or consumer count does not make it an operator task. If the physical session cannot continue, return the deepest unfinished owner to the root orchestrator so it can persist one continuation stack; never ask the operator to invoke `material-foundation` separately.
+## Entry gate
+
+Confirm:
+
+- execution context is `fresh-isolated-writable`;
+- this foundation owner is the current deepest unfinished owner;
+- no required child owner remains unresolved;
+- the correction contract passed independent contract review;
+- current declarations, imports, consumers, legacy paths, and guards still match the contract.
+
+If a fresh writable context cannot be created, return `checkpoint-required` with `isolated-writable-context-unavailable`. Never fall back to root-context implementation.
 
 ## Execution
 
 ```text
-current-state preflight
-→ bounded orientation and selected evidence
-→ domain contract synthesis
-→ independent contract review
+current-state validation
+→ bounded foundation contract
 → one complete canonical owner correction
-→ affected-family and direct-consumer validation
-→ legacy cleanup or forwarding-only compatibility
-→ independent correction review
-→ return to caller or continue required domain work
-→ final verification
+→ minimum affected-family and direct-consumer compatibility edits
+→ focused proof
+→ structured implementation result to root
 ```
 
-When supported, a delegated prerequisite runs in a fresh focused writable context. That context owns one canonical foundation owner plus only the minimum compatibility/adoption edits required for it. Split work that requires another canonical owner and return its result through the calling prerequisite stack.
-
-If isolated writable contexts are unavailable, execute one owner correction at a time sequentially in the current runtime, return the structured result, reset scope, and let the root orchestrator continue. One owner per correction does not mean one owner per physical session.
-
-Production edits are forbidden before contract review passes. Reuse accepted evidence until contradicted. Each gate permits one initial review and at most one substantive re-review.
-
-## Foundation gate
-
-Confirm the concern is inherently cross-family, family-agnostic, currently required, and not already correctly owned by a generic or family-local mechanism.
+One run owns one canonical foundation owner. If another canonical owner is required, return it as a nested prerequisite. Do not implement multiple owners in one context.
 
 For tokens:
 
 - reference/system and real `--mio-sys-*` extensions are foundation-owned;
 - component tokens/private routes remain family-owned;
-- declarations used by canonical Material must have their active canonical owner under `src/shared/ui/material/foundation/`, not only in a legacy global stylesheet;
-- exact names, locations, direction, cycles, references, fallbacks, public/private surface, and import order are explicit;
+- declarations used by canonical Material must have an active owner under `src/shared/ui/material/foundation/`;
 - move one coherent required group without duplicate active declarations;
 - retained legacy CSS may import the canonical owner but must not redeclare it;
-- require token guard and affected-family computed proof.
+- prove graph direction, cycles, import order, exact names, and affected-family computed behavior.
 
-For state layer, ripple, motion adaptation, focus, symbols, typography, or other shared behavior:
+For state, ripple, motion, focus, symbols, typography, or other shared behavior:
 
 - define one narrow public contract;
-- revalidate the implementation against current Material and platform requirements instead of copying legacy behavior unchanged;
-- replace the complete semantics and lifecycle required by the caller;
-- validate every direct consumer of the changed public contract for semantic compatibility;
-- update affected families to the canonical contract;
+- revalidate semantics and lifecycle against current Material and platform requirements;
+- validate every direct consumer of the changed contract;
 - retain legacy entry points only as forwarding compatibility;
 - remove parallel implementations and prove affected-family behavior.
 
-Relocation is not canonicalization. A moved legacy implementation remains incomplete while it has known defects, legacy-owned tokens, missing semantics/lifecycle proof, incompatible consumers, or an unreviewed public contract.
+Relocation is not canonicalization.
 
-## Completion
+## Review boundary
 
-Return `complete` only when:
+This context may report `implemented`, but it cannot report the foundation owner as ready or complete. The root must create a fresh isolated read-only `material-component-review` context with `Owner kind: foundation`.
 
-- the canonical owner owns the full required contract and its own recursive dependencies;
-- caller and direct consumers use the intended contract without legacy/private imports;
-- token declarations and runtime behavior live with the correct canonical owner;
-- semantics, lifecycle, accessibility, platform adaptation, and compatibility are valid;
-- replaced ownership is singular and retained compatibility only forwards/imports;
-- applicable static, browser, consumer, visual, architecture, and verification proof passes;
-- an independent review confirms readiness and no known required defect remains.
-
-Return `blocked` only for an exact external foundation condition. A repairable gap or nested owner returns to the caller as continued internal work.
-
-Return `checkpoint-required` only when a real physical session boundary prevents the caller from continuing. This is not a foundation completion result and must return to the root orchestrator.
-
-## Documentation
-
-Create/update a foundation README only for durable owner/API/semantics/token/style/motion/compatibility/proof facts. Never persist current stage, correction, caller stack, backlog, review history, shell output, commit narratives, or future passes.
-
-The sole durable continuation stack belongs to the root roadmap and is written by the root orchestrator, not by nested foundation owners.
+Only `correction-final: complete` authorizes the root to pop this foundation owner and return to the parent family.
 
 ## Result
 
 ```text
-MATERIAL FOUNDATION RESULT
+MATERIAL FOUNDATION IMPLEMENTATION RESULT
 Domain:
 Mode:
 Objective:
+Execution context: fresh-isolated-writable
+Status: implemented | blocked | checkpoint-required
+Deepest owner confirmed: yes | no
 Required contract:
 Previous owner:
 Canonical owner:
-Status: complete | blocked | checkpoint-required
+Nested prerequisite discovered: none | <exact owner>
 Canonical contract:
 Token ownership:
 Semantics/lifecycle:
 Direct consumer compatibility:
 Legacy owner result:
-Dependency closure:
-Selected lane results:
+Selected proof results:
 Affected families:
-Calling-family consumption: canonical | blocked | checkpoint-required | not-applicable
-Correction review:
-Operator status:
-Verification:
+Calling-family consumption: implemented | blocked | checkpoint-required
+Readiness claim: forbidden
+Review required: yes
 Remaining required gaps:
-Deepest unfinished owner: none | <exact owner>
-Blocker: none | <exact external blocker or physical session boundary>
-Next action: return-to-caller | none
+Blocker: none | <exact blocker>
+Checkpoint reason: none | isolated-writable-context-unavailable | context-exhausted | runtime-exhausted | user-interrupted | required-tool-unavailable | required-evidence-unavailable
+Next action: return-to-root
 ```
-
-When delegated, always return control to the root orchestrator without advancing component implementation or roadmap state.
 
 ## Forbidden
 
-- broad domain audit for a bounded prerequisite;
-- production edits before approval;
-- repeated accepted research;
-- foundation justified only by duplication/reuse count;
-- another family’s component/private ownership in foundation;
-- relocation-only completion, copied known defects, or readiness inferred from forwarding/barrels/import migration;
-- canonical Material tokens whose active declarations remain legacy-owned;
-- invented names, invalid graph edges, parallel owners, hidden fallbacks, runtime managers/registries/resolvers;
-- returning complete while caller or direct consumers still use an incompatible or legacy contract;
-- implementing several canonical owners in one correction unit;
-- asking the operator to invoke `material-foundation` or another internal prerequisite;
-- persisting a separate foundation continuation ledger;
-- persisted execution state, histories, backlogs, checklists, scorecards, or ledgers;
-- Git, branch, commit, PR, or merge operations.
+- implementation in the root orchestrator or reviewer context;
+- self-review or readiness claims;
+- implementing a parent or sibling while a deeper owner is unfinished;
+- broad domain audit beyond the required contract;
+- several canonical owners in one context;
+- relocation-only completion or copied legacy defects;
+- asking the operator to invoke a foundation or nested component prerequisite;
+- roadmap updates, workflow-policy edits, Git, PR, or merge operations.
