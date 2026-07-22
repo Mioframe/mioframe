@@ -25,12 +25,12 @@ A logical operation may span physical sessions, but one session must continue wh
 Every correction uses three distinct responsibilities:
 
 1. **Root orchestrator context** — read-only coordination and roadmap state only.
-2. **Fresh isolated writable owner context** — implements exactly one canonical owner correction and returns an implementation result; it cannot declare readiness.
-3. **Fresh isolated read-only review context** — independently inspects current code and returns the only accepted readiness verdict.
+2. **Fresh isolated writable owner context** — `material-component-implementation` implements exactly one component or foundation owner correction and returns an implementation result; it cannot declare readiness.
+3. **Fresh isolated read-only review context** — `material-component-review` independently inspects current code and returns the only accepted readiness verdict.
 
 The implementation and review contexts must be newly created for that correction and must not share the implementer's reasoning transcript. A context that edited the correction cannot review it. Sequential self-implementation or self-review in the root context is forbidden.
 
-One outer root orchestrator owns the entire recursive operation and is the sole roadmap writer. Nested official families are stack owners, not additional root orchestrators.
+One outer root orchestrator owns the entire recursive operation and is the sole roadmap writer. Nested official families and foundation domains are stack owners, not additional root orchestrators.
 
 If a required isolated writable or review context cannot be created, checkpoint with the corresponding physical reason. Do not replace the missing context with the root agent.
 
@@ -77,11 +77,11 @@ Classify every dependency required by the supported surface as `canonical-founda
 
 If no ready canonical owner exists, push its exact owner onto the same root continuation stack:
 
-- family-agnostic contract → one exact foundation owner, implemented by a fresh isolated writable `material-foundation` context when deepest;
-- another official component family → one exact component-family owner, implemented by a fresh isolated writable `material-component-implementation` context when deepest;
+- family-agnostic contract → one exact foundation owner;
+- another official component family → one exact component-family owner;
 - any child dependencies discovered for that owner are pushed after it and execute depth-first.
 
-Do not create a second root orchestrator or a second roadmap writer for a nested family. The outer root retains the complete stack and automatically returns to each parent after accepted child review.
+When the owner becomes deepest, delegate it to a fresh isolated writable `material-component-implementation` context with `Owner kind: foundation` or `Owner kind: component`. Do not create a second root orchestrator or a second roadmap writer for a nested owner. The outer root retains the complete stack and automatically returns to each parent after accepted child review.
 
 A prerequisite is ready only when its canonical owner, own dependencies, tokens, semantics/lifecycle, public contract, all direct consumers, compatibility path, proof, and independent review are complete. Relocation, forwarding, barrels, migrated imports, or green path guards do not establish readiness.
 
@@ -91,7 +91,7 @@ For the deepest unfinished owner:
 
 ```text
 bounded contract and selected evidence
-→ fresh isolated writable implementation context
+→ fresh isolated writable material-component-implementation context
 → focused proof
 → fresh isolated read-only correction-final review
 → accept and pop, or return consolidated blockers to a new implementation context
