@@ -173,10 +173,7 @@ interface ReleaseScrollObservation {
  * @param frameCount - Number of rendered frames to sample after pointer release.
  * @returns Pointer-up baselines and aligned post-release samples for all three scroll levels.
  */
-const observeReleaseScrollTops = (
-  page: Page,
-  frameCount = 10,
-): Promise<ReleaseScrollObservation> =>
+const observeReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseScrollObservation> =>
   page.evaluate(
     (args) => {
       const containerEl = document.querySelector(args.containerSelector);
