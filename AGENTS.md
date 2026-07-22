@@ -10,11 +10,11 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
 - All Material-owned implementation, documentation, family/domain contracts, stories, fixtures, and focused tests live under `src/shared/ui/material`. Repository-level rules and skills may route into that boundary but must not become parallel Material fact owners.
-- For Material implementation and iterative alignment, use `material-component` as the coordination-only root; use fresh isolated writable owner contexts for component/foundation edits; use `material-component-review` for independent owner acceptance and `material-family-review` for complete current-family readiness. Internal Material stage and concern skills are delegated only by the owning workflow and are not direct user entry points.
-- A Material family or foundation name is sufficient input. The root orchestrator owns discovery, ordering, delegation, continuation, and safe resumption. Fresh writable owner contexts own code; different fresh read-only contexts own readiness. Git operations and repository publication workflow remain outside Material skills.
-- For Material work, read only the task-relevant canonical documents under `src/shared/ui/material/docs`. Update `roadmap.md` only when its active root family, alignment status, validated continuation stack, checkpoint reason, blocker, or single next action changes.
+- For Material convergence, use `material-component` as the coordination-only root for an official family and `material-foundation` as the coordination-only root for a standalone exact foundation domain. Both roots delegate code to fresh isolated writable `material-component-implementation` contexts and readiness to different fresh isolated read-only `material-component-review` contexts. `material-family-review` owns complete current-family readiness. Internal Material stage and concern skills are delegated only by the owning workflow and are not direct user entry points.
+- A Material family or foundation name is sufficient input. The applicable root orchestrator owns discovery, ordering, delegation, continuation, and safe resumption. Fresh writable owner contexts own code; different fresh read-only contexts own readiness. A foundation prerequisite inside a component operation stays on the component root stack and does not create a second root. Git operations and repository publication workflow remain outside Material skills.
+- For Material work, read only the task-relevant canonical documents under `src/shared/ui/material/docs`. Update `roadmap.md` only when its active root label, alignment status, validated continuation stack, checkpoint reason, blocker, or single next action changes.
 - Official Material components target the current canonical Material 3 Expressive contract. Existing repository code and proof are current-state evidence, not Material authority and not disposable by default. The coding workflow must close every non-visual evidence gate; the operator normally performs only prepared visual comparison and must not receive unresolved source, architecture, accessibility, behavior, or migration decisions.
-- Do not create separate Material registries, inventories, durable audit documents, review histories, checklists, alignment scorecards, progress ledgers, or duplicated workflow policy. Canonical family/domain README files contain durable contracts only. Detailed correction, prerequisite, review, backlog, completed-unit, and verification state must not be persisted. `roadmap.md` may contain only the active root family, alignment status, one validated root-to-deepest unfinished continuation stack, one exact checkpoint reason, an exact external blocker, and one next action that resumes the root family. Code remains the source of truth for completed work.
+- Do not create separate Material registries, inventories, durable audit documents, review histories, checklists, alignment scorecards, progress ledgers, or duplicated workflow policy. Canonical family/domain README files contain durable contracts only. Detailed correction, prerequisite, review, backlog, completed-unit, and verification state must not be persisted. `roadmap.md` may contain only the active root label, alignment status, one validated root-to-deepest unfinished continuation stack, one exact checkpoint reason, an exact external blocker, and one next action that resumes the same root command. Code remains the source of truth for completed work.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
@@ -55,11 +55,11 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - `material-library-status`: concise read-only Material status reconstructed from roadmap, current code, guards, proof, and verification;
 - `material-component`: coordination-only autonomous convergence root for one official Material family;
-- `material-component-implementation`: fresh isolated writable implementation for one deepest component owner correction;
-- `material-component-review`: different fresh isolated read-only contract or correction-final review for one component/foundation owner;
+- `material-foundation`: coordination-only autonomous convergence root for one standalone exact cross-family Material foundation domain;
+- `material-component-implementation`: fresh isolated writable implementation for one deepest component or foundation owner correction;
+- `material-component-review`: different fresh isolated read-only optional contract or mandatory correction-final review for one component/foundation owner;
 - `material-family-review`: different fresh isolated read-only complete current-family readiness review after no known required gap remains;
 - `material3-guidelines`: official Material sources, component choice, usage, composition, and product-facing UI/UX decisions;
-- `material-foundation`: fresh isolated writable implementation for one exact cross-family Material token, theme, units, typography, shape, elevation, motion, interaction, icon, overlay, accessibility, density, or adaptive owner correction;
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
@@ -126,7 +126,7 @@ status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
 
-`checkpointed` is valid only for a skill-defined resumable operation and requires a non-`none` physical checkpoint reason. A Material full-family result maps `aligned → complete`, external `blocked → blocked`, and physical `checkpointed → checkpointed`; it must not map to `partial`.
+`checkpointed` is valid only for a skill-defined resumable operation and requires a non-`none` physical checkpoint reason. A Material convergence result maps `aligned → complete`, external `blocked → blocked`, and physical `checkpointed → checkpointed`; it must not map to `partial`.
 
 ## Release
 
