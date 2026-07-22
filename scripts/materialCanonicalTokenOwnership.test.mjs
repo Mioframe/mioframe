@@ -63,6 +63,10 @@ function tokenType(name) {
   return null;
 }
 
+function componentFamily(file) {
+  return file.match(/^src\/shared\/ui\/material\/components\/([^/]+)\//)?.[1] ?? null;
+}
+
 function analyze(sources) {
   const declarations = new Map();
   const references = [];
@@ -125,12 +129,8 @@ function analyze(sources) {
           );
         }
       } else if (type === 'md-comp') {
-        const family = reference.name.match(/^--md-comp-([a-z0-9]+(?:-[a-z0-9]+)*)-/)?.[1];
-        if (
-          !family ||
-          !record.file.startsWith(`${MATERIAL_PREFIX}components/${family}/`) ||
-          !tokenFile
-        ) {
+        const family = componentFamily(record.file);
+        if (!family || !reference.name.startsWith(`--md-comp-${family}-`) || !tokenFile) {
           errors.push(
             `${record.file}:${record.line}: '${reference.name}' must be owned by its component family`,
           );
@@ -162,7 +162,7 @@ describe('Canonical Material token ownership', () => {
     expect(errors).toEqual([expect.stringContaining('without a canonical Material token owner')]);
   });
 
-  it('accepts a singular canonical owner', () => {
+  it('accepts singular canonical system and component owners', () => {
     expect(
       analyze([
         {
@@ -170,11 +170,32 @@ describe('Canonical Material token ownership', () => {
           source: ':root { --md-sys-color-primary: red; }',
         },
         {
+          file: 'src/shared/ui/material/components/button/button.tokens.css',
+          source:
+            '.md-button { --md-comp-button-filled-container-color: var(--md-sys-color-primary); }',
+        },
+        {
           file: 'src/shared/ui/material/components/button/MDButton.css',
-          source: '.md-button { color: var(--md-sys-color-primary); }',
+          source:
+            '.md-button { color: var(--md-comp-button-filled-container-color); }',
         },
       ]),
     ).toEqual([]);
+  });
+
+  it('rejects a component token declared by the wrong family', () => {
+    expect(
+      analyze([
+        {
+          file: 'src/shared/ui/material/components/card/card.tokens.css',
+          source: '.md-card { --md-comp-button-filled-container-color: red; }',
+        },
+        {
+          file: 'src/shared/ui/material/components/button/MDButton.css',
+          source: '.md-button { color: var(--md-comp-button-filled-container-color); }',
+        },
+      ]),
+    ).toEqual([expect.stringContaining('must be owned by its component family')]);
   });
 
   it('keeps canonical Material independent from active legacy token declarations', () => {
