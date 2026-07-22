@@ -64,7 +64,9 @@ When closure is blocked:
 4. refresh the dependency graph and consumer compatibility;
 5. stop only for an exact external blocker or cycle.
 
-When supported, run each prerequisite in a fresh focused writable context. One prerequisite implementation context owns one canonical owner plus only the minimum compatibility and adoption edits required for that owner. Split multi-owner prerequisite work and retain the stack in the caller.
+When supported, run each prerequisite in a fresh focused writable context. One prerequisite implementation unit owns one canonical owner plus only the minimum compatibility and adoption edits required for that owner. Split multi-owner prerequisite work and retain the stack in the caller.
+
+If isolated writable contexts are unavailable, execute the same owner units sequentially in the current runtime, emit one structured result per owner, and reset the implementation scope before continuing. Lack of subagents is not a blocker and does not permit combining owners into one broad correction.
 
 An internal prerequisite is work, not a terminal blocker or an operator decision.
 
@@ -149,6 +151,6 @@ Next action: none | <exact action required to unblock>
 - treating relocation, forwarding, migrated imports, barrels, or green guards as canonical readiness;
 - canonical export/adoption/removal with open recursive closure;
 - asking the operator to choose technical Material ownership or invoke an internal prerequisite;
-- implementing several canonical prerequisite owners in one writable context;
+- implementing several canonical prerequisite owners in one correction unit;
 - duplicate registries, audits, histories, checklists, scorecards, ledgers, or workflow policy;
 - Git, branch, commit, pull-request, or merge operations.
