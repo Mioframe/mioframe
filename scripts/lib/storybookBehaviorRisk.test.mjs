@@ -466,6 +466,53 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 });
 
+describe('resolveStorybookBehaviorPlan removed/renamed spec safety', () => {
+  it('runs the full lane for a nonexistent directly changed behavior spec', () => {
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/removedFlow.spec.ts'], {
+      fileExists: () => false,
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+    expect(plan.reasons[0]).toContain(
+      'removed or renamed Storybook behavior spec tests/e2e/storybook/removedFlow.spec.ts',
+    );
+  });
+
+  it('runs the full lane for a rename-like input where the old spec no longer exists', () => {
+    const plan = resolveStorybookBehaviorPlan(
+      ['tests/e2e/storybook/oldFlow.spec.ts', 'tests/e2e/storybook/storybook.smoke.spec.ts'],
+      { fileExists: (filePath) => filePath !== 'tests/e2e/storybook/oldFlow.spec.ts' },
+    );
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+    expect(plan.reasons[0]).toContain(
+      'removed or renamed Storybook behavior spec tests/e2e/storybook/oldFlow.spec.ts',
+    );
+  });
+
+  it('never returns a missing spec in focused specs', () => {
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/removedFlow.spec.ts'], {
+      fileExists: () => false,
+    });
+
+    expect(plan.specs).not.toContain('tests/e2e/storybook/removedFlow.spec.ts');
+  });
+
+  it('keeps an existing directly changed behavior spec focused', () => {
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+
+    expect(plan).toEqual({
+      mode: 'focused',
+      specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
+      reasons: [
+        'changed behavior spec tests/e2e/storybook/storybook.smoke.spec.ts -> tests/e2e/storybook/storybook.smoke.spec.ts',
+      ],
+    });
+  });
+});
+
 describe('resolveStorybookBehaviorPlan package.json impact', () => {
   beforeEach(() => {
     isPackageJsonRuntimeRelevantChange.mockReset();

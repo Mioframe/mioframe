@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/packageJsonImpact.mjs', () => ({
   isVisualRelevantPackageJsonChange: vi.fn(),
@@ -20,7 +21,6 @@ import {
   getVerifyProcessEnv,
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
-  getVerifyBaseRef,
   PLAYWRIGHT_COMMAND_OVERHEAD_MS,
   printSummary,
   resolveCommandStatus,
@@ -165,12 +165,6 @@ describe('getCliFilesOverride', () => {
   });
 });
 
-describe('getVerifyBaseRef', () => {
-  it('reads VERIFY_BASE from process env', () => {
-    expect(getVerifyBaseRef({ VERIFY_BASE: 'origin/develop' })).toBe('origin/develop');
-  });
-});
-
 describe('getVerifyProcessEnv', () => {
   it('applies an explicit verify profile override to the process env', () => {
     expect(getVerifyProcessEnv({ GITHUB_ACTIONS: 'false' }, 'github-actions')).toMatchObject({
@@ -266,6 +260,38 @@ describe('buildCommands mutation scope', () => {
     const mutationEntry = commands.find((entry) => entry.label === 'mutation');
 
     expect(mutationEntry.kind).toBe('skipped');
+  });
+
+  describe('deleted production path with a surviving sibling test', () => {
+    const fixtureDir = 'src/shared/lib/verifyMutationScopeFixture';
+    const deletedProductionPath = `${fixtureDir}/deletedSource.ts`;
+    const survivingTestPath = `${fixtureDir}/deletedSource.test.ts`;
+
+    beforeEach(() => {
+      fs.mkdirSync(fixtureDir, { recursive: true });
+      fs.writeFileSync(
+        survivingTestPath,
+        '// fixture sibling test for a deleted production file\n',
+      );
+    });
+
+    afterEach(() => {
+      fs.rmSync(fixtureDir, { recursive: true, force: true });
+    });
+
+    it('skips mutation instead of targeting a nonexistent production file', () => {
+      expect(fs.existsSync(deletedProductionPath)).toBe(false);
+      expect(fs.existsSync(survivingTestPath)).toBe(true);
+
+      const commands = buildCommands([deletedProductionPath], { fullMode: false });
+      const mutationEntry = commands.find((entry) => entry.label === 'mutation');
+
+      expect(mutationEntry.kind).toBe('skipped');
+
+      for (const entry of commands) {
+        expect(JSON.stringify(entry.args ?? [])).not.toContain(deletedProductionPath);
+      }
+    });
   });
 });
 
@@ -369,6 +395,28 @@ describe('buildCommands package.json app e2e relevance', () => {
 
     expect(e2eEntry.kind).toBe('run');
     expect(e2eEntry.triggerReason).toContain('low-level path src/shared/service/serviceWorker.ts');
+  });
+});
+
+describe('buildCommands removed/renamed spec safety', () => {
+  it('runs full app e2e for a deleted app e2e spec without passing it as a command argument', () => {
+    const commands = buildCommands(['tests/e2e/removedFlow.spec.ts'], { fullMode: false });
+    const e2eEntry = commands.find((entry) => entry.label === 'e2e');
+
+    expect(e2eEntry.kind).toBe('run');
+    expect(e2eEntry.triggerReason).toContain('removed or renamed app e2e spec');
+    expect(e2eEntry.args).not.toContain('tests/e2e/removedFlow.spec.ts');
+  });
+
+  it('runs the full storybook-behavior lane for a deleted behavior spec without passing it as a command argument', () => {
+    const commands = buildCommands(['tests/e2e/storybook/removedFlow.spec.ts'], {
+      fullMode: false,
+    });
+    const behaviorEntry = commands.find((entry) => entry.label === 'storybook-behavior');
+
+    expect(behaviorEntry.kind).toBe('run');
+    expect(behaviorEntry.triggerReason).toContain('removed or renamed Storybook behavior spec');
+    expect(behaviorEntry.args).not.toContain('tests/e2e/storybook/removedFlow.spec.ts');
   });
 });
 

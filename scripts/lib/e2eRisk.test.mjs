@@ -334,6 +334,51 @@ describe('resolveAppE2EPlan', () => {
   });
 });
 
+describe('resolveAppE2EPlan removed/renamed spec safety', () => {
+  it('runs full app e2e for a nonexistent directly changed app e2e spec', () => {
+    const plan = resolveAppE2EPlan(['tests/e2e/removedFlow.spec.ts'], {
+      fileExists: () => false,
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+    expect(plan.reasons[0]).toContain(
+      'removed or renamed app e2e spec tests/e2e/removedFlow.spec.ts',
+    );
+  });
+
+  it('runs full app e2e for a rename-like input where the old spec no longer exists', () => {
+    const plan = resolveAppE2EPlan(
+      ['tests/e2e/oldFlow.spec.ts', 'tests/e2e/databasePersistenceSmoke.spec.ts'],
+      { fileExists: (filePath) => filePath !== 'tests/e2e/oldFlow.spec.ts' },
+    );
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+    expect(plan.reasons[0]).toContain('removed or renamed app e2e spec tests/e2e/oldFlow.spec.ts');
+  });
+
+  it('never returns a missing spec in focused specs', () => {
+    const plan = resolveAppE2EPlan(['tests/e2e/removedFlow.spec.ts'], {
+      fileExists: () => false,
+    });
+
+    expect(plan.specs).not.toContain('tests/e2e/removedFlow.spec.ts');
+  });
+
+  it('keeps an existing directly changed app e2e spec focused', () => {
+    const plan = resolveAppE2EPlan(['tests/e2e/databasePersistenceSmoke.spec.ts']);
+
+    expect(plan).toEqual({
+      mode: 'focused',
+      specs: ['tests/e2e/databasePersistenceSmoke.spec.ts'],
+      reasons: [
+        'changed app e2e spec tests/e2e/databasePersistenceSmoke.spec.ts -> tests/e2e/databasePersistenceSmoke.spec.ts',
+      ],
+    });
+  });
+});
+
 describe('resolveAppE2EPlan package.json impact', () => {
   beforeEach(() => {
     isPackageJsonRuntimeRelevantChange.mockReset();
