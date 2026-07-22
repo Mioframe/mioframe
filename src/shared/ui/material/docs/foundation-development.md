@@ -26,7 +26,9 @@ current-state preflight
 → final verification
 ```
 
-When delegated by `material-component`, scope is the exact required prerequisite. When supported, run it in a fresh focused writable context. One context owns one canonical foundation owner plus only its minimum compatibility/adoption edits; nested owners return through the caller stack.
+When delegated by `material-component`, scope is the exact required prerequisite. When supported, run it in a fresh focused writable context. One implementation unit owns one canonical foundation owner plus only its minimum compatibility/adoption edits; nested owners return through the caller stack.
+
+When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. Lack of subagents is not a blocker and does not permit a broad multi-owner correction.
 
 ## Contract and correction
 
@@ -68,6 +70,6 @@ A delegated prerequisite returns `complete` only for the exact ready canonical c
 - legacy-owned active declarations used by canonical Material;
 - invented names, cycles, parallel owners, hidden fallbacks, runtime managers/registries/resolvers;
 - returning complete while caller or direct consumers still use an incompatible or legacy contract;
-- several canonical owners in one writable context;
+- several canonical owners in one correction unit;
 - persisted execution state, histories, backlogs, checklists, scorecards, or ledgers;
 - Git, branch, commit, PR, or merge operations.
