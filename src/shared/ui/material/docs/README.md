@@ -5,9 +5,9 @@ Read only the documents required by the task:
 - [`architecture.md`](./architecture.md) — boundary, ownership, dependency direction, decomposition, and public API;
 - [`tokens.md`](./tokens.md) — token taxonomy, ownership, graph, routing, and verification;
 - [`sources.md`](./sources.md) — official Material evidence rules;
-- [`component-development.md`](./component-development.md) — durable family convergence model;
+- [`component-development.md`](./component-development.md) — durable family convergence and resumption model;
 - [`foundation-development.md`](./foundation-development.md) — durable foundation convergence model;
-- [`roadmap.md`](./roadmap.md) — active family, alignment status, external blocker, and one next action.
+- [`roadmap.md`](./roadmap.md) — active root family, alignment status, one continuation stack, external blocker, and one next action.
 
 Executable procedures live in `.agents/skills`:
 
@@ -15,8 +15,8 @@ Executable procedures live in `.agents/skills`:
 - target, semantics, token, Web, correction-review, and family-review skills are bounded read-only specialists;
 - contract, implementation, and adoption skills run only inside their orchestrator.
 
-Owner README files store durable supported surface, API, semantics, ownership, token/style/motion contracts, extensions, unsupported behavior, and proof obligations. They do not store current stage, correction state, backlog, review results, shell output, commit narratives, or future passes.
+Owner README files store durable supported surface, API, semantics, ownership, token/style/motion contracts, extensions, unsupported behavior, and proof obligations. They do not store current stage, correction state, backlog, completed-unit history, review results, shell output, commit narratives, or future passes.
 
-Code and proof own exact selectors, declarations, token routes, and runtime details. The active orchestrator owns transient execution state.
+Code and proof own completed work, exact selectors, declarations, token routes, and runtime details. The active orchestrator owns detailed transient execution state. `roadmap.md` may retain only one validated root-to-deepest unfinished continuation stack so a physical session can resume the same logical root operation.
 
 Do not create parallel registries, inventories, audits, histories, checklists, scorecards, progress ledgers, or duplicated workflow instructions.
