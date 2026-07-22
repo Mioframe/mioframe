@@ -1,112 +1,125 @@
 ---
 name: material-foundation
-description: 'Use for one real cross-family Material contract or an exact delegated prerequisite. Runs as a fresh isolated writable owner context and returns implementation evidence for independent review.'
+description: 'Use for standalone convergence of one exact cross-family Material foundation domain. Coordinates isolated owner implementation and independent review without writing production code.'
 ---
 
-# Material foundation owner implementation
+# Material foundation orchestrator
 
-Use standalone for one exact cross-family correction or when `material-component` delegates the current deepest prerequisite. Follow `src/shared/ui/material/docs/foundation-development.md`, `architecture.md`, and `tokens.md`.
+This is the coordination-only root for one standalone, exact cross-family Material foundation domain. The root owns current-state reconstruction, bounded contract selection, owner-stack ordering, delegation, result validation, continuation, final verification, and compact roadmap state.
 
-This skill is an owner implementation context, not the root family orchestrator and not a reviewer. It must run in a fresh isolated writable context and must return to the calling root after one owner correction.
+The root must not edit production code, tests, stories, tokens, exports, consumers, legacy owners, or owner README files. Its only repository write is the compact Material roadmap when root state changes.
 
-## Scope
+When a foundation owner is required by an active `material-component` operation, do not start this standalone root. The component root pushes that foundation owner onto its own stack and delegates the same internal owner implementation procedure.
 
-Receive the exact root-locked family-agnostic contract, current owner, affected scenarios/families, direct consumers, platforms, non-goals, completion condition, and selected evidence.
+Follow `src/shared/ui/material/docs/foundation-development.md`, `architecture.md`, and `tokens.md`.
 
-A delegated prerequisite remains inside the root family operation. Its size or consumer count does not make it an operator task.
+## Invocation
 
-Another official component family is not foundation. A component dependency requires that family's independently reviewed public contract or an explicit product decision to remove the dependency.
+`material-foundation <domain>` means one logical convergence operation for the smallest coherent cross-family contract required now. It is not a broad foundation audit or speculative full migration.
 
-## Entry gate
+The operator resumes the same root command after a physical checkpoint. Internal nested owners remain orchestration work and are never returned as separate operator commands.
 
-Confirm:
+## Mandatory execution model
 
-- execution context is `fresh-isolated-writable`;
-- this foundation owner is the current deepest unfinished owner;
-- no required child owner remains unresolved;
-- the correction contract and selected evidence were locked by the root orchestrator;
-- current declarations, imports, consumers, legacy paths, and guards still match the contract.
+1. **Foundation root orchestrator** — coordination and compact roadmap state only.
+2. **Fresh isolated writable owner context** — `material-component-implementation` runs with `Owner kind: foundation` for exactly one deepest owner correction and cannot declare readiness.
+3. **Fresh isolated read-only review context** — `material-component-review` independently accepts or rejects that owner.
 
-If the current code invalidates the locked contract, return the discrepancy to the root before editing. Do not redesign the contract locally.
+One root owns the whole standalone foundation stack and is the sole roadmap writer. The implementation and review contexts must be newly created and different. No same-context fallback is permitted.
 
-If a fresh writable context cannot be created, return `checkpoint-required` with `isolated-writable-context-unavailable`. Never fall back to root-context implementation.
+If a required isolated writable or review context cannot be created, checkpoint with the exact physical reason.
 
-## Execution
+## Foundation gate
 
-```text
-current-state validation
-→ root-locked foundation contract
-→ one complete canonical owner correction
-→ minimum affected-family and direct-consumer compatibility edits
-→ focused proof
-→ structured implementation result to root
-```
+Confirm the requested domain is inherently cross-family, family-agnostic, currently required, and not already correctly owned by a family or generic non-Material mechanism.
 
-One run owns one canonical foundation owner. If another canonical owner is required, return it as a nested prerequisite. Do not implement multiple owners in one context.
+Another official component family is not foundation. If the required behavior belongs to a component family, return an exact architecture blocker or route the operator to the correct root family rather than absorbing component ownership.
 
 For tokens:
 
 - reference/system and real `--mio-sys-*` extensions are foundation-owned;
-- component tokens/private routes remain family-owned;
-- declarations used by canonical Material must have an active owner under `src/shared/ui/material/foundation/`;
-- move one coherent required group without duplicate active declarations;
-- retained legacy CSS may import the canonical owner but must not redeclare it;
-- prove graph direction, cycles, import order, exact names, and affected-family computed behavior.
+- component tokens and private family routes remain family-owned;
+- active declarations used by canonical Material must live under `src/shared/ui/material/foundation/`;
+- move one smallest coherent group without duplicate active declarations;
+- preserve valid graph direction, imports, references, fallbacks, and affected-family proof.
 
-For state, ripple, motion, focus, symbols, typography, or other shared behavior:
+For shared behavior, lock one narrow contract and require complete semantics, lifecycle, accessibility, platform adaptation, all direct consumers, compatibility cleanup, and relevant browser/reduced-motion proof.
 
-- define one narrow public contract;
-- revalidate semantics and lifecycle against current Material and platform requirements;
-- validate every direct consumer of the changed contract;
-- retain legacy entry points only as forwarding compatibility;
-- remove parallel implementations and prove affected-family behavior.
+Relocation, forwarding, barrels, migrated imports, or green path guards do not establish readiness.
 
-Relocation is not canonicalization.
+## Strict stack and correction cycle
 
-## Review boundary
+The continuation stack is root-to-deepest unfinished foundation owner. Only the deepest owner may be contracted, implemented, or reviewed.
 
-This context may report `implemented`, but it cannot report the foundation owner as ready or complete. The root must create a fresh isolated read-only `material-component-review` context with `Owner kind: foundation`.
+For that owner:
 
-Only `correction-final: complete` authorizes the root to pop this foundation owner and return to the parent family.
+```text
+root locks bounded contract and selected evidence
+→ fresh isolated writable material-component-implementation context
+→ focused affected-family and direct-consumer proof
+→ fresh isolated read-only material-component-review correction-final
+→ accept and pop, or retry once in a new writable context
+→ refresh stack and continue
+```
+
+A stack entry may be removed only after `correction-final: complete`. Implementation output is not readiness. A parent cannot advance while a deeper owner remains unfinished.
+
+If another canonical owner is discovered, return it to the root to push onto the same stack. Do not implement several owners in one writable context.
+
+## Continuation checkpoint
+
+Allowed reasons:
+
+- `context-exhausted`;
+- `runtime-exhausted`;
+- `user-interrupted`;
+- `isolated-writable-context-unavailable`;
+- `isolated-review-context-unavailable`;
+- `required-tool-unavailable`;
+- `required-evidence-unavailable`.
+
+A large owner, many consumers, a repairable red guard, or an internal nested owner is not a checkpoint reason.
+
+## Completion
+
+`aligned` requires an empty stack, one active canonical foundation owner per required contract, accepted independent owner reviews, compatible affected families and direct consumers, valid legacy disposition, required proof, and passing final `pnpm verify`.
+
+`blocked` requires an exact external source, product, platform, safety, evidence, or verification condition that cannot be resolved inside the operation.
+
+`checkpointed` is nonterminal and requires one allowed physical reason. `partial` is not a valid foundation result.
 
 ## Result
 
 ```text
-MATERIAL FOUNDATION IMPLEMENTATION RESULT
+MATERIAL FOUNDATION RESULT
 Domain:
-Mode:
-Objective:
-Execution context: fresh-isolated-writable
-Status: implemented | blocked | checkpoint-required
-Deepest owner confirmed: yes | no
-Required contract:
-Previous owner:
+Invocation scope: standalone-foundation
+Status: aligned | blocked | checkpointed
+Execution model: isolated-owner-and-review
 Canonical owner:
-Nested prerequisite discovered: none | <exact owner>
-Canonical contract:
-Token ownership:
-Semantics/lifecycle:
-Direct consumer compatibility:
-Legacy owner result:
-Selected proof results:
-Affected families:
-Calling-family consumption: implemented | blocked | checkpoint-required
-Readiness claim: forbidden
-Review required: yes
-Remaining required gaps:
-Blocker: none | <exact blocker>
-Checkpoint reason: none | isolated-writable-context-unavailable | context-exhausted | runtime-exhausted | user-interrupted | required-tool-unavailable | required-evidence-unavailable
-Next action: return-to-root
+Continuation stack: none | <root > deepest unfinished owner>
+Deepest unfinished owner: none | <exact owner>
+Last implementation context: none | fresh-isolated-writable
+Last correction review context: none | fresh-isolated-read-only
+Last correction review verdict: none | complete | blocked | not-run
+Affected families and consumers:
+Verification:
+Remaining required gaps: none | <exact gaps>
+External blocker: none | <exact external blocker>
+Checkpoint reason: none | context-exhausted | runtime-exhausted | user-interrupted | isolated-writable-context-unavailable | isolated-review-context-unavailable | required-tool-unavailable | required-evidence-unavailable
+Next action: none | resume material-foundation <root domain> | <exact external unblock action>
 ```
 
 ## Forbidden
 
-- implementation in the root orchestrator or reviewer context;
-- self-review or readiness claims;
-- implementing a parent or sibling while a deeper owner is unfinished;
-- broad domain audit beyond the required contract;
-- several canonical owners in one context;
-- local redesign of the root-locked contract;
-- relocation-only completion or copied legacy defects;
-- asking the operator to invoke a foundation or nested component prerequisite;
-- roadmap updates, workflow-policy edits, Git, PR, or merge operations.
+- production edits from the foundation root context;
+- implementation and review by the same context;
+- readiness without fresh read-only correction review;
+- another component family's ownership in foundation;
+- changing a parent while a deeper owner remains unfinished;
+- several canonical owners in one writable correction;
+- relocation-only readiness;
+- checkpointing without one allowed physical reason;
+- asking the operator to invoke an internal nested owner;
+- a separate progress ledger, backlog, history, registry, or scorecard;
+- Git, branch, commit, pull-request, or merge operations.
