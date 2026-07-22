@@ -239,6 +239,7 @@ Canonical deployment paths:
 - develop: `https://mioframe.github.io/branch/develop/`
 - manual branch: `https://mioframe.github.io/branch/<branch-slug>/`
 - PR preview: `https://mioframe.github.io/pr/<number>/`
+- PR preview Storybook: `https://mioframe.github.io/pr/<number>/storybook/`
 
 Each deployed channel is isolated by `BASE_URL`, service worker scope,
 manifest identity, and Cache Storage cache-name namespace (see
@@ -374,6 +375,53 @@ that PR's `pr/<number>/` slot.
 publish scripts never run untrusted PR-head code with the Pages write
 credential. `develop` now carries this tooling for every PR, so no
 branch-specific bootstrap exclusion is needed.
+
+#### PR preview Storybook
+
+Every PR preview also builds and publishes Storybook, generated from the
+same PR head commit as the application build, at
+`https://mioframe.github.io/pr/<number>/storybook/`. Both surfaces are
+published as one atomic PR preview slot — there is no separate Storybook
+deployment job, Pages publish operation, cleanup path, or `deployment.json`.
+
+In `deploy-preview`, after the application build (`pnpm run build`) and
+before the trusted-tooling checkout:
+
+- `pnpm storybook:build` runs in `app-source` with
+  `BASE_URL=/pr/<number>/storybook/`. This is the same
+  `scripts/storybook.mjs build` command used everywhere else in the
+  repository; it already sets `APP_STORYBOOK=1`, disables Storybook
+  telemetry, and writes to the repository-configured `storybook-static`
+  directory (`config/tooling.json` `storybook.staticDir`). No application
+  secrets (`VITE_GOOGLE_CLIENT_ID`, `VITE_SENTRY_DSN`,
+  `SENTRY_AUTH_TOKEN`) are passed to this build — Storybook stays isolated
+  from PWA and Sentry production behavior;
+- a local, explicit assembly step verifies `app-source/dist/index.html`
+  exists, verifies `app-source/storybook-static/index.html` and
+  `app-source/storybook-static/iframe.html` exist, fails clearly if
+  `app-source/dist/storybook` already exists, then copies the complete
+  contents of `app-source/storybook-static` into `app-source/dist/storybook`.
+  This step only inspects and copies already-built static output — it does
+  not execute any PR-head script, and it runs before the Pages write
+  credential exists.
+
+The resulting `app-source/dist/` tree (application at the root, Storybook
+nested under `storybook/`) is then published exactly like any other PR
+preview build: `publishPreview.mjs` copies the complete dist tree into
+`pr/<number>/` in one commit, so the nested `storybook/` directory is
+published automatically by the existing recursive copy — no
+Storybook-specific publish script exists. PR preview cleanup
+(`cleanupPreview.mjs`) removes the whole `pr/<number>/` slot, including
+Storybook, with no separate cleanup step.
+
+The sticky preview comment (`upsertPreviewComment.mjs`) accepts an optional
+`--storybook-url`; when provided it renders both an Application and a
+Storybook link in the one sticky comment. The required `--url` argument is
+unchanged, so trusted tooling invoking the script without
+`--storybook-url` still gets valid application-only behavior.
+
+PR preview Storybook is not published for stable, develop, or manually
+deployed branches — only for ordinary PR previews.
 
 ### Branch deletion tombstone
 

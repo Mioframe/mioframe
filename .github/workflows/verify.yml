@@ -232,6 +232,34 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm run build
 
+      # Storybook is isolated from PWA/Sentry production behavior: no
+      # application secrets are passed to this build.
+      - name: Build PR preview Storybook
+        working-directory: app-source
+        env:
+          BASE_URL: /pr/${{ github.event.number }}/storybook/
+        run: pnpm storybook:build
+
+      # Local artifact assembly only — no PR-head script execution, no Pages
+      # write credential exists yet at this point in the job.
+      - name: Assemble PR preview artifact (app + Storybook)
+        working-directory: app-source
+        run: |
+          set -euo pipefail
+          if [ ! -f dist/index.html ]; then
+            echo "Application build did not produce dist/index.html" >&2
+            exit 1
+          fi
+          if [ ! -f storybook-static/index.html ] || [ ! -f storybook-static/iframe.html ]; then
+            echo "Storybook build did not produce storybook-static/index.html and iframe.html" >&2
+            exit 1
+          fi
+          if [ -e dist/storybook ]; then
+            echo "dist/storybook already exists; refusing to overwrite" >&2
+            exit 1
+          fi
+          cp -R storybook-static dist/storybook
+
       # Trusted tooling (tooling/) is checked out from the PR's base branch,
       # never from the PR head. Every step below that can write to
       # Mioframe/mioframe.github.io — metadata, token generation, publish,
@@ -280,6 +308,7 @@ jobs:
           node tooling/scripts/pages/upsertPreviewComment.mjs
           --pr ${{ github.event.number }}
           --url "https://mioframe.github.io/pr/${{ github.event.number }}/"
+          --storybook-url "https://mioframe.github.io/pr/${{ github.event.number }}/storybook/"
 
   deploy-develop:
     needs: [verify]

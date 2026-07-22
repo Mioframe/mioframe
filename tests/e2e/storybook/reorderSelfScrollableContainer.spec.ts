@@ -247,17 +247,27 @@ test.describe('self-scrollable reorder container', () => {
       SCROLL_LIMIT_TOLERANCE_PX,
     );
 
+    // Capture both positions before release, then sample both candidates concurrently immediately
+    // after pointer-up. Waiting for restored scroll-snap styles before sampling would leave a blind
+    // window in which release movement could become the test's new baseline.
+    const containerScrollTopBeforeRelease = await container.evaluate((el) => el.scrollTop);
+    const ancestorScrollTopBeforeRelease = await ancestor.evaluate((el) => el.scrollTop);
     await page.mouse.up();
-    const containerAtRelease = await container.evaluate((el) => el.scrollTop);
-    const ancestorAtRelease = await ancestor.evaluate((el) => el.scrollTop);
+
+    const [containerReleaseSamples, ancestorReleaseSamples] = await Promise.all([
+      sampleScrollTop(container),
+      sampleScrollTop(ancestor),
+    ]);
+    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
+    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
+    await expect(firstItem).not.toHaveClass(/reorder-self-scrollable-story-item_dragging/);
+
     await expect
       .poll(() => container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe(containerSnapshot.inlineValue);
     await expect
       .poll(() => ancestor.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe(ancestorSnapshot.inlineValue);
-    assertScrollTopHoldsAtBaseline(await sampleScrollTop(container), containerAtRelease);
-    assertScrollTopHoldsAtBaseline(await sampleScrollTop(ancestor), ancestorAtRelease);
   });
 
   test('a drag drains the container own scroll extent in both directions without ever moving the outer ancestor', async ({
