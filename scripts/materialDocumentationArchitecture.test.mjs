@@ -22,7 +22,7 @@ const OWNER_FORBIDDEN = [
   ],
   [
     'dynamic workflow field',
-    /^\s*(?:Current objective|Current stage|Current correction unit|Next gate|Contract review status|Final review status|Family review status|Family alignment status|Prerequisite stack|Completed correction units|Remaining required gaps|Next action|Blocker):/im,
+    /^\s*(?:Current objective|Current stage|Current correction unit|Next gate|Contract review status|Final review status|Family review status|Family alignment status|Prerequisite stack|Continuation stack|Completed correction units|Remaining required gaps|Next action|Blocker):/im,
   ],
 ];
 
@@ -68,11 +68,12 @@ function analyzeRoadmap(content) {
     '## Current state',
     /^Active family: `[^`]+`$/,
     /^Family alignment status: `(aligned|converging|blocked)`$/,
+    /^Continuation stack: `(?:none|[^`]+)`$/,
     /^External blocker: .+$/,
     '## Next action',
     /^(?![-*+]\s|\d+\.\s).+$/,
     '## Update rule',
-    'Keep only the active family, alignment status, exact external blocker, and one next action.',
+    'Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.',
   ];
 
   if (lines.length !== expected.length) {
@@ -87,13 +88,49 @@ function analyzeRoadmap(content) {
     }
   });
 
+  const family = lines[2]?.match(/^Active family: `([^`]+)`$/)?.[1];
   const status = lines[3]?.match(/^Family alignment status: `(aligned|converging|blocked)`$/)?.[1];
-  const blocker = lines[4]?.replace(/^External blocker:\s*/, '').trim();
+  const stack = lines[4]?.match(/^Continuation stack: `([^`]+)`$/)?.[1];
+  const blocker = lines[5]?.replace(/^External blocker:\s*/, '').trim();
+  const nextAction = lines[7] ?? '';
+
   if (status === 'blocked' && blocker?.toLowerCase() === 'none') {
     errors.push('blocked roadmap status requires an exact external blocker');
   }
   if (status && status !== 'blocked' && blocker?.toLowerCase() !== 'none') {
     errors.push('only blocked roadmap status may contain an external blocker');
+  }
+
+  if (status === 'aligned') {
+    if (stack !== 'none') {
+      errors.push('aligned roadmap status requires an empty continuation stack');
+    }
+    if (nextAction.toLowerCase() !== 'none') {
+      errors.push('aligned roadmap status requires Next action: none');
+    }
+  }
+
+  if (stack && stack !== 'none') {
+    const owners = stack.split(' > ').map((owner) => owner.trim());
+    if (!family || owners[0] !== family || owners.some((owner) => !owner)) {
+      errors.push('continuation stack must start with the active root family');
+    }
+  }
+
+  if (status === 'converging' && family) {
+    const requiredPrefix = `Resume \`material-component ${family}\``;
+    if (!nextAction.startsWith(requiredPrefix)) {
+      errors.push('converging roadmap next action must resume the active root family');
+    }
+  }
+
+  if (/\bmaterial-foundation\b/.test(nextAction)) {
+    errors.push('roadmap next action must not delegate an internal foundation prerequisite');
+  }
+
+  const nestedComponent = nextAction.match(/\bmaterial-component\s+([^`;,.]+)/)?.[1]?.trim();
+  if (nestedComponent && family && nestedComponent !== family) {
+    errors.push('roadmap next action must not delegate a nested component prerequisite');
   }
 
   return errors.sort();
@@ -140,18 +177,68 @@ TASK RESULT
 
 Active family: \`Button\`
 Family alignment status: \`converging\`
+Continuation stack: \`Button > Progress Indicator\`
 External blocker: none
 
 1. Completed token migration
 2. pnpm verify passed
 
 ## Next action
+
 Run another pass.
 
 ## Update rule
-Keep only the active family, alignment status, exact external blocker, and one next action.
+
+Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
 `),
     ).not.toEqual([]);
+  });
+
+  it('rejects delegation of a nested prerequisite to the operator', () => {
+    const errors = analyzeRoadmap(`# Material library roadmap
+
+## Current state
+
+Active family: \`Button\`
+Family alignment status: \`converging\`
+Continuation stack: \`Button > Progress Indicator\`
+External blocker: none
+
+## Next action
+
+Run \`material-component Progress Indicator\`, then resume Button.
+
+## Update rule
+
+Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+`);
+
+    expect(errors).toEqual([
+      expect.stringContaining('converging roadmap next action must resume the active root family'),
+      expect.stringContaining('roadmap next action must not delegate a nested component prerequisite'),
+    ]);
+  });
+
+  it('accepts one minimal root-family continuation checkpoint', () => {
+    expect(
+      analyzeRoadmap(`# Material library roadmap
+
+## Current state
+
+Active family: \`Button\`
+Family alignment status: \`converging\`
+Continuation stack: \`Button > Progress Indicator > foundation/tokens\`
+External blocker: none
+
+## Next action
+
+Resume \`material-component Button\`; validate the stack against current code and continue from the deepest unfinished owner.
+
+## Update rule
+
+Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+`),
+    ).toEqual([]);
   });
 
   it('keeps owner README files limited to durable contracts', () => {
