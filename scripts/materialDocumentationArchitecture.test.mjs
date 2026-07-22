@@ -9,6 +9,16 @@ const ROADMAP_PATH = path.join(MATERIAL_ROOT, 'docs', 'roadmap.md');
 const OWNER_ROOTS = ['components', 'foundation', 'patterns'].map((name) =>
   path.join(MATERIAL_ROOT, name),
 );
+const CHECKPOINT_REASONS = new Set([
+  'none',
+  'context-exhausted',
+  'runtime-exhausted',
+  'user-interrupted',
+  'isolated-writable-context-unavailable',
+  'isolated-review-context-unavailable',
+  'required-tool-unavailable',
+  'required-evidence-unavailable',
+]);
 
 const OWNER_FORBIDDEN = [
   ['workflow-state marker', /\bMATERIAL WORKFLOW STATE\b/i],
@@ -22,7 +32,7 @@ const OWNER_FORBIDDEN = [
   ],
   [
     'dynamic workflow field',
-    /^\s*(?:Current objective|Current stage|Current correction unit|Next gate|Contract review status|Final review status|Family review status|Family alignment status|Prerequisite stack|Continuation stack|Completed correction units|Remaining required gaps|Next action|Blocker):/im,
+    /^\s*(?:Current objective|Current stage|Current correction unit|Next gate|Contract review status|Final review status|Family review status|Family alignment status|Prerequisite stack|Continuation stack|Checkpoint reason|Completed correction units|Remaining required gaps|Next action|Blocker):/im,
   ],
 ];
 
@@ -69,11 +79,12 @@ function analyzeRoadmap(content) {
     /^Active family: `[^`]+`$/,
     /^Family alignment status: `(aligned|converging|blocked)`$/,
     /^Continuation stack: `(?:none|[^`]+)`$/,
+    /^Checkpoint reason: `[^`]+`$/,
     /^External blocker: .+$/,
     '## Next action',
     /^(?![-*+]\s|\d+\.\s).+$/,
     '## Update rule',
-    'Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.',
+    'Keep only the active root family, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.',
   ];
 
   if (lines.length !== expected.length) {
@@ -91,8 +102,24 @@ function analyzeRoadmap(content) {
   const family = lines[2]?.match(/^Active family: `([^`]+)`$/)?.[1];
   const status = lines[3]?.match(/^Family alignment status: `(aligned|converging|blocked)`$/)?.[1];
   const stack = lines[4]?.match(/^Continuation stack: `([^`]+)`$/)?.[1];
-  const blocker = lines[5]?.replace(/^External blocker:\s*/, '').trim();
-  const nextAction = lines[7] ?? '';
+  const checkpointReason = lines[5]?.match(/^Checkpoint reason: `([^`]+)`$/)?.[1];
+  const blocker = lines[6]?.replace(/^External blocker:\s*/, '').trim();
+  const nextAction = lines[8] ?? '';
+
+  if (checkpointReason && !CHECKPOINT_REASONS.has(checkpointReason)) {
+    errors.push('roadmap checkpoint reason must use the allowed physical-reason enum');
+  }
+  if (checkpointReason && checkpointReason !== 'none') {
+    if (status !== 'converging') {
+      errors.push('a physical checkpoint reason requires converging status');
+    }
+    if (stack === 'none') {
+      errors.push('a physical checkpoint reason requires a non-empty continuation stack');
+    }
+  }
+  if (status !== 'converging' && checkpointReason !== 'none') {
+    errors.push('aligned or blocked roadmap status requires Checkpoint reason: none');
+  }
 
   if (status === 'blocked' && blocker?.toLowerCase() === 'none') {
     errors.push('blocked roadmap status requires an exact external blocker');
@@ -178,6 +205,7 @@ TASK RESULT
 Active family: \`Button\`
 Family alignment status: \`converging\`
 Continuation stack: \`Button > Progress Indicator\`
+Checkpoint reason: \`context-exhausted\`
 External blocker: none
 
 1. Completed token migration
@@ -189,7 +217,7 @@ Run another pass.
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root family, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
 `),
     ).not.toEqual([]);
   });
@@ -202,6 +230,7 @@ Keep only the active root family, alignment status, one continuation stack, exac
 Active family: \`Button\`
 Family alignment status: \`converging\`
 Continuation stack: \`Button > Progress Indicator\`
+Checkpoint reason: \`context-exhausted\`
 External blocker: none
 
 ## Next action
@@ -210,15 +239,36 @@ Run \`material-component Progress Indicator\`, then resume Button.
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root family, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
 `);
 
     expect(errors).toEqual([
       expect.stringContaining('converging roadmap next action must resume the active root family'),
-      expect.stringContaining(
-        'roadmap next action must not delegate a nested component prerequisite',
-      ),
+      expect.stringContaining('roadmap next action must not delegate a nested component prerequisite'),
     ]);
+  });
+
+  it('rejects checkpointing without an allowed physical reason', () => {
+    expect(
+      analyzeRoadmap(`# Material library roadmap
+
+## Current state
+
+Active family: \`Button\`
+Family alignment status: \`converging\`
+Continuation stack: \`Button > foundation/tokens\`
+Checkpoint reason: \`next-owner-is-large\`
+External blocker: none
+
+## Next action
+
+Resume \`material-component Button\`; continue from the deepest unfinished owner.
+
+## Update rule
+
+Keep only the active root family, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
+`),
+    ).toEqual([expect.stringContaining('allowed physical-reason enum')]);
   });
 
   it('accepts one minimal root-family continuation checkpoint', () => {
@@ -230,6 +280,7 @@ Keep only the active root family, alignment status, one continuation stack, exac
 Active family: \`Button\`
 Family alignment status: \`converging\`
 Continuation stack: \`Button > Progress Indicator > foundation/tokens\`
+Checkpoint reason: \`isolated-review-context-unavailable\`
 External blocker: none
 
 ## Next action
@@ -238,7 +289,7 @@ Resume \`material-component Button\`; validate the stack against current code an
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root family, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
 `),
     ).toEqual([]);
   });
