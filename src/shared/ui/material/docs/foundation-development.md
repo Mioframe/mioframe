@@ -1,6 +1,6 @@
 # Material foundation development
 
-This document defines the durable convergence model for one real cross-family Material contract. The executable procedure is owned by `.agents/skills/material-foundation/SKILL.md`.
+This document defines the durable convergence model for one real cross-family Material contract.
 
 Foundation exists only when a current component or unavoidable Material/platform contract needs one family-agnostic owner and that owner is simpler than family-local alternatives.
 
@@ -10,30 +10,30 @@ Foundation may own official reference/system tokens and real cross-family typogr
 
 It does not own component-family tokens/API/anatomy/state, product behavior, or generic browser mechanisms that already have a correct owner. Another official component family is not foundation.
 
-## Delegated execution
+## Entry modes
 
-When delegated by `material-component`, foundation is the current deepest unfinished owner and remains inside the same root operation.
+For a standalone foundation request, `material-foundation <domain>` is the coordination-only root. It owns the bounded contract, complete foundation stack, delegation, result validation, final verification, and compact roadmap state, but writes no production code.
 
-The root orchestrator locks the bounded foundation contract and selected evidence. The foundation correction then runs in a fresh isolated writable context. It owns exactly one canonical foundation owner plus minimum compatibility and direct-consumer edits. It cannot redesign the root contract, review itself, or declare readiness.
+When a foundation owner is required by `material-component`, no second foundation root is created. The component root pushes that exact foundation owner onto its existing stack and remains the sole coordinator and roadmap writer.
 
-After implementation and focused proof, the root creates a different fresh isolated read-only `material-component-review` context with `Owner kind: foundation`. Only `correction-final: complete` permits the root to pop the foundation owner and return to its parent.
+In both modes, the current deepest foundation owner is implemented by a fresh isolated writable `material-component-implementation` context with `Owner kind: foundation`. A different fresh isolated read-only `material-component-review` context performs mandatory correction-final review.
 
-If a fresh writable or review context is unavailable, the root checkpoints with the exact isolation reason. There is no same-context fallback.
+If a fresh writable or review context is unavailable, the owning root checkpoints with the exact isolation reason. There is no same-context fallback.
 
 ## Sequence
 
 ```text
-root validates deepest owner and locks bounded foundation contract
-→ fresh writable owner validates current code
-→ one canonical owner correction
+owning root validates deepest owner and locks bounded foundation contract
+→ fresh writable material-component-implementation context
+→ one canonical foundation owner correction
 → affected-family and direct-consumer proof
-→ fresh read-only correction-final review
-→ return accepted or rejected result to root
+→ fresh read-only material-component-review correction-final
+→ owning root accepts and pops, or retries once in a new writable context
 ```
 
 ## Contract and correction
 
-The root confirms foundation ownership is required now and an existing family/generic owner is insufficient. The writable owner context must return any invalidated assumption before editing rather than redesigning the contract locally.
+The owning root confirms foundation ownership is required now and an existing family/generic owner is insufficient. The writable owner context must return any invalidated assumption before editing rather than redesigning the contract locally.
 
 For token work:
 
@@ -57,26 +57,27 @@ Relocation, a new directory/barrel, forwarding exports, migrated imports, or gre
 
 ## Stack and nested owners
 
-Only the current deepest owner may be implemented. If another canonical owner is required, stop this correction and return the exact nested prerequisite to the root. Do not implement two owners in one context.
+Only the current deepest owner may be implemented or reviewed. If another canonical owner is required, stop the correction and return the exact nested prerequisite to the owning root. Do not implement two owners in one writable context.
 
-A parent or calling family cannot advance until the nested owner has implementation proof and a separate accepted correction review.
+A parent or calling family cannot advance until the nested owner has focused proof and a separate accepted correction-final review.
 
 ## Documentation
 
 Create or update a foundation README only for durable owner, API, semantics, token/style/motion, compatibility, unsupported-surface, and proof facts.
 
-Do not persist current stage, findings, backlog, review history, shell output, or future passes. Only the root roadmap stores the compact continuation stack and physical checkpoint reason.
+Do not persist current stage, findings, backlog, review history, shell output, or future passes. Only the owning root roadmap stores the compact continuation stack and physical checkpoint reason.
 
 ## Completion
 
-A foundation implementation result is not readiness. Readiness exists only after a different fresh read-only reviewer accepts the exact owner correction.
+An implementation result is not readiness. Readiness exists only after a different fresh read-only reviewer accepts the exact foundation owner correction.
 
-A repairable gap or nested owner returns as continued internal work. A physical session boundary returns as `checkpoint-required` to the root, never as a separate operator command.
+A repairable gap or nested owner remains internal work. A physical session boundary returns as a checkpoint to the owning root, never as a separate operator command.
 
 ## Forbidden
 
-- implementation in the root or reviewer context;
+- implementation in a root or reviewer context;
 - self-review or readiness claims;
+- a second root or roadmap writer for a foundation prerequisite inside a component operation;
 - local redesign of the root-locked foundation contract;
 - broad domain work for a bounded prerequisite;
 - another family’s component/private ownership in foundation;
