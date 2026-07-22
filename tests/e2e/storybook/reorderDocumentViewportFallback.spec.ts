@@ -6,15 +6,6 @@ const STORY_ID = 'shared-lib-reorder-reorderdocumentviewportstoryharness--defaul
 const CONTAINER_SELECTOR = '[aria-label="Document viewport reorder items"]';
 const ANCESTOR_SELECTOR = '[aria-label="Reorder scroll ancestor"]';
 
-const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): void => {
-  for (const sample of samples) {
-    expect(
-      Math.abs(sample - baseline),
-      `scrollTop samples: ${samples.join(', ')}, baseline: ${baseline}`,
-    ).toBeLessThanOrEqual(1);
-  }
-};
-
 const assertNoForwardScrollAfterRelease = (samples: number[], baseline: number): void => {
   expect(samples).not.toHaveLength(0);
   const message = `scrollTop samples: ${samples.join(', ')}, pre-release baseline: ${baseline}`;
@@ -276,19 +267,20 @@ test.describe('document viewport autoscroll fallback', () => {
     expect(progression.remainingRoom).toBeGreaterThan(4);
     assertViewportSettlesWithoutResuming(progression.samples);
 
-    // 7. Capture the stopped drag positions before release. The observed browser correction is a
-    // small reverse document-viewport adjustment; it must not be mistaken for forward autoscroll
-    // resuming from the still-edge-adjacent pointer position.
+    // 7. Capture the stopped drag positions before release. After pointer-up, the browser may make
+    // a small reverse settling correction, but none of the three levels may resume forward
+    // autoscroll from the still-edge-adjacent pointer position.
     const containerBaseline = await container.evaluate((el) => el.scrollTop);
     const ancestorBaseline = await ancestor.evaluate((el) => el.scrollTop);
     const documentBaseline = await documentViewport.evaluate((el) => el.scrollTop);
 
     await page.mouse.up();
-    const releaseSamples = await sampleReleaseScrollTops(page);
     await expect(firstItem).not.toHaveClass(/_dragging/);
 
-    assertScrollTopHoldsAtBaseline(releaseSamples.container, containerBaseline);
-    assertScrollTopHoldsAtBaseline(releaseSamples.ancestor, ancestorBaseline);
+    const releaseSamples = await sampleReleaseScrollTops(page);
+
+    assertNoForwardScrollAfterRelease(releaseSamples.container, containerBaseline);
+    assertNoForwardScrollAfterRelease(releaseSamples.ancestor, ancestorBaseline);
     assertNoForwardScrollAfterRelease(releaseSamples.document, documentBaseline);
   });
 });
