@@ -5,7 +5,7 @@ This document defines the durable convergence model for one official Material co
 ## Invocation
 
 - `material-component <family>` means one logical full-family convergence operation.
-- Required Material dependencies are recursively canonicalized inside the same root operation.
+- Required Material dependencies are recursively canonicalized inside the same outer root operation.
 - The operator always resumes the same root command and never invokes an internal prerequisite separately.
 - A physical session may checkpoint only for a real execution boundary.
 
@@ -13,9 +13,11 @@ This document defines the durable convergence model for one official Material co
 
 Every correction uses three different contexts:
 
-1. the root orchestrator reconstructs state, orders the stack, delegates work, validates results, and updates the compact roadmap;
+1. the sole outer root orchestrator reconstructs state, owns the complete recursive stack, delegates work, validates results, and updates the compact roadmap;
 2. a fresh isolated writable owner context implements exactly one deepest-owner correction;
 3. a different fresh isolated read-only reviewer accepts or rejects readiness.
+
+Nested official families are owners on the same root stack, not additional root orchestrators or roadmap writers.
 
 The root orchestrator does not edit production code, tests, stories, tokens, exports, consumers, legacy owners, or owner README files. The implementation context cannot review itself or declare readiness. The reviewer cannot edit.
 
@@ -69,11 +71,13 @@ After removal, refresh the graph and continue from the new deepest owner.
 
 Every used Material dependency resolves to a ready canonical foundation, official family public contract, generic non-Material foundation, or explicit Mioframe extension owner.
 
-If a ready owner does not exist:
+If a ready owner does not exist, push its exact owner onto the same root stack:
 
-- family-agnostic contract → exact `material-foundation` owner correction;
-- official component family → nested `material-component` operation;
-- nested prerequisites execute depth-first and return automatically.
+- family-agnostic contract → exact foundation owner implemented by a fresh isolated writable `material-foundation` context when deepest;
+- official component family → exact component-family owner implemented by a fresh isolated writable `material-component-implementation` context when deepest;
+- child prerequisites discovered for either owner are pushed after it and execute depth-first.
+
+The outer root remains the sole coordinator and roadmap writer. After independent acceptance of the deepest child, it pops that child and returns automatically to its parent.
 
 Readiness requires canonical ownership, complete child dependencies, correct tokens, valid API/semantics/lifecycle/accessibility/platform behavior, all direct consumers, compatibility cleanup, focused proof, and independent review.
 
