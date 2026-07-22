@@ -116,6 +116,22 @@ Stack transition: retained | popped
 
 Missing, same-context, or `not-run` review keeps the owner on the stack.
 
+## Verification failure attribution
+
+A failed final verification is internal to the active root operation until proven otherwise.
+
+Before reporting `blocked`:
+
+- run the exact failing command or lane on the current head; prior logs, history, or an import-only diff are not sufficient;
+- reproduce the same failure on the root operation's base commit using the same command and relevant environment;
+- inspect whether the failing code directly or transitively consumes any owner created, moved, forwarded, or behaviorally changed by the active operation.
+
+If the failure does not reproduce on the base commit, or the failing code consumes a changed owner, restore the nearest changed canonical owner to the continuation stack and continue. Its correction scope includes the minimum direct-consumer fixes required for compatibility, even when those consumers belong to separate official Material families.
+
+A repository-internal component or foundation is not an external blocker merely because its own canonical family is outside the root family's public surface. Do not ask the operator to launch separate Material roots to repair a verification failure introduced or exposed by the active operation.
+
+Only a failure reproduced on the base commit and shown independent of every active-operation change may be classified as an external verification blocker.
+
 ## Continuation checkpoint
 
 Checkpoint only when the current physical session cannot safely continue for one of these reasons:
@@ -134,9 +150,11 @@ Before checkpointing, leave the safest coherent branch state, retain the deepest
 
 ## Completion
 
+When the continuation stack is empty, a fresh `material-family-review` is mandatory before either terminal result, including when the root believes no implementation is needed or final verification is red. The reviewer must independently validate closure and verification attribution. An internal finding restores the exact owner to the stack and the root continues.
+
 `aligned` requires an empty continuation stack, complete recursive dependency closure, accepted owner reviews, one canonical family owner/public contract, adoption/cleanup and required proof, accepted operator comparison when required, `material-family-review: complete` from a fresh read-only context, and passing final `pnpm verify`.
 
-Return `blocked` only for an exact external source, product, platform, evidence, safety, or verification condition that cannot be resolved inside the recursive operation.
+Return `blocked` only after `material-family-review: blocked` confirms an exact external source, product, platform, evidence, safety, or base-reproduced verification condition that cannot be resolved inside the recursive operation.
 
 ## Result
 
@@ -155,9 +173,10 @@ Deepest unfinished owner: none | <exact owner>
 Last implementation context: none | fresh-isolated-writable
 Last correction review context: none | fresh-isolated-read-only
 Last correction review verdict: none | complete | blocked | not-run
-Family review:
+Family review: complete | blocked | not-run
 Operator visual status:
 Verification:
+Verification attribution: internal-owner-restored | external-base-reproduced | not-applicable
 Remaining required gaps: none | <exact gaps inferred from current code>
 External blocker: none | <exact external blocker>
 Checkpoint reason: none | context-exhausted | runtime-exhausted | user-interrupted | isolated-writable-context-unavailable | isolated-review-context-unavailable | required-tool-unavailable | required-evidence-unavailable
@@ -171,12 +190,14 @@ Next action: none | resume material-component <root family> | <exact external un
 - simulating isolation by changing roles or skills inside one transcript;
 - multiple root orchestrators or roadmap writers in one recursive operation;
 - readiness without a fresh read-only correction review;
+- terminal `aligned` or `blocked` without a fresh family review;
 - changing a parent while a deeper unfinished owner remains;
 - `partial` as a Material full-family result;
 - trusting a continuation stack without validating code;
-- treating a used dependency as out of scope;
+- treating a used dependency or changed-owner consumer as out of scope;
+- classifying a repository-internal failure as external without same-command base reproduction;
 - relocation-only readiness;
-- asking the operator to invoke an internal prerequisite;
+- asking the operator to invoke an internal prerequisite or a separate Material root to repair active-operation compatibility;
 - checkpointing without one allowed physical reason;
 - persisted execution logs, completed-unit lists, backlogs, or review history;
 - editing Material workflow skills during a component run without an explicit workflow task;

@@ -19,6 +19,7 @@ const CHECKPOINT_REASONS = new Set([
   'required-tool-unavailable',
   'required-evidence-unavailable',
 ]);
+const MATERIAL_COMMAND = /\b(material-component|material-foundation)\s+([^`;,.]+)/g;
 
 const OWNER_FORBIDDEN = [
   ['workflow-state marker', /\bMATERIAL WORKFLOW STATE\b/i],
@@ -66,13 +67,19 @@ function analyzeOwnerReadmes(readmes) {
   return errors.sort();
 }
 
+function materialCommands(value) {
+  return [...value.matchAll(MATERIAL_COMMAND)].map((match) => ({
+    command: match[1],
+    root: match[2].trim(),
+  }));
+}
+
 function analyzeRoadmap(content) {
   const lines = content
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
   const errors = [];
-
   const expected = [
     '# Material library roadmap',
     '## Current state',
@@ -144,6 +151,8 @@ function analyzeRoadmap(content) {
     }
   }
 
+  const commands = materialCommands(nextAction);
+
   if (status === 'converging') {
     const resume = nextAction.match(
       /^Resume `(material-component|material-foundation) ([^`]+)`(?:;|\.|$)/,
@@ -152,15 +161,18 @@ function analyzeRoadmap(content) {
       errors.push('converging roadmap next action must resume the active root command');
     }
 
-    const commands = [
-      ...nextAction.matchAll(/\b(material-component|material-foundation)\s+([^`;,.]+)/g),
-    ];
     const hasNestedCommand = commands.some(
-      (match, index) => index > 0 || !activeRoot || match[2].trim() !== activeRoot,
+      (command, index) => index > 0 || !activeRoot || command.root !== activeRoot,
     );
     if (hasNestedCommand) {
       errors.push('roadmap next action must not delegate an internal prerequisite');
     }
+  }
+
+  if (status === 'blocked' && commands.length > 0) {
+    errors.push(
+      'blocked roadmap next action must describe the external unblock, not launch a Material root',
+    );
   }
 
   return errors.sort();
@@ -171,6 +183,38 @@ function repositoryReadmes() {
     filePath,
     content: fs.readFileSync(filePath, 'utf8'),
   }));
+}
+
+function roadmapFixture({
+  activeRoot = 'Button',
+  status = 'converging',
+  stack = 'Button > Progress Indicator',
+  checkpointReason = 'context-exhausted',
+  blocker = 'none',
+  nextAction = 'Resume `material-component Button`; continue from the deepest unfinished owner.',
+} = {}) {
+  return `# Material library roadmap
+
+## Current state
+
+Active root: \`${activeRoot}\`
+
+Alignment status: \`${status}\`
+
+Continuation stack: \`${stack}\`
+
+Checkpoint reason: \`${checkpointReason}\`
+
+External blocker: ${blocker}
+
+## Next action
+
+${nextAction}
+
+## Update rule
+
+Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
+`;
 }
 
 describe('Material documentation architecture', () => {
@@ -201,121 +245,74 @@ TASK RESULT
 
   it('rejects roadmap execution logs', () => {
     expect(
-      analyzeRoadmap(`# Material library roadmap
-
-## Current state
-
-Active root: \`Button\`
-Alignment status: \`converging\`
-Continuation stack: \`Button > Progress Indicator\`
-Checkpoint reason: \`context-exhausted\`
-External blocker: none
-
-1. Completed token migration
-2. pnpm verify passed
-
-## Next action
-
-Run another pass.
-
-## Update rule
-
-Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
-`),
+      analyzeRoadmap(
+        roadmapFixture({
+          nextAction: '1. Completed token migration\n2. pnpm verify passed',
+        }),
+      ),
     ).not.toEqual([]);
   });
 
-  it('rejects delegation of a nested prerequisite to the operator', () => {
-    const errors = analyzeRoadmap(`# Material library roadmap
+  it('rejects delegation of a nested prerequisite while converging', () => {
+    const errors = analyzeRoadmap(
+      roadmapFixture({
+        nextAction: 'Resume `material-component Button`; then run `material-foundation tokens`.',
+      }),
+    );
 
-## Current state
+    expect(errors).toContain('roadmap next action must not delegate an internal prerequisite');
+  });
 
-Active root: \`Button\`
-Alignment status: \`converging\`
-Continuation stack: \`Button > Progress Indicator\`
-Checkpoint reason: \`context-exhausted\`
-External blocker: none
+  it('rejects launching another Material root from blocked state', () => {
+    const errors = analyzeRoadmap(
+      roadmapFixture({
+        status: 'blocked',
+        stack: 'none',
+        checkpointReason: 'none',
+        blocker: 'legacy Icon Button and FAB verification failures',
+        nextAction: 'Run `material-component icon-button` and `material-component fab`.',
+      }),
+    );
 
-## Next action
-
-Resume \`material-component Button\`; then run \`material-foundation tokens\`.
-
-## Update rule
-
-Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
-`);
-
-    expect(errors).toEqual([
-      expect.stringContaining('roadmap next action must not delegate an internal prerequisite'),
-    ]);
+    expect(errors).toContain(
+      'blocked roadmap next action must describe the external unblock, not launch a Material root',
+    );
   });
 
   it('rejects checkpointing without an allowed physical reason', () => {
     expect(
-      analyzeRoadmap(`# Material library roadmap
-
-## Current state
-
-Active root: \`Button\`
-Alignment status: \`converging\`
-Continuation stack: \`Button > foundation/tokens\`
-Checkpoint reason: \`next-owner-is-large\`
-External blocker: none
-
-## Next action
-
-Resume \`material-component Button\`; continue from the deepest unfinished owner.
-
-## Update rule
-
-Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
-`),
+      analyzeRoadmap(
+        roadmapFixture({
+          stack: 'Button > foundation/tokens',
+          checkpointReason: 'next-owner-is-large',
+        }),
+      ),
     ).toEqual([expect.stringContaining('allowed physical-reason enum')]);
   });
 
   it('accepts one minimal component-root continuation checkpoint', () => {
     expect(
-      analyzeRoadmap(`# Material library roadmap
-
-## Current state
-
-Active root: \`Button\`
-Alignment status: \`converging\`
-Continuation stack: \`Button > Progress Indicator > foundation/tokens\`
-Checkpoint reason: \`isolated-review-context-unavailable\`
-External blocker: none
-
-## Next action
-
-Resume \`material-component Button\`; validate the stack against current code and continue from the deepest unfinished owner.
-
-## Update rule
-
-Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
-`),
+      analyzeRoadmap(
+        roadmapFixture({
+          stack: 'Button > Progress Indicator > foundation/tokens',
+          checkpointReason: 'isolated-review-context-unavailable',
+          nextAction:
+            'Resume `material-component Button`; validate the stack against current code and continue from the deepest unfinished owner.',
+        }),
+      ),
     ).toEqual([]);
   });
 
   it('accepts one minimal standalone-foundation continuation checkpoint', () => {
     expect(
-      analyzeRoadmap(`# Material library roadmap
-
-## Current state
-
-Active root: \`tokens\`
-Alignment status: \`converging\`
-Continuation stack: \`tokens > system/elevation\`
-Checkpoint reason: \`context-exhausted\`
-External blocker: none
-
-## Next action
-
-Resume \`material-foundation tokens\`; validate the stack against current code and continue from the deepest unfinished owner.
-
-## Update rule
-
-Keep only the active root, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
-`),
+      analyzeRoadmap(
+        roadmapFixture({
+          activeRoot: 'tokens',
+          stack: 'tokens > system/elevation',
+          nextAction:
+            'Resume `material-foundation tokens`; validate the stack against current code and continue from the deepest unfinished owner.',
+        }),
+      ),
     ).toEqual([]);
   });
 

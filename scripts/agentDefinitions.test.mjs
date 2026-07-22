@@ -61,6 +61,9 @@ describe('portable Agent Skills', () => {
     const correctionReview = readText('.agents/skills/material-component-review/SKILL.md');
     const familyReview = readText('.agents/skills/material-family-review/SKILL.md');
     const componentContractTesting = readText('.agents/skills/component-contract-testing/SKILL.md');
+    const documentationArchitecture = readText(
+      'scripts/materialDocumentationArchitecture.test.mjs',
+    );
 
     expect(componentRoot).toContain('coordination-only root');
     expect(componentRoot).toContain('must not edit production code');
@@ -71,6 +74,11 @@ describe('portable Agent Skills', () => {
     expect(componentRoot).toMatch(
       /one outer root orchestrator owns the entire recursive operation/i,
     );
+    expect(componentRoot).toContain('## Verification failure attribution');
+    expect(componentRoot).toMatch(
+      /reproduce the same failure on the root operation's base commit/i,
+    );
+    expect(componentRoot).toMatch(/terminal `aligned` or `blocked` without a fresh family review/i);
     expect(componentRoot).toContain('Checkpoint reason: none | context-exhausted');
     expect(componentRoot).not.toContain(
       'execute the same owner units sequentially in the current runtime',
@@ -94,14 +102,21 @@ describe('portable Agent Skills', () => {
     expect(correctionReview).toContain('Implementation context reused: no');
     expect(correctionReview).toContain('Unresolved gap reconciliation:');
     expect(correctionReview).toContain('Sentinel/value-state compatibility:');
+    expect(correctionReview).toContain('Changed-owner consumer compatibility:');
     expect(correctionReview).toContain('Stack transition authorized: yes | no');
 
     expect(familyReview).toContain('Review context: fresh-isolated-read-only');
     expect(familyReview).toContain('Prior family context reused: no');
     expect(familyReview).toContain('Unresolved gap reconciliation:');
     expect(familyReview).toContain('Sentinel/value-state compatibility:');
+    expect(familyReview).toContain('Changed-owner consumer compatibility:');
+    expect(familyReview).toContain('Verification attribution:');
+    expect(familyReview).toMatch(/including runs where no new implementation was needed/i);
 
     expect(componentContractTesting).toMatch(/sentinel or boundary semantics/i);
     expect(componentContractTesting).toMatch(/documented invalid-value behavior/i);
+    expect(documentationArchitecture).toMatch(
+      /blocked roadmap next action must describe the external unblock/i,
+    );
   });
 });
