@@ -8,6 +8,8 @@ Family alignment status: `converging`
 
 Continuation stack: `none`
 
+Checkpoint reason: `none`
+
 External blocker: none
 
 ## Next action
@@ -16,4 +18,4 @@ Resume `material-component Button`; validate current code and any continuation s
 
 ## Update rule
 
-Keep only the active root family, alignment status, one continuation stack, exact external blocker, and one next action.
+Keep only the active root family, alignment status, one continuation stack, one checkpoint reason, exact external blocker, and one next action.
