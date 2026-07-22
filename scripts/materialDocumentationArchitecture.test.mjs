@@ -170,7 +170,9 @@ function analyzeRoadmap(content) {
   }
 
   if (status === 'blocked' && commands.length > 0) {
-    errors.push('blocked roadmap next action must describe the external unblock, not launch a Material root');
+    errors.push(
+      'blocked roadmap next action must describe the external unblock, not launch a Material root',
+    );
   }
 
   return errors.sort();

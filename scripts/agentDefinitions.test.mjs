@@ -61,7 +61,9 @@ describe('portable Agent Skills', () => {
     const correctionReview = readText('.agents/skills/material-component-review/SKILL.md');
     const familyReview = readText('.agents/skills/material-family-review/SKILL.md');
     const componentContractTesting = readText('.agents/skills/component-contract-testing/SKILL.md');
-    const documentationArchitecture = readText('scripts/materialDocumentationArchitecture.test.mjs');
+    const documentationArchitecture = readText(
+      'scripts/materialDocumentationArchitecture.test.mjs',
+    );
 
     expect(componentRoot).toContain('coordination-only root');
     expect(componentRoot).toContain('must not edit production code');
@@ -73,7 +75,9 @@ describe('portable Agent Skills', () => {
       /one outer root orchestrator owns the entire recursive operation/i,
     );
     expect(componentRoot).toContain('## Verification failure attribution');
-    expect(componentRoot).toMatch(/reproduce the same failure on the root operation's base commit/i);
+    expect(componentRoot).toMatch(
+      /reproduce the same failure on the root operation's base commit/i,
+    );
     expect(componentRoot).toMatch(/terminal `aligned` or `blocked` without a fresh family review/i);
     expect(componentRoot).toContain('Checkpoint reason: none | context-exhausted');
     expect(componentRoot).not.toContain(
@@ -111,6 +115,8 @@ describe('portable Agent Skills', () => {
 
     expect(componentContractTesting).toMatch(/sentinel or boundary semantics/i);
     expect(componentContractTesting).toMatch(/documented invalid-value behavior/i);
-    expect(documentationArchitecture).toMatch(/blocked roadmap next action must describe the external unblock/i);
+    expect(documentationArchitecture).toMatch(
+      /blocked roadmap next action must describe the external unblock/i,
+    );
   });
 });
