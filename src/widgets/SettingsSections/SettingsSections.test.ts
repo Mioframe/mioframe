@@ -184,9 +184,9 @@ vi.mock('@shared/ui/Switch', () => ({
   MDSwitch: defineComponent({
     name: 'MDSwitchStub',
     props: {
-      modelValue: {
+      selected: {
         type: Boolean,
-        required: true,
+        default: false,
       },
       disabled: {
         type: Boolean,
@@ -201,12 +201,11 @@ vi.mock('@shared/ui/Switch', () => ({
         default: undefined,
       },
     },
-    emits: ['update:modelValue'],
     setup(props) {
       return () =>
         h('div', {
           'aria-hidden': 'true',
-          'data-state': props.modelValue ? 'checked' : 'unchecked',
+          'data-state': props.selected ? 'checked' : 'unchecked',
           'data-disabled': props.disabled ? 'true' : 'false',
         });
     },
