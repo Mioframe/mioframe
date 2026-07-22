@@ -176,8 +176,7 @@ describe('Canonical Material token ownership', () => {
         },
         {
           file: 'src/shared/ui/material/components/button/MDButton.css',
-          source:
-            '.md-button { color: var(--md-comp-button-filled-container-color); }',
+          source: '.md-button { color: var(--md-comp-button-filled-container-color); }',
         },
       ]),
     ).toEqual([]);
