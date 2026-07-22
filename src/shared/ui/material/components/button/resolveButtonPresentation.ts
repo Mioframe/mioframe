@@ -1,4 +1,4 @@
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '../../foundation/typescale';
 
 /** Official `md.comp.button` color style. */
 export type ButtonColor = 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text';

@@ -6,7 +6,7 @@ import type {
   DatabaseUnknownProperty,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { toRefs } from 'vue';
 import { DatabaseFilterForm } from '@feature/databaseFilterEdit';

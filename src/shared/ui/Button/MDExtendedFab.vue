@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useSlots, useTemplateRef } from 'vue';
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDCircularProgressIndicator } from '../ProgressIndicators';
 import { MDPlainTooltip } from '../Tooltips';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';

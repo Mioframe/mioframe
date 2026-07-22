@@ -31,9 +31,9 @@ const startRipple = async ({
 
   const rippleEl = document.createElement('span');
   rippleEl.classList.add('md-ripple');
-  rippleEl.style.setProperty('--md-ripple-y', `${offsetY}px`);
-  rippleEl.style.setProperty('--md-ripple-x', `${offsetX}px`);
-  rippleEl.style.setProperty('--md-ripple-diameter', `${diameter}px`);
+  rippleEl.style.setProperty('--md-private-ripple-y', `${offsetY}px`);
+  rippleEl.style.setProperty('--md-private-ripple-x', `${offsetX}px`);
+  rippleEl.style.setProperty('--md-private-ripple-diameter', `${diameter}px`);
 
   target.prepend(rippleEl);
 
@@ -44,16 +44,16 @@ const startRipple = async ({
   const animate = rippleEl.animate(
     [
       {
-        '--md-ripple-opacity': 1,
-        '--md-ripple-scale': 0,
+        '--md-private-ripple-opacity': 1,
+        '--md-private-ripple-scale': 0,
       },
       {
-        '--md-ripple-opacity': 1,
-        '--md-ripple-scale': 1,
+        '--md-private-ripple-opacity': 1,
+        '--md-private-ripple-scale': 1,
       },
       {
-        '--md-ripple-opacity': 0,
-        '--md-ripple-scale': 1,
+        '--md-private-ripple-opacity': 0,
+        '--md-private-ripple-scale': 1,
       },
     ],
     { duration },

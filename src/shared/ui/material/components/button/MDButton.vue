@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { isNumber } from 'es-toolkit/compat';
 import { computed, onMounted, useTemplateRef, warn, watchEffect } from 'vue';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
-import { MDStateLayer, useRipple, useStateLayer } from '@shared/ui/State';
+import { MDCircularProgressIndicator } from '../progress-indicator';
+import { MDStateLayer, useRipple, useStateLayer } from '../../foundation/state';
 import {
   isUnsupportedTextToggle as resolveIsUnsupportedTextToggle,
   resolveAppliedSelected,

@@ -79,6 +79,26 @@ Avoid ambiguous names such as:
 
 Such names look public but are neither exact Material tokens nor explicitly private implementation routes.
 
+### External generic foundation contracts
+
+A small closed set of `--md-*`-prefixed custom properties are shared, cross-boundary bridge contracts that predate this taxonomy and are not owned by any one Material family. Either direction is possible: a Material file may set a name whose default and other readers live outside Material, or a Material foundation file may declare a name that non-Material shared UI overrides:
+
+```text
+--md-content-color              declared at app root (src/shared/lib/md/index.css); read by
+                                 src/shared/ui/Icon/MDSymbol.vue and consumed/overridden
+                                 repository-wide
+--md-container-color            declared at app root (src/shared/lib/md/index.css); consumed/
+                                 overridden repository-wide
+--md-symbol-size                 owned by src/shared/ui/Icon/MDSymbol.vue
+--md-circular-progress-color     owned by src/shared/ui/material/components/progress-indicator/
+                                 MDCircularProgressIndicator.vue
+--md-focus-indicator-color        owned by src/shared/ui/material/foundation/state/
+--md-focus-indicator-thickness     md-focus-indicator.css; overridden by MDSwitch, MDFab,
+--md-focus-indicator-offset        MDExtendedFab, MDCard, and other non-Material shared UI
+```
+
+A Material file may set or declare one of these exact names without relocating it into a `*.tokens.css` file or renaming it to a private route: the name is not owned by the family or foundation domain that happens to touch it in Material, and must not be duplicated with a second (renamed) route only because the code now lives under `src/shared/ui/material/`. Do not invent new entries in this set. Adding a new entry requires updating this document with every real owner/consumer file across the boundary — a foundation-level decision, not a per-family one, since renaming without migrating every consumer silently breaks the override for whichever side is not updated.
+
 ## Ownership and location
 
 Canonical token owners use this structure:

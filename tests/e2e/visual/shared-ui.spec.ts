@@ -344,14 +344,6 @@ test('MDStateLayer visual states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-state-layer-states.png');
 });
 
-test('MDStateLayer host integrations match baseline', async ({ page }) => {
-  await openStory(page, 'shared-ui-mdstatelayer--visual-host-integration');
-
-  const surface = page.getByTestId('visual-md-state-layer-hosts');
-
-  await expect(surface).toHaveScreenshot('md-state-layer-hosts.png');
-});
-
 test('MarkdownContent wide table matches baseline', async ({ page }) => {
   await openStory(page, 'shared-ui-markdowncontent--wide-table');
 

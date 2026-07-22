@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed, defineComponent, ref } from 'vue';
-import { MDButton } from '@shared/ui/material';
 import MDStateLayer from './MDStateLayer.vue';
 import { useRipple } from './useRipple';
 import { useStateLayer } from './useStateLayer';
@@ -133,27 +132,6 @@ export const VisualStates: Story = {
             <span class="visual-label">Ripple disabled</span>
             <StateLayerDemoHost label="No ripple host" :enable-ripple="false" />
           </div>
-        </div>
-      </div>
-    `,
-  }),
-};
-
-export const VisualHostIntegration: Story = {
-  tags: ['visual'],
-  render: () => ({
-    components: { MDButton },
-    template: `
-      <div data-testid="visual-md-state-layer-hosts" class="visual-checker-backdrop visual-surface">
-        <div class="visual-row">
-          <MDButton label="Filled button" color="filled" />
-          <MDButton label="Outlined button" color="outlined" />
-          <MDButton label="Disabled button" color="tonal" disabled />
-        </div>
-        <div class="visual-row">
-          <MDButton label="Text button" color="text" />
-          <MDButton label="Selected toggle" color="filled" variant="toggle" selected />
-          <MDButton label="Elevated button" color="elevated" />
         </div>
       </div>
     `,

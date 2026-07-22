@@ -2,7 +2,7 @@
 import { MDList, MDListItem } from '@shared/ui/Lists';
 import { MDBottomSheet, MDBottomSheetSection } from '@shared/ui/Sheets';
 import { MDSymbol } from '@shared/ui/Icon';
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 
 const emit = defineEmits<{
   /** Emitted when the sheet requests closing without choosing an add action. */

@@ -3,12 +3,15 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import MDStateLayer from './MDStateLayer.vue';
 
-const mdStateLayerSource = readFileSync('src/shared/ui/State/MDStateLayer.vue', 'utf8');
+const mdStateLayerSource = readFileSync(
+  'src/shared/ui/material/foundation/state/MDStateLayer.vue',
+  'utf8',
+);
 const productionSharedUiFiles = [
   'src/shared/ui/Card/MDCard.vue',
   'src/shared/ui/Lists/listItemAnatomy.css',
   'src/shared/ui/Switch/MDSwitch.vue',
-  'src/shared/ui/State/ripple.css',
+  'src/shared/ui/material/foundation/state/ripple.css',
 ];
 const oldOpacityAliases = [
   '--md-state-hover-layer-opacity',

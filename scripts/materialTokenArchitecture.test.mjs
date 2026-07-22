@@ -8,6 +8,22 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHARED_ROOT = path.join(ROOT, 'src', 'shared');
 const MATERIAL_PREFIX = 'src/shared/ui/material/';
 
+// Shared, cross-boundary bridge contracts that predate this taxonomy (docs/tokens.md,
+// "External generic foundation contracts"). Closed set, either direction: a Material file
+// may set a name whose other readers/owner are outside Material, or declare a name that
+// non-Material shared UI overrides. Must not grow without a foundation-level documentation
+// update, since renaming without migrating every consumer silently breaks the override for
+// whichever side is not updated.
+const EXTERNAL_FOUNDATION_CONTRACTS = new Set([
+  '--md-content-color',
+  '--md-container-color',
+  '--md-symbol-size',
+  '--md-circular-progress-color',
+  '--md-focus-indicator-color',
+  '--md-focus-indicator-thickness',
+  '--md-focus-indicator-offset',
+]);
+
 function normalizePath(filePath) {
   return filePath.split(path.sep).join('/');
 }
@@ -90,6 +106,9 @@ function isFoundationFile(sourceFile) {
 }
 
 function classifyCustomProperty(name) {
+  if (EXTERNAL_FOUNDATION_CONTRACTS.has(name)) {
+    return 'external-foundation-contract';
+  }
   if (name.startsWith('--md-ref-')) {
     return 'md-ref';
   }
@@ -181,7 +200,15 @@ function allowedDependency(sourceType, targetType) {
     'mio-sys': new Set(['md-ref', 'md-sys', 'mio-sys']),
     'md-comp': new Set(['md-ref', 'md-sys', 'md-comp']),
     'mio-comp': new Set(['md-ref', 'md-sys', 'md-comp', 'mio-sys', 'mio-comp']),
-    private: new Set(['md-ref', 'md-sys', 'md-comp', 'mio-sys', 'mio-comp', 'private']),
+    private: new Set([
+      'md-ref',
+      'md-sys',
+      'md-comp',
+      'mio-sys',
+      'mio-comp',
+      'private',
+      'external-foundation-contract',
+    ]),
   };
 
   return allowed[sourceType]?.has(targetType) ?? false;
@@ -262,6 +289,10 @@ function analyzeStyleSources(styleSources) {
 
     if (!declaration.value.trim()) {
       errors.push(`${declaration.location}: '${name}' has an empty value`);
+    }
+
+    if (type === 'external-foundation-contract') {
+      continue;
     }
 
     if (['invalid-md', 'invalid-mio', 'other'].includes(type)) {
@@ -456,6 +487,30 @@ describe('Material token architecture', () => {
     expect(
       errors.some((error) => error.includes("dead component token '--md-comp-button-unused'")),
     ).toBe(true);
+  });
+
+  it('allows setting a documented external generic foundation contract, but not an undocumented one', () => {
+    const allowed = analyzeStyleSources([
+      {
+        file: 'src/shared/ui/material/components/button/MDButton.css',
+        source:
+          '.md-button { --md-private-button-rendered-icon-color: red; } .md-button__icon { --md-content-color: var(--md-private-button-rendered-icon-color); }',
+      },
+    ]);
+
+    expect(allowed).toEqual([]);
+
+    const undocumented = analyzeStyleSources([
+      {
+        file: 'src/shared/ui/material/components/button/MDButton.css',
+        source:
+          '.md-button__icon { --md-icon-tint: var(--md-private-button-rendered-icon-color); }',
+      },
+    ]);
+
+    expect(undocumented.some((error) => error.includes("'--md-icon-tint' is not an allowed"))).toBe(
+      true,
+    );
   });
 
   it('keeps the repository token graph valid', () => {

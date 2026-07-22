@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDDialog } from '@shared/ui/Dialog';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import type { ExportZipDialogPhase, ExportZipVisibleDialogState } from './useExportDirectoryZip';

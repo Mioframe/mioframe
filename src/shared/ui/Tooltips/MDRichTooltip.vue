@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 import {
   refDebounced,
   unrefElement,

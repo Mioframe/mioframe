@@ -15,7 +15,7 @@ import DatabaseToolbar from './DatabaseToolbar.vue';
 import { DatabaseItemEditDialog } from '@feature/databaseItemEdit';
 import { isUndefined } from 'es-toolkit';
 import DatabasePropertyValueFieldById from './DatabasePropertyValueFieldById.vue';
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 import { useDatabaseProperties } from '@entity/databaseProperty';
 import { DomainError } from '@shared/lib/error';
 import { useDatabaseViewSelection } from '@entity/databaseView';

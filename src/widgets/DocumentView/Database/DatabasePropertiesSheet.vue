@@ -4,7 +4,7 @@ import { DatabasePropertyRemoveDialog } from '@feature/databasePropertyRemove';
 import { DatabasePropertyEditDialog } from '@feature/databasePropertyEdit';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDButton } from '@shared/ui/material';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';

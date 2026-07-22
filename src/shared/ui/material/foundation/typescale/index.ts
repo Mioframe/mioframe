@@ -2,8 +2,9 @@
  * Stable Material 3 type scale utility class names, grouped by scale
  * (`display`, `label`, `body`, `headline`, `title`) and size (`large`,
  * `medium`, `small`). Each value is a global `.md-typescale-*` class defined
- * in `shared/lib/md/typography.css`; apply it via `:class` to typography-only
- * elements to opt into Material's type ramp without hand-rolled font styles.
+ * in `foundation/typescale/typescale.css`; apply it via `:class` to
+ * typography-only elements to opt into Material's type ramp without
+ * hand-rolled font styles.
  */
 export const MD_TYPESCALE = {
   display: {

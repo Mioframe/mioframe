@@ -1,15 +1,3 @@
-/**
- * Story/test-only forced visual state provider for `MDStateLayer`. Not part
- * of the product-facing `State` public API — import from this `testing`
- * submodule explicitly, never re-export it from `../index.ts`.
- *
- * Only the component is barrelled here. The underlying
- * `provideMDStateLayerForcedState` and `useMDStateLayerForcedState` hooks
- * live in the internal (non-testing) `../forcedState` module so that
- * production `MDStateLayer.vue` never imports from `State/testing/*`; import
- * them directly from `../forcedState` (mirroring `Lists/listContext.ts`,
- * which is not re-exported through `Lists/index.ts` either). Barrelling a
- * plain function export alongside a component here breaks the Storybook
- * vue-component-meta docgen plugin, which mis-resolves the function export.
- */
-export { default as MDStateLayerForcedStateProvider } from './MDStateLayerForcedStateProvider.vue';
+// Real implementation relocated to `@shared/ui/material/foundation/state/testing` (the
+// canonical Material "Interaction states" foundation). This module forwards only.
+export { MDStateLayerForcedStateProvider } from '@shared/ui/material/foundation/state/testing';

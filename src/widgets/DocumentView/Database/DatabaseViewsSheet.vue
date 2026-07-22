@@ -5,7 +5,7 @@ import { DatabaseViewListEdit } from '@feature/databaseViewMapEdit';
 import { DatabaseViewRenameDialog } from '@feature/databaseViewRename';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
-import { MD_TYPESCALE } from '@shared/lib/md';
+import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDIconButton } from '@shared/ui/Button';
 import { MDButton } from '@shared/ui/material';
 import { MDCheckbox } from '@shared/ui/Checkbox';

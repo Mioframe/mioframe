@@ -1,0 +1,70 @@
+@property --md-private-ripple-opacity {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+@property --md-private-ripple-scale {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+.md-ripple {
+  --md-private-ripple-color: var(--md-content-color, currentColor);
+  --md-private-ripple-pressed-layer-opacity: var(
+    --md-private-state-pressed-state-layer-opacity,
+    var(--md-sys-state-pressed-state-layer-opacity, 0.1)
+  );
+  --md-private-ripple-duration-long: var(--md-sys-motion-duration-extra-long4, 1s);
+  --md-private-ripple-duration-short: var(--md-sys-motion-duration-short4, 0.2s);
+  --md-private-ripple-duration: var(--md-sys-motion-duration-short4, 0.2s);
+
+  --md-private-ripple-opacity: 1;
+  --md-private-ripple-scale: 0;
+  --md-private-ripple-y: unset;
+  --md-private-ripple-x: unset;
+  --md-private-ripple-diameter: unset;
+
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  border-radius: inherit;
+  animation-duration: var(--md-private-ripple-duration);
+  transition-duration: var(--md-private-ripple-duration);
+
+  &::before {
+    content: '';
+    display: block;
+    position: absolute;
+    top: var(--md-private-ripple-y, 50%);
+    left: var(--md-private-ripple-x, 50%);
+    width: calc(var(--md-private-ripple-diameter, 140%) + 15%);
+    height: calc(var(--md-private-ripple-diameter, 140%) + 15%);
+    border-radius: 50%;
+    padding: 10%;
+    transform: translate(-50%, -50%) scale(var(--md-private-ripple-scale));
+    opacity: var(--md-private-ripple-opacity);
+    animation-duration: var(--md-private-ripple-duration);
+    transition-duration: var(--md-private-ripple-duration);
+    transition-property: opacity, transform;
+
+    background: radial-gradient(
+      rgb(
+          from var(--md-private-ripple-color, var(--md-content-color, currentColor)) r g b /
+            var(--md-private-ripple-pressed-layer-opacity)
+        )
+        65%,
+      transparent 71%
+    );
+  }
+}

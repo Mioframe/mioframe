@@ -125,10 +125,10 @@ const animateValue = computed(
     --md-comp-progress-indicator-active-indicator-color,
     var(--md-sys-color-primary)
   );
-  --md-circular-progress-background: var(--md-container-color);
+  --md-private-progress-indicator-background: var(--md-container-color);
 
   &__empty {
-    stroke: var(--md-circular-progress-background);
+    stroke: var(--md-private-progress-indicator-background);
   }
 
   &__progress {

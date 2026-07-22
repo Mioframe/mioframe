@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import MDCircularProgressIndicator from './MDCircularProgressIndicator.vue';
+import { MDCircularProgressIndicator } from '.';
 
 const progress = ref(0.33);
 </script>
