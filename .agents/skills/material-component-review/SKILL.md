@@ -1,93 +1,113 @@
 ---
 name: material-component-review
-description: 'Use for an independent read-only contract or correction-final review. Reconstructs recursive dependency and prerequisite readiness whenever canonical ownership, exports, adoption, or legacy removal is involved.'
+description: 'Mandatory independent read-only review for one Material component or foundation correction. Only a fresh isolated reviewer may accept owner readiness.'
 ---
 
 # Material correction review
 
-Review one correction as `contract-gate` before production edits or `correction-final` after prerequisites, implementation, proof, and conditional adoption. Use `material-family-review` only after no known required family gap remains.
+Review one locked correction as `contract-gate` before implementation or `correction-final` after implementation and focused proof. This skill supports component and foundation owners.
 
-## Independence and inputs
+## Independence
 
-Run in a fresh read-only context without prior implementation reasoning. Receive the family/invocation/review scope, objective, scenarios/platforms, selected evidence, supplied dependency inventory, correction contract, prerequisites, affected owners/exports/consumers, proof, and optional root continuation stack.
+Run only in a fresh isolated read-only context that did not design, implement, patch, or narratively supervise the correction. The reviewer receives structured inputs and selected evidence, not the implementer's chain of reasoning or preferred conclusion.
 
-The supplied inventory, stack, and prerequisite results are claims. Independently inspect actual candidate and prerequisite implementations, imports, injected dependencies, style sources, token declarations/references, public exports, every direct consumer of changed public contracts or extensions, legacy-owner state, and applicable guards.
+Required context declaration:
 
-Do not receive narrative review history, preferred conclusions, Git state, or PR context.
+```text
+Review context: fresh-isolated-read-only
+Implementation context reused: no
+Repository writes available: no
+```
 
-## Automatic scope widening
+If these conditions are unavailable, return `not-run` with checkpoint reason `isolated-review-context-unavailable`. Do not review in the root or implementation context.
 
-Review complete recursive dependency closure for the supported surface whenever current/proposed state creates or preserves a canonical owner, root export, consumer migration, legacy removal/forwarding, or readiness/adoption/alignment claim.
+## Inputs
 
-Bounded wording cannot exclude an actually used dependency. A finding is not outside the correction because foundation or another family owns the fix.
+Receive:
+
+- owner kind, family/domain, root invocation, and correction unit;
+- supported scenarios/platforms and locked contract;
+- selected source evidence;
+- claimed dependency inventory and continuation stack;
+- implementation result and changed owner set;
+- focused proof and direct-consumer inventory.
+
+All supplied claims are untrusted. Independently inspect current implementations, imports, injected dependencies, styles, token declarations/references, exports, every direct consumer of changed public contracts or extensions, legacy-owner state, documentation, and guards.
+
+## Stack gate
+
+Confirm that the reviewed owner is the current deepest unfinished owner. A parent correction cannot pass while a deeper child owner remains unresolved.
+
+The stack entry may be popped only after `correction-final` returns `complete`. `contract-gate: complete` authorizes implementation only; it is not readiness.
 
 ## Contract gate
 
 Verify:
 
-- correct invocation scope and code-first reconstruction;
-- sufficient selected evidence and concern lanes;
+- code-first reconstruction and exact owner boundary;
 - complete actual dependencies and executable nested prerequisites;
-- each prerequisite's required canonical owner, own dependencies, tokens, semantics/lifecycle, public contract, direct consumers, compatibility route, proof, and independent review;
-- another component is not misclassified as foundation;
+- child owner readiness from independent reviews;
+- correct public API, semantics, lifecycle, accessibility, token ownership, platform behavior, and direct-consumer scope;
 - relocation/forwarding/barrel/import migration is not treated as readiness;
-- the correction is highest priority and production edits did not precede approval.
+- the correction is the highest-priority deepest-owner work.
 
-The owner README must contain durable contract facts only. Workflow state, backlog, review history, shell output, commit narratives, and future passes are blockers, not inputs to validate.
-
-The roadmap may contain one compact root continuation stack. Validate it against code; reject detailed execution state or a next action that delegates a nested prerequisite to the operator.
-
-Return a passed/failed contract gate or an exact insufficient-evidence/independence blocker.
+Return `complete`, `blocked`, `not-enough-evidence`, or `not-run`.
 
 ## Correction final
 
-Verify the implemented owner correction, recursive prerequisite readiness, resulting owners/imports, canonical token declarations, exports/consumers/legacy state, cleanup, Material guards, and required unit/browser/consumer/visual/operator proof.
+Verify the implemented owner correction against current code:
 
-For any changed public contract or project extension, inspect all direct consumers for semantic compatibility; representative sampling is insufficient when the consumer set is enumerable.
+- locked contract and supported scenarios;
+- recursive child readiness;
+- canonical token declarations and dependency direction;
+- API/native/accessibility/state semantics and lifecycle;
+- all direct consumers of changed contracts or extensions;
+- compatibility and legacy-owner disposition;
+- required unit, browser, consumer, visual, and operator proof;
+- durable README accuracy;
+- relevant Material guards.
 
-A moved legacy implementation is not ready until its own Material contract is corrected and independently reviewed. Known defects, legacy-owned tokens, missing lifecycle/accessibility proof, or incompatible consumers block it even when paths and guards are green.
+Known defects, incompatible consumers, stale contract documentation, missing browser behavior proof, or legacy-owned canonical tokens block readiness even when focused tests pass.
 
-Canonicalization cannot pass with open recursive dependency closure. Premature canonicalization requires closure or safe rollback before lower-priority work.
+A passed correction does not complete the root family. It only permits the root orchestrator to pop this exact owner and continue.
 
-A passed correction does not authorize termination of `full-family` while gaps, defective prerequisites, or internal prerequisites remain. Return them to the root orchestrator with continuation required. Do not return a nested operator command.
-
-Browser evidence must prove observable behavior; declarations or screenshots alone are insufficient when lifecycle behavior is required.
-
-## Budget and result
-
-Run once and at most once after substantive correction. A second failure returns consolidated blockers. Mechanical wording fixes receive a local consistency check.
+## Result
 
 ```text
 MATERIAL CORRECTION REVIEW
-Family:
+Owner kind: component | foundation
+Family/domain:
 Invocation scope:
 Review scope: contract-gate | correction-final
 Correction unit:
-Canonicalization trigger: yes | no
-Status: complete | blocked
+Review context: fresh-isolated-read-only
+Implementation context reused: no
+Repository writes available: no
+Status: complete | blocked | not-enough-evidence | not-run
+Deepest owner confirmed: yes | no
 Gate result:
 Actual dependency closure:
-Supplied inventory discrepancy:
 Prerequisite owner readiness:
 Canonical token ownership:
+Public contract and semantics:
 Direct consumer compatibility:
 Legacy owner result:
-Documentation guard:
+Documentation result:
 Proof result:
+Stack transition authorized: yes | no
 Continuation required: yes | no
-Deepest unfinished owner: none | <exact owner returned to root orchestrator>
-Remaining family concerns:
-Blocker: none | <exact external blocker>
+Deepest unfinished owner: none | <exact owner>
+Blockers: none | <consolidated findings>
+Checkpoint reason: none | isolated-review-context-unavailable | required-tool-unavailable | required-evidence-unavailable
 ```
 
 ## Forbidden
 
-- repository edits, delegation, or workflow advancement;
-- trusting supplied closure, continuation, or prerequisite status without current implementation inspection;
-- accepting relocation, forwarding, barrels, migrated imports, or green path guards as readiness;
-- accepting used dependencies as outside orchestration;
-- approving canonicalization/adoption/removal with open recursive closure;
-- approving changed public contracts without direct-consumer compatibility review;
-- approving execution logs in owner docs or roadmap beyond the single allowed continuation stack;
-- returning an internal prerequisite as a separate operator command;
-- complete family verdict, broad unrelated audit, Git/PR analysis, or durable review records.
+- repository edits or workflow advancement;
+- review by the root or implementation context;
+- trusting supplied dependency, proof, or readiness claims;
+- accepting a parent while a deeper owner remains unfinished;
+- accepting relocation, forwarding, barrels, migrated imports, or green guards as readiness;
+- accepting changed public contracts without every enumerable direct consumer;
+- returning a nested operator command;
+- complete-family verdict or Git/PR analysis.
