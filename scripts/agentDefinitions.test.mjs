@@ -66,7 +66,9 @@ describe('portable Agent Skills', () => {
     expect(orchestrator).toContain('Only the deepest unfinished owner');
     expect(orchestrator).toMatch(/fresh isolated writable owner context/i);
     expect(orchestrator).toMatch(/fresh isolated read-only review context/i);
-    expect(orchestrator).toMatch(/one outer root orchestrator owns the entire recursive operation/i);
+    expect(orchestrator).toMatch(
+      /one outer root orchestrator owns the entire recursive operation/i,
+    );
     expect(orchestrator).toContain('Checkpoint reason: none | context-exhausted');
     expect(orchestrator).not.toContain(
       'execute the same owner units sequentially in the current runtime',
