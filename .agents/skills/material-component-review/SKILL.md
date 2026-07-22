@@ -40,6 +40,16 @@ Confirm that the reviewed owner is the current deepest unfinished owner. A paren
 
 The stack entry may be popped only after `correction-final` returns `complete`. `contract-gate: complete` authorizes the locked contract only; it is not readiness.
 
+## Closure gates
+
+Before returning `complete`:
+
+- reconcile every `Known gaps`, `unresolved`, approximation, temporary compatibility, or future-correction statement in the owner README and current implementation;
+- classify each as explicitly unsupported outside the claimed surface, a required open gap that keeps the owner on the stack, or an exact external blocker;
+- reject an empty child stack while a claimed/supported scenario still has an unresolved implementation, motion, accessibility, platform, or proof gap;
+- for any public value where `undefined`, `false`, `0`, boundary values, or invalid/out-of-range values have distinct meaning, enumerate those states and inspect every direct consumer for truthiness, coercion, range, and sentinel mismatches;
+- require focused proof for every distinct supported value state and the documented invalid-value behavior.
+
 ## Contract gate
 
 Verify:
@@ -67,7 +77,7 @@ Verify the implemented owner correction against current code:
 - durable README accuracy;
 - relevant Material guards.
 
-Known defects, incompatible consumers, stale contract documentation, insufficient available proof, missing browser behavior proof, or legacy-owned canonical tokens return `blocked` with consolidated findings. Unavailable required tooling/evidence returns `not-run` with the exact checkpoint reason.
+Known defects, unresolved required gaps, sentinel/value-state incompatibilities, incompatible consumers, stale contract documentation, insufficient available proof, missing browser behavior proof, or legacy-owned canonical tokens return `blocked` with consolidated findings. Unavailable required tooling/evidence returns `not-run` with the exact checkpoint reason.
 
 A passed correction does not complete the root family. It only permits the root orchestrator to pop this exact owner and continue.
 
@@ -90,6 +100,8 @@ Actual dependency closure:
 Prerequisite owner readiness:
 Canonical token ownership:
 Public contract and semantics:
+Unresolved gap reconciliation:
+Sentinel/value-state compatibility:
 Direct consumer compatibility:
 Legacy owner result:
 Documentation result:
@@ -106,7 +118,8 @@ Checkpoint reason: none | isolated-review-context-unavailable | required-tool-un
 - repository edits or workflow advancement;
 - review by the root or implementation context;
 - trusting supplied dependency, proof, or readiness claims;
-- accepting a parent while a deeper owner remains unfinished;
+- accepting a parent while a deeper child owner remains unfinished;
+- accepting an owner with an unresolved required gap or unverified sentinel/value-state semantics;
 - accepting relocation, forwarding, barrels, migrated imports, or green guards as readiness;
 - accepting changed public contracts without every enumerable direct consumer;
 - returning a nested operator command;
