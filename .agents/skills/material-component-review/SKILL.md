@@ -9,9 +9,9 @@ Review one correction as `contract-gate` before production edits or `correction-
 
 ## Independence and inputs
 
-Run in a fresh read-only context without prior implementation reasoning. Receive the family/invocation/review scope, objective, scenarios/platforms, selected evidence, supplied dependency inventory, correction contract, prerequisites, affected owners/exports/consumers, and proof.
+Run in a fresh read-only context without prior implementation reasoning. Receive the family/invocation/review scope, objective, scenarios/platforms, selected evidence, supplied dependency inventory, correction contract, prerequisites, affected owners/exports/consumers, proof, and optional root continuation stack.
 
-The supplied inventory and prerequisite results are claims. Independently inspect actual candidate and prerequisite implementations, imports, injected dependencies, style sources, token declarations/references, public exports, every direct consumer of changed public contracts or extensions, legacy-owner state, and applicable guards.
+The supplied inventory, stack, and prerequisite results are claims. Independently inspect actual candidate and prerequisite implementations, imports, injected dependencies, style sources, token declarations/references, public exports, every direct consumer of changed public contracts or extensions, legacy-owner state, and applicable guards.
 
 Do not receive narrative review history, preferred conclusions, Git state, or PR context.
 
@@ -35,6 +35,8 @@ Verify:
 
 The owner README must contain durable contract facts only. Workflow state, backlog, review history, shell output, commit narratives, and future passes are blockers, not inputs to validate.
 
+The roadmap may contain one compact root continuation stack. Validate it against code; reject detailed execution state or a next action that delegates a nested prerequisite to the operator.
+
 Return a passed/failed contract gate or an exact insufficient-evidence/independence blocker.
 
 ## Correction final
@@ -47,7 +49,7 @@ A moved legacy implementation is not ready until its own Material contract is co
 
 Canonicalization cannot pass with open recursive dependency closure. Premature canonicalization requires closure or safe rollback before lower-priority work.
 
-A passed correction does not authorize termination of `full-family` while gaps, defective prerequisites, or internal prerequisites remain. Return them to the orchestrator with continuation required.
+A passed correction does not authorize termination of `full-family` while gaps, defective prerequisites, or internal prerequisites remain. Return them to the root orchestrator with continuation required. Do not return a nested operator command.
 
 Browser evidence must prove observable behavior; declarations or screenshots alone are insufficient when lifecycle behavior is required.
 
@@ -73,17 +75,19 @@ Legacy owner result:
 Documentation guard:
 Proof result:
 Continuation required: yes | no
+Deepest unfinished owner: none | <exact owner returned to root orchestrator>
 Remaining family concerns:
-Blocker: none | <exact blocker>
+Blocker: none | <exact external blocker>
 ```
 
 ## Forbidden
 
 - repository edits, delegation, or workflow advancement;
-- trusting supplied closure or prerequisite status without current implementation inspection;
+- trusting supplied closure, continuation, or prerequisite status without current implementation inspection;
 - accepting relocation, forwarding, barrels, migrated imports, or green path guards as readiness;
 - accepting used dependencies as outside orchestration;
 - approving canonicalization/adoption/removal with open recursive closure;
 - approving changed public contracts without direct-consumer compatibility review;
-- approving persisted execution state in owner docs or roadmap;
+- approving execution logs in owner docs or roadmap beyond the single allowed continuation stack;
+- returning an internal prerequisite as a separate operator command;
 - complete family verdict, broad unrelated audit, Git/PR analysis, or durable review records.
