@@ -64,8 +64,8 @@ describe('portable Agent Skills', () => {
     expect(orchestrator).toContain('coordination-only root');
     expect(orchestrator).toContain('must not edit production code');
     expect(orchestrator).toContain('Only the deepest unfinished owner');
-    expect(orchestrator).toContain('fresh isolated writable owner context');
-    expect(orchestrator).toContain('fresh isolated read-only review context');
+    expect(orchestrator).toMatch(/fresh isolated writable owner context/i);
+    expect(orchestrator).toMatch(/fresh isolated read-only review context/i);
     expect(orchestrator).toContain('Checkpoint reason: none | context-exhausted');
     expect(orchestrator).not.toContain(
       'execute the same owner units sequentially in the current runtime',
