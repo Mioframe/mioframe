@@ -11,7 +11,7 @@ This skill is an owner implementation context, not the root family orchestrator 
 
 ## Scope
 
-Lock the exact family-agnostic contract, current owner, affected scenarios/families, direct consumers, platforms, non-goals, completion condition, and selected evidence.
+Receive the exact root-locked family-agnostic contract, current owner, affected scenarios/families, direct consumers, platforms, non-goals, completion condition, and selected evidence.
 
 A delegated prerequisite remains inside the root family operation. Its size or consumer count does not make it an operator task.
 
@@ -24,8 +24,10 @@ Confirm:
 - execution context is `fresh-isolated-writable`;
 - this foundation owner is the current deepest unfinished owner;
 - no required child owner remains unresolved;
-- the correction contract passed independent contract review;
+- the correction contract and selected evidence were locked by the root orchestrator;
 - current declarations, imports, consumers, legacy paths, and guards still match the contract.
+
+If the current code invalidates the locked contract, return the discrepancy to the root before editing. Do not redesign the contract locally.
 
 If a fresh writable context cannot be created, return `checkpoint-required` with `isolated-writable-context-unavailable`. Never fall back to root-context implementation.
 
@@ -33,7 +35,7 @@ If a fresh writable context cannot be created, return `checkpoint-required` with
 
 ```text
 current-state validation
-→ bounded foundation contract
+→ root-locked foundation contract
 → one complete canonical owner correction
 → minimum affected-family and direct-consumer compatibility edits
 → focused proof
@@ -104,6 +106,7 @@ Next action: return-to-root
 - implementing a parent or sibling while a deeper owner is unfinished;
 - broad domain audit beyond the required contract;
 - several canonical owners in one context;
+- local redesign of the root-locked contract;
 - relocation-only completion or copied legacy defects;
 - asking the operator to invoke a foundation or nested component prerequisite;
 - roadmap updates, workflow-policy edits, Git, PR, or merge operations.
