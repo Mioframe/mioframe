@@ -78,7 +78,8 @@ describe('portable Agent Skills', () => {
     expect(foundationRoot).toContain('coordination-only root');
     expect(foundationRoot).toContain('must not edit production code');
     expect(foundationRoot).toContain('material-component-implementation');
-    expect(foundationRoot).toContain('different fresh isolated read-only');
+    expect(foundationRoot).toContain('material-component-review');
+    expect(foundationRoot).toMatch(/fresh isolated read-only/i);
     expect(foundationRoot).not.toContain('Execution context: fresh-isolated-writable');
 
     expect(implementation).toContain('Owner kind: component | foundation');
