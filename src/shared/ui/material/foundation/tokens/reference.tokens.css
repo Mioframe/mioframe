@@ -1,0 +1,46 @@
+/*
+ * Canonical `--md-ref-*` (md.ref.*) declarations required to support the
+ * `--md-sys-*` values relocated to `system.tokens.css`. See docs/tokens.md
+ * ("Ownership and location") for the reference/system token contract.
+ *
+ * Only the reference palette and typeface entries actually consumed by the
+ * relocated system tokens live here. Reference declarations not required by
+ * canonical Material files remain in the temporary legacy owner
+ * `src/shared/lib/md/tokens.css` until a future foundation correction needs
+ * them.
+ */
+:root {
+  /* md.ref.palette.primary */
+  --md-ref-palette-primary20: #381e72;
+  --md-ref-palette-primary40: #6750a4;
+  --md-ref-palette-primary80: #d0bcff;
+  --md-ref-palette-primary100: #ffffff;
+
+  /* md.ref.palette.secondary */
+  --md-ref-palette-secondary20: #332d41;
+  --md-ref-palette-secondary30: #4a4458;
+  --md-ref-palette-secondary40: #625b71;
+  --md-ref-palette-secondary80: #ccc2dc;
+  --md-ref-palette-secondary90: #e8def8;
+  --md-ref-palette-secondary100: #ffffff;
+
+  /* md.ref.palette.neutral */
+  --md-ref-palette-neutral0: #000000;
+  --md-ref-palette-neutral10: #1d1b20;
+  --md-ref-palette-neutral12: #211f26;
+  --md-ref-palette-neutral20: #322f35;
+  --md-ref-palette-neutral90: #e6e0e9;
+  --md-ref-palette-neutral94: #f3edf7;
+  --md-ref-palette-neutral95: #f5eff7;
+  --md-ref-palette-neutral96: #f7f2fa;
+
+  /* md.ref.palette.neutral.variant */
+  --md-ref-palette-neutral-variant30: #49454f;
+  --md-ref-palette-neutral-variant80: #cac4d0;
+
+  /* md.ref.typeface */
+  --md-ref-typeface-plain: Roboto, Arial, Helvetica, sans-serif;
+  --md-ref-typeface-brand: Roboto, Arial, Helvetica, sans-serif;
+  --md-ref-typeface-weight-regular: 400;
+  --md-ref-typeface-weight-medium: 500;
+}

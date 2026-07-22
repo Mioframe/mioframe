@@ -4,17 +4,17 @@
 
 Active root: `Button`
 
-Alignment status: `converging`
+Alignment status: `blocked`
 
-Continuation stack: `Button > foundation/tokens`
+Continuation stack: `none`
 
 Checkpoint reason: `none`
 
-External blocker: none
+External blocker: `pnpm verify` unit-tests lane fails its blocking-log-signal check on a pre-existing `[Vue warn]: Missing required prop: "modelValue"` from `MDSwitchStub` in `src/widgets/SettingsSections/SettingsSections.test.ts`, unrelated to Button or `foundation/tokens` (all 212 unit tests still pass; confirmed pre-existing via `git stash` of the token-relocation diff).
 
 ## Next action
 
-Resume `material-component Button`; validate the continuation stack against current code and continue from the deepest unfinished owner until aligned, externally blocked, or a real physical session boundary.
+Fix the unrelated `SettingsSections`/`MDSwitchStub` verify failure (outside Button's dependency closure), then resume `material-component Button` to confirm final `pnpm verify` passes and close the family.
 
 ## Update rule
 

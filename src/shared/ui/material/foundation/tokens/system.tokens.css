@@ -1,0 +1,240 @@
+/*
+ * Canonical `--md-sys-*` (md.sys.*) declarations consumed by canonical
+ * Material files. See docs/tokens.md ("Ownership and location") for the
+ * reference/system token contract.
+ *
+ * Only the system tokens actually referenced from
+ * `src/shared/ui/material/**` live here (relocated from the temporary
+ * legacy owner `src/shared/lib/md/tokens.css`, which keeps every `--md-sys-*`
+ * declaration not required by canonical Material). Values are unchanged by
+ * this relocation.
+ *
+ * `--md-sys-elevation-level1`/`-level2` reference `--md-sys-color-shadow`
+ * directly rather than the legacy `--md-private-elevation-shadow-color`
+ * bridge: every current consumer of that private bridge (Button, Switch,
+ * Fab, Extended Fab, Card) sets it to `var(--md-sys-color-shadow)`, so the
+ * resolved value is unchanged, and an official token depending on a
+ * `--md-private-*` route is forbidden by the dependency-direction rule once
+ * the declaration is canonical. `--md-sys-elevation-level3/4/5` are not
+ * referenced by any canonical Material file and remain in the legacy owner,
+ * still routed through the private bridge.
+ */
+:root {
+  /* md.sys.color */
+  --md-sys-color-primary: var(--md-ref-palette-primary40, var(--app-debug-unknown-color));
+  --md-sys-color-on-primary: var(--md-ref-palette-primary100, var(--app-debug-unknown-color));
+  --md-sys-color-secondary: var(--md-ref-palette-secondary40, var(--app-debug-unknown-color));
+  --md-sys-color-on-secondary: var(--md-ref-palette-secondary100, var(--app-debug-unknown-color));
+  --md-sys-color-secondary-container: var(
+    --md-ref-palette-secondary90,
+    var(--app-debug-unknown-color)
+  );
+  --md-sys-color-on-secondary-container: var(
+    --md-ref-palette-secondary30,
+    var(--app-debug-unknown-color)
+  );
+  --md-sys-color-on-surface: var(--md-ref-palette-neutral10, var(--app-debug-unknown-color));
+  --md-sys-color-on-surface-variant: var(
+    --md-ref-palette-neutral-variant30,
+    var(--app-debug-unknown-color)
+  );
+  --md-sys-color-surface-container: var(--md-ref-palette-neutral94, var(--app-debug-unknown-color));
+  --md-sys-color-surface-container-low: var(
+    --md-ref-palette-neutral96,
+    var(--app-debug-unknown-color)
+  );
+  --md-sys-color-inverse-surface: var(--md-ref-palette-neutral20, var(--app-debug-unknown-color));
+  --md-sys-color-inverse-on-surface: var(
+    --md-ref-palette-neutral95,
+    var(--app-debug-unknown-color)
+  );
+  --md-sys-color-outline-variant: var(
+    --md-ref-palette-neutral-variant80,
+    var(--app-debug-unknown-color)
+  );
+  --md-sys-color-shadow: var(--md-ref-palette-neutral0, var(--app-debug-unknown-color));
+
+  /* md.sys.elevation */
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1:
+    0px 1px 3px 1px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.15),
+    0px 1px 2px 0px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.3);
+  --md-sys-elevation-level2:
+    0px 2px 6px 2px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.15),
+    0px 1px 2px 0px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.3);
+
+  /* md.sys.shape.corner */
+  --md-sys-shape-corner-full: 50cqmin;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+
+  /* md.sys.state */
+  --md-sys-state-hover-state-layer-opacity: 0.08;
+  --md-sys-state-focus-indicator-thickness: 3px;
+  --md-sys-state-focus-indicator-outer-offset: 2px;
+  --md-sys-state-focus-state-layer-opacity: 0.1;
+  --md-sys-state-pressed-state-layer-opacity: 0.1;
+  --md-sys-state-dragged-state-layer-opacity: 0.16;
+
+  /* md.sys.motion.easing.standard */
+  --md-sys-motion-easing-standard-index: cubic-bezier(0.2, 0, 0, 1);
+
+  /* md.sys.motion.duration */
+  --md-sys-motion-duration-short2: 0.1s;
+  --md-sys-motion-duration-short4: 0.2s;
+  --md-sys-motion-duration-extra-long4: 1s;
+
+  /* md.sys.typescale.display-large */
+  --md-sys-typescale-display-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-display-large-size: 57sp;
+  --md-sys-typescale-display-large-tracking: -0.25sp;
+  --md-sys-typescale-display-large-line-height: 64sp;
+
+  /* md.sys.typescale.display-medium */
+  --md-sys-typescale-display-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-medium-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-display-medium-size: 45sp;
+  --md-sys-typescale-display-medium-line-height: 52sp;
+  --md-sys-typescale-display-medium-tracking: 0;
+
+  /* md.sys.typescale.display-small */
+  --md-sys-typescale-display-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-small-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-display-small-size: 36sp;
+  --md-sys-typescale-display-small-line-height: 44sp;
+  --md-sys-typescale-display-small-tracking: 0;
+
+  /* md.sys.typescale.headline-large */
+  --md-sys-typescale-headline-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-headline-large-size: 32sp;
+  --md-sys-typescale-headline-large-line-height: 40sp;
+  --md-sys-typescale-headline-large-tracking: 0;
+
+  /* md.sys.typescale.headline-medium */
+  --md-sys-typescale-headline-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-medium-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-headline-medium-size: 28sp;
+  --md-sys-typescale-headline-medium-line-height: 36sp;
+  --md-sys-typescale-headline-medium-tracking: 0;
+
+  /* md.sys.typescale.headline-small */
+  --md-sys-typescale-headline-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-small-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-headline-small-size: 24sp;
+  --md-sys-typescale-headline-small-line-height: 32sp;
+  --md-sys-typescale-headline-small-tracking: 0;
+
+  /* md.sys.typescale.title-large */
+  --md-sys-typescale-title-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-title-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-title-large-size: 22sp;
+  --md-sys-typescale-title-large-line-height: 28sp;
+  --md-sys-typescale-title-large-tracking: 0;
+
+  /* md.sys.typescale.title-medium */
+  --md-sys-typescale-title-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-medium-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-title-medium-size: 16sp;
+  --md-sys-typescale-title-medium-line-height: 24sp;
+  --md-sys-typescale-title-medium-tracking: 0.15sp;
+
+  /* md.sys.typescale.title-small */
+  --md-sys-typescale-title-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-small-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-title-small-size: 14sp;
+  --md-sys-typescale-title-small-line-height: 20sp;
+  --md-sys-typescale-title-small-tracking: 0.1sp;
+
+  /* md.sys.typescale.body-large */
+  --md-sys-typescale-body-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-body-large-size: 16sp;
+  --md-sys-typescale-body-large-line-height: 24sp;
+  --md-sys-typescale-body-large-tracking: 0.5sp;
+
+  /* md.sys.typescale.body-medium */
+  --md-sys-typescale-body-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-medium-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-body-medium-size: 14sp;
+  --md-sys-typescale-body-medium-line-height: 20sp;
+  --md-sys-typescale-body-medium-tracking: 0.25sp;
+
+  /* md.sys.typescale.body-small */
+  --md-sys-typescale-body-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-small-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-body-small-size: 12sp;
+  --md-sys-typescale-body-small-line-height: 16sp;
+  --md-sys-typescale-body-small-tracking: 0.4sp;
+
+  /* md.sys.typescale.label-large */
+  --md-sys-typescale-label-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-large-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-label-large-size: 14sp;
+  --md-sys-typescale-label-large-line-height: 20sp;
+  --md-sys-typescale-label-large-tracking: 0.1sp;
+
+  /* md.sys.typescale.label-medium */
+  --md-sys-typescale-label-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-medium-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-label-medium-size: 12sp;
+  --md-sys-typescale-label-medium-line-height: 16sp;
+  --md-sys-typescale-label-medium-tracking: 0.5sp;
+
+  /* md.sys.typescale.label-small */
+  --md-sys-typescale-label-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-small-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-label-small-size: 11sp;
+  --md-sys-typescale-label-small-line-height: 16sp;
+  --md-sys-typescale-label-small-tracking: 0.5sp;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-primary: var(--md-ref-palette-primary80, var(--app-debug-unknown-color));
+    --md-sys-color-on-primary: var(--md-ref-palette-primary20, var(--app-debug-unknown-color));
+    --md-sys-color-secondary: var(--md-ref-palette-secondary80, var(--app-debug-unknown-color));
+    --md-sys-color-on-secondary: var(--md-ref-palette-secondary20, var(--app-debug-unknown-color));
+    --md-sys-color-secondary-container: var(
+      --md-ref-palette-secondary30,
+      var(--app-debug-unknown-color)
+    );
+    --md-sys-color-on-secondary-container: var(
+      --md-ref-palette-secondary90,
+      var(--app-debug-unknown-color)
+    );
+    --md-sys-color-on-surface: var(--md-ref-palette-neutral90, var(--app-debug-unknown-color));
+    --md-sys-color-on-surface-variant: var(
+      --md-ref-palette-neutral-variant80,
+      var(--app-debug-unknown-color)
+    );
+    --md-sys-color-surface-container: var(
+      --md-ref-palette-neutral12,
+      var(--app-debug-unknown-color)
+    );
+    --md-sys-color-surface-container-low: var(
+      --md-ref-palette-neutral10,
+      var(--app-debug-unknown-color)
+    );
+    --md-sys-color-inverse-surface: var(--md-ref-palette-neutral20, var(--app-debug-unknown-color));
+    --md-sys-color-inverse-on-surface: var(
+      --md-ref-palette-neutral95,
+      var(--app-debug-unknown-color)
+    );
+    --md-sys-color-outline-variant: var(
+      --md-ref-palette-neutral-variant80,
+      var(--app-debug-unknown-color)
+    );
+    --md-sys-color-shadow: var(--md-ref-palette-neutral0, var(--app-debug-unknown-color));
+
+    --md-sys-elevation-level1:
+      0px 1px 2px 0px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.3),
+      0px 1px 3px 1px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.15);
+    --md-sys-elevation-level2:
+      0px 1px 2px 0px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.3),
+      0px 2px 6px 2px rgb(from var(--md-sys-color-shadow, #000) r g b / 0.15);
+  }
+}
