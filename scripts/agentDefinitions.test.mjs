@@ -80,7 +80,7 @@ describe('portable Agent Skills', () => {
     expect(componentRoot).toContain('## Verification failure attribution');
     expect(componentRoot).toMatch(/run the exact failing command\/lane on current head/i);
     expect(componentRoot).toMatch(/terminal result without family review/i);
-    expect(componentRoot).not.toMatch(/new implementation context per small finding/i);
+    expect(componentRoot).toMatch(/one new implementation context per small finding/i);
 
     expect(foundationRoot).toContain('coordination-only root');
     expect(foundationRoot).toMatch(
