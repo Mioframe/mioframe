@@ -25,6 +25,8 @@ The operator resumes the same root command after a physical checkpoint. Internal
 2. **Fresh isolated writable owner context** — `material-component-implementation` runs with `Owner kind: foundation` for exactly one deepest owner correction and cannot declare readiness.
 3. **Fresh isolated read-only review context** — `material-component-review` independently accepts or rejects that owner.
 
+Create implementation and review contexts through the environment's real Agent/subagent delegation primitive. Loading another skill or changing the stated role inside the same transcript does not create isolation.
+
 One root owns the whole standalone foundation stack and is the sole roadmap writer. The implementation and review contexts must be newly created and different. No same-context fallback is permitted.
 
 If a required isolated writable or review context cannot be created, checkpoint with the exact physical reason.
@@ -114,6 +116,7 @@ Next action: none | resume material-foundation <root domain> | <exact external u
 
 - production edits from the foundation root context;
 - implementation and review by the same context;
+- simulating isolation by changing roles or skills inside one transcript;
 - readiness without fresh read-only correction review;
 - another component family's ownership in foundation;
 - changing a parent while a deeper owner remains unfinished;
