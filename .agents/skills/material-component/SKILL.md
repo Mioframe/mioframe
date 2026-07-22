@@ -28,6 +28,8 @@ Every correction uses three distinct responsibilities:
 2. **Fresh isolated writable owner context** — `material-component-implementation` implements exactly one component or foundation owner correction and returns an implementation result; it cannot declare readiness.
 3. **Fresh isolated read-only review context** — `material-component-review` independently inspects current code and returns the only accepted readiness verdict.
 
+Create implementation and review contexts through the environment's real Agent/subagent delegation primitive. Merely loading another skill, changing the stated role, clearing a local plan, or claiming a fresh perspective inside the same transcript does not create an isolated context.
+
 The implementation and review contexts must be newly created for that correction and must not share the implementer's reasoning transcript. A context that edited the correction cannot review it. Sequential self-implementation or self-review in the root context is forbidden.
 
 One outer root orchestrator owns the entire recursive operation and is the sole roadmap writer. Nested official families and foundation domains are stack owners, not additional root orchestrators.
@@ -166,6 +168,7 @@ Next action: none | resume material-component <root family> | <exact external un
 
 - production edits from the root orchestrator context;
 - implementation and review by the same context;
+- simulating isolation by changing roles or skills inside one transcript;
 - multiple root orchestrators or roadmap writers in one recursive operation;
 - readiness without a fresh read-only correction review;
 - changing a parent while a deeper unfinished owner remains;
