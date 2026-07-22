@@ -8,7 +8,7 @@ import type {
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
 import { MDCheckbox } from '@shared/ui/Checkbox';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { computed, toRefs } from 'vue';
 
 const props = defineProps<{

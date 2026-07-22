@@ -3,16 +3,33 @@ import { computed, ref, toRefs } from 'vue';
 
 const props = withDefaults(
   defineProps<{
+    /**
+     * Determinate value in the 0-1 range. Omit (or pass `undefined`) for the indeterminate
+     * (spinning) visual — `0` is a valid determinate value (an empty ring), distinct from
+     * indeterminate.
+     */
     progress?: number | undefined;
+    /** Rendered diameter in CSS pixels. Defaults to `40`, matching `md.comp.progress-indicator.circular.size`. */
     size?: number | undefined;
+    /**
+     * Accessible name. When provided, the indicator exposes `role="progressbar"` with
+     * `aria-valuemin`/`aria-valuemax` (and `aria-valuenow` when determinate). When omitted, the
+     * indicator is `aria-hidden` — the correct default for every current use as a decorative
+     * loading replacement inside an already-labeled surface (a button, list item, or dialog).
+     */
+    label?: string | undefined;
   }>(),
   {
-    progress: 0,
+    progress: undefined,
     size: 40,
+    label: undefined,
   },
 );
 
-const { progress, size } = toRefs(props);
+const { progress, size, label } = toRefs(props);
+
+const isIndeterminate = computed(() => progress.value === undefined);
+const determinateProgress = computed(() => progress.value ?? 0);
 
 const width = ref(4);
 const radius = computed(() => (size.value - width.value) / 2);
@@ -24,79 +41,76 @@ const perimeter = computed(() => {
 });
 
 const strokeLinecap = computed<'butt' | 'round' | 'square' | 'inherit' | undefined>(() =>
-  progress.value === 1 ? undefined : 'round',
+  determinateProgress.value === 1 ? undefined : 'round',
 );
 
-const gap = computed(() => (Number.isInteger(progress) ? 0 : width.value * 2));
+const gap = computed(() => (Number.isInteger(determinateProgress.value) ? 0 : width.value * 2));
 
 const progressLineLength = computed(() => {
-  return perimeter.value * progress.value - gap.value;
-});
-
-const progressGapLength = computed(() => perimeter.value * (1 - progress.value) + gap.value);
-
-const progressDasharray = computed(() => {
-  return `${progressLineLength.value} ${progressGapLength.value}`;
+  return perimeter.value * determinateProgress.value - gap.value;
 });
 
 const progressLineOffset = computed(() => {
   return -gap.value / 2 + perimeter.value / 4;
 });
 
-const emptyLineLength = computed(() => perimeter.value * (1 - progress.value) - gap.value);
-
-const emptyGapLength = computed(() => perimeter.value * progress.value + gap.value);
-
-const emptyDasharray = computed(() => {
-  return `${emptyLineLength.value} ${emptyGapLength.value}`;
-});
-
-const emptyLineOffset = computed(() => {
-  return -perimeter.value * progress.value - gap.value / 2 + perimeter.value / 4;
+const progressDasharray = computed(() => {
+  return `${progressLineLength.value} ${perimeter.value - progressLineLength.value}`;
 });
 
 const minIndeterminateDasharray = computed(
-  () => `${perimeter.value * 0.1 - gap.value} ${perimeter.value * 0.9 + gap.value}`,
+  () => `${perimeter.value * 0.1} ${perimeter.value * 0.9}`,
 );
 const maxIndeterminateDasharray = computed(
-  () => `${perimeter.value * 0.9 - gap.value} ${perimeter.value * 0.1 + gap.value}`,
+  () => `${perimeter.value * 0.9} ${perimeter.value * 0.1}`,
 );
 
 const animateValue = computed(
   () =>
     `${minIndeterminateDasharray.value};${maxIndeterminateDasharray.value};${minIndeterminateDasharray.value}`,
 );
+
+const ariaValueNow = computed(() =>
+  isIndeterminate.value ? undefined : Math.round(determinateProgress.value * 100),
+);
 </script>
 
 <template>
-  <svg :width="size" :height="size" :viewBox="viewBox" class="md md-circular-progress-indicator">
+  <svg
+    :width="size"
+    :height="size"
+    :viewBox="viewBox"
+    class="md md-circular-progress-indicator"
+    :role="label ? 'progressbar' : undefined"
+    :aria-label="label"
+    :aria-valuemin="label ? 0 : undefined"
+    :aria-valuemax="label ? 100 : undefined"
+    :aria-valuenow="label ? ariaValueNow : undefined"
+    :aria-hidden="label ? undefined : 'true'"
+  >
     <circle
-      v-if="emptyLineLength > 0 && progress"
       :cx="center"
       :cy="center"
       :r="radius"
       fill="none"
       :stroke-width="width"
-      :stroke-linecap="strokeLinecap"
-      :stroke-dasharray="emptyDasharray"
-      :stroke-dashoffset="emptyLineOffset"
-      class="md-circular-progress-indicator__empty"
+      class="md-circular-progress-indicator__track"
     />
 
     <circle
-      v-if="progressLineLength > 0 || !progress"
+      v-if="isIndeterminate || progressLineLength > 0"
       :cx="center"
       :cy="center"
       :r="radius"
       fill="none"
       :stroke-width="width"
       :stroke-linecap="strokeLinecap"
-      :stroke-dasharray="progressDasharray"
+      :stroke-dasharray="isIndeterminate ? minIndeterminateDasharray : progressDasharray"
       :stroke-dashoffset="progressLineOffset"
       class="md-circular-progress-indicator__progress"
     >
       <animate
-        v-if="!progress"
+        v-if="isIndeterminate"
         attributeName="stroke-dasharray"
         :values="animateValue"
         dur="4s"
@@ -105,7 +119,7 @@ const animateValue = computed(
     </circle>
 
     <animateTransform
-      v-if="!progress"
+      v-if="isIndeterminate"
       attributeName="transform"
       type="rotate"
       from="0"
@@ -116,18 +130,16 @@ const animateValue = computed(
   </svg>
 </template>
 
+<style lang="css" scoped src="./progress-indicator.tokens.css"></style>
 <style lang="css" scoped>
 .md-circular-progress-indicator {
-  --md-container-color: transparent;
+  --md-private-progress-indicator-track-color: var(--md-comp-progress-indicator-track-color);
+  --md-circular-progress-color: var(--md-comp-progress-indicator-active-indicator-color);
   display: inline-block;
-  --md-circular-progress-color: var(
-    --md-comp-progress-indicator-active-indicator-color,
-    var(--md-sys-color-primary)
-  );
-  --md-private-progress-indicator-background: var(--md-container-color);
+  background-color: transparent;
 
-  &__empty {
-    stroke: var(--md-private-progress-indicator-background);
+  &__track {
+    stroke: var(--md-private-progress-indicator-track-color);
   }
 
   &__progress {

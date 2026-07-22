@@ -1,0 +1,4 @@
+.md-circular-progress-indicator {
+  --md-comp-progress-indicator-active-indicator-color: var(--md-sys-color-primary);
+  --md-comp-progress-indicator-track-color: var(--md-sys-color-secondary-container);
+}

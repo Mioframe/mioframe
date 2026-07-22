@@ -7,7 +7,7 @@ import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { useImportDocumentAction } from '@feature/importDocument';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';

@@ -6,7 +6,7 @@ Active family: `Button`
 
 Family alignment status: `converging`
 
-Continuation stack: `Button > Progress Indicator > foundation/tokens`
+Continuation stack: `Button > foundation/tokens`
 
 External blocker: none
 

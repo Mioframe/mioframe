@@ -34,7 +34,8 @@ vi.mock('@shared/ui/Dialog', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/ProgressIndicators', () => ({
+vi.mock('@shared/ui/material', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@shared/ui/material')>()),
   MDCircularProgressIndicator: defineComponent({
     name: 'MDCircularProgressIndicatorStub',
     props: { progress: { type: Number, default: 0 } },

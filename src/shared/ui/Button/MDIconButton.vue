@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef, warn, watchEffect } from 'vue';
-import { MDCircularProgressIndicator } from '../ProgressIndicators';
+import { MDCircularProgressIndicator } from '../material';
 import { MDPlainTooltip, MDRichTooltip } from '../Tooltips';
 import { MDSymbol } from '../Icon';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
@@ -15,9 +15,7 @@ const props = withDefaults(
     disabled?: boolean | undefined;
     /**
      * Loading state for the action. `true` shows an indeterminate progress indicator; a
-     * number shows determinate progress. `0` still renders as an active loading state, but
-     * the underlying `MDCircularProgressIndicator` currently renders `0` through its
-     * indeterminate visual path rather than a determinate ring at zero fill.
+     * number (including `0`) shows a determinate ring at that value.
      */
     loading?: number | boolean | undefined;
     /** Accessible name and plain-tooltip text. Required — an icon-only control has no other accessible label source. */

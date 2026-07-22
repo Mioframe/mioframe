@@ -6,7 +6,7 @@ vi.mock('@shared/ui/State/useRipple', () => ({
   useRipple: () => undefined,
 }));
 
-vi.mock('@shared/ui/ProgressIndicators', () => ({
+vi.mock('@shared/ui/material', () => ({
   MDCircularProgressIndicator: {
     name: 'MDCircularProgressIndicatorStub',
     props: ['size'],

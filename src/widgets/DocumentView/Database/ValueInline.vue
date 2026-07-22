@@ -4,7 +4,7 @@ import { useDatabaseProperty } from '@entity/databaseProperty';
 import { useDatabaseEffectiveValue } from '@entity/databaseValue';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseItemId, DatabasePropertyId } from '@shared/lib/databaseDocument';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { toRefs } from 'vue';
 import DatabasePropertyValueInline from './DatabasePropertyValueInline.vue';
 

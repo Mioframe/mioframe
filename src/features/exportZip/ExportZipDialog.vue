@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDDialog } from '@shared/ui/Dialog';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import type { ExportZipDialogPhase, ExportZipVisibleDialogState } from './useExportDirectoryZip';
 
 const props = defineProps<{

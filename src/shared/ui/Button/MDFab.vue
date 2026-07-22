@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, useSlots, useTemplateRef, warn } from 'vue';
-import { MDCircularProgressIndicator } from '../ProgressIndicators';
+import { MDCircularProgressIndicator } from '../material';
 import { MDPlainTooltip } from '../Tooltips';
 import { MDStateLayer, useRipple, useStateLayer } from '../State';
 import { MDSymbol } from '../Icon';
@@ -22,10 +22,8 @@ const props = withDefaults(
     tooltip: string;
     /**
      * Loading state for the action. `true` shows an indeterminate progress indicator; a
-     * number shows determinate progress. `0` still renders as an active loading state, but
-     * the underlying `MDCircularProgressIndicator` currently renders `0` through its
-     * indeterminate visual path rather than a determinate ring at zero fill. Loading replaces
-     * the icon slot.
+     * number (including `0`) shows a determinate ring at that value. Loading replaces the icon
+     * slot.
      */
     loading?: number | boolean | undefined;
     /** Optional Material Symbols icon name used when no custom `icon` slot is provided. One of `mdSymbol` or the `icon` slot is required. */

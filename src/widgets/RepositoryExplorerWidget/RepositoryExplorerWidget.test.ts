@@ -165,16 +165,13 @@ vi.mock('@shared/ui/EmptyState', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/ProgressIndicators', () => ({
+vi.mock('@shared/ui/material', () => ({
   MDCircularProgressIndicator: defineComponent({
     name: 'MDCircularProgressIndicatorStub',
     setup() {
       return () => h('div', 'Loading');
     },
   }),
-}));
-
-vi.mock('@shared/ui/material', () => ({
   MDButton: defineComponent({
     name: 'MDButtonStub',
     props: {

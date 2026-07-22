@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDDialog } from '@shared/ui/Dialog';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import type { ZipImportProgress, ZipImportSummary } from '@shared/service';
 import type { ImportZipVisibleDialogState } from './useImportZipAction';
 

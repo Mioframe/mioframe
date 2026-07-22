@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { useGoogleSessionAdd } from './useGoogleSessionAdd';
 
 const { addAccount, isLoading } = useGoogleSessionAdd();

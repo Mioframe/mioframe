@@ -395,8 +395,6 @@
   /* md.sys.motion.spring (Material 3 Expressive) */
   --md-sys-motion-spring-fast-spatial-stiffness: 800;
   --md-sys-motion-spring-fast-spatial-damping: 0.6;
-
-  --md-comp-progress-indicator-active-indicator-color: var(--md-sys-color-primary);
 }
 
 @media (prefers-color-scheme: dark) {

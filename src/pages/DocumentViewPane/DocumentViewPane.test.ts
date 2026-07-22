@@ -89,7 +89,7 @@ vi.mock('@shared/ui/Icon', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/ProgressIndicators', () => ({
+vi.mock('@shared/ui/material', () => ({
   MDCircularProgressIndicator: defineComponent({
     name: 'MDCircularProgressIndicatorStub',
     setup() {

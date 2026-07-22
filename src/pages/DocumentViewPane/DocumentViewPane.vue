@@ -9,7 +9,7 @@ import { useDocument } from '@entity/cfrDocument';
 import { DomainError } from '@shared/lib/error';
 import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { zodToVueProps } from '@shared/lib/zodToVueProps';
 import DatabaseViewWidget from '@widget/DocumentView/Database/DatabaseViewWidget.vue';
 import { zodQuery } from './model';

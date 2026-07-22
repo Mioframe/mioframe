@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MDCheckbox } from '@shared/ui/Checkbox';
 import { MDListItem } from '@shared/ui/Lists';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 
 const { headline, supportingText, checked, disabled, loading, lines } = defineProps<{
   headline: string;

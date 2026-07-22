@@ -156,7 +156,7 @@ template/CSS reads only `rendered-*`).
 wrapper elements so a consumer-slotted icon or the composed progress indicator inherits Button's
 resolved color/size automatically: `--md-content-color` and `--md-symbol-size` (public contract of
 `MDSymbol`, `src/shared/ui/Icon/MDSymbol.vue`) and `--md-circular-progress-color` (public contract
-of `MDCircularProgressIndicator`, `src/shared/ui/ProgressIndicators/MDCircularProgressIndicator.vue`).
+of `MDCircularProgressIndicator`, `src/shared/ui/material/components/progress-indicator/MDCircularProgressIndicator.vue`).
 Button consumes these external contracts; it does not own or relocate them.
 
 Required foundation dependencies: `md.sys.color.*` roles, `md.sys.elevation.level0/1/2` + shadow
@@ -165,9 +165,9 @@ color, `md.sys.shape.corner.full/small/medium/large/extra-large`,
 `md.sys.motion.spring.fast.spatial.damping/stiffness` (referenced as documentation only, see
 Motion), `md.sys.typescale.label-large/title-medium/headline-small/headline-large`.
 `useStateLayer`/`useRipple`/`MDStateLayer` (`@shared/ui/State`), `MDCircularProgressIndicator`
-(`@shared/ui/ProgressIndicators`), `MD_TYPESCALE` (`@shared/lib/md`) are correctly-owned generic
-shared infrastructure. Dependency direction, cross-family references, and cycles are clean: no
-`--md-comp-<other-family>-*` reference, no circular token dependency.
+(sibling canonical family `../progress-indicator`), `MD_TYPESCALE` (`@shared/lib/md`) are
+correctly-owned generic shared infrastructure. Dependency direction, cross-family references, and
+cycles are clean: no `--md-comp-<other-family>-*` reference, no circular token dependency.
 
 Proof: `scripts/materialTokenArchitecture.test.mjs` (static architecture guard).
 
@@ -194,9 +194,9 @@ when `loading` toggles off mid-fade; no explicit cancellation logic. No `prefers
 override.
 
 `MDStateLayer` background transition, ripple (WAAPI), and the loading indicator's SVG
-`<animate>`/`<animateTransform>` are foundation-owned (`@shared/ui/State`,
-`@shared/ui/ProgressIndicators`), out of Button's own file scope. No `@keyframes`, `will-change`,
-or `transition: all` exist anywhere in Button-owned CSS.
+`<animate>`/`<animateTransform>` are foundation-owned (`@shared/ui/State`, sibling canonical family
+`../progress-indicator`), out of Button's own file scope. No `@keyframes`, `will-change`, or
+`transition: all` exist anywhere in Button-owned CSS.
 
 Proof: `tests/e2e/visual/shared-ui/md-button.spec.ts` (browser lane; reads computed
 `transition-property`/`-duration`/`-timing-function` longhands, box-shadow/elevation values, and

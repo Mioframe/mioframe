@@ -20,7 +20,7 @@ import { useDatabaseProperties } from '@entity/databaseProperty';
 import { useDatabaseSorting } from '@entity/databaseSorting';
 import PropertySortDirectionMenuItem from './PropertySortDirectionMenuItem.vue';
 import DatabaseSortingListItem from './DatabaseSortingListItem.vue';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 
 const props = defineProps<{
   path: string;

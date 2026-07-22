@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDSymbol } from '@shared/ui/Icon';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { toRefs } from 'vue';
 import { useGoogleSessionAvatar } from './useGoogleSessionAvatar';
 

@@ -4,7 +4,7 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { MDListItem } from '@shared/ui/Lists';
 import { computed, toRefs } from 'vue';
 import { useDocument } from './useDocument';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { MDPlainTooltip } from '@shared/ui/Tooltips';
 
 const props = defineProps<{

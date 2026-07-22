@@ -112,7 +112,7 @@ vi.mock('@shared/ui/Lists', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/ProgressIndicators', () => ({
+vi.mock('@shared/ui/material', () => ({
   MDCircularProgressIndicator: defineComponent({
     name: 'MDCircularProgressIndicatorStub',
     props: { size: { type: Number, default: 40 } },

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { MDListItem } from '@shared/ui/Lists';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
+import { MDCircularProgressIndicator } from '@shared/ui/material';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { StarterExampleDefinition } from '@entity/starterExample';
 
