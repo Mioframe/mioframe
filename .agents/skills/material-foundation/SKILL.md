@@ -34,6 +34,8 @@ current-state preflight
 
 When supported, a delegated prerequisite runs in a fresh focused writable context. That context owns one canonical foundation owner plus only the minimum compatibility/adoption edits required for it. Split work that requires another canonical owner and return its result through the calling prerequisite stack.
 
+If isolated writable contexts are unavailable, execute one owner correction at a time sequentially in the current runtime, return the same structured result, and reset scope before continuing. Lack of subagents is not a blocker and does not permit a broad multi-owner correction.
+
 Production edits are forbidden before contract review passes. Reuse accepted evidence until contradicted. Each gate permits one initial review and at most one substantive re-review.
 
 ## Foundation gate
@@ -121,6 +123,6 @@ When delegated, return control without advancing component implementation or roa
 - canonical Material tokens whose active declarations remain legacy-owned;
 - invented names, invalid graph edges, parallel owners, hidden fallbacks, runtime managers/registries/resolvers;
 - returning complete while caller or direct consumers still use an incompatible or legacy contract;
-- implementing several canonical owners in one writable context;
+- implementing several canonical owners in one correction unit;
 - persisted execution state, histories, backlogs, checklists, scorecards, or ledgers;
 - Git, branch, commit, PR, or merge operations.
