@@ -28,7 +28,9 @@ current-state preflight
 
 When delegated by `material-component`, scope is the exact required prerequisite. When supported, run it in a fresh focused writable context. One implementation unit owns one canonical foundation owner plus only its minimum compatibility/adoption edits; nested owners return through the caller stack.
 
-When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. Lack of subagents is not a blocker and does not permit a broad multi-owner correction.
+When isolated contexts are unavailable, execute the same owner units sequentially in the current runtime and return one structured result per owner. One owner per correction does not mean one owner per physical session. Lack of subagents is not a blocker and does not permit a broad multi-owner correction.
+
+A delegated foundation prerequisite remains inside the root family operation. It must never become a separate operator command. When a real physical session boundary prevents continuation, return the deepest unfinished owner to the root orchestrator; only the root roadmap may persist the compact continuation stack.
 
 ## Contract and correction
 
@@ -54,11 +56,13 @@ Visible changes require operator comparison. Applicable static, browser, visual,
 
 Create a foundation README only for a real durable contract. Store owner, public/private contract, semantics, token/style/motion rules, supported scenarios, compatibility surface, and durable proof obligations only.
 
-Do not persist current stage, correction, calling-family stack, backlog, remaining work, review history, shell output, commit narratives, route ledgers, or future passes. Execution state remains in the active orchestrator context and structured results.
+Do not persist current stage, correction, backlog, remaining-work lists, review history, shell output, commit narratives, route ledgers, or future passes. The only durable orchestration state is the root roadmap's compact continuation stack, written and validated by the root component orchestrator.
 
 ## Completion
 
-A delegated prerequisite returns `complete` only for the exact ready canonical contract, then control returns to the caller. Domain completion additionally requires canonical affected-family consumption, direct-consumer compatibility, cleanup/forwarding-only legacy replacement, required proof/operator comparison, review, and final verification.
+A delegated prerequisite returns `complete` only for the exact ready canonical contract, then control returns to the caller. A repairable nested gap returns as continued internal work. A physical session boundary returns as `checkpoint-required` to the root orchestrator, not to the operator.
+
+Domain completion additionally requires canonical affected-family consumption, direct-consumer compatibility, cleanup/forwarding-only legacy replacement, required proof/operator comparison, review, and final verification.
 
 ## Forbidden
 
@@ -71,5 +75,7 @@ A delegated prerequisite returns `complete` only for the exact ready canonical c
 - invented names, cycles, parallel owners, hidden fallbacks, runtime managers/registries/resolvers;
 - returning complete while caller or direct consumers still use an incompatible or legacy contract;
 - several canonical owners in one correction unit;
-- persisted execution state, histories, backlogs, checklists, scorecards, or ledgers;
+- asking the operator to invoke a delegated foundation prerequisite;
+- a separate foundation continuation ledger;
+- persisted execution histories, backlogs, checklists, scorecards, or ledgers;
 - Git, branch, commit, PR, or merge operations.
