@@ -215,7 +215,9 @@ Keep only the active root family, alignment status, one continuation stack, exac
 
     expect(errors).toEqual([
       expect.stringContaining('converging roadmap next action must resume the active root family'),
-      expect.stringContaining('roadmap next action must not delegate a nested component prerequisite'),
+      expect.stringContaining(
+        'roadmap next action must not delegate a nested component prerequisite',
+      ),
     ]);
   });
 
