@@ -1,11 +1,11 @@
 ---
 name: material-component-review
-description: 'Mandatory independent read-only review for one Material component or foundation correction. Only a fresh isolated reviewer may accept owner readiness.'
+description: 'Independent read-only review for one Material component or foundation correction. A fresh isolated correction-final reviewer is mandatory before owner readiness.'
 ---
 
 # Material correction review
 
-Review one locked correction as `contract-gate` before implementation or `correction-final` after implementation and focused proof. This skill supports component and foundation owners.
+Use as an optional `contract-gate` when the root requests independent validation of a high-risk locked contract, and as the mandatory `correction-final` after implementation and focused proof. This skill supports component and foundation owners.
 
 ## Independence
 
@@ -19,17 +19,17 @@ Implementation context reused: no
 Repository writes available: no
 ```
 
-If these conditions are unavailable, return `not-run` with checkpoint reason `isolated-review-context-unavailable`. Do not review in the root or implementation context.
+If isolation is unavailable, return `not-run` with checkpoint reason `isolated-review-context-unavailable`. If a required tool or evidence source is unavailable, return `not-run` with the exact corresponding checkpoint reason. Do not review in the root or implementation context.
 
 ## Inputs
 
 Receive:
 
 - owner kind, family/domain, root invocation, and correction unit;
-- supported scenarios/platforms and locked contract;
+- supported scenarios/platforms and root-locked contract;
 - selected source evidence;
 - claimed dependency inventory and continuation stack;
-- implementation result and changed owner set;
+- implementation result and changed owner set for `correction-final`;
 - focused proof and direct-consumer inventory.
 
 All supplied claims are untrusted. Independently inspect current implementations, imports, injected dependencies, styles, token declarations/references, exports, every direct consumer of changed public contracts or extensions, legacy-owner state, documentation, and guards.
@@ -38,7 +38,7 @@ All supplied claims are untrusted. Independently inspect current implementations
 
 Confirm that the reviewed owner is the current deepest unfinished owner. A parent correction cannot pass while a deeper child owner remains unresolved.
 
-The stack entry may be popped only after `correction-final` returns `complete`. `contract-gate: complete` authorizes implementation only; it is not readiness.
+The stack entry may be popped only after `correction-final` returns `complete`. `contract-gate: complete` authorizes the locked contract only; it is not readiness.
 
 ## Contract gate
 
@@ -51,7 +51,7 @@ Verify:
 - relocation/forwarding/barrel/import migration is not treated as readiness;
 - the correction is the highest-priority deepest-owner work.
 
-Return `complete`, `blocked`, `not-enough-evidence`, or `not-run`.
+Return `complete`, `blocked`, or `not-run`.
 
 ## Correction final
 
@@ -67,7 +67,7 @@ Verify the implemented owner correction against current code:
 - durable README accuracy;
 - relevant Material guards.
 
-Known defects, incompatible consumers, stale contract documentation, missing browser behavior proof, or legacy-owned canonical tokens block readiness even when focused tests pass.
+Known defects, incompatible consumers, stale contract documentation, insufficient available proof, missing browser behavior proof, or legacy-owned canonical tokens return `blocked` with consolidated findings. Unavailable required tooling/evidence returns `not-run` with the exact checkpoint reason.
 
 A passed correction does not complete the root family. It only permits the root orchestrator to pop this exact owner and continue.
 
@@ -83,7 +83,7 @@ Correction unit:
 Review context: fresh-isolated-read-only
 Implementation context reused: no
 Repository writes available: no
-Status: complete | blocked | not-enough-evidence | not-run
+Status: complete | blocked | not-run
 Deepest owner confirmed: yes | no
 Gate result:
 Actual dependency closure:
