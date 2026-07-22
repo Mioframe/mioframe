@@ -46,16 +46,16 @@ function analyzeStyle(file, source) {
     root.walkRules((rule) => {
       for (const selector of rule.selectors ?? []) {
         if (!/^\.md-typescale-[a-z0-9-]+$/.test(selector.trim())) {
-          errors.push(`${location(file, rule)}: typescale must not own selector '${selector.trim()}'`);
+          errors.push(
+            `${location(file, rule)}: typescale must not own selector '${selector.trim()}'`,
+          );
         }
       }
     });
 
     root.walkDecls((declaration) => {
       if (!TYPESCALE_PROPERTIES.has(declaration.prop)) {
-        errors.push(
-          `${location(file, declaration)}: typescale must not own '${declaration.prop}'`,
-        );
+        errors.push(`${location(file, declaration)}: typescale must not own '${declaration.prop}'`);
       }
     });
   }
