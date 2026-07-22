@@ -5,11 +5,12 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MATERIAL_ROOT = path.join(ROOT, 'src', 'shared', 'ui', 'material');
+const ROADMAP_PATH = path.join(MATERIAL_ROOT, 'docs', 'roadmap.md');
 const OWNER_ROOTS = ['components', 'foundation', 'patterns'].map((name) =>
   path.join(MATERIAL_ROOT, name),
 );
 
-const FORBIDDEN = [
+const OWNER_FORBIDDEN = [
   ['workflow-state marker', /\bMATERIAL WORKFLOW STATE\b/i],
   [
     'execution-result marker',
@@ -34,27 +35,67 @@ function walkOwnerReadmes(directory) {
     return [];
   }
 
-  const files = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      files.push(...walkOwnerReadmes(entryPath));
-    } else if (entry.isFile() && entry.name === 'README.md') {
-      files.push(entryPath);
+      return walkOwnerReadmes(entryPath);
     }
-  }
-  return files;
+    return entry.isFile() && entry.name === 'README.md' ? [entryPath] : [];
+  });
 }
 
-function analyze(readmes) {
+function analyzeOwnerReadmes(readmes) {
   const errors = [];
   for (const { filePath, content } of readmes) {
-    for (const [label, pattern] of FORBIDDEN) {
+    for (const [label, pattern] of OWNER_FORBIDDEN) {
       if (pattern.test(content)) {
         errors.push(`${normalize(path.relative(ROOT, filePath))}: forbidden ${label}`);
       }
     }
   }
+  return errors.sort();
+}
+
+function analyzeRoadmap(content) {
+  const lines = content
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const errors = [];
+
+  const expected = [
+    '# Material library roadmap',
+    '## Current state',
+    /^Active family: `[^`]+`$/,
+    /^Family alignment status: `(aligned|converging|blocked)`$/,
+    /^External blocker: .+$/,
+    '## Next action',
+    /^(?![-*+]\s|\d+\.\s).+$/,
+    '## Update rule',
+    'Keep only the active family, alignment status, exact external blocker, and one next action.',
+  ];
+
+  if (lines.length !== expected.length) {
+    errors.push(`roadmap must contain exactly ${expected.length} non-empty contract lines`);
+  }
+
+  expected.forEach((matcher, index) => {
+    const line = lines[index] ?? '';
+    const matches = typeof matcher === 'string' ? line === matcher : matcher.test(line);
+    if (!matches) {
+      errors.push(`roadmap line ${index + 1} violates the compact contract`);
+    }
+  });
+
+  const status = lines[3]?.match(/^Family alignment status: `(aligned|converging|blocked)`$/)?.[1];
+  const blocker = lines[4]?.replace(/^External blocker:\s*/, '').trim();
+  if (status === 'blocked' && blocker?.toLowerCase() === 'none') {
+    errors.push('blocked roadmap status requires an exact external blocker');
+  }
+  if (status && status !== 'blocked' && blocker?.toLowerCase() !== 'none') {
+    errors.push('only blocked roadmap status may contain an external blocker');
+  }
+
   return errors.sort();
 }
 
@@ -65,10 +106,10 @@ function repositoryReadmes() {
   }));
 }
 
-describe('Material owner documentation architecture', () => {
-  it('detects persisted execution state and review history', () => {
+describe('Material documentation architecture', () => {
+  it('detects persisted owner execution state and review history', () => {
     const fixturePath = path.join(MATERIAL_ROOT, 'components', 'fixture', 'README.md');
-    const errors = analyze([
+    const errors = analyzeOwnerReadmes([
       {
         filePath: fixturePath,
         content: `# Fixture
@@ -91,7 +132,33 @@ TASK RESULT
     ]);
   });
 
+  it('rejects roadmap execution logs', () => {
+    expect(
+      analyzeRoadmap(`# Material library roadmap
+
+## Current state
+
+Active family: \`Button\`
+Family alignment status: \`converging\`
+External blocker: none
+
+1. Completed token migration
+2. pnpm verify passed
+
+## Next action
+Run another pass.
+
+## Update rule
+Keep only the active family, alignment status, exact external blocker, and one next action.
+`),
+    ).not.toEqual([]);
+  });
+
   it('keeps owner README files limited to durable contracts', () => {
-    expect(analyze(repositoryReadmes())).toEqual([]);
+    expect(analyzeOwnerReadmes(repositoryReadmes())).toEqual([]);
+  });
+
+  it('keeps roadmap limited to one compact current-state record', () => {
+    expect(analyzeRoadmap(fs.readFileSync(ROADMAP_PATH, 'utf8'))).toEqual([]);
   });
 });
