@@ -35,8 +35,9 @@ current-state preflight and checkpoint validation
 → fresh read-only correction-final review
 → pop accepted owner or retry once in a new writable context
 → refresh stack and continue
+→ pnpm verify when the stack is empty
 → fresh read-only final family review
-→ pnpm verify
+→ restore an internal owner and continue, or finish aligned/external-blocked
 ```
 
 ## Current-state preflight
@@ -73,8 +74,8 @@ Every used Material dependency resolves to a ready canonical foundation, officia
 
 If a ready owner does not exist, push its exact owner onto the same root stack:
 
-- family-agnostic contract → exact foundation owner implemented by a fresh isolated writable `material-foundation` context when deepest;
-- official component family → exact component-family owner implemented by a fresh isolated writable `material-component-implementation` context when deepest;
+- family-agnostic contract → exact foundation owner implemented by a fresh isolated writable owner context when deepest;
+- official component family → exact component-family owner implemented by a fresh isolated writable owner context when deepest;
 - child prerequisites discovered for either owner are pushed after it and execute depth-first.
 
 The outer root remains the sole coordinator and roadmap writer. After independent acceptance of the deepest child, it pops that child and returns automatically to its parent.
@@ -89,7 +90,15 @@ The correction reviewer receives structured contract, implementation result, sel
 
 The reviewer verdict is the only authority that permits a stack pop. Missing, same-context, or `not-run` review leaves the owner unfinished.
 
-A final family review runs in another fresh read-only context only after the stack is empty and every owner review is accepted.
+A final family review always runs in another fresh read-only context after the stack becomes empty, even when no implementation was needed or `pnpm verify` is red.
+
+## Verification attribution
+
+A branch verification failure is internal until the same command reproduces on the root base commit and is shown independent of all owners changed by the active operation.
+
+A component in another official family remains in compatibility scope when it directly or transitively consumes a foundation/family owner created, moved, forwarded, or behaviorally changed by the operation. A failure in such a consumer restores the nearest changed owner to the same root stack; it does not create a separate operator command.
+
+Prior logs, Git history, or an import-only component diff do not prove external attribution.
 
 ## Continuation checkpoint
 
@@ -109,8 +118,8 @@ Record only active root family, alignment status, continuation stack, checkpoint
 
 ## Completion
 
-`aligned` requires an empty stack, accepted owner reviews, closed recursive dependencies, valid contracts and consumers, adoption/cleanup, required proof/operator comparison, fresh final family review, and passing `pnpm verify`.
+`aligned` requires an empty stack, accepted owner reviews, closed recursive dependencies, valid contracts and consumers, adoption/cleanup, required proof/operator comparison, passing `pnpm verify`, and fresh final family review.
 
-`blocked` requires an exact external condition that cannot be resolved inside the recursive operation.
+`blocked` requires a fresh final family review and an exact external condition, including a same-command base-reproduced verification failure independent of active-operation changes.
 
 `checkpointed` is nonterminal and requires one exact allowed physical reason. `partial` is not a valid Material full-family result.
