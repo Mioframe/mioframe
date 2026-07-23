@@ -1,0 +1,57 @@
+name: fix PR 160 release documentation structure
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  fix:
+    if: github.event.pull_request.head.ref == 'fix/pr-preview-version-gate'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pr-preview-version-gate
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN }}
+
+      - name: Separate deployment rule from merge-gate sub-list
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/release.md')
+          content = path.read_text(encoding='utf-8')
+          old = '''  - aggregate `verify` preserves the required merge check and succeeds only when
+              `verification` and, for PRs, `release-version` both succeed.
+              `deploy-preview` depends only on `verification`: an incorrect PR version blocks
+              merge through `verify` but does not block the application and Storybook demo.
+              Implementation verification failures still block the preview. `deploy-develop`
+              also depends on `verification` for pushes to `develop` — see
+              `docs/release.md#organization-pages-deployment-model`.
+          '''
+          new = '''  - aggregate `verify` preserves the required merge check and succeeds only when
+              `verification` and, for PRs, `release-version` both succeed.
+
+            `deploy-preview` depends only on `verification`: an incorrect PR version blocks
+            merge through `verify` but does not block the application and Storybook demo.
+            Implementation verification failures still block the preview. `deploy-develop`
+            also depends on `verification` for pushes to `develop` — see
+            `docs/release.md#organization-pages-deployment-model`.
+          '''
+          if content.count(old) != 1:
+              raise SystemExit('Expected formatted release documentation block exactly once.')
+          path.write_text(content.replace(old, new, 1), encoding='utf-8')
+          PY
+
+          rm .github/workflows/fix-pr160-release-doc-structure.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: separate preview and merge gate rules"
+          git push origin HEAD:fix/pr-preview-version-gate
