@@ -2,17 +2,17 @@
 
 ## Principle
 
-Icons in shared Material UI must follow official Material 3 icon guidance and component specs. Icon behavior is part of the component contract, not an arbitrary slot detail.
+Icons in shared Material UI follow current official icon and component guidance. Icon behavior is part of the component contract, not an arbitrary slot detail.
 
 ## Source
 
-Use official Material 3 documentation through MCP or `m3-docs-cache` fallback for component-specific icon usage. Component specs override generic icon preferences when they define size, placement, selected state, or accessibility behavior.
+Use official Material documentation for component-specific icon usage. A component specification overrides generic icon preferences when it defines size, placement, selected state, or accessibility behavior.
 
-## Icon system
+## Material Symbols
 
-Use the project Material icon primitive for Material Symbols unless a component or product requirement needs a custom icon.
+Use the project Material Symbols primitive unless a current product requirement needs a custom icon.
 
-When using Material Symbols, keep these concerns explicit:
+Keep applicable properties explicit:
 
 - icon name;
 - size;
@@ -20,35 +20,37 @@ When using Material Symbols, keep these concerns explicit:
 - weight;
 - grade;
 - optical size;
-- selected/unselected state;
-- accessible name or decorative status.
+- selected and unselected treatment;
+- semantic or decorative status.
 
-## Component usage
+## Component ownership
 
-Component-specific icon rules must follow the relevant Material component docs.
+The component owns icon placement, sizing, state routing, and accessible-name requirements defined by its supported official surface.
 
-Examples:
+The icon primitive owns symbol rendering. It does not choose product icons or infer component state.
 
-- button icons should use the component-defined leading or trailing placement rules;
-- toggle components should define selected and unselected icon behavior when Material guidance requires different icon styles;
-- navigation icons should expose selected state clearly;
-- list icons and avatars should match the list item layout and density rules.
+Arbitrary slotted icon content remains consumer-owned unless the public component contract explicitly defines how it participates in selection or state styling.
 
 ## Accessibility
 
-Icons are decorative when the surrounding component has a sufficient accessible name. Icons are semantic when they are the only visible label or communicate required state.
+Icons are decorative when the surrounding control already has a sufficient accessible name. They are semantic when they are the only visible label or communicate required state.
 
-Semantic icon-only controls must require or derive an accessible name. Do not rely on the icon glyph name as the user-facing accessible label unless it is intentionally stable and understandable.
+Icon-only controls require or derive an explicit accessible name. Do not rely on glyph names as user-facing labels unless intentionally documented.
 
 ## Custom icons
 
-Custom SVG or non-Material icons are allowed only when:
+Custom SVG or non-Material icons are allowed when:
 
-- Material Symbols does not provide an appropriate icon;
+- Material Symbols has no appropriate symbol;
 - the icon represents a product-specific concept;
-- the icon is documented as project-specific;
-- sizing, color, selected state, and accessibility still follow Material component guidance.
+- ownership is documented as project-specific;
+- sizing, color, state treatment, and accessibility still satisfy the containing component contract.
 
 ## Verification
 
-Icon changes should be verified through Storybook or browser smoke checks when they affect size, alignment, state, accessibility, or visual output. For shared visual primitives, include the affected icon states in visual regression coverage.
+Verify icon changes at the relevant layer:
+
+- component tests for slot, state, and accessibility wiring;
+- browser checks for rendered size or state behavior when layout is involved;
+- visual evidence for alignment, fill, color, and geometry changes;
+- font readiness where Material Symbols rendering is part of the assertion.
