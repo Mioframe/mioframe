@@ -19,16 +19,16 @@ canonical-slug: <official URL slug>
 material-source: m3.material.io
 source-snapshot: YYYY-MM-DD
 status: review-ready | blocked
-approval: pending
+approval: pending | approved
 ---
 
 # <Official component title>
 
 ## Sources
 
-| ID     | Official page | URL | Evidence used |
-| ------ | ------------- | --- | ------------- |
-| M3-... | ...           | ... | ...           |
+| ID | Official page | URL | Evidence used |
+| --- | --- | --- | --- |
+| M3-... | ... | ... | ... |
 
 ## Component identity
 
@@ -50,113 +50,113 @@ approval: pending
 ## Official family and related components
 
 | Component or member | Relationship | Source |
-| ------------------- | ------------ | ------ |
+| --- | --- | --- |
 
 ## Variants
 
 | Variant | Purpose or emphasis | Distinguishing properties | Source |
-| ------- | ------------------- | ------------------------- | ------ |
+| --- | --- | --- | --- |
 
 ## Configurations
 
 | Configuration | Required content | Optional content | Constraints | Source |
-| ------------- | ---------------- | ---------------- | ----------- | ------ |
+| --- | --- | --- | --- | --- |
 
 ## Sizes and density
 
 | Size or density | Dimensions | Content sizing | Target size | Source |
-| --------------- | ---------- | -------------- | ----------- | ------ |
+| --- | --- | --- | --- | --- |
 
 ## Anatomy
 
 | Part | Required or optional | Design role | Source |
-| ---- | -------------------- | ----------- | ------ |
+| --- | --- | --- | --- |
 
 ## Content guidance
 
 | Area | Requirement or recommendation | Strength | Source |
-| ---- | ----------------------------- | -------- | ------ |
+| --- | --- | --- | --- |
 
 ## State model
 
 ### States
 
 | State | Meaning | Visual change | Source |
-| ----- | ------- | ------------- | ------ |
+| --- | --- | --- | --- |
 
 ### State combinations
 
 | Combination | Allowed | Result | Source |
-| ----------- | ------- | ------ | ------ |
+| --- | --- | --- | --- |
 
 ## Interaction behavior
 
 | Input or condition | Observable behavior | Source |
-| ------------------ | ------------------- | ------ |
+| --- | --- | --- |
 
 ## Visual specification
 
 ### Dimensions and layout
 
 | Element | Token or value | Conditions | Source |
-| ------- | -------------- | ---------- | ------ |
+| --- | --- | --- | --- |
 
 ### Color
 
 | Variant or element | State | Token or role | Source |
-| ------------------ | ----- | ------------- | ------ |
+| --- | --- | --- | --- |
 
 ### Typography
 
 | Element | Typescale role or value | Source |
-| ------- | ----------------------- | ------ |
+| --- | --- | --- |
 
 ### Shape and outline
 
 | Variant or element | State | Token or value | Source |
-| ------------------ | ----- | -------------- | ------ |
+| --- | --- | --- | --- |
 
 ### Elevation
 
 | Variant or element | State | Token or value | Source |
-| ------------------ | ----- | -------------- | ------ |
+| --- | --- | --- | --- |
 
 ### State layers and focus
 
 | State | Layer, indicator, or opacity | Source |
-| ----- | ---------------------------- | ------ |
+| --- | --- | --- |
 
 ### Icons
 
 | Context | Size, placement, or behavior | Source |
-| ------- | ---------------------------- | ------ |
+| --- | --- | --- |
 
 ## Material token inventory
 
 | Design role | Official component token | Official system role or value | Source |
-| ----------- | ------------------------ | ----------------------------- | ------ |
+| --- | --- | --- | --- |
 
 ## Motion
 
-| Transition | Trigger | From | To  | Duration | Easing | Source |
-| ---------- | ------- | ---- | --- | -------- | ------ | ------ |
+| Transition | Trigger | From | To | Duration | Easing | Source |
+| --- | --- | --- | --- | --- | --- | --- |
 
 ### Interruption and reduced motion
 
 ## Accessibility
 
 | Area | Published Material requirement | Source |
-| ---- | ------------------------------ | ------ |
+| --- | --- | --- |
 
 ## Directionality and adaptation
 
 | Condition | Required behavior | Source |
-| --------- | ----------------- | ------ |
+| --- | --- | --- |
 
 ## Canonical conformance matrix
 
-| ID  | Member | Variant | Size | Configuration | State | Scheme or direction | Requirements covered |
-| --- | ------ | ------- | ---- | ------------- | ----- | ------------------- | -------------------- |
+| ID | Member | Variant | Size | Configuration | State | Scheme or direction | Requirements covered |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 
 ## Source conflicts
 
@@ -181,3 +181,5 @@ None.
 - [ ] The conformance matrix covers every documented dimension.
 - [ ] No Mioframe architecture, code, test, or migration decision is present.
 ```
+
+For a newly generated or materially changed artifact, use `approval: pending`. Preserve `approval: approved` only under the unchanged-artifact rule in `SKILL.md`.
