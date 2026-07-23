@@ -2,9 +2,9 @@
 
 ## Current state
 
-Active root: `Button`
+Active root: none
 
-Alignment status: `converging`
+Alignment status: `Button` — `aligned`
 
 Continuation stack: `none`
 
@@ -14,7 +14,7 @@ External blocker: none
 
 ## Next action
 
-Resume `material-component Button`; obtain a fresh `material-family-review` now that the continuation stack is empty again (typescale ownership, MDButton.css private-route ownership, the MDIconButton/MDFab/MDExtendedFab MDStateLayer import corrections, and the `src/shared/ui/State` barrel docgen-defect fix are all independently accepted, the last confirmed via real `pnpm storybook:build` chunk inspection since Podman/Playwright access remains intermittent in this sandbox), then report `aligned` if it confirms readiness and final `pnpm verify` passes.
+None. `Button` converged: two corrections independently implemented and reviewed this pass (a missing TSDoc on the `state` foundation's `usePressed`, and removal of 8 fabricated official-looking `--md-comp-button-{outlined,text}-*container-elevation*` tokens plus stale README dependency paths), final `pnpm verify` passed all 10 lanes, and a fresh `material-family-review` confirmed no known required gap remains.
 
 ## Update rule
 
