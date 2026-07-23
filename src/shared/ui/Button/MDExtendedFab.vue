@@ -3,7 +3,7 @@ import { computed, useSlots, useTemplateRef } from 'vue';
 import { MD_TYPESCALE } from '@shared/ui/material';
 import { MDCircularProgressIndicator } from '../material';
 import { MDPlainTooltip } from '../Tooltips';
-import { MDStateLayer, useRipple, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '@shared/ui/material/foundation/state';
 import { MDSymbol } from '../Icon';
 
 const props = withDefaults(

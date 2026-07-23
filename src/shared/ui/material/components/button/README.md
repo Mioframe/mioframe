@@ -147,9 +147,15 @@ Label/icon opacity 0.38 for every style. State-layer opacities: hover 0.08, focu
 
 `components/button/button.tokens.css` owns every official `--md-comp-button-<color>-*` and
 `--md-comp-button-<size>-*` declaration. `MDButton.css` owns `--md-private-button-*` implementation
-routes and the final rendered CSS, using a base → state-selector-override → `rendered-*`
-three-stage private route (configuration selects base, state selectors override `rendered-*`,
-template/CSS reads only `rendered-*`).
+routes and the final rendered CSS. Each `--md-private-button-rendered-<property>` (container color,
+label color, icon color, outline color, elevation, state-layer color) is set directly from
+component tokens or literals at every state × variant selector that needs it — one direct route per
+declaration, not a multi-stage base/state alias chain; template/CSS reads only `rendered-*`.
+Structural/layout properties (`border-radius`, `height`, `padding-left`/`-right`, `icon-gap`,
+`border-width`, `border-style`, `box-sizing`, `target-size`, `icon-size`) and the label/icon opacity
+pair (`label-opacity`/`icon-opacity`, driven by `disabled-label-opacity`/`disabled-icon-opacity`)
+remain their own directly-set, directly-read private routes outside the rendered-color/elevation
+family.
 
 `MDButton.css` sets three documented external generic foundation contract properties
 (`docs/tokens.md`, "External generic foundation contracts") on its `__icon`/`__progress-indicator`

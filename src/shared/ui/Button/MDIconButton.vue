@@ -3,7 +3,7 @@ import { computed, onMounted, useTemplateRef, warn, watchEffect } from 'vue';
 import { MDCircularProgressIndicator } from '../material';
 import { MDPlainTooltip, MDRichTooltip } from '../Tooltips';
 import { MDSymbol } from '../Icon';
-import { MDStateLayer, useRipple, useStateLayer } from '../State';
+import { MDStateLayer, useRipple, useStateLayer } from '@shared/ui/material/foundation/state';
 
 const props = withDefaults(
   defineProps<{
@@ -129,7 +129,7 @@ if (import.meta.env.DEV) {
     <MDCircularProgressIndicator
       v-if="props.loading !== undefined && props.loading !== false"
       class="md-icon-button__progress-indicator"
-      :progress="props.loading === true ? 0 : props.loading"
+      :progress="props.loading === true ? undefined : props.loading"
     />
 
     <MDRichTooltip

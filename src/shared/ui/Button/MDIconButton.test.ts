@@ -88,9 +88,9 @@ describe('MDIconButton', () => {
     const wrapper = mountIconButton({ loading: true });
 
     expect(wrapper.classes()).toContain('md-icon-button_loading');
-    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
-      '0',
-    );
+    expect(
+      wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress'),
+    ).toBeUndefined();
   });
 
   it('treats a positive numeric loading value as an active, determinate loading state', () => {
