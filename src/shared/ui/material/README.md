@@ -1,36 +1,44 @@
 # Mioframe Material library
 
-`src/shared/ui/material` is the canonical source boundary for Mioframe's Material implementation.
+`src/shared/ui/material` is the canonical source boundary for Mioframe's Material implementation and Material-library documentation.
 
 The library contains:
 
-- cross-family Material foundation contracts required by current work;
-- official public Material component families;
-- reusable official Material compositions independent of product domains.
+- `docs` — architecture, workflow, source policy, foundation policies, roadmap, inventory, audits, and verification contracts;
+- `foundation` — cross-family Material contracts required by approved current work;
+- `components` — official public Material component families;
+- `patterns` — reusable official Material compositions independent of product domains.
 
-Canonical architecture:
+Generic platform utilities, project-specific shared UI, features, widgets, pages, product documentation, and app behavior remain outside.
 
+## Canonical documentation
+
+Start with:
+
+- `docs/workflow.md`;
+- `docs/source-of-truth.md`;
 - `docs/library-architecture.md`;
-- `docs/foundation-architecture.md`;
 - `docs/component-architecture.md`;
+- `docs/foundation-architecture.md`;
 - `docs/component-testing.md`.
 
-Operational progress and the next ready family are tracked in `docs/library-roadmap.md` and `docs/ui-library-inventory.md`.
+Program state is owned by `docs/library-roadmap.md`, `docs/ui-library-inventory.md`, `docs/foundation-registry.md`, and `docs/audits/<family>.md` according to their documented boundaries.
 
 ## Ownership map
 
 ```text
+material/docs
+  Material library architecture, source policy, workflow, program records, and review evidence.
+
 material/foundation
-  Cross-family Material tokens, roles, primitives, adapters, and verification helpers.
+  Cross-family Material tokens, roles, primitives, adapters, and verification helpers required by approved work.
 
 material/components
-  Official public component families, adaptive contracts, implementations, stories, and focused tests.
+  Official public component families, approved family contracts, implementations, stories, and focused tests.
 
 material/patterns
   Reusable official Material compositions required by current scenarios.
 ```
-
-Generic platform utilities, project-specific shared UI, features, widgets, pages, and app behavior remain outside.
 
 ## Dependency direction
 
@@ -47,6 +55,22 @@ material library → project-specific shared UI and product layers
 Higher Material layers may use correctly owned generic utilities directly. Do not create foundation wrappers merely to route generic behavior.
 
 Product imports inside the Material library, dependency inversion, and private cross-family imports are forbidden.
+
+## Development process
+
+The required sequence is:
+
+```text
+approved architecture and ready family contract
+→ material-component-implementation
+→ material-component-review
+→ operator visual acceptance when required
+→ merge
+```
+
+A component name alone is not sufficient to start production edits. The family contract must resolve supported surface, ownership, public API, semantics, foundations, consumers, acceptance criteria, and verification, and must record `Readiness: ready`.
+
+The coding agent implements the approved contract. It does not approve architecture, independently review its own work, or claim merge readiness.
 
 ## Public API
 
@@ -67,26 +91,25 @@ After it exists:
 ## New implementation
 
 - Create new official Material components under `components/<family>`.
-- Create new foundation artifacts under `foundation/<domain>` only when current work proves the cross-family need.
+- Create new foundation artifacts under `foundation/<domain>` only when approved current work proves the cross-family need.
 - Create patterns under `patterns/<pattern>` only after the pattern conditions pass.
 - Treat legacy directories as existing owners, not templates for new ownership.
-- Create no placeholder files, empty structural layers, or speculative abstractions.
+- Create no placeholder files, empty structural layers, speculative abstractions, manager agents, or execution state machines.
 
 Every new public component includes:
 
-- the mandatory adaptive family-contract core;
-- only conditional contract sections applicable to the component;
+- an architect-approved family contract with `Readiness: ready`;
 - colocated component-contract tests;
 - one stable canonical visual story when it has visible output;
-- `StateMatrix` only when multiple distinct visual routes exist;
-- browser, pure, consumer, visual-regression, and operator-review layers only when applicable.
+- browser, pure, consumer, visual-regression, and operator-review layers only when owned by the contract.
 
 ## Physical migration map
 
-This table tracks physical ownership only. Material alignment belongs to component and foundation contracts and registries. Program sequencing belongs to the roadmap.
+This table tracks physical ownership only. Material correctness belongs to approved family/foundation contracts and independent audits. Program sequencing belongs to the roadmap.
 
 | Area                              | Current production owner                            | Canonical owner                                                                     | Migration status              |
 | --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
+| Material documentation            | `src/shared/ui/material/docs`                       | `src/shared/ui/material/docs`                                                       | `migrated`                    |
 | Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                      | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
 | Typography utilities              | `src/shared/lib/md`                                 | `material/foundation/typography`                                                    | `legacy`                      |
 | State layer, ripple, and focus    | `src/shared/ui/State`                               | `material/foundation/interaction`                                                   | `legacy`                      |
@@ -101,27 +124,7 @@ Do not split a valid cohesive owner merely to match this table. Migration follow
 ## Migration status
 
 - `legacy` — current code remains accepted for existing consumers but is not a template for new work;
-- `migrating` — one active family or domain migration owns the applicable implementation and consumer changes;
-- `migrated` — the canonical owner is active, obsolete paths are removed, proportional proof exists, and required agent/operator review is complete.
+- `migrating` — one active approved family or domain migration owns the applicable implementation and consumer changes;
+- `migrated` — the canonical owner is active, obsolete paths are removed, proportional proof exists, independent review passes, and required visual acceptance is recorded.
 
 A domain must not have parallel permanent legacy and canonical owners. Temporary compatibility requires exact consumers and a removal target.
-
-## Migration rules
-
-Use one cohesive end-to-end family migration by default:
-
-1. inspect the current family and consumers;
-2. resolve the supported Expressive contract;
-3. correct inaccurate applicable rules;
-4. change only required foundations;
-5. implement the canonical family;
-6. migrate consumers and public exports;
-7. add proportional proof;
-8. remove obsolete ownership;
-9. update only records whose owned facts changed;
-10. complete agent review and required operator visual acceptance;
-11. update the queue and continue to the next ready family.
-
-Split work only when shared blast radius, compatibility, reviewability, or a safer independently valid state justifies it.
-
-The program sequence is `MDButton`, an independent stateful pilot such as `MDSwitch`, then autonomous priority-driven migration. A genuinely new component is added when the product requires it, not as a process gate.
