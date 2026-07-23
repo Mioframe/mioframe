@@ -2,21 +2,17 @@
 
 ## Principle
 
-The Material baseline theme is the project foundation for shared UI tokens. Component work must not redefine baseline color, typography, shape, elevation, motion, or state decisions locally.
+The Material baseline theme is the project foundation for shared UI tokens. Components must not redefine color, typography, shape, elevation, motion, or state decisions locally.
 
 ## Theme model
 
-Start with a tokenized Material baseline theme.
+The theme supports light and dark color schemes. Components consume theme roles through tokens and must not hardcode scheme-specific colors.
 
-The theme must support both light and dark color schemes from the beginning. Components must consume theme roles through tokens and must not hardcode light-only or dark-only colors.
-
-Future work may add user customization of the base palette. The foundation must be structured so a generated or user-selected palette can update reference and system tokens without rewriting components.
-
-Dynamic or user-custom color is not required for the initial foundation implementation, but the token model must not block it.
+Palette customization, when required, updates reference and system tokens rather than component CSS. The token model must not couple components to one fixed palette source.
 
 ## Foundation families
 
-The baseline theme policy covers:
+The baseline theme covers:
 
 - color roles;
 - typography scale;
@@ -28,43 +24,39 @@ The baseline theme policy covers:
 
 ## Color roles
 
-Color roles must be used according to their Material meaning and intended pairings. Components should use component tokens that point to system color roles rather than hardcoded palette values.
-
-The initial theme should define Material baseline light and dark schemes. Palette customization belongs above the token model and should update reference/system tokens rather than component CSS.
+Use color roles according to their Material meaning and intended pairings. Components use component tokens that resolve to system roles rather than hardcoded palette values.
 
 ## Typography
 
-Typography values must be provided through `md.sys.typescale.*` tokens. Components should use typography tokens instead of local font-size, line-height, weight, or tracking values unless the official component spec defines a component-specific override.
+Typography values are provided through `md.sys.typescale.*` tokens. Components use typography tokens instead of local font size, line height, weight, or tracking unless an official component specification defines a component-specific value.
 
 Typography authoring values use `sp` as defined in [Units](./units.md).
 
 ## Shape
 
-Shape values must come from Material shape tokens or component tokens that point to them. Do not invent local radii for Material components when Material provides a shape role or measurement.
+Shape values come from Material shape tokens or component tokens that resolve to them. Do not invent local radii when Material provides a role or measurement.
 
 ## Elevation
 
-Elevation should use Material elevation levels. Surface tint color is deprecated in current Material guidance and should not be introduced as a new dependency.
+Use Material elevation levels. Do not introduce deprecated surface-tint behavior as a new dependency.
 
 ## Motion
 
-Motion should use Material motion tokens or a documented newer Material motion model when the relevant guidance requires it. Do not add arbitrary transition durations or easing curves to shared Material components.
+Use verified Material motion tokens or a documented platform adaptation required by current official guidance. Do not add arbitrary transition durations or easing curves to shared Material components.
 
 ## State tokens
 
-State layer opacity and focus indicator values belong to the foundation layer. Components should not redefine them locally unless the official component spec requires a component-specific value.
+State-layer opacity and focus-indicator values belong to shared foundation contracts. Components define component-specific values only when the official component specification requires them.
 
 ## Contexts
 
-Theme contexts such as light and dark mode must be handled at the token level. Components should not hardcode light or dark colors.
+Theme contexts are handled through reference and system tokens. Components must not contain independent light or dark palettes.
 
-## Audit requirement
+## Verification
 
-Before broad component conversion, audit the existing baseline token file and classify each token as:
+When theme contracts change, verify:
 
-- Material reference token;
-- Material system token;
-- Material component token;
-- compatibility alias;
-- app-specific token that needs `--app-*` namespace;
-- obsolete token to remove.
+- affected reference, system, and component token paths;
+- light and dark role mappings;
+- representative typography, shape, elevation, motion, and state consumers;
+- compatibility aliases and application-specific values remain outside the public Material token vocabulary.
