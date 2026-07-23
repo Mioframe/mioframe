@@ -1,6 +1,6 @@
 # Material library architecture
 
-This document defines the physical boundary, dependency direction, public API, and migration model of the Mioframe Material library.
+This document defines the physical boundary, documentation ownership, dependency direction, public API, and migration model of the Mioframe Material library.
 
 The canonical library root is:
 
@@ -8,106 +8,86 @@ The canonical library root is:
 src/shared/ui/material/
 ```
 
-The library lives inside the application repository, but its Material ownership must remain understandable and testable without product-layer knowledge.
-
-## Goals
-
-The library boundary must:
-
-- give agents one canonical location for Material implementation;
-- separate cross-family foundations, official component families, reusable Material patterns, generic infrastructure, and product UI;
-- support incremental family-by-family migration;
-- keep public and private dependency direction explicit;
-- avoid mass relocation, speculative packages, and framework infrastructure built before a real need.
-
 ## Canonical structure
 
-Create only artifacts required by accepted current work.
+Create only artifacts required by approved current work.
 
 ```text
 src/shared/ui/material/
   AGENTS.md
   README.md
-  index.ts                         # after the first real public artifact exists
+  index.ts                         # after a real public artifact exists
+
+  docs/
+    README.md
+    workflow.md
+    source-of-truth.md
+    library-architecture.md
+    component-architecture.md
+    foundation-architecture.md
+    component-testing.md
+    library-roadmap.md
+    ui-library-inventory.md
+    foundation-registry.md
+    audits/
+      README.md
+      <family>.md
+    ...                            # focused Material domain policies
 
   foundation/
     <domain>/
 
   components/
     <family>/
-      README.md
+      README.md                    # approved family contract
       index.ts
       <Component>.vue
       <Component>.css
       <Component>.test.ts
       <Component>.stories.ts
-      ...                          # only applicable, justified files
+      ...
 
   patterns/
     <pattern>/
 ```
 
-The structure is an ownership map, not a requirement to pre-create every directory or file category.
-
-`component-architecture.md` owns family contracts and implementation responsibilities. `foundation-architecture.md` owns cross-family foundation contracts. This document owns location, dependency direction, public entry points, and migration.
+This is an ownership map, not a requirement to pre-create every directory or file type.
 
 ## Library domains
 
+### `docs`
+
+Owns Material-library architecture, workflow, official-source policy, foundation policies, program records, audits, and verification contracts.
+
+It must not contain product requirements, feature workflows, implementation logs, correction history, agent context, or duplicate family contracts.
+
 ### `foundation`
 
-Contains only cross-family Material contracts required by current components or product scenarios, such as:
-
-- verified reference and system tokens;
-- theme contexts;
-- typography, shape, elevation, and motion roles;
-- generic state-layer, ripple, focus, and interaction acquisition;
-- Material Symbols rendering;
-- Material-facing overlay adapters.
-
-Policy-only concerns remain in `src/shared/ui/material/docs` until a concrete runtime artifact is justified.
+Contains only cross-family Material runtime or testing contracts required by approved components or product scenarios. Policy-only concerns remain in `docs` until a concrete runtime artifact is justified.
 
 ### `components`
 
-Contains official public Material component families. A family owns its applicable:
-
-- supported usage and public API;
-- native semantics and accessibility;
-- anatomy and state ownership;
-- official component tokens;
-- component-specific behavior and rendering;
-- family documentation, stories, and focused tests.
-
-A family consumes accepted foundation contracts and must not recreate a cross-family concern locally.
+Contains official public Material component families. A family owns its approved supported usage, public API, native semantics, accessibility, anatomy, states, official component tokens, rendering, family contract, stories, and focused tests.
 
 ### `patterns`
 
-Contains a reusable composition only when:
-
-- official Material guidance documents the composition or relationship;
-- at least one current product scenario requires it;
-- it is independent of one product domain or workflow;
-- ownership does not belong more clearly to a component family or product layer;
-- it can be tested without product data.
-
-Screens, feature dialogs, settings sections, database toolbars, domain empty states, and product navigation rules remain outside `patterns`.
+Contains a reusable composition only when official guidance defines it, a current scenario requires it, it is independent of one product domain, ownership does not belong to one family, and it can be tested without product data.
 
 ## What remains outside
 
 Keep outside `src/shared/ui/material`:
 
+- product documentation under root `docs`;
 - generic DOM, event, teleport, focus, geometry, lifecycle, and browser utilities;
 - project-specific shared UI and wrappers;
 - feature, entity, widget, page, and app behavior;
 - product information architecture and workflows;
 - app-specific `--app-*` contracts;
-- global application test infrastructure;
-- policy and source-evidence documents under `src/shared/ui/material/docs`.
+- global application test infrastructure.
 
-A Material implementation may use a correctly owned generic utility directly. Do not introduce a foundation wrapper merely to route generic behavior.
+A Material implementation may use a correctly owned generic utility directly. Do not create a foundation wrapper merely to route generic behavior.
 
 ## Dependency direction
-
-Allowed direction is downward:
 
 ```text
 shared/lib generic infrastructure
@@ -119,120 +99,60 @@ material/foundation → material/components → material/patterns
 material library → project-specific shared UI and product layers
 ```
 
-Rules:
-
-- foundation must not import components or patterns;
-- a family must not deep-import another family's private files;
-- patterns compose public component and foundation contracts only;
-- Material library code must not import product layers;
-- generic infrastructure must not depend on Material family knowledge;
-- product consumers must not deep-import private implementation or testing files.
+- Documentation describes the library but is not a runtime dependency.
+- Foundation must not import components or patterns.
+- A family must not deep-import another family's private files.
+- Patterns compose public component and foundation contracts only.
+- Material runtime code must not import product layers.
+- Generic infrastructure must not depend on Material family knowledge.
+- Product consumers must not deep-import private implementation or testing files.
 
 ## Public API
 
-The project-facing entry point is eventually:
+The project-facing entry point is eventually `@shared/ui/material`.
+
+Do not create the root entry point before a real production artifact can be exported honestly. Internal library code uses owning family, foundation, or generic entry points rather than the root barrel.
+
+## Development model
+
+Follow `workflow.md`:
 
 ```text
-@shared/ui/material
+approved architecture and ready contract
+→ implementation
+→ independent technical review
+→ operator visual acceptance when required
+→ merge
 ```
 
-Do not create the root entry point before a real production artifact can be exported honestly.
+The architect owns family selection, supported surface, ownership, public API, acceptance criteria, implementation task, and merge recommendation.
 
-After it exists:
-
-- product consumers use the root entry point by default;
-- the root entry point exposes a curated API;
-- internal library code uses owning family, foundation, or generic entry points rather than the root barrel;
-- private implementation and testing files are not public API.
-
-A separate package, package build, or publication pipeline is not required until a current distribution or isolation need proves it useful.
+The coding agent implements only an approved `Readiness: ready` contract. It does not approve architecture, independently review its own result, or continue automatically to another family.
 
 ## New work
 
-- Create every new public official Material component under `components/<family>`.
-- Create a new foundation runtime or testing owner under the applicable `foundation/<domain>` only when current work proves the need.
+- Create new public official Material components under `components/<family>`.
+- Create a foundation runtime/testing owner under `foundation/<domain>` only when approved current work proves the cross-family need.
 - Create a pattern only after the pattern conditions pass.
 - Treat legacy Material locations as existing owners, not templates for new ownership.
-- Keep strict local legacy repairs in place only when they do not change ownership, public contract, foundation dependencies, or unrelated output.
+- Create no placeholder layers, manager agents, owner stacks, or execution state machines.
 
-## Family migration model
+## Migration model
 
-The default migration is one cohesive end-to-end family cycle:
+The default cycle is:
 
 ```text
-discovery → accepted contract → rule refinement → required foundation work →
-implementation → consumer migration → proof → agent review →
-operator visual acceptance when required → queue update
+approved contract → required foundation work → implementation → consumer migration → proof → cleanup → independent review → visual acceptance
 ```
 
-A family migration may include relocation, architecture cleanup, and Material 3 Expressive alignment when the combined result remains reviewable and leaves no unsafe intermediate state.
+Split work only when a wider foundation blast radius, compatibility decision, reviewability, or safer independently valid state requires it.
 
-Split work into focused prerequisite or follow-up PRs only when:
-
-- a foundation change has a materially wider blast radius;
-- a public compatibility decision requires separate review;
-- the combined diff would obscure correctness;
-- an independently valid intermediate state materially reduces risk.
-
-Do not split work merely because older documents defined separate relocation and alignment phases.
-
-A relocation-only PR remains valid when no API, behavior, token, rendered-output, or verification contract changes. An alignment-only PR remains valid for a canonical family with named Material deviations. These are useful scopes, not mandatory stages.
-
-## Migration completion
-
-A migrated family updates every artifact actually affected by the migration:
-
-- source paths and internal imports;
-- public exports and in-repository consumers;
-- the family contract;
-- applicable stories and tests;
-- applicable visual evidence and risk registration;
-- the physical migration map;
-- registries or inventory rows whose owned facts changed;
-- obsolete legacy paths and exports.
-
-Do not update roadmap, registries, snapshots, or other documents when their owned facts did not change.
-
-Permanent compatibility re-exports are forbidden. A temporary path requires exact consumers, no new usage, and a removal target.
-
-## Program sequence
-
-Use the sequence owned by `library-roadmap.md`:
-
-1. complete the operating model;
-2. perform the `MDButton` end-to-end pilot;
-3. perform an independent stateful pilot, normally `MDSwitch`;
-4. continue autonomous sequential migration by evidence-backed priority.
-
-Inventory and foundation work are performed just in time for the selected family. A genuinely new component is authored when the product needs it, not as a prerequisite for continuing migration.
-
-## Rule refinement
-
-Project rules are working contracts. When a real migration proves a rule inaccurate, contradictory, incomplete, obsolete, or needlessly complex, correct the owning rule instead of creating a family-specific exception.
-
-The correction must be the smallest change supported by official Material sources, repository architecture, and accepted product behavior. Update only directly affected rule owners and record the concrete case and consequence.
+A migrated family updates only affected source paths, exports, consumers, family contract, stories, tests, visual evidence, physical ownership map, and program records. Obsolete legacy owners and unapproved compatibility paths must be removed.
 
 ## Automation policy
 
-There is no mandatory standalone Material validation phase.
-
-Use existing repository checks and focused tests. Add a new automated guard only when real work demonstrates that:
-
-- the protected contract is stable;
-- the failure is repeated or materially risky;
-- the check is precise and cheap to maintain;
-- existing tooling can express it without a parallel architecture system.
-
-Automation may prove deterministic repository facts. It must not claim to prove Material interpretation, family rationale, scenario sufficiency, or visual correctness.
+Add a guard only after real work proves a stable repeated and precisely detectable need. Automation may prove deterministic repository facts; it must not claim to prove Material interpretation, architecture quality, scenario sufficiency, or visual correctness.
 
 ## Completion
 
-The library architecture is healthy when:
-
-- every new Material artifact has one clear owner;
-- foundations, families, patterns, generic infrastructure, and product UI remain distinct;
-- components use accepted cross-family contracts without local substitutes;
-- each completed migration removes obsolete ownership and updates consumers;
-- public imports hide private file structure;
-- rules improve from real migration evidence;
-- the library grows from confirmed component and product needs.
+The architecture is healthy when documentation, foundations, families, patterns, generic infrastructure, and product UI have distinct owners; every artifact has one owner; migrations remove obsolete ownership; public imports hide private structure; and implementation remains separate from independent review.
