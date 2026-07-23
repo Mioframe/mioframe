@@ -21,7 +21,7 @@ src/shared/ui/material/docs
 
 Root `docs` remains reserved for product and project documentation.
 
-Current technical documents include official source policy, accessibility, tokens, interaction states, layout, overlays, Storybook, testing, and foundation-domain guidance. Component workflow artifacts will be added beside their owning family only after their contracts are defined.
+Current documents contain only durable technical policy: official sources, theme and units, tokens, accessibility, interaction states, density, icons, overlays, adaptive layout, public UI API, Storybook, and deviations. Component workflow artifacts will be added beside their owning family only after their contracts are defined.
 
 ## Dependency direction
 
