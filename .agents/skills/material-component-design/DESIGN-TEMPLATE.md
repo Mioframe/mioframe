@@ -2,6 +2,15 @@
 
 Use this template exactly unless a section is explicitly inapplicable according to the inspected Material sources.
 
+## Contents
+
+- Metadata and sources
+- Identity, purpose, family, variants, configurations, and sizes
+- Anatomy, content, states, and interaction
+- Visual specification and token inventory
+- Motion, accessibility, directionality, and adaptation
+- Conformance matrix, source issues, and acceptance criteria
+
 ```md
 ---
 document: material-component-design
