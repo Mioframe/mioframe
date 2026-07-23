@@ -2,43 +2,45 @@
 
 ## Principle
 
-A deviation is any project behavior, naming, token, layout, state, or component pattern that intentionally differs from the checked official Material 3 guidance.
+A deviation is intentional project behavior, naming, token usage, layout, state, or component behavior that differs from current checked Material guidance.
 
-Deviations are allowed only when they are explicit, justified, and documented. Undocumented drift is not a deviation; it is technical debt or an unresolved verification risk.
+Deviations are allowed only when explicit, justified, bounded, and verifiable. Undocumented drift is not a deviation.
 
-## When to document a deviation
+## When to record a deviation
 
-Document a deviation when:
+Record one when:
 
-- the project supports a component variant not described by Material 3;
-- the project omits an official Material 3 variant that users of the UI kit might expect;
-- a prop or token cannot use the official Material term;
-- a project-specific component uses Material tokens or states but is not an official Material component;
-- a Material guideline cannot be followed because of platform, product, accessibility, privacy, or implementation constraints;
-- the official docs are unavailable or incomplete for the touched surface.
+- the project supports behavior or configuration not described by Material;
+- a required product scenario intentionally omits or changes an expected official capability;
+- public vocabulary cannot use the official Material term;
+- a project-specific component uses Material foundations but is not an official component;
+- platform, product, accessibility, privacy, or implementation constraints require different behavior;
+- required official evidence is unavailable or conflicting and an explicit product decision accepts the risk.
 
-## Deviation record format
+Unsupported optional capability is not automatically a deviation. It becomes part of the supported-surface contract only when the library claims or requires it.
 
-Use this format in the relevant component docs, Storybook notes, or a future deviation registry:
+## Record format
+
+Store the record beside the owning component or foundation artifact:
 
 ```text
-Surface: <component, token family, layout, or pattern>
-Material guidance: <checked page/cache path>
-Project behavior: <what the project does>
-Reason: <why the project differs>
-Blast radius: <where it affects users or developers>
-Verification: <how the behavior is checked>
-Review date: <date or milestone for revisiting>
+Surface:
+Official guidance and snapshot:
+Project behavior:
+Reason:
+Owner:
+Affected consumers:
+Blast radius:
+Verification:
+Removal or review condition: permanent | <condition>
 ```
 
 ## Project-specific UI
 
-Project-specific components must be documented under `Project UI` in Storybook or equivalent docs. They may use Material foundations such as tokens, state layers, typography, and shape, but they must not be presented as official Material components.
+Project-specific components remain under `Project UI` in Storybook or equivalent documentation. They may use Material tokens, state layers, typography, shape, or other foundations, but must not be presented as official Material components.
 
-## Unsupported official features
+## Compatibility deviations
 
-If the project intentionally supports only a subset of an official Material component, document the unsupported features. The public API should not accept unsupported values unless they are compatibility aliases with a migration plan.
+Temporary compatibility aliases or behavior must name the replacement, exact consumers, prohibition on new usage, and removal condition.
 
-## Temporary deviations
-
-Temporary deviations should include a migration target. Do not create permanent compatibility aliases without documenting why they must remain.
+Do not preserve compatibility indefinitely without an explicit current requirement.
