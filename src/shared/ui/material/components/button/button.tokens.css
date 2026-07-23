@@ -239,10 +239,6 @@
     --md-comp-button-outlined-outline-color: var(--md-sys-color-outline-variant);
     --md-comp-button-outlined-label-text-color: var(--md-sys-color-on-surface-variant);
     --md-comp-button-outlined-icon-color: var(--md-sys-color-on-surface-variant);
-    --md-comp-button-outlined-container-elevation: var(--md-sys-elevation-level0);
-    --md-comp-button-outlined-hovered-container-elevation: var(--md-sys-elevation-level0);
-    --md-comp-button-outlined-focused-container-elevation: var(--md-sys-elevation-level0);
-    --md-comp-button-outlined-pressed-container-elevation: var(--md-sys-elevation-level0);
     --md-comp-button-outlined-hovered-label-text-color: var(--md-sys-color-on-surface-variant);
     --md-comp-button-outlined-focused-label-text-color: var(--md-sys-color-on-surface-variant);
     --md-comp-button-outlined-pressed-label-text-color: var(--md-sys-color-on-surface-variant);
@@ -350,10 +346,6 @@
   &.md-button_color-text {
     --md-comp-button-text-label-text-color: var(--md-sys-color-primary);
     --md-comp-button-text-icon-color: var(--md-sys-color-primary);
-    --md-comp-button-text-container-elevation: var(--md-sys-elevation-level0);
-    --md-comp-button-text-hovered-container-elevation: var(--md-sys-elevation-level0);
-    --md-comp-button-text-focused-container-elevation: var(--md-sys-elevation-level0);
-    --md-comp-button-text-pressed-container-elevation: var(--md-sys-elevation-level0);
     --md-comp-button-text-hovered-label-text-color: var(--md-sys-color-primary);
     --md-comp-button-text-focused-label-text-color: var(--md-sys-color-primary);
     --md-comp-button-text-pressed-label-text-color: var(--md-sys-color-primary);

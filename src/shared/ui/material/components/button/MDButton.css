@@ -749,7 +749,6 @@
     --md-private-button-rendered-label-color: var(--md-comp-button-outlined-label-text-color);
     --md-private-button-rendered-icon-color: var(--md-comp-button-outlined-icon-color);
     --md-private-button-rendered-outline-color: var(--md-comp-button-outlined-outline-color);
-    --md-private-button-rendered-elevation: var(--md-comp-button-outlined-container-elevation);
     --md-private-button-rendered-state-layer-color: var(--md-comp-button-outlined-label-text-color);
 
     &.md-state_hover:not(.md-state_disabled):not(:disabled),
@@ -760,9 +759,6 @@
       --md-private-button-rendered-icon-color: var(--md-comp-button-outlined-hovered-icon-color);
       --md-private-button-rendered-outline-color: var(
         --md-comp-button-outlined-hovered-outline-color
-      );
-      --md-private-button-rendered-elevation: var(
-        --md-comp-button-outlined-hovered-container-elevation
       );
       --md-private-button-rendered-state-layer-color: var(
         --md-comp-button-outlined-hovered-state-layer-color
@@ -778,9 +774,6 @@
       --md-private-button-rendered-outline-color: var(
         --md-comp-button-outlined-focused-outline-color
       );
-      --md-private-button-rendered-elevation: var(
-        --md-comp-button-outlined-focused-container-elevation
-      );
       --md-private-button-rendered-state-layer-color: var(
         --md-comp-button-outlined-focused-state-layer-color
       );
@@ -794,9 +787,6 @@
       --md-private-button-rendered-icon-color: var(--md-comp-button-outlined-pressed-icon-color);
       --md-private-button-rendered-outline-color: var(
         --md-comp-button-outlined-pressed-outline-color
-      );
-      --md-private-button-rendered-elevation: var(
-        --md-comp-button-outlined-pressed-container-elevation
       );
       --md-private-button-rendered-state-layer-color: var(
         --md-comp-button-outlined-pressed-state-layer-color
@@ -982,16 +972,12 @@
     --md-private-button-disabled-icon-opacity: var(--md-comp-button-text-disabled-icon-opacity);
     --md-private-button-rendered-label-color: var(--md-comp-button-text-label-text-color);
     --md-private-button-rendered-icon-color: var(--md-comp-button-text-icon-color);
-    --md-private-button-rendered-elevation: var(--md-comp-button-text-container-elevation);
     --md-private-button-rendered-state-layer-color: var(--md-comp-button-text-label-text-color);
 
     &.md-state_hover:not(.md-state_disabled):not(:disabled),
     &:hover:not(:disabled) {
       --md-private-button-rendered-label-color: var(--md-comp-button-text-hovered-label-text-color);
       --md-private-button-rendered-icon-color: var(--md-comp-button-text-hovered-icon-color);
-      --md-private-button-rendered-elevation: var(
-        --md-comp-button-text-hovered-container-elevation
-      );
       --md-private-button-rendered-state-layer-color: var(
         --md-comp-button-text-hovered-state-layer-color
       );
@@ -1001,9 +987,6 @@
     &:focus-visible:not(:disabled) {
       --md-private-button-rendered-label-color: var(--md-comp-button-text-focused-label-text-color);
       --md-private-button-rendered-icon-color: var(--md-comp-button-text-focused-icon-color);
-      --md-private-button-rendered-elevation: var(
-        --md-comp-button-text-focused-container-elevation
-      );
       --md-private-button-rendered-state-layer-color: var(
         --md-comp-button-text-focused-state-layer-color
       );
@@ -1013,9 +996,6 @@
     &:active:not(:disabled) {
       --md-private-button-rendered-label-color: var(--md-comp-button-text-pressed-label-text-color);
       --md-private-button-rendered-icon-color: var(--md-comp-button-text-pressed-icon-color);
-      --md-private-button-rendered-elevation: var(
-        --md-comp-button-text-pressed-container-elevation
-      );
       --md-private-button-rendered-state-layer-color: var(
         --md-comp-button-text-pressed-state-layer-color
       );

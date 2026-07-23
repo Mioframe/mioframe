@@ -4,6 +4,13 @@ import parseDuration from 'parse-duration';
 
 let lastTarget: Element | null | undefined = undefined;
 
+/**
+ * Track native press/drag/touch start on a host element against release-type window events.
+ * @param rawEl - Host element ref that receives mousedown, dragstart, and touchstart tracking.
+ * @returns Reactive press state: `pressed` reflects the immediate press/drag/touch state, and
+ * `durationPressedState` stays true for the host's CSS `transition-duration` after release so a
+ * pressed visual can animate out.
+ */
 export const usePressed = (rawEl: MaybeElementRef) => {
   const target = computed(() => unrefElement(rawEl));
 
