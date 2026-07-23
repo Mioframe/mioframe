@@ -150,7 +150,7 @@ MATERIAL DESIGN RESULT
 component: <official title>
 artifact: src/shared/ui/material/components/<canonical-material-slug>/DESIGN.md
 status: review-ready | blocked
-approval: pending | approved-preserved
+approval: pending | approved
 sources: <count>
 source gaps: none | <count>
 source conflicts: none | <count>
