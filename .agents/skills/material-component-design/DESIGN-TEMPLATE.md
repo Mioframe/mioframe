@@ -4,7 +4,7 @@ Use this template exactly unless a section is explicitly inapplicable according 
 
 ## Contents
 
-- MCP snapshot provenance and source coverage
+- MCP snapshot provenance and route/resource coverage
 - Identity, purpose, family, variants, configurations, and sizes
 - Anatomy, content, states, and interaction
 - Visual specification and token inventory
@@ -18,7 +18,7 @@ component: <official title>
 canonical-slug: <official route slug>
 material-source: material3-mcp
 material-origin: m3.material.io
-source-snapshot: <cache snapshot id or capture timestamp>
+source-snapshot: <reported cache generatedAt or not reported>
 source-cache-schema: <schema/version or not reported>
 generated-at: YYYY-MM-DD
 status: review-ready | blocked
@@ -30,18 +30,18 @@ approval: pending | approved
 ## Source provenance
 
 - MCP source: `material3`
-- Cache snapshot:
-- Cache captured at:
+- Cache generated at:
 - Cache schema/version:
+- Cache freshness/status:
 - Canonical component route:
 
 ## Source coverage
 
-| Source ID | MCP record or route | Official title | Original URL | Coverage status | Evidence used or not-applicable reason |
-| --------- | ------------------- | -------------- | ------------ | --------------- | -------------------------------------- |
-| M3-...    | ...                 | ...            | ...          | inspected       | ...                                    |
+| Source ID | MCP record or route | Official title | Original URL | Coverage or resolution | Evidence used or disposition |
+| --------- | ------------------- | -------------- | ------------ | ---------------------- | ---------------------------- |
+| M3-...    | ...                 | ...            | ...          | inspected              | ...                          |
 
-Every applicable component record returned by the MCP component bundle or graph must appear as `inspected` or `not applicable` with a reason.
+Account for every route returned by `get_component_tabs`, every token-table group returned by `get_component_tokens`, and every unresolved resource returned by `get_component_resources`. Use `not applicable` or `blocked` with a reason when a record is not used as evidence.
 
 ## Component identity
 
@@ -146,13 +146,15 @@ Every applicable component record returned by the MCP component bundle or graph 
 
 ## Material token inventory
 
-| Requirement ID | Design role | Official component token | Official system role or value | Source ID |
-| -------------- | ----------- | ------------------------ | ----------------------------- | --------- |
+| Design role | Official component token | Official system role or value | Source ID |
+| ----------- | ------------------------ | ----------------------------- | --------- |
+
+The official component token name is the stable identifier for a token row. Do not create arbitrary duplicate requirement IDs for every token unless two rows would otherwise be ambiguous.
 
 ## Motion
 
-| Requirement ID | Transition | Trigger | From | To  | Motion model | Published parameters | Source ID |
-| -------------- | ---------- | ------- | ---- | --- | ------------ | -------------------- | --------- |
+| Requirement ID | Transition | Trigger | From | To | Motion model | Published parameters | Source ID |
+| -------------- | ---------- | ------- | ---- | -- | ------------ | -------------------- | --------- |
 
 ### Interruption and reduced motion
 
@@ -173,20 +175,20 @@ Do not force spring damping/stiffness into duration/easing fields. Record the mo
 
 ## Cross-section consistency
 
-| Check                              | Result | Related requirement IDs | Resolution or conflict ID |
-| ---------------------------------- | ------ | ----------------------- | ------------------------- |
-| Content vs accessibility           | pass   | ...                     | ...                       |
-| States vs interaction              | pass   | ...                     | ...                       |
-| Visual summaries vs token tables   | pass   | ...                     | ...                       |
-| Motion vs token inventory and gaps | pass   | ...                     | ...                       |
-| Family boundary vs related records | pass   | ...                     | ...                       |
+| Check | Result | Related requirement IDs | Resolution or conflict ID |
+| ----- | ------ | ----------------------- | ------------------------- |
+| Content vs accessibility | pass | ... | ... |
+| States vs interaction | pass | ... | ... |
+| Visual summaries vs token tables | pass | ... | ... |
+| Motion vs token inventory and gaps | pass | ... | ... |
+| Family boundary vs related records | pass | ... | ... |
 
 ## Canonical conformance matrix
 
-| ID  | Member | Variant | Size | Configuration | State | Scheme or direction | Requirement IDs | Source IDs |
-| --- | ------ | ------- | ---- | ------------- | ----- | ------------------- | --------------- | ---------- |
+| ID | Member | Variant | Size | Configuration | State | Scheme or direction | Requirement IDs | Token references | Source IDs |
+| -- | ------ | ------- | ---- | ------------- | ----- | ------------------- | --------------- | ---------------- | ---------- |
 
-Every matrix case must reference requirements already defined above. Do not introduce a new scheme, platform mode, accessibility condition, or behavior only in this table.
+Every matrix case must reference requirements already defined above. Use official token names for token-specific coverage. Do not introduce a new scheme, platform mode, accessibility condition, or behavior only in this table.
 
 ## Source conflicts
 
@@ -203,14 +205,16 @@ None.
 ## Design acceptance criteria
 
 - [ ] The official target and family boundary are deterministic.
-- [ ] MCP snapshot identity and capture time are recorded or explicitly reported unavailable.
-- [ ] Every applicable MCP component record is accounted for in Source coverage.
+- [ ] MCP snapshot provenance is recorded or explicitly reported unavailable.
+- [ ] Every component route is accounted for in Source coverage.
+- [ ] Token-table groups and unresolved resources are accounted for.
 - [ ] The complete official surface represented by the MCP snapshot is documented.
 - [ ] Variants, configurations, sizes, and states are distinct.
-- [ ] Every normative claim has a requirement ID and source ID.
+- [ ] Every behavior/design requirement has a requirement ID and source ID.
+- [ ] Every token row uses an official token name and source ID.
 - [ ] Cross-section consistency checks pass or blocking conflicts are recorded.
 - [ ] Missing guidance and conflicts are explicit.
-- [ ] The conformance matrix references only defined requirements and sources.
+- [ ] The conformance matrix references only defined requirements, official tokens, and sources.
 - [ ] Motion is represented using its published model and parameters.
 - [ ] No Mioframe architecture, code, test, or migration decision is present.
 ```
