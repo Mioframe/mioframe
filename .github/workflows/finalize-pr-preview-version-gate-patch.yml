@@ -19,6 +19,8 @@ jobs:
         with:
           ref: fix/pr-preview-version-gate
           fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.BEAVER_CI_AUTOFIX_TOKEN }}
 
       - name: Apply verified targeted patch
         shell: bash
