@@ -2,13 +2,11 @@
 
 ## Principle
 
-Public Material tokens in the project must use Material 3 vocabulary.
+Public Material tokens in the project use Material 3 vocabulary.
 
-A developer who knows the official Material 3 token model should be able to understand the project token names without learning an unrelated local naming system.
+A developer familiar with the official token model should understand project token names without learning an unrelated local naming system.
 
 ## Token classes
-
-Material 3 defines three token classes. The project maps them to CSS custom properties as follows:
 
 | Material token class | Material example                        | CSS custom property example               |
 | -------------------- | --------------------------------------- | ----------------------------------------- |
@@ -18,73 +16,71 @@ Material 3 defines three token classes. The project maps them to CSS custom prop
 
 ## Public `--md-*` rule
 
-A public CSS custom property starting with `--md-` must be Material-compatible:
+A public CSS custom property starting with `--md-` must:
 
-- it should map to an official Material token name; or
-- it should be a direct, documented adaptation of an official Material token; or
-- it should be listed as a documented project deviation.
+- map to an exact official Material token; or
+- be a direct documented platform adaptation of an official token; or
+- be recorded as an explicit project deviation.
 
-Project-only implementation helpers must not be introduced as public `--md-*` tokens. Use the neutral `--app-*` namespace for app-specific values that do not correspond to Material vocabulary.
+Project-only helpers must not be introduced as public `--md-*` tokens. Use `--app-*` for application-specific values outside Material vocabulary.
 
-## App-specific namespace
+## Application-specific namespace
 
-Use `--app-*` for project-specific CSS custom properties that intentionally sit outside Material token vocabulary.
+Use `--app-*` for values such as:
 
-Examples:
-
-- app-specific debug or diagnostic colors;
-- app shell measurements that are not Material layout tokens;
+- application debug or diagnostic colors;
+- shell measurements that are not Material layout tokens;
 - product-only integration surfaces;
-- compatibility aliases that are not intended as public Material tokens.
+- compatibility aliases that are not public Material contracts.
 
-Do not use repository-name-specific prefixes for new tokens. The token vocabulary should remain stable if the repository or product name changes.
+Do not use repository-name-specific prefixes for new tokens. Token vocabulary should remain stable if the repository or product name changes.
 
 ## Reference tokens
 
-Reference tokens represent available values. They should not encode component usage.
-
-Examples:
+Reference tokens represent available values and do not encode component usage, for example:
 
 - palette values;
 - typeface values;
-- baseline measurement values when Material exposes them as reference tokens.
+- measurements explicitly published as reference tokens.
 
 ## System tokens
 
-System tokens represent theme decisions and roles. They should point to reference tokens whenever possible.
-
-Examples:
+System tokens represent theme decisions and roles, including:
 
 - color roles;
 - typescale roles;
 - shape roles;
 - elevation levels;
 - motion tokens;
-- state layer opacities.
+- state-layer opacities.
 
-Components should prefer system tokens through component tokens instead of hardcoding reference values.
+System tokens resolve to reference tokens where the official model defines that relationship.
 
 ## Component tokens
 
-Component tokens are the public override surface for component internals such as container, label text, icon, outline, selected state, disabled state, and measurements.
+Component tokens are the public override surface for component parts, states, and measurements.
 
-Component token naming is defined in [Component tokens](./component-tokens.md).
+Component token naming and routing are defined in [Component tokens](./component-tokens.md).
 
-## Deprecated or compatibility tokens
+## Deprecated and compatibility tokens
 
-If a legacy token must remain temporarily:
+When a legacy token must remain temporarily:
 
 1. keep it as a compatibility alias;
-2. document the target Material-compatible token;
-3. avoid using it in new code;
-4. remove it after touched consumers have migrated.
+2. name the Material-compatible replacement;
+3. prohibit new usage;
+4. identify current consumers;
+5. remove it when those consumers migrate.
 
-## Token audit requirements
+## Verification
 
-Before converting a component family, audit the relevant token families:
+For every touched token family, check:
 
-- existing public `--md-*` tokens;
-- local component variables that should become `--md-comp-*` tokens;
+- existing public `--md-*` names;
+- exact official paths and current source evidence;
+- canonical declaration ownership;
+- local variables that should remain private or become official component tokens;
 - hardcoded Material values inside component CSS;
-- values that are app-specific and need `--app-*` namespace;
-- deprecated Material tokens such as surface tint color when the official guidance marks them as deprecated.
+- application-specific values that require `--app-*`;
+- deprecated and compatibility aliases;
+- affected rendered property owners and consumers.
