@@ -31,9 +31,9 @@ You may skip this skill for:
 - narrow fixes where ownership, source of truth, final state, and verification are explicit and unchanged;
 - work covered by an applicable deterministic standard-authoring policy when the agent can derive a ready repository-backed contract from authoritative sources and no escalation condition is present.
 
-For official public Material component families, `material-component-authoring` owns that deterministic workflow and `component-architecture.md` owns its canonical blueprint. Use this handoff instead when the workflow reports `blocked` or the task explicitly uses `handoff-authoring`.
+An approved `DESIGN.md` produced by `material-component-design` is normative Material design input, not an implementation contract. Material code, foundation, API, or migration changes still require this handoff unless another existing repository skill explicitly owns the architecture stage and produces a ready implementation contract.
 
-If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready contract, and reason no unresolved architecture decision remains.
+If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready artifact, and reason no unresolved architecture decision remains.
 
 ## Token budget
 
