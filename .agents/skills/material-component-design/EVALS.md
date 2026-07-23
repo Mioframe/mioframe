@@ -85,11 +85,11 @@ Expected:
 
 Record actual results; do not prefill passes.
 
-| Model | Eval 1 | Eval 2 | Eval 3 | Eval 4 | Eval 5 | Notes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Claude Haiku | not run | not run | not run | not run | not run | |
-| Claude Sonnet | not run | not run | not run | not run | not run | |
-| Claude Opus | not run | not run | not run | not run | not run | |
-| OpenAI coding model | not run | not run | not run | not run | not run | |
+| Model               | Eval 1  | Eval 2  | Eval 3  | Eval 4  | Eval 5  | Notes |
+| ------------------- | ------- | ------- | ------- | ------- | ------- | ----- |
+| Claude Haiku        | not run | not run | not run | not run | not run |       |
+| Claude Sonnet       | not run | not run | not run | not run | not run |       |
+| Claude Opus         | not run | not run | not run | not run | not run |       |
+| OpenAI coding model | not run | not run | not run | not run | not run |       |
 
 Update the skill only from concrete failures observed during these runs. Document review and repository CI verify structure and compatibility, not task effectiveness.
