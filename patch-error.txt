@@ -1,0 +1,1 @@
+Patch unexpectedly succeeded during diagnosis.
