@@ -25,21 +25,34 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import traceback
 
-          source = Path('.github/workflows/apply-pr-preview-version-gate.yml').read_text(
-              encoding='utf-8'
-          )
-          start_marker = '          from pathlib import Path\n'
-          end_marker = "          PY\n\n          git diff --check"
-          start = source.index(start_marker)
-          end = source.index(end_marker, start)
-          raw_code = source[start:end]
-          code = '\n'.join(
-              line[10:] if line.startswith('          ') else line
-              for line in raw_code.splitlines()
-          )
-          exec(compile(code, 'embedded-pr-preview-version-gate-patch.py', 'exec'))
+          try:
+              source = Path('.github/workflows/apply-pr-preview-version-gate.yml').read_text(
+                  encoding='utf-8'
+              )
+              start_marker = '          from pathlib import Path\n'
+              end_marker = "          PY\n\n          git diff --check"
+              start = source.index(start_marker)
+              end = source.index(end_marker, start)
+              raw_code = source[start:end]
+              code = '\n'.join(
+                  line[10:] if line.startswith('          ') else line
+                  for line in raw_code.splitlines()
+              )
+              exec(compile(code, 'embedded-pr-preview-version-gate-patch.py', 'exec'))
+          except BaseException:
+              Path('patch-error.txt').write_text(traceback.format_exc(), encoding='utf-8')
           PY
+
+          if [ -f patch-error.txt ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add patch-error.txt
+            git commit -m "chore: record one-time patch failure"
+            git push origin HEAD:fix/pr-preview-version-gate
+            exit 1
+          fi
 
           git diff --check
           git config user.name "github-actions[bot]"
