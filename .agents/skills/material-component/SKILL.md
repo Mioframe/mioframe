@@ -1,140 +1,145 @@
 ---
 name: material-component
-description: 'Use when creating, repairing, aligning, migrating, continuing, or completing one official Material component family. Coordinates recursive owner work through isolated implementation and review contexts until aligned, externally blocked, or physically checkpointed.'
+description: 'Use when creating, repairing, aligning, migrating, continuing, or completing one official Material component family. Coordinates recursive owner convergence through isolated implementation and review contexts until aligned, externally blocked, or physically checkpointed.'
 ---
 
 # Material component orchestrator
 
-This is the coordination-only root for one official Material component family. The operator supplies a family name or an explicit bounded objective. The root owns current-state reconstruction, the complete recursive owner stack, dependency ordering, delegation, result validation, continuation, final review, and roadmap state.
+This is the coordination-only root for one official Material component family. The root owns current-state reconstruction, the complete recursive owner stack, architecture decisions, delegation, result validation, continuation, final review, and compact roadmap state.
 
-The root context must not edit production code, tests, stories, tokens, exports, consumers, legacy owners, or owner README files. Its only repository write is the compact `src/shared/ui/material/docs/roadmap.md` state when that state changes. Git and publication workflow are outside this skill.
+The root must not edit production code, tests, stories, tokens, exports, consumers, legacy owners, or owner README files. Its only repository write is `src/shared/ui/material/docs/roadmap.md` when root state changes. Git and publication workflow are outside this skill.
 
-Follow the applicable nested `AGENTS.md`, `src/shared/ui/material/docs/component-development.md`, `architecture.md`, and `tokens.md`.
+Follow the applicable nested `AGENTS.md`, `src/shared/ui/material/docs/component-development.md`, `architecture.md`, `tokens.md`, and the `verification` skill.
 
 ## Invocation
 
 - `material-component <family>` means one logical `full-family` convergence operation.
 - `focused-correction` requires an explicit bounded operator objective.
-- A delegated dependency remains part of the caller's root operation.
+- Required component and foundation dependencies remain inside the same root operation.
 - The operator always resumes the same root command and never invokes an internal prerequisite separately.
 
-A logical operation may span physical sessions, but one session must continue while safe execution capacity and required isolated contexts remain available. `converging` and `checkpointed` are nonterminal. Successful completion is `aligned`; `blocked` requires an exact external condition.
+A logical operation may span physical sessions. `converging` and `checkpointed` are nonterminal. Successful completion is `aligned`; `blocked` requires an exact external condition.
 
-## Mandatory execution model
+## Execution model
 
-Every correction uses three distinct responsibilities:
+Use three distinct responsibilities:
 
-1. **Root orchestrator context** — read-only coordination and roadmap state only.
-2. **Fresh isolated writable owner context** — `material-component-implementation` implements exactly one component or foundation owner correction and returns an implementation result; it cannot declare readiness.
-3. **Fresh isolated read-only review context** — `material-component-review` independently inspects current code and returns the only accepted readiness verdict.
+1. **Root orchestrator** — read-only coordination and roadmap state.
+2. **Fresh isolated writable owner context** — `material-component-implementation` converges exactly one deepest component or foundation owner, including all known in-owner defects and one review correction pass. It cannot declare readiness.
+3. **Fresh isolated read-only reviewer** — `material-component-review` independently accepts or rejects that owner. The same reviewer context may re-review once after the implementation correction pass because it remains read-only and independent.
 
-Create implementation and review contexts through the environment's real Agent/subagent delegation primitive. Merely loading another skill, changing the stated role, clearing a local plan, or claiming a fresh perspective inside the same transcript does not create an isolated context.
+Create implementation and review contexts through the environment's real Agent/subagent delegation primitive. Loading another skill or changing the stated role in the same transcript does not create isolation. A context that edited an owner cannot review it.
 
-The implementation and review contexts must be newly created for that correction and must not share the implementer's reasoning transcript. A context that edited the correction cannot review it. Sequential self-implementation or self-review in the root context is forbidden.
+One outer root owns the entire recursive operation and is the sole roadmap writer. Nested official families and foundation domains are stack owners, not additional roots.
 
-One outer root orchestrator owns the entire recursive operation and is the sole roadmap writer. Nested official families and foundation domains are stack owners, not additional root orchestrators.
+If a required isolated context cannot be created or resumed, checkpoint with the exact physical reason. Do not replace it with root implementation or self-review.
 
-If a required isolated writable or review context cannot be created, checkpoint with the corresponding physical reason. Do not replace the missing context with the root agent.
+## Preflight cadence
 
-## Current-state preflight
+Perform a full code-first preflight:
 
-Reconstruct current truth from code before selecting work:
+- at the beginning of a root operation or physical-session resume;
+- after the branch/base moved or external changes landed;
+- when ownership, public contract, or dependency closure is uncertain.
 
-```text
-CANONICALIZATION PREFLIGHT
-Family:
-Invocation scope:
-Candidate canonical owner:
-Public export present:
-Migrated consumers:
-Legacy owner state:
-Direct imports and injected dependencies:
-Required CSS/token dependencies:
-Legacy Material dependencies:
-Dependency closure: closed | blocked
-Continuation stack: none | <root > nested owner > deepest unfinished owner>
-Documentation contract: valid | stale | contains-forbidden-execution-state
-```
+Reconstruct actual owners, public exports, implementations, imports, styles, token declarations/references, direct consumers, legacy paths, guards, and proof. Existing README and tests are evidence, not authority. Validate and discard stale roadmap entries.
 
-Inspect actual owners, implementations, imports, styles, token declarations/references, exports, all direct consumers of changed public contracts or extensions, legacy paths, guards, and proof. Existing tests and README facts are evidence, not authority.
+After an accepted owner pass, use an incremental refresh limited to:
 
-Validate any persisted continuation stack against current code. Discard stale entries. Do not rebuild accepted work merely because a new physical session began.
+- changed public contracts and exports;
+- changed-owner consumers and compatibility paths;
+- newly discovered dependencies;
+- continuation-stack transition and relevant proof.
+
+Do not repeat the full repository/family preflight after an ordinary in-owner correction. Escalate back to full preflight only when a new prerequisite appears, architecture changes, or the incremental refresh cannot prove closure.
+
+Reuse locked source decisions and verified source evidence. Reopen Material sources only for a changed surface, missing evidence, a contradiction, or an invalidated decision.
 
 ## Strict continuation stack
 
-The continuation stack is ordered root-to-deepest unfinished owner. Only the deepest unfinished owner may enter contract, implementation, or correction-final review.
+The stack is ordered root-to-deepest unfinished owner. Only the deepest owner may be implemented or reviewed.
 
-A parent owner must not be implemented, migrated, exported, removed, or reported ready while a child entry remains unfinished. Pop the deepest entry only after:
+A parent must not be changed, migrated, exported, removed, or reported ready while a child remains unfinished. Pop the deepest entry only after:
 
-- its implementation result is available from a fresh writable context;
-- its focused proof passes;
-- a fresh read-only `material-component-review` returns `complete` for that exact correction;
-- direct-consumer compatibility and legacy-owner disposition are accepted.
+- one isolated writable owner context returned a complete owner-pass result;
+- focused proof passed;
+- an isolated read-only reviewer returned `correction-final: complete`;
+- changed-owner consumer compatibility and legacy disposition were accepted.
 
-After popping an owner, refresh the graph and continue with the new deepest owner. Never skip upward because the next owner is large.
+After popping an owner, refresh incrementally and continue with the new deepest owner.
 
 ## Recursive dependency closure
 
 Classify every dependency required by the supported surface as `canonical-foundation`, `canonical-family`, `temporary-legacy-material`, `project-extension`, or `generic-foundation`.
 
-If no ready canonical owner exists, push its exact owner onto the same root continuation stack:
+If no ready canonical owner exists, push its exact owner onto the same stack:
 
 - family-agnostic contract → one exact foundation owner;
 - another official component family → one exact component-family owner;
-- any child dependencies discovered for that owner are pushed after it and execute depth-first.
+- child dependencies execute depth-first.
 
-When the owner becomes deepest, delegate it to a fresh isolated writable `material-component-implementation` context with `Owner kind: foundation` or `Owner kind: component`. Do not create a second root orchestrator or a second roadmap writer for a nested owner. The outer root retains the complete stack and automatically returns to each parent after accepted child review.
+When an owner becomes deepest, delegate it to one fresh writable `material-component-implementation` context. Do not create another root or roadmap writer.
 
-A prerequisite is ready only when its canonical owner, own dependencies, tokens, semantics/lifecycle, public contract, all direct consumers, compatibility path, proof, and independent review are complete. Relocation, forwarding, barrels, migrated imports, or green path guards do not establish readiness.
+Readiness requires canonical ownership, complete child dependencies, correct tokens, API/semantics/lifecycle/accessibility/platform behavior, all changed-owner consumers, compatibility cleanup, focused proof, and independent review. Relocation, forwarding, barrels, migrated imports, and green path guards are not readiness.
 
-## Correction cycle
+## Owner convergence pass
 
-For the deepest unfinished owner:
+Before delegation, consolidate all currently known findings for the deepest owner into one locked owner-pass contract. Do not split one owner into a sequence of tiny agent assignments merely because findings affect different files, states, or consumers.
 
 ```text
-bounded contract and selected evidence
-→ fresh isolated writable material-component-implementation context
-→ focused proof
-→ fresh isolated read-only correction-final review
-→ accept and pop, or return consolidated blockers to a new implementation context
-→ refresh graph and continue
+consolidated owner-pass contract and selected source evidence
+→ one fresh isolated writable implementation context
+→ complete in-owner implementation and focused verify-managed proof
+→ one fresh isolated read-only correction-final review
+→ if blocked, same implementation context performs one consolidated correction pass
+→ same read-only reviewer re-reviews once
+→ accept and pop, or reopen architecture/context strategy
 ```
 
-Use at most one substantive correction retry before reopening the architecture decision. The reviewer verdict, not the implementation result, controls readiness.
+The implementation context remains responsible for the owner through the single correction pass. Create a new writable context only when:
 
-The root must retain and validate these transient results for the active correction:
+- the architecture/owner contract changed;
+- a newly discovered prerequisite becomes deepest;
+- the original context is unavailable or exhausted;
+- the second review still finds ownership or design failure.
+
+The reviewer verdict controls readiness. Missing, same-context, or `not-run` review keeps the owner on the stack.
+
+Root retains only this transient gate state:
 
 ```text
-OWNER CORRECTION GATE
+OWNER CONVERGENCE GATE
 Owner:
-Implementation context: fresh-isolated-writable
-Implementation result: implemented | blocked | checkpoint-required
-Review context: fresh-isolated-read-only
+Implementation context: fresh-isolated-writable | resumed-isolated-writable
+Implementation pass: initial | correction
+Review context: fresh-isolated-read-only | resumed-isolated-read-only
 Review verdict: complete | blocked | not-run
 Stack transition: retained | popped
 ```
 
-Missing, same-context, or `not-run` review keeps the owner on the stack.
+## Verification cadence
+
+Inside an owner pass, use verify-managed focused checks for changed owner files, relevant consumers, and exact browser/visual targets. Do not run full `pnpm verify` for every owner or every review correction.
+
+Follow `pnpm verify:status` and `pnpm verify:resume` when verification is active. Do not start duplicate expensive runs or manually rerun already-passed unchanged lanes.
+
+Run final read-only `pnpm verify` once after the continuation stack is empty and before terminal family review. Rerun only the failed focused proof during correction; rerun the final gate after relevant fixes.
 
 ## Verification failure attribution
 
-A failed final verification is internal to the active root operation until proven otherwise.
+A failed final verification is internal until proven otherwise. Before external `blocked`:
 
-Before reporting `blocked`:
+- run the exact failing command/lane on current head;
+- reproduce it on the root base commit with the same environment;
+- inspect whether failing code consumes any owner created, moved, forwarded, or behaviorally changed by this operation.
 
-- run the exact failing command or lane on the current head; prior logs, history, or an import-only diff are not sufficient;
-- reproduce the same failure on the root operation's base commit using the same command and relevant environment;
-- inspect whether the failing code directly or transitively consumes any owner created, moved, forwarded, or behaviorally changed by the active operation.
+If it does not reproduce on base, or it consumes a changed owner, restore the nearest changed owner to the same stack and continue. The correction includes minimum compatible consumer fixes even across official family labels.
 
-If the failure does not reproduce on the base commit, or the failing code consumes a changed owner, restore the nearest changed canonical owner to the continuation stack and continue. Its correction scope includes the minimum direct-consumer fixes required for compatibility, even when those consumers belong to separate official Material families.
-
-A repository-internal component or foundation is not an external blocker merely because its own canonical family is outside the root family's public surface. Do not ask the operator to launch separate Material roots to repair a verification failure introduced or exposed by the active operation.
-
-Only a failure reproduced on the base commit and shown independent of every active-operation change may be classified as an external verification blocker.
+Only a base-reproduced failure independent of all active-operation changes is external.
 
 ## Continuation checkpoint
 
-Checkpoint only when the current physical session cannot safely continue for one of these reasons:
+Checkpoint only for:
 
 - `context-exhausted`;
 - `runtime-exhausted`;
@@ -144,17 +149,15 @@ Checkpoint only when the current physical session cannot safely continue for one
 - `required-tool-unavailable`;
 - `required-evidence-unavailable`.
 
-A large owner, many consumers, a repairable red guard, or an internal prerequisite is not a checkpoint reason.
-
-Before checkpointing, leave the safest coherent branch state, retain the deepest unfinished owner, write the minimal roadmap stack, and record the exact checkpoint reason. `checkpointed` with `Checkpoint reason: none` or an unlisted narrative reason is invalid.
+A large owner, many consumers, a repairable red check, or an internal prerequisite is not a checkpoint reason.
 
 ## Completion
 
-When the continuation stack is empty, a fresh `material-family-review` is mandatory before either terminal result, including when the root believes no implementation is needed or final verification is red. The reviewer must independently validate closure and verification attribution. An internal finding restores the exact owner to the stack and the root continues.
+When the stack is empty and final `pnpm verify` has run, a fresh `material-family-review` is mandatory before either terminal result. An internal finding restores the exact owner to the stack.
 
-`aligned` requires an empty continuation stack, complete recursive dependency closure, accepted owner reviews, one canonical family owner/public contract, adoption/cleanup and required proof, accepted operator comparison when required, `material-family-review: complete` from a fresh read-only context, and passing final `pnpm verify`.
+`aligned` requires complete closure, accepted owner reviews, one canonical family public contract, adoption/cleanup and proof, operator comparison when required, passing final `pnpm verify`, and `material-family-review: complete`.
 
-Return `blocked` only after `material-family-review: blocked` confirms an exact external source, product, platform, evidence, safety, or base-reproduced verification condition that cannot be resolved inside the recursive operation.
+Return `blocked` only after family review confirms an exact external source, product, platform, evidence, safety, or base-reproduced verification condition.
 
 ## Result
 
@@ -164,20 +167,20 @@ Family:
 Invocation scope:
 Mode:
 Status: aligned | blocked | checkpointed
-Execution model: isolated-owner-and-review
+Execution model: owner-pass-and-independent-review
 Canonical owner:
 Supported surface:
 Dependency closure:
 Continuation stack: none | <root > nested owner > deepest unfinished owner>
 Deepest unfinished owner: none | <exact owner>
-Last implementation context: none | fresh-isolated-writable
-Last correction review context: none | fresh-isolated-read-only
+Last implementation context: none | fresh-isolated-writable | resumed-isolated-writable
+Last correction review context: none | fresh-isolated-read-only | resumed-isolated-read-only
 Last correction review verdict: none | complete | blocked | not-run
 Family review: complete | blocked | not-run
 Operator visual status:
 Verification:
 Verification attribution: internal-owner-restored | external-base-reproduced | not-applicable
-Remaining required gaps: none | <exact gaps inferred from current code>
+Remaining required gaps: none | <exact gaps>
 External blocker: none | <exact external blocker>
 Checkpoint reason: none | context-exhausted | runtime-exhausted | user-interrupted | isolated-writable-context-unavailable | isolated-review-context-unavailable | required-tool-unavailable | required-evidence-unavailable
 Next action: none | resume material-component <root family> | <exact external unblock action>
@@ -185,20 +188,19 @@ Next action: none | resume material-component <root family> | <exact external un
 
 ## Forbidden
 
-- production edits from the root orchestrator context;
+- production edits from the root;
 - implementation and review by the same context;
-- simulating isolation by changing roles or skills inside one transcript;
-- multiple root orchestrators or roadmap writers in one recursive operation;
-- readiness without a fresh read-only correction review;
-- terminal `aligned` or `blocked` without a fresh family review;
-- changing a parent while a deeper unfinished owner remains;
-- `partial` as a Material full-family result;
-- trusting a continuation stack without validating code;
-- treating a used dependency or changed-owner consumer as out of scope;
-- classifying a repository-internal failure as external without same-command base reproduction;
-- relocation-only readiness;
-- asking the operator to invoke an internal prerequisite or a separate Material root to repair active-operation compatibility;
-- checkpointing without one allowed physical reason;
-- persisted execution logs, completed-unit lists, backlogs, or review history;
-- editing Material workflow skills during a component run without an explicit workflow task;
-- Git, branch, commit, pull-request, or merge operations.
+- one new implementation context per small finding inside the same owner;
+- repeated full preflight after ordinary in-owner corrections;
+- full `pnpm verify` after every owner or review pass;
+- multiple roots or roadmap writers in one operation;
+- readiness without independent review;
+- terminal result without family review;
+- changing a parent while a deeper owner remains unfinished;
+- `partial` as a full-family result;
+- treating changed-owner consumers as out of scope;
+- external failure attribution without same-command base reproduction;
+- asking the operator to invoke an internal prerequisite;
+- checkpointing without an allowed physical reason;
+- persisted execution logs, backlogs, or review history;
+- Git, PR, or merge operations.

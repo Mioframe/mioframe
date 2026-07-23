@@ -1,17 +1,17 @@
 ---
 name: material-component-review
-description: 'Independent read-only review for one Material component or foundation correction. A fresh isolated correction-final reviewer is mandatory before owner readiness.'
+description: 'Independent read-only review for one Material component or foundation owner pass. One fresh reviewer may re-review one correction pass before owner readiness.'
 ---
 
-# Material correction review
+# Material owner review
 
-Use as an optional `contract-gate` when the root requests independent validation of a high-risk locked contract, and as the mandatory `correction-final` after implementation and focused proof. This skill supports component and foundation owners.
+Use as an optional `contract-gate` for a high-risk locked contract and as mandatory `correction-final` after one owner convergence pass.
 
 ## Independence
 
-Run only in a fresh isolated read-only context that did not design, implement, patch, or narratively supervise the correction. The reviewer receives structured inputs and selected evidence, not the implementer's chain of reasoning or preferred conclusion.
+The initial review runs in a fresh isolated read-only context that did not design, implement, patch, or supervise the owner pass. It receives structured inputs and selected evidence, not the implementer's reasoning transcript.
 
-Required context declaration:
+Required initial declaration:
 
 ```text
 Review context: fresh-isolated-read-only
@@ -19,69 +19,58 @@ Implementation context reused: no
 Repository writes available: no
 ```
 
-If isolation is unavailable, return `not-run` with checkpoint reason `isolated-review-context-unavailable`. If a required tool or evidence source is unavailable, return `not-run` with the exact corresponding checkpoint reason. Do not review in the root or implementation context.
+When the first verdict is `blocked`, the same reviewer context may be resumed once after the same isolated implementation context applies the consolidated correction findings. This remains independent because the reviewer never writes production files. Do not create a new reviewer merely for the second pass unless the original context is unavailable/exhausted or the architecture contract changed.
+
+If isolation is unavailable, return `not-run` with `isolated-review-context-unavailable`. Do not review in root or implementation context.
 
 ## Inputs
 
 Receive:
 
-- owner kind, family/domain, root invocation, and correction unit;
-- supported scenarios/platforms and root-locked contract;
+- owner kind, family/domain, root invocation, and owner-pass contract;
+- supported scenarios/platforms and locked source decisions;
 - selected source evidence;
 - claimed dependency inventory and continuation stack;
-- implementation result and changed owner set for `correction-final`;
-- focused proof and direct-consumer inventory.
+- implementation pass result and changed owner set;
+- focused proof and changed-owner consumer inventory;
+- for re-review, the previous consolidated blockers and correction result.
 
-All supplied claims are untrusted. Independently inspect current implementations, imports, injected dependencies, styles, token declarations/references, exports, every direct consumer of changed public contracts or extensions, legacy-owner state, documentation, and guards.
+All claims are untrusted. Independently inspect current implementation, imports, dependencies, styles, tokens, exports, consumers, legacy state, documentation, guards, and proof.
 
-## Stack gate
+Reuse already inspected unchanged evidence during the re-review. Reinspect the corrected findings, affected contracts/consumers, and any newly changed paths. Do not repeat full owner research unless the correction changed architecture, supported surface, dependencies, or source decisions.
 
-Confirm that the reviewed owner is the current deepest unfinished owner. A parent correction cannot pass while a deeper child owner remains unresolved.
+## Stack and closure gates
 
-The stack entry may be popped only after `correction-final` returns `complete`. `contract-gate: complete` authorizes the locked contract only; it is not readiness.
+Confirm the reviewed owner is the deepest unfinished owner. A parent cannot pass while a deeper child remains unresolved.
 
-## Closure gates
+Before `complete`:
 
-Before returning `complete`:
+- reconcile every `Known gaps`, `unresolved`, approximation, temporary compatibility, or future-correction statement;
+- classify each as outside supported surface, a required open gap, or an exact external blocker;
+- reject an empty child stack while a supported scenario has an unresolved implementation, motion, accessibility, platform, or proof gap;
+- enumerate distinct sentinel/boundary/invalid value semantics and inspect every direct consumer for mismatches;
+- require focused proof for supported value states and documented invalid behavior;
+- include every consumer of a created, moved, forwarded, or behaviorally changed owner, including consumers in other official families;
+- reject changed-owner consumer regressions.
 
-- reconcile every `Known gaps`, `unresolved`, approximation, temporary compatibility, or future-correction statement in the owner README and current implementation;
-- classify each as explicitly unsupported outside the claimed surface, a required open gap that keeps the owner on the stack, or an exact external blocker;
-- reject an empty child stack while a claimed/supported scenario still has an unresolved implementation, motion, accessibility, platform, or proof gap;
-- for any public value where `undefined`, `false`, `0`, boundary values, or invalid/out-of-range values have distinct meaning, enumerate those states and inspect every direct consumer for truthiness, coercion, range, and sentinel mismatches;
-- require focused proof for every distinct supported value state and the documented invalid-value behavior;
-- treat every component that consumes a created, moved, forwarded, or behaviorally changed foundation/family owner as part of that owner's compatibility scope, regardless of the consumer's official family label;
-- reject readiness when a changed-owner consumer has a focused or full-verification regression.
+Relocation, forwarding, barrels, migrated imports, and green guards are not readiness.
 
-## Contract gate
+## Review cadence
 
-Verify:
+Initial correction-final review:
 
-- code-first reconstruction and exact owner boundary;
-- complete actual dependencies and executable nested prerequisites;
-- child owner readiness from independent reviews;
-- correct public API, semantics, lifecycle, accessibility, token ownership, platform behavior, and direct-consumer scope;
-- relocation/forwarding/barrel/import migration is not treated as readiness;
-- the correction is the highest-priority deepest-owner work.
+- verify the complete consolidated owner-pass contract;
+- return all actionable in-owner findings together, not one issue at a time;
+- distinguish new prerequisite/architecture failures from ordinary in-owner corrections.
 
-Return `complete`, `blocked`, or `not-run`.
+Re-review after correction:
 
-## Correction final
+- verify every previous blocker;
+- inspect newly changed paths and affected proof;
+- preserve accepted unchanged findings from the initial review;
+- return `complete`, or return consolidated remaining findings and require root architecture/context reassessment.
 
-Verify the implemented owner correction against current code:
-
-- locked contract and supported scenarios;
-- recursive child readiness;
-- canonical token declarations and dependency direction;
-- API/native/accessibility/state semantics and lifecycle;
-- all direct consumers of changed contracts or extensions, including consumers in other official Material families;
-- compatibility and legacy-owner disposition;
-- required unit, browser, consumer, visual, and operator proof;
-- durable README accuracy;
-- relevant Material guards.
-
-Known defects, unresolved required gaps, sentinel/value-state incompatibilities, incompatible consumers, stale contract documentation, insufficient available proof, missing browser behavior proof, changed-owner consumer regressions, or legacy-owned canonical tokens return `blocked` with consolidated findings. Unavailable required tooling/evidence returns `not-run` with the exact checkpoint reason.
-
-A passed correction does not complete the root family. It only permits the root orchestrator to pop this exact owner and continue.
+Only `correction-final: complete` permits the root to pop this owner.
 
 ## Result
 
@@ -91,8 +80,9 @@ Owner kind: component | foundation
 Family/domain:
 Invocation scope:
 Review scope: contract-gate | correction-final
-Correction unit:
-Review context: fresh-isolated-read-only
+Review pass: initial | correction-recheck
+Owner pass:
+Review context: fresh-isolated-read-only | resumed-isolated-read-only
 Implementation context reused: no
 Repository writes available: no
 Status: complete | blocked | not-run
@@ -113,18 +103,18 @@ Stack transition authorized: yes | no
 Continuation required: yes | no
 Deepest unfinished owner: none | <exact owner>
 Blockers: none | <consolidated findings>
-Checkpoint reason: none | isolated-review-context-unavailable | required-tool-unavailable | required-evidence-unavailable
+Checkpoint reason: none | isolated-review-context-unavailable | context-exhausted | runtime-exhausted | required-tool-unavailable | required-evidence-unavailable
 ```
 
 ## Forbidden
 
 - repository edits or workflow advancement;
-- review by the root or implementation context;
+- review by root or implementation context;
+- emitting findings one at a time when they can be consolidated;
+- repeating unchanged full owner research during correction re-review;
 - trusting supplied dependency, proof, or readiness claims;
-- accepting a parent while a deeper child owner remains unfinished;
-- accepting an owner with an unresolved required gap or unverified sentinel/value-state semantics;
-- excluding a direct consumer because it belongs to another official Material family;
-- accepting relocation, forwarding, barrels, migrated imports, or green guards as readiness;
-- accepting changed public contracts without every enumerable direct consumer;
+- accepting a parent with an unfinished child;
+- accepting unresolved required gaps or unverified value semantics;
+- excluding consumers because they belong to another official family;
 - returning a nested operator command;
 - complete-family verdict or Git/PR analysis.

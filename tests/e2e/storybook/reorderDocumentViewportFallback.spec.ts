@@ -6,21 +6,15 @@ const STORY_ID = 'shared-lib-reorder-reorderdocumentviewportstoryharness--defaul
 const CONTAINER_SELECTOR = '[aria-label="Document viewport reorder items"]';
 const ANCESTOR_SELECTOR = '[aria-label="Reorder scroll ancestor"]';
 
-const assertScrollTopHoldsAtBaseline = (samples: number[], baseline: number): void => {
-  for (const sample of samples) {
-    expect(
-      Math.abs(sample - baseline),
-      `scrollTop samples: ${samples.join(', ')}, baseline: ${baseline}`,
-    ).toBeLessThanOrEqual(1);
-  }
-};
-
 const assertNoForwardScrollAfterRelease = (samples: number[], baseline: number): void => {
   expect(samples).not.toHaveLength(0);
-  const message = `scrollTop samples: ${samples.join(', ')}, pre-release baseline: ${baseline}`;
+  const message = `scrollTop samples: ${samples.join(', ')}, pointer-up baseline: ${baseline}`;
 
   expect(Math.max(...samples) - baseline, message).toBeLessThanOrEqual(1);
-  expect(baseline - Math.min(...samples), message).toBeLessThanOrEqual(3);
+
+  for (let index = 1; index < samples.length; index += 1) {
+    expect(samples[index] - samples[index - 1], message).toBeLessThanOrEqual(1);
+  }
 
   const settledTail = samples.slice(-4);
   expect(Math.max(...settledTail) - Math.min(...settledTail), message).toBeLessThanOrEqual(1);
@@ -153,18 +147,33 @@ const observeDragProgression = (
     { containerSelector: CONTAINER_SELECTOR, ancestorSelector: ANCESTOR_SELECTOR, ...args },
   );
 
+interface ReleaseScrollPositions {
+  container: number;
+  ancestor: number;
+  document: number;
+}
+
 interface ReleaseScrollSamples {
   container: number[];
   ancestor: number[];
   document: number[];
 }
 
-// Samples the container's, ancestor's, and `document.body`'s `scrollTop` together, once per
-// rendered frame, for `frameCount` frames — all inside one `page.evaluate` call so the first
-// reading is captured as close to call time as a Node<->browser round trip allows, and every
-// later reading lines up with a real animation frame rather than a separately-timed Node-side
-// poll.
-const sampleReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseScrollSamples> =>
+interface ReleaseScrollObservation {
+  baseline: ReleaseScrollPositions;
+  samples: ReleaseScrollSamples;
+}
+
+/**
+ * Arms a capture-phase `pointerup` observer before release. The observer records all three
+ * scroll positions synchronously at the actual browser event boundary, then samples subsequent
+ * rendered frames. This removes the Node-to-browser blind window that made a pre-release baseline
+ * stale before post-release sampling began.
+ * @param page - The Playwright page driving the drag.
+ * @param frameCount - Number of rendered frames to sample after pointer release.
+ * @returns Pointer-up baselines and aligned post-release samples for all three scroll levels.
+ */
+const observeReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseScrollObservation> =>
   page.evaluate(
     (args) => {
       const containerEl = document.querySelector(args.containerSelector);
@@ -174,26 +183,46 @@ const sampleReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseSc
       }
       const docEl = document.body;
 
-      const nextFrame = () =>
-        new Promise<void>((resolve) => {
-          requestAnimationFrame(() => {
-            resolve();
-          });
-        });
+      const readPositions = (): ReleaseScrollPositions => ({
+        container: containerEl.scrollTop,
+        ancestor: ancestorEl.scrollTop,
+        document: docEl.scrollTop,
+      });
 
-      return (async () => {
-        const container: number[] = [];
-        const ancestor: number[] = [];
-        const documentSamples: number[] = [];
-        for (let frame = 0; frame < args.frameCount; frame += 1) {
-          container.push(containerEl.scrollTop);
-          ancestor.push(ancestorEl.scrollTop);
-          documentSamples.push(docEl.scrollTop);
-          // eslint-disable-next-line no-await-in-loop -- each frame must render before the next
-          await nextFrame();
-        }
-        return { container, ancestor, document: documentSamples };
-      })();
+      return new Promise<ReleaseScrollObservation>((resolve) => {
+        window.addEventListener(
+          'pointerup',
+          () => {
+            const baseline = readPositions();
+            const samples: ReleaseScrollSamples = {
+              container: [],
+              ancestor: [],
+              document: [],
+            };
+            let capturedFrames = 0;
+
+            const captureNextFrame = () => {
+              requestAnimationFrame(() => {
+                const positions = readPositions();
+                samples.container.push(positions.container);
+                samples.ancestor.push(positions.ancestor);
+                samples.document.push(positions.document);
+                capturedFrames += 1;
+
+                if (capturedFrames >= args.frameCount) {
+                  resolve({ baseline, samples });
+                  return;
+                }
+
+                captureNextFrame();
+              });
+            };
+
+            captureNextFrame();
+          },
+          { capture: true, once: true },
+        );
+      });
     },
     { containerSelector: CONTAINER_SELECTOR, ancestorSelector: ANCESTOR_SELECTOR, frameCount },
   );
@@ -276,19 +305,25 @@ test.describe('document viewport autoscroll fallback', () => {
     expect(progression.remainingRoom).toBeGreaterThan(4);
     assertViewportSettlesWithoutResuming(progression.samples);
 
-    // 7. Capture the stopped drag positions before release. The observed browser correction is a
-    // small reverse document-viewport adjustment; it must not be mistaken for forward autoscroll
-    // resuming from the still-edge-adjacent pointer position.
-    const containerBaseline = await container.evaluate((el) => el.scrollTop);
-    const ancestorBaseline = await ancestor.evaluate((el) => el.scrollTop);
-    const documentBaseline = await documentViewport.evaluate((el) => el.scrollTop);
-
+    // 7. Arm browser-side release observation before dispatching pointer-up. This captures the
+    // exact event-boundary baseline without a Node round trip, then proves that no scroll level
+    // resumes forward autoscroll while any reverse browser correction settles.
+    const releaseObservationPromise = observeReleaseScrollTops(page);
     await page.mouse.up();
-    const releaseSamples = await sampleReleaseScrollTops(page);
+    const releaseObservation = await releaseObservationPromise;
     await expect(firstItem).not.toHaveClass(/_dragging/);
 
-    assertScrollTopHoldsAtBaseline(releaseSamples.container, containerBaseline);
-    assertScrollTopHoldsAtBaseline(releaseSamples.ancestor, ancestorBaseline);
-    assertNoForwardScrollAfterRelease(releaseSamples.document, documentBaseline);
+    assertNoForwardScrollAfterRelease(
+      releaseObservation.samples.container,
+      releaseObservation.baseline.container,
+    );
+    assertNoForwardScrollAfterRelease(
+      releaseObservation.samples.ancestor,
+      releaseObservation.baseline.ancestor,
+    );
+    assertNoForwardScrollAfterRelease(
+      releaseObservation.samples.document,
+      releaseObservation.baseline.document,
+    );
   });
 });

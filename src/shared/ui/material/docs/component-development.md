@@ -11,94 +11,105 @@ This document defines the durable convergence model for one official Material co
 
 ## Responsibility separation
 
-Every correction uses three different contexts:
+Each deepest owner uses three responsibilities:
 
-1. the sole outer root orchestrator reconstructs state, owns the complete recursive stack, delegates work, validates results, and updates the compact roadmap;
-2. a fresh isolated writable owner context implements exactly one deepest-owner correction;
-3. a different fresh isolated read-only reviewer accepts or rejects readiness.
+1. the sole outer root orchestrator reconstructs state, owns the recursive stack, locks architecture, delegates work, validates results, and updates the compact roadmap;
+2. one fresh isolated writable owner context converges the complete deepest owner and may perform one correction pass after review;
+3. a different fresh isolated read-only reviewer accepts or rejects readiness and may re-review that correction pass.
 
-Nested official families are owners on the same root stack, not additional root orchestrators or roadmap writers.
+Nested official families are owners on the same root stack, not additional roots or roadmap writers.
 
-The root orchestrator does not edit production code, tests, stories, tokens, exports, consumers, legacy owners, or owner README files. The implementation context cannot review itself or declare readiness. The reviewer cannot edit.
-
-If a required isolated context is unavailable, the operation checkpoints with an exact physical reason. It must not fall back to implementation or review in the root context.
+The root does not edit production files. The implementation context cannot review itself or declare readiness. The reviewer cannot edit.
 
 ## Sequence
 
 ```text
-current-state preflight and checkpoint validation
+full current-state preflight at start/resume
 → construct root-to-deepest unfinished stack
-→ select only the deepest owner
-→ lock one bounded correction contract
-→ fresh writable owner implementation
-→ focused proof
-→ fresh read-only correction-final review
-→ pop accepted owner or retry once in a new writable context
-→ refresh stack and continue
-→ pnpm verify when the stack is empty
-→ fresh read-only final family review
-→ restore an internal owner and continue, or finish aligned/external-blocked
+→ consolidate all known findings for the deepest owner
+→ one fresh writable owner convergence pass
+→ focused verify-managed proof
+→ one fresh read-only correction-final review
+→ if blocked, same writable context applies one consolidated correction pass
+→ same reviewer re-reviews once
+→ pop accepted owner or reopen architecture/context strategy
+→ incremental graph refresh and continue
+→ final pnpm verify when stack is empty
+→ fresh final family review
 ```
 
-## Current-state preflight
+## Preflight cadence
 
-Reconstruct from code:
+Perform full preflight at operation start/resume, after branch/base movement, or when ownership/closure is uncertain. Reconstruct actual owners, exports, implementations, imports, styles, token declarations/references, dependencies, consumers, legacy paths, guards, and proof.
 
-- candidate and legacy owners and actual implementations;
-- public exports and migrated consumers;
-- imports, injected dependencies, styles, token declarations and references;
-- recursive dependency ownership and readiness;
-- all direct consumers of changed public contracts or extensions;
-- boundary/token/documentation guards and relevant proof.
+After an accepted owner pass, refresh only:
 
-Owner README files contain durable contracts only. The roadmap stack is a resumption hint, not authority. Validate it against current code and discard stale entries.
+- changed public contracts and exports;
+- changed-owner consumers and compatibility paths;
+- newly discovered dependencies;
+- relevant proof and stack transition.
+
+Do not repeat full family reconstruction after an ordinary in-owner correction. Escalate to full preflight only when a new prerequisite, architecture change, or unresolved ownership question appears.
+
+Owner README files contain durable contracts only. Roadmap state is a resumption hint, not authority.
+
+## Owner convergence pass
+
+The unit of implementation is one canonical deepest owner, not one finding.
+
+Before delegation, root consolidates all known in-owner defects across files, variants, states, tests, and consumers. One writable context owns that complete pass plus one reviewer correction pass.
+
+Create a new writable context only when:
+
+- architecture or owner contract changed;
+- a new prerequisite became deepest;
+- the original context is unavailable/exhausted;
+- second review still exposes ownership/design failure.
+
+The independent reviewer returns all actionable in-owner findings together. During correction re-review it reinspects prior blockers, new changes, and affected proof without repeating unchanged full owner research.
 
 ## Strict continuation stack
 
-The stack is ordered root-to-deepest unfinished owner. Only the deepest owner may be contracted, implemented, or reviewed.
-
-A parent owner must not be changed, migrated, exported, removed, or reported ready while a child entry remains unfinished.
+The stack is root-to-deepest unfinished owner. A parent cannot advance while a child remains unfinished.
 
 Remove an entry only when:
 
-- one fresh writable context returned an implementation result;
+- the isolated writable context returned a complete owner-pass result;
 - focused proof passed;
-- a different fresh read-only reviewer returned `correction-final: complete`;
-- direct-consumer compatibility and legacy disposition were accepted.
+- the independent reviewer returned `correction-final: complete`;
+- changed-owner consumer compatibility and legacy disposition were accepted.
 
-After removal, refresh the graph and continue from the new deepest owner.
+After removal, refresh incrementally and continue from the new deepest owner.
 
 ## Recursive dependency closure
 
 Every used Material dependency resolves to a ready canonical foundation, official family public contract, generic non-Material foundation, or explicit Mioframe extension owner.
 
-If a ready owner does not exist, push its exact owner onto the same root stack:
+If no ready owner exists, push its exact owner onto the same stack. Child prerequisites execute depth-first. The outer root remains the sole coordinator and automatically returns to each parent after accepted child review.
 
-- family-agnostic contract → exact foundation owner implemented by a fresh isolated writable owner context when deepest;
-- official component family → exact component-family owner implemented by a fresh isolated writable owner context when deepest;
-- child prerequisites discovered for either owner are pushed after it and execute depth-first.
-
-The outer root remains the sole coordinator and roadmap writer. After independent acceptance of the deepest child, it pops that child and returns automatically to its parent.
-
-Readiness requires canonical ownership, complete child dependencies, correct tokens, valid API/semantics/lifecycle/accessibility/platform behavior, all direct consumers, compatibility cleanup, focused proof, and independent review.
+Readiness requires canonical ownership, complete dependencies, correct tokens, API/semantics/lifecycle/accessibility/platform behavior, all changed-owner consumers, compatibility cleanup, focused proof, and independent review.
 
 Relocation, forwarding, barrels, migrated imports, and green path guards are not readiness.
 
-## Review
+## Source evidence
 
-The correction reviewer receives structured contract, implementation result, selected evidence, proof, and consumer inventory. It independently inspects current code and does not receive the implementer's reasoning transcript.
+Reuse durable source decisions and selected verified evidence. Reopen Material sources only when the supported surface changes, evidence is missing or contradictory, or a previous decision is invalidated.
 
-The reviewer verdict is the only authority that permits a stack pop. Missing, same-context, or `not-run` review leaves the owner unfinished.
+## Verification cadence
 
-A final family review always runs in another fresh read-only context after the stack becomes empty, even when no implementation was needed or `pnpm verify` is red.
+Use verify-managed focused checks during owner implementation and correction. Do not run full `pnpm verify` after every owner or review pass.
+
+When verification is active, use `pnpm verify:status` and follow `pnpm verify:resume`; do not start duplicate expensive runs. Preserve passed unchanged focused evidence and rerun only checks affected by correction.
+
+Run final read-only `pnpm verify` once after the stack is empty and before final family review. After a relevant fix, rerun the failed focused proof and then the final gate.
 
 ## Verification attribution
 
-A branch verification failure is internal until the same command reproduces on the root base commit and is shown independent of all owners changed by the active operation.
+A branch verification failure is internal until the same command reproduces on the root base commit and is independent of all owners changed by the operation.
 
-A component in another official family remains in compatibility scope when it directly or transitively consumes a foundation/family owner created, moved, forwarded, or behaviorally changed by the operation. A failure in such a consumer restores the nearest changed owner to the same root stack; it does not create a separate operator command.
+Consumers in another official family remain in compatibility scope when they consume an owner created, moved, forwarded, or behaviorally changed by the operation. Their failure restores the nearest changed owner to the same root stack.
 
-Prior logs, Git history, or an import-only component diff do not prove external attribution.
+Prior logs, Git history, or an import-only diff do not prove external attribution.
 
 ## Continuation checkpoint
 
@@ -114,12 +125,8 @@ Allowed reasons:
 
 A large owner, many consumers, an internal prerequisite, or a repairable red check is not a checkpoint reason.
 
-Record only active root family, alignment status, continuation stack, checkpoint reason, exact external blocker, and one next action that resumes the root command.
-
 ## Completion
 
-`aligned` requires an empty stack, accepted owner reviews, closed recursive dependencies, valid contracts and consumers, adoption/cleanup, required proof/operator comparison, passing `pnpm verify`, and fresh final family review.
+`aligned` requires an empty stack, accepted owner reviews, closed dependencies, valid contracts and consumers, adoption/cleanup, required proof/operator comparison, passing final `pnpm verify`, and fresh family review.
 
-`blocked` requires a fresh final family review and an exact external condition, including a same-command base-reproduced verification failure independent of active-operation changes.
-
-`checkpointed` is nonterminal and requires one exact allowed physical reason. `partial` is not a valid Material full-family result.
+`blocked` requires fresh family review and an exact external condition. `checkpointed` is nonterminal and requires one allowed physical reason. `partial` is invalid for full-family work.
