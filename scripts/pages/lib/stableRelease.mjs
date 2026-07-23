@@ -37,16 +37,25 @@ const readDeploymentMetadata = (distDir) => {
   return metadata;
 };
 
-export const buildStableReleasePublication = (distDir) => {
+export const buildStableReleasePublication = (distDir, releaseSequence = 1) => {
+  if (!Number.isSafeInteger(releaseSequence) || releaseSequence < 1) {
+    throw new Error('Stable release sequence must be a positive safe integer.');
+  }
   const metadata = readDeploymentMetadata(distDir);
   const releaseId = metadata.sha;
   const identity = {
     releaseId,
+    releaseSequence,
     appVersion: metadata.appVersion,
     buildId: releaseId.slice(0, 7),
     buildDate: metadata.buildDate,
   };
-  const indexBytes = readFileSync(join(distDir, 'index.html'));
+  const indexBytes = Buffer.from(
+    readFileSync(join(distDir, 'index.html'), 'utf8').replace(
+      '<head>',
+      `<head><meta name="mioframe-release-id" content="${releaseId}">`,
+    ),
+  );
   const files = [
     {
       url: `/updates/releases/${releaseId}/index.html`,
@@ -63,7 +72,7 @@ export const buildStableReleasePublication = (distDir) => {
     }),
   ].sort((left, right) => left.url.localeCompare(right.url));
   const descriptor = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     ...identity,
     indexUrl: `/updates/releases/${releaseId}/index.html`,
     files,
@@ -72,10 +81,11 @@ export const buildStableReleasePublication = (distDir) => {
     releaseId,
     identity,
     descriptor,
+    indexBytes,
     descriptorText: `${JSON.stringify(descriptor, null, 2)}\n`,
     latestText: `${JSON.stringify(
       {
-        schemaVersion: 1,
+        schemaVersion: 2,
         release: identity,
         descriptorUrl: `/updates/releases/${releaseId}.json`,
       },
@@ -86,10 +96,10 @@ export const buildStableReleasePublication = (distDir) => {
 };
 
 export const writeStableReleaseArtifact = (distDir) => {
-  const publication = buildStableReleasePublication(distDir);
+  const publication = buildStableReleasePublication(distDir, 1);
   const releaseDir = join(distDir, 'updates', 'releases', publication.releaseId);
   mkdirSync(releaseDir, { recursive: true });
-  writeFileSync(join(releaseDir, 'index.html'), readFileSync(join(distDir, 'index.html')));
+  writeFileSync(join(releaseDir, 'index.html'), publication.indexBytes);
   writeFileSync(
     join(distDir, 'updates', 'releases', `${publication.releaseId}.json`),
     publication.descriptorText,
@@ -114,12 +124,37 @@ export const applyManagedStablePublish = (
   distDir,
   { sizeLimitBytes = STABLE_PAGES_SIZE_LIMIT_BYTES } = {},
 ) => {
-  const publication = buildStableReleasePublication(distDir);
+  const latestPath = join(workDir, 'updates', 'latest.json');
+  const releaseId = readDeploymentMetadata(distDir).sha;
+  let releaseSequence = 1;
+  if (existsSync(latestPath)) {
+    let currentLatest;
+    try {
+      currentLatest = JSON.parse(readFileSync(latestPath, 'utf8'));
+    } catch {
+      throw new Error('Existing stable latest pointer is invalid.');
+    }
+    const currentRelease = currentLatest?.release;
+    if (
+      currentLatest?.schemaVersion !== 2 ||
+      !currentRelease ||
+      !/^[0-9a-f]{40}$/.test(currentRelease.releaseId ?? '') ||
+      !Number.isSafeInteger(currentRelease.releaseSequence) ||
+      currentRelease.releaseSequence < 1
+    ) {
+      throw new Error('Existing stable latest pointer is invalid.');
+    }
+    releaseSequence =
+      currentRelease.releaseId === releaseId
+        ? currentRelease.releaseSequence
+        : currentRelease.releaseSequence + 1;
+  }
+  const publication = buildStableReleasePublication(distDir, releaseSequence);
   const releaseDir = join(workDir, 'updates', 'releases', publication.releaseId);
   const descriptorPath = join(workDir, 'updates', 'releases', `${publication.releaseId}.json`);
   const archivedIndexPath = join(releaseDir, 'index.html');
   const descriptorBytes = Buffer.from(publication.descriptorText);
-  const indexBytes = readFileSync(join(distDir, 'index.html'));
+  const indexBytes = publication.indexBytes;
 
   assertIdenticalOrMissing(descriptorPath, descriptorBytes);
   assertIdenticalOrMissing(archivedIndexPath, indexBytes);
@@ -158,9 +193,7 @@ export const applyManagedStablePublish = (
     : 0;
   const publishedFallback = buildSpaFallbackHtml();
   const publishedFallbackBytes = Buffer.byteLength(publishedFallback);
-  const oldLatestBytes = existsSync(join(workDir, 'updates', 'latest.json'))
-    ? statSync(join(workDir, 'updates', 'latest.json')).size
-    : 0;
+  const oldLatestBytes = existsSync(latestPath) ? statSync(latestPath).size : 0;
   const projectedSize =
     existingSize +
     additions -
@@ -193,7 +226,7 @@ export const applyManagedStablePublish = (
   }
   writeFileSync(join(workDir, '404.html'), publishedFallback);
   mkdirSync(join(workDir, 'updates'), { recursive: true });
-  writeFileSync(join(workDir, 'updates', 'latest.json'), publication.latestText);
+  writeFileSync(latestPath, publication.latestText);
   return { ...publication, projectedSize };
 };
 /* eslint-enable jsdoc/require-jsdoc -- End stable publication helpers. */

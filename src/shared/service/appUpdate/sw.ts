@@ -1,10 +1,19 @@
 /// <reference lib="webworker" />
 
-import type { ReleaseIdentity } from './contracts';
+import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
+import { releaseDescriptorSchema } from './contracts';
 import { createReleaseController } from './controller';
 import { createReleaseControllerStateStore } from './persistence';
 import { getReleaseResponse, isReleaseAvailable, prepareRelease } from './releaseCache';
-import { beginBootAttempt, rollbackUnconfirmedBoot } from './stateMachine';
+import {
+  associateReplacementNavigation,
+  createActivationTransaction,
+  releaseForClient,
+  rollbackExpiredActivation,
+  rollbackFailedReplacementNavigation,
+} from './activationTransaction';
+import { getStableWindowClients, isStableAppUrl, isStableAppWindowClient } from './stableClients';
+import { projectAppUpdateSnapshot } from './stateMachine';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -14,19 +23,29 @@ declare global {
   }
 }
 
-const currentRelease: ReleaseIdentity = {
-  releaseId: __RELEASE_ID__,
-  appVersion: __APP_VERSION__,
-  buildId: (__BUILD_ID__ || __RELEASE_ID__).slice(0, 7),
-  buildDate: __BUILD_DATE__,
-};
 const store = createReleaseControllerStateStore();
+let currentReleasePromise: Promise<ReleaseIdentity> | undefined;
 
-const getWindowClients = () =>
-  self.clients.matchAll({ type: 'window', includeUncontrolled: false });
+const loadCurrentRelease = (): Promise<ReleaseIdentity> => {
+  currentReleasePromise ??= (async () => {
+    const response = await fetch(`/updates/releases/${__RELEASE_ID__}.json`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('Current stable release descriptor unavailable.');
+    return releaseDescriptorSchema.parse(await response.json());
+  })();
+  return currentReleasePromise;
+};
 
-const requestRestartReadiness = async (): Promise<'ready' | 'busy' | 'unresponsive'> => {
-  const clients = await getWindowClients();
+const broadcastSnapshot = async (state: ReleaseControllerState): Promise<void> => {
+  for (const client of await getStableWindowClients()) {
+    client.postMessage({
+      type: 'APP_UPDATE_SNAPSHOT',
+      snapshot: projectAppUpdateSnapshot(state, releaseForClient(state, client.id)),
+    });
+  }
+};
+
+const requestRestartReadiness = async () => {
+  const clients = await getStableWindowClients();
   const results = await Promise.all(
     clients.map(
       (client) =>
@@ -39,119 +58,152 @@ const requestRestartReadiness = async (): Promise<'ready' | 'busy' | 'unresponsi
             clearTimeout(timeout);
             resolve(event.data.status === 'ready' ? 'ready' : 'busy');
           };
-          client.postMessage({ type: 'RESTART_READINESS' }, [channel.port2]);
+          client.postMessage({ type: 'PRIVATE_RESTART_READINESS' }, [channel.port2]);
         }),
     ),
   );
-  return results.includes('unresponsive')
-    ? 'unresponsive'
-    : results.includes('busy')
-      ? 'busy'
-      : 'ready';
+  return {
+    status: results.includes('unresponsive')
+      ? ('unresponsive' as const)
+      : results.includes('busy')
+        ? ('busy' as const)
+        : ('ready' as const),
+    clientIds: clients.map(({ id }) => id),
+  };
 };
 
-const controller = createReleaseController({
-  currentRelease,
-  store,
-  readiness: requestRestartReadiness,
-});
+const createController = async () =>
+  createReleaseController({
+    currentRelease: await loadCurrentRelease(),
+    store,
+    readiness: requestRestartReadiness,
+    publish(state) {
+      void broadcastSnapshot(state);
+    },
+    async onActivationStarted(transactionId, clientIds) {
+      const clients = await getStableWindowClients();
+      clients
+        .filter((client) => clientIds.includes(client.id))
+        .forEach((client) => {
+          client.postMessage({
+            type: 'PRIVATE_UPDATE_RELOAD',
+            transactionId,
+            oldClientId: client.id,
+          });
+        });
+    },
+  });
 
-self.addEventListener('install', () => {
-  // Keep the plugin's injection seam in emitted code, but never use its entries for caching or
-  // routing. Validated immutable release descriptors are the only application-content source.
-  if (!Array.isArray(self['__WB_MANIFEST'])) throw new Error('Build manifest was not injected.');
-  // The browser controls controller-code activation. Application release selection never uses
-  // skipWaiting and remains entirely in the persisted release state below.
+let controllerPromise: ReturnType<typeof createController> | undefined;
+const getController = () => (controllerPromise ??= createController());
+
+self.addEventListener('install', (event) => {
+  if (!Array.isArray(self.__WB_MANIFEST)) throw new Error('Build manifest was not injected.');
+  // Controller-code takeover is independent from persisted application release selection.
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
+      const currentRelease = await loadCurrentRelease();
       const state = await store.read(currentRelease);
-      const selectedRelease =
+      const selected =
         state.mode === 'manual'
           ? (state.pinnedRelease ?? state.activeRelease)
           : state.activeRelease;
-      if (!(await isReleaseAvailable(selectedRelease))) {
-        await prepareRelease(selectedRelease);
+      if (!(await isReleaseAvailable(selected))) {
+        await prepareRelease({
+          schemaVersion: 2,
+          release: selected,
+          descriptorUrl: `/updates/releases/${selected.releaseId}.json`,
+        });
       }
       await self.clients.claim();
+      await broadcastSnapshot(state);
     })(),
   );
 });
 
 self.addEventListener('message', (event) => {
+  const source = event.source;
+  if (source && (!('url' in source) || !isStableAppWindowClient(source))) return;
   event.waitUntil(
     (async () => {
-      const outcome = await controller.execute(event.data);
-      event.ports[0]?.postMessage(outcome);
-      if (event.data?.type === 'ACTIVATE' && outcome.status === 'ok') {
-        const clients = await getWindowClients();
-        const state = await store.read(currentRelease);
-        await store.write({ ...state, bootExpectedClientIds: clients.map(({ id }) => id) });
-        clients.forEach((client) => {
-          client.postMessage({ type: 'RELOAD_FOR_UPDATE' });
-        });
-      }
+      const controller = await getController();
+      const execution = await controller.execute(
+        event.data,
+        source && 'id' in source ? source.id : '',
+      );
+      event.ports[0]?.postMessage(execution.response);
+      if (execution.background) await execution.background();
     })(),
   );
 });
 
-const selectNavigationRelease = async (navigationClientId: string): Promise<ReleaseIdentity> => {
-  let state = await store.read(currentRelease);
-  if (state.bootAttempt) {
-    const expectedClients = state.bootExpectedClientIds ?? [];
-    if (expectedClients.includes(navigationClientId)) {
-      state = {
-        ...state,
-        bootNavigationServed: true,
-        bootExpectedClientIds: expectedClients.filter((id) => id !== navigationClientId),
-      };
-    } else if (state.bootNavigationServed) {
-      state = rollbackUnconfirmedBoot(state);
-    } else {
-      state = { ...state, bootNavigationServed: true };
-    }
-    await store.write(state);
-    return state.bootAttempt ?? state.activeRelease;
+const selectNavigationRelease = async (event: FetchEvent): Promise<ReleaseIdentity> => {
+  const currentRelease = await loadCurrentRelease();
+  let state = rollbackExpiredActivation(await store.read(currentRelease), new Date());
+  const url = new URL(event.request.url);
+  const restartTransactionId = url.searchParams.get('__mioframe_restart_transaction');
+  const restartOldClientId = url.searchParams.get('__mioframe_restart_client');
+  const transaction = state.activationTransaction;
+  const tokenOldClientId =
+    transaction &&
+    restartTransactionId === transaction.transactionId &&
+    restartOldClientId &&
+    transaction.expectedOldClientIds.includes(restartOldClientId)
+      ? restartOldClientId
+      : '';
+  const replacesClientId = event.replacesClientId || tokenOldClientId;
+  state = rollbackFailedReplacementNavigation(state, replacesClientId);
+  if (
+    !state.activationTransaction &&
+    state.mode === 'automatic' &&
+    state.preparedRelease &&
+    (await getStableWindowClients()).filter(({ id }) => id !== event.resultingClientId).length === 0
+  ) {
+    state = createActivationTransaction({
+      state,
+      targetRelease: state.preparedRelease,
+      oldClientIds: [],
+      now: new Date(),
+    });
   }
-  if (state.mode === 'manual') return state.pinnedRelease ?? state.activeRelease;
-  const olderClients = (await getWindowClients()).filter(({ id }) => id !== navigationClientId);
-  if (state.candidateRelease && olderClients.length === 0) {
-    state = { ...beginBootAttempt(state, state.candidateRelease), bootNavigationServed: true };
-    await store.write(state);
-    return state.bootAttempt ?? state.activeRelease;
-  }
-  return state.activeRelease;
+  state = associateReplacementNavigation(
+    state,
+    replacesClientId,
+    event.resultingClientId || event.clientId,
+  );
+  await store.write(state);
+  await broadcastSnapshot(state);
+  return releaseForClient(state, event.resultingClientId || event.clientId);
 };
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (
-    url.origin !== self.location.origin ||
-    url.pathname.startsWith('/branch/') ||
-    url.pathname.startsWith('/pr/') ||
-    url.pathname === '/updates/latest.json' ||
-    /^\/updates\/releases\/[^/]+\.json$/.test(url.pathname)
-  ) {
-    return;
-  }
+  if (!isStableAppUrl(url)) return;
 
   event.respondWith(
     (async () => {
-      const isNavigation = event.request.mode === 'navigate';
+      const navigation = event.request.mode === 'navigate';
+      const currentRelease = await loadCurrentRelease();
       const state = await store.read(currentRelease);
-      const release = isNavigation
-        ? await selectNavigationRelease(event.resultingClientId || event.clientId)
-        : (state.bootAttempt ?? state.pinnedRelease ?? state.activeRelease);
-      let response = await getReleaseResponse(release, url.pathname, isNavigation);
+      const release = navigation
+        ? await selectNavigationRelease(event)
+        : releaseForClient(state, event.clientId);
+      let response = await getReleaseResponse(release, url.pathname, navigation);
       if (
         !response &&
         state.mode === 'manual' &&
         state.pinnedRelease?.releaseId === release.releaseId
       ) {
-        await prepareRelease(release);
-        response = await getReleaseResponse(release, url.pathname, isNavigation);
+        await prepareRelease({
+          schemaVersion: 2,
+          release,
+          descriptorUrl: `/updates/releases/${release.releaseId}.json`,
+        });
+        response = await getReleaseResponse(release, url.pathname, navigation);
       }
       return response ?? fetch(event.request);
     })(),

@@ -1,4 +1,8 @@
-/* eslint-disable jsdoc/require-jsdoc -- The single internal queue factory is named by its complete contract. */
+/**
+ * Create the private controller mutation queue.
+ * @returns A serializer that runs one controller mutation at a time and remains usable after a
+ *   rejected mutation.
+ */
 export const createCommandQueue = () => {
   let tail = Promise.resolve<unknown>(undefined);
 
@@ -8,4 +12,3 @@ export const createCommandQueue = () => {
     return result;
   };
 };
-/* eslint-enable jsdoc/require-jsdoc -- End internal queue factory. */

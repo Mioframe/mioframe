@@ -99,7 +99,7 @@ export async function runBuildArtifact(
   // inside the Playwright container's webServer command (see
   // playwright.release.config.ts), where `pnpm` is not installed.
   const viteBin = './node_modules/.bin/vite';
-  const args = ['build'];
+  const args = ['build', '--outDir', distDir];
   const releaseId = env.GITHUB_SHA || '0'.repeat(40);
   const buildDate = new Date().toISOString();
 

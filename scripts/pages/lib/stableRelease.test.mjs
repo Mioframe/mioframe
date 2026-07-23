@@ -43,6 +43,29 @@ afterEach(() => {
 });
 
 describe('stable release publication', () => {
+  it('allocates monotonically increasing sequences and preserves an idempotent release sequence', () => {
+    applyManagedStablePublish(workDir, distDir);
+    expect(
+      JSON.parse(readFileSync(join(workDir, 'updates/latest.json'), 'utf8')).release
+        .releaseSequence,
+    ).toBe(1);
+
+    expect(applyManagedStablePublish(workDir, distDir).identity.releaseSequence).toBe(1);
+
+    write(
+      distDir,
+      'deployment.json',
+      JSON.stringify({
+        channel: 'stable',
+        channelId: 'main',
+        sha: 'b'.repeat(40),
+        appVersion: '1.2.3',
+        buildDate: '2026-07-23T01:00:00.000Z',
+      }),
+    );
+    expect(applyManagedStablePublish(workDir, distDir).identity.releaseSequence).toBe(2);
+  });
+
   it('builds a full-SHA descriptor covering immutable index and hashed assets', () => {
     const publication = buildStableReleasePublication(distDir);
     expect(publication.releaseId).toBe(sha);
@@ -72,10 +95,21 @@ describe('stable release publication', () => {
   });
 
   it('fails the complete artifact size guard before changing the latest pointer', () => {
-    write(workDir, 'updates/latest.json', 'old-latest');
+    const oldLatest = JSON.stringify({
+      schemaVersion: 2,
+      release: {
+        releaseId: 'c'.repeat(40),
+        releaseSequence: 7,
+        appVersion: '1.0.0',
+        buildId: 'ccccccc',
+        buildDate: '2026-07-22T00:00:00.000Z',
+      },
+      descriptorUrl: `/updates/releases/${'c'.repeat(40)}.json`,
+    });
+    write(workDir, 'updates/latest.json', oldLatest);
     expect(() => applyManagedStablePublish(workDir, distDir, { sizeLimitBytes: 1 })).toThrow(
       'exceeds',
     );
-    expect(readFileSync(join(workDir, 'updates/latest.json'), 'utf8')).toBe('old-latest');
+    expect(readFileSync(join(workDir, 'updates/latest.json'), 'utf8')).toBe(oldLatest);
   });
 });

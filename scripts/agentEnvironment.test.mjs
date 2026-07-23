@@ -62,16 +62,6 @@ function initializeGitRepo(root) {
   if (initResult.status !== 0) {
     throw new Error(initResult.stderr || 'git init failed');
   }
-
-  const excludesPath = path.join(root, '.git', 'test-global-excludes');
-  fs.writeFileSync(excludesPath, '', 'utf8');
-  const configResult = spawnSync('git', ['config', 'core.excludesFile', excludesPath], {
-    cwd: root,
-    encoding: 'utf8',
-  });
-  if (configResult.status !== 0) {
-    throw new Error(configResult.stderr || 'git config failed');
-  }
 }
 
 /**

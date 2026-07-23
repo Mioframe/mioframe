@@ -1,70 +1,61 @@
 import { describe, expect, it } from 'vitest';
 import type { ReleaseIdentity } from './contracts';
 import {
-  beginBootAttempt,
-  confirmBoot,
   createInitialReleaseControllerState,
-  markCandidateReady,
-  rollbackUnconfirmedBoot,
-  setAutomaticMode,
+  isStrictlyNewerRelease,
+  migrateReleaseControllerState,
+  projectAppUpdateSnapshot,
 } from './stateMachine';
 
-const release = (releaseId: string, appVersion = '1.0.0'): ReleaseIdentity => ({
-  releaseId: releaseId.repeat(40),
-  appVersion,
-  buildId: releaseId.repeat(7),
+const release = (letter: string, releaseSequence: number): ReleaseIdentity => ({
+  releaseId: letter.repeat(40),
+  releaseSequence,
+  appVersion: '1.0.0',
+  buildId: letter.repeat(7),
   buildDate: '2026-07-23T00:00:00.000Z',
 });
 
-describe('release controller state machine', () => {
-  it('treats equal SemVer releases with different commit SHAs as distinct', () => {
-    const active = release('a');
-    const candidate = release('b');
+describe('release controller state', () => {
+  it('orders releases only by publisher sequence', () => {
+    const running = release('b', 2);
+    expect(isStrictlyNewerRelease(release('a', 1), running)).toBe(false);
+    expect(isStrictlyNewerRelease(release('c', 2), running)).toBe(false);
+    expect(isStrictlyNewerRelease(release('a', 3), running)).toBe(true);
+  });
+
+  it('migrates a supported same-release Manual pin without resetting its mode', () => {
+    const current = release('a', 4);
     expect(
-      markCandidateReady(createInitialReleaseControllerState(active), candidate).candidateRelease,
-    ).toEqual(candidate);
+      migrateReleaseControllerState(
+        { schemaVersion: 1, mode: 'manual', activeRelease: current, pinnedRelease: current },
+        current,
+      ),
+    ).toMatchObject({ schemaVersion: 2, mode: 'manual', pinnedRelease: current });
+    expect(
+      migrateReleaseControllerState(
+        {
+          schemaVersion: 1,
+          mode: 'manual',
+          activeRelease: current,
+          pinnedRelease: release('b', 3),
+        },
+        current,
+      ),
+    ).toBeUndefined();
   });
 
-  it('pins the factually running release and cancels a candidate when Manual is selected', () => {
-    const active = release('a');
-    const running = release('b');
-    const state = markCandidateReady(createInitialReleaseControllerState(active), release('c'));
-    expect(setAutomaticMode(state, false, running)).toMatchObject({
-      mode: 'manual',
-      activeRelease: running,
-      pinnedRelease: running,
-      candidateRelease: undefined,
-    });
-  });
-
-  it('allows preparation again after Manual changes to Automatic', () => {
-    const active = release('a');
-    const manual = setAutomaticMode(createInitialReleaseControllerState(active), false, active);
-    const automatic = setAutomaticMode(manual, true, active);
-    expect(markCandidateReady(automatic, release('b')).candidateRelease?.releaseId).toBe(
-      release('b').releaseId,
-    );
-  });
-
-  it('rolls an unconfirmed boot back once and will not prepare the failed release again', () => {
-    const active = release('a');
-    const failed = release('b');
-    const rolledBack = rollbackUnconfirmedBoot(
-      beginBootAttempt(createInitialReleaseControllerState(active), failed),
-    );
-    expect(rolledBack.activeRelease).toEqual(active);
-    expect(rolledBack.failedReleaseId).toBe(failed.releaseId);
-    expect(markCandidateReady(rolledBack, failed).candidateRelease).toBeUndefined();
-  });
-
-  it('commits a confirmed trial and advances the Manual pin', () => {
-    const active = release('a');
-    const next = release('b');
-    const manual = setAutomaticMode(createInitialReleaseControllerState(active), false, active);
-    expect(confirmBoot(beginBootAttempt(manual, next), next.releaseId)).toMatchObject({
-      activeRelease: next,
-      pinnedRelease: next,
-      bootAttempt: undefined,
-    });
+  it('projects only UI-safe facts', () => {
+    const current = release('a', 1);
+    const state = {
+      ...createInitialReleaseControllerState(current),
+      preparedRelease: release('b', 2),
+      preparationState: 'ready' as const,
+      checkOperationId: 'private-check',
+    };
+    const snapshot = projectAppUpdateSnapshot(state);
+    expect(snapshot).toMatchObject({ runningRelease: current, preparationState: 'ready' });
+    expect(snapshot).not.toHaveProperty('preparedRelease');
+    expect(snapshot).not.toHaveProperty('checkOperationId');
+    expect(snapshot).not.toHaveProperty('activationTransaction');
   });
 });

@@ -1,97 +1,85 @@
-/* eslint-disable jsdoc/require-jsdoc -- Pure transition names and typed inputs/outputs define the internal state-machine contract. */
+import type { AppUpdateSnapshot } from './publicContracts';
+import { z } from 'zod';
 import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
-import { RELEASE_CONTROLLER_SCHEMA_VERSION, releaseControllerStateSchema } from './contracts';
+import { RELEASE_CONTROLLER_SCHEMA_VERSION } from './contracts';
 
+/**
+ * Compare immutable releases using only publisher sequence.
+ * @param candidate - Validated possible forward release.
+ * @param running - Currently committed release.
+ * @returns Whether the candidate is strictly forward.
+ */
+export const isStrictlyNewerRelease = (
+  candidate: ReleaseIdentity | undefined,
+  running: ReleaseIdentity,
+): candidate is ReleaseIdentity =>
+  candidate !== undefined && candidate.releaseSequence > running.releaseSequence;
+
+/**
+ * Create initial Automatic state only when no durable record exists.
+ * @param release - Release currently served by the stable worker.
+ * @returns Initial private controller state.
+ */
 export const createInitialReleaseControllerState = (
   release: ReleaseIdentity,
 ): ReleaseControllerState => ({
   schemaVersion: RELEASE_CONTROLLER_SCHEMA_VERSION,
   mode: 'automatic',
   activeRelease: release,
+  failedReleaseIds: [],
+  checkState: 'notChecked',
+  preparationState: 'idle',
+  activationState: 'idle',
 });
 
+/**
+ * Explicitly migrate the supported previous controller schema.
+ * @param value - Stored previous-schema candidate.
+ * @param currentRelease - Currently served release used for safe identity recovery.
+ * @returns Migrated state, or undefined when safe migration is impossible.
+ */
 export const migrateReleaseControllerState = (
   value: unknown,
   currentRelease: ReleaseIdentity,
-): ReleaseControllerState => {
-  const parsed = releaseControllerStateSchema.safeParse(value);
-  return parsed.success ? parsed.data : createInitialReleaseControllerState(currentRelease);
-};
-
-export const confirmLatestRelease = (
-  state: ReleaseControllerState,
-  release: ReleaseIdentity,
-  checkedAt: string,
-): ReleaseControllerState => ({
-  ...state,
-  confirmedLatestRelease: release,
-  lastSuccessfulCheckAt: checkedAt,
-});
-
-export const markCandidateReady = (
-  state: ReleaseControllerState,
-  candidate: ReleaseIdentity,
-): ReleaseControllerState =>
-  state.mode === 'automatic' && candidate.releaseId !== state.failedReleaseId
-    ? { ...state, candidateRelease: candidate }
-    : state;
-
-export const setAutomaticMode = (
-  state: ReleaseControllerState,
-  enabled: boolean,
-  runningRelease: ReleaseIdentity,
-): ReleaseControllerState =>
-  enabled
-    ? { ...state, mode: 'automatic', pinnedRelease: undefined }
-    : {
-        ...state,
-        mode: 'manual',
-        activeRelease: runningRelease,
-        pinnedRelease: runningRelease,
-        candidateRelease: undefined,
-      };
-
-export const beginBootAttempt = (
-  state: ReleaseControllerState,
-  release: ReleaseIdentity,
-): ReleaseControllerState => ({
-  ...state,
-  previousRelease: state.activeRelease,
-  bootAttempt: release,
-  bootNavigationServed: false,
-  bootExpectedClientIds: undefined,
-  candidateRelease: undefined,
-});
-
-export const confirmBoot = (
-  state: ReleaseControllerState,
-  releaseId: string,
-): ReleaseControllerState => {
-  if (state.bootAttempt?.releaseId !== releaseId) return state;
-  const activeRelease = state.bootAttempt;
+): ReleaseControllerState | undefined => {
+  const parsed = z
+    .object({
+      schemaVersion: z.literal(1),
+      mode: z.enum(['automatic', 'manual']),
+      activeRelease: z.object({ releaseId: z.string() }),
+      pinnedRelease: z.object({ releaseId: z.string() }).optional(),
+    })
+    .safeParse(value);
+  if (!parsed.success) return undefined;
+  const record = parsed.data;
+  if (record.activeRelease.releaseId !== currentRelease.releaseId) return undefined;
+  if (record.mode === 'manual' && record.pinnedRelease?.releaseId !== currentRelease.releaseId)
+    return undefined;
   return {
-    ...state,
-    activeRelease,
-    pinnedRelease: state.mode === 'manual' ? activeRelease : state.pinnedRelease,
-    bootAttempt: undefined,
-    bootNavigationServed: undefined,
-    bootExpectedClientIds: undefined,
-    failedReleaseId:
-      state.failedReleaseId === activeRelease.releaseId ? undefined : state.failedReleaseId,
+    ...createInitialReleaseControllerState(currentRelease),
+    mode: record.mode === 'manual' ? 'manual' : 'automatic',
+    pinnedRelease: record.mode === 'manual' ? currentRelease : undefined,
   };
 };
 
-export const rollbackUnconfirmedBoot = (state: ReleaseControllerState): ReleaseControllerState => {
-  if (!state.bootAttempt || !state.previousRelease) return state;
-  return {
-    ...state,
-    activeRelease: state.previousRelease,
-    pinnedRelease: state.mode === 'manual' ? state.previousRelease : state.pinnedRelease,
-    failedReleaseId: state.bootAttempt.releaseId,
-    bootAttempt: undefined,
-    bootNavigationServed: undefined,
-    bootExpectedClientIds: undefined,
-    candidateRelease: undefined,
-  };
-};
-/* eslint-enable jsdoc/require-jsdoc -- End pure controller transitions. */
+/**
+ * Project private controller state into the factual UI-safe snapshot.
+ * @param state - Private durable controller state.
+ * @param runningRelease - Release executing in the requesting client.
+ * @returns UI-safe factual snapshot.
+ */
+export const projectAppUpdateSnapshot = (
+  state: ReleaseControllerState,
+  runningRelease = state.pinnedRelease ?? state.activeRelease,
+): AppUpdateSnapshot => ({
+  capability: state.capabilityUnavailable ? 'unavailable' : 'available',
+  mode: state.mode,
+  runningRelease,
+  ...(state.pinnedRelease && { pinnedRelease: state.pinnedRelease }),
+  ...(state.confirmedLatestRelease && { latestRelease: state.confirmedLatestRelease }),
+  checkState: state.checkState,
+  preparationState: state.preparationState,
+  activationState: state.activationState,
+  ...(state.lastSuccessfulCheckAt && { lastSuccessfulCheckAt: state.lastSuccessfulCheckAt }),
+  ...(state.errorCode && { errorCode: state.errorCode }),
+});

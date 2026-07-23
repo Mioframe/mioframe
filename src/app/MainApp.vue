@@ -15,7 +15,7 @@ import { usePreventUnloadDuringActiveWrites } from '@feature/preventUnloadDuring
 import { useOptionalGoogleDriveIntegration } from '@feature/googleDriveIntegration';
 import { useDiagnosticsReporting } from '@feature/diagnosticsReporting';
 import { setupPwaInstallRuntime } from '@feature/pwaInstall';
-import { useManualAppUpdateNotification } from '@feature/appUpdate';
+import { useManualAppUpdateNotification } from '@feature/appUpdateNotify';
 
 const { addSnackbar } = useSnackbar();
 

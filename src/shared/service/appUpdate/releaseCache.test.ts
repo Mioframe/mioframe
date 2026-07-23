@@ -1,13 +1,20 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
+import type { LatestRelease, ReleaseControllerState, ReleaseIdentity } from './contracts';
 import { cleanupReleaseCaches, isReleaseAvailable, prepareRelease } from './releaseCache';
+import { createInitialReleaseControllerState } from './stateMachine';
 
-const identity = (letter: string): ReleaseIdentity => ({
+const identity = (letter: string, releaseSequence: number): ReleaseIdentity => ({
   releaseId: letter.repeat(40),
+  releaseSequence,
   appVersion: '1.0.0',
   buildId: letter.repeat(7),
   buildDate: '2026-07-23T00:00:00.000Z',
+});
+const latest = (release: ReleaseIdentity): LatestRelease => ({
+  schemaVersion: 2,
+  release,
+  descriptorUrl: `/updates/releases/${release.releaseId}.json`,
 });
 const cacheEntries = new Map<string, Map<string, Response>>();
 const fakeCaches = {
@@ -33,76 +40,73 @@ const fakeCaches = {
 beforeEach(() => {
   cacheEntries.clear();
   vi.stubGlobal('caches', fakeCaches);
+  vi.stubGlobal('self', { location: { origin: 'https://example.test' } });
+  vi.stubGlobal('crypto', { subtle: crypto.subtle, randomUUID: () => 'attempt' });
 });
 afterEach(() => vi.unstubAllGlobals());
 
-describe('validated release cache', () => {
-  it('keeps an interrupted download unreachable', async () => {
-    const release = identity('a');
-    const bytes = Buffer.from('first');
+const descriptor = (release: ReleaseIdentity, bytes: Buffer) => ({
+  schemaVersion: 2,
+  ...release,
+  indexUrl: `/updates/releases/${release.releaseId}/index.html`,
+  files: [
+    {
+      url: `/updates/releases/${release.releaseId}/index.html`,
+      byteSize: bytes.byteLength,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    },
+  ],
+});
+
+describe('staged release cache', () => {
+  it('commits only after validation and a failed repeat cannot remove the valid release', async () => {
+    const release = identity('a', 1);
+    const bytes = Buffer.from('index');
     vi.stubGlobal(
       'fetch',
       vi
         .fn()
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              schemaVersion: 1,
-              ...release,
-              indexUrl: `/updates/releases/${release.releaseId}/index.html`,
-              files: [
-                {
-                  url: '/assets/first.js',
-                  byteSize: bytes.byteLength,
-                  sha256: createHash('sha256').update(bytes).digest('hex'),
-                },
-                { url: '/assets/missing.js', byteSize: 1, sha256: 'b'.repeat(64) },
-              ],
-            }),
-          ),
-        )
-        .mockResolvedValueOnce(new Response(bytes))
-        .mockRejectedValueOnce(new TypeError('interrupted')),
+        .mockResolvedValueOnce(new Response(JSON.stringify(descriptor(release, bytes))))
+        .mockResolvedValueOnce(new Response(bytes)),
     );
-    await expect(prepareRelease(release)).rejects.toThrow('interrupted');
-    await expect(isReleaseAvailable(release)).resolves.toBe(false);
+    await prepareRelease(latest(release));
+    await expect(isReleaseAvailable(release)).resolves.toBe(true);
+
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')));
+    await expect(prepareRelease(latest(release))).rejects.toThrow('offline');
+    await expect(isReleaseAvailable(release)).resolves.toBe(true);
+    expect(
+      [...cacheEntries.keys()].some((name) => name.startsWith('stable-release-staging-')),
+    ).toBe(false);
   });
 
-  it('rejects a hash mismatch and deletes the partial cache', async () => {
-    const release = identity('a');
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({
-              schemaVersion: 1,
-              ...release,
-              indexUrl: `/updates/releases/${release.releaseId}/index.html`,
-              files: [{ url: '/assets/app.js', byteSize: 3, sha256: 'b'.repeat(64) }],
-            }),
-          ),
-        )
-        .mockResolvedValueOnce(new Response('bad')),
+  it('protects every release referenced by durable and in-flight state during cleanup', async () => {
+    const releases = [1, 2, 3, 4, 5, 6].map((sequence) =>
+      identity(String.fromCharCode(96 + sequence), sequence),
     );
-    await expect(prepareRelease(release)).rejects.toThrow('validation');
-    expect(cacheEntries.has(`stable-release-${release.releaseId}`)).toBe(false);
-  });
-
-  it('never cleans caches protected by active, pinned, candidate, trial, previous state', async () => {
-    const releases = ['a', 'b', 'c', 'd', 'e', 'f'].map(identity);
+    const [active, pinned, prepared, previous, target] = releases;
+    if (!active || !pinned || !prepared || !previous || !target)
+      throw new Error('Expected release fixtures.');
     releases.forEach((release) =>
       cacheEntries.set(`stable-release-${release.releaseId}`, new Map()),
     );
     const state: ReleaseControllerState = {
-      schemaVersion: 1,
+      ...createInitialReleaseControllerState(active),
       mode: 'manual',
-      activeRelease: identity('a'),
-      pinnedRelease: releases[1],
-      candidateRelease: releases[2],
-      bootAttempt: releases[3],
-      previousRelease: releases[4],
+      pinnedRelease: pinned,
+      preparedRelease: prepared,
+      previousRelease: previous,
+      activationTransaction: {
+        transactionId: 'tx',
+        targetRelease: target,
+        previousRelease: previous,
+        expectedOldClientIds: [],
+        replacements: {},
+        confirmedReplacementClientIds: [],
+        acceptsSingleLaunch: true,
+        createdAt: '2026-07-23T00:00:00.000Z',
+        expiresAt: '2026-07-23T00:01:00.000Z',
+      },
     };
     await cleanupReleaseCaches(state);
     expect(await fakeCaches.keys()).toEqual(

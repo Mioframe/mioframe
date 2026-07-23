@@ -21,6 +21,17 @@ const browserStorageStatus = ref<'checking' | 'ordinary' | 'persistent' | 'unsup
 const enableStorageMock = vi.fn();
 const showFeedbackMock = vi.fn();
 const isEnablingStorage = ref(false);
+const appUpdateSnapshot = ref({
+  capability: 'available' as const,
+  mode: 'automatic' as const,
+  checkState: 'notChecked' as const,
+  preparationState: 'idle' as const,
+  activationState: 'idle' as const,
+});
+
+vi.mock('@entity/appUpdate', () => ({
+  useAppUpdate: () => ({ snapshot: appUpdateSnapshot }),
+}));
 
 vi.mock('@entity/localSettings', () => ({
   useLocalSettings: () => ({
@@ -279,6 +290,13 @@ describe('SettingsSections', () => {
     googleDriveIntegrationAvailable = true;
     sentryDiagnosticsAvailable = true;
     managedAppUpdatesAvailable = false;
+    appUpdateSnapshot.value = {
+      capability: 'available',
+      mode: 'automatic',
+      checkState: 'notChecked',
+      preparationState: 'idle',
+      activationState: 'idle',
+    };
     settings.value = {};
     browserStorageStatus.value = 'checking';
     isEnablingStorage.value = false;
@@ -336,6 +354,8 @@ describe('SettingsSections', () => {
     managedAppUpdatesAvailable = true;
     const onSelectAppUpdates = vi.fn();
     const { root, unmount } = await mountSettingsSections({ onSelectAppUpdates });
+
+    expect(root.textContent).toContain('Not checked yet');
 
     getButtonByText(root, 'App updates')?.click();
     await nextTick();

@@ -1,42 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import { latestReleaseSchema, releaseDescriptorSchema } from './contracts';
+import { validateReleaseMetadata } from './releaseCache';
 
-const releaseId = 'a'.repeat(40);
-const identity = {
-  releaseId,
-  appVersion: '1.2.3',
-  buildId: 'abcdef0',
+const release = {
+  releaseId: 'a'.repeat(40),
+  releaseSequence: 1,
+  appVersion: '1.0.0',
+  buildId: 'aaaaaaa',
   buildDate: '2026-07-23T00:00:00.000Z',
 };
+const latest = {
+  schemaVersion: 2 as const,
+  release,
+  descriptorUrl: `/updates/releases/${release.releaseId}.json`,
+};
+const descriptor = {
+  schemaVersion: 2 as const,
+  ...release,
+  indexUrl: `/updates/releases/${release.releaseId}/index.html`,
+  files: [
+    {
+      url: `/updates/releases/${release.releaseId}/index.html`,
+      byteSize: 1,
+      sha256: 'b'.repeat(64),
+    },
+    { url: '/assets/app.js', byteSize: 1, sha256: 'c'.repeat(64) },
+  ],
+};
 
-describe('managed release metadata', () => {
-  it('accepts a latest pointer and complete descriptor with SHA-256 file facts', () => {
-    expect(
-      latestReleaseSchema.parse({
-        schemaVersion: 1,
-        release: identity,
-        descriptorUrl: `/updates/releases/${releaseId}.json`,
-      }),
-    ).toBeTruthy();
-    expect(
-      releaseDescriptorSchema.parse({
-        schemaVersion: 1,
-        ...identity,
-        indexUrl: `/updates/releases/${releaseId}/index.html`,
-        files: [{ url: '/assets/app.js', byteSize: 12, sha256: 'b'.repeat(64) }],
-      }),
-    ).toBeTruthy();
+describe('stable release metadata relationship', () => {
+  it('accepts one canonical index and unique stable asset paths', () => {
+    expect(validateReleaseMetadata(latest, descriptor, 'https://example.test').descriptor).toEqual(
+      descriptor,
+    );
   });
 
-  it('rejects truncated release identities and hashes', () => {
-    expect(() => latestReleaseSchema.parse({ schemaVersion: 1, release: identity })).toThrow();
-    expect(() =>
-      releaseDescriptorSchema.parse({
-        schemaVersion: 1,
-        ...identity,
-        indexUrl: '/updates/releases/a/index.html',
-        files: [{ url: '/assets/app.js', byteSize: 12, sha256: 'short' }],
-      }),
-    ).toThrow();
+  it.each([
+    ['sequence mismatch', { ...descriptor, releaseSequence: 2 }],
+    ['duplicate file URL', { ...descriptor, files: [...descriptor.files, descriptor.files[1]] }],
+    [
+      'query alias',
+      { ...descriptor, files: [{ ...descriptor.files[0], url: `${descriptor.indexUrl}?x=1` }] },
+    ],
+    [
+      'foreign channel',
+      { ...descriptor, files: [{ ...descriptor.files[0], url: '/pr/161/index.html' }] },
+    ],
+  ])('rejects %s', (_name, invalid) => {
+    expect(() => validateReleaseMetadata(latest, invalid, 'https://example.test')).toThrow();
   });
 });

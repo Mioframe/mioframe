@@ -1,34 +1,51 @@
-/* eslint-disable jsdoc/require-jsdoc -- AppUpdateClient is the documented narrow public contract; helpers remain module-private. */
-import type {
-  AppUpdateOutcome,
-  ReleaseControllerCommand,
-  ReleaseControllerState,
-} from '@shared/service/appUpdate';
 import { APP_RELEASE_ID, MANAGED_APP_UPDATES_AVAILABLE } from '@shared/config';
+import type {
+  AppUpdateActionResult,
+  AppUpdateMode,
+  AppUpdateSnapshot,
+} from '@shared/service/appUpdate/publicContracts';
+import type { ReleaseControllerCommand } from '@shared/service/appUpdate/contracts';
+import type { ControllerResponse } from '@shared/service/appUpdate/controller';
 
+/** High-level managed-update actions and factual snapshot reads available to application code. */
 export type AppUpdateClient = {
-  getState(): Promise<AppUpdateOutcome>;
-  checkForUpdates(): Promise<AppUpdateOutcome>;
-  setAutomatic(enabled: boolean, runningReleaseId: string): Promise<AppUpdateOutcome>;
-  prepareLatest(): Promise<AppUpdateOutcome>;
-  requestActivate(): Promise<AppUpdateOutcome>;
-  reportBootOk(releaseId: string): Promise<void>;
-  subscribe(listener: (state: ReleaseControllerState) => void): () => void;
+  /** Read the controller's latest factual UI-safe snapshot. */
+  getSnapshot(): Promise<AppUpdateSnapshot>;
+  /** Start or join a metadata check and acknowledge without awaiting background download work. */
+  checkForUpdates(): Promise<AppUpdateActionResult>;
+  /** Persist the selected Automatic or Manual update mode. */
+  setMode(mode: AppUpdateMode): Promise<AppUpdateActionResult>;
+  /** Start preparation and coordinated activation of the latest forward release. */
+  updateNow(): Promise<AppUpdateActionResult>;
+  /** Observe factual persisted snapshot changes broadcast to this stable window. */
+  subscribeToSnapshot(listener: (snapshot: AppUpdateSnapshot) => void): () => void;
 };
 
-const listeners = new Set<(state: ReleaseControllerState) => void>();
+const unavailableSnapshot: AppUpdateSnapshot = {
+  capability: 'unavailable',
+  mode: 'automatic',
+  checkState: 'notChecked',
+  preparationState: 'idle',
+  activationState: 'idle',
+  errorCode: 'capabilityUnavailable',
+};
+
+const listeners = new Set<(snapshot: AppUpdateSnapshot) => void>();
 let restartReady = () => true;
 let registrationPromise: Promise<ServiceWorkerRegistration> | undefined;
 let hooksInstalled = false;
 
-const publish = (outcome: AppUpdateOutcome): AppUpdateOutcome => {
-  if ('state' in outcome) {
-    const nextState = outcome.state;
-    listeners.forEach((listener) => {
-      listener(nextState);
-    });
-  }
-  return outcome;
+const getRunningReleaseId = (): string | undefined => {
+  const value = document.querySelector<HTMLMetaElement>(
+    'meta[name="mioframe-release-id"]',
+  )?.content;
+  return value && /^[0-9a-f]{40}$/.test(value) ? value : APP_RELEASE_ID;
+};
+
+const publish = (snapshot: AppUpdateSnapshot) => {
+  listeners.forEach((listener) => {
+    listener(snapshot);
+  });
 };
 
 const waitForController = async (): Promise<ServiceWorker> => {
@@ -50,50 +67,55 @@ const waitForController = async (): Promise<ServiceWorker> => {
   });
 };
 
-const register = async (): Promise<ServiceWorkerRegistration> => {
-  if (!MANAGED_APP_UPDATES_AVAILABLE) throw new Error('Managed updates are not available.');
+const register = async (): Promise<void> => {
+  if (!MANAGED_APP_UPDATES_AVAILABLE) throw new Error('Managed updates are unavailable.');
   registrationPromise ??= (async () => {
     const existing = await navigator.serviceWorker.getRegistration('/');
-    if (!existing) return navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    try {
-      await existing.update();
-    } catch {
-      // The currently active controller remains usable when an update check is offline.
+    if (existing) {
+      try {
+        await existing.update();
+      } catch {
+        // The installed stable controller remains usable while metadata is offline.
+      }
+      return existing;
     }
-    return existing;
+    return navigator.serviceWorker.register('/sw.js', { scope: '/' });
   })();
-  return registrationPromise;
+  await registrationPromise;
 };
 
-const send = async (command: ReleaseControllerCommand): Promise<AppUpdateOutcome> => {
-  if (command.type === 'CHECK' && !navigator.onLine) {
-    return { status: 'error', code: 'checkFailed' };
-  }
+const send = async (command: ReleaseControllerCommand): Promise<ControllerResponse | undefined> => {
   try {
     await register();
     const controller = await waitForController();
-    return await new Promise<AppUpdateOutcome>((resolve) => {
+    return await new Promise((resolve) => {
       const channel = new MessageChannel();
       const timeout = window.setTimeout(() => {
-        const code =
-          command.type === 'CHECK'
-            ? 'checkFailed'
-            : command.type === 'PREPARE_LATEST' || command.type === 'ACTIVATE'
-              ? 'prepareFailed'
-              : 'capabilityUnavailable';
-        resolve({ status: 'error', code });
+        resolve(undefined);
       }, 5_000);
-      channel.port1.onmessage = (event: MessageEvent<AppUpdateOutcome>) => {
+      channel.port1.onmessage = (event: MessageEvent<ControllerResponse>) => {
         window.clearTimeout(timeout);
-        resolve(publish(event.data));
+        resolve(event.data);
       };
       controller.postMessage(command, [channel.port2]);
     });
   } catch {
-    return { status: 'error', code: 'capabilityUnavailable' };
+    return undefined;
   }
 };
 
+const action = async (command: ReleaseControllerCommand): Promise<AppUpdateActionResult> => {
+  const response = await send(command);
+  return response?.kind === 'action'
+    ? response.result
+    : { status: 'error', code: 'capabilityUnavailable' };
+};
+
+/**
+ * Install the stable-window readiness callback used by coordinated restart.
+ * @param readiness - Returns whether this stable window can safely restart.
+ * @returns Cleanup that restores the default ready response.
+ */
 export const setupAppUpdateRestartReadiness = (readiness: () => boolean): (() => void) => {
   restartReady = readiness;
   return () => {
@@ -101,41 +123,66 @@ export const setupAppUpdateRestartReadiness = (readiness: () => boolean): (() =>
   };
 };
 
-if ('serviceWorker' in navigator) {
+if (MANAGED_APP_UPDATES_AVAILABLE && 'serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
-    if (event.data?.type === 'RESTART_READINESS') {
+    if (event.data?.type === 'APP_UPDATE_SNAPSHOT') {
+      publish(event.data.snapshot);
+    } else if (event.data?.type === 'PRIVATE_RESTART_READINESS') {
       event.ports[0]?.postMessage({ status: restartReady() ? 'ready' : 'busy' });
-    } else if (event.data?.type === 'RELOAD_FOR_UPDATE' && restartReady()) {
-      window.location.reload();
+    } else if (
+      event.data?.type === 'PRIVATE_UPDATE_RELOAD' &&
+      typeof event.data.transactionId === 'string' &&
+      typeof event.data.oldClientId === 'string'
+    ) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('__mioframe_restart_transaction', event.data.transactionId);
+      url.searchParams.set('__mioframe_restart_client', event.data.oldClientId);
+      window.location.replace(url);
     }
   });
 }
 
+/** Shared application client for managed stable updates. */
 export const appUpdateClient: AppUpdateClient = {
-  getState: () => send({ protocolVersion: 1, type: 'GET_STATE' }),
-  checkForUpdates: () => send({ protocolVersion: 1, type: 'CHECK' }),
-  setAutomatic: (enabled, runningReleaseId) =>
-    send({ protocolVersion: 1, type: 'SET_AUTOMATIC', enabled, runningReleaseId }),
-  prepareLatest: () => send({ protocolVersion: 1, type: 'PREPARE_LATEST' }),
-  requestActivate: () => send({ protocolVersion: 1, type: 'ACTIVATE' }),
-  async reportBootOk(releaseId) {
-    await send({ protocolVersion: 1, type: 'BOOT_OK', releaseId });
+  async getSnapshot() {
+    if (!MANAGED_APP_UPDATES_AVAILABLE) return unavailableSnapshot;
+    const response = await send({ protocolVersion: 2, type: 'GET_SNAPSHOT' });
+    if (response?.kind === 'snapshot') {
+      publish(response.snapshot);
+      return response.snapshot;
+    }
+    return unavailableSnapshot;
   },
-  subscribe(listener) {
+  checkForUpdates: () => action({ protocolVersion: 2, type: 'CHECK_FOR_UPDATES' }),
+  setMode: (mode) => action({ protocolVersion: 2, type: 'SET_MODE', mode }),
+  updateNow: () => action({ protocolVersion: 2, type: 'UPDATE_NOW' }),
+  subscribeToSnapshot(listener) {
     listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
+    return () => listeners.delete(listener);
   },
 };
 
-export const setupManagedAppUpdates = async (): Promise<AppUpdateOutcome> => {
-  if (!MANAGED_APP_UPDATES_AVAILABLE || !APP_RELEASE_ID || !('serviceWorker' in navigator)) {
-    return { status: 'error', code: 'capabilityUnavailable' };
+/**
+ * Complete stable runtime registration after Vue mount and initial router readiness.
+ * @returns The initial factual snapshot, or unavailable capability facts.
+ */
+export const setupManagedAppUpdates = async (): Promise<AppUpdateSnapshot> => {
+  const runningReleaseId = getRunningReleaseId();
+  if (!MANAGED_APP_UPDATES_AVAILABLE || !runningReleaseId || !('serviceWorker' in navigator)) {
+    return unavailableSnapshot;
   }
-  const outcome = await appUpdateClient.getState();
-  if (outcome.status === 'ok') {
-    await appUpdateClient.reportBootOk(APP_RELEASE_ID);
+  const snapshot = await appUpdateClient.getSnapshot();
+  if (snapshot.capability === 'available') {
+    await action({ protocolVersion: 2, type: 'PRIVATE_BOOT_READY', releaseId: runningReleaseId });
+    if (
+      window.location.search.includes('__mioframe_restart_transaction=') ||
+      window.location.search.includes('__mioframe_restart_client=')
+    ) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('__mioframe_restart_transaction');
+      url.searchParams.delete('__mioframe_restart_client');
+      window.history.replaceState(window.history.state, '', url);
+    }
     if (!hooksInstalled) {
       hooksInstalled = true;
       const checkWhenReachable = () => {
@@ -148,6 +195,5 @@ export const setupManagedAppUpdates = async (): Promise<AppUpdateOutcome> => {
       checkWhenReachable();
     }
   }
-  return outcome;
+  return snapshot;
 };
-/* eslint-enable jsdoc/require-jsdoc -- End AppUpdateClient implementation. */

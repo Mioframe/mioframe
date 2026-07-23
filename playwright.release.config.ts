@@ -31,7 +31,9 @@ export default defineConfig({
   },
   webServer: {
     command: [
-      `node scripts/release/buildArtifact.mjs --base ${basePath}`,
+      process.env.MIOFRAME_MANAGED_STABLE_FIXTURE === '1'
+        ? 'node scripts/release/managedStableFixture.mjs'
+        : `node scripts/release/buildArtifact.mjs --base ${basePath}`,
       `node scripts/release/artifactServer.mjs --base ${basePath} --host ${host} --port ${port}`,
     ].join(' && '),
     url: releaseBaseURL,

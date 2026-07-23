@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useAppUpdateActions } from '@feature/appUpdate';
+import { useAppUpdate } from '@entity/appUpdate';
+import { useApplyAppUpdate } from '@feature/appUpdateApply';
+import { useCheckForAppUpdates } from '@feature/appUpdateCheck';
+import { useChangeAppUpdateMode } from '@feature/appUpdateModeChange';
 import { dayjs } from '@shared/lib/dayjs';
 import { MDAppBar } from '@shared/ui/AppBar';
 import { MDButton } from '@shared/ui/Button';
@@ -12,67 +15,81 @@ defineSlots<{
   appBarTrailing: () => unknown;
 }>();
 
-const update = useAppUpdateActions();
+const { snapshot, hasUpdate } = useAppUpdate();
+const checkAction = useCheckForAppUpdates();
+const modeAction = useChangeAppUpdateMode();
+const applyAction = useApplyAppUpdate();
 
-const primaryStatus = computed(
-  () =>
-    ({
-      notChecked: 'Not checked yet',
-      checking: 'Checking for updates',
-      upToDate: 'Up to date',
-      available: 'Update available',
-      preparing: 'Preparing update',
-      ready: 'Update ready',
-      checkFailed: 'Could not check for updates',
-      prepareFailed: 'Could not prepare update',
-      restartBlocked: 'Restart blocked',
-      statusUnavailable: 'Status unavailable',
-    })[update.status.value],
+const isAutomatic = computed(() => snapshot.value?.mode === 'automatic');
+const isActionPending = computed(
+  () => checkAction.pending.value || modeAction.pending.value || applyAction.pending.value,
 );
-
+const immediateErrorCode = computed(() => {
+  const results = [checkAction.result.value, modeAction.result.value, applyAction.result.value];
+  return results.find((result) => result?.status === 'error')?.code;
+});
+const effectiveErrorCode = computed(() => immediateErrorCode.value ?? snapshot.value?.errorCode);
+const primaryStatus = computed(() => {
+  const value = snapshot.value;
+  if (!value || value.capability === 'unavailable') return 'Status unavailable';
+  if (value.activationState === 'blockedByActivity' || value.activationState === 'blockedByWindow')
+    return 'Restart blocked';
+  if (value.activationState === 'restarting') return 'Restarting';
+  if (value.checkState === 'checking') return 'Checking for updates';
+  if (value.preparationState === 'preparing') return 'Preparing update';
+  if (value.checkState === 'failed') return 'Could not check for updates';
+  if (value.preparationState === 'failed') return 'Could not prepare update';
+  if (!value.lastSuccessfulCheckAt) return 'Not checked yet';
+  if (!hasUpdate.value) return 'Up to date';
+  return value.preparationState === 'ready' ? 'Update ready' : 'Update available';
+});
 const operationExplanation = computed(() => {
-  switch (update.errorCode.value) {
+  switch (effectiveErrorCode.value) {
     case 'restartBusy':
       return 'Changes are still being saved in an open window. Try again when saving finishes.';
     case 'restartUnresponsive':
-      return 'An open window did not confirm that it is ready to restart.';
+      return 'An open Mioframe window did not confirm that it is ready to restart.';
     case 'checkFailed':
+    case 'invalidReleaseMetadata':
       return 'Mioframe could not confirm whether a newer version is available.';
-    case 'prepareFailed':
+    case 'preparationFailed':
       return 'The new version could not be downloaded and verified. Your current version is unchanged.';
     case 'capabilityUnavailable':
-    case 'invalidResponse':
-    case 'unsupportedProtocol':
+    case 'storageUnavailable':
       return 'Update controls are not available in this browser session.';
     default:
       return undefined;
   }
 });
-
-const isAutomatic = computed(() => update.state.value?.mode === 'automatic');
-const showUpdateNow = computed(
-  () => update.hasUpdate.value && update.operation.value === undefined,
+const modeExplanation = computed(() =>
+  isAutomatic.value
+    ? 'New versions are prepared automatically and used on a later safe launch.'
+    : 'This version stays pinned until you choose Update now.',
 );
-const isActionPending = computed(() => update.operation.value !== undefined);
+const showUpdateNow = computed(() => hasUpdate.value);
+const pinnedIsRelevant = computed(
+  () =>
+    snapshot.value?.mode === 'manual' &&
+    snapshot.value.pinnedRelease !== undefined &&
+    snapshot.value.pinnedRelease.releaseId !== snapshot.value.runningRelease?.releaseId,
+);
 const lastChecked = computed(() => {
-  const value = update.state.value?.lastSuccessfulCheckAt;
+  const value = snapshot.value?.lastSuccessfulCheckAt;
   return value ? dayjs(value).format('lll') : undefined;
 });
 const buildDate = computed(() => {
-  const value = update.runningRelease.value?.buildDate;
+  const value = snapshot.value?.runningRelease?.buildDate;
   return value ? dayjs(value).format('lll') : undefined;
 });
 
 const onToggleAutomatic = () => {
-  void update.setAutomatic(!isAutomatic.value);
+  void modeAction.setMode(isAutomatic.value ? 'manual' : 'automatic');
 };
-
 const onCheckForUpdates = () => {
-  void update.checkForUpdates();
+  void checkAction.checkForUpdates();
 };
-
 const onUpdateNow = () => {
-  void update.updateNow();
+  void applyAction.updateNow();
 };
 </script>
 
@@ -80,39 +97,38 @@ const onUpdateNow = () => {
   <MDPane class="app-updates-pane" allow-bottom-navigation>
     <template #topBar>
       <MDAppBar headline="App updates">
-        <template #leadingButton>
-          <slot name="navigationButton" />
-        </template>
-        <template #trailingElements>
-          <slot name="appBarTrailing" />
-        </template>
+        <template #leadingButton><slot name="navigationButton" /></template>
+        <template #trailingElements><slot name="appBarTrailing" /></template>
       </MDAppBar>
     </template>
 
     <div class="app-updates-pane__content">
       <section class="app-updates-pane__status" aria-live="polite" aria-atomic="true">
         <h2 class="app-updates-pane__headline">{{ primaryStatus }}</h2>
-        <p v-if="update.runningRelease.value">
-          Current version: {{ update.runningRelease.value.appVersion }}
+        <p v-if="snapshot?.runningRelease">
+          Current version: {{ snapshot.runningRelease.appVersion }}
         </p>
-        <p v-if="update.latestRelease.value">
-          Latest confirmed version: {{ update.latestRelease.value.appVersion }}
+        <p v-if="pinnedIsRelevant">Pinned version: {{ snapshot?.pinnedRelease?.appVersion }}</p>
+        <p v-if="snapshot?.latestRelease">
+          Latest confirmed version: {{ snapshot.latestRelease.appVersion }}
         </p>
+        <p>{{ modeExplanation }}</p>
         <p v-if="operationExplanation">{{ operationExplanation }}</p>
       </section>
 
       <MDButton
         v-if="showUpdateNow"
         label="Update now"
-        :loading="isActionPending"
+        :loading="applyAction.pending.value || snapshot?.preparationState === 'preparing'"
+        :disabled="isActionPending"
         @click="onUpdateNow"
       />
 
       <SettingsSwitchListItem
         headline="Automatic updates"
-        supporting-text="Prepare new versions automatically and use them on a safe later launch."
+        :supporting-text="modeExplanation"
         :checked="isAutomatic"
-        :disabled="isActionPending || !update.state.value"
+        :disabled="isActionPending || snapshot?.capability !== 'available'"
         :lines="2"
         @change="onToggleAutomatic"
       />
@@ -120,23 +136,23 @@ const onUpdateNow = () => {
       <MDButton
         color="outlined"
         label="Check for updates"
-        :disabled="isActionPending || !update.state.value"
+        :disabled="isActionPending || snapshot?.capability !== 'available'"
         @click="onCheckForUpdates"
       />
 
       <dl class="app-updates-pane__details">
-        <template v-if="lastChecked">
-          <dt>Last checked</dt>
-          <dd>{{ lastChecked }}</dd>
-        </template>
-        <template v-if="update.runningRelease.value">
-          <dt>Build</dt>
-          <dd>{{ update.runningRelease.value.buildId }}</dd>
-        </template>
-        <template v-if="buildDate">
-          <dt>Build date</dt>
-          <dd>{{ buildDate }}</dd>
-        </template>
+        <template v-if="lastChecked"
+          ><dt>Last checked</dt>
+          <dd>{{ lastChecked }}</dd></template
+        >
+        <template v-if="snapshot?.runningRelease"
+          ><dt>Build</dt>
+          <dd>{{ snapshot.runningRelease.buildId }}</dd></template
+        >
+        <template v-if="buildDate"
+          ><dt>Build date</dt>
+          <dd>{{ buildDate }}</dd></template
+        >
       </dl>
     </div>
   </MDPane>
@@ -147,31 +163,26 @@ const onUpdateNow = () => {
   --md-container-color: inherit;
   --md-content-color: inherit;
 }
-
 .app-updates-pane__content {
   display: grid;
   align-content: start;
   gap: 24px;
   padding: 16px;
 }
-
 .app-updates-pane__status,
 .app-updates-pane__details {
   display: grid;
   gap: 8px;
   margin: 0;
 }
-
 .app-updates-pane__headline {
   margin: 0;
   font: var(--md-sys-typescale-headline-small-font);
 }
-
 .app-updates-pane__status p,
 .app-updates-pane__details dd {
   margin: 0;
 }
-
 .app-updates-pane__details dt {
   font-weight: 500;
 }

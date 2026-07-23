@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
+import { useAppUpdate } from '@entity/appUpdate';
 import { PwaInstallSettingsListItem, usePwaInstallAction } from '@feature/pwaInstall';
 import {
   GOOGLE_DRIVE_INTEGRATION_AVAILABLE,
@@ -11,6 +12,8 @@ import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 import SettingsSwitchListItem from './SettingsSwitchListItem.vue';
 import StorageSettingsSection from './StorageSettingsSection.vue';
+import { getCompactAppUpdateStatus } from './appUpdateStatus';
+import { computed } from 'vue';
 
 const emit = defineEmits<{
   selectPrivacyPolicy: [];
@@ -22,6 +25,8 @@ const emit = defineEmits<{
 const { settings } = useLocalSettings();
 const { diagnosticsEnabled, setDiagnosticsEnabledByUser } = useDiagnosticsSettings();
 const { isSettingsEntryVisible } = usePwaInstallAction();
+const { snapshot: appUpdateSnapshot } = useAppUpdate();
+const appUpdateStatus = computed(() => getCompactAppUpdateStatus(appUpdateSnapshot.value));
 
 const onToggleStarterExamples = () => {
   settings.value.hideStarterWidget = settings.value.hideStarterWidget === true ? undefined : true;
@@ -72,7 +77,7 @@ const onClickAppUpdates = () => {
           v-if="MANAGED_APP_UPDATES_AVAILABLE"
           mode="single-action"
           label-text="App updates"
-          supporting-text="Choose how Mioframe installs new versions."
+          :supporting-text="appUpdateStatus"
           @action="onClickAppUpdates"
         />
       </MDList>
