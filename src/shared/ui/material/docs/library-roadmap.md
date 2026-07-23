@@ -47,12 +47,12 @@ Next action: complete and merge PR #162, then reconstruct and approve the Button
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | Contract-first workflow reset | `active` | none | Material documentation is library-owned; autonomous orchestration is removed; implementation requires an approved ready contract; independent review owns merge recommendation; repository verification passes |
-| M1 | Button pilot | `planned` | M0 | architect-approved Button contract; one canonical owner; consumers migrated; required proof passes; independent technical review passes; required operator visual acceptance is recorded |
-| M2 | Independent stateful pilot | `planned` | M1 | one stateful family validates controlled state, browser interaction, cancellation/cleanup, accessibility, foundation use, independent review, and visual acceptance without bespoke workflow |
-| M3 | Sequential contract-driven migration | `planned` | M2 | families are selected by the architect from current roadmap/inventory evidence and completed one at a time through ready contract, implementation, independent review, and visual acceptance |
+| ID  | Milestone                            | Status    | Depends on | Exit gate                                                                                                                                                                                                      |
+| --- | ------------------------------------ | --------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Contract-first workflow reset        | `active`  | none       | Material documentation is library-owned; autonomous orchestration is removed; implementation requires an approved ready contract; independent review owns merge recommendation; repository verification passes |
+| M1  | Button pilot                         | `planned` | M0         | architect-approved Button contract; one canonical owner; consumers migrated; required proof passes; independent technical review passes; required operator visual acceptance is recorded                       |
+| M2  | Independent stateful pilot           | `planned` | M1         | one stateful family validates controlled state, browser interaction, cancellation/cleanup, accessibility, foundation use, independent review, and visual acceptance without bespoke workflow                   |
+| M3  | Sequential contract-driven migration | `planned` | M2         | families are selected by the architect from current roadmap/inventory evidence and completed one at a time through ready contract, implementation, independent review, and visual acceptance                   |
 
 ## M0 — contract-first workflow reset
 
