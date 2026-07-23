@@ -2,67 +2,67 @@
 
 ## Principle
 
-Dialogs, sheets, menus, tooltips, snackbars, and other overlay-like surfaces must follow the existing shared overlay contract. Overlay behavior must not be reinvented independently for each component family.
+Dialogs, sheets, menus, tooltips, snackbars, and other transient surfaces use one coherent overlay containment model. Component families must not create independent teleport, outside-interaction, focus, or stacking systems without a demonstrated missing capability.
 
 ## Covered surfaces
 
 This policy applies to:
 
-- dialogs;
-- full-screen dialogs;
-- bottom sheets;
-- side sheets;
-- menus;
+- dialogs and full-screen dialogs;
+- bottom and side sheets;
+- menus and popovers;
 - tooltips;
 - snackbars;
 - scrims;
-- any future modal or transient surface.
+- other modal or transient surfaces.
 
-## Existing ownership model
+## Existing containment model
 
-The project already owns overlay containment through shared primitives:
+The project currently provides:
 
-- `useOverlayContainer` resolves the nearest provided overlay container and falls back to the current Vue app root or `document.body`.
-- `TeleportContainer` teleports overlay content into that container and registers the teleported container.
-- `useChildTeleportContainerStack` tracks child teleported containers and propagates them through parent stacks.
-- `onInteractionOutside` treats the target, ignored elements, and registered child teleported containers as inside the same interaction boundary.
+- `useOverlayContainer` for resolving the nearest overlay container;
+- `TeleportContainer` for rendering into that container;
+- `useChildTeleportContainerStack` for nested teleported containers;
+- `onInteractionOutside` for one containment-aware outside-interaction boundary.
 
-New overlay-like Material components should use this existing ownership model instead of introducing unrelated teleport roots, ad hoc document-level containment, or independent outside-click logic.
+New Material overlays reuse these owners when they satisfy the required contract. Generic teleport and event mechanisms remain outside Material-specific component ownership.
 
-## Shared concerns
+## Required decisions
 
-Every overlay-like surface must explicitly define:
+Every overlay surface defines applicable:
 
 - modal or non-modal behavior;
+- native semantic element or role;
+- accessible name and description;
 - focus entry and restoration;
-- focus trap behavior when modal;
-- escape key behavior;
-- browser back behavior when applicable;
-- outside click or outside tap behavior;
+- focus containment when modal;
+- Escape behavior;
+- browser-back behavior;
+- outside pointer/touch behavior;
 - scroll locking;
-- scrim usage;
-- elevation level;
-- teleport/container strategy through the shared overlay primitives;
-- nested overlay behavior through the teleported container stack;
-- z-index only when the shared overlay/container model is insufficient by itself;
-- accessibility name, role, and description.
+- scrim behavior;
+- placement and viewport collision behavior;
+- elevation;
+- teleport/container ownership;
+- nested-overlay behavior;
+- unmount and cancellation cleanup.
 
 ## Material source
 
-Use the relevant official Material component docs before changing overlay behavior. When a component-specific doc exists, it overrides generic overlay preferences.
+Use the current official documentation for the specific overlay component. Component guidance overrides generic preferences for behavior owned by that component.
 
-If Material guidance is incomplete for a shared overlay concern, document the project decision as a local overlay policy or deviation.
+When Material does not define a project-wide platform detail, keep the decision in the narrowest shared overlay owner rather than duplicating it per family.
 
-## Stacking and containment
+## Stacking
 
-The primary project rule is containment ownership, not a global numeric z-index table.
+Containment ownership is primary. Do not create a second global overlay model through arbitrary component z-index values.
 
-Prefer the existing overlay container and teleport registry for ordering and interaction containment. Component-local z-index values are allowed only when a component needs an internal visual layer, such as a scrim behind its own surface or a menu above its own container. Do not use local z-index values to create a second overlay ownership model.
+Local z-index is acceptable only for layers internal to one owned surface, such as a scrim behind its panel. Cross-overlay ordering belongs to the shared containment model.
 
-When changing dialogs, sheets, menus, tooltips, or snackbars, inspect their use of `useOverlayContainer`, `TeleportContainer`, child teleport registration, escape/back stacking, focus trap behavior, and outside interaction handling before adding new primitives.
-
-If future overlay work proves that numeric stacking conflicts remain, introduce a shared overlay-layer token or helper as a focused follow-up. Do not preemptively replace the existing ownership model.
+Add a shared stacking token or helper only when real overlapping consumers prove that containment alone is insufficient.
 
 ## Verification
 
-Overlay changes require browser-based verification when behavior changes. Use Storybook for isolated surfaces where possible, and Playwright/browser smoke checks for focus, keyboard, scrim, outside click, scroll lock, nested teleports, and responsive behavior.
+Use real browser verification for changed focus, keyboard, outside interaction, scroll locking, scrims, nested teleport containment, placement, viewport behavior, back handling, and cleanup.
+
+Use isolated Storybook fixtures when product routing, persistence, and services are not part of the contract.
