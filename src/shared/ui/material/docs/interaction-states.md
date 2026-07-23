@@ -2,13 +2,13 @@
 
 ## Principle
 
-Material interaction states must be implemented consistently through shared state primitives instead of ad hoc per-component hover, focus, pressed, or dragged logic.
+Material interaction states must use shared state capabilities instead of unrelated per-component hover, focus, pressed, or dragged mechanisms.
 
-The state model is part of Material 3 alignment. Visual similarity without correct state behavior is incomplete.
+Visual similarity without correct acquisition, release, cancellation, disabled behavior, and state composition is incomplete.
 
-## State vocabulary
+## Vocabulary
 
-Use Material state names for public documentation and shared implementation concepts:
+Use official state names where applicable:
 
 - enabled;
 - disabled;
@@ -16,34 +16,48 @@ Use Material state names for public documentation and shared implementation conc
 - focused;
 - pressed;
 - dragged;
-- selected when a component supports selection;
-- loading or progress when the component explicitly communicates work in progress.
+- selected;
+- loading or progress when the component explicitly communicates work.
 
-## Shared state foundation
+## Ownership
 
-Shared Material components should use the project state foundation, such as `MDState`, state layers, focus handling, pressed handling, and last-hover handling, unless there is a documented reason not to.
+Separate:
 
-Components must not bypass shared state primitives with local hover or focus implementations when the shared primitive can represent the state correctly.
+- semantic state controlled through the public component contract;
+- browser state such as hover and focus-visible;
+- pointer or keyboard acquisition and release;
+- component-owned transient gesture or animation state;
+- visual state-layer and ripple rendering.
+
+Do not keep hidden copies of consumer-controlled semantic state.
+
+Shared state, ripple, and focus primitives expose generic capability only. Component-specific state precedence and final property routing remain component-owned.
 
 ## Combined states
 
-States can combine, such as selected + hover or disabled + selected. Component APIs, tokens, and visual documentation should make combined states explicit when they affect behavior or appearance.
+States may coexist, such as selected with hover or disabled with selected. Define precedence per rendered property when combinations affect output.
+
+Do not assume one universal state priority for color, shape, elevation, outline, icon, and motion.
 
 ## Focus
 
-Focus behavior must be real browser behavior, not only visual styling. Keyboard focus, focus-visible behavior, and accessibility semantics must be verified in a browser surface when changed.
+Focus is real browser behavior, not only styling. Preserve native focusability where possible and verify focus-visible acquisition and keyboard behavior in a browser when changed.
 
 ## Ripple and state layers
 
-State layers and ripple behavior should be applied consistently with Material guidance and component specs. Disabling ripple or state layers requires a documented reason.
+Use official component state-layer colors and opacities where published. Generic default opacity roles include:
 
-Default state-layer opacities should come from the shared foundation:
+- hover: `--md-sys-state-hover-state-layer-opacity`;
+- focused: `--md-sys-state-focus-state-layer-opacity`;
+- pressed: `--md-sys-state-pressed-state-layer-opacity`;
+- dragged: `--md-sys-state-dragged-state-layer-opacity`.
 
-- hover: `--md-sys-state-hover-state-layer-opacity`
-- focused: `--md-sys-state-focus-state-layer-opacity`
-- pressed: `--md-sys-state-pressed-state-layer-opacity`
-- dragged: `--md-sys-state-dragged-state-layer-opacity`
+Disabling or replacing a required state layer, ripple, or focus indication requires an explicit supported-contract reason.
 
 ## Verification
 
-Interaction state changes require browser-based verification. Use Storybook as the preferred isolated surface and Playwright screenshots for visual state regressions when appearance changes.
+- Real input proves acquisition, release, cancellation, focus movement, and actionability.
+- Forced states prove appearance only.
+- Component tests prove semantic-state wiring and explicit foundation inputs.
+- Browser tests prove browser-owned interaction.
+- Visual evidence proves distinct rendered state output.
