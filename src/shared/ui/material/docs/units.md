@@ -2,51 +2,51 @@
 
 ## Principle
 
-Author Material UI styles with the units used by the official Material 3 documentation.
+Author Material UI styles with the units used by official Material documentation.
 
-The source code may use Material-oriented authoring units such as `dp` and `sp` when the checked Material 3 guidance uses them. Translating those units into browser-supported CSS values is the responsibility of the PostCSS custom unit pipeline, not individual components.
+Source code may use Material-oriented authoring units such as `dp` and `sp` when the checked guidance uses them. Translation into browser-supported CSS values belongs to the centralized PostCSS unit pipeline, not individual components.
 
 ## Project unit pipeline
 
-The project supports custom CSS units through PostCSS. The Material foundation layer is responsible for defining the base conversion values.
+The project supports custom CSS units through PostCSS. Shared foundation configuration owns the base conversion values.
 
-Required Material authoring units:
+Material authoring units:
 
-- `dp` for Material dimensions, layout measurements, shape, and component specs;
+- `dp` for Material dimensions, layout measurements, shape, and component specifications;
 - `sp` for Material typography sizes.
 
 Project helper units:
 
-- `step` for app spacing composition when no exact Material measurement applies.
+- `step` for application spacing composition when no exact Material measurement applies.
 
 Legacy units:
 
-- `pt` may remain supported in PostCSS as a temporary compatibility path, but it is not the Material typography authoring unit. Do not add new Material typography tokens in `pt`.
+- `pt` may remain as a temporary compatibility path, but it is not the Material typography authoring unit. Do not add new Material typography tokens in `pt`.
 
-Changes to unit conversion must be treated as foundation changes because they can affect all shared UI components and visual baselines.
+Changes to conversion values are shared behavior changes because they can affect many components and visual baselines.
 
-## Unit rules
+## Rules
 
-- Use the unit shown by the official Material 3 documentation for Material-derived measurements.
-- Do not replace Material measurements with arbitrary CSS values inside components just because the runtime target is the web.
-- Do not introduce a new custom unit without documenting its Material or project role here.
-- Do not mix equivalent units for the same token family.
-- Keep unit conversion centralized in PostCSS and the Material CSS foundation layer.
-- Components must consume tokens and authoring units; they must not perform local unit conversion.
+- Use the unit shown by the official Material documentation for Material-derived measurements.
+- Do not replace Material measurements with arbitrary CSS values merely because the runtime target is the web.
+- Do not introduce a custom unit without documenting its Material or project role here.
+- Do not mix equivalent authoring units inside one token family.
+- Keep conversion centralized in PostCSS and shared CSS foundation configuration.
+- Components consume tokens and authoring units; they do not perform local conversion.
 
-## Typography units
+## Typography
 
 Use `sp` for Material typography authoring values.
 
-Typography values must be exposed through `md.sys.typescale.*` tokens. Components should consume those tokens and should not convert typography values locally.
+Typography values are exposed through `md.sys.typescale.*` tokens. Components consume those tokens and do not convert typography values locally.
 
-The foundation audit has migrated current Material typography tokens from `pt` to `sp` and added shared PostCSS `sp` conversion. The current `--one-sp` mapping intentionally preserves rendered typography until a separate scaling decision is made.
+The current `--one-sp` mapping intentionally preserves rendered typography until an explicit scaling decision changes that contract.
 
 ## Verification
 
 Unit changes require focused verification of:
 
-- the PostCSS custom unit transform;
+- the PostCSS custom-unit transform;
 - generated CSS for representative `dp`, `sp`, and `step` values;
-- migration or removal of legacy `pt` Material typography values;
-- at least one visual surface that uses typography, shape, and layout measurements.
+- affected legacy `pt` usage;
+- representative typography, shape, and layout surfaces.
