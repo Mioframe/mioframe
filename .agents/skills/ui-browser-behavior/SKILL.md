@@ -7,8 +7,6 @@ description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch,
 
 Follow `docs/testing/architecture.md`. Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, or visual appearance.
 
-For new or migrated public Material components, also follow `src/shared/ui/material/docs/component-testing.md`.
-
 ## Activation
 
 Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, Material state acquisition/release, motion completion, or reduced motion.
