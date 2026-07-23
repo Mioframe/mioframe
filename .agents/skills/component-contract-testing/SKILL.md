@@ -7,8 +7,6 @@ description: 'Use for narrow Vue component tests covering public render, props, 
 
 Follow `docs/testing/architecture.md`. Component-contract proof runs in the `unit-tests` execution lane through Vue Test Utils.
 
-For every new or migrated public Material component, a colocated `<Component>.test.ts` contract test is mandatory in addition to Material-specific proof from `src/shared/ui/material/docs/component-testing.md`.
-
 ## Activation
 
 Use for applicable:
