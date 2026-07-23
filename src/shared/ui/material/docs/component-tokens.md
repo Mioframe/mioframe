@@ -4,15 +4,15 @@
 
 Public shared Material components expose exact verified official component tokens before relying on private implementation variables.
 
-Token ownership and routing follow `component-architecture.md` and the accepted family contract.
+Every supported token must have one clear declaration owner and a traceable official path.
 
 ## Canonical ownership
 
 Every official `--md-comp-*` token has exactly one canonical declaration owner.
 
-A dedicated component token file is appropriate when the component owns one or more exact official tokens used by the supported surface. A family token file is appropriate only when multiple current public components genuinely share the same official family contract.
+A dedicated component token file is appropriate when the component owns exact official tokens used by its supported surface. A family token file is appropriate only when multiple current public components genuinely share the same official family contract.
 
-Do not create token files for symmetry or future reuse.
+Do not create token files for symmetry or hypothetical reuse.
 
 Reference and system tokens remain foundation-owned. Consumers may override public component tokens but do not own their canonical declaration.
 
@@ -32,7 +32,7 @@ When an official component path is unavailable:
 - do not invent an approximate public token;
 - use a documented private or system source when internal;
 - use `--app-*` only for an explicit project extension;
-- record the unsupported or deviated contract.
+- record the unsupported or deviated surface.
 
 ## Declaration purity
 
@@ -42,7 +42,7 @@ Do not place in the canonical declaration owner:
 
 - variant, size, shape, density, mode, semantic-state, or interaction-state selectors;
 - pseudo-classes;
-- private or app token declarations;
+- private or application token declarations;
 - final rendering properties.
 
 Configuration and state routing remain separate responsibilities. They do not require dedicated files when the logic is small and unambiguous.
@@ -115,19 +115,17 @@ A state-layer, ripple, focus, elevation, or motion primitive exposes generic inp
 - The primitive never reads family tokens or variables.
 - The family maps its applicable final source into the bridge.
 - The primitive owns generic rendering; the family owns source selection.
-- Do not move family routing into a primitive merely to reduce repeated syntax.
+- Do not move family routing into a primitive merely to remove repeated syntax.
 
-## Authoring workflow
+## Verification
 
-For the selected supported surface:
+For every changed public component token:
 
-1. inventory exact official token paths;
-2. assign one canonical owner to each path;
-3. omit token artifacts with no owned official paths;
-4. implement the shortest property route;
-5. separate configuration and state responsibilities conceptually;
-6. extract dedicated files only when they materially improve clarity or focused verification;
-7. verify public overrides and actual DOM property owners;
-8. refine inaccurate token rules when real migration evidence exposes them.
+1. verify the exact official path and source snapshot;
+2. confirm its canonical declaration owner;
+3. confirm configuration and state precedence where applicable;
+4. confirm the value reaches the actual DOM property owner;
+5. verify representative consumer overrides when the token is public;
+6. verify visible output when rendering changes.
 
-Do not select a fixed CSS-file profile before understanding the component. `MDButton` and the independent stateful pilot validate and refine these rules before broader reuse.
+Do not prescribe a fixed CSS-file profile before understanding the component.
