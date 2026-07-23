@@ -151,8 +151,8 @@ Every applicable component record returned by the MCP component bundle or graph 
 
 ## Motion
 
-| Requirement ID | Transition | Trigger | From | To | Motion model | Published parameters | Source ID |
-| -------------- | ---------- | ------- | ---- | -- | ------------ | -------------------- | --------- |
+| Requirement ID | Transition | Trigger | From | To  | Motion model | Published parameters | Source ID |
+| -------------- | ---------- | ------- | ---- | --- | ------------ | -------------------- | --------- |
 
 ### Interruption and reduced motion
 
@@ -173,18 +173,18 @@ Do not force spring damping/stiffness into duration/easing fields. Record the mo
 
 ## Cross-section consistency
 
-| Check | Result | Related requirement IDs | Resolution or conflict ID |
-| ----- | ------ | ----------------------- | ------------------------- |
-| Content vs accessibility | pass | ... | ... |
-| States vs interaction | pass | ... | ... |
-| Visual summaries vs token tables | pass | ... | ... |
-| Motion vs token inventory and gaps | pass | ... | ... |
-| Family boundary vs related records | pass | ... | ... |
+| Check                              | Result | Related requirement IDs | Resolution or conflict ID |
+| ---------------------------------- | ------ | ----------------------- | ------------------------- |
+| Content vs accessibility           | pass   | ...                     | ...                       |
+| States vs interaction              | pass   | ...                     | ...                       |
+| Visual summaries vs token tables   | pass   | ...                     | ...                       |
+| Motion vs token inventory and gaps | pass   | ...                     | ...                       |
+| Family boundary vs related records | pass   | ...                     | ...                       |
 
 ## Canonical conformance matrix
 
-| ID | Member | Variant | Size | Configuration | State | Scheme or direction | Requirement IDs | Source IDs |
-| -- | ------ | ------- | ---- | ------------- | ----- | ------------------- | --------------- | ---------- |
+| ID  | Member | Variant | Size | Configuration | State | Scheme or direction | Requirement IDs | Source IDs |
+| --- | ------ | ------- | ---- | ------------- | ----- | ------------------- | --------------- | ---------- |
 
 Every matrix case must reference requirements already defined above. Do not introduce a new scheme, platform mode, accessibility condition, or behavior only in this table.
 
