@@ -1,8 +1,9 @@
 name: verify
 
-# Development verification for develop-bound work: focused pnpm verify plus a
-# PR-into-develop version-bump check, PR preview deploys (pr/<number>/), and
-# the develop branch deploy (branch/develop/) on push to develop. PRs/pushes
+# Development verification for develop-bound work: focused pnpm verify,
+# a separate PR version merge gate, PR preview deploys (pr/<number>/), and the
+# develop branch deploy (branch/develop/) on push to develop. PR previews depend
+# on implementation verification, not on the independent version merge gate. PRs/pushes
 # to main use the separate `release` workflow (.github/workflows/release.yml)
 # instead — see docs/release.md. The trigger below excludes PRs into main so
 # this workflow and the release gate never both run for the same PR path.
@@ -105,7 +106,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  verify:
+  verification:
     needs:
       - autofix
     if: >-
@@ -137,12 +138,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
-
-      # Every PR into develop must bump package.json version above develop's
-      # current version (docs/release.md#pr-level-version-bump-policy).
-      - name: Validate version bump
-        if: github.event_name == 'pull_request'
-        run: node scripts/release/validateVersion.mjs
 
       - name: Verify format
         run: pnpm verify --verbose --only format
@@ -180,11 +175,72 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  deploy-preview:
-    needs: [verify]
+  release-version:
+    needs:
+      - autofix
     if: >-
       !cancelled() &&
-      needs.verify.result == 'success' &&
+      github.event_name == 'pull_request' &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      # This is an independent merge gate. Its failure must not prevent the
+      # implementation-verified application and Storybook preview from publishing.
+      - name: Validate version bump
+        run: node scripts/release/validateVersion.mjs
+
+  verify:
+    needs:
+      - verification
+      - release-version
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+
+    steps:
+      - name: Require merge gates
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          VERIFICATION_RESULT: ${{ needs.verification.result }}
+          VERSION_RESULT: ${{ needs.release-version.result }}
+        run: |
+          failed=0
+
+          if [ "$VERIFICATION_RESULT" != "success" ]; then
+            echo "Implementation verification result: $VERIFICATION_RESULT"
+            failed=1
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ] && [ "$VERSION_RESULT" != "success" ]; then
+            echo "PR version gate result: $VERSION_RESULT"
+            failed=1
+          fi
+
+          exit "$failed"
+
+  deploy-preview:
+    needs: [verification]
+    if: >-
+      !cancelled() &&
+      needs.verification.result == 'success' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !(startsWith(github.event.pull_request.head.ref, 'sync/main-') &&
@@ -311,10 +367,10 @@ jobs:
           --storybook-url "https://mioframe.github.io/pr/${{ github.event.number }}/storybook/"
 
   deploy-develop:
-    needs: [verify]
+    needs: [verification]
     if: >-
       !cancelled() &&
-      needs.verify.result == 'success' &&
+      needs.verification.result == 'success' &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/develop'
     runs-on: ubuntu-24.04

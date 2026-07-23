@@ -132,7 +132,7 @@ A release sync-back PR:
   `.github/workflows/verify.yml` is skipped for branches matching
   `sync/main-*-back-to-develop`, since the PR only synchronizes already-
   published `main` changes back into `develop` and changes no runtime app
-  behavior. The `verify` job (including version validation) still runs.
+  behavior. The `release-version` job and aggregate `verify` merge gate still run.
 
 ### Choosing PATCH / MINOR / MAJOR
 
@@ -152,15 +152,19 @@ CI is split into three workflows so no PR/push path ever runs both the
 focused and the full gate, and tag pushes never rerun the full gate:
 
 - **`verify` workflow** (`.github/workflows/verify.yml`): PRs into any
-  branch except `main`, and pushes to `develop`. Runs normal focused
-  development verification (`pnpm verify`, changed-file scope) plus, on PRs,
-  a version-bump check — the PR version must be strictly greater than
-  `develop`'s current version. Its `pull_request` trigger uses
-  `branches-ignore: [main]`, so it never fires for a PR into `main`. It also
-  owns the two verify-gated Pages deployments: `deploy-preview` (PR previews,
-  `/pr/<number>/`) and `deploy-develop` (the develop branch deployment,
-  `/branch/develop/`) — see
-  `docs/release.md#organization-pages-deployment-model`.
+branch except `main`, and pushes to `develop`. Its `pull_request` trigger uses
+`branches-ignore: [main]`, so it never fires for a PR into `main`. The workflow
+separates three responsibilities:
+- `verification` runs focused development verification (`pnpm verify`,
+  changed-file scope) and owns whether deployable PR source is valid;
+- PR-only `release-version` enforces the version-bump policy independently;
+- aggregate `verify` preserves the required merge check and succeeds only when
+  `verification` and, for PRs, `release-version` both succeed.
+`deploy-preview` depends only on `verification`: an incorrect PR version blocks
+merge through `verify` but does not block the application and Storybook demo.
+Implementation verification failures still block the preview. `deploy-develop`
+also depends on `verification` for pushes to `develop` — see
+`docs/release.md#organization-pages-deployment-model`.
 - **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
   and pushes to `main` only. Runs the full release gate
   (`pnpm verify:release`, full-project scope, see below), which includes
@@ -364,11 +368,13 @@ not necessarily the selected branch's tip.
 
 PR previews remain owned by the `verify` workflow's `deploy-preview` job:
 `BASE_URL=/pr/<number>/`, `VITE_DISABLE_PWA=1` (PWA stays disabled for PR
-previews in this implementation), publishing to `pr/<number>/`. The sticky
-preview comment links to `https://mioframe.github.io/pr/<number>/`. PR
-previews for release sync-back branches remain skipped, as before (see
-`Release sync-back` above). PR preview cleanup on PR close removes only
-that PR's `pr/<number>/` slot.
+previews in this implementation), publishing to `pr/<number>/`. Publication is
+gated by the `verification` job, not by the independent `release-version` merge
+gate. Therefore an incorrect PR version does not block the demo, while failed
+implementation verification still does. The sticky preview comment links to
+`https://mioframe.github.io/pr/<number>/`. PR previews for release sync-back
+branches remain skipped, as before (see `Release sync-back` above). PR preview
+cleanup on PR close removes only that PR's `pr/<number>/` slot.
 
 `deploy-preview` checks out trusted tooling from the PR's **base** ref (see
 `Trusted publishing boundary` above), never from the PR head, so that
