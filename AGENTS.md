@@ -9,13 +9,11 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
-- For Material library work, read `src/shared/ui/material/AGENTS.md`, `src/shared/ui/material/docs/source-of-truth.md`, and only the applicable domain documents before planning or editing.
-- `docs/**` owns product-level project documentation. `src/shared/ui/material/docs/**` owns Material-library documentation. Do not add Material policy or workflow documents under root `docs`.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
 
-- For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, Material, workflow, or architecture changes, use `architect-handoff` unless an applicable repository skill or policy defines a deterministic standard-authoring path that resolves every required decision from authoritative sources.
+- For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, workflow, or architecture changes, use `architect-handoff` unless an applicable repository skill or policy defines a deterministic standard-authoring path that resolves every required decision from authoritative sources.
 - Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or `not ready`, while a deterministic standard-authoring preflight remains unresolved or `blocked`, or while task-specific `TEST IMPACT` is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every added abstraction, state, layer, compatibility path, recovery mechanism, guarantee, optimization, test registry, impact mapping, or helper must map to a current requirement, existing consumer, repository invariant, platform constraint, or measured need.
 - Compare the proposed design with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
@@ -50,7 +48,7 @@ Dependency rules:
 Use the applicable skill instead of duplicating its rules in the task:
 
 - `vue-component-implementation`: `.vue` components and UI composables;
-- `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
+- `shared-ui-implementation`: project-specific or generic shared UI primitives;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
 - `unit-testing`: deterministic pure/domain/service/storage/CRDT and module-boundary proof in the `unit-tests` lane;
 - `component-contract-testing`: Vue public API, native semantics, ARIA ownership, and non-browser wiring in the `unit-tests` lane;
@@ -78,51 +76,3 @@ Use the applicable skill instead of duplicating its rules in the task:
 ## Naming and repository conventions
 
 - Use `pnpm` for package management and project commands. Use Conventional Commits.
-- `pages` and `widgets` directories use PascalCase; other submodules use lower camel case.
-- Vue components and class-centric files use PascalCase; other TypeScript files use lower camel case or lowercase.
-- Feature modules use user-action names such as `<domain><Action>`; entity modules use stable domain concepts.
-- Visual components use concrete surface suffixes such as `Dialog`, `Sheet`, `Pane`, `ListItem`, `Button`, or `State`. Reserve `MD*` for shared Material-style primitives.
-- `use*` exposes reactive or lifecycle-managed capabilities; `setup*` wires dependencies and cleanup; `define*` is side-effect-light; `create*` returns a fresh owned instance; `get*` derives or looks up; `is*` is boolean; `zod*` exports schemas; `*Service` is background infrastructure; `on*` names handlers; `$` suffix is reserved for raw RxJS observables.
-- Add a child `AGENTS.md` only for stable local invariants that the parent cannot express cleanly. Child files refine rather than repeat parent rules.
-
-## Mandatory verification
-
-- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` before non-trivial edits and `verification` to inspect and execute repository verification.
-- `TEST IMPACT` is a reviewable design record; `verify` never parses it. Automatic scope comes from status-aware Git diff, tests/imports, snapshots, and persistent repository impact metadata.
-- Inferred verify scope is an optimization. A skipped or empty lane is not proof that it is unnecessary. Unknown relevant impact must use full owning-lane fallback.
-- A new, moved, renamed, or removed Playwright spec must update its owning mapping or justified standalone entry in the same change. Source mappings contain production, story, fixture, or owned support paths; do not put spec paths in source prefixes to group tests.
-- Release-only contracts must have repository-owned impact mapping to build, artifact, or release-smoke proof. Until the focused release resolver is implemented, explicitly run `pnpm verify:release` for changes to build/release config, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies.
-- Use `pnpm verify --fix` only when safe automatic formatting, lint fixes, or instruction compatibility generation are useful.
-- Before reporting completion after edits, run final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
-- Use `pnpm verify --only <label> --files ...` for focused feedback when supported. `--files` is not status-aware deletion/rename planning. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks.
-- Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, final `pnpm verify` may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
-- Preserve the current app E2E desktop/mobile matrix until a dedicated audited migration demonstrates safe project filtering.
-- A minimum check named in a nested `AGENTS.md` describes required proof, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
-- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active.
-- If final verification fails, repository impact metadata is invalid, or required proof is missing, do not claim the task is complete. Report the exact failure and remaining work.
-
-Final response after edits must include:
-
-```text
-TASK RESULT
-status: complete | partial | blocked
-remaining: none | <remaining required work, verification, or blocker>
-
-VERIFY RESULT
-command: pnpm verify
-status: passed | failed | not run | blocked by active local verification
-reason if not run:
-```
-
-## Release
-
-- `develop` is the active development branch; `main` is the stable public branch.
-- Every PR into `develop` or `main` must increase `package.json` version, except the documented pre-tag repair and `main` to `develop` release-sync cases.
-- `develop`/`main` synchronization PRs use merge commits, never squash or rebase.
-- `pnpm verify` is the focused development gate. Its target architecture includes automatic focused release proof for release-relevant changes. `pnpm verify:release` remains the unconditional full release gate required for `main`.
-- Follow `docs/release.md` and `docs/release-checklist.md` for the complete release policy.
-
-## Agent environment compatibility
-
-- `AGENTS.md` and `.agents/skills/*/SKILL.md` are canonical. Do not edit generated `CLAUDE.md` or `.claude/skills` directly.
-- After changing the instruction tree, run `pnpm verify --fix` to regenerate compatibility files, then final `pnpm verify`.
