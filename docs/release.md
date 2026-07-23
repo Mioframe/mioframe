@@ -160,11 +160,12 @@ focused and the full gate, and tag pushes never rerun the full gate:
   - PR-only `release-version` enforces the version-bump policy independently;
   - aggregate `verify` preserves the required merge check and succeeds only when
     `verification` and, for PRs, `release-version` both succeed.
-    `deploy-preview` depends only on `verification`: an incorrect PR version blocks
-    merge through `verify` but does not block the application and Storybook demo.
-    Implementation verification failures still block the preview. `deploy-develop`
-    also depends on `verification` for pushes to `develop` — see
-    `docs/release.md#organization-pages-deployment-model`.
+
+  `deploy-preview` depends only on `verification`: an incorrect PR version blocks
+  merge through `verify` but does not block the application and Storybook demo.
+  Implementation verification failures still block the preview. `deploy-develop`
+  also depends on `verification` for pushes to `develop` — see
+  `docs/release.md#organization-pages-deployment-model`.
 - **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
   and pushes to `main` only. Runs the full release gate
   (`pnpm verify:release`, full-project scope, see below), which includes
