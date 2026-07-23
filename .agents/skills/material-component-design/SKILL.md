@@ -244,31 +244,57 @@ approval: pending
 # <Official component title>
 
 ## Sources
+
 ## Component identity
+
 ## Purpose and choice guidance
+
 ## Official family and related components
+
 ## Variants
+
 ## Configurations
+
 ## Sizes and density
+
 ## Anatomy
+
 ## Content guidance
+
 ## State model
+
 ## Interaction behavior
+
 ## Visual specification
+
 ### Dimensions and layout
+
 ### Color
+
 ### Typography
+
 ### Shape and outline
+
 ### Elevation
+
 ### State layers and focus
+
 ### Icons
+
 ## Material token inventory
+
 ## Motion
+
 ## Accessibility
+
 ## Directionality and adaptation
+
 ## Canonical conformance matrix
+
 ## Source conflicts
+
 ## Source gaps
+
 ## Design acceptance criteria
 ```
 
