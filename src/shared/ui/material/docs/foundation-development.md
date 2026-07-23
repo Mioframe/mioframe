@@ -12,28 +12,33 @@ It does not own component-family tokens/API/anatomy/state, product behavior, or 
 
 ## Entry modes
 
-For a standalone foundation request, `material-foundation <domain>` is the coordination-only root. It owns the bounded contract, complete foundation stack, delegation, result validation, final verification, and compact roadmap state, but writes no production code.
+For a standalone request, `material-foundation <domain>` is the coordination-only root. It owns architecture, the complete foundation stack, delegation, result validation, final verification, and compact roadmap state, but writes no production code.
 
-When a foundation owner is required by `material-component`, no second foundation root is created. The component root pushes that exact foundation owner onto its existing stack and remains the sole coordinator and roadmap writer.
+When foundation is required by `material-component`, no second root is created. The component root pushes the exact foundation owner onto its stack and remains sole coordinator and roadmap writer.
 
-In both modes, the current deepest foundation owner is implemented by a fresh isolated writable `material-component-implementation` context with `Owner kind: foundation`. A different fresh isolated read-only `material-component-review` context performs mandatory correction-final review.
+In both modes, one fresh isolated writable `material-component-implementation` context converges the complete deepest foundation owner. A different fresh isolated read-only `material-component-review` context performs mandatory review.
 
-If a fresh writable or review context is unavailable, the owning root checkpoints with the exact isolation reason. There is no same-context fallback.
+After one blocked review, the same writable context may apply one consolidated correction pass and the same read-only reviewer may re-review once. There is no self-review fallback.
 
 ## Sequence
 
 ```text
-owning root validates deepest owner and locks bounded foundation contract
-→ fresh writable material-component-implementation context
-→ one canonical foundation owner correction
-→ affected-family and direct-consumer proof
-→ fresh read-only material-component-review correction-final
-→ owning root accepts and pops, or retries once in a new writable context
+owning root performs full preflight at start/resume
+→ validates deepest owner and consolidates all known in-owner findings
+→ one fresh writable owner convergence pass
+→ focused affected-family and consumer proof
+→ one fresh read-only correction-final review
+→ if blocked, same writable context applies one correction pass
+→ same reviewer re-reviews once
+→ owning root accepts and pops, or reopens architecture/context strategy
+→ incremental stack refresh
 ```
 
-## Contract and correction
+## Contract and owner pass
 
-The owning root confirms foundation ownership is required now and an existing family/generic owner is insufficient. The writable owner context must return any invalidated assumption before editing rather than redesigning the contract locally.
+The root confirms foundation ownership is required now and an existing family/generic owner is insufficient. The writable context returns invalidated architecture or a new prerequisite before editing rather than redesigning locally.
+
+The implementation unit is one canonical owner, not one finding. Consolidate all known token, behavior, documentation, test, compatibility, and affected-consumer findings before delegation.
 
 For token work:
 
@@ -48,42 +53,54 @@ For shared behavior:
 
 - define one narrow public contract;
 - revalidate semantics and lifecycle instead of copying legacy behavior unchanged;
-- inspect every direct consumer of the changed contract;
+- inspect every consumer of the changed owner, including other official families;
 - update affected families through the canonical contract;
 - retain only forwarding compatibility and remove parallel ownership;
 - prove public-input behavior, browser lifecycle, and reduced motion where applicable.
 
-Relocation, a new directory/barrel, forwarding exports, migrated imports, or green path guards are not canonicalization.
+Relocation, forwarding exports, migrated imports, or green path guards are not canonicalization.
+
+## Efficient cadence
+
+Perform full preflight at operation start/resume, branch/base movement, or ownership uncertainty. After an accepted owner pass, refresh only changed contracts, consumers, dependencies, proof, and stack transition.
+
+Reuse locked source decisions. Reopen sources only for changed surface, missing/contradictory evidence, or invalidated decisions.
+
+Use verify-managed focused checks during the owner pass. Do not run full `pnpm verify` after each owner or review correction. Preserve passed unchanged evidence and avoid duplicate active verification runs.
 
 ## Stack and nested owners
 
-Only the current deepest owner may be implemented or reviewed. If another canonical owner is required, stop the correction and return the exact nested prerequisite to the owning root. Do not implement two owners in one writable context.
+Only the deepest owner may be implemented or reviewed. If another canonical owner is required, return it to root and push it onto the same stack. Do not implement two owners in one writable context.
 
-A parent or calling family cannot advance until the nested owner has focused proof and a separate accepted correction-final review.
+A parent or calling family cannot advance until the nested owner has focused proof and accepted independent review.
 
 ## Documentation
 
-Create or update a foundation README only for durable owner, API, semantics, token/style/motion, compatibility, unsupported-surface, and proof facts.
+Update a foundation README only for durable owner, API, semantics, token/style/motion, compatibility, unsupported-surface, source-decision, and proof facts.
 
-Do not persist current stage, findings, backlog, review history, shell output, or future passes. Only the owning root roadmap stores the compact continuation stack and physical checkpoint reason.
+Do not persist current stage, findings, backlog, review history, shell output, or future passes. Only roadmap stores compact continuation and checkpoint state.
 
 ## Completion
 
-An implementation result is not readiness. Readiness exists only after a different fresh read-only reviewer accepts the exact foundation owner correction.
+Implementation output is not readiness. Readiness exists only after the independent reviewer accepts the exact owner pass.
 
-A repairable gap or nested owner remains internal work. A physical session boundary returns as a checkpoint to the owning root, never as a separate operator command.
+Create a new writable context only when architecture changed, a new prerequisite became deepest, the original context is unavailable/exhausted, or second review still exposes ownership/design failure.
+
+A repairable gap remains internal work. A physical boundary returns as a checkpoint to the same root, never as a separate operator command.
 
 ## Forbidden
 
-- implementation in a root or reviewer context;
+- implementation in root or reviewer context;
 - self-review or readiness claims;
-- a second root or roadmap writer for a foundation prerequisite inside a component operation;
-- local redesign of the root-locked foundation contract;
+- a new implementation context for each small finding in one owner;
+- repeated full preflight after ordinary in-owner correction;
+- full `pnpm verify` after every owner/review pass;
+- a second root or roadmap writer for foundation inside a component operation;
+- local redesign of root-locked architecture;
 - broad domain work for a bounded prerequisite;
-- another family’s component/private ownership in foundation;
+- another family's component/private ownership in foundation;
 - relocation-only completion or copied legacy defects;
-- legacy-owned active declarations used by canonical Material;
-- several canonical owners in one correction;
-- asking the operator to invoke a delegated prerequisite;
-- a separate foundation continuation ledger;
-- Git, branch, commit, PR, or merge operations.
+- several canonical owners in one writable pass;
+- asking operator to invoke a delegated prerequisite;
+- a separate continuation ledger;
+- Git, PR, or merge operations.

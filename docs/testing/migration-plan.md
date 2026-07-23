@@ -10,15 +10,16 @@
 - Keep safe broad fallback until a deterministic replacement is implemented and tested.
 - Do not make `verify` depend on `TEST IMPACT` or any uncommitted agent report.
 - Do not redesign proof ownership inside resolver implementation.
+- Every migration PR must be independently safe to merge into `develop`: broadening an upstream input contract (for example, exposing deleted paths or both rename sides through `getChangedFileProjection()`) requires auditing and adapting all existing downstream consumers in the same PR. Deferred phases may postpone new capabilities, but must not leave invalid commands, false skips, false failures, or dependence on a later PR.
 - Remove this document after all completion criteria are satisfied.
 
 ## Current mismatches
 
-### Diff planning
+### Diff planning (resolved)
 
-- Git changed-file detection excludes deleted paths.
-- Resolvers receive filenames rather than status-aware added/modified/deleted/renamed records.
-- `--files` cannot represent deletion or both sides of rename.
+`scripts/lib/changedPaths.mjs` now owns a repository-wide, status-aware changed-path model (see Phase 1, step 1, below). Local, local-base, and GitHub Actions planning all use NUL-delimited `git diff --name-status` output, preserve deleted paths, and expose both sides of a rename. `--files` remains an explicit existing-path override handled separately from Git diff planning.
+
+Resolvers still consume filenames, not status-aware records: `scripts/verify.mjs` and its command planners read the transitional `getChangedFileProjection()` string-path projection rather than the underlying `ChangedPath[]` records. This PR does not migrate their resolver-specific contracts. It includes the compatibility adaptations required by the broader projection: missing mutation targets are excluded, and deleted or renamed-away app E2E and Storybook behavior specs select their full owning lane instead of becoming invalid focused command arguments. Format/lint, unit, type-check, visual, and package-impact behavior remains compatible with the existing planners. Full status-aware behavior inside each lane is tracked separately in Phase 2 ("Static check planning") and later phases.
 
 ### Static verification
 
@@ -68,26 +69,29 @@
 
 ## Phase 1: status-aware planning foundation
 
-### 1. Changed-path model
+### 1. Changed-path model — complete
 
-Introduce a repository-owned changed-path model carrying:
+`scripts/lib/changedPaths.mjs` introduces the repository-owned changed-path model, carrying:
 
 - added path;
 - modified path;
 - deleted path;
 - renamed path with old and new names.
 
-Use Git status-aware output for local, base-ref, and GitHub Actions planning. Preserve package comparison support.
+It uses NUL-delimited, status-aware Git output (`git diff --name-status -z --find-renames --diff-filter=ADMRT`) for local, local-base (fork-point), and GitHub Actions (merge-base) planning, and preserves `packageJsonOldRef` package comparison support for every scope. `scripts/verify.mjs` calls `resolveChangedPathsScope()` for scope resolution and `getChangedFileProjection()` to obtain the transitional string-path list its current command planners still consume (see "Diff planning" above).
 
-Acceptance:
+Acceptance (met):
 
-- deleted files reach every affected resolver;
+- deleted files reach every affected resolver through the transitional projection;
 - rename exposes both old and new paths;
-- existing ignored-path behavior remains intentional;
+- existing ignored-path behavior remains intentional, including renames that cross an ignored/relevant boundary;
 - `--files` remains an explicit existing-target override and is not treated as deletion/rename planning;
-- planner tests cover local, base-ref, CI, deletion, and rename cases.
+- legacy consumers remain independently safe: they either receive valid existing targets or conservatively select the full owning lane;
+- planner tests (`scripts/lib/changedPaths.test.mjs`) cover local, local-base, GitHub Actions, last-commit fallback, deletion, and rename cases using temporary Git repositories.
 
-### 2. Common lane-plan contract
+### 2. Common lane-plan contract — not started
+
+The `skip | focused | full | invalid` shared lane-plan contract below remains unimplemented. Current resolvers retain their existing resolver-specific result shapes. The changed-path model required only local compatibility adaptations for missing mutation and Playwright targets; it did not introduce the shared contract or make any lane consume `ChangedPath[]` directly.
 
 Introduce a small mechanical result contract shared by resolvers:
 
