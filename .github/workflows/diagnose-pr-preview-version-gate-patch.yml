@@ -1,0 +1,59 @@
+name: diagnose PR preview version gate patch
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.event.pull_request.head.ref == 'fix/pr-preview-version-gate'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pr-preview-version-gate
+          fetch-depth: 0
+
+      - name: Capture patch failure
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/run-pr-preview-version-gate-patch.yml').read_text(
+              encoding='utf-8'
+          )
+          start_marker = '          from pathlib import Path\n'
+          end_marker = "          PY\n\n          git diff --check"
+          start = source.index(start_marker)
+          end = source.index(end_marker, start)
+          raw_code = source[start:end]
+          code = '\n'.join(
+              line[10:] if line.startswith('          ') else line
+              for line in raw_code.splitlines()
+          )
+          Path('/tmp/pr-preview-version-gate-patch.py').write_text(code, encoding='utf-8')
+          PY
+
+          set +e
+          python /tmp/pr-preview-version-gate-patch.py > patch-error.txt 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo "Patch unexpectedly succeeded during diagnosis." > patch-error.txt
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add patch-error.txt
+          git commit -m "chore: record PR preview gate patch diagnostics"
+          git push origin HEAD:fix/pr-preview-version-gate
+
+          exit "$status"
