@@ -1,6 +1,6 @@
 ---
 name: material-foundation
-description: 'Use when changing Material reference/system tokens, theme, units, typography, shape, elevation, motion, state/ripple/focus, verification adapters, icons, overlays, accessibility, density, or adaptive foundation contracts.'
+description: 'Use to implement one explicitly approved Material foundation contract such as tokens, theme, typography, shape, elevation, motion, interaction, icons, overlays, accessibility, density, or adaptive policy. Requires a ready architecture decision and does not own independent review or merge readiness.'
 paths:
   - 'src/shared/ui/material/foundation/**'
   - 'src/shared/lib/md/**'
@@ -14,32 +14,37 @@ paths:
   - 'src/shared/ui/material/docs/source-of-truth.md'
 ---
 
-# Material foundation
+# Material foundation implementation
+
+Use this skill only when an architect-approved handoff or family contract explicitly requires a cross-family Material foundation change.
 
 Canonical rules live in:
 
+- `src/shared/ui/material/docs/workflow.md`;
 - `src/shared/ui/material/docs/source-of-truth.md`;
 - `src/shared/ui/material/docs/library-architecture.md`;
 - `src/shared/ui/material/docs/foundation-architecture.md`;
 - `src/shared/ui/material/docs/foundation-registry.md`.
 
-This skill defines execution order and stop conditions. Do not duplicate registry or domain contracts here.
+This skill implements the approved foundation delta. It does not select a domain, invent ownership, broaden guarantees, approve architecture, perform independent family review, or claim merge readiness.
 
-## Preflight
+## Required ready decision
 
-Record only applicable:
+Before production edits, the approved contract or handoff must record:
 
-- affected registry domain;
-- exact official snapshot and Design Kit evidence when required;
-- current and canonical owners;
-- migration status;
-- required public, private, or verification-only contract;
-- mode: `none`, `library-relocation-only`, `additive`, `correction`, `replacement`, or `refresh`;
-- affected consumers and expected delta;
-- compatibility or migration decision;
-- owner and representative consumer proof.
+- exact foundation domain;
+- problem and current requirement;
+- official source snapshot;
+- current and canonical owner;
+- public, private, or testing-only contract;
+- affected consumers;
+- compatibility and migration decision;
+- acceptance criteria and proof owners;
+- expected visual/behavior delta;
+- unresolved decisions as `none`;
+- `Readiness: ready`.
 
-Use `blocked` when source meaning, ownership, compatibility, consumer impact, or required proof remains unresolved.
+Stop when any implementation-affecting decision is missing or when a narrower existing mechanism satisfies the same requirements.
 
 ## Ownership
 
@@ -51,107 +56,88 @@ shared/lib generic infrastructure
   → product composition
 ```
 
-Foundation remains free of consuming-family knowledge. Generic DOM, browser, event, geometry, lifecycle, and teleport utilities stay in their generic owner; Material foundation may compose narrow Material-facing adapters.
+Foundation remains free of consuming-family and product knowledge. Generic DOM, browser, event, geometry, lifecycle, and teleport utilities stay in their generic owner; Material foundation may compose narrow Material-facing adapters only when approved current work requires them.
 
-Do not create a universal base, runtime token/state registry, generic resolver, cross-family state machine, duplicate theme/overlay system, production state-matrix component, or generic test DSL.
+Do not create a universal base, runtime registry, generic resolver, cross-family state machine, duplicate theme/overlay system, generic test DSL, manager agent, or speculative extension point.
 
-## Registry and migration
+## Implementation preflight
 
-`foundation-registry.md` owns current correctness and status. `src/shared/ui/material/README.md` owns physical migration.
+Record:
 
-Update only fields whose owned facts changed:
+- approved foundation contract and owner;
+- existing mechanism and why it is insufficient;
+- minimum sufficient design and simpler alternative;
+- exact consumers and blast radius;
+- migration/compatibility plan;
+- acceptance and risk matrix;
+- `TEST IMPACT`;
+- focused and final verification.
 
-- status or snapshot;
-- current/canonical owner and migration status;
-- public/private/testing contract;
-- consumers, gaps, verification, or review date.
-
-A `verified` record requires a concrete snapshot and named verification.
+The preflight must not redefine the approved contract.
 
 ## Change modes
 
-### `library-relocation-only`
+Use only the approved mode:
 
-Move one cohesive owner without changing meaning, values, behavior, rendering, or verification semantics. Migrate affected imports and consumers and remove the old path.
-
-### `additive`
-
-May share a component PR when source-backed, backward-compatible, owned by one domain, free of a new lifecycle/context/public extension, and small enough for focused review.
-
-For a legacy domain:
-
-- extend the current owner only when it remains the single active owner;
-- create a new standalone artifact under the canonical owner, relocating the cohesive owner when required;
-- do not create parallel permanent legacy and canonical implementations.
-
-### `correction`
-
-Document old and new contract, affected consumers, expected delta, compatibility decision, and representative proof. Use a focused PR when blast radius exceeds the selected family.
-
-### `replacement`
-
-Requires a ready architecture decision, complete migration, removal of the old owner, and blocking proof.
-
-### `refresh`
-
-Compare a newer snapshot and classify differences before changing behavior. Refresh alone does not imply a production change.
+- `library-relocation-only` — move one cohesive owner without changing meaning, values, behavior, rendering, or verification semantics;
+- `additive` — add a required backward-compatible capability to one existing owner;
+- `correction` — replace an incorrect contract with the approved corrected contract;
+- `replacement` — introduce the approved new owner, migrate all affected consumers, and remove the old owner;
+- `refresh` — compare a newer official snapshot and implement only approved resulting deltas.
 
 Physical relocation must not hide a correction or replacement.
 
 ## Bounded expansion
 
-Add or expand a foundation capability only when:
+A foundation capability may be added or expanded only when:
 
 - a current component or product scenario requires it;
 - Material or an unavoidable platform/testing boundary defines it as cross-family;
 - the existing mechanism is insufficient;
-- the contract remains family-agnostic;
-- total complexity is lower than local implementations.
+- the approved owner remains family-agnostic;
+- total complexity is lower than local substitutes.
 
-A verification adapter may be added for a first family when the state is already a generic foundation concern and a family-local substitute would be worse.
-
-Do not prebuild palettes, motion catalogs, adaptive managers, state systems, or testing frameworks.
+Do not prebuild palettes, motion catalogs, adaptive managers, state systems, testing frameworks, or future APIs.
 
 ## Domain invariants
 
 - Reference/system owners contain no component tokens.
 - Theme contexts override system roles, not component CSS.
 - Unit conversion remains centralized.
-- Typography, shape, elevation, and motion use verified roles or documented adaptations.
-- State/ripple/focus own generic capability, not host semantics or component precedence.
+- Typography, shape, elevation, and motion use verified roles or approved adaptations.
+- State/ripple/focus own generic capability, not host semantics or family precedence.
 - Verification adapters force generic appearance only and do not prove real behavior.
 - Icons own symbol rendering, not product icon choice.
 - Overlay foundation owns Material-facing adapters; generic mechanisms may remain outside.
-- Accessibility, density, target area, and adaptivity remain policy until a concrete runtime owner is required.
+- Accessibility, density, target area, and adaptivity remain policy until approved work requires a runtime owner.
 
-## Public and testing API
+## Contract invalidation
 
-- Components consume accepted foundation entry points, not implementation files.
-- Foundation modules do not import the root Material barrel.
-- Product code does not deep-import foundation internals or testing adapters.
-- Public exports require registry ownership.
-- Verification adapters remain testing-only.
-- Temporary legacy exports require exact consumers and a removal target.
+When implementation evidence invalidates ownership, public contract, compatibility, consumer impact, or proof ownership, return the `CONTRACT BLOCKER` defined by `src/shared/ui/material/docs/workflow.md`.
 
-## Rule refinement
+Do not silently rewrite foundation policy or create a family-specific exception.
 
-When a real component or foundation change proves a rule inaccurate or needlessly complex, correct the owning source with the smallest evidence-backed change. Do not add a domain-specific exception merely to preserve the old rule.
+## Verification
 
-## Proportional verification
+Use proof owned by the approved contract:
 
-Use existing repository checks and proof owned by the changed contract:
-
-- focused owner contract tests;
-- real browser checks for focus, pointer/touch, ripple, overlays, viewport behavior, computed tokens, and platform adaptations when applicable;
-- deterministic representative component visuals when rendered output changes;
-- representative consumers for meaningfully different affected paths;
-- agent review for source meaning, ownership, and deviations;
-- operator visual review for intentional rendered changes.
-
-Use existing static or structured checks when they actually exist and apply. Add a new guard only after real work proves a stable repeated and precisely detectable need.
+- focused owner tests;
+- browser checks for focus, pointer/touch, ripple, overlay, viewport, computed token, lifecycle, and platform behavior when applicable;
+- deterministic representative visuals when rendered output changes;
+- representative consumers for materially different affected paths;
+- final read-only `pnpm verify`.
 
 Forced state proves appearance only. Screenshots alone do not prove foundation behavior.
 
 ## Completion
 
-Foundation work is complete when applicable registry fields, migration map, owner contracts, production/testing code, exports, source evidence, tests, and consumer impact agree. No family-specific knowledge, parallel permanent owner, hidden gap, permanent compatibility path, or local substitute may remain.
+Foundation implementation is complete when:
+
+- the approved contract is implemented without family knowledge or parallel ownership;
+- registry fields and physical ownership are accurate;
+- affected consumers and exports are migrated;
+- obsolete owners and unapproved compatibility are removed;
+- required proof and final verification pass;
+- remaining limitations are explicit.
+
+Implementation completion is not independent review or merge readiness.
