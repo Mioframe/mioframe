@@ -83,10 +83,9 @@ For persisted formats, public APIs, shared UI, Material library/foundation, serv
 
 Use the domain workflow as the primary execution contract:
 
-- official public Material component family: `material-component-authoring`;
-- Material foundation contract: `material-foundation`;
+- official Material design document: `material-component-design`; this stage writes only `DESIGN.md` and does not authorize production edits;
+- official Material component, foundation, API, or migration implementation: ready `architect-handoff` plus applicable Vue and testing skills;
 - project-specific or generic shared UI primitive: `shared-ui-implementation`;
-- Material component choice, usage, composition, or product UI/UX: `material3-guidelines`;
 - storage/service/worker/provider: applicable scoped rules and `crdt-storage`;
 - diagnostics: `diagnostic-events`;
 - ordinary Vue implementation mechanics: `vue-component-implementation`.
