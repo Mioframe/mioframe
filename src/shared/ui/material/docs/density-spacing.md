@@ -2,42 +2,48 @@
 
 ## Principle
 
-Density, spacing, and target areas are foundation decisions. Shared Material components must not invent local spacing systems when official Material guidance defines measurements, target areas, or density expectations.
+Shared Material components must not invent local spacing or density systems when official guidance defines measurements, target areas, or compact behavior.
 
 ## Units
 
-Use the units shown by the official Material 3 documentation as authoring units. Translation into CSS-supported values is handled by the PostCSS unit pipeline described in [Units](./units.md).
+Use the authoring units shown by official Material documentation. Translation into browser-supported values belongs to the centralized PostCSS pipeline described in [Units](./units.md).
 
-## Spacing sources
+## Measurement sources
 
-Use spacing in this order:
+Use measurements in this order:
 
-1. exact Material component spec measurements;
-2. Material layout guidance for panes, canonical layouts, and adaptive surfaces;
-3. project spacing helpers such as `step` only when no exact Material value applies or when composing app-specific layout around Material components;
-4. documented deviation when neither Material nor project spacing rules fit.
+1. exact component specification;
+2. official layout, density, and adaptive guidance;
+3. project spacing helpers such as `step` only for product composition where no exact Material measurement applies;
+4. an explicit deviation when a required scenario cannot follow either rule.
 
 ## Density
 
-Density changes must be deliberate. Do not shrink Material components or touch targets to fit more content unless official Material guidance supports the density or a deviation is documented.
+Density changes are deliberate supported configurations, not arbitrary shrinking.
 
-For compact surfaces, first check Material compact, medium, and expanded guidance before changing component internals.
+Do not reduce visible geometry or target areas merely to fit more content. Verify that the official component or layout guidance supports the compact configuration.
 
 ## Target areas
 
-Interactive controls must satisfy Material and accessibility target area requirements. Components should own their target area rather than requiring consumers to add surrounding padding.
+Interactive components own their target-area contract. Consumers must not be required to add undocumented padding around an undersized control.
 
-When visual size and target size differ, document the distinction in Storybook and verify it in browser behavior when relevant.
+When visual and interactive bounds differ:
 
-## App-specific spacing
+- keep their owners explicit;
+- document the distinction;
+- verify the interactive geometry in a browser;
+- prevent clipping by surrounding layout.
 
-Use `--app-*` tokens for app-specific spacing that is not a Material token. Do not encode app-specific spacing as `--md-*`.
+## Application spacing
+
+Use `--app-*` for application-specific spacing outside Material token vocabulary. Do not encode product layout measurements as invented `--md-*` tokens.
 
 ## Verification
 
-Spacing or density changes should be verified by:
+For changed density, spacing, or target-area behavior, verify:
 
-- inspecting the checked Material docs or component specs;
-- Storybook surfaces for affected components;
-- responsive/browser smoke checks when layout behavior changes;
-- visual regression tests for shared primitives or high-risk surfaces.
+- the current official measurement source;
+- rendered visual geometry;
+- interactive bounds;
+- compact, medium, expanded, or container-specific behavior when applicable;
+- representative surrounding layout and clipping risk.
