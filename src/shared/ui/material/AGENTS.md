@@ -2,35 +2,24 @@
 
 Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 Expressive library boundary.
 
-## Routing
-
-- Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, supported surface, and product-facing Material decisions.
-- Use `material-component-implementation` only after an architect-approved family contract is marked `Readiness: ready` and an explicit implementation task exists.
-- Use `material-component-review` for the independent full-PR technical review and durable family audit after implementation.
-- Use `material-foundation` only for an explicitly approved cross-family foundation change.
-- Use Vue and testing skills only for applicable implementation and proof layers.
-- Use `src/shared/ui/material/docs/workflow.md` for stage and role ownership.
-
-A component name alone is not an implementation contract. Family selection, supported surface, ownership, public API, acceptance criteria, and foundation decisions must be resolved before coding begins.
-
 ## Canonical target
 
 - Official components implement the current applicable Material 3 Expressive contract.
 - Baseline Material 3 is not a silent fallback.
-- Legacy output, existing snapshots, other implementations, and memory are not Material authority.
-- Missing or conflicting source evidence is resolved by narrowing unsupported scope or returning an exact architecture blocker.
+- Existing code, snapshots, third-party implementations, and memory are not Material authority.
+- Missing or conflicting official evidence must remain explicit; do not invent values or behavior.
 
 ## Contains
 
 Only:
 
-- `docs` — Material library architecture, source policy, workflow, foundation policies, roadmap, inventory, audits, and verification contracts;
-- `foundation` — cross-family Material contracts required by approved current work;
+- `docs` — Material-library source policy and focused technical domain documentation;
+- `foundation` — cross-family Material contracts required by confirmed current work;
 - `components` — official public Material component families;
 - `patterns` — accepted reusable official Material compositions;
-- local family/domain contracts and curated public entry points.
+- local family/domain documentation and curated public entry points.
 
-Product-specific UI and generic platform infrastructure remain outside.
+Product documentation, product-specific UI, and generic platform infrastructure remain outside.
 
 ## Dependency direction
 
@@ -47,22 +36,16 @@ material library → project-specific shared UI and product layers
 - Any Material layer may use a correctly owned generic utility directly.
 - Foundation must not import components or patterns.
 - Families must not deep-import another family's private files.
-- Patterns use public component/foundation contracts only.
+- Patterns use public component and foundation contracts only.
 - Library code must not import product layers.
 - Generic infrastructure must not depend on Material family knowledge.
 
 ## Documentation ownership
 
 - `src/shared/ui/material/docs/**` is the only canonical Material-library documentation tree.
-- Family `README.md` files own approved family contracts.
-- `src/shared/ui/material/docs/workflow.md` owns stage and role separation.
-- `src/shared/ui/material/docs/audits/<family>.md` owns the latest independent family review.
-- `src/shared/ui/material/docs/foundation-registry.md` owns current foundation readiness and gaps.
-- `src/shared/ui/material/docs/library-roadmap.md` owns the current program milestone, blocker, and next action.
-- `src/shared/ui/material/docs/ui-library-inventory.md` owns classification, priority, dependencies, and terminal outcomes.
-- Executable procedures live in `.agents/skills`; they must not duplicate architecture policy.
-
-Do not add Material policy, roadmap, audit, registry, or workflow documents under root `docs`.
+- Root `docs/**` must not contain Material-library policy or workflow documents.
+- Component-family artifacts belong beside the owning family under `components/<family>`.
+- Executable agent procedures belong under `.agents/skills` and must not duplicate documentation ownership.
 
 ## Public API
 
@@ -71,32 +54,17 @@ Do not add Material policy, roadmap, audit, registry, or workflow documents unde
 - External deep imports into private implementation or testing files are forbidden.
 - Every public export has one clear owner.
 
-## Implementation gate
+## Ownership rules
 
-Production edits require:
+- New official components belong under `components/<family>`.
+- New foundation artifacts belong under `foundation/<domain>` only when a confirmed cross-family requirement cannot be served by an existing owner.
+- New patterns require official composition evidence and a current product-independent scenario.
+- Existing Material code outside this directory is legacy, not a template for new ownership.
+- Do not add placeholder layers, universal bases, runtime registries, generic resolvers, cross-family state machines, or speculative extension points.
 
-- an approved family or foundation contract;
-- `Readiness: ready`;
-- explicit goal, non-goals, scenarios, ownership, public API, supported surface, acceptance criteria, and verification ownership;
-- an implementation task that defines scope and Forbidden.
+## Verification
 
-The coding agent implements the contract. It does not select another family, broaden scope, approve architecture, silently rewrite policy, perform independent review, or claim merge readiness.
-
-## Migration boundary
-
-- Existing Material code outside this directory is legacy, not a template for new work.
-- Use one cohesive end-to-end family migration by default.
-- Split foundation, relocation, or alignment work only when blast radius, compatibility, reviewability, or a safer independently valid state justifies it.
-- Migrate affected consumers and remove obsolete ownership.
-- Temporary compatibility requires exact consumers, no new usage, and a removal target.
-
-## Verification and review
-
-- Every new or migrated component has component-contract tests.
-- Use browser, pure, consumer, visual-regression, and operator-review layers only when the component owns those contracts.
-- Automation proves only deterministic facts represented by actual tooling.
-- Independent review checks the complete PR against the approved contract and official evidence.
-- The operator owns only final comparison of prepared visible evidence when required.
-- The coding agent never approves its own implementation or reports operator acceptance as accepted.
-
-After two correction rounds still showing ownership drift, missing scenarios, unstable public contracts, mixed responsibilities, or growing workaround logic, stop patching and redo the architecture decision.
+- Verify each changed contract at its owning layer.
+- Use browser proof for browser-owned interaction and visual proof for rendered appearance.
+- Automated checks do not establish Material correctness by themselves.
+- Shared changes require consumer and blast-radius review.
