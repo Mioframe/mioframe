@@ -20,7 +20,7 @@ For component or foundation work, read only the documents required by the approv
 - [Foundation registry](./foundation-registry.md) — current foundation ownership, readiness, gaps, and verification;
 - [Family audits](./audits/README.md) — latest independent review per family.
 
-These records own different facts. Do not duplicate their responsibilities in another roadmap, registry, checklist, audit history, or execution ledger.
+These records own different facts. Do not duplicate their responsibilities in another roadmap, registry, checklist, monolithic audit, audit history, or execution ledger.
 
 ## Domain policies
 
@@ -44,9 +44,9 @@ Read only applicable policies:
 
 ## Executable skills
 
-- `material3-guidelines` — official source and usage decisions;
+- `material3-guidelines` — official source and usage decisions for an architect-owned contract;
 - `material-component-implementation` — coding after an approved `Readiness: ready` family contract;
-- `material-component-review` — independent full-PR review and durable audit;
+- `material-component-review` — independent full-PR review, durable audit, and merge recommendation;
 - `material-foundation` — implementation of an explicitly approved foundation contract;
 - applicable Vue, testing, and verification skills.
 
