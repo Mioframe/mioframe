@@ -9,19 +9,19 @@ paths:
   - 'src/shared/ui/Overlay/**'
   - 'postcss.config.js'
   - 'config/postcss.config.test.ts'
-  - 'docs/material-3/foundation-*.md'
-  - 'docs/material-3/library-architecture.md'
-  - 'docs/material-3/source-of-truth.md'
+  - 'src/shared/ui/material/docs/foundation-*.md'
+  - 'src/shared/ui/material/docs/library-architecture.md'
+  - 'src/shared/ui/material/docs/source-of-truth.md'
 ---
 
 # Material foundation
 
 Canonical rules live in:
 
-- `docs/material-3/source-of-truth.md`;
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/foundation-registry.md`.
+- `src/shared/ui/material/docs/source-of-truth.md`;
+- `src/shared/ui/material/docs/library-architecture.md`;
+- `src/shared/ui/material/docs/foundation-architecture.md`;
+- `src/shared/ui/material/docs/foundation-registry.md`.
 
 This skill defines execution order and stop conditions. Do not duplicate registry or domain contracts here.
 

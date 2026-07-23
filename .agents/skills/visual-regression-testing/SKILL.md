@@ -7,7 +7,7 @@ description: 'Use for canonical Storybook visual references, bounded screenshots
 
 Follow `docs/testing/architecture.md`. Visual regression detects unintended changes in accepted rendered appearance. It does not prove component API, browser behavior, product flow, accessibility interaction, or Material correctness.
 
-For public Material components, also follow `docs/material-3/component-testing.md`.
+For public Material components, also follow `src/shared/ui/material/docs/component-testing.md`.
 
 ## Activation
 

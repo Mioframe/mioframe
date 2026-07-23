@@ -64,7 +64,7 @@ Contains only cross-family Material contracts required by current components or 
 - Material Symbols rendering;
 - Material-facing overlay adapters.
 
-Policy-only concerns remain in `docs/material-3` until a concrete runtime artifact is justified.
+Policy-only concerns remain in `src/shared/ui/material/docs` until a concrete runtime artifact is justified.
 
 ### `components`
 
@@ -101,7 +101,7 @@ Keep outside `src/shared/ui/material`:
 - product information architecture and workflows;
 - app-specific `--app-*` contracts;
 - global application test infrastructure;
-- policy and source-evidence documents under `docs/material-3`.
+- policy and source-evidence documents under `src/shared/ui/material/docs`.
 
 A Material implementation may use a correctly owned generic utility directly. Do not introduce a foundation wrapper merely to route generic behavior.
 

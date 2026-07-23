@@ -5,7 +5,7 @@ paths:
   - 'src/**/*.vue'
   - 'src/shared/ui/**'
   - 'src/shared/lib/md/**'
-  - 'docs/material-3/**'
+  - 'src/shared/ui/material/docs/**'
   - 'tests/e2e/visual/**'
   - 'tests/e2e/storybook/**'
 ---
@@ -46,7 +46,7 @@ A public, visual, foundation, ownership, or state-model change is not `none`.
 
 ## Official authority
 
-Use the source hierarchy in `docs/material-3/source-of-truth.md`.
+Use the source hierarchy in `src/shared/ui/material/docs/source-of-truth.md`.
 
 - Current published Material 3 Expressive documentation is authoritative for documented usage, anatomy, behavior, accessibility, tokens, foundations, motion, and adaptive guidance.
 - The current official Material Design Kit is authoritative only for applicable visual decisions that published documentation does not resolve.

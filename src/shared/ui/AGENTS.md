@@ -12,11 +12,11 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 - Use `material-component-authoring` as the canonical execution workflow after the Material family is resolved, including legacy `MD*` components outside `src/shared/ui/material`.
 - Use `material-foundation` for changes to cross-family Material foundation contracts.
 - Use `material3-guidelines` for official source lookup, component choice, usage, composition, and product-facing Material decisions.
-- Inside `src/shared/ui/material`, follow `src/shared/ui/material/AGENTS.md` and the canonical architecture under `docs/material-3`.
+- Inside `src/shared/ui/material`, follow `src/shared/ui/material/AGENTS.md` and the canonical architecture under `src/shared/ui/material/docs`.
 
 A one-name invocation is sufficient input for `material-component` and `material-component-review`; do not require the user to supply variants, API, files, tests, foundations, consumers, or expected defects before repository and source discovery. `material-library-next` requires no component name and must select only one family per run. `material-library-status` is read-only.
 
-A completed `material-component-review` run must create or replace `docs/material-3/audits/<family-slug>.md`. Review-only means no implementation, test, registry, family-contract, or policy changes; the durable audit artifact is required.
+A completed `material-component-review` run must create or replace `src/shared/ui/material/docs/audits/<family-slug>.md`. Review-only means no implementation, test, registry, family-contract, or policy changes; the durable audit artifact is required.
 
 Do not assemble an official Material component workflow from generic shared UI rules. `material-component-authoring` remains the primary execution contract after target resolution.
 

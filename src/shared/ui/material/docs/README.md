@@ -10,7 +10,7 @@ This directory defines Mioframe's contract for building and migrating the Materi
 - [Library roadmap](./library-roadmap.md) — current milestone, blocker, next action, and progress
 - [Library architecture](./library-architecture.md) — physical boundary, dependency direction, public API, and migration model
 - [Shared UI inventory](./ui-library-inventory.md) — classification, priority, queue state, and terminal outcomes
-- [`src/shared/ui/material` map](../../src/shared/ui/material/README.md) — physical current and canonical ownership
+- [`src/shared/ui/material` map](../README.md) — physical current and canonical ownership
 
 ### Official sources and foundations
 
@@ -111,7 +111,7 @@ The review entrypoint resolves the component, official Material 3 Expressive sou
 Every completed review creates or replaces:
 
 ```text
-docs/material-3/audits/<family-slug>.md
+src/shared/ui/material/docs/audits/<family-slug>.md
 ```
 
 The filename is stable and uses the resolved owning-family slug. Later reviews replace the same file; Git history preserves earlier audits. The audit records the implementation ref and commit reviewed, so consumers can detect when it is stale.

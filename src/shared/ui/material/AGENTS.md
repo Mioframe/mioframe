@@ -12,14 +12,14 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 E
 - Use `material-foundation` when a cross-family foundation contract changes.
 - Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and supported surface.
 - Use Vue and testing skills only for applicable implementation and proof layers.
-- Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
+- Use `src/shared/ui/material/docs/autonomous-review.md` for agent evidence review and operator visual handoff.
 - Use `library-roadmap.md` and `ui-library-inventory.md` through `material-library-next` to select sequential migration work when the user did not explicitly select a component.
 
 A component name is sufficient input for `material-component` and `material-component-review`. Do not require the user to predefine variants, API, foundations, files, tests, consumers, or expected defects. Resolve them from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
 
 `material-library-next` requires no component name. It follows the active roadmap milestone first and, after the pilots, selects one unblocked `queued` official-component family with satisfied dependencies. It must not start a second family in the same task or PR. `material-library-status` never modifies repository files.
 
-A completed `material-component-review` run creates or replaces `docs/material-3/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
+A completed `material-component-review` run creates or replaces `src/shared/ui/material/docs/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
 
@@ -39,7 +39,7 @@ Only:
 - `patterns` — accepted reusable official Material compositions;
 - local family/domain contracts and curated public entry points.
 
-Policy documents remain under `docs/material-3`. Product-specific UI and generic platform infrastructure remain outside.
+Policy documents remain under `src/shared/ui/material/docs`. Product-specific UI and generic platform infrastructure remain outside.
 
 ## Dependency direction
 

@@ -4,7 +4,7 @@ This directory stores the latest completed source-backed Material 3 Expressive c
 
 ## Ownership
 
-- `docs/material-3/audits/<family-slug>.md` owns the latest completed compliance evaluation for one resolved family.
+- `src/shared/ui/material/docs/audits/<family-slug>.md` owns the latest completed compliance evaluation for one resolved family.
 - The family `README.md` remains the owner of the accepted implementation contract.
 - The component registry remains the owner of program-level alignment status.
 - An audit records evidence and findings; it does not silently change the accepted contract or registry state.

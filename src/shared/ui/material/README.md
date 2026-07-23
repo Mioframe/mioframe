@@ -10,12 +10,12 @@ The library contains:
 
 Canonical architecture:
 
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-testing.md`.
+- `docs/library-architecture.md`;
+- `docs/foundation-architecture.md`;
+- `docs/component-architecture.md`;
+- `docs/component-testing.md`.
 
-Operational progress and the next ready family are tracked in `docs/material-3/library-roadmap.md` and `ui-library-inventory.md`.
+Operational progress and the next ready family are tracked in `docs/library-roadmap.md` and `docs/ui-library-inventory.md`.
 
 ## Ownership map
 

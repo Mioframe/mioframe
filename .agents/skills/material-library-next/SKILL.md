@@ -7,7 +7,7 @@ description: 'Use when the user wants the Material 3 Expressive library work to 
 
 Use this as the no-name entrypoint for continuing the Material 3 Expressive library program.
 
-This skill owns only next-family selection and workflow startup. It must not duplicate component implementation, review, testing, or completion rules owned by `material-component`, `material-component-authoring`, and `docs/material-3`.
+This skill owns only next-family selection and workflow startup. It must not duplicate component implementation, review, testing, or completion rules owned by `material-component`, `material-component-authoring`, and `src/shared/ui/material/docs`.
 
 ## Required input
 
@@ -25,11 +25,11 @@ Do not ask the user to choose a family when repository evidence can select one.
 
 Read, in order:
 
-1. `docs/material-3/library-roadmap.md`;
-2. `docs/material-3/ui-library-inventory.md`;
-3. `docs/material-3/component-registry.md` and `foundation-registry.md` only for candidate dependencies or alignment facts;
+1. `src/shared/ui/material/docs/library-roadmap.md`;
+2. `src/shared/ui/material/docs/ui-library-inventory.md`;
+3. `src/shared/ui/material/docs/component-registry.md` and `foundation-registry.md` only for candidate dependencies or alignment facts;
 4. `src/shared/ui/material/README.md` for physical ownership;
-5. `docs/material-3/audits/<family-slug>.md` for candidate audit state when present.
+5. `src/shared/ui/material/docs/audits/<family-slug>.md` for candidate audit state when present.
 
 Treat each file only as the owner of the facts assigned to it. Correct a stale owning source during the implementation workflow rather than inventing a parallel queue.
 

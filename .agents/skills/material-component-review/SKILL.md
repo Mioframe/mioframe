@@ -7,7 +7,7 @@ description: 'Use when the user provides a Material component or family name and
 
 Use this as the one-name, review-only entrypoint for checking an existing Material component implementation.
 
-This skill owns target resolution, compliance-review orchestration, and the durable family audit artifact. It must not duplicate source, architecture, testing, or authoring rules owned by `material3-guidelines`, `material-component-authoring`, `docs/material-3`, and the applicable testing skills.
+This skill owns target resolution, compliance-review orchestration, and the durable family audit artifact. It must not duplicate source, architecture, testing, or authoring rules owned by `material3-guidelines`, `material-component-authoring`, `src/shared/ui/material/docs`, and the applicable testing skills.
 
 ## Required input
 
@@ -28,7 +28,7 @@ Do not ask the user to predefine the expected variants, API, states, sources, te
 
 The default task is inspection, durable audit recording, and reporting only.
 
-- The required repository change is `docs/material-3/audits/<family-slug>.md`.
+- The required repository change is `src/shared/ui/material/docs/audits/<family-slug>.md`.
 - Do not modify production code, tests, stories, snapshots, registries, family contracts, or project rules during the review.
 - Do not convert findings into implementation work unless the user explicitly asks to fix them.
 - When fixes are requested later, hand the resolved family and findings to `material-component` or `material-component-authoring` rather than implementing through this review skill.
@@ -45,7 +45,7 @@ Treat repository documentation, prior audits, tests, snapshots, and current rend
 
 ## Resolve authoritative evidence
 
-Use `material3-guidelines` and the source hierarchy in `docs/material-3/source-of-truth.md`.
+Use `material3-guidelines` and the source hierarchy in `src/shared/ui/material/docs/source-of-truth.md`.
 
 - Resolve current official Material 3 Expressive guidance first.
 - Record exact pages, snapshot metadata, and Design Kit evidence when applicable.
@@ -121,10 +121,10 @@ When the review exposes an inaccurate, contradictory, obsolete, incomplete, or n
 Create or replace exactly one file:
 
 ```text
-docs/material-3/audits/<family-slug>.md
+src/shared/ui/material/docs/audits/<family-slug>.md
 ```
 
-Follow `docs/material-3/audits/README.md`.
+Follow `src/shared/ui/material/docs/audits/README.md`.
 
 - Use the resolved owning-family slug in kebab case, not the raw user input.
 - Keep one current file per family; do not create dated copies.
@@ -187,7 +187,7 @@ Claimed supported surface:
 Required consumer scenarios:
 Compliance result:
 Operator visual status: accepted | required | not applicable | blocked
-Audit file: docs/material-3/audits/<family-slug>.md
+Audit file: src/shared/ui/material/docs/audits/<family-slug>.md
 
 Confirmed findings:
 1. <severity> — <summary>

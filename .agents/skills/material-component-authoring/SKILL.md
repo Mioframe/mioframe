@@ -27,8 +27,8 @@ Use:
 - `vue-component-implementation` for Vue mechanics;
 - `component-contract-testing`, `ui-browser-behavior`, and `visual-regression-testing` only for applicable proof layers;
 - `verification` for focused and final repository checks;
-- `docs/material-3/autonomous-review.md` for agent review and operator visual handoff;
-- `docs/material-3/audits/README.md` and the current family audit when one exists;
+- `src/shared/ui/material/docs/autonomous-review.md` for agent review and operator visual handoff;
+- `src/shared/ui/material/docs/audits/README.md` and the current family audit when one exists;
 - `library-roadmap.md` and `ui-library-inventory.md` for active work and queue state.
 
 Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
@@ -50,7 +50,7 @@ Do not mix unrelated families or broad shared cleanup.
 
 ## 2. Resolve sources, audit findings, and supported scope
 
-1. Inspect the current family, public exports, direct consumers, stories, tests, known defects, and `docs/material-3/audits/<family-slug>.md` when present.
+1. Inspect the current family, public exports, direct consumers, stories, tests, known defects, and `src/shared/ui/material/docs/audits/<family-slug>.md` when present.
 2. Compare any audit metadata with the implementation ref and commit under work.
 3. Start from named scenarios and affected consumers.
 4. Resolve the current official Material 3 Expressive contract.

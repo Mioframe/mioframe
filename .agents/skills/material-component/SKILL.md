@@ -7,7 +7,7 @@ description: 'Use when the user provides only a Material component or family nam
 
 Use this as the one-name entrypoint for Material 3 Expressive component work.
 
-This skill owns only target resolution and workflow startup. It must not duplicate component architecture, implementation, testing, review, or completion rules owned by `material-component-authoring` and `docs/material-3`.
+This skill owns only target resolution and workflow startup. It must not duplicate component architecture, implementation, testing, review, or completion rules owned by `material-component-authoring` and `src/shared/ui/material/docs`.
 
 ## Required input
 
@@ -35,7 +35,7 @@ Do not ask the user to predefine variants, API, scenarios, foundations, files, t
 Before implementation:
 
 1. normalize the supplied name against current official Material 3 Expressive terminology;
-2. inspect existing `MD*` implementations, public exports, direct consumers, the latest `docs/material-3/audits/<family-slug>.md` when present, the component registry, UI inventory, migration map, and roadmap;
+2. inspect existing `MD*` implementations, public exports, direct consumers, the latest `src/shared/ui/material/docs/audits/<family-slug>.md` when present, the component registry, UI inventory, migration map, and roadmap;
 3. resolve the official component surface and smallest cohesive owning family;
 4. identify current and canonical owners;
 5. identify current consumers and required compatibility;
@@ -114,7 +114,7 @@ Change mode:
 Canonical owner:
 Supported surface:
 Unsupported surface:
-Audit consumed: none | docs/material-3/audits/<family-slug>.md
+Audit consumed: none | src/shared/ui/material/docs/audits/<family-slug>.md
 Audit findings resolved or invalidated: none | <summary>
 Consumers migrated:
 Foundation changes:

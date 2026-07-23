@@ -188,7 +188,7 @@ Token names in this family follow these rules:
 The following generic tokens are **not** part of the public API and are **not** set by this component family:
 `--md-container-color`, `--md-content-color`. These were removed to eliminate ambiguous cascade bleed.
 
-Public token names map mechanically from the documented Material path, per [docs/material-3/component-tokens.md](../../../../docs/material-3/component-tokens.md):
+Public token names map mechanically from the documented Material path, per [src/shared/ui/material/docs/component-tokens.md](../material/docs/component-tokens.md):
 
 ```text
 md.comp.list.list-item.[state].<element>.<property>
@@ -269,7 +269,7 @@ The `list-item` path segment is part of the documented token and is preserved, n
 | `--md-comp-list-list-item-supporting-text-font` / `-size` / `-weight` / `-line-height` / `-tracking` | `md.comp.list.list-item.supporting-text.*`                       | Supporting text typography; defaults to `body-medium`                                                                                                        |
 | `--md-comp-list-list-item-overline-font` / `-size` / `-weight` / `-line-height` / `-tracking`        | `md.comp.list.list-item.overline.*`                              | Overline typography; defaults to `label-small`                                                                                                               |
 
-There is no documented Material token for a generic leading selection-control size (checkbox/switch slot). `--md-private-list-item-leading-control-size` is a private implementation variable for that geometry, not a public Material token. The resolved per-state interaction state-layer color is wired internally through `--md-private-list-item-state-layer-color`, which reads the selected-state color tokens above when the row is selected, and is mapped into the shared `MDStateLayer` primitive's generic `--md-private-state-layer-color` contract (see [Material token policy](../State/README.md) / `docs/material-3/`).
+There is no documented Material token for a generic leading selection-control size (checkbox/switch slot). `--md-private-list-item-leading-control-size` is a private implementation variable for that geometry, not a public Material token. The resolved per-state interaction state-layer color is wired internally through `--md-private-list-item-state-layer-color`, which reads the selected-state color tokens above when the row is selected, and is mapped into the shared `MDStateLayer` primitive's generic `--md-private-state-layer-color` contract (see [Material token policy](../State/README.md) / `src/shared/ui/material/docs/`).
 
 There is no exposed trailing supporting text slot in the implemented anatomy, so the documented `md.comp.list.list-item.trailing-supporting-text.font` / `.size` / `.weight` / `.line-height` / `.tracking` typography tokens are N/A for the public API (the trailing-supporting-text **color** token is still represented because it is reused by the existing trailing slot color role).
 

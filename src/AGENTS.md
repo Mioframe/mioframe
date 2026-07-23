@@ -6,7 +6,7 @@ Inherits the rules from the root `AGENTS.md`. Applies to all application source 
 
 For user-visible UI or UX changes, use the `material3-guidelines` skill before planning component choice, layout, interaction behavior, visual states, accessibility semantics, tokens, public UI API names, or verification.
 
-For shared UI primitives, Material-style wrappers, Material tokens, Storybook UI documentation, or Material visual verification surfaces, also follow the relevant policies under `docs/material-3/` before editing production code.
+For shared UI primitives, Material-style wrappers, Material tokens, Storybook UI documentation, or Material visual verification surfaces, also follow the relevant policies under `src/shared/ui/material/docs/` before editing production code.
 
 Use the `material3` MCP server from https://github.com/Vyachean/m3-docs-mcp as the primary source of official Material 3 guidance. If MCP is unavailable or incomplete for the needed page, use `Vyachean/m3-docs-cache` as the fallback snapshot of official `m3.material.io` content.
 
