@@ -1,10 +1,10 @@
 # Material component DESIGN.md template
 
-Use this template exactly unless a section is explicitly inapplicable according to the inspected Material sources.
+Use this template exactly unless a section is explicitly inapplicable according to the inspected Material MCP records.
 
 ## Contents
 
-- Metadata and sources
+- MCP snapshot provenance and source coverage
 - Identity, purpose, family, variants, configurations, and sizes
 - Anatomy, content, states, and interaction
 - Visual specification and token inventory
@@ -15,20 +15,33 @@ Use this template exactly unless a section is explicitly inapplicable according 
 ---
 document: material-component-design
 component: <official title>
-canonical-slug: <official URL slug>
-material-source: m3.material.io
-source-snapshot: YYYY-MM-DD
+canonical-slug: <official route slug>
+material-source: material3-mcp
+material-origin: m3.material.io
+source-snapshot: <cache snapshot id or capture timestamp>
+source-cache-schema: <schema/version or not reported>
+generated-at: YYYY-MM-DD
 status: review-ready | blocked
 approval: pending | approved
 ---
 
 # <Official component title>
 
-## Sources
+## Source provenance
 
-| ID     | Official page | URL | Evidence used |
-| ------ | ------------- | --- | ------------- |
-| M3-... | ...           | ... | ...           |
+- MCP source: `material3`
+- Cache snapshot:
+- Cache captured at:
+- Cache schema/version:
+- Canonical component route:
+
+## Source coverage
+
+| Source ID | MCP record or route | Official title | Original URL | Coverage status | Evidence used or not-applicable reason |
+| --------- | ------------------- | -------------- | ------------ | --------------- | -------------------------------------- |
+| M3-...    | ...                 | ...            | ...          | inspected       | ...                                    |
+
+Every applicable component record returned by the MCP component bundle or graph must appear as `inspected` or `not applicable` with a reason.
 
 ## Component identity
 
@@ -49,136 +62,156 @@ approval: pending | approved
 
 ## Official family and related components
 
-| Component or member | Relationship | Source |
-| ------------------- | ------------ | ------ |
+| Requirement ID | Component or member | Relationship | Source ID |
+| -------------- | ------------------- | ------------ | --------- |
 
 ## Variants
 
-| Variant | Purpose or emphasis | Distinguishing properties | Source |
-| ------- | ------------------- | ------------------------- | ------ |
+| Requirement ID | Variant | Purpose or emphasis | Distinguishing properties | Source ID |
+| -------------- | ------- | ------------------- | ------------------------- | --------- |
 
 ## Configurations
 
-| Configuration | Required content | Optional content | Constraints | Source |
-| ------------- | ---------------- | ---------------- | ----------- | ------ |
+| Requirement ID | Configuration | Required content | Optional content | Constraints | Source ID |
+| -------------- | ------------- | ---------------- | ---------------- | ----------- | --------- |
 
 ## Sizes and density
 
-| Size or density | Dimensions | Content sizing | Target size | Source |
-| --------------- | ---------- | -------------- | ----------- | ------ |
+| Requirement ID | Size or density | Dimensions | Content sizing | Target size | Source ID |
+| -------------- | --------------- | ---------- | -------------- | ----------- | --------- |
 
 ## Anatomy
 
-| Part | Required or optional | Design role | Source |
-| ---- | -------------------- | ----------- | ------ |
+| Requirement ID | Part | Required or optional | Design role | Source ID |
+| -------------- | ---- | -------------------- | ----------- | --------- |
 
 ## Content guidance
 
-| Area | Requirement or recommendation | Strength | Source |
-| ---- | ----------------------------- | -------- | ------ |
+| Requirement ID | Area | Requirement or recommendation | Strength | Conditions or exceptions | Source ID |
+| -------------- | ---- | ----------------------------- | -------- | ------------------------ | --------- |
 
 ## State model
 
 ### States
 
-| State | Meaning | Visual change | Source |
-| ----- | ------- | ------------- | ------ |
+| Requirement ID | State | Meaning | Visual change | Source ID |
+| -------------- | ----- | ------- | ------------- | --------- |
 
 ### State combinations
 
-| Combination | Allowed | Result | Source |
-| ----------- | ------- | ------ | ------ |
+| Requirement ID | Combination | Allowed | Result | Source ID |
+| -------------- | ----------- | ------- | ------ | --------- |
 
 ## Interaction behavior
 
-| Input or condition | Observable behavior | Source |
-| ------------------ | ------------------- | ------ |
+| Requirement ID | Input or condition | Observable behavior | Source ID |
+| -------------- | ------------------ | ------------------- | --------- |
 
 ## Visual specification
 
 ### Dimensions and layout
 
-| Element | Token or value | Conditions | Source |
-| ------- | -------------- | ---------- | ------ |
+| Requirement ID | Element | Token or value | Conditions | Source ID |
+| -------------- | ------- | -------------- | ---------- | --------- |
 
 ### Color
 
-| Variant or element | State | Token or role | Source |
-| ------------------ | ----- | ------------- | ------ |
+| Requirement ID | Variant or element | State | Token or role | Source ID |
+| -------------- | ------------------ | ----- | ------------- | --------- |
 
 ### Typography
 
-| Element | Typescale role or value | Source |
-| ------- | ----------------------- | ------ |
+| Requirement ID | Element | Typescale role or value | Source ID |
+| -------------- | ------- | ----------------------- | --------- |
 
 ### Shape and outline
 
-| Variant or element | State | Token or value | Source |
-| ------------------ | ----- | -------------- | ------ |
+| Requirement ID | Variant or element | State | Token or value | Source ID |
+| -------------- | ------------------ | ----- | -------------- | --------- |
 
 ### Elevation
 
-| Variant or element | State | Token or value | Source |
-| ------------------ | ----- | -------------- | ------ |
+| Requirement ID | Variant or element | State | Token or value | Source ID |
+| -------------- | ------------------ | ----- | -------------- | --------- |
 
 ### State layers and focus
 
-| State | Layer, indicator, or opacity | Source |
-| ----- | ---------------------------- | ------ |
+| Requirement ID | State | Layer, indicator, or opacity | Source ID |
+| -------------- | ----- | ---------------------------- | --------- |
 
 ### Icons
 
-| Context | Size, placement, or behavior | Source |
-| ------- | ---------------------------- | ------ |
+| Requirement ID | Context | Size, placement, or behavior | Source ID |
+| -------------- | ------- | ---------------------------- | --------- |
 
 ## Material token inventory
 
-| Design role | Official component token | Official system role or value | Source |
-| ----------- | ------------------------ | ----------------------------- | ------ |
+| Requirement ID | Design role | Official component token | Official system role or value | Source ID |
+| -------------- | ----------- | ------------------------ | ----------------------------- | --------- |
 
 ## Motion
 
-| Transition | Trigger | From | To  | Duration | Easing | Source |
-| ---------- | ------- | ---- | --- | -------- | ------ | ------ |
+| Requirement ID | Transition | Trigger | From | To | Motion model | Published parameters | Source ID |
+| -------------- | ---------- | ------- | ---- | -- | ------------ | -------------------- | --------- |
 
 ### Interruption and reduced motion
 
+| Requirement ID | Condition | Published behavior | Source ID |
+| -------------- | --------- | ------------------ | --------- |
+
+Do not force spring damping/stiffness into duration/easing fields. Record the motion model and only the parameters published by the MCP source.
+
 ## Accessibility
 
-| Area | Published Material requirement | Source |
-| ---- | ------------------------------ | ------ |
+| Requirement ID | Area | Published Material requirement | Conditions or exceptions | Source ID |
+| -------------- | ---- | ------------------------------ | ------------------------ | --------- |
 
 ## Directionality and adaptation
 
-| Condition | Required behavior | Source |
-| --------- | ----------------- | ------ |
+| Requirement ID | Condition | Required behavior | Source ID |
+| -------------- | --------- | ----------------- | --------- |
+
+## Cross-section consistency
+
+| Check | Result | Related requirement IDs | Resolution or conflict ID |
+| ----- | ------ | ----------------------- | ------------------------- |
+| Content vs accessibility | pass | ... | ... |
+| States vs interaction | pass | ... | ... |
+| Visual summaries vs token tables | pass | ... | ... |
+| Motion vs token inventory and gaps | pass | ... | ... |
+| Family boundary vs related records | pass | ... | ... |
 
 ## Canonical conformance matrix
 
-| ID  | Member | Variant | Size | Configuration | State | Scheme or direction | Requirements covered |
-| --- | ------ | ------- | ---- | ------------- | ----- | ------------------- | -------------------- |
+| ID | Member | Variant | Size | Configuration | State | Scheme or direction | Requirement IDs | Source IDs |
+| -- | ------ | ------- | ---- | ------------- | ----- | ------------------- | --------------- | ---------- |
+
+Every matrix case must reference requirements already defined above. Do not introduce a new scheme, platform mode, accessibility condition, or behavior only in this table.
 
 ## Source conflicts
 
 None.
 
-<!-- When present, use: ID, conflicting sources, conflict, impact, unresolved decision. -->
+<!-- When present, use: conflict ID, source IDs, conflicting requirements, affected requirement IDs, impact, unresolved decision. -->
 
 ## Source gaps
 
 None.
 
-<!-- Use `Not specified by the inspected Material sources`; never invent the missing rule. -->
+<!-- Use `Not specified by the inspected Material MCP records`; never invent the missing rule. -->
 
 ## Design acceptance criteria
 
 - [ ] The official target and family boundary are deterministic.
-- [ ] Every applicable official component page was inspected.
-- [ ] The complete official surface is represented.
+- [ ] MCP snapshot identity and capture time are recorded or explicitly reported unavailable.
+- [ ] Every applicable MCP component record is accounted for in Source coverage.
+- [ ] The complete official surface represented by the MCP snapshot is documented.
 - [ ] Variants, configurations, sizes, and states are distinct.
-- [ ] Every normative claim is traceable to an inspected source.
+- [ ] Every normative claim has a requirement ID and source ID.
+- [ ] Cross-section consistency checks pass or blocking conflicts are recorded.
 - [ ] Missing guidance and conflicts are explicit.
-- [ ] The conformance matrix covers every documented dimension.
+- [ ] The conformance matrix references only defined requirements and sources.
+- [ ] Motion is represented using its published model and parameters.
 - [ ] No Mioframe architecture, code, test, or migration decision is present.
 ```
 
