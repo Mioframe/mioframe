@@ -56,7 +56,7 @@ Verification must exercise the resulting user path at the same level as the chan
 
 ## Vue, styling, stories, and copy
 
-For Vue and user-visible UI work, follow the applicable Vue, browser, and visual rules and preserve these project conventions:
+For Vue and user-visible UI work, follow the applicable Vue, browser, and visual skills and preserve these project conventions:
 
 - The root class of a Vue component matches the component name in kebab-case. Components keep one stable meaningful root; parent composition owns whether the component renders.
 - Use classic BEM syntax: `block`, `block__element`, `block_modifier`, and explicit key-value modifiers such as `block_size_medium`. Do not introduce `block--modifier`, loose unowned classes, or ambiguous modifier names.
@@ -77,3 +77,18 @@ The goal is not to hide all unexpected errors from diagnostics. Sentry must stil
 2. **External diagnostics export**: The `beforeSend` sanitizer enforces privacy at the outgoing Sentry event boundary. It scrubs exception value messages, linked cause messages, tags, extras, contexts, breadcrumbs, and user fields using denylist-based filtering.
 
 **Error construction rules for `src` code:**
+
+- Wrap boundary failures in a `DomainError` with a project-controlled user-facing `message`, a stable `code` enum value, and the raw runtime error as `cause`.
+- Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern. Do not put clients, adapters, providers, callbacks, capabilities, credentials, or service objects in `message`, `cause`, serialization, or user-facing payloads.
+- Do not create feature-local classifiers or manual VFS-to-feature error mappings. Use enum codes and raw cause instead.
+- Keep `DomainError.message` free of paths, names, ids, URLs, and raw external text.
+- `DomainError.cause` may hold the original raw error — the Sentry sanitizer handles scrubbing at the outgoing event boundary.
+- Internal programmer errors and project-controlled invariant failures may be reported as raw `Error` objects when their messages are stable and do not include user-controlled values.
+- Expected user outcomes (cancelled picker, invalid input, permission denied with recovery UI) should not be reported unless there is a specific product reason.
+
+**Error code rules:**
+
+- Define each string enum close to the boundary where the error originates (e.g., `RepositoryErrorCode` in the repository layer, `ExampleDocumentsCreateErrorCode` in that feature).
+- Do not create a global error-code registry.
+
+Do not attach local paths, virtual paths, file names, document names, document ids, file ids, Google Drive ids, URLs, record values, document contents, or raw external error text to `captureDiagnosticException` context, Sentry tags, or Sentry extra.
