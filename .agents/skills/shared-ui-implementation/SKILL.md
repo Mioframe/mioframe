@@ -7,7 +7,7 @@ description: 'Use for project-specific or generic src/shared/ui primitives outsi
 
 Use for project-specific presentation primitives, wrappers, layout primitives, and generic shared UI infrastructure outside official Material component families.
 
-For a new, migrated, aligned, or materially changed official public Material component family, use `material-component-authoring` instead. Do not assemble that workflow from this generic skill.
+Do not use this skill to define an official Material component design contract. Use `material-component-design` for the source-only `DESIGN.md` stage. Material implementation remains separate architecture work.
 
 ## Scope
 
@@ -21,7 +21,7 @@ This skill owns general Vue/shared-UI implementation discipline:
 - consumer blast-radius review;
 - focused contract, browser, and visual verification.
 
-It does not own Material family blueprints, component profiles, foundation dependencies, token routing, canonical `StateMatrix`, or Material migration.
+It does not own official Material design contracts, Material token inventories, foundation contracts, or Material family migration.
 
 ## Before production edits
 
