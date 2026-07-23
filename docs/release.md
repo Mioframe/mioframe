@@ -155,11 +155,11 @@ focused and the full gate, and tag pushes never rerun the full gate:
   branch except `main`, and pushes to `develop`. Its `pull_request` trigger uses
   `branches-ignore: [main]`, so it never fires for a PR into `main`. The workflow
   separates three responsibilities:
-- `verification` runs focused development verification (`pnpm verify`,
-  changed-file scope) and owns whether deployable PR source is valid;
-- PR-only `release-version` enforces the version-bump policy independently;
-- aggregate `verify` preserves the required merge check and succeeds only when
-  `verification` and, for PRs, `release-version` both succeed.
+  - `verification` runs focused development verification (`pnpm verify`,
+    changed-file scope) and owns whether deployable PR source is valid;
+  - PR-only `release-version` enforces the version-bump policy independently;
+  - aggregate `verify` preserves the required merge check and succeeds only when
+    `verification` and, for PRs, `release-version` both succeed.
   `deploy-preview` depends only on `verification`: an incorrect PR version blocks
   merge through `verify` but does not block the application and Storybook demo.
   Implementation verification failures still block the preview. `deploy-develop`
