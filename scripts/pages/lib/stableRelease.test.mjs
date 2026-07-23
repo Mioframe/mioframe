@@ -76,10 +76,26 @@ describe('stable release publication', () => {
   });
 
   it('preserves prior releases and publishes latest only after immutable content exists', () => {
-    write(workDir, 'updates/releases/previous.json', '{}');
-    write(workDir, 'updates/releases/previous/index.html', 'old');
+    const previousId = 'e'.repeat(40);
+    write(
+      workDir,
+      `updates/releases/${previousId}.json`,
+      JSON.stringify({
+        schemaVersion: 2,
+        releaseId: previousId,
+        releaseSequence: 9,
+        appVersion: '0.9.0',
+        buildId: previousId.slice(0, 7),
+        buildDate: '2026-07-20T00:00:00.000Z',
+        indexUrl: `/updates/releases/${previousId}/index.html`,
+        files: [],
+      }),
+    );
+    write(workDir, `updates/releases/${previousId}/index.html`, 'old');
     applyManagedStablePublish(workDir, distDir);
-    expect(readFileSync(join(workDir, 'updates/releases/previous/index.html'), 'utf8')).toBe('old');
+    expect(readFileSync(join(workDir, `updates/releases/${previousId}/index.html`), 'utf8')).toBe(
+      'old',
+    );
     const latest = JSON.parse(readFileSync(join(workDir, 'updates/latest.json'), 'utf8'));
     expect(readFileSync(join(workDir, latest.descriptorUrl), 'utf8')).toContain(sha);
     expect(readFileSync(join(workDir, `updates/releases/${sha}/index.html`), 'utf8')).toContain(
@@ -203,6 +219,56 @@ describe('stable release publication', () => {
       }),
     );
     expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('collision');
+  });
+
+  it('fails publication on a malformed retained descriptor instead of silently skipping it', () => {
+    write(workDir, `updates/releases/${'e'.repeat(40)}.json`, 'not json');
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('not valid JSON');
+  });
+
+  it('fails publication on a retained descriptor with an invalid schema instead of silently skipping it', () => {
+    write(workDir, `updates/releases/${'e'.repeat(40)}.json`, '{}');
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('invalid schema');
+  });
+
+  it('fails publication when a retained descriptor filename does not match its own release id', () => {
+    write(
+      workDir,
+      'updates/releases/mismatched.json',
+      JSON.stringify({
+        schemaVersion: 2,
+        releaseId: 'e'.repeat(40),
+        releaseSequence: 9,
+        appVersion: '0.9.0',
+        buildId: 'eeeeeee',
+        buildDate: '2026-07-20T00:00:00.000Z',
+        indexUrl: `/updates/releases/${'e'.repeat(40)}/index.html`,
+        files: [],
+      }),
+    );
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('does not match');
+  });
+
+  it('fails publication when two retained descriptor files claim the same release id', () => {
+    const duplicateId = 'e'.repeat(40);
+    const descriptorFor = (buildDate) =>
+      JSON.stringify({
+        schemaVersion: 2,
+        releaseId: duplicateId,
+        releaseSequence: 9,
+        appVersion: '0.9.0',
+        buildId: duplicateId.slice(0, 7),
+        buildDate,
+        indexUrl: `/updates/releases/${duplicateId}/index.html`,
+        files: [],
+      });
+    write(
+      workDir,
+      `updates/releases/${duplicateId}.json`,
+      descriptorFor('2026-07-20T00:00:00.000Z'),
+    );
+    write(workDir, 'updates/releases/duplicate.json', descriptorFor('2026-07-21T00:00:00.000Z'));
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow();
   });
 
   it('fails the complete artifact size guard before changing the latest pointer', () => {

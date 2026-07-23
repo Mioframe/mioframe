@@ -1,5 +1,10 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { createDirectory, launchApp, openOpfs } from '../helpers';
+import {
+  createPersistentProfile,
+  launchPersistentBrowser,
+  removePersistentProfile,
+} from './persistentProfile';
 
 const marker = (page: Page) =>
   page.evaluate(() => Reflect.get(globalThis, '__MIOFRAME_EXECUTED_RELEASE__'));
@@ -123,6 +128,54 @@ test('1 migration from generated stable worker and 2 existing install initialize
     'aria-checked',
     'true',
   );
+});
+
+test('production client reconnects after worker takeover, and conservative live-window counting still blocks Update now for a second window that has not yet re-registered', async ({
+  page,
+  context,
+  request,
+}) => {
+  await request.post('/__managed-fixture/worker/legacy');
+  await page.goto('/branch/fixture/index.html');
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    await navigator.serviceWorker.ready;
+  });
+  await page.close();
+
+  // Both windows load under the still-active legacy worker before the server ever serves the
+  // managed worker's bytes, matching "already open before the new worker takes control".
+  const first = await context.newPage();
+  await first.goto('/');
+  const second = await context.newPage();
+  await second.goto('/');
+
+  await request.post('/__managed-fixture/worker/current');
+  // Only `first` explicitly checks for a worker update; `second` does nothing of its own. Its
+  // reconnect must come from production's own `controllerchange` handling, not a second explicit
+  // check, and its liveness must count for blocking regardless of whether it has reconnected yet.
+  await first.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration('/');
+    await registration?.update();
+  });
+  await waitForManagedController(first);
+
+  await goToAppUpdates(first);
+  await setManual(first);
+  await selectLatest(request, 'B');
+  await checkForUpdates(first, /update available/i);
+  await first.getByRole('button', { name: /update now/i }).click();
+  await expect(first.getByText(/close other mioframe windows to update/i)).toBeVisible();
+
+  // `second` never explicitly re-checked, yet it reconnects and reports real capability, proving
+  // production's own `controllerchange` handling — not test-only retry code — completed its
+  // private handshake with the new controller.
+  await goToAppUpdates(second);
+  await expect(second.getByRole('heading', { name: /status unavailable/i })).toHaveCount(0);
+
+  await second.close();
+  await first.getByRole('button', { name: /update now/i }).click();
+  await waitForExecutedRelease(first, 'B');
 });
 
 test('3 Automatic A to B prepares in background and activates on later safe launch', async ({
@@ -293,28 +346,81 @@ test('13 offline metadata check is not Up to date', async ({ page, context }) =>
   await expect(page.getByRole('heading', { name: /up to date/i })).toHaveCount(0);
 });
 
-test('offline cold start serves the installed release with no network access', async ({
-  page,
-  context,
-}) => {
-  await initializeReleaseA(page);
-  await page.close();
-  const offline = await context.newPage();
-  await context.setOffline(true);
-  await offline.goto('/');
-  await waitForExecutedRelease(offline, 'A');
+test('offline cold start serves the installed release after a real browser-process restart with no network access', async () => {
+  const profileDir = createPersistentProfile();
+  try {
+    const install = await launchPersistentBrowser(profileDir);
+    try {
+      await initializeReleaseA(await install.newPage());
+    } finally {
+      // Closes the entire browser context/process, not just the page.
+      await install.close();
+    }
+
+    const restarted = await launchPersistentBrowser(profileDir);
+    try {
+      await restarted.setOffline(true);
+      const offline = await restarted.newPage();
+      await offline.goto('/');
+      await waitForExecutedRelease(offline, 'A');
+    } finally {
+      await restarted.close();
+    }
+  } finally {
+    removePersistentProfile(profileDir);
+  }
 });
 
-test('offline deep-link navigation serves the installed release with no network access', async ({
-  page,
-  context,
-}) => {
-  await initializeReleaseA(page);
-  await page.close();
-  const offline = await context.newPage();
-  await context.setOffline(true);
-  await offline.goto('/settings/app-updates');
-  await waitForExecutedRelease(offline, 'A');
+test('offline deep-link navigation serves the installed release after a real browser-process restart with no network access', async () => {
+  const profileDir = createPersistentProfile();
+  try {
+    const install = await launchPersistentBrowser(profileDir);
+    try {
+      await initializeReleaseA(await install.newPage());
+    } finally {
+      await install.close();
+    }
+
+    const restarted = await launchPersistentBrowser(profileDir);
+    try {
+      await restarted.setOffline(true);
+      const offline = await restarted.newPage();
+      await offline.goto('/settings/app-updates');
+      await waitForExecutedRelease(offline, 'A');
+    } finally {
+      await restarted.close();
+    }
+  } finally {
+    removePersistentProfile(profileDir);
+  }
+});
+
+test('Manual pin survives a real browser-process restart', async ({ request }) => {
+  const profileDir = createPersistentProfile();
+  try {
+    const install = await launchPersistentBrowser(profileDir);
+    try {
+      const page = await install.newPage();
+      await initializeReleaseA(page);
+      await openAppUpdates(page);
+      await setManual(page);
+      await selectLatest(request, 'B');
+      await checkForUpdates(page, /update available/i);
+    } finally {
+      await install.close();
+    }
+
+    const restarted = await launchPersistentBrowser(profileDir);
+    try {
+      const page = await restarted.newPage();
+      await page.goto('/');
+      await waitForExecutedRelease(page, 'A');
+    } finally {
+      await restarted.close();
+    }
+  } finally {
+    removePersistentProfile(profileDir);
+  }
 });
 
 for (const mode of ['invalid-hash', 'partial-download'] as const) {

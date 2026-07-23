@@ -85,6 +85,31 @@ describe('background check and preparation', () => {
     expect(snapshots).toContain('idle:running');
   });
 
+  it('rejects an equal-sequence report with a conflicting identity as invalid metadata, leaving latest untouched', async () => {
+    const conflicting: LatestRelease = {
+      ...latestNext,
+      release: { ...next, releaseId: 'd'.repeat(40) },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(conflicting))));
+    vi.mocked(fetchValidatedReleaseMetadata).mockResolvedValue({
+      latest: conflicting,
+      descriptor: descriptorFor(conflicting.release),
+    });
+    const store = createMemoryReleaseControllerStateStore({
+      ...createInitialReleaseControllerState(current),
+      latestRelease: next,
+    });
+    const controller = createReleaseController({ currentRelease: current, store });
+    const execution = await controller.execute({ protocolVersion: 3, type: 'CHECK_FOR_UPDATES' });
+    await execution.background?.();
+    expect((await store.read(current)).state).toMatchObject({
+      latestRelease: next,
+      check: { status: 'failed' },
+      errorCode: 'invalidReleaseMetadata',
+    });
+    expect(prepareRelease).not.toHaveBeenCalled();
+  });
+
   it('does not prepare an equal or stale release and cancels preparation on switching to Manual', async () => {
     const equal: LatestRelease = {
       ...latestNext,
@@ -277,7 +302,7 @@ describe('single-window trial via Manual Update now', () => {
       store,
       now: () => new Date('2026-07-25T00:00:00.000Z'),
       vfsReadiness: () => Promise.resolve(true),
-      registeredStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
       onTrialStarted,
     });
     const execution = await controller.execute(
@@ -300,6 +325,40 @@ describe('single-window trial via Manual Update now', () => {
     expect(onTrialStarted).toHaveBeenCalledTimes(1);
   });
 
+  it('reports runningRelease per client during a trial: the trial target only for its claiming client', async () => {
+    vi.mocked(isReleaseAvailable).mockResolvedValue(true);
+    const state: ReleaseControllerState = {
+      ...readyState(),
+      trial: {
+        targetRelease: next,
+        previousRelease: current,
+        startedAt: '2026-07-25T00:00:00.000Z',
+        expiresAt: '2026-07-25T00:01:00.000Z',
+        initiatingClientId: 'claimed-client',
+      },
+    };
+    const store = createMemoryReleaseControllerStateStore(state);
+    const controller = createReleaseController({ currentRelease: current, store });
+
+    const claimedSnapshot = await controller.execute(
+      { protocolVersion: 3, type: 'GET_SNAPSHOT' },
+      'claimed-client',
+    );
+    expect(claimedSnapshot.response).toMatchObject({
+      kind: 'snapshot',
+      snapshot: { runningRelease: next },
+    });
+
+    const otherSnapshot = await controller.execute(
+      { protocolVersion: 3, type: 'GET_SNAPSHOT' },
+      'someone-else',
+    );
+    expect(otherSnapshot.response).toMatchObject({
+      kind: 'snapshot',
+      snapshot: { runningRelease: current },
+    });
+  });
+
   it('does not mistake the requesting window reloading into the trial for a failed retry', async () => {
     // Regression: `initiatingClientId` must stay unset when a Manual trial is created, naming only
     // the requesting (pre-reload) client for the reload command. If the trial recorded that client
@@ -313,7 +372,7 @@ describe('single-window trial via Manual Update now', () => {
       store,
       now: () => new Date('2026-07-25T00:00:00.000Z'),
       vfsReadiness: () => Promise.resolve(true),
-      registeredStableWindows: () => Promise.resolve([{ id: 'requester-old' }]),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester-old' }]),
     });
     const execution = await controller.execute(
       { protocolVersion: 3, type: 'UPDATE_NOW' },
@@ -337,7 +396,7 @@ describe('single-window trial via Manual Update now', () => {
       currentRelease: current,
       store,
       vfsReadiness: () => Promise.resolve(false),
-      registeredStableWindows: () => Promise.resolve([{ id: 'requester' }, { id: 'other' }]),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }, { id: 'other' }]),
     });
     const execution = await controller.execute(
       { protocolVersion: 3, type: 'UPDATE_NOW' },
@@ -355,7 +414,7 @@ describe('single-window trial via Manual Update now', () => {
       currentRelease: current,
       store,
       vfsReadiness: () => Promise.resolve(true),
-      registeredStableWindows: () => Promise.resolve([{ id: 'requester' }, { id: 'other' }]),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }, { id: 'other' }]),
     });
     const execution = await controller.execute(
       { protocolVersion: 3, type: 'UPDATE_NOW' },
@@ -375,7 +434,7 @@ describe('single-window trial via Manual Update now', () => {
       store,
       now: () => new Date('2026-07-25T00:00:00.000Z'),
       vfsReadiness: () => Promise.resolve(true),
-      registeredStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
     });
     const update = await controller.execute(
       { protocolVersion: 3, type: 'UPDATE_NOW' },
@@ -411,7 +470,7 @@ describe('failed trial and failed-target eligibility', () => {
       store,
       now: () => new Date('2026-07-24T00:02:00.000Z'),
       vfsReadiness: () => Promise.resolve(true),
-      registeredStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
     });
     await controller.execute({ protocolVersion: 3, type: 'GET_SNAPSHOT' });
     const rolledBack = (await store.read(current)).state;
@@ -440,7 +499,33 @@ describe('failed trial and failed-target eligibility', () => {
       currentRelease: current,
       store,
       vfsReadiness: () => Promise.resolve(true),
-      registeredStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+    });
+    const execution = await controller.execute(
+      { protocolVersion: 3, type: 'UPDATE_NOW' },
+      'requester',
+    );
+    expect(execution.response).toEqual({ kind: 'action', result: { status: 'accepted' } });
+    await execution.background?.();
+    expect((await store.read(current)).state.preparation).toEqual({ status: 'ready', release: c });
+  });
+
+  it('allows Manual Update now for a newer C even while preparation still names a failed older B', async () => {
+    const c = release('c', 3);
+    const state: ReleaseControllerState = {
+      ...createInitialReleaseControllerState(current),
+      mode: 'manual',
+      pinnedRelease: current,
+      latestRelease: c,
+      preparation: { status: 'failed', release: next },
+    };
+    vi.mocked(isReleaseAvailable).mockResolvedValue(true);
+    const store = createMemoryReleaseControllerStateStore(state);
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      vfsReadiness: () => Promise.resolve(true),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
     });
     const execution = await controller.execute(
       { protocolVersion: 3, type: 'UPDATE_NOW' },

@@ -1,5 +1,5 @@
 import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
-import { committedRelease } from './stateMachine';
+import { committedRelease, releaseForClient } from './stateMachine';
 
 /**
  * Create the single persisted trial before reloading the one window that will run it.
@@ -39,12 +39,21 @@ export const createTrial = ({
 });
 
 /**
- * Select the release the stable worker should serve right now.
+ * Select the release a specific requesting client should be served right now.
+ *
+ * Only the exact client that claimed the trial (`trial.initiatingClientId`) is ever served the
+ * trial target; every other client — including the pre-reload requester before its own navigation
+ * claims the trial — continues to receive the previously committed release. This is what keeps a
+ * Manual trial from mixing old-page markup with new-target assets before the requesting window
+ * actually reloads.
  * @param state - Current private state.
- * @returns The active trial target while a trial is in progress, otherwise the committed release.
+ * @param clientId - Requesting client id.
+ * @returns The trial target only for the claiming client, otherwise the committed release.
  */
-export const selectServedRelease = (state: ReleaseControllerState): ReleaseIdentity =>
-  state.trial?.targetRelease ?? committedRelease(state);
+export const selectServedRelease = (
+  state: ReleaseControllerState,
+  clientId: string,
+): ReleaseIdentity => releaseForClient(state, clientId);
 
 /**
  * Claim an unclaimed trial for the navigation that just occurred, or roll back a repeat
@@ -66,17 +75,29 @@ export const associateTrialNavigation = (
 };
 
 /**
- * Commit a trial once its target release confirms boot.
+ * Commit a trial once its exact claiming client confirms booting its exact target release.
+ *
+ * Both facts must match: a correct release id reported by the wrong client, or a wrong release id
+ * reported by the claiming client, are both ignored rather than committed. Only a genuine repeat
+ * navigation from the claiming client without a matching confirmation is treated as a failed boot
+ * (via `associateTrialNavigation`'s rollback path, not this function).
  * @param state - Current private state.
+ * @param sourceClientId - Client id the confirmation message actually arrived from.
  * @param releaseId - Privately detected running release.
- * @returns Committed state, or the original state when no matching trial is active.
+ * @returns Committed state, or the original state when no matching trial/client/release is active.
  */
 export const confirmTrialBoot = (
   state: ReleaseControllerState,
+  sourceClientId: string,
   releaseId: string,
 ): ReleaseControllerState => {
   const trial = state.trial;
-  if (!trial || trial.targetRelease.releaseId !== releaseId) return state;
+  if (
+    !trial ||
+    trial.initiatingClientId !== sourceClientId ||
+    trial.targetRelease.releaseId !== releaseId
+  )
+    return state;
   const activeRelease = trial.targetRelease;
   return {
     ...state,

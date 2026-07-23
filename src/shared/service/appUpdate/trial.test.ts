@@ -31,10 +31,16 @@ const preparedState = (mode: 'automatic' | 'manual' = 'automatic'): ReleaseContr
 });
 
 describe('single-window trial', () => {
-  it('serves the committed release with no trial and the trial target once one starts', () => {
-    expect(selectServedRelease(preparedState())).toEqual(active);
-    const started = createTrial({ state: preparedState(), targetRelease: target, now });
-    expect(selectServedRelease(started)).toEqual(target);
+  it('serves the trial target only to the exact claiming client, and the committed release to everyone else', () => {
+    expect(selectServedRelease(preparedState(), 'client-1')).toEqual(active);
+    const started = createTrial({
+      state: preparedState(),
+      targetRelease: target,
+      now,
+      initiatingClientId: 'client-1',
+    });
+    expect(selectServedRelease(started, 'client-1')).toEqual(target);
+    expect(selectServedRelease(started, 'someone-else')).toEqual(active);
   });
 
   it('claims an unclaimed trial for the first navigation and rolls back a repeat before confirmation', () => {
@@ -44,6 +50,7 @@ describe('single-window trial', () => {
     const claimed = associateTrialNavigation(started, 'client-1');
     expect(claimed.trial).toMatchObject({ initiatingClientId: 'client-1' });
     expect(claimed.activeRelease).toEqual(active);
+    expect(selectServedRelease(claimed, 'client-1')).toEqual(target);
 
     const retried = associateTrialNavigation(claimed, 'client-2');
     expect(retried.trial).toBeUndefined();
@@ -56,29 +63,44 @@ describe('single-window trial', () => {
   it('does not touch state when no trial is active', () => {
     const state = preparedState();
     expect(associateTrialNavigation(state, 'client-1')).toBe(state);
-    expect(confirmTrialBoot(state, target.releaseId)).toBe(state);
+    expect(confirmTrialBoot(state, 'client-1', target.releaseId)).toBe(state);
     expect(rollbackExpiredTrial(state, now)).toBe(state);
     expect(rollbackFailedTrialBoot(state)).toBe(state);
   });
 
-  it('commits only when the confirming release matches the trial target', () => {
+  it('commits only when both the confirming client and release match the trial', () => {
     const started = createTrial({
       state: preparedState(),
       targetRelease: target,
       now,
       initiatingClientId: 'client-1',
     });
-    expect(confirmTrialBoot(started, active.releaseId)).toBe(started);
-    const committed = confirmTrialBoot(started, target.releaseId);
+    // Wrong release from the claiming client.
+    expect(confirmTrialBoot(started, 'client-1', active.releaseId)).toBe(started);
+    // Correct release from a client other than the one that claimed the trial.
+    expect(confirmTrialBoot(started, 'someone-else', target.releaseId)).toBe(started);
+
+    const committed = confirmTrialBoot(started, 'client-1', target.releaseId);
     expect(committed.trial).toBeUndefined();
     expect(committed.activeRelease).toEqual(target);
     expect(committed.preparation).toEqual({ status: 'idle' });
     expect(committed.failedReleaseIds).toEqual([]);
   });
 
+  it('never commits an unclaimed trial (no client has confirmed yet)', () => {
+    const started = createTrial({ state: preparedState(), targetRelease: target, now });
+    expect(started.trial?.initiatingClientId).toBeUndefined();
+    expect(confirmTrialBoot(started, 'client-1', target.releaseId)).toBe(started);
+  });
+
   it('advances the Manual pin on commit and never on rollback', () => {
-    const started = createTrial({ state: preparedState('manual'), targetRelease: target, now });
-    const committed = confirmTrialBoot(started, target.releaseId);
+    const started = createTrial({
+      state: preparedState('manual'),
+      targetRelease: target,
+      now,
+      initiatingClientId: 'client-1',
+    });
+    const committed = confirmTrialBoot(started, 'client-1', target.releaseId);
     expect(committed.pinnedRelease).toEqual(target);
     const rolledBack = rollbackFailedTrialBoot(started);
     expect(rolledBack.pinnedRelease).toEqual(active);

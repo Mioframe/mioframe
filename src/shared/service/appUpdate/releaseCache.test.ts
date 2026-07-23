@@ -120,4 +120,53 @@ describe('staged release cache', () => {
     await cleanupStaleStagingCaches();
     expect(await fakeCaches.keys()).toEqual([`stable-release-${identity('a', 1).releaseId}`]);
   });
+
+  describe('full cache identity validation', () => {
+    const seedCache = async (release: ReleaseIdentity, storedDescriptor: unknown) => {
+      const bytes = Buffer.from('index');
+      const cache = await fakeCaches.open(`stable-release-${release.releaseId}`);
+      await cache.put(
+        `/updates/releases/${release.releaseId}/index.html`,
+        new Response(bytes, { status: 200 }),
+      );
+      await cache.put(
+        `/updates/releases/${release.releaseId}.json`,
+        new Response(JSON.stringify(storedDescriptor)),
+      );
+    };
+
+    it('is unavailable when the cached descriptor sequence does not match, even under the same release id', async () => {
+      const release = identity('a', 1);
+      await seedCache(release, {
+        ...descriptor(release, Buffer.from('index')),
+        releaseSequence: 9,
+      });
+      await expect(isReleaseAvailable(release)).resolves.toBe(false);
+    });
+
+    it('is unavailable when cached build metadata does not match', async () => {
+      const release = identity('a', 1);
+      await seedCache(release, { ...descriptor(release, Buffer.from('index')), buildId: 'other' });
+      await expect(isReleaseAvailable(release)).resolves.toBe(false);
+    });
+
+    it('is unavailable when the cached descriptor identity does not match the expected cache at all', async () => {
+      const release = identity('a', 1);
+      const foreign = descriptor(identity('z', 1), Buffer.from('index'));
+      await seedCache(release, foreign);
+      await expect(isReleaseAvailable(release)).resolves.toBe(false);
+    });
+
+    it('is unavailable when a referenced file is missing from an otherwise valid descriptor', async () => {
+      const release = identity('a', 1);
+      const bytes = Buffer.from('index');
+      const cache = await fakeCaches.open(`stable-release-${release.releaseId}`);
+      await cache.put(
+        `/updates/releases/${release.releaseId}.json`,
+        new Response(JSON.stringify(descriptor(release, bytes))),
+      );
+      // The index file itself is never written, simulating a partially committed final cache.
+      await expect(isReleaseAvailable(release)).resolves.toBe(false);
+    });
+  });
 });

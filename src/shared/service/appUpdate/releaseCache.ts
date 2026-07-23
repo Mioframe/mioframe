@@ -4,7 +4,7 @@ import type {
   ReleaseDescriptor,
   ReleaseIdentity,
 } from './contracts';
-import { latestReleaseSchema, releaseDescriptorSchema } from './contracts';
+import { isSameReleaseIdentity, latestReleaseSchema, releaseDescriptorSchema } from './contracts';
 
 const FINAL_PREFIX = 'stable-release-';
 const STAGING_PREFIX = 'stable-release-staging-';
@@ -105,9 +105,10 @@ export const fetchValidatedReleaseMetadata = async (
 };
 
 /**
- * Check whether an immutable final cache is complete and sequence-matched.
+ * Check whether an immutable final cache is complete and its descriptor's complete identity
+ * matches the expected release, not only its release id and sequence.
  * @param identity - Expected immutable release identity.
- * @returns Whether the final cache is completely available.
+ * @returns Whether the final cache is completely available under the expected identity.
  */
 export const isReleaseAvailable = async (identity: ReleaseIdentity): Promise<boolean> => {
   const cache = await caches.open(finalCacheName(identity.releaseId));
@@ -115,12 +116,30 @@ export const isReleaseAvailable = async (identity: ReleaseIdentity): Promise<boo
   if (!descriptorResponse) return false;
   const parsed = releaseDescriptorSchema.safeParse(await descriptorResponse.json());
   if (!parsed.success) return false;
-  if (parsed.data.releaseSequence !== identity.releaseSequence) return false;
+  if (!isSameReleaseIdentity(parsed.data, identity)) return false;
+  if (parsed.data.indexUrl !== `/updates/releases/${identity.releaseId}/index.html`) return false;
   for (const file of parsed.data.files) {
     // eslint-disable-next-line no-await-in-loop -- Sequential inspection bounds cache work and exits on the first missing file.
     if (!(await cache.match(file.url))) return false;
   }
   return true;
+};
+
+/**
+ * Read a release's own descriptor from its immutable final cache, without any network access and
+ * without an expected identity to validate against. Used only to recover the worker's own
+ * build-embedded release identity at offline bootstrap, before any full identity is known.
+ * @param releaseId - Build-embedded release id.
+ * @returns The cached, schema-valid descriptor for that id, or `undefined` when not yet cached.
+ */
+export const readCachedReleaseDescriptor = async (
+  releaseId: string,
+): Promise<ReleaseDescriptor | undefined> => {
+  const cache = await caches.open(finalCacheName(releaseId));
+  const descriptorResponse = await cache.match(descriptorPath(releaseId));
+  if (!descriptorResponse) return undefined;
+  const parsed = releaseDescriptorSchema.safeParse(await descriptorResponse.json());
+  return parsed.success && parsed.data.releaseId === releaseId ? parsed.data : undefined;
 };
 
 /**

@@ -156,10 +156,13 @@ export const appUpdateClient: AppUpdateClient = {
 };
 
 /**
- * Complete stable runtime registration after Vue mount and initial router readiness.
- * @returns The initial factual snapshot, or unavailable capability facts.
+ * Complete this window's private handshake with whichever controller is currently in charge:
+ * request a snapshot and report this window's actual running release. Idempotent and safe to call
+ * repeatedly — used both for first setup and for every subsequent worker takeover, since a new
+ * controller starts with no memory of windows that were already open before it took control.
+ * @returns The current factual snapshot for this window, or unavailable capability facts.
  */
-export const setupManagedAppUpdates = async (): Promise<AppUpdateSnapshot> => {
+const connect = async (): Promise<AppUpdateSnapshot> => {
   const runningReleaseId = getRunningReleaseId();
   if (!MANAGED_APP_UPDATES_AVAILABLE || !runningReleaseId || !('serviceWorker' in navigator)) {
     return unavailableSnapshot;
@@ -167,17 +170,48 @@ export const setupManagedAppUpdates = async (): Promise<AppUpdateSnapshot> => {
   const snapshot = await appUpdateClient.getSnapshot();
   if (snapshot.capability === 'available') {
     await action({ protocolVersion: 3, type: 'PRIVATE_BOOT_READY', releaseId: runningReleaseId });
-    if (!hooksInstalled) {
-      hooksInstalled = true;
-      const checkWhenReachable = () => {
-        if (navigator.onLine && document.visibilityState === 'visible') {
-          void appUpdateClient.checkForUpdates();
-        }
-      };
-      window.addEventListener('online', checkWhenReachable);
-      document.addEventListener('visibilitychange', checkWhenReachable);
-      checkWhenReachable();
-    }
   }
+  return snapshot;
+};
+
+const installCapabilityHooks = (): void => {
+  if (hooksInstalled) return;
+  hooksInstalled = true;
+  const checkWhenReachable = () => {
+    if (navigator.onLine && document.visibilityState === 'visible') {
+      void appUpdateClient.checkForUpdates();
+    }
+  };
+  window.addEventListener('online', checkWhenReachable);
+  document.addEventListener('visibilitychange', checkWhenReachable);
+  checkWhenReachable();
+};
+
+let reconnectHooked = false;
+
+/**
+ * Complete stable runtime registration after Vue mount and initial router readiness.
+ * @returns The initial factual snapshot, or unavailable capability facts.
+ */
+export const setupManagedAppUpdates = async (): Promise<AppUpdateSnapshot> => {
+  if (!MANAGED_APP_UPDATES_AVAILABLE || !('serviceWorker' in navigator)) {
+    return unavailableSnapshot;
+  }
+  if (!reconnectHooked) {
+    reconnectHooked = true;
+    // A new controller (worker migration or a newly activated update) has no memory of windows
+    // that were already open before it took control, so every open window must reconnect and
+    // repeat its private handshake after every takeover, not only at first setup. This listener is
+    // installed unconditionally (not gated on the first connect succeeding): a window that booted
+    // while the previous, non-managed controller was still in charge must still pick up capability
+    // once a real managed controller later takes over.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      void connect().then((snapshot) => {
+        if (snapshot.capability === 'available') installCapabilityHooks();
+      });
+    });
+  }
+  const snapshot = await connect();
+  if (snapshot.capability === 'available') installCapabilityHooks();
   return snapshot;
 };

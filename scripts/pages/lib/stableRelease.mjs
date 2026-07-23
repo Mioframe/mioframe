@@ -1,4 +1,3 @@
-/* eslint-disable jsdoc/require-jsdoc -- Internal publication helpers are documented by their exported contracts and release guide. */
 import { createHash } from 'node:crypto';
 import {
   cpSync,
@@ -13,6 +12,7 @@ import {
 import { join, relative } from 'node:path';
 import { buildSpaFallbackHtml } from './spaFallback.mjs';
 
+/** Maximum total byte size the published GitHub Pages tree may reach after a stable publish. */
 export const STABLE_PAGES_SIZE_LIMIT_BYTES = 900 * 1024 * 1024;
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
@@ -37,6 +37,19 @@ const readDeploymentMetadata = (distDir) => {
   return metadata;
 };
 
+/**
+ * Build the immutable release descriptor, archived index, and latest pointer for one build
+ * output, without writing anything to disk.
+ * @param distDir - Absolute or relative production build output directory. Must contain
+ * `deployment.json`, `index.html`, and `assets/`.
+ * @param [releaseSequence] - Publisher-allocated forward-only sequence for this release. Must be a
+ * positive safe integer.
+ * @returns The complete release identity (`releaseId`, `identity`), descriptor, archived index
+ * bytes (`indexBytes`), and serialized descriptor and latest-pointer text (`descriptorText`,
+ * `latestText`) ready to write.
+ * @throws {Error} When `deployment.json` is missing canonical stable main release facts, or
+ * `releaseSequence` is not a positive safe integer.
+ */
 export const buildStableReleasePublication = (distDir, releaseSequence = 1) => {
   if (!Number.isSafeInteger(releaseSequence) || releaseSequence < 1) {
     throw new Error('Stable release sequence must be a positive safe integer.');
@@ -95,6 +108,16 @@ export const buildStableReleasePublication = (distDir, releaseSequence = 1) => {
   };
 };
 
+/**
+ * Write a standalone stable release artifact (sequence 1, no retained-release scanning) directly
+ * into `distDir` itself. Used only for local/preview artifact builds that publish nothing into a
+ * shared retained-release tree.
+ * @param distDir - Absolute or relative production build output directory; also the write target
+ * for the archived release, descriptor, and latest pointer.
+ * @returns The built publication (see {@link buildStableReleasePublication}), after writing its
+ * archived index, descriptor, and latest pointer into `distDir`.
+ * @throws {Error} When the build output is missing canonical stable deployment metadata.
+ */
 export const writeStableReleaseArtifact = (distDir) => {
   const publication = buildStableReleasePublication(distDir, 1);
   const releaseDir = join(distDir, 'updates', 'releases', publication.releaseId);
@@ -125,26 +148,45 @@ const isValidDescriptorIdentity = (value) =>
   Number.isSafeInteger(value.releaseSequence) &&
   value.releaseSequence >= 1;
 
-// Reads every retained, well-formed release descriptor directly from disk, independent of
-// `latest.json`. `latest.json` is only a pointer and can be rolled back to an older release
-// while newer descriptors remain retained; allocation must be based on what is actually
-// retained so a republish after such a rollback cannot collide with or duplicate an existing
-// sequence. A file under `updates/releases/` that is not a valid descriptor is not a retained
-// release and is skipped rather than rejected, since unrelated content already retained there
-// must not block publication.
+// Reads every retained release descriptor directly from disk, independent of `latest.json`.
+// `latest.json` is only a pointer and can be rolled back to an older release while newer
+// descriptors remain retained; allocation must be based on what is actually retained so a
+// republish after such a rollback cannot collide with or duplicate an existing sequence.
+//
+// Every `updates/releases/*.json` file is treated as a release descriptor namespace entry, not as
+// possibly-unrelated content: malformed JSON, an invalid schema, a filename that does not match
+// its own `releaseId`, or two files claiming the same `releaseId` all fail publication instead of
+// being silently skipped, since sequence reuse can become unsafe if any of them were ignored.
 const readRetainedReleaseDescriptors = (workDir) => {
   const releasesDir = join(workDir, 'updates', 'releases');
   if (!existsSync(releasesDir)) return [];
+  const seenReleaseIds = new Map();
   return readdirSync(releasesDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-    .flatMap((entry) => {
+    .map((entry) => {
       let parsed;
       try {
         parsed = JSON.parse(readFileSync(join(releasesDir, entry.name), 'utf8'));
       } catch {
-        return [];
+        throw new Error(`Retained release descriptor ${entry.name} is not valid JSON.`);
       }
-      return isValidDescriptorIdentity(parsed) ? [parsed] : [];
+      if (!isValidDescriptorIdentity(parsed)) {
+        throw new Error(`Retained release descriptor ${entry.name} has an invalid schema.`);
+      }
+      const expectedName = `${parsed.releaseId}.json`;
+      if (entry.name !== expectedName) {
+        throw new Error(
+          `Retained release descriptor ${entry.name} does not match its release id filename ${expectedName}.`,
+        );
+      }
+      const owner = seenReleaseIds.get(parsed.releaseId);
+      if (owner) {
+        throw new Error(
+          `Retained release id ${parsed.releaseId} is claimed by both ${owner} and ${entry.name}.`,
+        );
+      }
+      seenReleaseIds.set(parsed.releaseId, entry.name);
+      return parsed;
     });
 };
 
@@ -169,6 +211,21 @@ const allocateReleaseSequence = (workDir, releaseId) => {
   return maxSequence + 1;
 };
 
+/**
+ * Publish one build's stable release into the retained Pages work tree: allocate its forward-only
+ * sequence, reject size-limit or content-collision violations, archive its immutable content, and
+ * write the `latest.json` pointer last.
+ * @param workDir - Retained Pages publication tree (mutated in place).
+ * @param distDir - Production build output directory being published.
+ * @param [options] - `sizeLimitBytes` overrides the projected-size guard, mainly for tests;
+ * defaults to {@link STABLE_PAGES_SIZE_LIMIT_BYTES}.
+ * @returns The built publication (see {@link buildStableReleasePublication}) plus the projected
+ * total Pages tree size after publication (`projectedSize`).
+ * @throws {Error} When retained descriptor state is invalid (malformed JSON, invalid schema, a
+ * filename/release-id mismatch, or a duplicate release id), when an existing retained release id
+ * or file content collides with a different id or different bytes, or when the projected size
+ * exceeds `sizeLimitBytes`. `latest.json` is left untouched in every failure case.
+ */
 export const applyManagedStablePublish = (
   workDir,
   distDir,
@@ -257,4 +314,3 @@ export const applyManagedStablePublish = (
   writeFileSync(latestPath, publication.latestText);
   return { ...publication, projectedSize };
 };
-/* eslint-enable jsdoc/require-jsdoc -- End stable publication helpers. */

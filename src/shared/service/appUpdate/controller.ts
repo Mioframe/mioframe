@@ -7,7 +7,11 @@ import type {
   ReleaseIdentity,
   UpdateMode,
 } from './contracts';
-import { RELEASE_DESCRIPTOR_SCHEMA_VERSION, releaseControllerCommandSchema } from './contracts';
+import {
+  RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+  isSameReleaseIdentity,
+  releaseControllerCommandSchema,
+} from './contracts';
 import { createCommandQueue } from './commandQueue';
 import type { ReleaseControllerStateStore } from './persistence';
 import {
@@ -25,8 +29,8 @@ const STALE_OPERATION_MS = 2 * 60 * 1000;
 /** Private local-window VFS-readiness query, asked only of the requesting client. */
 export type VfsReadiness = (clientId: string) => Promise<boolean>;
 
-/** Minimal registered stable window fact used only for Manual update-window counting. */
-export type RegisteredStableWindow = { /** Live client id. */ id: string };
+/** Minimal live stable-window fact used only for Manual update-window counting. */
+export type StableWindow = { /** Live client id. */ id: string };
 
 /** Private command execution with optional worker-lifetime background work. */
 export type ControllerExecution = {
@@ -63,7 +67,7 @@ export const createReleaseController = ({
   now = () => new Date(),
   operationId = () => crypto.randomUUID(),
   vfsReadiness = () => Promise.resolve(true),
-  registeredStableWindows = () => Promise.resolve([]),
+  liveStableWindows = () => Promise.resolve([]),
   publish = () => undefined,
   onTrialStarted = () => Promise.resolve(),
 }: {
@@ -77,8 +81,12 @@ export const createReleaseController = ({
   operationId?: () => string;
   /** Local VFS-activity readiness for one requesting client. */
   vfsReadiness?: VfsReadiness;
-  /** Live registered stable windows, used only to count open windows for Manual updates. */
-  registeredStableWindows?: () => Promise<RegisteredStableWindow[]>;
+  /**
+   * All live controlled stable-URL windows, from the worker's raw `clients.matchAll` classification
+   * — not the handshake-registered subset. A window that is live but has not yet completed its own
+   * handshake with a new worker must still block Manual `Update now`, so this must never undercount.
+   */
+  liveStableWindows?: () => Promise<StableWindow[]>;
   /** Snapshot broadcast boundary. */
   publish?: (state: ReleaseControllerState) => void;
   /** Single requesting-client reload boundary after trial persistence. */
@@ -218,9 +226,25 @@ export const createReleaseController = ({
         )
           return;
         const running = committedRelease(state);
+        // `reference` names whichever release currently owns the highest known sequence: the
+        // latest already discovered, or the running release when nothing newer is known yet.
+        // A same-sequence report that does not match its full identity is invalid metadata, not
+        // an accepted update — accepting it on sequence alone would let a corrupt or conflicting
+        // record silently replace a confirmed latest release.
+        const reference = state.latestRelease ?? running;
+        if (
+          latest.release.releaseSequence === reference.releaseSequence &&
+          !isSameReleaseIdentity(latest.release, reference)
+        ) {
+          await save({
+            ...state,
+            check: { status: 'failed', lastSuccessAt: state.check.lastSuccessAt },
+            errorCode: 'invalidReleaseMetadata',
+          });
+          return;
+        }
         const latestRelease =
-          latest.release.releaseSequence >=
-          Math.max(running.releaseSequence, state.latestRelease?.releaseSequence ?? 0)
+          latest.release.releaseSequence >= reference.releaseSequence
             ? latest.release
             : state.latestRelease;
         const next = await save({
@@ -326,7 +350,7 @@ export const createReleaseController = ({
             return {
               response: {
                 kind: 'snapshot',
-                snapshot: projectAppUpdateSnapshot(read.state, 'unavailable'),
+                snapshot: projectAppUpdateSnapshot(read.state, 'unavailable', sourceClientId),
               },
             };
           }
@@ -337,7 +361,12 @@ export const createReleaseController = ({
           const state = rolledBack === read.state ? read.state : await save(rolledBack);
           switch (command.type) {
             case 'GET_SNAPSHOT':
-              return { response: { kind: 'snapshot', snapshot: projectAppUpdateSnapshot(state) } };
+              return {
+                response: {
+                  kind: 'snapshot',
+                  snapshot: projectAppUpdateSnapshot(state, 'available', sourceClientId),
+                },
+              };
             case 'CHECK_FOR_UPDATES':
               return execution(
                 { kind: 'action', result: { status: 'accepted' } },
@@ -367,7 +396,7 @@ export const createReleaseController = ({
                   },
                 };
               }
-              const otherWindows = (await registeredStableWindows()).filter(
+              const otherWindows = (await liveStableWindows()).filter(
                 (client) => client.id !== sourceClientId,
               );
               if (otherWindows.length > 0) {
@@ -384,7 +413,7 @@ export const createReleaseController = ({
               );
             }
             case 'PRIVATE_BOOT_READY':
-              await save(confirmTrialBoot(state, command.releaseId));
+              await save(confirmTrialBoot(state, sourceClientId, command.releaseId));
               return { response: { kind: 'action', result: { status: 'accepted' } } };
           }
         } catch {

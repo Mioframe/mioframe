@@ -4,14 +4,19 @@ import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
 import { RELEASE_DESCRIPTOR_SCHEMA_VERSION, releaseDescriptorSchema } from './contracts';
 import { createReleaseController } from './controller';
 import { createReleaseControllerStateStore } from './persistence';
-import { getReleaseResponse, isReleaseAvailable, prepareRelease } from './releaseCache';
+import {
+  getReleaseResponse,
+  isReleaseAvailable,
+  prepareRelease,
+  readCachedReleaseDescriptor,
+} from './releaseCache';
 import {
   createStableClientRegistry,
   getStableWindowClients,
   isStableAppUrl,
   isStableAppWindowClient,
 } from './stableClients';
-import { isStrictlyNewerRelease, projectAppUpdateSnapshot } from './stateMachine';
+import { committedRelease, isStrictlyNewerRelease, projectAppUpdateSnapshot } from './stateMachine';
 import {
   associateTrialNavigation,
   createTrial,
@@ -31,8 +36,18 @@ const store = createReleaseControllerStateStore();
 const registry = createStableClientRegistry();
 let currentReleasePromise: Promise<ReleaseIdentity> | undefined;
 
+/**
+ * Resolve this worker's own build-embedded release identity without depending on a successful
+ * network request. The final release cache (already committed by a previous activation of this
+ * exact build) is tried first; only a first-ever online install or a missing local bootstrap
+ * cache falls through to fetching this build's own descriptor from the immutable online archive.
+ * `latest.json` is never fetched here — only the explicit `CHECK_FOR_UPDATES` operation does.
+ * @returns This worker's own build-embedded release identity.
+ */
 const loadCurrentRelease = (): Promise<ReleaseIdentity> => {
   currentReleasePromise ??= (async () => {
+    const cached = await readCachedReleaseDescriptor(__RELEASE_ID__);
+    if (cached) return cached;
     const response = await fetch(`/updates/releases/${__RELEASE_ID__}.json`, { cache: 'no-store' });
     if (!response.ok) throw new Error('Current stable release descriptor unavailable.');
     return releaseDescriptorSchema.parse(await response.json());
@@ -46,10 +61,16 @@ const descriptorFor = (release: ReleaseIdentity) => ({
   descriptorUrl: `/updates/releases/${release.releaseId}.json`,
 });
 
+/**
+ * Broadcast a per-client-accurate snapshot to every live stable window.
+ * @param state - Private durable controller state.
+ */
 const broadcastSnapshot = async (state: ReleaseControllerState): Promise<void> => {
-  const snapshot = projectAppUpdateSnapshot(state);
   for (const client of await getStableWindowClients()) {
-    client.postMessage({ type: 'APP_UPDATE_SNAPSHOT', snapshot });
+    client.postMessage({
+      type: 'APP_UPDATE_SNAPSHOT',
+      snapshot: projectAppUpdateSnapshot(state, 'available', client.id),
+    });
   }
 };
 
@@ -57,7 +78,7 @@ const createController = async () =>
   createReleaseController({
     currentRelease: await loadCurrentRelease(),
     store,
-    registeredStableWindows: () => registry.getRegisteredStableWindowClients(),
+    liveStableWindows: () => getStableWindowClients(),
     async vfsReadiness(clientId) {
       const client = (await registry.getRegisteredStableWindowClients()).find(
         ({ id }) => id === clientId,
@@ -98,17 +119,24 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      const currentRelease = await loadCurrentRelease();
-      const controller = await getController();
-      await controller.reconcile();
-      const read = await store.read(currentRelease);
-      const selected =
-        read.capability === 'available' ? selectServedRelease(read.state) : currentRelease;
-      if (!(await isReleaseAvailable(selected))) {
-        await prepareRelease(descriptorFor(selected));
+      try {
+        const currentRelease = await loadCurrentRelease();
+        const controller = await getController();
+        await controller.reconcile();
+        const read = await store.read(currentRelease);
+        const selected =
+          read.capability === 'available' ? committedRelease(read.state) : currentRelease;
+        if (!(await isReleaseAvailable(selected))) {
+          await prepareRelease(descriptorFor(selected));
+        }
+        if (read.capability === 'available') await broadcastSnapshot(read.state);
+      } catch {
+        // Neither a local bootstrap cache nor the network could establish this build's own
+        // identity (offline first-ever install): the worker still takes control below so normal
+        // network navigation keeps working, without selecting or claiming any managed release.
+      } finally {
+        await self.clients.claim();
       }
-      await self.clients.claim();
-      if (read.capability === 'available') await broadcastSnapshot(read.state);
     })(),
   );
 });
@@ -128,13 +156,12 @@ self.addEventListener('message', (event) => {
   );
 });
 
-const selectNavigationRelease = async (event: FetchEvent): Promise<ReleaseIdentity> => {
+const selectNavigationRelease = async (navigatingClientId: string): Promise<ReleaseIdentity> => {
   const currentRelease = await loadCurrentRelease();
   const read = await store.read(currentRelease);
   if (read.capability === 'unavailable') return currentRelease;
 
   let state = rollbackExpiredTrial(read.state, new Date());
-  const navigatingClientId = event.resultingClientId || event.clientId;
   if (state.trial) {
     state = associateTrialNavigation(state, navigatingClientId);
   } else if (
@@ -142,9 +169,7 @@ const selectNavigationRelease = async (event: FetchEvent): Promise<ReleaseIdenti
     state.preparation.status === 'ready' &&
     isStrictlyNewerRelease(state.preparation.release, state.activeRelease) &&
     !state.failedReleaseIds.includes(state.preparation.release.releaseId) &&
-    (await registry.getRegisteredStableWindowClients()).filter(
-      ({ id }) => id !== navigatingClientId,
-    ).length === 0
+    (await getStableWindowClients()).filter(({ id }) => id !== navigatingClientId).length === 0
   ) {
     state = createTrial({
       state,
@@ -157,7 +182,7 @@ const selectNavigationRelease = async (event: FetchEvent): Promise<ReleaseIdenti
     await store.write(state);
     await broadcastSnapshot(state);
   }
-  return selectServedRelease(state);
+  return selectServedRelease(state, navigatingClientId);
 };
 
 self.addEventListener('fetch', (event) => {
@@ -166,33 +191,41 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     (async () => {
-      const navigation = event.request.mode === 'navigate';
-      const currentRelease = await loadCurrentRelease();
-      const release = navigation
-        ? await selectNavigationRelease(event)
-        : await (async () => {
-            const read = await store.read(currentRelease);
-            return read.capability === 'available'
-              ? selectServedRelease(read.state)
-              : currentRelease;
-          })();
-      let response = await getReleaseResponse(release, url.pathname, navigation);
-      if (!response) {
-        const read = await store.read(currentRelease);
-        const isMissingManualPin =
-          read.capability === 'available' &&
-          read.state.mode === 'manual' &&
-          read.state.pinnedRelease?.releaseId === release.releaseId;
-        if (isMissingManualPin) {
-          try {
-            await prepareRelease(descriptorFor(release));
-            response = await getReleaseResponse(release, url.pathname, navigation);
-          } catch {
-            // Offline or otherwise unavailable; fall through to network below.
+      try {
+        const navigation = event.request.mode === 'navigate';
+        const requestingClientId = event.resultingClientId || event.clientId;
+        const currentRelease = await loadCurrentRelease();
+        const release = navigation
+          ? await selectNavigationRelease(requestingClientId)
+          : await (async () => {
+              const read = await store.read(currentRelease);
+              return read.capability === 'available'
+                ? selectServedRelease(read.state, requestingClientId)
+                : currentRelease;
+            })();
+        let response = await getReleaseResponse(release, url.pathname, navigation);
+        if (!response) {
+          const read = await store.read(currentRelease);
+          const isMissingManualPin =
+            read.capability === 'available' &&
+            read.state.mode === 'manual' &&
+            read.state.pinnedRelease?.releaseId === release.releaseId;
+          if (isMissingManualPin) {
+            try {
+              await prepareRelease(descriptorFor(release));
+              response = await getReleaseResponse(release, url.pathname, navigation);
+            } catch {
+              // Offline or otherwise unavailable; fall through to network below.
+            }
           }
         }
+        return response ?? (await fetch(event.request));
+      } catch {
+        // Neither persisted state nor a locally cached build release could be recovered (e.g. a
+        // genuinely fresh install with no network reachable at all): fall back to plain network
+        // navigation rather than looping or selecting another managed release.
+        return fetch(event.request);
       }
-      return response ?? fetch(event.request);
     })(),
   );
 });

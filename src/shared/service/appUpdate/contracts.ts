@@ -23,6 +23,22 @@ export const releaseIdentitySchema = z.object({
 /** Private immutable release identity. */
 export type ReleaseIdentity = z.infer<typeof releaseIdentitySchema>;
 
+/**
+ * Compare the complete immutable identity of two releases. Two releases with the same
+ * `releaseId` are always identical in practice (the id is a content SHA), but every other
+ * identity field is compared as well so a corrupt or spoofed record cannot be mistaken for a
+ * match on release id alone.
+ * @param left - First release identity.
+ * @param right - Second release identity.
+ * @returns Whether every identity field matches.
+ */
+export const isSameReleaseIdentity = (left: ReleaseIdentity, right: ReleaseIdentity): boolean =>
+  left.releaseId === right.releaseId &&
+  left.releaseSequence === right.releaseSequence &&
+  left.appVersion === right.appVersion &&
+  left.buildId === right.buildId &&
+  left.buildDate === right.buildDate;
+
 /** Private immutable release-file validator. */
 export const releaseFileSchema = z.object({
   url: z.string().min(1),

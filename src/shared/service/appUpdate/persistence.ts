@@ -131,7 +131,9 @@ export const createReleaseControllerStateStore = (): ReleaseControllerStateStore
         try {
           await write(initial);
         } catch {
-          // The initial record still serves this session even if it could not be persisted.
+          // The application still serves the initialized release this session, but managed
+          // update capability cannot be trusted without a durable record to recover from.
+          return { state: initial, capability: 'unavailable' };
         }
         return { state: initial, capability: 'available' };
       }

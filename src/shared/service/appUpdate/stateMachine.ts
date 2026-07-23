@@ -1,6 +1,6 @@
 import type { AppUpdateSnapshot, AppUpdateState } from './publicContracts';
 import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
-import { RELEASE_CONTROLLER_SCHEMA_VERSION } from './contracts';
+import { RELEASE_CONTROLLER_SCHEMA_VERSION, isSameReleaseIdentity } from './contracts';
 
 /**
  * Compare immutable releases using only publisher sequence.
@@ -38,6 +38,39 @@ export const createInitialReleaseControllerState = (
 export const committedRelease = (state: ReleaseControllerState): ReleaseIdentity =>
   state.mode === 'manual' ? (state.pinnedRelease ?? state.activeRelease) : state.activeRelease;
 
+/**
+ * Release a specific client should see: the trial target only for the exact client that claimed
+ * the trial, the committed release for every other client (including the pre-reload requester
+ * before its own navigation claims the trial). The single owner of this rule — shared by request
+ * routing (`selectServedRelease` in `trial.ts`) and snapshot projection below — so both stay in
+ * sync by construction instead of duplicating the same client/trial comparison.
+ * @param state - Private durable controller state.
+ * @param clientId - Requesting/receiving client id.
+ * @returns The release that client should be served or told is running.
+ */
+export const releaseForClient = (
+  state: ReleaseControllerState,
+  clientId: string,
+): ReleaseIdentity =>
+  state.trial && state.trial.initiatingClientId === clientId
+    ? state.trial.targetRelease
+    : committedRelease(state);
+
+/**
+ * A preparation record describes the current canonical `latestRelease` only when its target has
+ * the same complete identity, or no `latestRelease` is known at all. Once `latestRelease` has
+ * moved to a strictly newer target, an older ready or failed preparation must not hide it.
+ * @param state - Private durable controller state.
+ * @param preparationRelease - The preparation record's target release.
+ * @returns Whether the preparation record still describes the current `latestRelease`.
+ */
+const preparationTargetsLatest = (
+  state: ReleaseControllerState,
+  preparationRelease: ReleaseIdentity,
+): boolean =>
+  state.latestRelease === undefined ||
+  isSameReleaseIdentity(preparationRelease, state.latestRelease);
+
 const projectUpdateState = (
   state: ReleaseControllerState,
   runningRelease: ReleaseIdentity,
@@ -46,10 +79,15 @@ const projectUpdateState = (
   if (state.preparation.status === 'running') return 'preparing';
   if (
     state.preparation.status === 'ready' &&
+    preparationTargetsLatest(state, state.preparation.release) &&
     isStrictlyNewerRelease(state.preparation.release, runningRelease)
   )
     return 'ready';
-  if (state.preparation.status === 'failed') return 'failed';
+  if (
+    state.preparation.status === 'failed' &&
+    preparationTargetsLatest(state, state.preparation.release)
+  )
+    return 'failed';
   if (state.check.status === 'running') return 'checking';
   if (state.check.status === 'failed') return 'failed';
   if (isStrictlyNewerRelease(state.latestRelease, runningRelease)) return 'available';
@@ -58,16 +96,20 @@ const projectUpdateState = (
 };
 
 /**
- * Project private controller state into the factual UI-safe snapshot.
+ * Project private controller state into the factual UI-safe snapshot for one requesting client.
  * @param state - Private durable controller state.
  * @param capability - Whether persisted state could be read this session.
- * @returns UI-safe factual snapshot.
+ * @param clientId - Client the snapshot is being produced for; determines `runningRelease` during
+ * an active trial. Omit only for contexts with no receiving client (there are none in production
+ * call sites — every snapshot is requested by or broadcast to a specific client).
+ * @returns UI-safe factual snapshot accurate for that specific client.
  */
 export const projectAppUpdateSnapshot = (
   state: ReleaseControllerState,
   capability: 'available' | 'unavailable' = 'available',
+  clientId = '',
 ): AppUpdateSnapshot => {
-  const runningRelease = committedRelease(state);
+  const runningRelease = releaseForClient(state, clientId);
   return {
     capability,
     mode: state.mode,

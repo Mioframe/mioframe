@@ -167,4 +167,58 @@ describe('release controller state', () => {
       ).toBe('upToDate');
     });
   });
+
+  describe('target-aware preparation projection once latest advances past a stale target', () => {
+    const current = release('a', 1);
+    const b = release('b', 2);
+    const c = release('c', 3);
+    const base = createInitialReleaseControllerState(current);
+
+    it('reports the newer target as available, not ready, once a ready B is stale against latest C', () => {
+      const snapshot = projectAppUpdateSnapshot({
+        ...base,
+        latestRelease: c,
+        preparation: { status: 'ready', release: b },
+      });
+      expect(snapshot.updateState).toBe('available');
+      expect(snapshot.latestRelease).toEqual(c);
+    });
+
+    it('reports the newer target as available, not failed, once a failed B is stale against latest C', () => {
+      const snapshot = projectAppUpdateSnapshot({
+        ...base,
+        latestRelease: c,
+        preparation: { status: 'failed', release: b },
+      });
+      expect(snapshot.updateState).toBe('available');
+    });
+
+    it('still reports ready/failed for a preparation whose target still matches the current latest', () => {
+      expect(
+        projectAppUpdateSnapshot({
+          ...base,
+          latestRelease: b,
+          preparation: { status: 'ready', release: b },
+        }).updateState,
+      ).toBe('ready');
+      expect(
+        projectAppUpdateSnapshot({
+          ...base,
+          latestRelease: b,
+          preparation: { status: 'failed', release: b },
+        }).updateState,
+      ).toBe('failed');
+    });
+
+    it('still reports ready/failed for a preparation target when no latestRelease is known at all', () => {
+      expect(
+        projectAppUpdateSnapshot({ ...base, preparation: { status: 'ready', release: b } })
+          .updateState,
+      ).toBe('ready');
+      expect(
+        projectAppUpdateSnapshot({ ...base, preparation: { status: 'failed', release: b } })
+          .updateState,
+      ).toBe('failed');
+    });
+  });
 });

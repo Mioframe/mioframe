@@ -17,7 +17,7 @@ const recordEntries = <R extends Record<PropertyKey, unknown>>(value: R): Record
 export const createUniqueName = (prefix: string) =>
   `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const getBaseURL = () => {
+export const getBaseURL = () => {
   const externalBaseURL = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
   if (externalBaseURL) {
     return externalBaseURL;
