@@ -2,13 +2,13 @@
 
 ## Principle
 
-Material layout behavior is a foundation concern. Component and screen work should use the official Material 3 layout, adaptive, and canonical layout guidance where it applies.
+Use current official Material layout and adaptive guidance where it applies. Do not treat desktop layout, hover input, or precise pointing as the default.
 
-Do not treat desktop layout, hover input, or precise pointer input as the default. The project remains mobile-first while still supporting larger screens through adaptive Material patterns.
+Product composition owns information architecture and selection of adaptive layouts. Reusable components own only their documented responsive behavior.
 
-## Adaptive vocabulary
+## Vocabulary
 
-Use Material layout vocabulary in docs and APIs when applicable:
+Use official vocabulary when applicable:
 
 - compact;
 - medium;
@@ -26,37 +26,43 @@ Use Material layout vocabulary in docs and APIs when applicable:
 
 ## Canonical layouts
 
-Use canonical layouts as starting points for app-level organization when they match the product flow:
+Use canonical layouts as starting points when they fit the product scenario:
 
 - list-detail for explorable lists with item detail;
 - supporting pane for primary content with secondary supporting content;
 - feed for browsable content grids or streams.
 
-Do not invent a custom screen structure when a canonical Material layout fits the problem.
+Do not force a canonical layout when product information architecture requires a different composition.
 
-## Component-level adaptivity
+## Component adaptivity
 
-Components that change behavior across viewport classes must document:
+A reusable component that changes across viewport or container conditions defines:
 
-- the relevant Material guidance;
-- the breakpoints or container conditions used by the project;
-- the behavioral difference between compact, medium, and expanded contexts;
-- the Storybook or browser surface used to verify the behavior.
+- the relevant official guidance;
+- the observed viewport or container owner;
+- the conditions used by the project;
+- behavior in each supported context;
+- focus, scrolling, overlay, and state implications;
+- the browser surface used to verify it.
 
-## Navigation surfaces
+Do not hide product-level adaptive composition inside a shared component merely to centralize breakpoints.
 
-Navigation bar, navigation rail, and navigation drawer choices should follow Material adaptive guidance and product information architecture. Do not choose a navigation surface by visual preference alone.
+## Navigation
 
-## Pane scaffold layout
+Navigation bar, rail, and drawer selection follows both current Material adaptive guidance and product information architecture. Visual preference alone is insufficient.
 
-`MDPane` (`src/shared/ui/Layout/MDPane.vue`) is the Material pane primitive. It owns the pane shell, the visual pane surface, and the split between a non-scrolling top bar region and scrollable body content:
+## Existing pane contract
 
-- `MDPane #topBar` is the optional pane-local top bar region (`.md-pane__top-bar`), rendered outside the scroll container. Place a pane-scoped `MDAppBar` here, not in the default slot.
-- `MDPane` default slot is the scrollable pane body (`.md-pane__content`).
-- `usePaneScrollContainer` (from `@shared/ui/Layout`) resolves to the `.md-pane__content` element and is the target for pane-local scroll reads/writes (anchor scrolling, FAB/toolbar/bottom-sheet positioning).
-- `MDPane` does not import or know about `MDAppBar`; pages decide whether a pane has a top bar and what goes in it.
-- Global app bars that apply above all panes belong at the scaffold level (`MDSplitLayout` composition), not inside `MDPane`.
+`MDPane` owns a pane shell with a non-scrolling top-bar region and scrollable body:
+
+- `#topBar` renders outside `.md-pane__content`;
+- the default slot renders inside the scroll container;
+- `usePaneScrollContainer` resolves the body scroll owner;
+- pages decide whether a pane contains an app bar;
+- global app bars belong to the surrounding scaffold.
+
+`MDPane` does not own product routing, navigation choice, or global scaffold composition.
 
 ## Verification
 
-Adaptive layout changes need browser verification at the affected sizes. Prefer deterministic Storybook surfaces for shared UI and focused Playwright screenshots when the visual layout is the invariant.
+Adaptive changes require browser verification at affected viewport or container sizes. Use deterministic Storybook surfaces for reusable UI and product E2E only when the complete application composition is the changed contract.
