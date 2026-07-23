@@ -1,5 +1,6 @@
 name: PR 160 release verification
 
+# One-time full release gate for this workflow change. The job removes this file.
 on:
   pull_request:
     types:
