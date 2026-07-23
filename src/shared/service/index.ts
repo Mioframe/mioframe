@@ -31,3 +31,9 @@ export {
 export type { GoogleSessionDisplay, GoogleApi } from './google/googleContracts';
 export { OPFSName, stringPath } from './directories/directoriesContracts';
 export type { ItemIdQuery } from './databaseDocument/data/queryTypes';
+export type {
+  AppUpdateErrorCode,
+  AppUpdateOutcome,
+  ReleaseControllerState,
+  ReleaseIdentity,
+} from './appUpdate/contracts';

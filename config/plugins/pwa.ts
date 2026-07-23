@@ -258,6 +258,18 @@ export const getPwaPlugins = ({
 
   return [
     VitePWA({
+      ...(channel === 'stable'
+        ? {
+            strategies: 'injectManifest' as const,
+            srcDir: 'src/shared/service/appUpdate',
+            filename: 'sw.ts',
+            injectManifest: {
+              injectionPoint: 'self.__WB_MANIFEST',
+              maximumFileSizeToCacheInBytes: 10e6,
+            },
+            injectRegister: false,
+          }
+        : {}),
       manifest: {
         ...buildManifestIdentity(channel, channelId),
         scope: base,
@@ -266,7 +278,9 @@ export const getPwaPlugins = ({
         theme_color: 'rgb(33, 31, 38)',
         background_color: 'rgb(33, 31, 38)',
       },
-      workbox: buildWorkboxOptions({ base, channel, channelId }),
+      ...(channel === 'branch'
+        ? { workbox: buildWorkboxOptions({ base, channel, channelId }) }
+        : {}),
       pwaAssets: {
         config: true,
         overrideManifestIcons: true,

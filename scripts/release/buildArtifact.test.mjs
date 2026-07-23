@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -89,6 +89,7 @@ describe('runBuildArtifact with RELEASE_ARTIFACT_SKIP_BUILD', () => {
       applyProcessResult: vi.fn(),
       runGuardedExpensiveLocalCommand: vi.fn(async () => {
         writeFileSync(join(distDir, 'index.html'), '<html></html>');
+        mkdirSync(join(distDir, 'assets'));
         return { status: 0, signal: null };
       }),
       runLocalCommand: vi.fn(),

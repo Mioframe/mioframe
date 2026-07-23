@@ -44,7 +44,7 @@ export default defineConfig(({ mode, isPreview }) => {
 
   const buildDate = isStorybookBuild
     ? toolingConfig.storybook.deterministicBuildDate
-    : new Date().toISOString();
+    : env.VITE_BUILD_DATE || new Date().toISOString();
   const dependencyNames = Object.keys({
     ...dependencies,
     ...devDependencies,
@@ -111,6 +111,8 @@ export default defineConfig(({ mode, isPreview }) => {
       __APP_VERSION__: JSON.stringify(version),
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),
+      __RELEASE_ID__: JSON.stringify(env.VITE_RELEASE_ID || process.env.GITHUB_SHA || buildId),
+      __RELEASE_CHANNEL__: JSON.stringify(releaseChannel),
       __DIAGNOSTICS_MODE__: JSON.stringify(isPreviewBuild ? 'preview' : 'production'),
     },
   };

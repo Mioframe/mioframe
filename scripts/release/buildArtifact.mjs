@@ -6,6 +6,12 @@ import toolingConfig from '../../config/tooling.json' with { type: 'json' };
 import { runGuardedExpensiveLocalCommand } from '../lib/localCommandGuard.mjs';
 import { applyProcessResult } from '../lib/processResult.mjs';
 import { runLocalCommand } from '../lib/runLocalCommand.mjs';
+import {
+  buildDeploymentMetadata,
+  writeDeploymentMetadataFile,
+} from '../pages/lib/deploymentMetadata.mjs';
+import { writeStableReleaseArtifact } from '../pages/lib/stableRelease.mjs';
+import packageJson from '../../package.json' with { type: 'json' };
 
 const defaultDeps = {
   applyProcessResult,
@@ -94,6 +100,8 @@ export async function runBuildArtifact(
   // playwright.release.config.ts), where `pnpm` is not installed.
   const viteBin = './node_modules/.bin/vite';
   const args = ['build'];
+  const releaseId = env.GITHUB_SHA || '0'.repeat(40);
+  const buildDate = new Date().toISOString();
 
   const result = await deps.runGuardedExpensiveLocalCommand(
     {
@@ -101,12 +109,23 @@ export async function runBuildArtifact(
       command: `${viteBin} ${args.join(' ')}`,
       executable: viteBin,
       args,
-      env: { ...process.env, BASE_URL: basePath },
+      env: {
+        ...process.env,
+        BASE_URL: basePath,
+        VITE_RELEASE_ID: releaseId,
+        VITE_BUILD_DATE: buildDate,
+      },
       run: (lockEnv) =>
         deps.runLocalCommand({
           command: viteBin,
           args,
-          env: { ...process.env, ...lockEnv, BASE_URL: basePath },
+          env: {
+            ...process.env,
+            ...lockEnv,
+            BASE_URL: basePath,
+            VITE_RELEASE_ID: releaseId,
+            VITE_BUILD_DATE: buildDate,
+          },
         }),
     },
     deps,
@@ -124,6 +143,18 @@ export async function runBuildArtifact(
   }
 
   copyFileSync(indexPath, join(distDir, '404.html'));
+  writeDeploymentMetadataFile(
+    distDir,
+    buildDeploymentMetadata({
+      channel: 'stable',
+      channelId: 'main',
+      baseUrl: basePath,
+      sha: releaseId,
+      appVersion: packageJson.version,
+      buildDate,
+    }),
+  );
+  writeStableReleaseArtifact(distDir);
   console.log(`Production artifact built at ${distDir} (base ${basePath}).`);
   deps.applyProcessResult(result);
 }

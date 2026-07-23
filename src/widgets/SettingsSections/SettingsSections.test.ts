@@ -10,6 +10,7 @@ const settings = ref<{
 }>({});
 let googleDriveIntegrationAvailable = true;
 let sentryDiagnosticsAvailable = true;
+let managedAppUpdatesAvailable = false;
 const setDiagnosticsEnabledByUserMock = vi.fn((enabled: boolean) => {
   settings.value.diagnosticsEnabled = enabled;
   settings.value.diagnosticsConsentRequested = true;
@@ -50,6 +51,9 @@ vi.mock('@entity/browserStoragePersistence', () => ({
 }));
 
 vi.mock('@shared/config', () => ({
+  get MANAGED_APP_UPDATES_AVAILABLE() {
+    return managedAppUpdatesAvailable;
+  },
   get GOOGLE_DRIVE_INTEGRATION_AVAILABLE() {
     return googleDriveIntegrationAvailable;
   },
@@ -184,7 +188,7 @@ vi.mock('@shared/ui/Switch', () => ({
   MDSwitch: defineComponent({
     name: 'MDSwitchStub',
     props: {
-      modelValue: {
+      selected: {
         type: Boolean,
         required: true,
       },
@@ -201,12 +205,11 @@ vi.mock('@shared/ui/Switch', () => ({
         default: undefined,
       },
     },
-    emits: ['update:modelValue'],
     setup(props) {
       return () =>
         h('div', {
           'aria-hidden': 'true',
-          'data-state': props.modelValue ? 'checked' : 'unchecked',
+          'data-state': props.selected ? 'checked' : 'unchecked',
           'data-disabled': props.disabled ? 'true' : 'false',
         });
     },
@@ -217,10 +220,12 @@ const mountSettingsSections = async ({
   onSelectPrivacyPolicy,
   onSelectHelp,
   onSelectAboutMioframe,
+  onSelectAppUpdates,
 }: {
   onSelectPrivacyPolicy?: (() => void) | undefined;
   onSelectHelp?: (() => void) | undefined;
   onSelectAboutMioframe?: (() => void) | undefined;
+  onSelectAppUpdates?: (() => void) | undefined;
 } = {}) => {
   const { SettingsSections } = await import('./index');
   const root = document.createElement('div');
@@ -229,6 +234,7 @@ const mountSettingsSections = async ({
     onSelectPrivacyPolicy,
     onSelectHelp,
     onSelectAboutMioframe,
+    onSelectAppUpdates,
   });
 
   app.mount(root);
@@ -272,6 +278,7 @@ describe('SettingsSections', () => {
     vi.resetModules();
     googleDriveIntegrationAvailable = true;
     sentryDiagnosticsAvailable = true;
+    managedAppUpdatesAvailable = false;
     settings.value = {};
     browserStorageStatus.value = 'checking';
     isEnablingStorage.value = false;
@@ -305,6 +312,7 @@ describe('SettingsSections', () => {
     );
     expect(root.textContent).toContain('About Mioframe');
     expect(root.textContent).toContain('Version and build information.');
+    expect(root.textContent).not.toContain('App updates');
 
     getButtonByText(root, 'Privacy policy')?.click();
     await nextTick();
@@ -320,6 +328,18 @@ describe('SettingsSections', () => {
     await nextTick();
 
     expect(onSelectAboutMioframe).toHaveBeenCalledTimes(1);
+
+    unmount();
+  });
+
+  it('shows App updates only in managed stable builds and emits navigation intent', async () => {
+    managedAppUpdatesAvailable = true;
+    const onSelectAppUpdates = vi.fn();
+    const { root, unmount } = await mountSettingsSections({ onSelectAppUpdates });
+
+    getButtonByText(root, 'App updates')?.click();
+    await nextTick();
+    expect(onSelectAppUpdates).toHaveBeenCalledTimes(1);
 
     unmount();
   });

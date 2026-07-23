@@ -302,9 +302,9 @@ Every publish script (`scripts/pages/publish*.mjs`,
 branch through `scripts/pages/lib/ghPagesBranch.mjs`, retrying on push
 conflicts. Each publish only touches its own slot:
 
-- stable publish (`publishStable.mjs`) replaces everything at the target
-  repository root except `.git/`, `branch/`, and `pr/` — so it never evicts
-  develop, manual branch, or PR preview deployments;
+- stable publish (`publishStable.mjs`) replaces the live stable root files,
+  preserves `.git/`, `branch/`, `pr/`, `assets/`, and `updates/releases/`,
+  then moves `updates/latest.json` only after the immutable release validates;
 - branch publish (`publishBranch.mjs`) replaces only `branch/<slug>/`;
 - PR preview publish (`publishPreview.mjs`) replaces only `pr/<number>/`;
 - PR preview cleanup (`cleanupPreview.mjs`, run on PR close) removes only
@@ -472,11 +472,9 @@ retention are left untouched.
 - `manifest.scope`, `start_url`, and `id` are pinned explicitly to the
   build's `BASE_URL` for every channel, so the manifest never drifts from
   the deployment it was built for;
-- Cache Storage is per-origin, not per service-worker-scope, so cache names
-  are explicitly namespaced per channel (`stable-*` for the stable build,
-  `branch-<channel-id>-*` for a branch build) — otherwise a stable and a
-  branch build sharing the same origin would silently share (and corrupt)
-  Cache Storage entries;
+- stable uses its persistent release-controller worker; branch builds keep
+  the generated Workbox worker and their existing
+  `branch-<channel-id>-*` Cache Storage namespaces;
 - the stable channel's service worker scope is `/`, wide enough to
   otherwise intercept `/branch/*` and `/pr/*` navigation and asset
   requests, so it additionally denies those paths from its navigation
@@ -489,6 +487,60 @@ retention are left untouched.
   branch name it was derived from);
 - PR previews build with `VITE_DISABLE_PWA=1` and register no service
   worker at all.
+
+### Managed stable application updates
+
+Stable publication retains immutable application releases:
+
+```text
+index.html
+sw.js
+manifest.webmanifest
+updates/latest.json
+updates/releases/<full-commit-sha>.json
+updates/releases/<full-commit-sha>/index.html
+assets/<content-hashed-file>
+```
+
+The full source commit SHA is the release identity. SemVer and the shortened
+build ID are display facts and never select a release. Each descriptor records
+the immutable index and every content-hashed artifact required to boot and work
+offline, with byte size and SHA-256. Existing release descriptors, index
+snapshots, and hashed assets are retained indefinitely in this version.
+
+The stable root worker is a permanent release controller. Its application
+selection is persisted in a dedicated versioned IndexedDB store and is separate
+from the browser's service-worker update lifecycle. Automatic mode validates and
+prepares the latest release, then selects it only on a later launch with no older
+app windows. Manual mode verifies and pins the running release until the user
+chooses **Update now**. All controlled windows must confirm that no VFS writes are
+active before a coordinated restart.
+
+A selected release remains a trial until JavaScript has loaded, Vue has mounted,
+initial routing has completed, and the controller handshake succeeds. A later
+top-level launch with an unconfirmed trial restores the previous release, records
+the failed build, and does not retry it automatically. Recovery covers retained
+browser storage or the immutable online archive; deleting site data removes the
+browser's pin and recovery state.
+
+The controller never handles `/branch/**` or `/pr/**`. Develop, manual branch,
+tombstone, and PR-preview publication and cleanup keep their existing behavior and
+do not expose managed-update settings.
+
+Before any stable publication mutation, the complete projected Pages tree—stable
+history, branches, previews, and root files—must be at most 900 MiB. The publisher
+does not delete history to meet that limit. Publishing an existing SHA with
+different bytes fails; identical re-publication is idempotent.
+
+Operational recovery:
+
+1. If `updates/latest.json` is invalid, restore it to the last descriptor whose
+   files and hashes validate; do not point it at an incomplete upload.
+2. If an immutable release is invalid, leave `latest.json` unchanged, correct the
+   source/build, and publish a new commit SHA. Never replace different bytes under
+   an existing SHA.
+3. If Pages approaches 900 MiB, stop publication and plan an explicit audited
+   retention change; do not remove active, pinned, trial, or recovery releases.
 
 ## Production artifact validation
 

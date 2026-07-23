@@ -5,6 +5,8 @@ import DialogContainer from '@shared/ui/Dialog/Alert/DialogContainer.vue';
 import { RouterView } from 'vue-router';
 import { PerformanceOverlay } from '@shared/ui/performance';
 import { useLocalSettings } from '@entity/localSettings';
+import { useVfsActivity } from '@entity/vfsActivity';
+import { setupAppUpdateRestartReadiness } from '@shared/serviceClient/appUpdate';
 import { provideOverlayContainer } from '@shared/ui/Overlay';
 import { useMainContentAriaHidden } from '@shared/ui/AriaHidden';
 import { useFocusIndicator } from '@shared/ui/State/useFocusIndicator';
@@ -13,6 +15,7 @@ import { usePreventUnloadDuringActiveWrites } from '@feature/preventUnloadDuring
 import { useOptionalGoogleDriveIntegration } from '@feature/googleDriveIntegration';
 import { useDiagnosticsReporting } from '@feature/diagnosticsReporting';
 import { setupPwaInstallRuntime } from '@feature/pwaInstall';
+import { useManualAppUpdateNotification } from '@feature/appUpdate';
 
 const { addSnackbar } = useSnackbar();
 
@@ -27,6 +30,8 @@ const overlayContainerEl = useTemplateRef('overlayContainerEl');
 provideOverlayContainer(overlayContainerEl);
 
 const { settings } = useLocalSettings();
+const { isActive: isVfsActive } = useVfsActivity();
+setupAppUpdateRestartReadiness(() => !isVfsActive.value);
 
 const mainAriaHidden = useMainContentAriaHidden();
 
@@ -34,6 +39,7 @@ useFocusIndicator();
 usePreventUnloadDuringActiveWrites();
 useDiagnosticsReporting();
 useOptionalGoogleDriveIntegration();
+useManualAppUpdateNotification();
 
 setupMetaThemeColor();
 setupPwaInstallRuntime();
