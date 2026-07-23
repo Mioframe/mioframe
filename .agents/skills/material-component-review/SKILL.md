@@ -1,122 +1,89 @@
 ---
 name: material-component-review
-description: 'Use when the user provides a Material component or family name and wants its current implementation checked against current official Material 3 Expressive documentation and project rules. Produce an evidence-backed compliance report and persist the latest family audit without modifying production implementation.'
+description: 'Use for an independent full-PR review of one official Material component family after implementation. Reviews the complete result against the approved family contract and official evidence, writes the durable family audit, and returns merge readiness without modifying production implementation.'
 ---
 
 # Material component review
 
-Use this as the one-name, review-only entrypoint for checking an existing Material component implementation.
+Use this as the independent technical review for one implemented official Material family.
 
-This skill owns target resolution, compliance-review orchestration, and the durable family audit artifact. It must not duplicate source, architecture, testing, or authoring rules owned by `material3-guidelines`, `material-component-authoring`, `src/shared/ui/material/docs`, and the applicable testing skills.
+The reviewer must not be the context that implemented the change. Review the complete resulting PR, not only the latest correction patch or changed files from the latest round.
 
-## Required input
+## Required inputs
 
-The only required input is a component or family name.
+Read:
 
-Examples:
+1. root and applicable nested `AGENTS.md` files;
+2. `src/shared/ui/material/docs/workflow.md`;
+3. `src/shared/ui/material/docs/source-of-truth.md`;
+4. `src/shared/ui/material/docs/component-architecture.md`;
+5. `src/shared/ui/material/docs/component-testing.md`;
+6. the approved family `README.md` contract;
+7. the complete PR diff and current branch state;
+8. current implementation, public exports, direct consumers, tests, stories, visual evidence, affected foundations, roadmap/inventory records, and prior family audit when present;
+9. final verification state.
 
-```text
-material-component-review Button
-material-component-review MDButton
-material-component-review Switch
-material-component-review Navigation rail
-```
-
-Do not ask the user to predefine the expected variants, API, states, sources, tests, or known defects.
+If the approved contract is missing, blocked, materially stale, or inconsistent with the implementation task, return `not enough information to decide` rather than inventing the intended architecture.
 
 ## Review boundary
 
-The default task is inspection, durable audit recording, and reporting only.
+This workflow is review-only for production implementation.
 
-- The required repository change is `src/shared/ui/material/docs/audits/<family-slug>.md`.
-- Do not modify production code, tests, stories, snapshots, registries, family contracts, or project rules during the review.
-- Do not convert findings into implementation work unless the user explicitly asks to fix them.
-- When fixes are requested later, hand the resolved family and findings to `material-component` or `material-component-authoring` rather than implementing through this review skill.
-
-## Resolve the target
-
-1. Normalize the supplied name against current official Material 3 Expressive terminology.
-2. Inspect existing `MD*` implementations, public exports, direct consumers, family README, latest family audit, component registry, UI inventory, migration map, roadmap, stories, and tests.
-3. Resolve the official component surface and smallest cohesive owning family.
-4. Identify the current production owner, canonical owner, supported surface claimed by the repository, and active consumers.
-5. Ask one precise question only when source and repository inspection still leave two materially different official targets unresolved.
-
-Treat repository documentation, prior audits, tests, snapshots, and current rendering as implementation claims to verify, not as Material authority.
-
-## Resolve authoritative evidence
-
-Use `material3-guidelines` and the source hierarchy in `src/shared/ui/material/docs/source-of-truth.md`.
-
-- Resolve current official Material 3 Expressive guidance first.
-- Record exact pages, snapshot metadata, and Design Kit evidence when applicable.
-- Do not use legacy Mioframe output, baseline snapshots, Material Web, another library, memory, or generic web content as proof of Material correctness.
-- When official evidence is incomplete, distinguish unsupported optional surface from a blocker affecting a required or claimed scenario.
-
-## Review the claimed supported surface
-
-Compare the implementation against official evidence and project rules across every applicable area:
-
-- component choice, intended usage, and prohibited usage;
-- family boundary and ownership;
-- variants, sizes, shapes, configurations, and defaults;
-- public API, slots, emits, invalid combinations, and controlled-state contract;
-- native semantics, accessibility, keyboard, pointer, touch, focus, target area, disabled, readonly, cancellation, and cleanup;
-- anatomy and DOM ownership;
-- component, system, reference, and extension token ownership;
-- color, typography, shape, elevation, state layers, ripple, focus indicators, and motion;
-- responsive, adaptive, overlay, and containment behavior when applicable;
-- consumer compatibility, exports, migration completeness, and obsolete owners;
-- family contract, Storybook coverage, component tests, browser tests, visual evidence, and directly affected records.
-
-Review only capabilities the repository claims or current consumers require. Do not mark unimplemented optional Material capabilities as defects when they are honestly unsupported.
-
-## Evidence standard
-
-Every finding must contain:
+Allowed repository change:
 
 ```text
-Severity: critical | high | medium | low
+src/shared/ui/material/docs/audits/<family-slug>.md
+```
+
+Do not modify production code, tests, stories, snapshots, family contracts, registries, roadmap, inventory, or workflow policy during the review. Corrections begin through a separate implementation task.
+
+## Review scope
+
+Check the complete family and PR against:
+
+- goal, non-goals, required scenarios, and accepted final behavior;
+- current applicable Material 3 Expressive official evidence and recorded snapshot;
+- family, foundation, state, anatomy, DOM, token, property, accessibility, and verification ownership;
+- supported and unsupported surface;
+- public API, slots, emits, invalid combinations, native semantics, and controlled-state contract;
+- keyboard, focus, pointer, touch, target area, disabled/readonly, cancellation, cleanup, reduced motion, and browser behavior when applicable;
+- token paths, configuration/state precedence, rendered property owners, typography, shape, elevation, state layer, ripple, focus indicators, and motion;
+- shared UI blast radius and dependency direction;
+- affected consumer compatibility and product-scenario preservation;
+- migration completeness, public exports, obsolete owner removal, and approved compatibility state;
+- proportional component, pure, browser, consumer, visual, and repository verification;
+- simplicity, readability, and absence of workaround architecture or duplicated ownership.
+
+Green CI proves only the checks that ran. It is not architecture or Material approval.
+
+## Findings
+
+Consolidate findings into:
+
+- blockers;
+- major issues;
+- minor issues;
+- not required for this PR.
+
+Every confirmed finding contains:
+
+```text
+Severity: blocker | major | minor
 Area:
-Official requirement:
-Official source and snapshot:
+Approved contract or official requirement:
 Implementation evidence:
 Observed mismatch:
 Required correction:
+Verification required:
 ```
 
-Severity guidance:
+Do not report speculative risks as findings. Separate unavailable evidence from confirmed defects.
 
-- `critical` — invalid component choice, unsafe semantics, severe accessibility failure, data or interaction corruption, or a false complete/aligned claim hiding a blocking defect;
-- `high` — required scenario, public contract, state behavior, token ownership, migration, or major visual contract is materially wrong;
-- `medium` — bounded Material mismatch, incomplete proof, inconsistent documentation, or maintainability defect with real regression risk;
-- `low` — minor documentation, naming, evidence, or cleanup issue that does not invalidate the supported contract.
+One correction task must include all unresolved blocker and major findings from prior rounds. After correction, re-review the complete PR.
 
-Do not report speculative risks as findings. Separate confirmed defects from unavailable evidence.
+If two correction rounds still reveal ownership errors, missing scenarios, unstable public contracts, mixed responsibilities, architectural drift, or growing workaround logic, recommend redoing the architecture decision rather than continuing local patches.
 
-## Compliance result
-
-Use exactly one result:
-
-- `compliant` — every claimed and required non-visual contract is source-resolved and correctly implemented, required proof exists, one canonical owner remains, and operator visual acceptance is already recorded when required;
-- `technically-compliant-visual-review-required` — every non-visual contract passes, but final official visual comparison remains an operator gate;
-- `partially-compliant` — the implementation is usable but one or more confirmed non-critical defects or proof gaps remain;
-- `non-compliant` — a critical/high defect invalidates a required or claimed contract;
-- `blocked` — authoritative evidence needed for a required decision is unavailable or materially conflicting.
-
-Green CI, existing tests, accepted snapshots, or an `aligned` registry value are not sufficient by themselves for `compliant`.
-
-The coding agent must not claim operator visual acceptance unless it is already durably recorded.
-
-## Rule defects
-
-When the review exposes an inaccurate, contradictory, obsolete, incomplete, or needlessly complex project rule:
-
-- report the owning document or skill and the evidence exposing the defect;
-- classify it separately from component implementation findings;
-- recommend the smallest correction;
-- do not modify the rule during a review-only run.
-
-## Durable audit artifact
+## Durable audit
 
 Create or replace exactly one file:
 
@@ -126,86 +93,72 @@ src/shared/ui/material/docs/audits/<family-slug>.md
 
 Follow `src/shared/ui/material/docs/audits/README.md`.
 
-- Use the resolved owning-family slug in kebab case, not the raw user input.
-- Keep one current file per family; do not create dated copies.
-- Record the implementation branch/ref and commit reviewed before writing the audit file.
-- Write the audit even when the result is `compliant`, there are no findings, or the review is `blocked`.
-- Preserve all required sections and use explicit `none` values where applicable.
-- Replace stale prior content rather than appending a second result.
-- Do not update component registries, roadmap state, family contracts, or production claims from a review-only run.
+The audit records:
 
-The review is incomplete until the audit file exists, matches the reported result, and its path is included in the final response. When repository write access is unavailable, report `blocked` with the exact audit-artifact limitation rather than claiming completion.
+- requested and resolved family;
+- review date;
+- implementation branch/ref and commit;
+- approved contract path and readiness;
+- current and canonical owner;
+- official sources and snapshot;
+- supported surface and required consumer scenarios;
+- confirmed findings and evidence gaps;
+- verified compliant areas;
+- operator visual status;
+- merge recommendation.
 
-## Audit file structure
+Replace stale audit content instead of appending a review history.
 
-Use:
+## Merge recommendation
 
-```text
-# <Resolved family> Material 3 Expressive compliance audit
+Return exactly one:
 
-- Requested name:
-- Resolved family:
-- Audit date:
-- Implementation ref:
-- Implementation commit:
-- Current owner:
-- Canonical owner:
-- Compliance result:
-- Operator visual status: accepted | required | not applicable | blocked
+- `can merge`;
+- `can merge with listed risks`;
+- `should not merge until blockers are fixed`;
+- `not enough information to decide`.
 
-## Official evidence
+Use `can merge` only when:
 
-## Claimed supported surface
+- the approved contract is ready and fully implemented;
+- ownership and public contracts are clear and stable;
+- required scenarios and consumers are complete;
+- applicable foundations are accepted;
+- obsolete ownership and unapproved compatibility are removed;
+- required technical proof and final verification pass;
+- required operator visual acceptance is already recorded, or no new visual acceptance is required.
 
-## Required consumer scenarios
-
-## Confirmed findings
-
-## Evidence gaps
-
-## Rule defects
-
-## Verified compliant areas
-
-## Recommended next action
-```
-
-Each confirmed finding uses the evidence fields defined above.
+The reviewer must not claim operator visual acceptance unless it is durably recorded.
 
 ## Output
 
 Finish with:
 
 ```text
-MATERIAL COMPONENT COMPLIANCE REVIEW
-Requested name:
-Resolved family:
-Current owner:
-Canonical owner:
+MATERIAL COMPONENT REVIEW
+Family:
+Approved contract:
+Implementation ref:
 Official sources and snapshot:
-Claimed supported surface:
-Required consumer scenarios:
-Compliance result:
+Technical review: passed | blocked | insufficient evidence
 Operator visual status: accepted | required | not applicable | blocked
 Audit file: src/shared/ui/material/docs/audits/<family-slug>.md
 
-Confirmed findings:
-1. <severity> — <summary>
-   Official requirement:
-   Implementation evidence:
-   Required correction:
+Blockers:
+- none | <finding>
 
-Evidence gaps:
-- none | <exact unresolved evidence>
+Major issues:
+- none | <finding>
 
-Rule defects:
-- none | <owner, defect, recommended correction>
+Minor issues:
+- none | <finding>
 
-Verified compliant areas:
-- <concise list>
+Not required for this PR:
+- none | <item>
 
-Recommended next action:
-- no action | run material-component <family> with this audit | resolve <exact blocker>
+Verification:
+Merge recommendation: can merge | can merge with listed risks | should not merge until blockers are fixed | not enough information to decide
+Next action: none | <one consolidated correction or decision>
 ```
 
-Do not return only a checklist. State a clear compliance result, persist the audit, and prioritize actionable defects.
+Do not implement corrections, weaken checks, or turn review into a second family contract.
