@@ -1,14 +1,14 @@
-# Material 3 foundation registry
+# Material foundation registry
 
-This registry is the current status source for Material foundation domains. It complements `foundation-architecture.md`.
+This registry is the current status source for Material foundation domains. It complements `foundation-architecture.md` and records current ownership, readiness, gaps, and verification.
 
-Historical audits remain evidence only. Update the affected record whenever source meaning, snapshot, owner, migration status, contract, consumers, gaps, or verification changes.
+Historical audits are not current fact owners. Update the affected record whenever source meaning, snapshot, owner, migration status, contract, consumers, gaps, or verification changes.
 
 ## Status
 
 - `missing`: no accepted contract exists.
 - `partial`: an owner exists, but source coverage, completeness, consistency, or verification has known gaps.
-- `verified`: the supported contract is source-backed, implemented, and verified against an exact recorded snapshot.
+- `verified`: the supported contract is source-backed, implemented, independently reviewed where applicable, and verified against an exact recorded snapshot.
 - `deviated`: the accepted Mioframe contract intentionally differs from current Material guidance.
 - `blocked`: required source guidance or ownership is unresolved.
 
@@ -20,15 +20,15 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: `material3` MCP; `Vyachean/m3-docs-cache` fallback; official Material Design Kit for exact visual decisions unresolved by published docs.
 - Verified snapshot: source hierarchy reviewed 2026-07-16; domain snapshots remain record-specific.
 - Current production owner: policy/tooling outside application runtime.
-- Canonical library owner: none; policy remains under `src/shared/ui/material/docs`.
+- Canonical library owner: policy under `src/shared/ui/material/docs`.
 - Migration status: `migrated`.
 - Public contract: bounded authority order, exact snapshot recording, Design Kit role, and explicit `partial`/`blocked` handling.
 - Private bridge contract: none.
 - Verification-only contract: none.
-- Known consumers: every Material foundation, component, pattern, and review decision.
+- Known consumers: every Material foundation, component, pattern, contract, and independent review decision.
 - Known gaps: historical domains need exact snapshots when revalidated.
-- Verification: policy review plus source records in family blueprints and domain changes.
-- Last reviewed: 2026-07-16.
+- Verification: source policy review plus exact source records in approved family/foundation contracts.
+- Last reviewed: 2026-07-23.
 
 ## Authoring units
 
@@ -52,7 +52,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material reference palette and typeface-token docs.
 - Verified snapshot: not yet recorded — legacy owner.
 - Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/tokens` when focused migration occurs.
+- Canonical library owner: `src/shared/ui/material/foundation/tokens` when an approved migration occurs.
 - Migration status: `legacy`.
 - Public contract: verified `--md-ref-palette-*` and `--md-ref-typeface-*` tokens only.
 - Private bridge contract: none.
@@ -68,7 +68,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material color roles, schemes, and deprecation guidance.
 - Verified snapshot: not yet recorded — legacy owner.
 - Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/theme` plus token owner as proven by migration.
+- Canonical library owner: `src/shared/ui/material/foundation/theme` plus token owner as proven by an approved migration.
 - Migration status: `legacy`.
 - Public contract: `--md-sys-color-*` mapped from reference tokens; light defaults and dark media override.
 - Private bridge contract: none.
@@ -84,7 +84,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material type-scale and unit guidance.
 - Verified snapshot: not yet recorded — legacy owner.
 - Current production owner: `src/shared/lib/md/tokens.css`, `typography.ts`, `MD_TYPESCALE`, and `.md-typescale-*` utilities.
-- Canonical library owner: `src/shared/ui/material/foundation/typography` when focused migration occurs.
+- Canonical library owner: `src/shared/ui/material/foundation/typography` when an approved migration occurs.
 - Migration status: `legacy`.
 - Public contract: components use system type-scale roles/shared utilities instead of local type declarations.
 - Private bridge contract: none.
@@ -100,7 +100,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material shape roles and component-specific shape specs.
 - Verified snapshot: not yet recorded — legacy owner.
 - Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/shape` when focused migration occurs.
+- Canonical library owner: `src/shared/ui/material/foundation/shape` when an approved migration occurs.
 - Migration status: `legacy`.
 - Public contract: `--md-sys-shape-corner-*`; published component shapes route through component tokens.
 - Private bridge contract: none.
@@ -116,7 +116,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material elevation and surface-tint guidance.
 - Verified snapshot: not yet recorded — legacy owner.
 - Current production owner: `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/elevation` when focused migration occurs.
+- Canonical library owner: `src/shared/ui/material/foundation/elevation` when an approved migration occurs.
 - Migration status: `legacy`.
 - Public contract: `--md-sys-elevation-level0` through `level5`.
 - Private bridge contract: `--md-private-elevation-shadow-color`.
@@ -132,7 +132,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material motion guidance and family-specific Expressive motion pages.
 - Verified snapshot: not yet recorded — legacy owner.
 - Current production owner: `src/shared/lib/md/tokens.css` and documented private Web adaptations.
-- Canonical library owner: `src/shared/ui/material/foundation/motion` when focused migration occurs.
+- Canonical library owner: `src/shared/ui/material/foundation/motion` when an approved migration occurs.
 - Migration status: `legacy`.
 - Public contract: verified `--md-sys-motion-*` values only.
 - Private bridge contract: documented `--md-private-motion-expressive-*` adaptations when CSS cannot express the official model directly.
@@ -148,12 +148,12 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material interaction-state, state-layer, focus, and family-specific state guidance.
 - Verified snapshot: reviewed through 2026-07-16; consolidated domain snapshot remains for migration.
 - Current production owner: `src/shared/ui/State/` plus system state tokens in `src/shared/lib/md/tokens.css`.
-- Canonical library owner: `src/shared/ui/material/foundation/interaction` after focused migration.
+- Canonical library owner: `src/shared/ui/material/foundation/interaction` after an approved migration.
 - Migration status: `legacy`.
 - Public contract: `MDStateLayer`, `useStateLayer`, `useRipple`, host focus/activation semantics, and system state/focus tokens.
 - Private bridge contract: generic `--md-private-state-*` and state-layer inputs documented by the current owner.
 - Verification-only contract: `src/shared/ui/State/testing` and `MDStateLayerForcedStateProvider` render deterministic generic transient appearance only.
-- Known consumers: interactive Material components and their matrices.
+- Known consumers: interactive Material components and their visual evidence.
 - Known gaps: ripple policy, focus-indicator ownership, reduced-motion interaction, dragged/focus verification, and family coverage.
 - Verification: foundation tests, real browser focus/pointer/touch checks, deterministic appearance, and representative host integration.
 - Last reviewed: 2026-07-16.
@@ -164,7 +164,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material Symbols and family-specific icon guidance.
 - Verified snapshot: not yet recorded — legacy owner.
 - Current production owner: `src/shared/ui/Icon/` and `MDSymbol`.
-- Canonical library owner: `src/shared/ui/material/foundation/icon` after focused migration.
+- Canonical library owner: `src/shared/ui/material/foundation/icon` after an approved migration.
 - Migration status: `legacy`.
 - Public contract: shared Material Symbol primitive with explicit size, fill, weight, grade, optical size, and accessibility behavior.
 - Private bridge contract: none.
@@ -180,7 +180,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: component measurements, density/layout guidance, and accessibility target requirements.
 - Verified snapshot: not yet recorded — policy and family evidence are mixed.
 - Current production owner: `density-spacing.md`; each component owns supported measurements and target box.
-- Canonical library owner: policy remains under `src/shared/ui/material/docs`; runtime owner is component-specific unless a shared artifact is required.
+- Canonical library owner: policy under `src/shared/ui/material/docs`; runtime owner is component-specific unless an approved shared artifact is required.
 - Migration status: `migrated`.
 - Public contract: exact component specs first, layout guidance second, app `step` only when no exact Material measure exists.
 - Private bridge contract: none.
@@ -196,7 +196,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material accessibility pages, native HTML semantics, and repository policy.
 - Verified snapshot: not yet recorded as one exact policy snapshot.
 - Current production owner: `accessibility.md`; components/overlays/focus owners implement it.
-- Canonical library owner: policy remains under `src/shared/ui/material/docs`.
+- Canonical library owner: policy under `src/shared/ui/material/docs`.
 - Migration status: `migrated`.
 - Public contract: accessible names, native semantics first, focus-visible, keyboard behavior, target areas, contrast-safe roles, modal focus, and meaningful state exposure.
 - Private bridge contract: none.
@@ -228,7 +228,7 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 - Official sources: Material window classes, canonical layouts, navigation adaptation, pane, app bar, sheet, and toolbar guidance.
 - Verified snapshot: not yet recorded — policy and product evidence are mixed.
 - Current production owner: `layout-adaptive.md` plus current layout primitives and product composition.
-- Canonical library owner: policy remains under `src/shared/ui/material/docs`; concrete component/pattern owners are added only from current needs.
+- Canonical library owner: policy under `src/shared/ui/material/docs`; concrete component/pattern owners are added only from approved current needs.
 - Migration status: `legacy`.
 - Public contract: compact/medium/expanded decisions, canonical-layout choice, pane ownership, and navigation choice based on product information architecture.
 - Private bridge contract: current layout contexts and scroll-container contracts where implemented.
@@ -240,12 +240,12 @@ A legacy `partial` record may use `Verified snapshot: not yet recorded — legac
 
 ## Update rules
 
-For every foundation change:
+For every approved foundation change:
 
-1. update the affected record before claiming completion;
+1. update the affected record before claiming implementation completion;
 2. record exact official pages and snapshot when meaning/status changes;
 3. keep current/canonical owner and migration status accurate;
 4. keep public/private/testing contracts aligned with code/exports;
-5. inventory consumers for corrections/replacements;
+5. inventory affected consumers for corrections or replacements;
 6. update verification, visual impact, and remaining gaps honestly;
 7. keep unrelated records unchanged.
