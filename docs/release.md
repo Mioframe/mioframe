@@ -166,6 +166,7 @@ focused and the full gate, and tag pushes never rerun the full gate:
   Implementation verification failures still block the preview. `deploy-develop`
   also depends on `verification` for pushes to `develop` — see
   `docs/release.md#organization-pages-deployment-model`.
+
 - **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
   and pushes to `main` only. Runs the full release gate
   (`pnpm verify:release`, full-project scope, see below), which includes
