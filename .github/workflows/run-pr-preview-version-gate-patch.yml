@@ -20,39 +20,242 @@ jobs:
           ref: fix/pr-preview-version-gate
           fetch-depth: 0
 
-      - name: Execute embedded targeted patch
+      - name: Apply targeted repository changes
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import traceback
+          import subprocess
 
-          try:
-              source = Path('.github/workflows/apply-pr-preview-version-gate.yml').read_text(
-                  encoding='utf-8'
-              )
-              start_marker = '          from pathlib import Path\n'
-              end_marker = "          PY\n\n          git diff --check"
-              start = source.index(start_marker)
-              end = source.index(end_marker, start)
-              raw_code = source[start:end]
-              code = '\n'.join(
-                  line[10:] if line.startswith('          ') else line
-                  for line in raw_code.splitlines()
-              )
-              exec(compile(code, 'embedded-pr-preview-version-gate-patch.py', 'exec'))
-          except BaseException:
-              Path('patch-error.txt').write_text(traceback.format_exc(), encoding='utf-8')
+          def read(path: str) -> str:
+              return Path(path).read_text(encoding='utf-8')
+
+          def write(path: str, content: str) -> None:
+              Path(path).write_text(content, encoding='utf-8')
+
+          def replace_once(content: str, old: str, new: str, label: str) -> str:
+              count = content.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one exact match, found {count}')
+              return content.replace(old, new, 1)
+
+          workflow_path = '.github/workflows/verify.yml'
+          workflow = read(workflow_path)
+          workflow = replace_once(
+              workflow,
+              '''# Development verification for develop-bound work: focused pnpm verify plus a
+          # PR-into-develop version-bump check, PR preview deploys (pr/<number>/), and
+          # the develop branch deploy (branch/develop/) on push to develop. PRs/pushes
+          ''',
+              '''# Development verification for develop-bound work: focused pnpm verify,
+          # a separate PR version merge gate, PR preview deploys (pr/<number>/), and the
+          # develop branch deploy (branch/develop/) on push to develop. PR previews depend
+          # on implementation verification, not on the independent version merge gate. PRs/pushes
+          ''',
+              'workflow header',
+          )
+          workflow = replace_once(
+              workflow,
+              '''  verify:
+              needs:
+                - autofix
+          ''',
+              '''  verification:
+              needs:
+                - autofix
+          ''',
+              'verification job rename',
+          )
+          workflow = replace_once(
+              workflow,
+              '''      # Every PR into develop must bump package.json version above develop's
+                # current version (docs/release.md#pr-level-version-bump-policy).
+                - name: Validate version bump
+                  if: github.event_name == 'pull_request'
+                  run: node scripts/release/validateVersion.mjs
+
+          ''',
+              '',
+              'version step removal',
+          )
+          workflow = replace_once(
+              workflow,
+              '''  deploy-preview:
+              needs: [verify]
+              if: >-
+                !cancelled() &&
+                needs.verify.result == 'success' &&
+          ''',
+              '''  release-version:
+              needs:
+                - autofix
+              if: >-
+                !cancelled() &&
+                github.event_name == 'pull_request' &&
+                (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+              runs-on: ubuntu-24.04
+              timeout-minutes: 5
+              permissions:
+                contents: read
+
+              steps:
+                - uses: actions/checkout@v4
+                  with:
+                    fetch-depth: 0
+                    ref: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+                - name: Fetch pull request base branch
+                  run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+                  env:
+                    BASE_REF: ${{ github.base_ref }}
+
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: lts/*
+
+                # This is an independent merge gate. Its failure must not prevent the
+                # implementation-verified application and Storybook preview from publishing.
+                - name: Validate version bump
+                  run: node scripts/release/validateVersion.mjs
+
+            verify:
+              needs:
+                - verification
+                - release-version
+              if: always()
+              runs-on: ubuntu-24.04
+              timeout-minutes: 1
+
+              steps:
+                - name: Require merge gates
+                  env:
+                    EVENT_NAME: ${{ github.event_name }}
+                    VERIFICATION_RESULT: ${{ needs.verification.result }}
+                    VERSION_RESULT: ${{ needs.release-version.result }}
+                  run: |
+                    failed=0
+
+                    if [ "$VERIFICATION_RESULT" != "success" ]; then
+                      echo "Implementation verification result: $VERIFICATION_RESULT"
+                      failed=1
+                    fi
+
+                    if [ "$EVENT_NAME" = "pull_request" ] && [ "$VERSION_RESULT" != "success" ]; then
+                      echo "PR version gate result: $VERSION_RESULT"
+                      failed=1
+                    fi
+
+                    exit "$failed"
+
+            deploy-preview:
+              needs: [verification]
+              if: >-
+                !cancelled() &&
+                needs.verification.result == 'success' &&
+          ''',
+              'preview dependency split',
+          )
+          workflow = replace_once(
+              workflow,
+              '''  deploy-develop:
+              needs: [verify]
+              if: >-
+                !cancelled() &&
+                needs.verify.result == 'success' &&
+          ''',
+              '''  deploy-develop:
+              needs: [verification]
+              if: >-
+                !cancelled() &&
+                needs.verification.result == 'success' &&
+          ''',
+              'develop dependency update',
+          )
+          write(workflow_path, workflow)
+
+          release_path = 'docs/release.md'
+          release = read(release_path)
+          release = replace_once(
+              release,
+              '''  published `main` changes back into `develop` and changes no runtime app
+            behavior. The `verify` job (including version validation) still runs.
+          ''',
+              '''  published `main` changes back into `develop` and changes no runtime app
+            behavior. The `release-version` job and aggregate `verify` merge gate still run.
+          ''',
+              'sync-back documentation',
+          )
+
+          ci_start = '- **`verify` workflow** (`.github/workflows/verify.yml`): PRs into any\n'
+          ci_end = '- **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`\n'
+          start = release.index(ci_start)
+          end = release.index(ci_end, start)
+          ci_block = '''- **`verify` workflow** (`.github/workflows/verify.yml`): PRs into any
+          branch except `main`, and pushes to `develop`. Its `pull_request` trigger uses
+          `branches-ignore: [main]`, so it never fires for a PR into `main`. The workflow
+          separates three responsibilities:
+          - `verification` runs focused development verification (`pnpm verify`,
+            changed-file scope) and owns whether deployable PR source is valid;
+          - PR-only `release-version` enforces the version-bump policy independently;
+          - aggregate `verify` preserves the required merge check and succeeds only when
+            `verification` and, for PRs, `release-version` both succeed.
+          `deploy-preview` depends only on `verification`: an incorrect PR version blocks
+          merge through `verify` but does not block the application and Storybook demo.
+          Implementation verification failures still block the preview. `deploy-develop`
+          also depends on `verification` for pushes to `develop` — see
+          `docs/release.md#organization-pages-deployment-model`.
+          '''
+          release = release[:start] + ci_block + release[end:]
+
+          preview_start = "PR previews remain owned by the `verify` workflow's `deploy-preview` job:\n"
+          preview_end = '\n\n`deploy-preview` checks out trusted tooling from the PR\'s **base** ref'
+          start = release.index(preview_start)
+          end = release.index(preview_end, start)
+          preview_block = '''PR previews remain owned by the `verify` workflow's `deploy-preview` job:
+          `BASE_URL=/pr/<number>/`, `VITE_DISABLE_PWA=1` (PWA stays disabled for PR
+          previews in this implementation), publishing to `pr/<number>/`. Publication is
+          gated by the `verification` job, not by the independent `release-version` merge
+          gate. Therefore an incorrect PR version does not block the demo, while failed
+          implementation verification still does. The sticky preview comment links to
+          `https://mioframe.github.io/pr/<number>/`. PR previews for release sync-back
+          branches remain skipped, as before (see `Release sync-back` above). PR preview
+          cleanup on PR close removes only that PR's `pr/<number>/` slot.'''
+          release = release[:start] + preview_block + release[end:]
+          write(release_path, release)
+
+          package_path = 'package.json'
+          package = replace_once(
+              read(package_path),
+              '  "version": "0.2.11",\n',
+              '  "version": "0.2.12",\n',
+              'package version',
+          )
+          write(package_path, package)
+
+          for temporary_path in (
+              '.github/workflows/apply-pr-preview-version-gate.yml',
+              '.github/workflows/run-pr-preview-version-gate-patch.yml',
+          ):
+              Path(temporary_path).unlink()
+
+          changed = set(
+              subprocess.run(
+                  ['git', 'diff', '--name-only'],
+                  check=True,
+                  text=True,
+                  capture_output=True,
+              ).stdout.splitlines()
+          )
+          expected = {
+              '.github/workflows/apply-pr-preview-version-gate.yml',
+              '.github/workflows/run-pr-preview-version-gate-patch.yml',
+              '.github/workflows/verify.yml',
+              'docs/release.md',
+              'package.json',
+          }
+          if changed != expected:
+              raise SystemExit(f'unexpected changed files: {sorted(changed)}')
           PY
-
-          if [ -f patch-error.txt ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add patch-error.txt
-            git commit -m "chore: record one-time patch failure"
-            git push origin HEAD:fix/pr-preview-version-gate
-            exit 1
-          fi
 
           git diff --check
           git config user.name "github-actions[bot]"
