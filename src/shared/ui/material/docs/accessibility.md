@@ -2,45 +2,61 @@
 
 ## Principle
 
-Accessibility is part of Material 3 alignment and must be considered with component choice, tokens, states, API design, and layout behavior.
+Accessibility is part of a Material component's design and implementation contract, not a final visual check.
 
-A component that looks visually close to Material 3 but has incorrect names, focus behavior, keyboard behavior, target size, semantics, or contrast is not Material 3 aligned.
+A component is not aligned when names, semantics, focus, keyboard behavior, target size, state exposure, or contrast are incorrect even if its visual appearance is close.
 
-## Baseline expectations
+## Requirements
 
-Shared Material components must define or preserve:
+Shared Material components define or preserve applicable:
 
-- accessible names for interactive controls;
-- keyboard activation and navigation where applicable;
+- accessible names;
+- native keyboard activation and navigation;
 - focus-visible behavior;
-- correct disabled and readonly semantics;
-- minimum target areas required by official Material guidance;
-- contrast-safe color role pairings;
-- semantic roles only when native HTML semantics are insufficient;
-- modal focus handling for dialogs, sheets, and overlays;
-- screen-reader-visible state when the state is meaningful.
+- disabled and readonly semantics;
+- minimum target areas;
+- contrast-safe role pairings;
+- native roles and states;
+- modal focus entry, containment, dismissal, and restoration;
+- assistive-technology exposure of meaningful state.
 
 ## Native semantics first
 
-Prefer native HTML semantics when they match the component behavior. Add ARIA only when native semantics are insufficient or when Material guidance requires an additional accessible description.
+Use the native HTML element that matches the behavior whenever possible.
 
-Do not add roles that conflict with the rendered element's native behavior.
+Add ARIA only when native semantics are insufficient. Do not add roles or attributes that conflict with the rendered element's behavior.
+
+## Ownership
+
+For every interactive or semantic part, identify the owner of:
+
+- native element or role;
+- accessible name and description;
+- focus and tab order;
+- disabled or readonly behavior;
+- semantic state exposure;
+- target area;
+- keyboard and pointer activation.
+
+Do not split one concern implicitly between parent, child, consumer, and foundation.
 
 ## Color and contrast
 
-Use Material color roles in their intended pairings. Do not remap color roles for visual effect when doing so can break contrast, dynamic color, or future contrast modes.
+Use Material color roles in their intended pairings. Do not remap roles for appearance when doing so can break contrast, dynamic color, or future contrast modes.
+
+Focus indicators and non-color state cues must remain perceivable against every supported container role.
 
 ## Target area
 
-Target area requirements belong to the component contract. Do not rely on consumers to add padding around undersized interactive controls.
-
-When Material docs define a minimum target area for a component or size, the component should enforce it internally or document an explicit deviation.
+The component owns target-area requirements published for its supported surface. Consumers must not need undocumented surrounding padding to make a control accessible.
 
 ## Verification
 
-Accessibility-sensitive changes require verification appropriate to the changed behavior:
+Use the proof type that observes the changed contract:
 
-- keyboard smoke check for keyboard/focus changes;
-- browser smoke or Playwright check for modal focus traps and overlays;
-- Storybook documentation for accessible names and required props;
-- visual checks for focus indicators and state layers when appearance changes.
+- component tests for native element, accessible name, explicit ARIA, disabled/readonly, and semantic-state wiring;
+- browser tests for focus order, keyboard operation, pointer targets, overlays, and restoration;
+- visual checks for focus indicators, target geometry, and contrast-sensitive state appearance;
+- assistive-technology smoke testing for complex composite widgets when required behavior cannot be established otherwise.
+
+Automated accessibility scans are supplemental and do not replace interaction verification.
