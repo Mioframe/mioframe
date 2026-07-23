@@ -20,7 +20,7 @@ Expected:
 - does not inspect Mioframe component source, tests, stories, consumers, tokens, README, or audits;
 - follows `DESIGN-TEMPLATE.md`;
 - records source IDs on every requirement group or table row;
-- returns `review-ready` or an evidence-backed `blocked`, never `approved`.
+- returns `review-ready` or an evidence-backed `blocked`, never newly sets `approved`.
 
 ## Evaluation 2: harmless alias
 
@@ -57,7 +57,7 @@ Expected:
 Prompt:
 
 ```text
-Use material-component-design for a current official component whose published pages omit at least one requested visual or interaction detail.
+Use material-component-design for a current official component whose published pages omit at least one visual or interaction detail.
 ```
 
 Expected:
@@ -77,13 +77,13 @@ Setup:
 Expected:
 
 - reads the existing artifact only as prior artifact state, never as Material authority;
-- preserves `approval: approved` only when the generated normative content is unchanged;
+- preserves `approval: approved` only when normative content and source evidence are unchanged;
 - resets approval to `pending` when any normative content, source snapshot, source conflict, or source gap changes;
 - never silently discards unresolved conflicts or prior source gaps.
 
-## Cross-model review
+## Cross-model results
 
-For each supported model record:
+Record actual results; do not prefill passes.
 
 | Model | Eval 1 | Eval 2 | Eval 3 | Eval 4 | Eval 5 | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -92,4 +92,4 @@ For each supported model record:
 | Claude Opus | not run | not run | not run | not run | not run | |
 | OpenAI coding model | not run | not run | not run | not run | not run | |
 
-Do not mark the skill stable from document review alone. Update the skill only from concrete failures observed during these runs.
+Update the skill only from concrete failures observed during these runs. Document review and repository CI verify structure and compatibility, not task effectiveness.
