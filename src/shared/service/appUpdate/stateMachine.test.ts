@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { ReleaseIdentity } from './contracts';
+import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
 import {
+  committedRelease,
   createInitialReleaseControllerState,
   isStrictlyNewerRelease,
-  migrateReleaseControllerState,
   projectAppUpdateSnapshot,
 } from './stateMachine';
 
@@ -21,41 +21,150 @@ describe('release controller state', () => {
     expect(isStrictlyNewerRelease(release('a', 1), running)).toBe(false);
     expect(isStrictlyNewerRelease(release('c', 2), running)).toBe(false);
     expect(isStrictlyNewerRelease(release('a', 3), running)).toBe(true);
+    expect(isStrictlyNewerRelease(undefined, running)).toBe(false);
   });
 
-  it('migrates a supported same-release Manual pin without resetting its mode', () => {
-    const current = release('a', 4);
-    expect(
-      migrateReleaseControllerState(
-        { schemaVersion: 1, mode: 'manual', activeRelease: current, pinnedRelease: current },
-        current,
-      ),
-    ).toMatchObject({ schemaVersion: 2, mode: 'manual', pinnedRelease: current });
-    expect(
-      migrateReleaseControllerState(
-        {
-          schemaVersion: 1,
-          mode: 'manual',
-          activeRelease: current,
-          pinnedRelease: release('b', 3),
-        },
-        current,
-      ),
-    ).toBeUndefined();
-  });
-
-  it('projects only UI-safe facts', () => {
+  it('creates a fresh Automatic state naming no check or preparation activity', () => {
     const current = release('a', 1);
-    const state = {
+    expect(createInitialReleaseControllerState(current)).toEqual({
+      schemaVersion: 3,
+      mode: 'automatic',
+      activeRelease: current,
+      failedReleaseIds: [],
+      check: { status: 'idle' },
+      preparation: { status: 'idle' },
+    });
+  });
+
+  it('serves the Manual pin over the active release, and the active release otherwise', () => {
+    const active = release('a', 1);
+    const pinned = release('b', 2);
+    expect(
+      committedRelease({
+        ...createInitialReleaseControllerState(active),
+        mode: 'manual',
+        pinnedRelease: pinned,
+      }),
+    ).toEqual(pinned);
+    expect(committedRelease(createInitialReleaseControllerState(active))).toEqual(active);
+  });
+
+  it('projects only UI-safe facts and never the private state shape', () => {
+    const current = release('a', 1);
+    const target = release('b', 2);
+    const state: ReleaseControllerState = {
       ...createInitialReleaseControllerState(current),
-      preparedRelease: release('b', 2),
-      preparationState: 'ready' as const,
-      checkOperationId: 'private-check',
+      latestRelease: target,
+      preparation: { status: 'ready', release: target },
     };
     const snapshot = projectAppUpdateSnapshot(state);
-    expect(snapshot).toMatchObject({ runningRelease: current, preparationState: 'ready' });
-    expect(snapshot).not.toHaveProperty('preparedRelease');
-    expect(snapshot).not.toHaveProperty('checkOperationId');
-    expect(snapshot).not.toHaveProperty('activationTransaction');
+    expect(snapshot).toEqual({
+      capability: 'available',
+      mode: 'automatic',
+      runningRelease: current,
+      latestRelease: target,
+      updateState: 'ready',
+    });
+    expect(snapshot).not.toHaveProperty('preparation');
+    expect(snapshot).not.toHaveProperty('trial');
+    expect(snapshot).not.toHaveProperty('failedReleaseIds');
+    expect(snapshot).not.toHaveProperty('check');
+  });
+
+  it('reports capability unavailable as given, independent of state contents', () => {
+    const current = release('a', 1);
+    const snapshot = projectAppUpdateSnapshot(
+      createInitialReleaseControllerState(current),
+      'unavailable',
+    );
+    expect(snapshot.capability).toBe('unavailable');
+  });
+
+  describe('updateState precedence', () => {
+    const current = release('a', 1);
+    const target = release('b', 2);
+    const base = createInitialReleaseControllerState(current);
+
+    it('is trialStarting whenever a trial is in progress, ahead of any other fact', () => {
+      const state: ReleaseControllerState = {
+        ...base,
+        latestRelease: target,
+        preparation: { status: 'failed', release: target },
+        trial: {
+          targetRelease: target,
+          previousRelease: current,
+          startedAt: '2026-07-23T00:00:00.000Z',
+          expiresAt: '2026-07-23T00:01:00.000Z',
+        },
+      };
+      expect(projectAppUpdateSnapshot(state).updateState).toBe('trialStarting');
+    });
+
+    it('is preparing while preparation runs', () => {
+      const state: ReleaseControllerState = {
+        ...base,
+        latestRelease: target,
+        preparation: {
+          status: 'running',
+          release: target,
+          operationId: 'op',
+          startedAt: '2026-07-23T00:00:00.000Z',
+        },
+      };
+      expect(projectAppUpdateSnapshot(state).updateState).toBe('preparing');
+    });
+
+    it('is ready only while the ready target is still newer than the served release', () => {
+      const ready: ReleaseControllerState = {
+        ...base,
+        latestRelease: target,
+        preparation: { status: 'ready', release: target },
+      };
+      expect(projectAppUpdateSnapshot(ready).updateState).toBe('ready');
+      const staleReady: ReleaseControllerState = { ...ready, activeRelease: target };
+      expect(projectAppUpdateSnapshot(staleReady).updateState).not.toBe('ready');
+    });
+
+    it('is failed after a failed preparation or a failed check', () => {
+      expect(
+        projectAppUpdateSnapshot({
+          ...base,
+          latestRelease: target,
+          preparation: { status: 'failed', release: target },
+        }).updateState,
+      ).toBe('failed');
+      expect(projectAppUpdateSnapshot({ ...base, check: { status: 'failed' } }).updateState).toBe(
+        'failed',
+      );
+    });
+
+    it('is checking while a check runs', () => {
+      expect(
+        projectAppUpdateSnapshot({
+          ...base,
+          check: { status: 'running', operationId: 'op', startedAt: '2026-07-23T00:00:00.000Z' },
+        }).updateState,
+      ).toBe('checking');
+    });
+
+    it('is available once a strictly newer latest release is known', () => {
+      expect(
+        projectAppUpdateSnapshot({
+          ...base,
+          latestRelease: target,
+          check: { status: 'idle', lastSuccessAt: '2026-07-23T00:00:00.000Z' },
+        }).updateState,
+      ).toBe('available');
+    });
+
+    it('is notChecked before any successful check and upToDate after one with nothing newer', () => {
+      expect(projectAppUpdateSnapshot(base).updateState).toBe('notChecked');
+      expect(
+        projectAppUpdateSnapshot({
+          ...base,
+          check: { status: 'idle', lastSuccessAt: '2026-07-23T00:00:00.000Z' },
+        }).updateState,
+      ).toBe('upToDate');
+    });
   });
 });

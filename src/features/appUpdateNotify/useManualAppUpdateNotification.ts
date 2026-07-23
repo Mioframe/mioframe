@@ -12,9 +12,8 @@ export const useManualAppUpdateNotification = () => {
     () => snapshot.value?.latestRelease?.releaseId,
     (releaseId) => {
       if (!releaseId || observedReleaseIds.has(releaseId)) return;
-      const isFirstObservation = observedReleaseIds.size === 0;
       observedReleaseIds.add(releaseId);
-      if (!isFirstObservation && snapshot.value?.mode === 'manual' && hasUpdate.value) {
+      if (snapshot.value?.mode === 'manual' && hasUpdate.value) {
         addSnackbar({ text: 'A new app version is available' });
       }
     },

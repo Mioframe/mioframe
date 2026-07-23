@@ -4,8 +4,10 @@ import type {
   AppUpdateMode,
   AppUpdateSnapshot,
 } from '@shared/service/appUpdate/publicContracts';
-import type { ReleaseControllerCommand } from '@shared/service/appUpdate/contracts';
-import type { ControllerResponse } from '@shared/service/appUpdate/controller';
+import type {
+  ControllerResponse,
+  ReleaseControllerCommand,
+} from '@shared/service/appUpdate/contracts';
 
 /** High-level managed-update actions and factual snapshot reads available to application code. */
 export type AppUpdateClient = {
@@ -15,7 +17,7 @@ export type AppUpdateClient = {
   checkForUpdates(): Promise<AppUpdateActionResult>;
   /** Persist the selected Automatic or Manual update mode. */
   setMode(mode: AppUpdateMode): Promise<AppUpdateActionResult>;
-  /** Start preparation and coordinated activation of the latest forward release. */
+  /** Start preparation and, once ready, a single-window trial of the latest forward release. */
   updateNow(): Promise<AppUpdateActionResult>;
   /** Observe factual persisted snapshot changes broadcast to this stable window. */
   subscribeToSnapshot(listener: (snapshot: AppUpdateSnapshot) => void): () => void;
@@ -24,14 +26,12 @@ export type AppUpdateClient = {
 const unavailableSnapshot: AppUpdateSnapshot = {
   capability: 'unavailable',
   mode: 'automatic',
-  checkState: 'notChecked',
-  preparationState: 'idle',
-  activationState: 'idle',
+  updateState: 'notChecked',
   errorCode: 'capabilityUnavailable',
 };
 
 const listeners = new Set<(snapshot: AppUpdateSnapshot) => void>();
-let restartReady = () => true;
+let vfsReady = () => true;
 let registrationPromise: Promise<ServiceWorkerRegistration> | undefined;
 let hooksInstalled = false;
 
@@ -112,14 +112,14 @@ const action = async (command: ReleaseControllerCommand): Promise<AppUpdateActio
 };
 
 /**
- * Install the stable-window readiness callback used by coordinated restart.
- * @param readiness - Returns whether this stable window can safely restart.
+ * Install the stable-window readiness callback used before a Manual `Update now` reloads it.
+ * @param readiness - Returns whether this stable window can safely give up control right now.
  * @returns Cleanup that restores the default ready response.
  */
 export const setupAppUpdateRestartReadiness = (readiness: () => boolean): (() => void) => {
-  restartReady = readiness;
+  vfsReady = readiness;
   return () => {
-    restartReady = () => true;
+    vfsReady = () => true;
   };
 };
 
@@ -127,17 +127,10 @@ if (MANAGED_APP_UPDATES_AVAILABLE && 'serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data?.type === 'APP_UPDATE_SNAPSHOT') {
       publish(event.data.snapshot);
-    } else if (event.data?.type === 'PRIVATE_RESTART_READINESS') {
-      event.ports[0]?.postMessage({ status: restartReady() ? 'ready' : 'busy' });
-    } else if (
-      event.data?.type === 'PRIVATE_UPDATE_RELOAD' &&
-      typeof event.data.transactionId === 'string' &&
-      typeof event.data.oldClientId === 'string'
-    ) {
-      const url = new URL(window.location.href);
-      url.searchParams.set('__mioframe_restart_transaction', event.data.transactionId);
-      url.searchParams.set('__mioframe_restart_client', event.data.oldClientId);
-      window.location.replace(url);
+    } else if (event.data?.type === 'PRIVATE_VFS_READINESS') {
+      event.ports[0]?.postMessage({ ready: vfsReady() });
+    } else if (event.data?.type === 'PRIVATE_UPDATE_RELOAD') {
+      window.location.reload();
     }
   });
 }
@@ -146,16 +139,16 @@ if (MANAGED_APP_UPDATES_AVAILABLE && 'serviceWorker' in navigator) {
 export const appUpdateClient: AppUpdateClient = {
   async getSnapshot() {
     if (!MANAGED_APP_UPDATES_AVAILABLE) return unavailableSnapshot;
-    const response = await send({ protocolVersion: 2, type: 'GET_SNAPSHOT' });
+    const response = await send({ protocolVersion: 3, type: 'GET_SNAPSHOT' });
     if (response?.kind === 'snapshot') {
       publish(response.snapshot);
       return response.snapshot;
     }
     return unavailableSnapshot;
   },
-  checkForUpdates: () => action({ protocolVersion: 2, type: 'CHECK_FOR_UPDATES' }),
-  setMode: (mode) => action({ protocolVersion: 2, type: 'SET_MODE', mode }),
-  updateNow: () => action({ protocolVersion: 2, type: 'UPDATE_NOW' }),
+  checkForUpdates: () => action({ protocolVersion: 3, type: 'CHECK_FOR_UPDATES' }),
+  setMode: (mode) => action({ protocolVersion: 3, type: 'SET_MODE', mode }),
+  updateNow: () => action({ protocolVersion: 3, type: 'UPDATE_NOW' }),
   subscribeToSnapshot(listener) {
     listeners.add(listener);
     return () => listeners.delete(listener);
@@ -173,16 +166,7 @@ export const setupManagedAppUpdates = async (): Promise<AppUpdateSnapshot> => {
   }
   const snapshot = await appUpdateClient.getSnapshot();
   if (snapshot.capability === 'available') {
-    await action({ protocolVersion: 2, type: 'PRIVATE_BOOT_READY', releaseId: runningReleaseId });
-    if (
-      window.location.search.includes('__mioframe_restart_transaction=') ||
-      window.location.search.includes('__mioframe_restart_client=')
-    ) {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('__mioframe_restart_transaction');
-      url.searchParams.delete('__mioframe_restart_client');
-      window.history.replaceState(window.history.state, '', url);
-    }
+    await action({ protocolVersion: 3, type: 'PRIVATE_BOOT_READY', releaseId: runningReleaseId });
     if (!hooksInstalled) {
       hooksInstalled = true;
       const checkWhenReachable = () => {

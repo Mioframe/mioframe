@@ -24,9 +24,7 @@ const isEnablingStorage = ref(false);
 const appUpdateSnapshot = ref({
   capability: 'available' as const,
   mode: 'automatic' as const,
-  checkState: 'notChecked' as const,
-  preparationState: 'idle' as const,
-  activationState: 'idle' as const,
+  updateState: 'notChecked' as const,
 });
 
 vi.mock('@entity/appUpdate', () => ({
@@ -293,9 +291,7 @@ describe('SettingsSections', () => {
     appUpdateSnapshot.value = {
       capability: 'available',
       mode: 'automatic',
-      checkState: 'notChecked',
-      preparationState: 'idle',
-      activationState: 'idle',
+      updateState: 'notChecked',
     };
     settings.value = {};
     browserStorageStatus.value = 'checking';

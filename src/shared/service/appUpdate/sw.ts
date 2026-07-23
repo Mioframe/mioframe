@@ -1,19 +1,23 @@
 /// <reference lib="webworker" />
 
 import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
-import { releaseDescriptorSchema } from './contracts';
+import { RELEASE_DESCRIPTOR_SCHEMA_VERSION, releaseDescriptorSchema } from './contracts';
 import { createReleaseController } from './controller';
 import { createReleaseControllerStateStore } from './persistence';
 import { getReleaseResponse, isReleaseAvailable, prepareRelease } from './releaseCache';
 import {
-  associateReplacementNavigation,
-  createActivationTransaction,
-  releaseForClient,
-  rollbackExpiredActivation,
-  rollbackFailedReplacementNavigation,
-} from './activationTransaction';
-import { getStableWindowClients, isStableAppUrl, isStableAppWindowClient } from './stableClients';
-import { projectAppUpdateSnapshot } from './stateMachine';
+  createStableClientRegistry,
+  getStableWindowClients,
+  isStableAppUrl,
+  isStableAppWindowClient,
+} from './stableClients';
+import { isStrictlyNewerRelease, projectAppUpdateSnapshot } from './stateMachine';
+import {
+  associateTrialNavigation,
+  createTrial,
+  rollbackExpiredTrial,
+  selectServedRelease,
+} from './trial';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -24,6 +28,7 @@ declare global {
 }
 
 const store = createReleaseControllerStateStore();
+const registry = createStableClientRegistry();
 let currentReleasePromise: Promise<ReleaseIdentity> | undefined;
 
 const loadCurrentRelease = (): Promise<ReleaseIdentity> => {
@@ -35,62 +40,49 @@ const loadCurrentRelease = (): Promise<ReleaseIdentity> => {
   return currentReleasePromise;
 };
 
-const broadcastSnapshot = async (state: ReleaseControllerState): Promise<void> => {
-  for (const client of await getStableWindowClients()) {
-    client.postMessage({
-      type: 'APP_UPDATE_SNAPSHOT',
-      snapshot: projectAppUpdateSnapshot(state, releaseForClient(state, client.id)),
-    });
-  }
-};
+const descriptorFor = (release: ReleaseIdentity) => ({
+  schemaVersion: RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+  release,
+  descriptorUrl: `/updates/releases/${release.releaseId}.json`,
+});
 
-const requestRestartReadiness = async () => {
-  const clients = await getStableWindowClients();
-  const results = await Promise.all(
-    clients.map(
-      (client) =>
-        new Promise<'ready' | 'busy' | 'unresponsive'>((resolve) => {
-          const channel = new MessageChannel();
-          const timeout = setTimeout(() => {
-            resolve('unresponsive');
-          }, 2_000);
-          channel.port1.onmessage = (event: MessageEvent<{ status?: string }>) => {
-            clearTimeout(timeout);
-            resolve(event.data.status === 'ready' ? 'ready' : 'busy');
-          };
-          client.postMessage({ type: 'PRIVATE_RESTART_READINESS' }, [channel.port2]);
-        }),
-    ),
-  );
-  return {
-    status: results.includes('unresponsive')
-      ? ('unresponsive' as const)
-      : results.includes('busy')
-        ? ('busy' as const)
-        : ('ready' as const),
-    clientIds: clients.map(({ id }) => id),
-  };
+const broadcastSnapshot = async (state: ReleaseControllerState): Promise<void> => {
+  const snapshot = projectAppUpdateSnapshot(state);
+  for (const client of await getStableWindowClients()) {
+    client.postMessage({ type: 'APP_UPDATE_SNAPSHOT', snapshot });
+  }
 };
 
 const createController = async () =>
   createReleaseController({
     currentRelease: await loadCurrentRelease(),
     store,
-    readiness: requestRestartReadiness,
+    registeredStableWindows: () => registry.getRegisteredStableWindowClients(),
+    async vfsReadiness(clientId) {
+      const client = (await registry.getRegisteredStableWindowClients()).find(
+        ({ id }) => id === clientId,
+      );
+      if (!client) return true;
+      return new Promise<boolean>((resolve) => {
+        const channel = new MessageChannel();
+        const timeout = setTimeout(() => {
+          resolve(false);
+        }, 2_000);
+        channel.port1.onmessage = (event: MessageEvent<{ ready?: boolean }>) => {
+          clearTimeout(timeout);
+          resolve(event.data.ready !== false);
+        };
+        client.postMessage({ type: 'PRIVATE_VFS_READINESS' }, [channel.port2]);
+      });
+    },
     publish(state) {
       void broadcastSnapshot(state);
     },
-    async onActivationStarted(transactionId, clientIds) {
-      const clients = await getStableWindowClients();
-      clients
-        .filter((client) => clientIds.includes(client.id))
-        .forEach((client) => {
-          client.postMessage({
-            type: 'PRIVATE_UPDATE_RELOAD',
-            transactionId,
-            oldClientId: client.id,
-          });
-        });
+    async onTrialStarted(_target, clientId) {
+      const client = (await registry.getRegisteredStableWindowClients()).find(
+        ({ id }) => id === clientId,
+      );
+      client?.postMessage({ type: 'PRIVATE_UPDATE_RELOAD' });
     },
   });
 
@@ -107,34 +99,29 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const currentRelease = await loadCurrentRelease();
-      const state = await store.read(currentRelease);
+      const controller = await getController();
+      await controller.reconcile();
+      const read = await store.read(currentRelease);
       const selected =
-        state.mode === 'manual'
-          ? (state.pinnedRelease ?? state.activeRelease)
-          : state.activeRelease;
+        read.capability === 'available' ? selectServedRelease(read.state) : currentRelease;
       if (!(await isReleaseAvailable(selected))) {
-        await prepareRelease({
-          schemaVersion: 2,
-          release: selected,
-          descriptorUrl: `/updates/releases/${selected.releaseId}.json`,
-        });
+        await prepareRelease(descriptorFor(selected));
       }
       await self.clients.claim();
-      await broadcastSnapshot(state);
+      if (read.capability === 'available') await broadcastSnapshot(read.state);
     })(),
   );
 });
 
 self.addEventListener('message', (event) => {
   const source = event.source;
-  if (source && (!('url' in source) || !isStableAppWindowClient(source))) return;
+  if (!source || !('url' in source) || !isStableAppWindowClient(source)) return;
+  const clientId = 'id' in source ? source.id : '';
+  registry.register(clientId);
   event.waitUntil(
     (async () => {
       const controller = await getController();
-      const execution = await controller.execute(
-        event.data,
-        source && 'id' in source ? source.id : '',
-      );
+      const execution = await controller.execute(event.data, clientId);
       event.ports[0]?.postMessage(execution.response);
       if (execution.background) await execution.background();
     })(),
@@ -143,41 +130,34 @@ self.addEventListener('message', (event) => {
 
 const selectNavigationRelease = async (event: FetchEvent): Promise<ReleaseIdentity> => {
   const currentRelease = await loadCurrentRelease();
-  let state = rollbackExpiredActivation(await store.read(currentRelease), new Date());
-  const url = new URL(event.request.url);
-  const restartTransactionId = url.searchParams.get('__mioframe_restart_transaction');
-  const restartOldClientId = url.searchParams.get('__mioframe_restart_client');
-  const transaction = state.activationTransaction;
-  const tokenOldClientId =
-    transaction &&
-    restartTransactionId === transaction.transactionId &&
-    restartOldClientId &&
-    transaction.expectedOldClientIds.includes(restartOldClientId)
-      ? restartOldClientId
-      : '';
-  const replacesClientId = event.replacesClientId || tokenOldClientId;
-  state = rollbackFailedReplacementNavigation(state, replacesClientId);
-  if (
-    !state.activationTransaction &&
+  const read = await store.read(currentRelease);
+  if (read.capability === 'unavailable') return currentRelease;
+
+  let state = rollbackExpiredTrial(read.state, new Date());
+  const navigatingClientId = event.resultingClientId || event.clientId;
+  if (state.trial) {
+    state = associateTrialNavigation(state, navigatingClientId);
+  } else if (
     state.mode === 'automatic' &&
-    state.preparedRelease &&
-    (await getStableWindowClients()).filter(({ id }) => id !== event.resultingClientId).length === 0
+    state.preparation.status === 'ready' &&
+    isStrictlyNewerRelease(state.preparation.release, state.activeRelease) &&
+    !state.failedReleaseIds.includes(state.preparation.release.releaseId) &&
+    (await registry.getRegisteredStableWindowClients()).filter(
+      ({ id }) => id !== navigatingClientId,
+    ).length === 0
   ) {
-    state = createActivationTransaction({
+    state = createTrial({
       state,
-      targetRelease: state.preparedRelease,
-      oldClientIds: [],
+      targetRelease: state.preparation.release,
       now: new Date(),
+      initiatingClientId: navigatingClientId,
     });
   }
-  state = associateReplacementNavigation(
-    state,
-    replacesClientId,
-    event.resultingClientId || event.clientId,
-  );
-  await store.write(state);
-  await broadcastSnapshot(state);
-  return releaseForClient(state, event.resultingClientId || event.clientId);
+  if (state !== read.state) {
+    await store.write(state);
+    await broadcastSnapshot(state);
+  }
+  return selectServedRelease(state);
 };
 
 self.addEventListener('fetch', (event) => {
@@ -188,22 +168,29 @@ self.addEventListener('fetch', (event) => {
     (async () => {
       const navigation = event.request.mode === 'navigate';
       const currentRelease = await loadCurrentRelease();
-      const state = await store.read(currentRelease);
       const release = navigation
         ? await selectNavigationRelease(event)
-        : releaseForClient(state, event.clientId);
+        : await (async () => {
+            const read = await store.read(currentRelease);
+            return read.capability === 'available'
+              ? selectServedRelease(read.state)
+              : currentRelease;
+          })();
       let response = await getReleaseResponse(release, url.pathname, navigation);
-      if (
-        !response &&
-        state.mode === 'manual' &&
-        state.pinnedRelease?.releaseId === release.releaseId
-      ) {
-        await prepareRelease({
-          schemaVersion: 2,
-          release,
-          descriptorUrl: `/updates/releases/${release.releaseId}.json`,
-        });
-        response = await getReleaseResponse(release, url.pathname, navigation);
+      if (!response) {
+        const read = await store.read(currentRelease);
+        const isMissingManualPin =
+          read.capability === 'available' &&
+          read.state.mode === 'manual' &&
+          read.state.pinnedRelease?.releaseId === release.releaseId;
+        if (isMissingManualPin) {
+          try {
+            await prepareRelease(descriptorFor(release));
+            response = await getReleaseResponse(release, url.pathname, navigation);
+          } catch {
+            // Offline or otherwise unavailable; fall through to network below.
+          }
+        }
       }
       return response ?? fetch(event.request);
     })(),

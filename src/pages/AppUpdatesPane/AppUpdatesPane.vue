@@ -26,29 +26,45 @@ const isActionPending = computed(
 );
 const immediateErrorCode = computed(() => {
   const results = [checkAction.result.value, modeAction.result.value, applyAction.result.value];
-  return results.find((result) => result?.status === 'error')?.code;
+  return results.find((result) => result !== undefined && result.status !== 'accepted')?.code;
 });
 const effectiveErrorCode = computed(() => immediateErrorCode.value ?? snapshot.value?.errorCode);
 const primaryStatus = computed(() => {
   const value = snapshot.value;
   if (!value || value.capability === 'unavailable') return 'Status unavailable';
-  if (value.activationState === 'blockedByActivity' || value.activationState === 'blockedByWindow')
-    return 'Restart blocked';
-  if (value.activationState === 'restarting') return 'Restarting';
-  if (value.checkState === 'checking') return 'Checking for updates';
-  if (value.preparationState === 'preparing') return 'Preparing update';
-  if (value.checkState === 'failed') return 'Could not check for updates';
-  if (value.preparationState === 'failed') return 'Could not prepare update';
-  if (!value.lastSuccessfulCheckAt) return 'Not checked yet';
-  if (!hasUpdate.value) return 'Up to date';
-  return value.preparationState === 'ready' ? 'Update ready' : 'Update available';
+  if (
+    effectiveErrorCode.value === 'blockedByActivity' ||
+    effectiveErrorCode.value === 'blockedByOtherWindows'
+  )
+    return 'Update blocked';
+  switch (value.updateState) {
+    case 'notChecked':
+      return 'Not checked yet';
+    case 'checking':
+      return 'Checking for updates';
+    case 'preparing':
+      return 'Preparing update';
+    case 'trialStarting':
+      return 'Starting update';
+    case 'failed':
+      return effectiveErrorCode.value === 'preparationFailed'
+        ? 'Could not prepare update'
+        : 'Could not check for updates';
+    case 'ready':
+      return 'Update ready';
+    case 'available':
+      return 'Update available';
+    case 'upToDate':
+    default:
+      return 'Up to date';
+  }
 });
 const operationExplanation = computed(() => {
   switch (effectiveErrorCode.value) {
-    case 'restartBusy':
+    case 'blockedByActivity':
       return 'Changes are still being saved in an open window. Try again when saving finishes.';
-    case 'restartUnresponsive':
-      return 'An open Mioframe window did not confirm that it is ready to restart.';
+    case 'blockedByOtherWindows':
+      return 'Close other Mioframe windows to update.';
     case 'checkFailed':
     case 'invalidReleaseMetadata':
       return 'Mioframe could not confirm whether a newer version is available.';
@@ -119,7 +135,7 @@ const onUpdateNow = () => {
       <MDButton
         v-if="showUpdateNow"
         label="Update now"
-        :loading="applyAction.pending.value || snapshot?.preparationState === 'preparing'"
+        :loading="applyAction.pending.value || snapshot?.updateState === 'preparing'"
         :disabled="isActionPending"
         @click="onUpdateNow"
       />

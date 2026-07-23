@@ -94,6 +94,117 @@ describe('stable release publication', () => {
     expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('collision');
   });
 
+  it('remains forward after latest.json is rolled back to an older retained release', () => {
+    applyManagedStablePublish(workDir, distDir); // 'a', sequence 1
+
+    write(
+      distDir,
+      'deployment.json',
+      JSON.stringify({
+        channel: 'stable',
+        channelId: 'main',
+        sha: 'b'.repeat(40),
+        appVersion: '1.2.3',
+        buildDate: '2026-07-23T01:00:00.000Z',
+      }),
+    );
+    applyManagedStablePublish(workDir, distDir); // 'b', sequence 2
+
+    // Roll the pointer back to 'a' while 'b' remains fully retained on disk.
+    const rolledBack = JSON.stringify({
+      schemaVersion: 2,
+      release: {
+        releaseId: sha,
+        releaseSequence: 1,
+        appVersion: '1.2.3',
+        buildId: sha.slice(0, 7),
+        buildDate: '2026-07-23T00:00:00.000Z',
+      },
+      descriptorUrl: `/updates/releases/${sha}.json`,
+    });
+    write(workDir, 'updates/latest.json', rolledBack);
+
+    write(
+      distDir,
+      'deployment.json',
+      JSON.stringify({
+        channel: 'stable',
+        channelId: 'main',
+        sha: 'd'.repeat(40),
+        appVersion: '1.3.0',
+        buildDate: '2026-07-23T02:00:00.000Z',
+      }),
+    );
+    const published = applyManagedStablePublish(workDir, distDir);
+    expect(published.identity.releaseSequence).toBe(3);
+    expect(
+      JSON.parse(readFileSync(join(workDir, 'updates/latest.json'), 'utf8')).release
+        .releaseSequence,
+    ).toBe(3);
+  });
+
+  it('republishes a retained non-latest release idempotently at its original sequence', () => {
+    applyManagedStablePublish(workDir, distDir); // 'a', sequence 1
+    write(
+      distDir,
+      'deployment.json',
+      JSON.stringify({
+        channel: 'stable',
+        channelId: 'main',
+        sha: 'b'.repeat(40),
+        appVersion: '1.2.3',
+        buildDate: '2026-07-23T01:00:00.000Z',
+      }),
+    );
+    applyManagedStablePublish(workDir, distDir); // 'b', sequence 2, now latest
+
+    write(
+      distDir,
+      'deployment.json',
+      JSON.stringify({
+        channel: 'stable',
+        channelId: 'main',
+        sha,
+        appVersion: '1.2.3',
+        buildDate: '2026-07-23T00:00:00.000Z',
+      }),
+    );
+    const republished = applyManagedStablePublish(workDir, distDir);
+    expect(republished.identity.releaseSequence).toBe(1);
+  });
+
+  it('rejects a duplicate sequence already owned by a different retained release id', () => {
+    write(
+      workDir,
+      `updates/releases/${'a'.repeat(40)}.json`,
+      JSON.stringify({
+        schemaVersion: 2,
+        releaseId: 'a'.repeat(40),
+        releaseSequence: 5,
+        appVersion: '1.0.0',
+        buildId: 'aaaaaaa',
+        buildDate: '2026-07-23T00:00:00.000Z',
+        indexUrl: `/updates/releases/${'a'.repeat(40)}/index.html`,
+        files: [],
+      }),
+    );
+    write(
+      workDir,
+      `updates/releases/${'b'.repeat(40)}.json`,
+      JSON.stringify({
+        schemaVersion: 2,
+        releaseId: 'b'.repeat(40),
+        releaseSequence: 5,
+        appVersion: '1.0.0',
+        buildId: 'bbbbbbb',
+        buildDate: '2026-07-23T01:00:00.000Z',
+        indexUrl: `/updates/releases/${'b'.repeat(40)}/index.html`,
+        files: [],
+      }),
+    );
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('collision');
+  });
+
   it('fails the complete artifact size guard before changing the latest pointer', () => {
     const oldLatest = JSON.stringify({
       schemaVersion: 2,

@@ -1,5 +1,4 @@
-import type { AppUpdateSnapshot } from './publicContracts';
-import { z } from 'zod';
+import type { AppUpdateSnapshot, AppUpdateState } from './publicContracts';
 import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
 import { RELEASE_CONTROLLER_SCHEMA_VERSION } from './contracts';
 
@@ -27,59 +26,56 @@ export const createInitialReleaseControllerState = (
   mode: 'automatic',
   activeRelease: release,
   failedReleaseIds: [],
-  checkState: 'notChecked',
-  preparationState: 'idle',
-  activationState: 'idle',
+  check: { status: 'idle' },
+  preparation: { status: 'idle' },
 });
 
 /**
- * Explicitly migrate the supported previous controller schema.
- * @param value - Stored previous-schema candidate.
- * @param currentRelease - Currently served release used for safe identity recovery.
- * @returns Migrated state, or undefined when safe migration is impossible.
+ * Release actually committed and confirmed running, independent of any in-flight trial.
+ * @param state - Private durable controller state.
+ * @returns The committed Manual pin or Automatic active release.
  */
-export const migrateReleaseControllerState = (
-  value: unknown,
-  currentRelease: ReleaseIdentity,
-): ReleaseControllerState | undefined => {
-  const parsed = z
-    .object({
-      schemaVersion: z.literal(1),
-      mode: z.enum(['automatic', 'manual']),
-      activeRelease: z.object({ releaseId: z.string() }),
-      pinnedRelease: z.object({ releaseId: z.string() }).optional(),
-    })
-    .safeParse(value);
-  if (!parsed.success) return undefined;
-  const record = parsed.data;
-  if (record.activeRelease.releaseId !== currentRelease.releaseId) return undefined;
-  if (record.mode === 'manual' && record.pinnedRelease?.releaseId !== currentRelease.releaseId)
-    return undefined;
-  return {
-    ...createInitialReleaseControllerState(currentRelease),
-    mode: record.mode === 'manual' ? 'manual' : 'automatic',
-    pinnedRelease: record.mode === 'manual' ? currentRelease : undefined,
-  };
+export const committedRelease = (state: ReleaseControllerState): ReleaseIdentity =>
+  state.mode === 'manual' ? (state.pinnedRelease ?? state.activeRelease) : state.activeRelease;
+
+const projectUpdateState = (
+  state: ReleaseControllerState,
+  runningRelease: ReleaseIdentity,
+): AppUpdateState => {
+  if (state.trial) return 'trialStarting';
+  if (state.preparation.status === 'running') return 'preparing';
+  if (
+    state.preparation.status === 'ready' &&
+    isStrictlyNewerRelease(state.preparation.release, runningRelease)
+  )
+    return 'ready';
+  if (state.preparation.status === 'failed') return 'failed';
+  if (state.check.status === 'running') return 'checking';
+  if (state.check.status === 'failed') return 'failed';
+  if (isStrictlyNewerRelease(state.latestRelease, runningRelease)) return 'available';
+  if (!state.check.lastSuccessAt) return 'notChecked';
+  return 'upToDate';
 };
 
 /**
  * Project private controller state into the factual UI-safe snapshot.
  * @param state - Private durable controller state.
- * @param runningRelease - Release executing in the requesting client.
+ * @param capability - Whether persisted state could be read this session.
  * @returns UI-safe factual snapshot.
  */
 export const projectAppUpdateSnapshot = (
   state: ReleaseControllerState,
-  runningRelease = state.pinnedRelease ?? state.activeRelease,
-): AppUpdateSnapshot => ({
-  capability: state.capabilityUnavailable ? 'unavailable' : 'available',
-  mode: state.mode,
-  runningRelease,
-  ...(state.pinnedRelease && { pinnedRelease: state.pinnedRelease }),
-  ...(state.confirmedLatestRelease && { latestRelease: state.confirmedLatestRelease }),
-  checkState: state.checkState,
-  preparationState: state.preparationState,
-  activationState: state.activationState,
-  ...(state.lastSuccessfulCheckAt && { lastSuccessfulCheckAt: state.lastSuccessfulCheckAt }),
-  ...(state.errorCode && { errorCode: state.errorCode }),
-});
+  capability: 'available' | 'unavailable' = 'available',
+): AppUpdateSnapshot => {
+  const runningRelease = committedRelease(state);
+  return {
+    capability,
+    mode: state.mode,
+    runningRelease,
+    ...(state.pinnedRelease && { pinnedRelease: state.pinnedRelease }),
+    ...(state.latestRelease && { latestRelease: state.latestRelease }),
+    updateState: projectUpdateState(state, runningRelease),
+    ...(state.check.lastSuccessAt && { lastSuccessfulCheckAt: state.check.lastSuccessAt }),
+    ...(state.errorCode && { errorCode: state.errorCode }),
+  };
+};

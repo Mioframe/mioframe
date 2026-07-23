@@ -1,4 +1,8 @@
-const FOREIGN_STABLE_PATH_PREFIXES = ['/branch/', '/external/', '/pr/', '/updates/', '/storybook/'];
+/// <reference lib="webworker" />
+
+declare const self: ServiceWorkerGlobalScope;
+
+const FOREIGN_STABLE_PATH_PREFIXES = ['/branch/', '/pr/', '/updates/', '/storybook/'];
 
 /**
  * Decide whether a URL belongs to the root stable application route space.
@@ -39,6 +43,32 @@ export const getStableWindowClients = async (): Promise<WindowClient[]> =>
   (await self.clients.matchAll({ type: 'window', includeUncontrolled: false })).filter((client) =>
     isStableAppWindowClient(client),
   );
-/// <reference lib="webworker" />
 
-declare const self: ServiceWorkerGlobalScope;
+/** Private in-memory registry of stable windows that completed their own app startup. */
+export type StableClientRegistry = {
+  /** Record that a stable window client sent a message after completing its own app startup. */
+  register(clientId: string): void;
+  /** Live, controlled stable windows that have also completed app startup this worker lifetime. */
+  getRegisteredStableWindowClients(): Promise<WindowClient[]>;
+};
+
+/**
+ * Create the private stable-client registry rebuilt by client handshake after a worker restart.
+ * @returns A registry backed only by in-memory state, never persisted.
+ */
+export const createStableClientRegistry = (): StableClientRegistry => {
+  const registeredClientIds = new Set<string>();
+  return {
+    register(clientId) {
+      if (clientId) registeredClientIds.add(clientId);
+    },
+    async getRegisteredStableWindowClients() {
+      const live = await getStableWindowClients();
+      const liveClientIds = new Set(live.map(({ id }) => id));
+      for (const clientId of registeredClientIds) {
+        if (!liveClientIds.has(clientId)) registeredClientIds.delete(clientId);
+      }
+      return live.filter(({ id }) => registeredClientIds.has(id));
+    },
+  };
+};

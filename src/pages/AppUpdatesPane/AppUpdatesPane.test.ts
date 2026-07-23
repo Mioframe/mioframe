@@ -28,9 +28,7 @@ const snapshot = ref<AppUpdateSnapshot>({
     buildId: 'bbbbbbb',
     buildDate: '2026-07-24T00:00:00.000Z',
   },
-  checkState: 'succeeded',
-  preparationState: 'ready',
-  activationState: 'idle',
+  updateState: 'ready',
   lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
 });
 const checkPending = ref(false);
@@ -42,17 +40,12 @@ const applyResult = ref<AppUpdateActionResult>();
 const checkForUpdates = vi.fn();
 const setMode = vi.fn();
 const updateNow = vi.fn();
+const actionableUpdateStates: string[] = ['available', 'preparing', 'ready', 'trialStarting'];
 
 vi.mock('@entity/appUpdate', () => ({
   useAppUpdate: () => ({
     snapshot,
-    hasUpdate: computed(
-      () =>
-        !!snapshot.value.latestRelease &&
-        !!snapshot.value.runningRelease &&
-        snapshot.value.latestRelease.releaseSequence >
-          snapshot.value.runningRelease.releaseSequence,
-    ),
+    hasUpdate: computed(() => actionableUpdateStates.includes(snapshot.value.updateState)),
   }),
 }));
 vi.mock('@feature/appUpdateCheck', () => ({
@@ -130,9 +123,7 @@ describe('AppUpdatesPane', () => {
       ...withoutError,
       capability: 'available',
       mode: 'manual',
-      checkState: 'succeeded',
-      preparationState: 'ready',
-      activationState: 'idle',
+      updateState: 'ready',
     };
     checkResult.value = modeResult.value = applyResult.value = undefined;
     checkForUpdates.mockClear();
@@ -158,21 +149,28 @@ describe('AppUpdatesPane', () => {
     expect(updateNow).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps failed checks distinct from Up to date and explains restart blocking', async () => {
+  it('keeps failed checks distinct from Up to date and explains a blocked window count', async () => {
     const { default: AppUpdatesPane } = await import('./AppUpdatesPane.vue');
-    snapshot.value = { ...snapshot.value, checkState: 'failed', errorCode: 'checkFailed' };
+    snapshot.value = { ...snapshot.value, updateState: 'failed', errorCode: 'checkFailed' };
     const wrapper = mount(AppUpdatesPane);
     expect(wrapper.text()).toContain('Could not check for updates');
     expect(wrapper.text()).not.toContain('Up to date');
-    snapshot.value = {
-      ...snapshot.value,
-      checkState: 'succeeded',
-      activationState: 'blockedByWindow',
-      errorCode: 'restartUnresponsive',
-    };
+
+    applyResult.value = { status: 'blocked', code: 'blockedByOtherWindows' };
+    const { errorCode, ...withoutError } = snapshot.value;
+    void errorCode;
+    snapshot.value = { ...withoutError, updateState: 'ready' };
     await wrapper.vm.$nextTick();
-    expect(wrapper.text()).toContain('Restart blocked');
-    expect(wrapper.text()).toContain('open Mioframe window');
+    expect(wrapper.text()).toContain('Update blocked');
+    expect(wrapper.text()).toContain('Close other Mioframe windows to update.');
+  });
+
+  it('explains a preparation failure distinctly from a check failure', async () => {
+    const { default: AppUpdatesPane } = await import('./AppUpdatesPane.vue');
+    snapshot.value = { ...snapshot.value, updateState: 'failed', errorCode: 'preparationFailed' };
+    const wrapper = mount(AppUpdatesPane);
+    expect(wrapper.text()).toContain('Could not prepare update');
+    expect(wrapper.text()).toContain('could not be downloaded and verified');
   });
 });
 /* eslint-enable vue/one-component-per-file -- End direct-child stubs. */

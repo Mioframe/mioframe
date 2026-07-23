@@ -1,41 +1,32 @@
+import type { AppUpdatePublicErrorCode } from './publicContracts';
 import type {
-  AppUpdateActionResult,
-  AppUpdatePublicErrorCode,
-  AppUpdateSnapshot,
-} from './publicContracts';
-import type {
+  ControllerResponse,
   LatestRelease,
   ReleaseControllerCommand,
   ReleaseControllerState,
   ReleaseIdentity,
   UpdateMode,
 } from './contracts';
-import { releaseControllerCommandSchema } from './contracts';
-import { createActivationTransaction, releaseForClient } from './activationTransaction';
-import { confirmReplacementBoot } from './activationTransaction';
+import { RELEASE_DESCRIPTOR_SCHEMA_VERSION, releaseControllerCommandSchema } from './contracts';
 import { createCommandQueue } from './commandQueue';
 import type { ReleaseControllerStateStore } from './persistence';
-import { fetchValidatedReleaseMetadata, isReleaseAvailable, prepareRelease } from './releaseCache';
-import { isStrictlyNewerRelease, projectAppUpdateSnapshot } from './stateMachine';
+import {
+  cleanupStaleStagingCaches,
+  fetchValidatedReleaseMetadata,
+  isReleaseAvailable,
+  prepareRelease,
+} from './releaseCache';
+import { committedRelease, isStrictlyNewerRelease, projectAppUpdateSnapshot } from './stateMachine';
+import { confirmTrialBoot, createTrial, rollbackExpiredTrial } from './trial';
 
-/** Private stable-window readiness query. */
-export type RestartReadiness = () => Promise<{
-  /** Aggregate readiness state. */
-  status: 'ready' | 'busy' | 'unresponsive';
-  /** Stable clients included in the readiness decision. */
-  clientIds: string[];
-}>;
+/** A running/stale operation older than this is treated as abandoned by a terminated worker. */
+const STALE_OPERATION_MS = 2 * 60 * 1000;
 
-/** Private worker transport response. */
-export type ControllerResponse =
-  | {
-      /** Response discriminator. */ kind: 'snapshot';
-      /** UI-safe state. */ snapshot: AppUpdateSnapshot;
-    }
-  | {
-      /** Response discriminator. */ kind: 'action';
-      /** Immediate action result. */ result: AppUpdateActionResult;
-    };
+/** Private local-window VFS-readiness query, asked only of the requesting client. */
+export type VfsReadiness = (clientId: string) => Promise<boolean>;
+
+/** Minimal registered stable window fact used only for Manual update-window counting. */
+export type RegisteredStableWindow = { /** Live client id. */ id: string };
 
 /** Private command execution with optional worker-lifetime background work. */
 export type ControllerExecution = {
@@ -55,6 +46,12 @@ const execution = (
   background?: () => Promise<void>,
 ): ControllerExecution => ({ response, ...(background && { background }) });
 
+const descriptorFor = (release: ReleaseIdentity): LatestRelease => ({
+  schemaVersion: RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+  release,
+  descriptorUrl: `/updates/releases/${release.releaseId}.json`,
+});
+
 /**
  * Create the private persistent release controller.
  * @param root0 - Controller dependencies and deterministic boundaries.
@@ -65,9 +62,10 @@ export const createReleaseController = ({
   store,
   now = () => new Date(),
   operationId = () => crypto.randomUUID(),
-  readiness = () => Promise.resolve({ status: 'ready', clientIds: [] }),
+  vfsReadiness = () => Promise.resolve(true),
+  registeredStableWindows = () => Promise.resolve([]),
   publish = () => undefined,
-  onActivationStarted = () => Promise.resolve(),
+  onTrialStarted = () => Promise.resolve(),
 }: {
   /** Release serving the controller worker artifact. */
   currentRelease: ReleaseIdentity;
@@ -77,62 +75,87 @@ export const createReleaseController = ({
   now?: () => Date;
   /** Deterministic operation-token source. */
   operationId?: () => string;
-  /** Stable-client readiness boundary. */
-  readiness?: RestartReadiness;
+  /** Local VFS-activity readiness for one requesting client. */
+  vfsReadiness?: VfsReadiness;
+  /** Live registered stable windows, used only to count open windows for Manual updates. */
+  registeredStableWindows?: () => Promise<RegisteredStableWindow[]>;
   /** Snapshot broadcast boundary. */
   publish?: (state: ReleaseControllerState) => void;
-  /** Stable-client reload boundary after transaction persistence. */
-  onActivationStarted?: (transactionId: string, clientIds: string[]) => Promise<void>;
+  /** Single requesting-client reload boundary after trial persistence. */
+  onTrialStarted?: (target: ReleaseIdentity, clientId: string) => Promise<void>;
 }) => {
   const enqueue = createCommandQueue();
-  const read = () => store.read(currentRelease);
+  const readSafely = () => store.read(currentRelease);
   const save = async (state: ReleaseControllerState) => {
     await store.write(state);
     publish(state);
     return state;
   };
 
+  // `requestingClientId` names the window that must be told to reload for a Manual trial. It is
+  // never persisted as `trial.initiatingClientId`: that field instead records which navigation has
+  // already claimed the trial (see `associateTrialNavigation`), and the requesting window's reload
+  // is itself the first such navigation, arriving under a brand-new client id after it completes.
+  const beginTrial = async (
+    target: ReleaseIdentity,
+    requestingClientId?: string,
+  ): Promise<void> => {
+    await enqueue(async () => {
+      const { state, capability } = await readSafely();
+      if (capability === 'unavailable' || state.trial) return;
+      if (
+        state.preparation.status !== 'ready' ||
+        state.preparation.release.releaseId !== target.releaseId
+      )
+        return;
+      await save(createTrial({ state, targetRelease: target, now: now() }));
+      if (requestingClientId) await onTrialStarted(target, requestingClientId);
+    });
+  };
+
   const finishPreparation = async (
     token: string,
     latest: LatestRelease,
     activateAfterPreparation: boolean,
+    initiatingClientId?: string,
   ): Promise<void> => {
     try {
       await prepareRelease(latest);
       const shouldActivate = await enqueue(async () => {
-        const state = await read();
-        if (state.preparationOperationId !== token) return false;
+        const { state, capability } = await readSafely();
+        if (
+          capability === 'unavailable' ||
+          state.preparation.status !== 'running' ||
+          state.preparation.operationId !== token
+        )
+          return false;
         const eligible =
           !state.failedReleaseIds.includes(latest.release.releaseId) &&
-          isStrictlyNewerRelease(latest.release, state.activeRelease);
-        const next: ReleaseControllerState = eligible
-          ? {
-              ...state,
-              preparedRelease: latest.release,
-              preparationState: 'ready',
-              preparationOperationId: undefined,
-              activationRequested: undefined,
-              errorCode: undefined,
-            }
-          : {
-              ...state,
-              preparationState: 'idle',
-              preparationOperationId: undefined,
-              activationRequested: undefined,
-            };
-        await save(next);
-        return (activateAfterPreparation || state.activationRequested === true) && eligible;
+          isStrictlyNewerRelease(latest.release, committedRelease(state));
+        await save(
+          eligible
+            ? {
+                ...state,
+                preparation: { status: 'ready', release: latest.release },
+                errorCode: undefined,
+              }
+            : { ...state, preparation: { status: 'idle' } },
+        );
+        return activateAfterPreparation && eligible;
       });
-      if (shouldActivate) await beginActivation(latest.release);
+      if (shouldActivate) await beginTrial(latest.release, initiatingClientId);
     } catch {
       await enqueue(async () => {
-        const state = await read();
-        if (state.preparationOperationId !== token) return;
+        const { state, capability } = await readSafely();
+        if (
+          capability === 'unavailable' ||
+          state.preparation.status !== 'running' ||
+          state.preparation.operationId !== token
+        )
+          return;
         await save({
           ...state,
-          preparationState: 'failed',
-          preparationOperationId: undefined,
-          activationRequested: undefined,
+          preparation: { status: 'failed', release: latest.release },
           errorCode: 'preparationFailed',
         });
       });
@@ -143,35 +166,40 @@ export const createReleaseController = ({
     state: ReleaseControllerState,
     latest: LatestRelease,
     activateAfterPreparation: boolean,
+    initiatingClientId?: string,
   ): Promise<(() => Promise<void>) | undefined> => {
     if (
-      !isStrictlyNewerRelease(latest.release, state.activeRelease) ||
+      !isStrictlyNewerRelease(latest.release, committedRelease(state)) ||
       state.failedReleaseIds.includes(latest.release.releaseId)
     )
       return undefined;
     if (await isReleaseAvailable(latest.release)) {
       await save({
         ...state,
-        preparedRelease: latest.release,
-        preparationState: 'ready',
+        preparation: { status: 'ready', release: latest.release },
         errorCode: undefined,
       });
-      return activateAfterPreparation ? () => beginActivation(latest.release) : undefined;
+      return activateAfterPreparation
+        ? () => beginTrial(latest.release, initiatingClientId)
+        : undefined;
     }
-    if (state.preparationState === 'preparing') {
-      if (activateAfterPreparation && !state.activationRequested) {
-        await save({ ...state, activationRequested: true });
-      }
+    if (
+      state.preparation.status === 'running' &&
+      state.preparation.release.releaseId === latest.release.releaseId
+    )
       return undefined;
-    }
     const token = operationId();
     await save({
       ...state,
-      preparationState: 'preparing',
-      preparationOperationId: token,
+      preparation: {
+        status: 'running',
+        release: latest.release,
+        operationId: token,
+        startedAt: now().toISOString(),
+      },
       errorCode: undefined,
     });
-    return () => finishPreparation(token, latest, activateAfterPreparation);
+    return () => finishPreparation(token, latest, activateAfterPreparation, initiatingClientId);
   };
 
   const finishCheck = async (token: string): Promise<void> => {
@@ -182,22 +210,23 @@ export const createReleaseController = ({
       const { latest } = await fetchValidatedReleaseMetadata(latestValue);
       let preparation: (() => Promise<void>) | undefined;
       await enqueue(async () => {
-        const state = await read();
-        if (state.checkOperationId !== token) return;
-        const confirmedLatestRelease =
+        const { state, capability } = await readSafely();
+        if (
+          capability === 'unavailable' ||
+          state.check.status !== 'running' ||
+          state.check.operationId !== token
+        )
+          return;
+        const running = committedRelease(state);
+        const latestRelease =
           latest.release.releaseSequence >=
-          Math.max(
-            state.activeRelease.releaseSequence,
-            state.confirmedLatestRelease?.releaseSequence ?? 0,
-          )
+          Math.max(running.releaseSequence, state.latestRelease?.releaseSequence ?? 0)
             ? latest.release
-            : state.confirmedLatestRelease;
+            : state.latestRelease;
         const next = await save({
           ...state,
-          ...(confirmedLatestRelease && { confirmedLatestRelease }),
-          checkState: 'succeeded',
-          checkOperationId: undefined,
-          lastSuccessfulCheckAt: now().toISOString(),
+          ...(latestRelease && { latestRelease }),
+          check: { status: 'idle', lastSuccessAt: now().toISOString() },
           errorCode: undefined,
         });
         if (next.mode === 'automatic') preparation = await startPreparation(next, latest, false);
@@ -205,12 +234,16 @@ export const createReleaseController = ({
       await preparation?.();
     } catch {
       await enqueue(async () => {
-        const state = await read();
-        if (state.checkOperationId !== token) return;
+        const { state, capability } = await readSafely();
+        if (
+          capability === 'unavailable' ||
+          state.check.status !== 'running' ||
+          state.check.operationId !== token
+        )
+          return;
         await save({
           ...state,
-          checkState: 'failed',
-          checkOperationId: undefined,
+          check: { status: 'failed', lastSuccessAt: state.check.lastSuccessAt },
           errorCode: 'checkFailed',
         });
       });
@@ -220,36 +253,19 @@ export const createReleaseController = ({
   const startCheck = async (
     state: ReleaseControllerState,
   ): Promise<(() => Promise<void>) | undefined> => {
-    if (state.checkState === 'checking') return undefined;
+    if (state.check.status === 'running') return undefined;
     const token = operationId();
-    await save({ ...state, checkState: 'checking', checkOperationId: token, errorCode: undefined });
-    return () => finishCheck(token);
-  };
-
-  const beginActivation = async (target: ReleaseIdentity): Promise<void> => {
-    const ready = await readiness();
-    await enqueue(async () => {
-      const state = await read();
-      if (state.preparedRelease?.releaseId !== target.releaseId) return;
-      if (ready.status !== 'ready') {
-        await save({
-          ...state,
-          activationState: ready.status === 'busy' ? 'blockedByActivity' : 'blockedByWindow',
-          errorCode: ready.status === 'busy' ? 'restartBusy' : 'restartUnresponsive',
-        });
-        return;
-      }
-      const activated = await save(
-        createActivationTransaction({
-          state,
-          targetRelease: target,
-          oldClientIds: ready.clientIds,
-          now: now(),
-        }),
-      );
-      const transactionId = activated.activationTransaction?.transactionId;
-      if (transactionId) await onActivationStarted(transactionId, ready.clientIds);
+    await save({
+      ...state,
+      check: {
+        status: 'running',
+        operationId: token,
+        startedAt: now().toISOString(),
+        lastSuccessAt: state.check.lastSuccessAt,
+      },
+      errorCode: undefined,
     });
+    return () => finishCheck(token);
   };
 
   const setMode = async (
@@ -257,64 +273,71 @@ export const createReleaseController = ({
     mode: UpdateMode,
   ): Promise<(() => Promise<void>) | undefined> => {
     if (state.mode === mode) return undefined;
-    const next = await save(
-      mode === 'manual'
-        ? {
-            ...state,
-            mode,
-            pinnedRelease: state.activeRelease,
-            preparedRelease: undefined,
-            preparationState: 'idle',
-            preparationOperationId: undefined,
-            activationRequested: undefined,
-            activationState: 'idle',
-            errorCode: undefined,
-          }
-        : {
-            ...state,
-            mode,
-            pinnedRelease: undefined,
-            preparationOperationId: undefined,
-            activationRequested: undefined,
-            preparationState: 'idle',
-            errorCode: undefined,
-          },
-    );
-    const latest = next.confirmedLatestRelease;
-    return mode === 'automatic' && latest
-      ? startPreparation(
-          next,
-          {
-            schemaVersion: 2,
-            release: latest,
-            descriptorUrl: `/updates/releases/${latest.releaseId}.json`,
-          },
-          false,
-        )
-      : undefined;
+    const preservingTrial = state.trial !== undefined;
+    const next = await save({
+      ...state,
+      mode,
+      pinnedRelease: mode === 'manual' ? state.activeRelease : undefined,
+      ...(!preservingTrial && { preparation: { status: 'idle' as const } }),
+      errorCode: undefined,
+    });
+    if (preservingTrial || mode !== 'automatic' || !next.latestRelease) return undefined;
+    return startPreparation(next, descriptorFor(next.latestRelease), false);
   };
 
+  let reconciledOnce: Promise<void> | undefined;
+  const reconcile = () =>
+    (reconciledOnce ??= (async () => {
+      await cleanupStaleStagingCaches();
+      await enqueue(async () => {
+        const { state, capability } = await readSafely();
+        if (capability === 'unavailable') return;
+        const staleBefore = new Date(now().getTime() - STALE_OPERATION_MS).toISOString();
+        let next = state;
+        if (next.check.status === 'running' && next.check.startedAt < staleBefore) {
+          next = { ...next, check: { status: 'idle', lastSuccessAt: next.check.lastSuccessAt } };
+        }
+        if (next.preparation.status === 'running' && next.preparation.startedAt < staleBefore) {
+          const target = next.preparation.release;
+          next = {
+            ...next,
+            preparation: (await isReleaseAvailable(target))
+              ? { status: 'ready', release: target }
+              : { status: 'idle' },
+          };
+        }
+        if (next !== state) await save(next);
+      });
+    })());
+
   return {
-    execute(commandValue: unknown, sourceClientId = ''): Promise<ControllerExecution> {
+    reconcile,
+    async execute(commandValue: unknown, sourceClientId = ''): Promise<ControllerExecution> {
+      await reconcile();
       return enqueue(async () => {
         const parsed = releaseControllerCommandSchema.safeParse(commandValue);
         if (!parsed.success) {
           return { response: { kind: 'action', result: errorResult('capabilityUnavailable') } };
         }
         const command: ReleaseControllerCommand = parsed.data;
+        const read = await readSafely();
+        if (read.capability === 'unavailable') {
+          if (command.type === 'GET_SNAPSHOT') {
+            return {
+              response: {
+                kind: 'snapshot',
+                snapshot: projectAppUpdateSnapshot(read.state, 'unavailable'),
+              },
+            };
+          }
+          return { response: { kind: 'action', result: errorResult('capabilityUnavailable') } };
+        }
         try {
-          const state = await read();
+          const rolledBack = rollbackExpiredTrial(read.state, now());
+          const state = rolledBack === read.state ? read.state : await save(rolledBack);
           switch (command.type) {
             case 'GET_SNAPSHOT':
-              return {
-                response: {
-                  kind: 'snapshot',
-                  snapshot: projectAppUpdateSnapshot(
-                    state,
-                    releaseForClient(state, sourceClientId),
-                  ),
-                },
-              };
+              return { response: { kind: 'snapshot', snapshot: projectAppUpdateSnapshot(state) } };
             case 'CHECK_FOR_UPDATES':
               return execution(
                 { kind: 'action', result: { status: 'accepted' } },
@@ -326,22 +349,42 @@ export const createReleaseController = ({
                 await setMode(state, command.mode),
               );
             case 'UPDATE_NOW': {
-              const latest = state.confirmedLatestRelease;
-              if (!latest || !isStrictlyNewerRelease(latest, state.activeRelease)) {
+              if (state.trial) {
+                return { response: { kind: 'action', result: { status: 'accepted' } } };
+              }
+              const latest = state.latestRelease;
+              if (!isStrictlyNewerRelease(latest, committedRelease(state))) {
                 return { response: { kind: 'action', result: errorResult('checkFailed') } };
               }
-              const descriptorLatest: LatestRelease = {
-                schemaVersion: 2,
-                release: latest,
-                descriptorUrl: `/updates/releases/${latest.releaseId}.json`,
-              };
+              if (state.failedReleaseIds.includes(latest.releaseId)) {
+                return { response: { kind: 'action', result: errorResult('checkFailed') } };
+              }
+              if (!(await vfsReadiness(sourceClientId))) {
+                return {
+                  response: {
+                    kind: 'action',
+                    result: { status: 'blocked', code: 'blockedByActivity' },
+                  },
+                };
+              }
+              const otherWindows = (await registeredStableWindows()).filter(
+                (client) => client.id !== sourceClientId,
+              );
+              if (otherWindows.length > 0) {
+                return {
+                  response: {
+                    kind: 'action',
+                    result: { status: 'blocked', code: 'blockedByOtherWindows' },
+                  },
+                };
+              }
               return execution(
                 { kind: 'action', result: { status: 'accepted' } },
-                await startPreparation(state, descriptorLatest, true),
+                await startPreparation(state, descriptorFor(latest), true, sourceClientId),
               );
             }
             case 'PRIVATE_BOOT_READY':
-              await save(confirmReplacementBoot(state, sourceClientId, command.releaseId));
+              await save(confirmTrialBoot(state, command.releaseId));
               return { response: { kind: 'action', result: { status: 'accepted' } } };
           }
         } catch {

@@ -84,7 +84,6 @@ export async function buildManagedStableFixture(distDir = 'dist') {
     `${JSON.stringify(fixture, null, 2)}\n`,
   );
   mkdirSync(join(distDir, 'branch', 'fixture'), { recursive: true });
-  mkdirSync(join(distDir, 'external'), { recursive: true });
   mkdirSync(join(distDir, 'pr', '161'), { recursive: true });
   writeFileSync(
     join(distDir, 'branch', 'fixture', 'index.html'),
@@ -93,10 +92,6 @@ export async function buildManagedStableFixture(distDir = 'dist') {
   writeFileSync(
     join(distDir, 'pr', '161', 'index.html'),
     '<!doctype html><title>PR fixture</title>',
-  );
-  writeFileSync(
-    join(distDir, 'external', 'unresponsive.html'),
-    '<!doctype html><title>Unresponsive stable fixture</title>',
   );
 }
 

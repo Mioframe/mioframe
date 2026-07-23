@@ -119,6 +119,56 @@ const currentTreeSize = (root) =>
     ? walkFiles(root).reduce((total, file) => total + statSync(join(root, file)).size, 0)
     : 0;
 
+const isValidDescriptorIdentity = (value) =>
+  value?.schemaVersion === 2 &&
+  /^[0-9a-f]{40}$/.test(value.releaseId ?? '') &&
+  Number.isSafeInteger(value.releaseSequence) &&
+  value.releaseSequence >= 1;
+
+// Reads every retained, well-formed release descriptor directly from disk, independent of
+// `latest.json`. `latest.json` is only a pointer and can be rolled back to an older release
+// while newer descriptors remain retained; allocation must be based on what is actually
+// retained so a republish after such a rollback cannot collide with or duplicate an existing
+// sequence. A file under `updates/releases/` that is not a valid descriptor is not a retained
+// release and is skipped rather than rejected, since unrelated content already retained there
+// must not block publication.
+const readRetainedReleaseDescriptors = (workDir) => {
+  const releasesDir = join(workDir, 'updates', 'releases');
+  if (!existsSync(releasesDir)) return [];
+  return readdirSync(releasesDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+    .flatMap((entry) => {
+      let parsed;
+      try {
+        parsed = JSON.parse(readFileSync(join(releasesDir, entry.name), 'utf8'));
+      } catch {
+        return [];
+      }
+      return isValidDescriptorIdentity(parsed) ? [parsed] : [];
+    });
+};
+
+const allocateReleaseSequence = (workDir, releaseId) => {
+  const retained = readRetainedReleaseDescriptors(workDir);
+  const sequenceOwners = new Map();
+  for (const descriptor of retained) {
+    const owner = sequenceOwners.get(descriptor.releaseSequence);
+    if (owner && owner !== descriptor.releaseId) {
+      throw new Error(
+        `Stable release sequence collision: sequence ${descriptor.releaseSequence} is owned by multiple release ids.`,
+      );
+    }
+    sequenceOwners.set(descriptor.releaseSequence, descriptor.releaseId);
+  }
+  const existing = retained.find((descriptor) => descriptor.releaseId === releaseId);
+  if (existing) return existing.releaseSequence;
+  const maxSequence = retained.reduce(
+    (max, descriptor) => Math.max(max, descriptor.releaseSequence),
+    0,
+  );
+  return maxSequence + 1;
+};
+
 export const applyManagedStablePublish = (
   workDir,
   distDir,
@@ -126,29 +176,7 @@ export const applyManagedStablePublish = (
 ) => {
   const latestPath = join(workDir, 'updates', 'latest.json');
   const releaseId = readDeploymentMetadata(distDir).sha;
-  let releaseSequence = 1;
-  if (existsSync(latestPath)) {
-    let currentLatest;
-    try {
-      currentLatest = JSON.parse(readFileSync(latestPath, 'utf8'));
-    } catch {
-      throw new Error('Existing stable latest pointer is invalid.');
-    }
-    const currentRelease = currentLatest?.release;
-    if (
-      currentLatest?.schemaVersion !== 2 ||
-      !currentRelease ||
-      !/^[0-9a-f]{40}$/.test(currentRelease.releaseId ?? '') ||
-      !Number.isSafeInteger(currentRelease.releaseSequence) ||
-      currentRelease.releaseSequence < 1
-    ) {
-      throw new Error('Existing stable latest pointer is invalid.');
-    }
-    releaseSequence =
-      currentRelease.releaseId === releaseId
-        ? currentRelease.releaseSequence
-        : currentRelease.releaseSequence + 1;
-  }
+  const releaseSequence = allocateReleaseSequence(workDir, releaseId);
   const publication = buildStableReleasePublication(distDir, releaseSequence);
   const releaseDir = join(workDir, 'updates', 'releases', publication.releaseId);
   const descriptorPath = join(workDir, 'updates', 'releases', `${publication.releaseId}.json`);

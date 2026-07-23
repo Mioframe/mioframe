@@ -10,4 +10,5 @@ export type {
   AppUpdateMode,
   AppUpdatePublicErrorCode,
   AppUpdateSnapshot,
+  AppUpdateState,
 } from '@shared/service/appUpdate/publicContracts';

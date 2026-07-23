@@ -197,14 +197,17 @@ export const getReleaseResponse = async (
  * @returns Completion after safe cleanup.
  */
 export const cleanupReleaseCaches = async (state: ReleaseControllerState): Promise<void> => {
+  const preparationRelease =
+    state.preparation.status === 'running' || state.preparation.status === 'ready'
+      ? state.preparation.release
+      : undefined;
   const protectedIds = new Set(
     [
       state.activeRelease,
       state.pinnedRelease,
-      state.preparedRelease,
-      state.previousRelease,
-      state.activationTransaction?.targetRelease,
-      state.activationTransaction?.previousRelease,
+      preparationRelease,
+      state.trial?.targetRelease,
+      state.trial?.previousRelease,
     ]
       .filter((release): release is ReleaseIdentity => release !== undefined)
       .map(({ releaseId }) => releaseId),
@@ -212,6 +215,24 @@ export const cleanupReleaseCaches = async (state: ReleaseControllerState): Promi
   for (const name of await caches.keys()) {
     if (name.startsWith(STAGING_PREFIX)) continue;
     if (name.startsWith(FINAL_PREFIX) && !protectedIds.has(name.slice(FINAL_PREFIX.length))) {
+      // eslint-disable-next-line no-await-in-loop -- Cache deletion is serialized to avoid an unbounded cleanup burst.
+      await caches.delete(name);
+    }
+  }
+};
+
+/**
+ * Delete every staging cache found at worker startup.
+ *
+ * A staging cache only exists while its owning `prepareRelease` call is still running in the same
+ * worker lifetime and is otherwise removed in that call's `finally`; any staging cache found at
+ * startup necessarily belongs to a call that never finished (the worker restarted), so it is always
+ * safe to remove unconditionally rather than reasoning about which attempt it belonged to.
+ * @returns Completion after every staging cache is removed.
+ */
+export const cleanupStaleStagingCaches = async (): Promise<void> => {
+  for (const name of await caches.keys()) {
+    if (name.startsWith(STAGING_PREFIX)) {
       // eslint-disable-next-line no-await-in-loop -- Cache deletion is serialized to avoid an unbounded cleanup burst.
       await caches.delete(name);
     }

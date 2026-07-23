@@ -1,7 +1,12 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LatestRelease, ReleaseControllerState, ReleaseIdentity } from './contracts';
-import { cleanupReleaseCaches, isReleaseAvailable, prepareRelease } from './releaseCache';
+import {
+  cleanupReleaseCaches,
+  cleanupStaleStagingCaches,
+  isReleaseAvailable,
+  prepareRelease,
+} from './releaseCache';
 import { createInitialReleaseControllerState } from './stateMachine';
 
 const identity = (letter: string, releaseSequence: number): ReleaseIdentity => ({
@@ -94,17 +99,11 @@ describe('staged release cache', () => {
       ...createInitialReleaseControllerState(active),
       mode: 'manual',
       pinnedRelease: pinned,
-      preparedRelease: prepared,
-      previousRelease: previous,
-      activationTransaction: {
-        transactionId: 'tx',
+      preparation: { status: 'ready', release: prepared },
+      trial: {
         targetRelease: target,
         previousRelease: previous,
-        expectedOldClientIds: [],
-        replacements: {},
-        confirmedReplacementClientIds: [],
-        acceptsSingleLaunch: true,
-        createdAt: '2026-07-23T00:00:00.000Z',
+        startedAt: '2026-07-23T00:00:00.000Z',
         expiresAt: '2026-07-23T00:01:00.000Z',
       },
     };
@@ -112,5 +111,13 @@ describe('staged release cache', () => {
     expect(await fakeCaches.keys()).toEqual(
       releases.slice(0, 5).map((release) => `stable-release-${release.releaseId}`),
     );
+  });
+
+  it('unconditionally removes every staging cache found at startup', async () => {
+    cacheEntries.set('stable-release-staging-a-1', new Map());
+    cacheEntries.set('stable-release-staging-b-2', new Map());
+    cacheEntries.set(`stable-release-${identity('a', 1).releaseId}`, new Map());
+    await cleanupStaleStagingCaches();
+    expect(await fakeCaches.keys()).toEqual([`stable-release-${identity('a', 1).releaseId}`]);
   });
 });

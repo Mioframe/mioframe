@@ -22,8 +22,23 @@ export type AppUpdatePublicErrorCode =
   | 'checkFailed'
   | 'invalidReleaseMetadata'
   | 'preparationFailed'
-  | 'restartBusy'
-  | 'restartUnresponsive';
+  | 'blockedByActivity'
+  | 'blockedByOtherWindows';
+
+/**
+ * Canonical background update progress, computed entirely by the controller.
+ * UI must render from this fact and must not re-derive it by comparing release
+ * sequences or other implementation details.
+ */
+export type AppUpdateState =
+  | 'notChecked'
+  | 'checking'
+  | 'upToDate'
+  | 'available'
+  | 'preparing'
+  | 'ready'
+  | 'failed'
+  | 'trialStarting';
 
 /** Factual, UI-safe projection of managed stable-update state. */
 export type AppUpdateSnapshot = {
@@ -37,20 +52,11 @@ export type AppUpdateSnapshot = {
   pinnedRelease?: AppReleaseInfo;
   /** Most recent valid non-regressing latest release fact. */
   latestRelease?: AppReleaseInfo;
-  /** Persisted metadata-check progress or result. */
-  checkState: 'notChecked' | 'checking' | 'succeeded' | 'failed';
-  /** Persisted release-preparation progress or result. */
-  preparationState: 'idle' | 'preparing' | 'ready' | 'failed';
-  /** Persisted coordinated-activation progress or blocker. */
-  activationState:
-    | 'idle'
-    | 'waitingForSafeLaunch'
-    | 'blockedByActivity'
-    | 'blockedByWindow'
-    | 'restarting';
+  /** Canonical background check/preparation/trial progress. */
+  updateState: AppUpdateState;
   /** ISO time of the last successful metadata check. */
   lastSuccessfulCheckAt?: string;
-  /** Stable public explanation category for the latest failure or blocker. */
+  /** Stable public explanation category for the latest background failure. */
   errorCode?: AppUpdatePublicErrorCode;
 };
 
@@ -58,10 +64,10 @@ export type AppUpdateSnapshot = {
 export type AppUpdateActionResult =
   | { /** Action was durably accepted. */ status: 'accepted' }
   | {
-      /** Action could not proceed until stable windows become ready. */
+      /** Action could not proceed given current activity or open windows. */
       status: 'blocked';
-      /** Stable restart blocker category. */
-      code: 'restartBusy' | 'restartUnresponsive';
+      /** Stable blocker category. */
+      code: 'blockedByActivity' | 'blockedByOtherWindows';
     }
   | {
       /** Action failed before it could be accepted. */
