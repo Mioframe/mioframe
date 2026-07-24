@@ -58,8 +58,8 @@ Omit inapplicable detail. Do not reproduce the full official Material documentat
 
 Use one explicit table for every integration boundary used by the supported surface:
 
-| Mioframe Vue contract | m3e public contract | Direction | Owner | Notes |
-| --- | --- | --- | --- | --- |
+| Mioframe Vue contract                       | m3e public contract                               | Direction              | Owner                               | Notes                                                         |
+| ------------------------------------------- | ------------------------------------------------- | ---------------------- | ----------------------------------- | ------------------------------------------------------------- |
 | prop, emit, slot, token, or native behavior | property, attribute, event, slot, or CSS variable | Vue → m3e or m3e → Vue | Mioframe, consumer, browser, or m3e | normalization, cancellation, default, or unsupported behavior |
 
 The table must make controlled state, event order, and native behavior unambiguous.
