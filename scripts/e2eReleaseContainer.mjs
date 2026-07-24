@@ -14,6 +14,7 @@ const extraArgs =
 // only receives env vars explicitly listed here, not the full host env.
 const extraEnv =
   process.env.RELEASE_ARTIFACT_SKIP_BUILD === '1' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
+if (label === 'release-smoke') extraEnv.MIOFRAME_MANAGED_STABLE_FIXTURE = '1';
 
 try {
   await runPlaywrightInContainer({

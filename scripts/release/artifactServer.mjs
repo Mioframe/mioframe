@@ -80,9 +80,104 @@ async function readExistingFile(filePath) {
  */
 export function createArtifactServer({ distDir, basePath, host = '127.0.0.1', port = 0 }) {
   const fallbackHtml = buildSpaFallbackHtml();
+  let managedFixture;
+  let managedMode = 'A';
+  let managedWorkerMode = 'current';
+
+  async function getManagedFixture() {
+    if (managedFixture !== undefined) return managedFixture;
+    try {
+      managedFixture = JSON.parse(
+        await readFile(join(distDir, 'managed-stable-fixture.json'), 'utf8'),
+      );
+    } catch {
+      managedFixture = null;
+    }
+    return managedFixture;
+  }
 
   const server = createServer((req, res) => {
-    void handleRequest(req, res, { distDir, basePath, fallbackHtml });
+    void (async () => {
+      const requestUrl = new URL(req.url ?? '/', 'http://artifact-server.invalid');
+      const fixture = await getManagedFixture();
+      if (fixture && requestUrl.pathname.startsWith('/__managed-fixture/latest/')) {
+        const nextMode = requestUrl.pathname.slice('/__managed-fixture/latest/'.length);
+        if (!['A', 'B', 'C', 'invalid-hash', 'partial-download'].includes(nextMode)) {
+          res.writeHead(400).end('unknown fixture mode');
+          return;
+        }
+        managedMode = nextMode;
+        res.writeHead(204).end();
+        return;
+      }
+      if (fixture && requestUrl.pathname.startsWith('/__managed-fixture/worker/')) {
+        const nextMode = requestUrl.pathname.slice('/__managed-fixture/worker/'.length);
+        if (!['legacy', 'current', 'B'].includes(nextMode)) {
+          res.writeHead(400).end('unknown worker fixture mode');
+          return;
+        }
+        managedWorkerMode = nextMode;
+        res.writeHead(204).end();
+        return;
+      }
+      if (fixture && managedWorkerMode === 'B' && requestUrl.pathname === '/sw.js') {
+        try {
+          const workerSource = await readFile(join(distDir, 'worker-b-sw.js'));
+          res.writeHead(200, {
+            'Content-Type': 'text/javascript; charset=utf-8',
+            'Cache-Control': 'no-store',
+          });
+          res.end(workerSource);
+        } catch {
+          res.writeHead(404).end('fixture worker unavailable');
+        }
+        return;
+      }
+      if (fixture && requestUrl.pathname === '/updates/latest.json') {
+        const label = managedMode === 'A' ? 'A' : managedMode === 'C' ? 'C' : 'B';
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'no-store',
+        });
+        res.end(JSON.stringify(fixture.releases[label].latest));
+        return;
+      }
+      const descriptorMatch = requestUrl.pathname.match(
+        /^\/updates\/releases\/([a-f0-9]{40})\.json$/,
+      );
+      if (fixture && descriptorMatch) {
+        const entry = Object.values(fixture.releases).find(
+          ({ latest }) => latest.release.releaseId === descriptorMatch[1],
+        );
+        if (entry) {
+          const descriptor = structuredClone(entry.descriptor);
+          if (managedMode === 'invalid-hash' && entry.latest.release.releaseSequence === 2) {
+            descriptor.files[0].sha256 = '0'.repeat(64);
+          }
+          res.writeHead(200, {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'no-store',
+          });
+          res.end(JSON.stringify(descriptor));
+          return;
+        }
+      }
+      if (
+        fixture &&
+        managedMode === 'partial-download' &&
+        requestUrl.pathname === `/updates/releases/${'b'.repeat(40)}/index.html`
+      ) {
+        res.writeHead(503).end('fixture interrupted download');
+        return;
+      }
+      // While legacy worker mode is selected, the entire application — not only `sw.js` — is
+      // served from the complete previously-generated Workbox artifact tree (precached index,
+      // hashed assets, manifest) preserved by `managedStableFixture.mjs`'s `buildLegacyWorkboxWorker`,
+      // so the legacy worker's own precache manifest is served real, matching content.
+      const effectiveDistDir =
+        fixture && managedWorkerMode === 'legacy' ? join(distDir, 'legacy-artifact') : distDir;
+      await handleRequest(req, res, { distDir: effectiveDistDir, basePath, fallbackHtml });
+    })();
   });
 
   return new Promise((resolvePromise, reject) => {

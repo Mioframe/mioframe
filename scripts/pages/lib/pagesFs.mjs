@@ -1,10 +1,9 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { validateBranchSlug, validatePrNumber } from './slug.mjs';
 import { buildSpaFallbackHtml } from './spaFallback.mjs';
-
-const PRESERVED_STABLE_ROOT_DIRS = new Set(['branch', 'pr']);
+import { applyManagedStablePublish } from './stableRelease.mjs';
 
 /**
  * Ensure the site-level GitHub Pages SPA fallback exists at the repository root.
@@ -25,12 +24,7 @@ function ensureRootSpaFallback(workDir) {
  * @param distDir Path to the built dist directory to publish.
  */
 export function applyStablePublish(workDir, distDir) {
-  for (const entry of readdirSync(workDir, { withFileTypes: true })) {
-    if (entry.name === '.git') continue;
-    if (entry.isDirectory() && PRESERVED_STABLE_ROOT_DIRS.has(entry.name)) continue;
-    rmSync(join(workDir, entry.name), { recursive: true, force: true });
-  }
-  cpSync(distDir, workDir, { recursive: true });
+  applyManagedStablePublish(workDir, distDir);
   ensureRootSpaFallback(workDir);
 }
 

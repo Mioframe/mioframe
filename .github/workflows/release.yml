@@ -103,18 +103,6 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm release:build-artifact
 
-      - name: Write deployment metadata
-        run: >-
-          node scripts/pages/writeDeploymentMetadata.mjs
-          --dist dist
-          --channel stable
-          --channel-id main
-          --base-url /
-          --ref ${{ github.ref }}
-          --branch main
-          --sha ${{ github.sha }}
-          --app-version "$(node -p "require('./package.json').version")"
-
       - name: Generate Pages deploy token
         id: pages-app-token
         uses: actions/create-github-app-token@v3

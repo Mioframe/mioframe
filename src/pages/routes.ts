@@ -5,27 +5,29 @@ import { helpArticlePane, helpIndexPane } from './Help';
 import { homePane } from './HomePane';
 import { repoExplorerPane } from './RepoExplorer';
 import { settingsPane } from './Settings';
+import { appUpdatesPane } from './AppUpdatesPane';
+import { MANAGED_APP_UPDATES_AVAILABLE } from '@shared/config';
 import { createStackNavigation } from './SplitView/defineStackNavigation';
 import type { RouteRecordRaw } from 'vue-router';
 
 const rootPath = '/';
 
-const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavigation(
-  {
-    home: homePane,
-    repo: repoExplorerPane,
-    document: documentViewPane,
-    settings: settingsPane,
-    dataStoragePrivacy: dataStoragePrivacyPane,
-    helpIndex: helpIndexPane,
-    helpArticle: helpArticlePane,
-    aboutMioframe: aboutMioframePane,
-  },
-  {
-    defaultPane: 'home',
-    rootPath,
-  },
-);
+const panes = {
+  home: homePane,
+  repo: repoExplorerPane,
+  document: documentViewPane,
+  settings: settingsPane,
+  dataStoragePrivacy: dataStoragePrivacyPane,
+  helpIndex: helpIndexPane,
+  helpArticle: helpArticlePane,
+  aboutMioframe: aboutMioframePane,
+  ...(MANAGED_APP_UPDATES_AVAILABLE ? { appUpdates: appUpdatesPane } : {}),
+};
+
+const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavigation(panes, {
+  defaultPane: 'home',
+  rootPath,
+});
 
 /**
  * Registers the split-view stack navigation routes for the application shell.

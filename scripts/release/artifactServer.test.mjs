@@ -2,7 +2,7 @@
 // This test exercises a real Node HTTP server; the default happy-dom
 // environment's fetch() enforces same-origin/CORS semantics that do not
 // apply to plain Node-to-Node requests.
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -80,5 +80,88 @@ describe('createArtifactServer', () => {
 
     const response = await fetch(`${server.url.replace(/\/branch\/develop\/$/, '/')}other-app/`);
     expect(response.status).toBe(404);
+  });
+});
+
+describe('managed fixture legacy worker mode', () => {
+  let distDir = '';
+  let server;
+
+  const releaseIdentity = {
+    releaseId: 'a'.repeat(40),
+    releaseSequence: 1,
+    appVersion: '1.0.0',
+    buildId: 'aaaaaaa',
+    buildDate: '2026-07-23T00:00:00.000Z',
+  };
+
+  beforeEach(() => {
+    distDir = mkdtempSync(join(tmpdir(), 'artifact-server-legacy-'));
+    writeFileSync(join(distDir, 'index.html'), '<!doctype html><title>managed</title>');
+    writeFileSync(join(distDir, 'sw.js'), 'self.addEventListener("install",()=>{});');
+    writeFileSync(join(distDir, 'worker-b-sw.js'), 'self.__WORKER__="B";');
+    mkdirSync(join(distDir, 'legacy-artifact'));
+    writeFileSync(
+      join(distDir, 'legacy-artifact', 'index.html'),
+      '<!doctype html><title>legacy</title>',
+    );
+    writeFileSync(join(distDir, 'legacy-artifact', 'sw.js'), 'self.__WORKER__="legacy";');
+    writeFileSync(
+      join(distDir, 'managed-stable-fixture.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        releases: {
+          A: {
+            latest: {
+              schemaVersion: 2,
+              release: releaseIdentity,
+              descriptorUrl: `/updates/releases/${releaseIdentity.releaseId}.json`,
+            },
+            descriptor: {
+              schemaVersion: 2,
+              ...releaseIdentity,
+              indexUrl: `/updates/releases/${releaseIdentity.releaseId}/index.html`,
+              files: [],
+            },
+          },
+        },
+      }),
+    );
+  });
+
+  afterEach(async () => {
+    await server?.close();
+    rmSync(distDir, { recursive: true, force: true });
+  });
+
+  it('serves the complete legacy artifact tree, not only sw.js, once legacy worker mode is selected', async () => {
+    server = await createArtifactServer({ distDir, basePath: '/' });
+    await fetch(`${server.url}__managed-fixture/worker/legacy`);
+
+    const indexResponse = await fetch(server.url);
+    expect(await indexResponse.text()).toContain('<title>legacy</title>');
+
+    const workerResponse = await fetch(`${server.url}sw.js`);
+    expect(await workerResponse.text()).toBe('self.__WORKER__="legacy";');
+  });
+
+  it('serves the current managed artifact once switched back to current worker mode', async () => {
+    server = await createArtifactServer({ distDir, basePath: '/' });
+    await fetch(`${server.url}__managed-fixture/worker/legacy`);
+    await fetch(`${server.url}__managed-fixture/worker/current`);
+
+    const indexResponse = await fetch(server.url);
+    expect(await indexResponse.text()).toContain('<title>managed</title>');
+  });
+
+  it('substitutes only sw.js for worker-B mode, leaving the rest of the managed artifact untouched', async () => {
+    server = await createArtifactServer({ distDir, basePath: '/' });
+    await fetch(`${server.url}__managed-fixture/worker/B`);
+
+    const indexResponse = await fetch(server.url);
+    expect(await indexResponse.text()).toContain('<title>managed</title>');
+
+    const workerResponse = await fetch(`${server.url}sw.js`);
+    expect(await workerResponse.text()).toBe('self.__WORKER__="B";');
   });
 });

@@ -1,0 +1,244 @@
+import { APP_RELEASE_ID, MANAGED_APP_UPDATES_AVAILABLE } from '@shared/config';
+import type {
+  AppUpdateActionResult,
+  AppUpdateMode,
+  AppUpdateSnapshot,
+} from '@shared/service/appUpdate/publicContracts';
+import type {
+  ControllerResponse,
+  ReleaseControllerCommand,
+} from '@shared/service/appUpdate/contracts';
+
+/** High-level managed-update actions and factual snapshot reads available to application code. */
+export type AppUpdateClient = {
+  /** Read the controller's latest factual UI-safe snapshot. */
+  getSnapshot(): Promise<AppUpdateSnapshot>;
+  /** Start or join a metadata check and acknowledge without awaiting background download work. */
+  checkForUpdates(): Promise<AppUpdateActionResult>;
+  /** Persist the selected Automatic or Manual update mode. */
+  setMode(mode: AppUpdateMode): Promise<AppUpdateActionResult>;
+  /** Start preparation and, once ready, a single-window trial of the latest forward release. */
+  updateNow(): Promise<AppUpdateActionResult>;
+  /** Observe factual persisted snapshot changes broadcast to this stable window. */
+  subscribeToSnapshot(listener: (snapshot: AppUpdateSnapshot) => void): () => void;
+};
+
+const unavailableSnapshot: AppUpdateSnapshot = {
+  capability: 'unavailable',
+  mode: 'automatic',
+  updateState: 'notChecked',
+  errorCode: 'capabilityUnavailable',
+};
+
+const listeners = new Set<(snapshot: AppUpdateSnapshot) => void>();
+let vfsReady = () => true;
+let registrationPromise: Promise<ServiceWorkerRegistration> | undefined;
+let hooksInstalled = false;
+
+const getRunningReleaseId = (): string | undefined => {
+  const value = document.querySelector<HTMLMetaElement>(
+    'meta[name="mioframe-release-id"]',
+  )?.content;
+  return value && /^[0-9a-f]{40}$/.test(value) ? value : APP_RELEASE_ID;
+};
+
+const publish = (snapshot: AppUpdateSnapshot) => {
+  listeners.forEach((listener) => {
+    listener(snapshot);
+  });
+};
+
+const waitForController = async (): Promise<ServiceWorker> => {
+  if (navigator.serviceWorker.controller) return navigator.serviceWorker.controller;
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => {
+      reject(new Error('Update controller unavailable.'));
+    }, 8_000);
+    navigator.serviceWorker.addEventListener(
+      'controllerchange',
+      () => {
+        window.clearTimeout(timeout);
+        const controller = navigator.serviceWorker.controller;
+        if (controller) resolve(controller);
+        else reject(new Error('Update controller unavailable.'));
+      },
+      { once: true },
+    );
+  });
+};
+
+const register = async (): Promise<void> => {
+  if (!MANAGED_APP_UPDATES_AVAILABLE) throw new Error('Managed updates are unavailable.');
+  registrationPromise ??= (async () => {
+    const existing = await navigator.serviceWorker.getRegistration('/');
+    if (existing) {
+      try {
+        await existing.update();
+      } catch {
+        // The installed stable controller remains usable while metadata is offline.
+      }
+      return existing;
+    }
+    return navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  })();
+  await registrationPromise;
+};
+
+const send = async (command: ReleaseControllerCommand): Promise<ControllerResponse | undefined> => {
+  try {
+    await register();
+    const controller = await waitForController();
+    return await new Promise((resolve) => {
+      const channel = new MessageChannel();
+      const timeout = window.setTimeout(() => {
+        resolve(undefined);
+      }, 5_000);
+      channel.port1.onmessage = (event: MessageEvent<ControllerResponse>) => {
+        window.clearTimeout(timeout);
+        resolve(event.data);
+      };
+      controller.postMessage(command, [channel.port2]);
+    });
+  } catch {
+    return undefined;
+  }
+};
+
+const action = async (command: ReleaseControllerCommand): Promise<AppUpdateActionResult> => {
+  const response = await send(command);
+  return response?.kind === 'action'
+    ? response.result
+    : { status: 'error', code: 'capabilityUnavailable' };
+};
+
+/**
+ * Install the stable-window readiness callback used before a Manual `Update now` reloads it.
+ * @param readiness - Returns whether this stable window can safely give up control right now.
+ * @returns Cleanup that restores the default ready response.
+ */
+export const setupAppUpdateRestartReadiness = (readiness: () => boolean): (() => void) => {
+  vfsReady = readiness;
+  return () => {
+    vfsReady = () => true;
+  };
+};
+
+if (MANAGED_APP_UPDATES_AVAILABLE && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'APP_UPDATE_SNAPSHOT') {
+      publish(event.data.snapshot);
+    } else if (event.data?.type === 'PRIVATE_VFS_READINESS') {
+      event.ports[0]?.postMessage({ ready: vfsReady() });
+    } else if (event.data?.type === 'PRIVATE_UPDATE_RELOAD') {
+      window.location.reload();
+    }
+  });
+}
+
+/** Shared application client for managed stable updates. */
+export const appUpdateClient: AppUpdateClient = {
+  async getSnapshot() {
+    if (!MANAGED_APP_UPDATES_AVAILABLE) return unavailableSnapshot;
+    const response = await send({ protocolVersion: 3, type: 'GET_SNAPSHOT' });
+    if (response?.kind === 'snapshot') {
+      publish(response.snapshot);
+      return response.snapshot;
+    }
+    return unavailableSnapshot;
+  },
+  checkForUpdates: () => action({ protocolVersion: 3, type: 'CHECK_FOR_UPDATES' }),
+  setMode: (mode) => action({ protocolVersion: 3, type: 'SET_MODE', mode }),
+  updateNow: () => action({ protocolVersion: 3, type: 'UPDATE_NOW' }),
+  subscribeToSnapshot(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+};
+
+/**
+ * Complete this window's private handshake with whichever controller is currently in charge:
+ * request a snapshot and report this window's actual running release. Idempotent and safe to call
+ * repeatedly — used both for first setup and for every subsequent worker takeover, since a new
+ * controller starts with no memory of windows that were already open before it took control.
+ * @returns The current factual snapshot for this window, or unavailable capability facts.
+ */
+const connect = async (): Promise<AppUpdateSnapshot> => {
+  const runningReleaseId = getRunningReleaseId();
+  if (!MANAGED_APP_UPDATES_AVAILABLE || !runningReleaseId || !('serviceWorker' in navigator)) {
+    return unavailableSnapshot;
+  }
+  const snapshot = await appUpdateClient.getSnapshot();
+  if (snapshot.capability === 'available') {
+    if (__RELEASE_TEST_HOOKS__) await releaseTestAwaitBootConfirmationGate?.();
+    await action({ protocolVersion: 3, type: 'PRIVATE_BOOT_READY', releaseId: runningReleaseId });
+  }
+  return snapshot;
+};
+
+const installCapabilityHooks = (): void => {
+  if (hooksInstalled) return;
+  hooksInstalled = true;
+  const checkWhenReachable = () => {
+    if (navigator.onLine && document.visibilityState === 'visible') {
+      void appUpdateClient.checkForUpdates();
+    }
+  };
+  window.addEventListener('online', checkWhenReachable);
+  document.addEventListener('visibilitychange', checkWhenReachable);
+  checkWhenReachable();
+};
+
+// Release-only, fixture-build-only boot-confirmation gate: delays this window's real
+// `PRIVATE_BOOT_READY` confirmation until explicitly released, without ever sending a synthetic
+// confirmation or mutating controller state itself — only the timing of the genuine production
+// confirmation is held back. Armed only when the test pre-sets `window.
+// __MIOFRAME_RELEASE_TEST_ARM_BOOT_CONFIRMATION_GATE__` before this exact navigation (via
+// Playwright's `addInitScript`, since the flag must already exist when this module first
+// evaluates on the new document); every other navigation loads with the gate already resolved, so
+// every other release scenario's automatic boot confirmation is unaffected. The whole block is
+// dead code eliminated from every real stable/branch/PR build.
+let releaseTestAwaitBootConfirmationGate: (() => Promise<void>) | undefined;
+if (__RELEASE_TEST_HOOKS__) {
+  let releaseGate: (() => void) | undefined;
+  const gate: Promise<void> = Reflect.get(
+    window,
+    '__MIOFRAME_RELEASE_TEST_ARM_BOOT_CONFIRMATION_GATE__',
+  )
+    ? new Promise<void>((resolve) => {
+        releaseGate = resolve;
+      })
+    : Promise.resolve();
+  releaseTestAwaitBootConfirmationGate = () => gate;
+  Reflect.set(window, '__MIOFRAME_RELEASE_TEST_RELEASE_BOOT_CONFIRMATION_GATE__', () => {
+    releaseGate?.();
+  });
+}
+
+let reconnectHooked = false;
+
+/**
+ * Complete stable runtime registration after Vue mount and initial router readiness.
+ * @returns The initial factual snapshot, or unavailable capability facts.
+ */
+export const setupManagedAppUpdates = async (): Promise<AppUpdateSnapshot> => {
+  if (!MANAGED_APP_UPDATES_AVAILABLE || !('serviceWorker' in navigator)) {
+    return unavailableSnapshot;
+  }
+  if (!reconnectHooked) {
+    reconnectHooked = true;
+    // A new controller (worker migration or a newly activated update) has no memory of windows
+    // that were already open before it took control, so every open window must reconnect and
+    // repeat its private handshake after every takeover, not only at first setup. This listener is
+    // installed unconditionally (not gated on the first connect succeeding): a window that booted
+    // while the previous, non-managed controller was still in charge must still pick up capability
+    // once a real managed controller later takes over.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      void connect().then((snapshot) => {
+        if (snapshot.capability === 'available') installCapabilityHooks();
+      });
+    });
+  }
+  const snapshot = await connect();
+  if (snapshot.capability === 'available') installCapabilityHooks();
+  return snapshot;
+};

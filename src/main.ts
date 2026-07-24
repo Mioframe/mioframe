@@ -17,4 +17,10 @@ if (rootMountElement) {
   const { setupApp } = await import('./app/setupApp');
   const app = await setupApp();
   app.mount(rootMountElement);
+  const [{ router }, { setupManagedAppUpdates }] = await Promise.all([
+    import('./app/router'),
+    import('@shared/serviceClient/appUpdate'),
+  ]);
+  await router.isReady();
+  await setupManagedAppUpdates();
 }

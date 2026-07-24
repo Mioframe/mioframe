@@ -13,9 +13,8 @@ const DEFAULT_STATE: VfsActivityState = {
  * @returns Reactive VFS activity state plus derived UI flags.
  */
 export const useVfsActivity = () => {
-  const {
-    fileSystem: { vfsActivity },
-  } = useMainServiceClient();
+  const { fileSystem } = useMainServiceClient();
+  const { vfsActivity } = fileSystem;
 
   const { data, error, isLoading } = useObservable(vfsActivity);
 

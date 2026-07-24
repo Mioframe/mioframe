@@ -18,6 +18,17 @@ let distDir = '';
 beforeEach(() => {
   workDir = mkdtempSync(join(tmpdir(), 'pages-work-'));
   distDir = mkdtempSync(join(tmpdir(), 'pages-dist-'));
+  mkdirSync(join(distDir, 'assets'));
+  writeFileSync(
+    join(distDir, 'deployment.json'),
+    JSON.stringify({
+      channel: 'stable',
+      channelId: 'main',
+      sha: 'a'.repeat(40),
+      appVersion: '1.0.0',
+      buildDate: '2026-07-23T00:00:00.000Z',
+    }),
+  );
 });
 
 afterEach(() => {

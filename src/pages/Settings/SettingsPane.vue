@@ -22,6 +22,10 @@ const onSelectHelp = async () => {
 const onSelectAboutMioframe = async () => {
   await open('aboutMioframe', {}, { target: 'aboutMioframe' });
 };
+
+const onSelectAppUpdates = async () => {
+  await open('appUpdates', {}, { target: 'appUpdates' });
+};
 </script>
 
 <template>
@@ -38,6 +42,7 @@ const onSelectAboutMioframe = async () => {
       @select-privacy-policy="onSelectPrivacyPolicy"
       @select-help="onSelectHelp"
       @select-about-mioframe="onSelectAboutMioframe"
+      @select-app-updates="onSelectAppUpdates"
     />
   </MDPane>
 </template>

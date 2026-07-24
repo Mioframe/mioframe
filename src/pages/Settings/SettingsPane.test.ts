@@ -37,7 +37,7 @@ vi.mock('@shared/ui/AppBar', () => ({
 vi.mock('@widget/SettingsSections', () => ({
   SettingsSections: defineComponent({
     name: 'SettingsSectionsStub',
-    emits: ['selectPrivacyPolicy', 'selectHelp', 'selectAboutMioframe'],
+    emits: ['selectPrivacyPolicy', 'selectHelp', 'selectAboutMioframe', 'selectAppUpdates'],
     setup(_props, { emit }) {
       return () =>
         h('div', [
@@ -70,6 +70,16 @@ vi.mock('@widget/SettingsSections', () => ({
               },
             },
             'Select about Mioframe',
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              onClick: () => {
+                emit('selectAppUpdates');
+              },
+            },
+            'Select app updates',
           ),
         ]);
     },
@@ -130,6 +140,17 @@ describe('SettingsPane', () => {
     await nextTick();
 
     expect(open).toHaveBeenCalledWith('aboutMioframe', {}, { target: 'aboutMioframe' });
+
+    unmount();
+  });
+
+  it('opens App updates from Settings', async () => {
+    const { root, unmount } = await mountSettingsPane();
+
+    root.querySelectorAll('button')[3]?.click();
+    await nextTick();
+
+    expect(open).toHaveBeenCalledWith('appUpdates', {}, { target: 'appUpdates' });
 
     unmount();
   });

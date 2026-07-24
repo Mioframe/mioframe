@@ -225,6 +225,7 @@ describe('buildCommands full mode', () => {
       '--label',
       'release-smoke',
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
+      'tests/e2e/release/managedStableUpdates.spec.ts',
     ]);
   });
 

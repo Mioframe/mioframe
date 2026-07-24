@@ -51,6 +51,29 @@ test('does not throw a page error on first launch with the service worker regist
   expect(pageErrors).toEqual([]);
 });
 
+test('contains no release-test hook strings in the compiled worker or main entry bundle', async ({
+  page,
+  baseURL,
+}) => {
+  await launchApp(page);
+
+  const swResponse = await page.request.get(new URL('sw.js', baseURL).toString());
+  expect(swResponse.ok()).toBe(true);
+  const swSource = await swResponse.text();
+  expect(swSource).not.toContain('releaseTestFileSystemService');
+  expect(swSource).not.toContain('__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__');
+
+  const entrySrc = await page.locator('script[type="module"][src]').first().getAttribute('src');
+  expect(entrySrc).toBeTruthy();
+  const entryResponse = await page.request.get(new URL(entrySrc ?? '', baseURL).toString());
+  expect(entryResponse.ok()).toBe(true);
+  const entrySource = await entryResponse.text();
+  expect(entrySource).not.toContain('__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__');
+  expect(entrySource).not.toContain('releaseTestFileSystemService');
+  expect(entrySource).not.toContain('__MIOFRAME_RELEASE_TEST_ARM_BOOT_CONFIRMATION_GATE__');
+  expect(entrySource).not.toContain('__MIOFRAME_RELEASE_TEST_RELEASE_BOOT_CONFIRMATION_GATE__');
+});
+
 test('reloading after a deep client route falls back to the app instead of a broken page', async ({
   page,
   baseURL,

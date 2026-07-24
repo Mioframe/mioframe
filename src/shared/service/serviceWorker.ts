@@ -24,3 +24,15 @@ registerSentryConfig({
 registerWorkerSentrySyncService(self);
 
 defineWorkerService(serviceId, setupMainService);
+
+// Registered as a fully separate worker RPC service — never a field on `setupMainService`'s
+// object — and only when this exact build is the managed release fixture build. A dynamic,
+// statically-analyzable import behind a compile-time-constant condition lets the bundler drop
+// this entire module (and its VFS provider) from every real stable/branch/PR build.
+if (__RELEASE_TEST_HOOKS__) {
+  void import('./fileSystem/releaseTestFileSystemWorkerService').then(
+    ({ releaseTestFileSystemServiceId, setupReleaseTestFileSystemService }) => {
+      defineWorkerService(releaseTestFileSystemServiceId, setupReleaseTestFileSystemService);
+    },
+  );
+}

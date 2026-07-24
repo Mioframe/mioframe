@@ -1,3 +1,4 @@
+// oxlint-disable no-underscore-dangle -- Vite compile-time constants intentionally use sentinel names.
 /// <reference types="vite/client" />
 /// <reference types="unplugin-turbo-console/client" />
 
@@ -13,4 +14,13 @@ interface ImportMeta {
 declare const __BUILD_DATE__: string;
 declare const __APP_VERSION__: string;
 declare const __BUILD_ID__: string;
+declare const __RELEASE_ID__: string;
+declare const __RELEASE_SEQUENCE__: string;
+declare const __RELEASE_TEST_HOOKS__: boolean;
+declare const __RELEASE_CHANNEL__: 'stable' | 'branch';
+
+interface FetchEvent {
+  readonly replacesClientId: string;
+}
 declare const __DIAGNOSTICS_MODE__: 'preview' | 'production';
+// oxlint-enable no-underscore-dangle
