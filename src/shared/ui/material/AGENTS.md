@@ -1,13 +1,14 @@
 # src/shared/ui/material
 
-Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-facing Material library boundary.
+Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-facing Material library boundary, including its implementation, contracts, architecture documentation, and roadmap.
 
 ## Required workflow
 
-- Read `docs/material-3/architecture.md`, `component-adapter.md`, and the current state in `roadmap.md` before Material implementation or migration work.
-- Use `material-component-adapter` for one official Material family implementation, migration, or material adapter change.
+- Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, and `docs/roadmap.md` before Material implementation or migration work.
+- Use `material-component-adapter` for one official Material family implementation, migration, or Material adapter change.
 - Use `architect-handoff` first when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision not resolved by the adapter contract.
 - Use applicable Vue and testing skills for implementation mechanics and proof.
+- Do not create Material policy or architecture documents under repository-level `docs/`; this library is their sole owner.
 
 ## Authority and ownership
 
@@ -84,6 +85,6 @@ A family migration must:
 - update applicable public barrels, tests, stories, visual mappings, and family documentation;
 - remove obsolete implementation, exports, tests, and compatibility paths;
 - record unsupported Material surface and confirmed m3e deviations;
-- update `docs/material-3/roadmap.md` only when milestone state, blocker, or next action changes.
+- update `docs/roadmap.md` only when milestone state, blocker, or next action changes.
 
 Never report a family migrated while parallel permanent ownership or renderer leakage remains.
