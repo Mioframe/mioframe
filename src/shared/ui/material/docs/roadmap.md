@@ -8,24 +8,24 @@ Last updated: 2026-07-24
 
 Current milestone: `M0 — m3e-backed architecture reset`
 
-Status: `verification`
+Status: `complete`
 
 Owner: PR #162
 
-Blocker: final repository verification.
+Blocker: none.
 
-Next action: complete PR #162 verification and merge it, then start the `MDButton` migration contract and implementation from current `develop`.
+Next action: continue with the `MDButton` adapter pilot in the current branch; evaluate PR #162 merge readiness after the pilot and its required verification are complete.
 
 The exact `@m3e/web` dependency and shared Vue custom-element recognition (application, Storybook, and component tests) required by M1 are already established on this branch; only the `MDButton` family contract and adapter implementation remain.
 
 ## Milestones
 
-| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                                                       |
-| --- | --------------------------------- | -------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset     | `verification` | none       | library-owned architecture, adapter, token, and roadmap documents; separate renderer-viability and implementation-ownership states; exact dependency-selection policy; custom-element integration ownership; scoped agent workflow; no production behavior change; final repository verification passes         |
-| M1  | `MDButton` adapter pilot          | `planned`      | M0         | migration target is `MDButton` only; exact m3e version and Button entry point are verified and pinned; viability is `ready`; ownership becomes `migrated`; all MDButton consumers move; only MDButton-exclusive legacy ownership is removed; required contract, browser, visual, build, and consumer proof pass |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; ownership becomes `migrated`; only integration mechanisms proved by both pilots may be considered for extraction                 |
-| M3  | sequential component migration    | `planned`      | M2         | one explicit ready component or inseparable family at a time is migrated by product priority; blocked renderers leave legacy ownership intact; every completed target has one canonical Vue owner and no renderer leakage                                                                                       |
+| ID  | Milestone                         | Status     | Depends on | Exit gate                                                                                                                                                                                                                                                                                                       |
+| --- | --------------------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset     | `complete` | none       | library-owned architecture, adapter, token, and roadmap documents; separate renderer-viability and implementation-ownership states; exact dependency-selection policy; custom-element integration ownership; scoped agent workflow; no production behavior change; final repository verification passes         |
+| M1  | `MDButton` adapter pilot          | `planned`  | M0         | migration target is `MDButton` only; exact m3e version and Button entry point are verified and pinned; viability is `ready`; ownership becomes `migrated`; all MDButton consumers move; only MDButton-exclusive legacy ownership is removed; required contract, browser, visual, build, and consumer proof pass |
+| M2  | `MDSwitch` stateful adapter pilot | `planned`  | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; ownership becomes `migrated`; only integration mechanisms proved by both pilots may be considered for extraction                 |
+| M3  | sequential component migration    | `planned`  | M2         | one explicit ready component or inseparable family at a time is migrated by product priority; blocked renderers leave legacy ownership intact; every completed target has one canonical Vue owner and no renderer leakage                                                                                       |
 
 ## M0 scope
 
@@ -65,6 +65,11 @@ The migration target is `MDButton` only.
 
 `MDIconButton`, `MDFab`, `MDExtendedFab`, and shared Button-directory modules not owned exclusively by `MDButton` remain with the legacy Button implementation until their own migration is approved.
 
+### Completed prerequisites
+
+- the exact `@m3e/web` dependency is added and pinned;
+- shared Vue custom-element recognition is established for application, Storybook, and component-test compilation.
+
 ### Required work
 
 1. inspect current MDButton consumers, public API, stories, tests, implementation notes, extensions, and required scenarios;
@@ -72,15 +77,13 @@ The migration target is `MDButton` only.
 3. inspect a current stable, non-prerelease m3e version through primary package evidence;
 4. verify and record the exact package version and Button family entry point;
 5. decide renderer viability and complete `components/button/README.md` before production edits;
-6. record shared Vue custom-element recognition ownership for app, Storybook, and tests;
-7. add the exact dependency and required shared compiler configuration;
-8. register only the required Button family through the MDButton implementation import;
-9. implement a thin `MDButton` adapter;
-10. preserve required action, form, link, icon, disabled, selected/toggle, and loading scenarios;
-11. privately bridge accepted public Mioframe tokens where supported;
-12. migrate all MDButton consumers and remove only MDButton-exclusive legacy ownership;
-13. run mandatory component-contract, browser, visual, production-build, and representative-consumer proof;
-14. complete final repository verification.
+6. register only the required Button family through the MDButton implementation import;
+7. implement a thin `MDButton` adapter;
+8. preserve required action, form, link, icon, disabled, selected/toggle, and loading scenarios;
+9. privately bridge accepted public Mioframe tokens where supported;
+10. migrate all MDButton consumers and remove only MDButton-exclusive legacy ownership;
+11. run mandatory component-contract, browser, visual, production-build, and representative-consumer proof;
+12. complete final repository verification.
 
 M1 must not introduce a universal wrapper abstraction, all-components import, global runtime registry, or migrate unrelated Button-family components.
 
