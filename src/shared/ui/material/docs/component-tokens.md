@@ -15,6 +15,8 @@ Mioframe retains ownership of the accepted consumer-facing namespaces:
 
 The existing Mioframe theme remains the global owner. Component migration does not make `m3e-theme` a second theme source.
 
+Legacy component directories remain the declaration owners of their accepted public tokens until their focused migration transfers that ownership.
+
 ## Public token naming
 
 Map a verified official Material component path mechanically without shortening or removing segments:
@@ -38,7 +40,9 @@ When an official component path is unavailable:
 Every public `--md-comp-*` token has one canonical declaration owner.
 
 - Reference and system tokens remain theme/foundation-owned.
-- A family owns the component tokens used by its supported surface.
+- Before migration, the legacy component owns the accepted defaults used by its current consumers.
+- During migration, the family README records which accepted tokens transfer to the adapter.
+- After migration, the canonical adapter family owns the component tokens used by its supported surface.
 - Consumers may override public component tokens but do not own their defaults.
 - Do not create token files for symmetry, hypothetical reuse, or a complete unused Material surface.
 
@@ -54,24 +58,24 @@ Use a direct value only when the verified component contract defines that measur
 
 ## Adapter mapping
 
-An m3e-backed family maps public Mioframe tokens to documented renderer variables privately:
+An m3e-backed component maps public Mioframe tokens to documented renderer variables privately:
 
 ```text
 public --md-comp-* or --md-sys-* source
-  → optional family-local state/configuration resolution
+  → optional component-local state/configuration resolution
   → documented private --m3e-* input
   → renderer-owned DOM
 ```
 
 Rules:
 
-- map only variables required by the supported family surface;
+- map only variables required by the supported target surface;
 - keep mappings inside `src/shared/ui/material/components/<family>` unless two unrelated adapters prove the same genuinely shared mechanism;
 - do not expose `--m3e-*` through public documentation, barrels, props, or consumer examples;
 - do not read renderer defaults back as application state;
 - do not target private shadow DOM or undocumented renderer CSS to compensate for a missing public variable;
 - do not copy all m3e defaults into Mioframe merely to create a parallel theme;
-- prefer retaining the legacy component when required theming cannot be achieved through documented public renderer APIs.
+- keep renderer viability `blocked-upstream` and implementation ownership `legacy` when required theming cannot be achieved through documented public renderer APIs.
 
 ## Private variables
 
@@ -85,24 +89,24 @@ Suggested forms:
 --md-private-<component>-rendered-<part>-<property>
 ```
 
-Private variable names are not consumer contracts. Keep them within the owning family and remove obsolete routes during migration.
+Private variable names are not consumer contracts. Keep them within the owning implementation and remove obsolete routes during migration.
 
 ## Generic primitives
 
 A project-owned generic state-layer, ripple, focus, elevation, or motion primitive accepts only generic inputs.
 
 - The primitive does not read family token names.
-- The family owns source selection and maps the final value into the primitive.
+- The component owns source selection and maps the final value into the primitive.
 - Do not retain or add a parallel generic primitive when the selected m3e renderer already owns the behavior correctly and the wrapper does not use it.
-- Legacy primitives remain valid for families classified `retain-legacy` until those families migrate.
+- Legacy primitives remain valid for components with implementation ownership `legacy` until those components migrate.
 
 ## Family contract
 
-Each migrated family README records:
+Each migration family README records for the explicit target:
 
 - public tokens preserved or introduced;
 - exact official source paths where applicable;
-- defaults and canonical owner;
+- defaults and current/canonical declaration owner;
 - private mapping to documented m3e variables;
 - unsupported theming surface;
 - confirmed m3e deviations;
@@ -115,7 +119,7 @@ The adapter must preserve an accepted public token unless an explicit breaking A
 Verify contracts owned by Mioframe:
 
 - accepted public overrides affect the intended rendered property;
-- family-local mapping selects the correct documented renderer variable;
+- component-local mapping selects the correct documented renderer variable;
 - configuration and state routing do not leak private variables;
 - no `--m3e-*` usage exists outside `src/shared/ui/material`;
 - visual regression covers stable token-sensitive surfaces where the risk is material;
