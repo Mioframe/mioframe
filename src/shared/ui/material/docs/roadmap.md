@@ -16,6 +16,8 @@ Blocker: final repository verification.
 
 Next action: complete PR #162 verification and merge it, then start the `MDButton` migration contract and implementation from current `develop`.
 
+The exact `@m3e/web` dependency and shared Vue custom-element recognition (application, Storybook, and component tests) required by M1 are already established on this branch; only the `MDButton` family contract and adapter implementation remain.
+
 ## Milestones
 
 | ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                                                       |
@@ -44,12 +46,12 @@ Included:
 
 Not included:
 
-- adding `@m3e/web` to production dependencies;
-- changing Vue compiler or Storybook configuration;
 - creating the first family contract;
 - implementing a shared adapter framework;
 - changing existing Material component implementation, API, styling, stories, tests, or consumers;
 - migrating `MDButton` or any other component.
+
+The exact pinned `@m3e/web` dependency and shared Vue custom-element recognition were added after the initial M0 documentation set, as the shared technical foundation required before M1; see "Current state" above.
 
 Existing Card, Lists, State, Button, and other legacy directories remain the current implementation owners until their focused migration.
 

@@ -29,6 +29,9 @@ importers:
       '@fontsource/roboto':
         specifier: 5.2.10
         version: 5.2.10
+      '@m3e/web':
+        specifier: 2.6.2
+        version: 2.6.2(@floating-ui/utils@0.2.11)(lit@3.3.3)(tslib@2.8.1)
       '@sentry/vue':
         specifier: ^10.63.0
         version: 10.63.0(vue@3.5.39(typescript@5.9.3))
@@ -74,6 +77,9 @@ importers:
       ky:
         specifier: ^2.0.2
         version: 2.0.2
+      lit:
+        specifier: ^3.3.3
+        version: 3.3.3
       lru-cache:
         specifier: ^11.5.1
         version: 11.5.1
@@ -1907,18 +1913,33 @@ packages:
   '@lezer/lr@1.4.10':
     resolution: {integrity: sha512-rnCpTIBafOx4mRp43xOxDJbFipJm/c0cia/V5TiGlhmMa+wsSdoGmUN3w5Bqrks/09Q/D4tNAmWaT8p6NRi77A==}
 
+  '@lit-labs/ssr-dom-shim@1.6.0':
+    resolution: {integrity: sha512-VHb0ALPMTlgKjM6yIxxoQNnpKyUKLD04VzeQdsiXkMqkvYlAHxq9glGLmgbb889/1GsohSOAjvQYoiBppXFqrQ==}
+
+  '@lit/reactive-element@2.1.2':
+    resolution: {integrity: sha512-pbCDiVMnne1lYUIaYNN5wrwQXDtHaYtg7YEFPeW+hws6U47WeFvISGUWekPGKWOP1ygrs0ef0o1VJMk1exos5A==}
+
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
     engines: {node: '>=8'}
 
+  '@m3e/web@2.6.2':
+    resolution: {integrity: sha512-Znpo0CqBJtlIPgKzGmLcbkwfOf2l1/Lkt+NUxdyDcMhPb/WeMlvlbmmjJNFU/3c+IuIiQ/BmpYwoOrf7teyOCA==}
+    peerDependencies:
+      lit: ^3.3.0
+      tslib: ^2.8.1
+
   '@marijn/find-cluster-break@1.0.3':
     resolution: {integrity: sha512-FY+MKLBoTsLNJF/eLWaOsXGdz6uh3Iu1axjPf6TUq92IYumcTcXWHoS747JARLkcdlJ/Waiaxc5wQfFO8jC6NA==}
+
+  '@material/material-color-utilities@0.4.0':
+    resolution: {integrity: sha512-dlq6VExJReb8dhjj3a/yTigr3ncNwoFmL5Iy2ENtbDX03EmNeOEdZ+vsaGrj7RTuO+mB7L58II4LCsl4NpM8uw==}
 
   '@maxim_mazurok/gapi.client.discovery-v1@0.6.20200806':
     resolution: {integrity: sha512-QN6aGmIbLXcJW0SEf8tz9UWCpQTBMy2u4xSuZ04YofzMGknhWwMeUecySLntCZYAEstHzDoSgwxCf5Gb8GqIRQ==}
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.3.20260629':
-    resolution: {integrity: sha512-4I0XpQu/FSoXlLrV/eXN50t84iJpSnGBMY3PlcgKiXrwQpqBaMFe2mQu41+dDapyaf0PMia6Vk2GSeoSyQbA7Q==}
+  '@maxim_mazurok/gapi.client.drive-v3@0.3.20260713':
+    resolution: {integrity: sha512-87SbDEwfMBbGNKWOagddz0WoC5N+qns88Faz1sESWVR0sObQZOfsvUsakOuVd036XTLLxQIzEDlrAeqHx8ZQtw==}
 
   '@maxim_mazurok/gapi.client.oauth2-v2@0.4.20200213':
     resolution: {integrity: sha512-04RisA+Bl9KRlfTBAeFkAlFiuU96ZfOjVFrwtLZ273NLluzAdcr/q7r45w6ck8YAR/wjgszGkhJuSI7OclD0eA==}
@@ -4254,6 +4275,11 @@ packages:
     resolution: {integrity: sha512-gk/Z852D2Wtb//0I+kRFNKKE9dIIVirjoqPoA1wJU+XePVXZfGeBpk45+A1rKO4Q43prqWBNY/MiIeRLbPWUaA==}
     engines: {node: '>=4.0.0'}
 
+  composed-offset-position@0.0.6:
+    resolution: {integrity: sha512-Q7dLompI6lUwd7LWyIcP66r4WcS9u7AL2h8HaeipiRfCRPLMWqRx8fYsjb4OHi6UQFifO7XtNC2IlEJ1ozIFxw==}
+    peerDependencies:
+      '@floating-ui/utils': ^0.2.5
+
   confbox@0.1.8:
     resolution: {integrity: sha512-RMtmw0iFkeR4YV+fUOSucriAQNb9g8zFR52MWCtl+cCZOFRNL6zeB395vPzFhEjjn4fMxXudmELnl/KF/WrK6w==}
 
@@ -5279,6 +5305,15 @@ packages:
 
   linkify-it@5.0.2:
     resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
+
+  lit-element@4.2.2:
+    resolution: {integrity: sha512-aFKhNToWxoyhkNDmWZwEva2SlQia+jfG0fjIWV//YeTaWrVnOxD89dPKfigCUspXFmjzOEUQpOkejH5Ly6sG0w==}
+
+  lit-html@3.3.3:
+    resolution: {integrity: sha512-el8M6jK2o3RXBnrSHX3ZKrsN8zEV63pSExTO1wYJz7QndGYZ8353e2a5PPX+qHe2aGayfnchQmkAojaWAREOIA==}
+
+  lit@3.3.3:
+    resolution: {integrity: sha512-fycuvZg/hkpozL00lm1pEJH5nN/lr9ZXd6mJI2HSN4+Bzc+LDNdEApJ6HFbPkdFNHLvOplIIuJvxkS4XUxqirw==}
 
   local-pkg@1.2.1:
     resolution: {integrity: sha512-++gUqRDEvcnN6Zhqrr+y/CkVEHhlrR96vZn3nZZPYzMcBUyBtTKzB9NadClFIsIVSsu+3i9tfk/erqy9kAmt7Q==}
@@ -8756,16 +8791,34 @@ snapshots:
     dependencies:
       '@lezer/common': 1.5.2
 
+  '@lit-labs/ssr-dom-shim@1.6.0': {}
+
+  '@lit/reactive-element@2.1.2':
+    dependencies:
+      '@lit-labs/ssr-dom-shim': 1.6.0
+
   '@lukeed/csprng@1.1.0': {}
 
+  '@m3e/web@2.6.2(@floating-ui/utils@0.2.11)(lit@3.3.3)(tslib@2.8.1)':
+    dependencies:
+      '@floating-ui/dom': 1.7.6
+      '@material/material-color-utilities': 0.4.0
+      composed-offset-position: 0.0.6(@floating-ui/utils@0.2.11)
+      lit: 3.3.3
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@floating-ui/utils'
+
   '@marijn/find-cluster-break@1.0.3': {}
+
+  '@material/material-color-utilities@0.4.0': {}
 
   '@maxim_mazurok/gapi.client.discovery-v1@0.6.20200806':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
 
-  '@maxim_mazurok/gapi.client.drive-v3@0.3.20260629':
+  '@maxim_mazurok/gapi.client.drive-v3@0.3.20260713':
     dependencies:
       '@types/gapi.client': 1.0.8
       '@types/gapi.client.discovery-v1': 0.0.4
@@ -9809,7 +9862,7 @@ snapshots:
 
   '@types/gapi.client.drive-v3@0.0.5':
     dependencies:
-      '@maxim_mazurok/gapi.client.drive-v3': 0.3.20260629
+      '@maxim_mazurok/gapi.client.drive-v3': 0.3.20260713
 
   '@types/gapi.client.oauth2-v2@0.0.4':
     dependencies:
@@ -10735,6 +10788,10 @@ snapshots:
   comment-parser@1.4.7: {}
 
   common-tags@1.8.2: {}
+
+  composed-offset-position@0.0.6(@floating-ui/utils@0.2.11):
+    dependencies:
+      '@floating-ui/utils': 0.2.11
 
   confbox@0.1.8: {}
 
@@ -11836,6 +11893,22 @@ snapshots:
   linkify-it@5.0.2:
     dependencies:
       uc.micro: 2.1.0
+
+  lit-element@4.2.2:
+    dependencies:
+      '@lit-labs/ssr-dom-shim': 1.6.0
+      '@lit/reactive-element': 2.1.2
+      lit-html: 3.3.3
+
+  lit-html@3.3.3:
+    dependencies:
+      '@types/trusted-types': 2.0.7
+
+  lit@3.3.3:
+    dependencies:
+      '@lit/reactive-element': 2.1.2
+      lit-element: 4.2.2
+      lit-html: 3.3.3
 
   local-pkg@1.2.1:
     dependencies:
