@@ -90,13 +90,13 @@ The current Mioframe theme remains the global owner. `m3e-theme` is not installe
 
 ## Migration map
 
-| Area                              | Current owner                         | Canonical owner                                                              | Current state                                      |
-| --------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------- |
-| Existing public `MD*` components  | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration                       | renderer `unassessed`; owner `legacy`              |
-| Shared m3e compiler integration   | shared Vite/Vue configuration         | shared Vite/Vue configuration                                                 | established for app, Storybook, and component tests |
-| Vue-to-m3e component adapters     | none                                  | component-local adapter first; shared helper only after both pilots prove it | `planned`                                          |
-| Public Material entry point       | none                                  | `@shared/ui/material`                                                        | `planned`                                          |
-| Reference/system tokens and theme | existing `src/shared/lib/md` owners   | unchanged until a focused architecture decision                              | `retained`                                         |
+| Area                              | Current owner                         | Canonical owner                                                              | Current state                                       |
+| --------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------- |
+| Existing public `MD*` components  | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration                       | renderer `unassessed`; owner `legacy`               |
+| Shared m3e compiler integration   | shared Vite/Vue configuration         | shared Vite/Vue configuration                                                | established for app, Storybook, and component tests |
+| Vue-to-m3e component adapters     | none                                  | component-local adapter first; shared helper only after both pilots prove it | `planned`                                           |
+| Public Material entry point       | none                                  | `@shared/ui/material`                                                        | `planned`                                           |
+| Reference/system tokens and theme | existing `src/shared/lib/md` owners   | unchanged until a focused architecture decision                              | `retained`                                          |
 
 ## State model
 
