@@ -43,7 +43,7 @@ The sources have different responsibilities:
 
 1. Current official Material 3 Expressive documentation defines component purpose, vocabulary, usage, visual requirements, interaction expectations, and accessibility intent.
 2. The accepted family contract in `src/shared/ui/material/components/<family>/README.md` defines the supported Mioframe subset and public Vue API for a migration.
-3. The exact selected `@m3e/web` version and its public package exports, declarations, Custom Elements Manifest, documentation, and exported CSS custom properties define the available renderer integration contract.
+3. The exact lockfile-resolved `@m3e/web` version and its public package exports, declarations, Custom Elements Manifest, documentation, and exported CSS custom properties define the available renderer integration contract.
 4. Current repository code, consumers, tests, stories, and component-local README files define behavior that must be preserved during migration unless an explicit product decision changes it.
 
 m3e is an implementation dependency, not Material design authority and not the public API owner.
@@ -127,7 +127,7 @@ Renderer capability and implementation ownership are independent facts.
 
 ### Renderer viability
 
-- `unassessed` — the exact renderer version and required public contract have not been verified;
+- `unassessed` — the exact lockfile-resolved renderer version and required public contract have not been verified;
 - `ready` — documented public m3e APIs cover every required scenario with a thin adapter;
 - `blocked-upstream` — a required scenario depends on missing, defective, or unstable public m3e behavior.
 
@@ -156,21 +156,21 @@ Do not introduce a second global theme source. The existing Mioframe theme remai
 
 ## Dependency and version policy
 
-The family contract selects the exact m3e version before production edits.
+Declare `@m3e/web` with the repository-standard compatible semver range. The lockfile owns the exact installed version, and each family contract records the exact lockfile-resolved version that was inspected before production edits.
 
 Selection must:
 
 - inspect a current stable, non-prerelease version through primary package evidence;
 - verify the required family export, declarations, manifest, peer dependencies, and documented integration surface;
-- record the exact version and family entry point in the family README;
-- pin the dependency without a range;
+- record the exact lockfile-resolved version and family entry point in the family README;
 - stop with `blocked-upstream` when no verified version satisfies required scenarios.
 
 Implementation must:
 
 - import only required family entry points, not an all-components bundle;
-- satisfy peer dependencies explicitly;
-- inspect public API and manifest changes before later updates;
+- keep peer handling consistent with the repository package-manager configuration;
+- add a direct renderer implementation dependency only when Mioframe code imports it directly or the package manager requires explicit ownership;
+- inspect public API and manifest changes whenever the lockfile-resolved m3e version changes;
 - avoid support for multiple m3e versions or runtime renderer switching.
 
 ## Vue custom-element integration ownership
@@ -217,20 +217,3 @@ Additional proof follows changed risk:
 - visual regression for stable visible surfaces with material regression risk;
 - representative consumer proof for migrated shared usage;
 - production build proof for custom-element recognition, registration, and bundled family entry points.
-
-Do not duplicate m3e unit tests or test Lit/custom-element internals. A green test suite does not prove that m3e matches official Material guidance; source-backed review and visual comparison remain separate evidence.
-
-## Migration completion
-
-A component is migrated only when:
-
-- renderer viability is `ready`;
-- implementation ownership is `migrated`;
-- its family contract is complete;
-- the Vue adapter is the only public owner for the migrated component;
-- affected consumers use the canonical public entry point;
-- obsolete implementation, exports, tests, and compatibility paths owned exclusively by the migrated component are removed;
-- unsupported capabilities and confirmed m3e deviations are explicit;
-- applicable focused checks and final repository verification pass.
-
-One component or cohesive inseparable family is migrated per focused PR. The migration target must be explicit before implementation begins.
