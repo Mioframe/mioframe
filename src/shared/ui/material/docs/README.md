@@ -15,7 +15,7 @@ This directory is the canonical documentation owner for the Material library und
 ```text
 current user scenarios and consumers
   → official Material 3 Expressive requirements
-  → exact m3e public component contract
+  → exact lockfile-resolved m3e public component contract
   → accepted Mioframe family README
   → explicit Mioframe Vue adapter
   → complete target consumer migration
@@ -38,10 +38,10 @@ A blocked renderer leaves implementation ownership `legacy`. Retaining legacy is
 
 ## Workflow
 
-Use `material-component-adapter` for one explicit official component target or a proven inseparable family. The workflow must inspect the current implementation and consumers, official Material guidance, and an exact stable m3e version before production edits.
+Use `material-component-adapter` for one explicit official component target or a proven inseparable family. The workflow must inspect the current implementation and consumers, official Material guidance, and the exact lockfile-resolved version of the selected stable m3e release before production edits.
 
 Use the generic architecture handoff when a task changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision not resolved by the canonical adapter contract.
 
 ## Current next action
 
-Follow [Roadmap](./roadmap.md). PR #162 completes the architecture reset only. The next production milestone is the `MDButton`-only m3e adapter pilot.
+Follow [Roadmap](./roadmap.md). PR #162 currently owns the architecture reset and shared technical m3e integration. After M0 verification, the `MDButton`-only adapter pilot continues in the same branch; merge readiness is evaluated only after that pilot is complete.
