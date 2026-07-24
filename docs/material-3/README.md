@@ -6,6 +6,7 @@ Mioframe exposes a canonical Vue Material library and delegates component implem
 
 - [Architecture](./architecture.md) — authority, ownership, public/private boundary, theme and token policy, renderer viability, dependency rules, and migration completion.
 - [Component adapter contract](./component-adapter.md) — required family README, Vue-to-m3e mapping, implementation sequence, verification, and exit gate.
+- [Component tokens](./component-tokens.md) — public Mioframe token ownership and private mapping to documented m3e variables.
 - [Roadmap](./roadmap.md) — current milestone, blocker, next action, and pilot sequence.
 - [`src/shared/ui/material`](../../src/shared/ui/material/README.md) — physical library boundary and current migration map.
 
