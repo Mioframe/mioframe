@@ -4,8 +4,8 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 ## Routing
 
-- Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component families.
-- Use `material-component-adapter` and the deeper `src/shared/ui/material/AGENTS.md` rules for official Material family implementation, migration, or adapter changes.
+- Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component targets.
+- Use `material-component-adapter` and the deeper `src/shared/ui/material/AGENTS.md` rules for one explicit official Material component target or proven inseparable family implementation, migration, or adapter change.
 
 ## Contains
 
@@ -16,7 +16,10 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Boundaries
 
 - Shared UI must not import product layers or domain models.
-- Generic shared UI must not depend directly on `@m3e/web`, render `m3e-*` elements, or consume `--m3e-*` variables. Those renderer details are private to `src/shared/ui/material`.
+- When generic or product UI consumes an official Material component, it must use the curated Mioframe `MD*` Vue API.
+- Native HTML and project-specific or generic shared UI remain valid when they are the correct owner.
+- Generic shared UI must not depend directly on `@m3e/web`, render `m3e-*` elements, use renderer element types, or consume `--m3e-*` variables. Those renderer details are private to `src/shared/ui/material`.
+- Existing Material components outside `src/shared/ui/material` remain valid legacy owners until their focused migration; do not add new Material ownership at legacy paths.
 - Do not move product behavior into a shared primitive merely to reuse an official Material component.
 
 ## Verification
