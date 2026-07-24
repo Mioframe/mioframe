@@ -9,7 +9,7 @@ The migration target is one explicitly named public `MD*` component, or a cohesi
 ```text
 required scenarios
   → official Material contract
-  → exact m3e public integration contract
+  → lockfile-resolved m3e public integration contract
   → accepted Mioframe family contract
   → Vue adapter
   → consumer migration
@@ -43,7 +43,7 @@ Official Material sources:
 Supported Material surface:
 Unsupported Material surface:
 Public Vue API:
-Renderer package, exact version, and family entry point:
+Renderer package, exact lockfile-resolved version, and family entry point:
 Vue custom-element recognition and registration ownership:
 Vue-to-m3e mapping:
 Controlled-state contract:
@@ -75,7 +75,7 @@ Inspect only what is needed for the selected migration target:
 1. current production owner, public exports, direct consumers, stories, tests, implementation notes, and known defects;
 2. required user scenarios and behavior that must not change;
 3. current official Material 3 Expressive component guidance for the supported surface;
-4. a current stable, non-prerelease m3e version using primary package evidence:
+4. the exact lockfile-resolved version of a current stable, non-prerelease m3e release using primary package evidence:
    - package version and peer dependencies;
    - package exports and required family entry point;
    - TypeScript declarations and Custom Elements Manifest;
@@ -95,7 +95,7 @@ Stop discovery when renderer viability and every required mapping decision are r
 
 Use:
 
-- `unassessed` before the exact version and required integration surface are verified;
+- `unassessed` before the exact lockfile-resolved version and required integration surface are verified;
 - `ready` only when every required scenario can be implemented through documented public m3e APIs and a thin Vue adapter;
 - `blocked-upstream` when a required scenario depends on missing, defective, or unstable public m3e behavior.
 
@@ -130,13 +130,16 @@ The Vue API follows official Material concepts and established project conventio
 
 Before production component edits, the family contract must record:
 
-- the exact pinned `@m3e/web` version;
+- the repository-standard compatible `@m3e/web` semver range;
+- the exact lockfile-resolved version that was inspected;
 - the required family entry point;
-- verified peer dependencies;
+- verified peer dependency requirements and how the repository package manager satisfies them;
 - the shared build configuration owner for Vue custom-element recognition across application, Storybook, and tests;
 - the family-local import that registers only the required m3e elements.
 
-Do not use a version range, all-components import, global runtime registry, or family-independent registration framework.
+Do not use `latest`, a wildcard, a prerelease, an all-components import, a global runtime registry, or a family-independent registration framework.
+
+A lockfile-resolved m3e version change requires re-inspection of the affected public contract and the adapter verification selected by its risk.
 
 ## Adapter implementation
 
@@ -179,46 +182,36 @@ Record event ordering and cancellation when it affects correctness. Do not infer
 
 ## Consumer migration
 
-For a legacy migration target:
+A migration must move every in-repository consumer of the selected target to the canonical Vue adapter and remove only obsolete ownership that belongs exclusively to that target.
 
-1. create the canonical adapter owner;
-2. migrate every affected in-repository import and usage of that target;
-3. preserve required product scenarios and explicitly accepted API changes;
-4. update applicable stories, tests, visual mappings, and public barrels;
-5. remove the old target implementation, exports, tests, and exclusively owned compatibility paths;
-6. leave unrelated components in the legacy directory unchanged;
-7. set implementation ownership to `migrated`.
+Do not migrate unrelated components merely because they share a legacy directory. Keep still-owned shared modules in place until their remaining owners are migrated or a separate extraction is justified.
 
-A temporary compatibility path requires exact remaining consumers, prohibition of new usage, and a removal target. It is not the default.
+Temporary compatibility is allowed only when atomic migration is technically unsafe and must record exact remaining consumers, no-new-usage enforcement, and a removal target.
 
-## Verification
+## Required verification
 
-Every public `MD*` adapter requires a colocated `<Component>.test.ts` component-contract test for props, emits, slots, defaults, explicit attribute/property mapping, controlled state, native/ARIA ownership, invalid combinations, and non-browser wiring.
+Every public adapter requires:
 
-Add the lowest faithful proof for remaining risks:
+- a colocated `<Component>.test.ts` component-contract test for its stable Vue API and explicit integration mapping;
+- browser proof for renderer upgrade and relevant native interactions;
+- visual regression proof for the canonical visible surface;
+- representative-consumer proof for migrated usage;
+- production-build proof for compiler recognition, family registration, and bundling;
+- final repository verification.
 
-- browser tests for custom-element upgrade, focus, keyboard, pointer/touch, form submission, navigation, cancellation, and lifecycle where applicable;
-- visual regression for stable visible surfaces with material regression risk;
-- representative consumer proof when migration changes shared usage;
-- production build proof for custom-element recognition, family registration, and bundled entry points.
+The `MDButton` and `MDSwitch` pilots require all proof types above.
 
-The `MDButton` and `MDSwitch` pilots require component-contract, browser, visual, production-build, and representative-consumer proof because they establish the integration boundary.
+Do not duplicate m3e or Lit internals, inspect private shadow DOM, or infer Material correctness from green automation alone.
 
-Do not test m3e internals, Lit behavior, or generic browser behavior that Mioframe does not change or constrain.
+## Completion gate
 
-## Exit gate
-
-A component PR is complete only when:
+A target is complete only when:
 
 - renderer viability is `ready`;
 - implementation ownership is `migrated`;
-- public Vue and mapping contracts are explicit;
-- no m3e detail leaks outside the Material library;
-- controlled state and native semantics are correct;
-- required consumers are migrated;
-- obsolete ownership for the migration target is removed;
-- unrelated legacy components remain valid;
-- confirmed m3e limitations are recorded without private workarounds;
-- required focused checks and final repository verification pass.
-
-If the exit gate cannot be reached, keep implementation ownership `legacy`; use `blocked-upstream` when renderer capability is the blocker and do not merge a partially owned replacement.
+- one canonical public Vue owner remains;
+- all affected consumers are migrated;
+- obsolete target-owned implementation, exports, tests, stories, and compatibility paths are removed;
+- unrelated legacy ownership is preserved;
+- supported, unsupported, and defective renderer surface is recorded;
+- every required proof passes.
