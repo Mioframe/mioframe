@@ -71,11 +71,25 @@ const preparationTargetsLatest = (
   state.latestRelease === undefined ||
   isSameReleaseIdentity(preparationRelease, state.latestRelease);
 
+/**
+ * Whether a specific client should be told the trial is starting: the client that already claimed
+ * the trial by navigating into it, or — before that claim happens — only the sole Manual requester
+ * about to reload. Every other client, including an unrelated window still running the committed
+ * release, must never report `trialStarting` for a trial it has no part in.
+ * @param state - Private durable controller state.
+ * @param clientId - Requesting/receiving client id.
+ * @returns Whether this exact client owns the in-progress trial.
+ */
+const isTrialStartingForClient = (state: ReleaseControllerState, clientId: string): boolean =>
+  state.trial !== undefined &&
+  (state.trial.initiatingClientId === clientId || state.trial.requestingClientId === clientId);
+
 const projectUpdateState = (
   state: ReleaseControllerState,
   runningRelease: ReleaseIdentity,
+  clientId: string,
 ): AppUpdateState => {
-  if (state.trial) return 'trialStarting';
+  if (isTrialStartingForClient(state, clientId)) return 'trialStarting';
   if (
     state.preparation.status === 'running' &&
     preparationTargetsLatest(state, state.preparation.release)
@@ -120,7 +134,7 @@ export const projectAppUpdateSnapshot = (
     runningRelease,
     ...(state.pinnedRelease && { pinnedRelease: state.pinnedRelease }),
     ...(state.latestRelease && { latestRelease: state.latestRelease }),
-    updateState: projectUpdateState(state, runningRelease),
+    updateState: projectUpdateState(state, runningRelease, clientId),
     ...(state.check.lastSuccessAt && { lastSuccessfulCheckAt: state.check.lastSuccessAt }),
     ...(state.errorCode && { errorCode: state.errorCode }),
   };

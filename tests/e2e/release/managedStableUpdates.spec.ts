@@ -14,15 +14,15 @@ const waitForExecutedRelease = (page: Page, release: 'A' | 'B') =>
     release,
   );
 type ReleaseTestVfsActivity = {
-  /** Starts one real, tracked pending VFS operation and returns its token. */
-  start: () => Promise<string>;
-  /** Resolves the pending operation identified by `token`. */
-  finish: (token: string) => Promise<void>;
+  /** Starts one real, tracked pending VFS mutation through the ordinary `writeFile` path. */
+  start: () => Promise<void>;
+  /** Resolves the single pending mutation started by `start`. */
+  finish: () => Promise<void>;
 };
-// Drives the release-only VFS-activity test seam (see `MainApp.vue`/`useVfsActivity.ts`): starts
-// or finishes one real, tracked VFS operation through the same production activity tracking
-// `useVfsActivity` exposes, without overriding `vfsReady` directly.
-const startReleaseTestVfsActivity = (page: Page): Promise<string> =>
+// Drives the release-only VFS-activity test seam (see `MainApp.vue`): starts or finishes one
+// real, tracked VFS mutation through the same production activity tracking `useVfsActivity`
+// exposes, without overriding `vfsReady` directly and without calling a VFS-specific test method.
+const startReleaseTestVfsActivity = (page: Page): Promise<void> =>
   page.evaluate(() => {
     const activity: ReleaseTestVfsActivity = Reflect.get(
       globalThis,
@@ -30,14 +30,31 @@ const startReleaseTestVfsActivity = (page: Page): Promise<string> =>
     );
     return activity.start();
   });
-const finishReleaseTestVfsActivity = (page: Page, token: string): Promise<void> =>
-  page.evaluate((activeToken) => {
+const finishReleaseTestVfsActivity = (page: Page): Promise<void> =>
+  page.evaluate(() => {
     const activity: ReleaseTestVfsActivity = Reflect.get(
       globalThis,
       '__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__',
     );
-    return activity.finish(activeToken);
-  }, token);
+    return activity.finish();
+  });
+// Arms the release-only, fixture-build-only boot-confirmation gate (see `client.ts`) for this
+// page's *next* navigation only: the flag must already exist when the new document's own script
+// first evaluates, so it is set via `addInitScript` rather than a live call after the fact. Every
+// later navigation on this page loads with no flag present, so its own gate resolves immediately.
+const armBootConfirmationGateForNextNavigation = (page: Page) =>
+  page.addInitScript(() => {
+    Reflect.set(window, '__MIOFRAME_RELEASE_TEST_ARM_BOOT_CONFIRMATION_GATE__', true);
+  });
+const releaseBootConfirmationGate = (page: Page) =>
+  page.evaluate(() => {
+    const release: (() => void) | undefined = Reflect.get(
+      window,
+      '__MIOFRAME_RELEASE_TEST_RELEASE_BOOT_CONFIRMATION_GATE__',
+    );
+    release?.();
+  });
+
 // Triggers a real browser update check (the same API a returning visit or periodic background
 // check would use) — this is a genuine browser action, not a reproduction of the managed-update
 // connection protocol.
@@ -310,7 +327,7 @@ test('10 Manual Update now is blocked while another stable window is open and su
   await waitForExecutedRelease(page, 'B');
 });
 
-test('a pending trial serves only its claiming client B; an unrelated client keeps receiving the committed A and cannot confirm the trial', async ({
+test('a pending trial serves only its claiming client B; an unrelated client keeps receiving the committed A and cannot confirm or roll back the trial', async ({
   page,
   context,
   request,
@@ -321,27 +338,34 @@ test('a pending trial serves only its claiming client B; an unrelated client kee
   await selectLatest(request, 'B');
   await checkForUpdates(page, /update available/i);
 
-  // The claiming client's own reload navigation is what actually claims the trial; waiting for it
-  // to start (real navigation lifecycle, not a sleep) before opening the unrelated client below
-  // guarantees the trial already exists and is already claimed by `page`, so `other`'s subsequent
-  // navigation exercises the "unrelated client during a pending trial" path deterministically.
+  // Arm B's own real boot-confirmation gate (see `client.ts`) before triggering the reload, so B
+  // deterministically executes without committing the trial, regardless of how quickly it mounts
+  // and would otherwise have confirmed — no reliance on relative timing between two windows.
+  await armBootConfirmationGateForNextNavigation(page);
   await Promise.all([
     page.waitForURL(/.*/),
     page.getByRole('button', { name: /update now/i }).click(),
   ]);
+  await waitForExecutedRelease(page, 'B');
 
   const other = await context.newPage();
   await other.goto('/');
-  // The unrelated client is served the committed release, not the trial target, while the trial
-  // is still pending.
+  // The unrelated client executes and boot-confirms its own release A normally (its gate was
+  // never armed); that normal A confirmation must not commit B, and this navigation must not roll
+  // B back either.
   await waitForExecutedRelease(other, 'A');
+  await openAppUpdates(other);
+  await expect(other.getByRole('heading', { name: /up to date/i })).toBeVisible();
+  await expect(other.getByRole('heading', { name: /starting update/i })).toHaveCount(0);
 
-  // The claiming client's own reload completes its confirmation and commits the trial. Waiting
-  // for its own status to settle past `trialStarting` (not just its executed-release marker,
-  // which fires on parse, before the app has mounted and sent its own boot confirmation) proves
-  // the trial has actually committed before `other` reloads below.
-  await waitForExecutedRelease(page, 'B');
-  await openAppUpdates(page);
+  // B is executing but has still not committed, proven by inspecting `page`'s own status: the
+  // claiming client reports `trialStarting` until its held-open gate is released.
+  await goToAppUpdates(page);
+  await expect(page.getByRole('heading', { name: /starting update/i })).toBeVisible();
+
+  // Release B's real confirmation gate: only now does the trial commit.
+  await releaseBootConfirmationGate(page);
+  await expect(page.getByRole('heading', { name: /up to date/i })).toBeVisible();
 
   // The unrelated client never claimed or ran the trial target and still cannot receive or
   // confirm it after commit either — it only sees the now-committed release on its own next
@@ -357,14 +381,14 @@ test('11 active application work blocks update', async ({ page, request }) => {
   await selectLatest(request, 'B');
   await checkForUpdates(page, /update available/i);
 
-  const token = await startReleaseTestVfsActivity(page);
+  await startReleaseTestVfsActivity(page);
 
   await goToAppUpdates(page);
   await page.getByRole('button', { name: /update now/i }).click();
   await expect(page.getByText(/changes are still being saved/i)).toBeVisible();
   expect(await marker(page)).toBe('A');
 
-  await finishReleaseTestVfsActivity(page, token);
+  await finishReleaseTestVfsActivity(page);
 
   await page.getByRole('button', { name: /update now/i }).click();
   await waitForExecutedRelease(page, 'B');

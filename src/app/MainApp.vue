@@ -33,18 +33,36 @@ const { settings } = useLocalSettings();
 const vfsActivity = useVfsActivity();
 setupAppUpdateRestartReadiness(() => !vfsActivity.isActive.value);
 
-// Release-only browser test seam: exposes a way to start/finish one real, tracked VFS operation
-// so the release e2e suite can prove `Update now` blocking against genuine activity tracking
-// end to end, without overriding `vfsReady` directly. Never present outside a release-test build.
-if (
-  __RELEASE_TEST_HOOKS__ &&
-  vfsActivity.startReleaseTestPendingOperation &&
-  vfsActivity.finishReleaseTestPendingOperation
-) {
-  Reflect.set(window, '__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__', {
-    start: () => vfsActivity.startReleaseTestPendingOperation?.(),
-    finish: (token: string) => vfsActivity.finishReleaseTestPendingOperation?.(token),
-  });
+// Release-only browser test seam: attaches a second, fully separate worker RPC client (never a
+// field on the production `mainBackgroundService`/`fileSystem` surface) that starts/finishes one
+// real, tracked VFS mutation, observed through the same production `useVfsActivity` this app
+// already uses, so the release e2e suite can prove `Update now` blocking against genuine activity
+// tracking end to end without overriding `vfsReady` directly. The dynamic import behind this
+// compile-time-constant condition lets the bundler drop it entirely from every real
+// stable/branch/PR build.
+if (__RELEASE_TEST_HOOKS__) {
+  void Promise.all([
+    import('@shared/service/useService'),
+    import('@shared/service/fileSystem/releaseTestFileSystemWorkerService'),
+    import('@shared/lib/wrapWorker/defineWorkerClient'),
+  ]).then(
+    ([
+      { getWorker },
+      { releaseTestFileSystemServiceId, setupReleaseTestFileSystemService },
+      { defineWorkerClient },
+    ]) => {
+      const useReleaseTestFileSystemServiceClient = defineWorkerClient(
+        getWorker,
+        releaseTestFileSystemServiceId,
+        setupReleaseTestFileSystemService,
+      );
+      const client = useReleaseTestFileSystemServiceClient();
+      Reflect.set(window, '__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__', {
+        start: () => client.startReleaseTestPendingWrite(),
+        finish: () => client.finishReleaseTestPendingWrite(),
+      });
+    },
+  );
 }
 
 const mainAriaHidden = useMainContentAriaHidden();

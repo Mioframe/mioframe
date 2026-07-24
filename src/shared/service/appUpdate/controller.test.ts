@@ -3,6 +3,7 @@ import type { LatestRelease, ReleaseControllerState, ReleaseIdentity } from './c
 import { createReleaseController } from './controller';
 import { createMemoryReleaseControllerStateStore } from './persistence';
 import {
+  cleanupReleaseCaches,
   cleanupStaleStagingCaches,
   fetchValidatedReleaseMetadata,
   isReleaseAvailable,
@@ -12,6 +13,7 @@ import { createInitialReleaseControllerState } from './stateMachine';
 import { associateTrialNavigation } from './trial';
 
 vi.mock('./releaseCache', () => ({
+  cleanupReleaseCaches: vi.fn().mockResolvedValue(undefined),
   cleanupStaleStagingCaches: vi.fn().mockResolvedValue(undefined),
   fetchValidatedReleaseMetadata: vi.fn(),
   isReleaseAvailable: vi.fn(),
@@ -52,6 +54,7 @@ afterEach(() => {
   vi.mocked(isReleaseAvailable).mockReset();
   vi.mocked(prepareRelease).mockReset();
   vi.mocked(cleanupStaleStagingCaches).mockClear();
+  vi.mocked(cleanupReleaseCaches).mockClear();
 });
 
 describe('background check and preparation', () => {
@@ -69,7 +72,10 @@ describe('background check and preparation', () => {
       store,
       now: () => new Date('2026-07-25T00:00:00.000Z'),
       operationId: () => 'operation',
-      publish: (state) => snapshots.push(`${state.check.status}:${state.preparation.status}`),
+      publish: (state) => {
+        snapshots.push(`${state.check.status}:${state.preparation.status}`);
+        return Promise.resolve();
+      },
     });
     const execution = await controller.execute({ protocolVersion: 3, type: 'CHECK_FOR_UPDATES' });
     expect(execution.response).toEqual({ kind: 'action', result: { status: 'accepted' } });
@@ -698,6 +704,227 @@ describe('failed trial and failed-target eligibility', () => {
     const committed = (await store.read(current)).state;
     expect(committed.trial).toBeUndefined();
     expect(committed.activeRelease).toEqual(next);
+  });
+});
+
+describe('reconciliation against canonical latest', () => {
+  it('idles a stale running preparation for B when canonical latest has already advanced to C, even if B is fully cached', async () => {
+    const c = release('c', 3);
+    vi.mocked(isReleaseAvailable).mockResolvedValue(true);
+    const staleState: ReleaseControllerState = {
+      ...createInitialReleaseControllerState(current),
+      latestRelease: c,
+      preparation: {
+        status: 'running',
+        release: next,
+        operationId: 'abandoned',
+        startedAt: '2020-01-01T00:00:00.000Z',
+      },
+    };
+    const store = createMemoryReleaseControllerStateStore(staleState);
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      now: () => new Date('2026-07-25T00:00:00.000Z'),
+    });
+    await controller.execute({ protocolVersion: 3, type: 'GET_SNAPSHOT' });
+    expect((await store.read(current)).state.preparation).toEqual({ status: 'idle' });
+  });
+});
+
+describe('controller-owned navigation and Automatic clean-launch trial entry', () => {
+  it('does not activate a stale ready B preparation when canonical latest has advanced to C', async () => {
+    const c = release('c', 3);
+    const state: ReleaseControllerState = {
+      ...createInitialReleaseControllerState(current),
+      mode: 'automatic',
+      latestRelease: c,
+      preparation: { status: 'ready', release: next },
+    };
+    const store = createMemoryReleaseControllerStateStore(state);
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      liveStableWindows: () => Promise.resolve([]),
+    });
+    const served = await controller.handleNavigation('nav-client');
+    expect(served).toEqual(current);
+    expect((await store.read(current)).state.trial).toBeUndefined();
+  });
+
+  it('starts and immediately claims an Automatic clean-launch trial only for the canonical latest, when it is the sole live window', async () => {
+    const state: ReleaseControllerState = {
+      ...createInitialReleaseControllerState(current),
+      mode: 'automatic',
+      latestRelease: next,
+      preparation: { status: 'ready', release: next },
+    };
+    const store = createMemoryReleaseControllerStateStore(state);
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      now: () => new Date('2026-07-25T00:00:00.000Z'),
+      liveStableWindows: () => Promise.resolve([]),
+    });
+    const served = await controller.handleNavigation('nav-client');
+    expect(served).toEqual(next);
+    expect((await store.read(current)).state.trial).toMatchObject({
+      targetRelease: next,
+      initiatingClientId: 'nav-client',
+    });
+  });
+
+  it('does not start an Automatic trial when another stable window is live', async () => {
+    const state: ReleaseControllerState = {
+      ...createInitialReleaseControllerState(current),
+      mode: 'automatic',
+      latestRelease: next,
+      preparation: { status: 'ready', release: next },
+    };
+    const store = createMemoryReleaseControllerStateStore(state);
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      liveStableWindows: () => Promise.resolve([{ id: 'other' }]),
+    });
+    const served = await controller.handleNavigation('nav-client');
+    expect(served).toEqual(current);
+    expect((await store.read(current)).state.trial).toBeUndefined();
+  });
+});
+
+describe('trial isolation from background operations started before it', () => {
+  const trialReadyState = (): ReleaseControllerState => ({
+    ...createInitialReleaseControllerState(current),
+    mode: 'manual',
+    pinnedRelease: current,
+    latestRelease: next,
+    preparation: { status: 'ready', release: next },
+  });
+
+  it('ignores a check that was already running before a Manual trial starts', async () => {
+    let resolveFetch: ((value: Response) => void) | undefined;
+    const fetchGate = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fetchGate));
+    vi.mocked(isReleaseAvailable).mockResolvedValue(true);
+    const store = createMemoryReleaseControllerStateStore(trialReadyState());
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      now: () => new Date('2026-07-25T00:00:00.000Z'),
+      vfsReadiness: () => Promise.resolve(true),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+    });
+
+    const check = await controller.execute({ protocolVersion: 3, type: 'CHECK_FOR_UPDATES' });
+    const checkBackground = check.background?.();
+    expect((await store.read(current)).state.check).toMatchObject({ status: 'running' });
+
+    const update = await controller.execute(
+      { protocolVersion: 3, type: 'UPDATE_NOW' },
+      'requester',
+    );
+    await update.background?.();
+    const beforeCheckResolves = (await store.read(current)).state;
+    expect(beforeCheckResolves.trial).toBeDefined();
+    expect(beforeCheckResolves.check.status).toBe('idle');
+
+    resolveFetch?.(new Response(JSON.stringify(latestNext)));
+    await checkBackground;
+
+    const after = (await store.read(current)).state;
+    expect(after).toEqual(beforeCheckResolves);
+  });
+
+  it('ignores an unrelated preparation that was already running before a trial starts for a different target', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(latestNext))));
+    vi.mocked(fetchValidatedReleaseMetadata).mockResolvedValue({
+      latest: latestNext,
+      descriptor: descriptorFor(next),
+    });
+    let resolvePrepare: (() => void) | undefined;
+    let notifyPrepareStarted: (() => void) | undefined;
+    const prepareStarted = new Promise<void>((resolve) => {
+      notifyPrepareStarted = resolve;
+    });
+    const prepareGate = new Promise<void>((resolve) => {
+      resolvePrepare = resolve;
+    });
+    vi.mocked(isReleaseAvailable).mockResolvedValue(false);
+    vi.mocked(prepareRelease).mockImplementation(async () => {
+      notifyPrepareStarted?.();
+      await prepareGate;
+      return descriptorFor(next);
+    });
+    const store = createMemoryReleaseControllerStateStore({
+      ...createInitialReleaseControllerState(current),
+      mode: 'automatic',
+    });
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      now: () => new Date('2026-07-25T00:00:00.000Z'),
+      operationId: () => 'stale-prep',
+    });
+
+    const check = await controller.execute({ protocolVersion: 3, type: 'CHECK_FOR_UPDATES' });
+    const checkBackground = check.background?.();
+    // Preparation for `next` is now running, started before any trial exists.
+    await prepareStarted;
+
+    // A trial now begins for a different, already-ready target while that preparation is still
+    // in flight — the trial must isolate it rather than let its later completion mutate state.
+    const midState = (await store.read(current)).state;
+    const c = release('c', 3);
+    await store.write({
+      ...midState,
+      latestRelease: c,
+      preparation: { status: 'ready', release: c },
+      trial: {
+        targetRelease: c,
+        previousRelease: current,
+        startedAt: '2026-07-25T00:00:01.000Z',
+        expiresAt: '2026-07-25T00:01:01.000Z',
+        initiatingClientId: 'trial-client',
+      },
+    });
+    const beforeCompletion = (await store.read(current)).state;
+
+    resolvePrepare?.();
+    await checkBackground;
+
+    const after = (await store.read(current)).state;
+    expect(after).toEqual(beforeCompletion);
+  });
+});
+
+describe('rollbackTrialTarget', () => {
+  it('rolls back exactly the matching trial target once, through the controller, and is a no-op for a mismatched id', async () => {
+    const state: ReleaseControllerState = {
+      ...createInitialReleaseControllerState(current),
+      latestRelease: next,
+      trial: {
+        targetRelease: next,
+        previousRelease: current,
+        startedAt: '2026-07-25T00:00:00.000Z',
+        expiresAt: '2026-07-25T01:00:00.000Z',
+        initiatingClientId: 'trial-client',
+      },
+    };
+    const store = createMemoryReleaseControllerStateStore(state);
+    const controller = createReleaseController({ currentRelease: current, store });
+
+    const unrelated = await controller.rollbackTrialTarget('z'.repeat(40));
+    expect(unrelated).toEqual(current);
+    expect((await store.read(current)).state.trial).toBeDefined();
+
+    const rolledBack = await controller.rollbackTrialTarget(next.releaseId);
+    expect(rolledBack).toEqual(current);
+    const afterState = (await store.read(current)).state;
+    expect(afterState.trial).toBeUndefined();
+    expect(afterState.failedReleaseIds).toContain(next.releaseId);
   });
 });
 

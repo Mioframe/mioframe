@@ -9,7 +9,8 @@
     "playwright*.test.*",
     "pwa-assets.config.*",
     "eslint.config.*",
-    "tests/**/*.ts"
+    "tests/**/*.ts",
+    "scripts/**/*.d.mts"
   ],
   "compilerOptions": {
     "composite": true,

@@ -85,7 +85,7 @@ describe('release controller state', () => {
     const target = release('b', 2);
     const base = createInitialReleaseControllerState(current);
 
-    it('is trialStarting whenever a trial is in progress, ahead of any other fact', () => {
+    it('is trialStarting for the client that owns the trial, ahead of any other fact, but not for an unrelated client', () => {
       const state: ReleaseControllerState = {
         ...base,
         latestRelease: target,
@@ -95,9 +95,17 @@ describe('release controller state', () => {
           previousRelease: current,
           startedAt: '2026-07-23T00:00:00.000Z',
           expiresAt: '2026-07-23T00:01:00.000Z',
+          initiatingClientId: 'claimed-client',
         },
       };
-      expect(projectAppUpdateSnapshot(state).updateState).toBe('trialStarting');
+      expect(projectAppUpdateSnapshot(state, 'available', 'claimed-client').updateState).toBe(
+        'trialStarting',
+      );
+      // An unrelated client, still running the committed release, must never report itself as
+      // starting a trial it has no part in — it sees the underlying fact instead.
+      expect(projectAppUpdateSnapshot(state, 'available', 'someone-else').updateState).toBe(
+        'failed',
+      );
     });
 
     it('is preparing while preparation runs', () => {

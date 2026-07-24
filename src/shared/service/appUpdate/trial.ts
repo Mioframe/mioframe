@@ -4,14 +4,20 @@ import { committedRelease, releaseForClient } from './stateMachine';
 
 /**
  * Create the single persisted trial before reloading the one window that will run it.
+ *
+ * A trial is an exclusive controller phase: any check still running from before the trial began is
+ * reset to `idle` so its later completion is naturally ignored (a stale operation token can never
+ * match a `running` status again), and any running preparation for a release other than the trial's
+ * own target is likewise reset to `idle` rather than left to complete and mutate state mid-trial.
  * @param root0 - Trial inputs and deterministic seams.
- * @returns State containing the new trial.
+ * @returns State containing the new trial, with background operations for another target isolated.
  */
 export const createTrial = ({
   state,
   targetRelease,
   now,
   initiatingClientId,
+  requestingClientId,
   lifetimeMs = 60_000,
 }: {
   /** Current private controller state. */
@@ -26,6 +32,11 @@ export const createTrial = ({
    * directly to the navigating client, since the trial is created from within that navigation.
    */
   initiatingClientId?: string;
+  /**
+   * Manual-only: the sole requesting window, recorded so it alone may be shown `trialStarting`
+   * before its own reload claims the trial as `initiatingClientId`.
+   */
+  requestingClientId?: string;
   /** Deterministic recovery expiry. */
   lifetimeMs?: number;
 }): ReleaseControllerState => ({
@@ -36,7 +47,17 @@ export const createTrial = ({
     startedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + lifetimeMs).toISOString(),
     ...(initiatingClientId && { initiatingClientId }),
+    ...(requestingClientId && { requestingClientId }),
   },
+  check:
+    state.check.status === 'running'
+      ? { status: 'idle', lastSuccessAt: state.check.lastSuccessAt }
+      : state.check,
+  preparation:
+    state.preparation.status === 'running' &&
+    !isSameReleaseIdentity(state.preparation.release, targetRelease)
+      ? { status: 'idle' }
+      : state.preparation,
 });
 
 /**

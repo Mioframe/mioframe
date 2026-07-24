@@ -30,12 +30,5 @@ export const useVfsActivity = () => {
     hasUnacknowledgedError,
     isActive,
     isLoading,
-    // Release-only browser test seam (see `MainApp.vue`): never present outside a release-test
-    // build, and application code never reads it.
-    ...(__RELEASE_TEST_HOOKS__ && {
-      startReleaseTestPendingOperation: () => fileSystem.startReleaseTestPendingOperation?.(),
-      finishReleaseTestPendingOperation: (token: string) =>
-        fileSystem.finishReleaseTestPendingOperation?.(token),
-    }),
   };
 };

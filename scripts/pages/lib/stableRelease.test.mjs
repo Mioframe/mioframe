@@ -3,7 +3,12 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import toolingConfig from '../../../config/tooling.json' with { type: 'json' };
-import { applyManagedStablePublish, buildStableReleasePublication } from './stableRelease.mjs';
+import {
+  applyManagedStablePublish,
+  buildStableReleasePublication,
+  isValidReleaseDescriptor,
+} from './stableRelease.mjs';
+import { invalidReleaseDescriptors, validReleaseDescriptors } from './releaseDescriptorCorpus.mjs';
 
 let workDir;
 let distDir;
@@ -304,15 +309,74 @@ describe('stable release publication', () => {
     expect(workerSource).not.toContain(placeholderToken);
   });
 
-  it('leaves an already-patched or placeholder-free compiled worker untouched', () => {
-    write(distDir, 'sw.js', 'const __RELEASE_SEQUENCE__="already-patched";');
+  it('accepts an already-rendered worker only when it already contains exactly the expected sequence', () => {
+    write(distDir, 'sw.js', 'const __RELEASE_SEQUENCE__="1";');
     expect(() => applyManagedStablePublish(workDir, distDir)).not.toThrow();
-    expect(readFileSync(join(workDir, 'sw.js'), 'utf8')).toContain('already-patched');
+    expect(readFileSync(join(workDir, 'sw.js'), 'utf8')).toBe('const __RELEASE_SEQUENCE__="1";');
+  });
+
+  it('rejects a worker embedding another sequence instead of silently leaving it untouched', () => {
+    write(distDir, 'sw.js', 'const __RELEASE_SEQUENCE__="already-patched";');
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow();
+  });
+
+  it('rejects a worker with no compiled release-sequence placeholder and no rendered sequence', () => {
+    write(distDir, 'sw.js', 'const __RELEASE_SEQUENCE__="9";');
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow();
+  });
+
+  it('rejects a worker containing the release-sequence placeholder more than once', () => {
+    write(distDir, 'sw.js', `const a=${placeholderToken};const b=${placeholderToken};`);
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow();
   });
 
   it('leaves a dist directory with no compiled worker untouched', () => {
     rmSync(join(distDir, 'sw.js'));
     expect(() => applyManagedStablePublish(workDir, distDir)).not.toThrow();
+  });
+
+  it("never mutates the input dist directory's own compiled worker during retained-tree publication", () => {
+    applyManagedStablePublish(workDir, distDir);
+    expect(readFileSync(join(distDir, 'sw.js'), 'utf8')).toBe(
+      `const __RELEASE_SEQUENCE__=${placeholderToken};`,
+    );
+  });
+
+  it('leaves no trace of a failed publication attempt, so a differently-sequenced retry never collides', () => {
+    applyManagedStablePublish(workDir, distDir); // release A takes sequence 1
+
+    const failingDistDir = mkdtempSync(join(tmpdir(), 'stable-dist-fail-'));
+    const priorDistDir = distDir;
+    distDir = failingDistDir;
+    const otherSha = 'b'.repeat(40);
+    try {
+      write(distDir, 'index.html', '<script src="/assets/app.js"></script>');
+      write(distDir, 'assets/app.js', 'x'.repeat(10 * 1024 * 1024));
+      write(distDir, 'sw.js', `const __RELEASE_SEQUENCE__=${placeholderToken};`);
+      write(
+        distDir,
+        'deployment.json',
+        JSON.stringify({
+          channel: 'stable',
+          channelId: 'main',
+          sha: otherSha,
+          appVersion: '1.2.3',
+          buildDate: '2026-07-23T00:00:00.000Z',
+        }),
+      );
+      expect(() => applyManagedStablePublish(workDir, distDir, { sizeLimitBytes: 1024 })).toThrow();
+      expect(readFileSync(join(distDir, 'sw.js'), 'utf8')).toBe(
+        `const __RELEASE_SEQUENCE__=${placeholderToken};`,
+      );
+      expect(readFileSync(join(workDir, 'updates', 'latest.json'), 'utf8')).not.toContain(otherSha);
+
+      write(distDir, 'assets/app.js', 'asset'); // retry, well under the size limit this time
+      const retried = applyManagedStablePublish(workDir, distDir);
+      expect(retried.identity.releaseSequence).toBe(2);
+    } finally {
+      distDir = priorDistDir;
+      rmSync(failingDistDir, { recursive: true, force: true });
+    }
   });
 
   it.each([
@@ -368,5 +432,15 @@ describe('stable release publication', () => {
       'exceeds',
     );
     expect(readFileSync(join(workDir, 'updates/latest.json'), 'utf8')).toBe(oldLatest);
+  });
+});
+
+describe('publisher/runtime release-descriptor validation parity', () => {
+  it.each(validReleaseDescriptors)('accepts: $name', ({ value }) => {
+    expect(isValidReleaseDescriptor(value)).toBe(true);
+  });
+
+  it.each(invalidReleaseDescriptors)('rejects: $name', ({ value }) => {
+    expect(isValidReleaseDescriptor(value)).toBe(false);
   });
 });

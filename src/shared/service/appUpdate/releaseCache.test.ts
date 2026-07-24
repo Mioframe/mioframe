@@ -4,6 +4,7 @@ import type { LatestRelease, ReleaseControllerState, ReleaseIdentity } from './c
 import {
   cleanupReleaseCaches,
   cleanupStaleStagingCaches,
+  getReleaseResponse,
   isReleaseAvailable,
   prepareRelease,
 } from './releaseCache';
@@ -167,6 +168,69 @@ describe('staged release cache', () => {
       );
       // The index file itself is never written, simulating a partially committed final cache.
       await expect(isReleaseAvailable(release)).resolves.toBe(false);
+    });
+  });
+
+  describe('final-cache commit-marker visibility', () => {
+    const assetUrl = '/assets/app.js';
+    const seedFinalCache = async (
+      release: ReleaseIdentity,
+      { withMarker, markerValue }: { withMarker: boolean; markerValue?: unknown },
+    ) => {
+      const indexBytes = Buffer.from('index');
+      const assetBytes = Buffer.from('asset');
+      const cache = await fakeCaches.open(`stable-release-${release.releaseId}`);
+      await cache.put(
+        `/updates/releases/${release.releaseId}/index.html`,
+        new Response(indexBytes, { status: 200 }),
+      );
+      await cache.put(assetUrl, new Response(assetBytes, { status: 200 }));
+      if (withMarker) {
+        await cache.put(
+          `/updates/releases/${release.releaseId}.json`,
+          new Response(JSON.stringify(markerValue ?? descriptor(release, indexBytes))),
+        );
+      }
+    };
+
+    it('serves the archived index and an asset once the commit marker matches the selected identity', async () => {
+      const release = identity('a', 1);
+      await seedFinalCache(release, { withMarker: true });
+      await expect(getReleaseResponse(release, '/', true)).resolves.toBeInstanceOf(Response);
+      await expect(getReleaseResponse(release, assetUrl, false)).resolves.toBeInstanceOf(Response);
+    });
+
+    it('serves nothing when the final cache has no commit marker at all', async () => {
+      const release = identity('a', 1);
+      await seedFinalCache(release, { withMarker: false });
+      await expect(getReleaseResponse(release, '/', true)).resolves.toBeUndefined();
+      await expect(getReleaseResponse(release, assetUrl, false)).resolves.toBeUndefined();
+    });
+
+    it('serves nothing when the commit marker is malformed', async () => {
+      const release = identity('a', 1);
+      await seedFinalCache(release, { withMarker: true, markerValue: { not: 'a descriptor' } });
+      await expect(getReleaseResponse(release, '/', true)).resolves.toBeUndefined();
+    });
+
+    it('serves nothing when the commit marker names another identity', async () => {
+      const release = identity('a', 1);
+      const foreign = descriptor(identity('z', 1), Buffer.from('index'));
+      await seedFinalCache(release, { withMarker: true, markerValue: foreign });
+      await expect(getReleaseResponse(release, '/', true)).resolves.toBeUndefined();
+    });
+
+    it('serves nothing for a partially promoted final cache even though the marker itself is valid', async () => {
+      const release = identity('a', 1);
+      const indexBytes = Buffer.from('index');
+      const cache = await fakeCaches.open(`stable-release-${release.releaseId}`);
+      await cache.put(
+        `/updates/releases/${release.releaseId}.json`,
+        new Response(JSON.stringify(descriptor(release, indexBytes))),
+      );
+      // The index and asset files themselves were never promoted; only the marker landed.
+      await expect(getReleaseResponse(release, '/', true)).resolves.toBeUndefined();
+      await expect(getReleaseResponse(release, assetUrl, false)).resolves.toBeUndefined();
     });
   });
 });

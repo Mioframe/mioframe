@@ -15,13 +15,25 @@ import {
 import { createCommandQueue } from './commandQueue';
 import type { ReleaseControllerStateStore } from './persistence';
 import {
+  cleanupReleaseCaches,
   cleanupStaleStagingCaches,
   fetchValidatedReleaseMetadata,
   isReleaseAvailable,
   prepareRelease,
 } from './releaseCache';
-import { committedRelease, isStrictlyNewerRelease, projectAppUpdateSnapshot } from './stateMachine';
-import { confirmTrialBoot, createTrial, rollbackExpiredTrial } from './trial';
+import {
+  committedRelease,
+  isStrictlyNewerRelease,
+  projectAppUpdateSnapshot,
+  releaseForClient,
+} from './stateMachine';
+import {
+  associateTrialNavigation,
+  confirmTrialBoot,
+  createTrial,
+  rollbackExpiredTrial,
+  rollbackFailedTrialBoot,
+} from './trial';
 
 /** A running/stale operation older than this is treated as abandoned by a terminated worker. */
 const STALE_OPERATION_MS = 2 * 60 * 1000;
@@ -68,7 +80,7 @@ export const createReleaseController = ({
   operationId = () => crypto.randomUUID(),
   vfsReadiness = () => Promise.resolve(true),
   liveStableWindows = () => Promise.resolve([]),
-  publish = () => undefined,
+  publish = () => Promise.resolve(),
   onTrialStarted = () => Promise.resolve(),
 }: {
   /** Release serving the controller worker artifact. */
@@ -87,16 +99,20 @@ export const createReleaseController = ({
    * handshake with a new worker must still block Manual `Update now`, so this must never undercount.
    */
   liveStableWindows?: () => Promise<StableWindow[]>;
-  /** Snapshot broadcast boundary. */
-  publish?: (state: ReleaseControllerState) => void;
+  /** Snapshot broadcast boundary, awaited so a later state can never be followed by an older one. */
+  publish?: (state: ReleaseControllerState) => Promise<void>;
   /** Single requesting-client reload boundary after trial persistence. */
   onTrialStarted?: (target: ReleaseIdentity, clientId: string) => Promise<void>;
 }) => {
   const enqueue = createCommandQueue();
   const readSafely = () => store.read(currentRelease);
+  // Every durable mutation goes through this single seam: written, then broadcast in the same
+  // order transitions were queued (never fire-and-forget), then cleaned up so an obsolete cache
+  // is never left referenced past the state that dropped its last durable reference.
   const save = async (state: ReleaseControllerState) => {
     await store.write(state);
-    publish(state);
+    await publish(state);
+    await cleanupReleaseCaches(state);
     return state;
   };
 
@@ -113,7 +129,7 @@ export const createReleaseController = ({
       if (capability === 'unavailable' || state.trial) return;
       if (
         state.preparation.status !== 'ready' ||
-        state.preparation.release.releaseId !== target.releaseId
+        !isSameReleaseIdentity(state.preparation.release, target)
       )
         return;
       // A target that no longer matches the canonical latest is obsolete — the canonical latest
@@ -121,7 +137,14 @@ export const createReleaseController = ({
       // obsolete target must never start a trial.
       if (state.latestRelease === undefined || !isSameReleaseIdentity(target, state.latestRelease))
         return;
-      await save(createTrial({ state, targetRelease: target, now: now() }));
+      await save(
+        createTrial({
+          state,
+          targetRelease: target,
+          now: now(),
+          ...(requestingClientId && { requestingClientId }),
+        }),
+      );
       if (requestingClientId) await onTrialStarted(target, requestingClientId);
     });
   };
@@ -136,8 +159,12 @@ export const createReleaseController = ({
       await prepareRelease(latest);
       const shouldActivate = await enqueue(async () => {
         const { state, capability } = await readSafely();
+        // An active trial is an exclusive phase: a preparation that was already running before the
+        // trial began must complete as a no-op rather than mutate state started by an unrelated,
+        // now-isolated background operation.
         if (
           capability === 'unavailable' ||
+          state.trial ||
           state.preparation.status !== 'running' ||
           state.preparation.operationId !== token
         )
@@ -170,6 +197,7 @@ export const createReleaseController = ({
         const { state, capability } = await readSafely();
         if (
           capability === 'unavailable' ||
+          state.trial ||
           state.preparation.status !== 'running' ||
           state.preparation.operationId !== token
         )
@@ -239,8 +267,12 @@ export const createReleaseController = ({
       let preparation: (() => Promise<void>) | undefined;
       await enqueue(async () => {
         const { state, capability } = await readSafely();
+        // A check that was already running before an active trial began must complete as a no-op:
+        // it must never change `latestRelease`, check status, or start another preparation while a
+        // trial isolates state to its own target.
         if (
           capability === 'unavailable' ||
+          state.trial ||
           state.check.status !== 'running' ||
           state.check.operationId !== token
         )
@@ -285,6 +317,7 @@ export const createReleaseController = ({
         const { state, capability } = await readSafely();
         if (
           capability === 'unavailable' ||
+          state.trial ||
           state.check.status !== 'running' ||
           state.check.operationId !== token
         )
@@ -347,19 +380,94 @@ export const createReleaseController = ({
         }
         if (next.preparation.status === 'running' && next.preparation.startedAt < staleBefore) {
           const target = next.preparation.release;
+          // A stale running preparation may only be recovered as `ready` when it still describes
+          // the canonical latest, is strictly newer than the committed release, is not a known
+          // failure, and its cache is fully available — otherwise the worker that started it never
+          // finished, and the safe recovery is `idle`, never a silent activation of an obsolete
+          // target.
+          const targetsLatest =
+            next.latestRelease === undefined || isSameReleaseIdentity(target, next.latestRelease);
+          const eligible =
+            targetsLatest &&
+            !next.failedReleaseIds.includes(target.releaseId) &&
+            isStrictlyNewerRelease(target, committedRelease(next)) &&
+            (await isReleaseAvailable(target));
           next = {
             ...next,
-            preparation: (await isReleaseAvailable(target))
-              ? { status: 'ready', release: target }
-              : { status: 'idle' },
+            preparation: eligible ? { status: 'ready', release: target } : { status: 'idle' },
           };
         }
         if (next !== state) await save(next);
       });
     })());
 
+  /**
+   * Private controller-owned navigation transition. Reconciles state, rolls back an expired
+   * trial, associates a navigation with an already-active trial, or decides whether an Automatic
+   * clean launch may start a brand-new trial for the canonical latest — then persists any
+   * transition and returns the release the requesting client must be served. The worker never
+   * creates a trial itself; every trial-affecting transition is decided and persisted here.
+   * @param navigatingClientId - Client id created by this navigation.
+   * @returns The release the requesting client must be served.
+   */
+  const handleNavigation = async (navigatingClientId: string): Promise<ReleaseIdentity> => {
+    await reconcile();
+    return enqueue(async () => {
+      const { state: read0, capability } = await readSafely();
+      if (capability === 'unavailable') return currentRelease;
+      let state = rollbackExpiredTrial(read0, now());
+      if (state.trial) {
+        state = associateTrialNavigation(state, navigatingClientId);
+      } else if (
+        state.mode === 'automatic' &&
+        state.preparation.status === 'ready' &&
+        // Only the canonical latest may enter an Automatic clean-launch trial — a stale or
+        // reconciled preparation that no longer matches `latestRelease` must never activate.
+        state.latestRelease !== undefined &&
+        isSameReleaseIdentity(state.preparation.release, state.latestRelease) &&
+        isStrictlyNewerRelease(state.preparation.release, committedRelease(state)) &&
+        !state.failedReleaseIds.includes(state.preparation.release.releaseId) &&
+        (await liveStableWindows()).filter((client) => client.id !== navigatingClientId).length ===
+          0
+      ) {
+        state = createTrial({
+          state,
+          targetRelease: state.preparation.release,
+          now: now(),
+          initiatingClientId: navigatingClientId,
+        });
+      }
+      if (state !== read0) await save(state);
+      return releaseForClient(state, navigatingClientId);
+    });
+  };
+
+  /**
+   * Roll back the exact trial target that turned out to be unavailable (its immutable cache could
+   * not be restored), once, through the controller — the worker must never mutate trial state
+   * directly when a selected release fails to serve.
+   * @param targetReleaseId - The trial target's release id, as reported by the caller that failed
+   * to restore it.
+   * @returns The release now committed for the requesting client after rollback, or the current
+   * committed release when no matching trial is active (already resolved another way).
+   */
+  const rollbackTrialTarget = async (targetReleaseId: string): Promise<ReleaseIdentity> =>
+    enqueue(async () => {
+      const { state, capability } = await readSafely();
+      if (
+        capability === 'unavailable' ||
+        !state.trial ||
+        state.trial.targetRelease.releaseId !== targetReleaseId
+      )
+        return committedRelease(state);
+      const rolledBack = await save(rollbackFailedTrialBoot(state));
+      return committedRelease(rolledBack);
+    });
+
   return {
     reconcile,
+    handleNavigation,
+    rollbackTrialTarget,
     async execute(commandValue: unknown, sourceClientId = ''): Promise<ControllerExecution> {
       await reconcile();
       return enqueue(async () => {
@@ -430,10 +538,14 @@ export const createReleaseController = ({
                   },
                 };
               }
-              const otherWindows = (await liveStableWindows()).filter(
-                (client) => client.id !== sourceClientId,
-              );
-              if (otherWindows.length > 0) {
+              // Fail closed on the live stable-window set: the requesting client itself must be
+              // one of the complete live windows, and it must be the only one. A source absent
+              // from that set (e.g. a stale or unregistered connection) is never treated as ready
+              // just because no *other* window happened to be found.
+              const liveWindows = await liveStableWindows();
+              const isSoleSource =
+                liveWindows.length === 1 && liveWindows[0]?.id === sourceClientId;
+              if (!isSoleSource) {
                 return {
                   response: {
                     kind: 'action',

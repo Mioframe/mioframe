@@ -77,7 +77,14 @@ export const trialSchema = z.object({
   previousRelease: releaseIdentitySchema,
   startedAt: z.iso.datetime(),
   expiresAt: z.iso.datetime(),
+  /** Client that claimed the trial by navigating into it; only this client is served the target. */
   initiatingClientId: z.string().optional(),
+  /**
+   * Manual-only: the sole requesting window that is about to reload into the trial, before its own
+   * navigation claims the trial as `initiatingClientId`. Used only to report `trialStarting` to that
+   * exact window in the brief pre-reload window; never used for request routing.
+   */
+  requestingClientId: z.string().optional(),
 });
 /** Private persisted single-window trial. */
 export type Trial = z.infer<typeof trialSchema>;

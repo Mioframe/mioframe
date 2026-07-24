@@ -33,6 +33,36 @@ const parseCanonicalPath = (value: string, origin: string): string => {
 };
 
 /**
+ * Validate a release descriptor's own semantic contract, independent of any `latest` pointer: a
+ * canonical same-origin index URL with no query/hash/traversal/encoded-separator form, every file
+ * URL likewise canonical and unique, exactly one file matching the canonical index, and every
+ * other file confined to `/assets/`.
+ *
+ * This is the single runtime owner of these rules; {@link validateReleaseMetadata} and the
+ * publisher's retained-descriptor validator (`scripts/pages/lib/stableRelease.mjs`'s
+ * `isValidReleaseDescriptor`, checked for behavioral parity against the same corpus) must accept
+ * and reject exactly the same descriptors this function does.
+ * @param descriptor - Schema-valid release descriptor.
+ * @param origin - Expected stable origin.
+ * @returns Whether the descriptor satisfies the complete semantic contract.
+ */
+export const isSemanticallyValidReleaseDescriptor = (
+  descriptor: ReleaseDescriptor,
+  origin = self.location.origin,
+): boolean => {
+  try {
+    const canonicalIndex = `/updates/releases/${descriptor.releaseId}/index.html`;
+    if (parseCanonicalPath(descriptor.indexUrl, origin) !== canonicalIndex) return false;
+    const urls = descriptor.files.map((file) => parseCanonicalPath(file.url, origin));
+    if (new Set(urls).size !== urls.length) return false;
+    if (urls.filter((url) => url === canonicalIndex).length !== 1) return false;
+    return urls.every((url) => url === canonicalIndex || url.startsWith('/assets/'));
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Validate the complete latest-pointer and descriptor relationship.
  * @param latestValue - Untrusted latest pointer.
  * @param descriptorValue - Untrusted release descriptor.
@@ -66,19 +96,8 @@ export const validateReleaseMetadata = (
       throw new Error(`Release metadata ${field} mismatch.`);
     }
   }
-  const canonicalIndex = `/updates/releases/${latest.release.releaseId}/index.html`;
-  if (parseCanonicalPath(descriptor.indexUrl, origin) !== canonicalIndex) {
-    throw new Error('Release index URL is not canonical.');
-  }
-  const urls = descriptor.files.map((file) => parseCanonicalPath(file.url, origin));
-  if (new Set(urls).size !== urls.length) throw new Error('Release file URLs must be unique.');
-  if (urls.filter((url) => url === canonicalIndex).length !== 1) {
-    throw new Error('Release index must be present exactly once.');
-  }
-  for (const url of urls) {
-    if (url !== canonicalIndex && !url.startsWith('/assets/')) {
-      throw new Error('Release file is outside allowed stable locations.');
-    }
+  if (!isSemanticallyValidReleaseDescriptor(descriptor, origin)) {
+    throw new Error('Release descriptor failed semantic validation.');
   }
   return { latest, descriptor };
 };
@@ -195,10 +214,16 @@ export const prepareRelease = async (latestValue: unknown): Promise<ReleaseDescr
 
 /**
  * Read a selected release response without exposing cache details.
+ *
+ * The descriptor written last during {@link prepareRelease} is the release's commit marker: no
+ * application file is ever returned unless that marker is present, schema-valid, and names the
+ * exact selected identity. This rejects a missing marker, a malformed marker, a marker describing
+ * another identity, and a final cache that was only partially promoted before its promotion was
+ * interrupted.
  * @param identity - Selected immutable release.
  * @param requestUrl - Stable application request path.
  * @param navigation - Whether to route to the archived index.
- * @returns Cached response when the selected release owns it.
+ * @returns Cached response when the selected release owns it and its commit marker is valid.
  */
 export const getReleaseResponse = async (
   identity: ReleaseIdentity,
@@ -206,6 +231,10 @@ export const getReleaseResponse = async (
   navigation: boolean,
 ): Promise<Response | undefined> => {
   const cache = await caches.open(finalCacheName(identity.releaseId));
+  const descriptorResponse = await cache.match(descriptorPath(identity.releaseId));
+  if (!descriptorResponse) return undefined;
+  const parsed = releaseDescriptorSchema.safeParse(await descriptorResponse.json());
+  if (!parsed.success || !isSameReleaseIdentity(parsed.data, identity)) return undefined;
   const key = navigation ? `/updates/releases/${identity.releaseId}/index.html` : requestUrl;
   return (await cache.match(key)) ?? undefined;
 };

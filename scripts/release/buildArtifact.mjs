@@ -154,7 +154,10 @@ export async function runBuildArtifact(
       buildDate,
     }),
   );
-  writeStableReleaseArtifact(distDir);
+  // Only the release-only fixture build (never the real production/local artifact pipeline) needs
+  // a specific non-default sequence rendered directly into the worker.
+  const releaseSequence = env.RELEASE_ARTIFACT_SEQUENCE ? Number(env.RELEASE_ARTIFACT_SEQUENCE) : 1;
+  writeStableReleaseArtifact(distDir, releaseSequence);
   console.log(`Production artifact built at ${distDir} (base ${basePath}).`);
   deps.applyProcessResult(result);
 }

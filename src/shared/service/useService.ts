@@ -5,7 +5,14 @@ import Worker from './serviceWorker.ts?worker';
 
 let worker: Worker | undefined;
 
-const getWorker = () => {
+/**
+ * Resolve the singleton background worker instance. Exported only so the release-only test seam
+ * (see `MainApp.vue`) can attach a second, independent RPC client to the exact same worker — and
+ * therefore the same `useFileSystemService()` VFS singleton — rather than spinning up an unrelated
+ * worker of its own.
+ * @returns The singleton background worker.
+ */
+export const getWorker = () => {
   if (!worker) {
     worker = new Worker();
     initSentryWorkerBridge(worker);

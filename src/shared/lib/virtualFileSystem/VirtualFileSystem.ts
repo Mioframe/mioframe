@@ -57,12 +57,6 @@ export class VirtualFileSystem {
   private readonly activityTracker = createVfsActivityTracker();
 
   /**
-   * Pending release-only test operations, keyed by an opaque token so start/finish can be two
-   * independent worker-RPC calls (a raw resolver callback cannot cross the worker boundary).
-   */
-  private readonly releaseTestPendingResolvers = new Map<string, () => void>();
-
-  /**
    * Creates a VirtualFileSystem instance.
    * @param locksManager - Optional lock manager. If not provided, a new one is created.
    */
@@ -80,44 +74,6 @@ export class VirtualFileSystem {
    */
   public acknowledgeActivityError(): void {
     this.activityTracker.acknowledgeError();
-  }
-
-  /**
-   * Starts one real, tracked VFS operation that stays pending until
-   * {@link finishReleaseTestPendingOperation} is called for its returned token, observed by
-   * `activity$`/`useVfsActivity` exactly like a genuine mutation.
-   *
-   * Split into two token-correlated calls (rather than returning a resolver callback) because
-   * this crosses the file-system service's worker RPC boundary, where a raw function cannot
-   * survive the round trip; only plain, serializable values can.
-   *
-   * Exists only for the release-only browser test seam that proves `Update now` blocking against
-   * genuine activity tracking end to end (see `MainApp.vue`'s `__RELEASE_TEST_HOOKS__`-gated
-   * wiring); application code never calls this.
-   * @returns An opaque token identifying this pending operation.
-   */
-  public startReleaseTestPendingOperation(): string {
-    const token = crypto.randomUUID();
-    const pending = new Promise<void>((resolve) => {
-      this.releaseTestPendingResolvers.set(token, resolve);
-    });
-    // This never actually writes anything and never fails (finishing always resolves it), so the
-    // operation type/path recorded for failure diagnostics are never observed; `writeFile` is
-    // reused rather than adding a release-test-only variant to the real mutation type union.
-    void this.activityTracker.track(
-      { type: 'writeFile', path: '/__release-test-pending__' },
-      () => pending,
-    );
-    return token;
-  }
-
-  /**
-   * Resolves a pending release-test operation started by {@link startReleaseTestPendingOperation}.
-   * @param token - The token returned by the matching start call.
-   */
-  public finishReleaseTestPendingOperation(token: string): void {
-    this.releaseTestPendingResolvers.get(token)?.();
-    this.releaseTestPendingResolvers.delete(token);
   }
 
   private emitVfsEvent(event: Omit<VfsEvent, 'source'>) {

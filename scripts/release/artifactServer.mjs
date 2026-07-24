@@ -120,14 +120,9 @@ export function createArtifactServer({ distDir, basePath, host = '127.0.0.1', po
         res.writeHead(204).end();
         return;
       }
-      if (
-        fixture &&
-        (managedWorkerMode === 'legacy' || managedWorkerMode === 'B') &&
-        requestUrl.pathname === '/sw.js'
-      ) {
-        const workerFile = managedWorkerMode === 'legacy' ? 'legacy-sw.js' : 'worker-b-sw.js';
+      if (fixture && managedWorkerMode === 'B' && requestUrl.pathname === '/sw.js') {
         try {
-          const workerSource = await readFile(join(distDir, workerFile));
+          const workerSource = await readFile(join(distDir, 'worker-b-sw.js'));
           res.writeHead(200, {
             'Content-Type': 'text/javascript; charset=utf-8',
             'Cache-Control': 'no-store',
@@ -175,7 +170,13 @@ export function createArtifactServer({ distDir, basePath, host = '127.0.0.1', po
         res.writeHead(503).end('fixture interrupted download');
         return;
       }
-      await handleRequest(req, res, { distDir, basePath, fallbackHtml });
+      // While legacy worker mode is selected, the entire application — not only `sw.js` — is
+      // served from the complete previously-generated Workbox artifact tree (precached index,
+      // hashed assets, manifest) preserved by `managedStableFixture.mjs`'s `buildLegacyWorkboxWorker`,
+      // so the legacy worker's own precache manifest is served real, matching content.
+      const effectiveDistDir =
+        fixture && managedWorkerMode === 'legacy' ? join(distDir, 'legacy-artifact') : distDir;
+      await handleRequest(req, res, { distDir: effectiveDistDir, basePath, fallbackHtml });
     })();
   });
 

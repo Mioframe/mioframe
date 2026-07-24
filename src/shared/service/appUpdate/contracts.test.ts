@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateReleaseMetadata } from './releaseCache';
+import { isSemanticallyValidReleaseDescriptor, validateReleaseMetadata } from './releaseCache';
+import { releaseDescriptorSchema } from './contracts';
+import {
+  invalidReleaseDescriptors,
+  validReleaseDescriptors,
+} from '../../../../scripts/pages/lib/releaseDescriptorCorpus.mjs';
 
 const release = {
   releaseId: 'a'.repeat(40),
@@ -47,5 +52,22 @@ describe('stable release metadata relationship', () => {
     ],
   ])('rejects %s', (_name, invalid) => {
     expect(() => validateReleaseMetadata(latest, invalid, 'https://example.test')).toThrow();
+  });
+});
+
+describe('publisher/runtime release-descriptor validation parity', () => {
+  const runtimeAccepts = (value: unknown): boolean => {
+    const parsed = releaseDescriptorSchema.safeParse(value);
+    return (
+      parsed.success && isSemanticallyValidReleaseDescriptor(parsed.data, 'https://example.test')
+    );
+  };
+
+  it.each(validReleaseDescriptors)('accepts: $name', ({ value }) => {
+    expect(runtimeAccepts(value)).toBe(true);
+  });
+
+  it.each(invalidReleaseDescriptors)('rejects: $name', ({ value }) => {
+    expect(runtimeAccepts(value)).toBe(false);
   });
 });

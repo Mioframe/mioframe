@@ -21,13 +21,8 @@ import {
   isStableAppUrl,
   isStableAppWindowClient,
 } from './stableClients';
-import { committedRelease, isStrictlyNewerRelease, projectAppUpdateSnapshot } from './stateMachine';
-import {
-  associateTrialNavigation,
-  createTrial,
-  rollbackExpiredTrial,
-  selectServedRelease,
-} from './trial';
+import { committedRelease, projectAppUpdateSnapshot } from './stateMachine';
+import { selectServedRelease } from './trial';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -118,10 +113,13 @@ const createController = async () =>
     store,
     liveStableWindows: () => getStableWindowClients(),
     async vfsReadiness(clientId) {
+      // Fail closed: a client that never completed the registration handshake, a request that
+      // times out, or a malformed response must never be treated as ready. Only an explicit
+      // `ready: true` from the exact registered source client counts.
       const client = (await registry.getRegisteredStableWindowClients()).find(
         ({ id }) => id === clientId,
       );
-      if (!client) return true;
+      if (!client) return false;
       return new Promise<boolean>((resolve) => {
         const channel = new MessageChannel();
         const timeout = setTimeout(() => {
@@ -129,14 +127,12 @@ const createController = async () =>
         }, 2_000);
         channel.port1.onmessage = (event: MessageEvent<{ ready?: boolean }>) => {
           clearTimeout(timeout);
-          resolve(event.data.ready !== false);
+          resolve(event.data.ready === true);
         };
         client.postMessage({ type: 'PRIVATE_VFS_READINESS' }, [channel.port2]);
       });
     },
-    publish(state) {
-      void broadcastSnapshot(state);
-    },
+    publish: broadcastSnapshot,
     async onTrialStarted(_target, clientId) {
       const client = (await registry.getRegisteredStableWindowClients()).find(
         ({ id }) => id === clientId,
@@ -195,35 +191,6 @@ self.addEventListener('message', (event) => {
   );
 });
 
-const selectNavigationRelease = async (navigatingClientId: string): Promise<ReleaseIdentity> => {
-  const currentRelease = await resolveBootstrapRelease();
-  const read = await store.read(currentRelease);
-  if (read.capability === 'unavailable') return currentRelease;
-
-  let state = rollbackExpiredTrial(read.state, new Date());
-  if (state.trial) {
-    state = associateTrialNavigation(state, navigatingClientId);
-  } else if (
-    state.mode === 'automatic' &&
-    state.preparation.status === 'ready' &&
-    isStrictlyNewerRelease(state.preparation.release, state.activeRelease) &&
-    !state.failedReleaseIds.includes(state.preparation.release.releaseId) &&
-    (await getStableWindowClients()).filter(({ id }) => id !== navigatingClientId).length === 0
-  ) {
-    state = createTrial({
-      state,
-      targetRelease: state.preparation.release,
-      now: new Date(),
-      initiatingClientId: navigatingClientId,
-    });
-  }
-  if (state !== read.state) {
-    await store.write(state);
-    await broadcastSnapshot(state);
-  }
-  return selectServedRelease(state, navigatingClientId);
-};
-
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (!isStableAppUrl(url)) return;
@@ -234,8 +201,9 @@ self.addEventListener('fetch', (event) => {
         const navigation = event.request.mode === 'navigate';
         const requestingClientId = event.resultingClientId || event.clientId;
         const currentRelease = await resolveBootstrapRelease();
-        const release = navigation
-          ? await selectNavigationRelease(requestingClientId)
+        const controller = await getController();
+        let release = navigation
+          ? await controller.handleNavigation(requestingClientId)
           : await (async () => {
               const read = await store.read(currentRelease);
               return read.capability === 'available'
@@ -245,17 +213,38 @@ self.addEventListener('fetch', (event) => {
         let response = await getReleaseResponse(release, url.pathname, navigation);
         if (!response) {
           const read = await store.read(currentRelease);
-          const isMissingManualPin =
+          // A response missing from the final cache is restored — never silently replaced with
+          // the current root deployment — for any release the controller currently selects for
+          // this client: the committed (Automatic active / Manual pinned) release, or this
+          // client's own claimed trial target.
+          const isTrialTargetForClient =
             read.capability === 'available' &&
-            read.state.mode === 'manual' &&
-            read.state.pinnedRelease !== undefined &&
-            isSameReleaseIdentity(read.state.pinnedRelease, release);
-          if (isMissingManualPin) {
+            read.state.trial !== undefined &&
+            read.state.trial.initiatingClientId === requestingClientId &&
+            isSameReleaseIdentity(release, read.state.trial.targetRelease);
+          const isManagedSelection =
+            read.capability === 'available' &&
+            (isSameReleaseIdentity(release, committedRelease(read.state)) ||
+              isTrialTargetForClient);
+          if (isManagedSelection) {
             try {
               await prepareRelease(descriptorFor(release));
               response = await getReleaseResponse(release, url.pathname, navigation);
             } catch {
-              // Offline or otherwise unavailable; fall through to network below.
+              // Offline or the immutable archive is unavailable; handled below rather than
+              // falling through to plain network, which could silently execute another release.
+            }
+            if (!response && isTrialTargetForClient) {
+              // The trial target cannot be restored: roll the trial back exactly once through the
+              // controller and try to serve the previous committed release instead.
+              release = await controller.rollbackTrialTarget(release.releaseId);
+              response = await getReleaseResponse(release, url.pathname, navigation);
+            }
+            if (!response) {
+              return new Response('Selected release is unavailable.', {
+                status: 503,
+                statusText: 'Release Unavailable',
+              });
             }
           }
         }

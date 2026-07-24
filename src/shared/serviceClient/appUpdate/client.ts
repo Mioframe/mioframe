@@ -169,6 +169,7 @@ const connect = async (): Promise<AppUpdateSnapshot> => {
   }
   const snapshot = await appUpdateClient.getSnapshot();
   if (snapshot.capability === 'available') {
+    if (__RELEASE_TEST_HOOKS__) await releaseTestAwaitBootConfirmationGate?.();
     await action({ protocolVersion: 3, type: 'PRIVATE_BOOT_READY', releaseId: runningReleaseId });
   }
   return snapshot;
@@ -186,6 +187,32 @@ const installCapabilityHooks = (): void => {
   document.addEventListener('visibilitychange', checkWhenReachable);
   checkWhenReachable();
 };
+
+// Release-only, fixture-build-only boot-confirmation gate: delays this window's real
+// `PRIVATE_BOOT_READY` confirmation until explicitly released, without ever sending a synthetic
+// confirmation or mutating controller state itself — only the timing of the genuine production
+// confirmation is held back. Armed only when the test pre-sets `window.
+// __MIOFRAME_RELEASE_TEST_ARM_BOOT_CONFIRMATION_GATE__` before this exact navigation (via
+// Playwright's `addInitScript`, since the flag must already exist when this module first
+// evaluates on the new document); every other navigation loads with the gate already resolved, so
+// every other release scenario's automatic boot confirmation is unaffected. The whole block is
+// dead code eliminated from every real stable/branch/PR build.
+let releaseTestAwaitBootConfirmationGate: (() => Promise<void>) | undefined;
+if (__RELEASE_TEST_HOOKS__) {
+  let releaseGate: (() => void) | undefined;
+  const gate: Promise<void> = Reflect.get(
+    window,
+    '__MIOFRAME_RELEASE_TEST_ARM_BOOT_CONFIRMATION_GATE__',
+  )
+    ? new Promise<void>((resolve) => {
+        releaseGate = resolve;
+      })
+    : Promise.resolve();
+  releaseTestAwaitBootConfirmationGate = () => gate;
+  Reflect.set(window, '__MIOFRAME_RELEASE_TEST_RELEASE_BOOT_CONFIRMATION_GATE__', () => {
+    releaseGate?.();
+  });
+}
 
 let reconnectHooked = false;
 

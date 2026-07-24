@@ -19,31 +19,52 @@ export const STABLE_PAGES_SIZE_LIMIT_BYTES = 900 * 1024 * 1024;
 const RELEASE_SEQUENCE_PLACEHOLDER = toolingConfig.release.releaseSequencePlaceholder;
 
 /**
- * Patch the build-time release-sequence placeholder embedded in the compiled stable service
- * worker (`vite.config.ts`'s `__RELEASE_SEQUENCE__` define) with the real allocated sequence.
+ * Deterministically render the build-time release-sequence placeholder embedded in the compiled
+ * stable service worker (`vite.config.ts`'s `__RELEASE_SEQUENCE__` define) into the real allocated
+ * sequence, entirely in memory.
  *
  * `releaseSequence` is only known after this build already exists (it is allocated from the
  * retained-release tree during publication), so the worker bundle is built once with a
- * distinctive placeholder token and patched in place here, the same way `buildStableReleasePublication`
- * already patches `index.html` with a literal meta-tag injection after the real identity is known.
- * A `distDir` with no built worker (a disabled-PWA or non-stable-channel build, or a test fixture
- * without a real Vite build), or one whose worker no longer contains the placeholder (already
- * patched by an earlier call, e.g. a retried publish over the same `distDir`), is left untouched.
- * @param distDir - Production build output directory containing the compiled `sw.js`, if any.
+ * distinctive placeholder token — `JSON.stringify` of a sentinel string, never a plausible real
+ * value — and rendered here, the same way `buildStableReleasePublication` already patches
+ * `index.html` with a literal meta-tag injection after the real identity is known.
+ *
+ * Rendering is strict: the unpatched worker must contain the placeholder exactly once (never
+ * silently left unchanged), an already-rendered worker is accepted only when it contains exactly
+ * one occurrence of the expected sequence's own literal form and no placeholder, and every other
+ * shape — a different or missing embedded sequence, the placeholder alongside an already-rendered
+ * value, or more than one occurrence of either — is a publication error rather than a silently
+ * accepted worker.
+ * @param source - Compiled worker source text, read but never written by this function.
  * @param releaseSequence - The real allocated forward-only sequence for this release.
+ * @returns The worker source with the placeholder rendered to `releaseSequence`, or the original
+ * source unchanged when it already contains exactly that sequence.
+ * @throws {Error} When the worker's embedded release-sequence state does not deterministically
+ * resolve to exactly `releaseSequence`.
  */
-export const patchWorkerReleaseSequence = (distDir, releaseSequence) => {
-  const workerPath = join(distDir, 'sw.js');
-  if (!existsSync(workerPath)) return;
+export const renderWorkerReleaseSequence = (source, releaseSequence) => {
   const placeholderToken = JSON.stringify(RELEASE_SEQUENCE_PLACEHOLDER);
-  const source = readFileSync(workerPath, 'utf8');
-  // Absent covers a non-PWA/non-stable-channel build (nothing to patch) and a retried publish
-  // over an already-patched `distDir` (the worker was already correctly embedded by an earlier
-  // call for this exact release) — both are safe to leave untouched rather than fail.
-  if (!source.includes(placeholderToken)) return;
-  writeFileSync(
-    workerPath,
-    source.split(placeholderToken).join(JSON.stringify(String(releaseSequence))),
+  const expectedToken = JSON.stringify(String(releaseSequence));
+  const placeholderCount = source.split(placeholderToken).length - 1;
+  const expectedCount = source.split(expectedToken).length - 1;
+
+  if (placeholderCount > 1) {
+    throw new Error('Compiled worker contains the release-sequence placeholder more than once.');
+  }
+  if (placeholderCount === 1) {
+    if (expectedCount > 0) {
+      throw new Error(
+        'Compiled worker contains both the release-sequence placeholder and an already-rendered sequence.',
+      );
+    }
+    return source.split(placeholderToken).join(expectedToken);
+  }
+  if (expectedCount === 1) return source;
+  if (expectedCount > 1) {
+    throw new Error('Compiled worker contains the expected release sequence more than once.');
+  }
+  throw new Error(
+    `Compiled worker contains neither the release-sequence placeholder nor the expected sequence ${releaseSequence}.`,
   );
 };
 
@@ -141,18 +162,28 @@ export const buildStableReleasePublication = (distDir, releaseSequence = 1) => {
 };
 
 /**
- * Write a standalone stable release artifact (sequence 1, no retained-release scanning) directly
- * into `distDir` itself. Used only for local/preview artifact builds that publish nothing into a
- * shared retained-release tree.
+ * Write a standalone stable release artifact (no retained-release scanning) directly into
+ * `distDir` itself. Used for local/preview artifact builds that publish nothing into a shared
+ * retained-release tree, and for release-only fixture builds that need a specific embedded
+ * sequence rendered exactly once (the strict renderer rejects re-rendering an already-different
+ * value, so a fixture needing a non-default sequence must request it here rather than patch twice).
  * @param distDir - Absolute or relative production build output directory; also the write target
  * for the archived release, descriptor, and latest pointer.
+ * @param [releaseSequence] - The sequence to render into the compiled worker and descriptor;
+ * defaults to `1` for a standalone/local artifact.
  * @returns The built publication (see {@link buildStableReleasePublication}), after writing its
  * archived index, descriptor, and latest pointer into `distDir`.
- * @throws {Error} When the build output is missing canonical stable deployment metadata.
+ * @throws {Error} When the build output is missing canonical stable deployment metadata, or the
+ * compiled worker's embedded release sequence does not deterministically resolve to
+ * `releaseSequence`.
  */
-export const writeStableReleaseArtifact = (distDir) => {
-  const publication = buildStableReleasePublication(distDir, 1);
-  patchWorkerReleaseSequence(distDir, 1);
+export const writeStableReleaseArtifact = (distDir, releaseSequence = 1) => {
+  const publication = buildStableReleasePublication(distDir, releaseSequence);
+  const workerPath = join(distDir, 'sw.js');
+  if (existsSync(workerPath)) {
+    const rendered = renderWorkerReleaseSequence(readFileSync(workerPath, 'utf8'), releaseSequence);
+    writeFileSync(workerPath, rendered);
+  }
   const releaseDir = join(distDir, 'updates', 'releases', publication.releaseId);
   mkdirSync(releaseDir, { recursive: true });
   writeFileSync(join(releaseDir, 'index.html'), publication.indexBytes);
@@ -175,25 +206,47 @@ const currentTreeSize = (root) =>
     ? walkFiles(root).reduce((total, file) => total + statSync(join(root, file)).size, 0)
     : 0;
 
+// Same-origin canonical path form required of every descriptor URL: no query, no hash, no `.`/`..`
+// traversal segment, and no percent-encoded traversal or path-separator characters. Mirrors the
+// runtime `parseCanonicalPath` check in `src/shared/service/appUpdate/releaseCache.ts` — Node
+// publication code cannot import that browser-facing module, so the same rule is reimplemented
+// here and proven equivalent against a shared corpus (`releaseDescriptorCorpus.mjs`).
+const isCanonicalPath = (value) => {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  let parsed;
+  try {
+    parsed = new URL(value, 'https://stable-release.invalid');
+  } catch {
+    return false;
+  }
+  return (
+    parsed.origin === 'https://stable-release.invalid' &&
+    value === parsed.pathname &&
+    !parsed.search &&
+    !parsed.hash &&
+    !/(?:^|\/)\.\.?\//.test(value) &&
+    !/%2e|%2f|%5c/i.test(value)
+  );
+};
+
 const isValidReleaseFile = (value) =>
   typeof value === 'object' &&
   value !== null &&
-  typeof value.url === 'string' &&
-  value.url.length > 0 &&
+  isCanonicalPath(value.url) &&
   Number.isSafeInteger(value.byteSize) &&
   value.byteSize >= 0 &&
   /^[0-9a-f]{64}$/.test(value.sha256 ?? '');
 
 /**
- * Validate the complete published release-descriptor contract (schema version, every identity
- * field, the canonical index URL, and a non-empty, well-formed file list with exactly one
- * canonical release index) — the same fields `releaseDescriptorSchema` validates at runtime,
- * checked structurally here since Node publication code must not import the browser-facing
- * `zod`-based schema module.
+ * Validate the complete published release-descriptor contract — the same fields and semantic
+ * rules `releaseDescriptorSchema` plus `isSemanticallyValidReleaseDescriptor` validate at runtime
+ * (`src/shared/service/appUpdate/releaseCache.ts`), checked structurally here since Node
+ * publication code must not import the browser-facing `zod`-based schema module. Proven identical
+ * acceptance/rejection against the shared corpus in `releaseDescriptorCorpus.mjs`.
  * @param value - Untrusted parsed descriptor JSON.
  * @returns Whether `value` is a completely valid release descriptor.
  */
-const isValidReleaseDescriptor = (value) => {
+export const isValidReleaseDescriptor = (value) => {
   if (
     typeof value !== 'object' ||
     value === null ||
@@ -207,8 +260,7 @@ const isValidReleaseDescriptor = (value) => {
     value.buildId.length === 0 ||
     typeof value.buildDate !== 'string' ||
     Number.isNaN(Date.parse(value.buildDate)) ||
-    typeof value.indexUrl !== 'string' ||
-    value.indexUrl.length === 0 ||
+    !isCanonicalPath(value.indexUrl) ||
     !Array.isArray(value.files) ||
     value.files.length === 0 ||
     !value.files.every(isValidReleaseFile)
@@ -216,9 +268,12 @@ const isValidReleaseDescriptor = (value) => {
     return false;
   }
   const canonicalIndex = `/updates/releases/${value.releaseId}/index.html`;
+  const urls = value.files.map((file) => file.url);
+  if (new Set(urls).size !== urls.length) return false;
+  if (urls.filter((url) => url === canonicalIndex).length !== 1) return false;
   return (
     value.indexUrl === canonicalIndex &&
-    value.files.filter((file) => file.url === canonicalIndex).length === 1
+    urls.every((url) => url === canonicalIndex || url.startsWith('/assets/'))
   );
 };
 
@@ -297,8 +352,10 @@ const allocateReleaseSequence = (workDir, releaseId) => {
  * total Pages tree size after publication (`projectedSize`).
  * @throws {Error} When retained descriptor state is invalid (malformed JSON, invalid schema, a
  * filename/release-id mismatch, or a duplicate release id), when an existing retained release id
- * or file content collides with a different id or different bytes, or when the projected size
- * exceeds `sizeLimitBytes`. `latest.json` is left untouched in every failure case.
+ * or file content collides with a different id or different bytes, when the compiled worker's
+ * embedded release sequence does not deterministically resolve to the allocated sequence, or when
+ * the projected size exceeds `sizeLimitBytes`. `latest.json` is left untouched in every failure
+ * case, and the input `distDir` (including its compiled `sw.js`) is never mutated.
  */
 export const applyManagedStablePublish = (
   workDir,
@@ -309,7 +366,11 @@ export const applyManagedStablePublish = (
   const releaseId = readDeploymentMetadata(distDir).sha;
   const releaseSequence = allocateReleaseSequence(workDir, releaseId);
   const publication = buildStableReleasePublication(distDir, releaseSequence);
-  patchWorkerReleaseSequence(distDir, releaseSequence);
+  // Rendered entirely in memory: the input `distDir`'s own `sw.js` is read but never written here.
+  const workerPath = join(distDir, 'sw.js');
+  const renderedWorkerSource = existsSync(workerPath)
+    ? renderWorkerReleaseSequence(readFileSync(workerPath, 'utf8'), releaseSequence)
+    : undefined;
   const releaseDir = join(workDir, 'updates', 'releases', publication.releaseId);
   const descriptorPath = join(workDir, 'updates', 'releases', `${publication.releaseId}.json`);
   const archivedIndexPath = join(releaseDir, 'index.html');
@@ -344,6 +405,11 @@ export const applyManagedStablePublish = (
   const newRootBytes = readdirSync(distDir, { withFileTypes: true })
     .filter(({ name }) => !['assets', 'updates'].includes(name))
     .reduce((total, entry) => {
+      // The rendered worker's size (not the unpatched on-disk placeholder size) is what will
+      // actually be written to `workDir`, so the projected-size guard must use it.
+      if (entry.name === 'sw.js' && renderedWorkerSource !== undefined) {
+        return total + Buffer.byteLength(renderedWorkerSource);
+      }
       const path = join(distDir, entry.name);
       return total + (entry.isDirectory() ? currentTreeSize(path) : statSync(path).size);
     }, 0);
@@ -382,6 +448,10 @@ export const applyManagedStablePublish = (
   }
   for (const entry of readdirSync(distDir, { withFileTypes: true })) {
     if (['assets', 'updates'].includes(entry.name)) continue;
+    if (entry.name === 'sw.js' && renderedWorkerSource !== undefined) {
+      writeFileSync(join(workDir, entry.name), renderedWorkerSource);
+      continue;
+    }
     cpSync(join(distDir, entry.name), join(workDir, entry.name), { recursive: true });
   }
   writeFileSync(join(workDir, '404.html'), publishedFallback);

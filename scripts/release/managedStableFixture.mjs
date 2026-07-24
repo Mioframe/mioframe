@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runGuardedExpensiveLocalCommand } from '../lib/localCommandGuard.mjs';
 import { runLocalCommand } from '../lib/runLocalCommand.mjs';
-import { patchWorkerReleaseSequence } from '../pages/lib/stableRelease.mjs';
 import { runBuildArtifact } from './buildArtifact.mjs';
 
 const RELEASES = [
@@ -16,16 +15,23 @@ const RELEASES = [
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
 /**
- * Build a real, previously-generated-style Workbox stable worker for the migration fixture: the
- * repository's own `branch`-channel PWA config (root scope, real Workbox precache, runtime
- * caching, no managed-update protocol — see `config/plugins/pwa.ts`), the same worker shape the
- * stable app used before this managed-update feature, built once via the real build pipeline
- * rather than hand-written.
- * @param legacyDistDir - Scratch build output directory for the legacy worker only.
- * @returns The compiled legacy `sw.js` source text.
+ * Build a real, previously-generated-style Workbox stable worker and its complete application
+ * artifact for the migration fixture: the repository's own `branch`-channel PWA config (root
+ * scope, real Workbox precache, runtime caching, navigation fallback/denylist, no managed-update
+ * protocol — see `config/plugins/pwa.ts`), the same worker and precached application the stable
+ * app served before this managed-update feature, built once via the real build pipeline rather
+ * than hand-written or approximated with the current branch-channel config's own app bytes.
+ *
+ * The complete build output (`sw.js`, any separately generated Workbox runtime chunk, the
+ * precached `index.html`, hashed assets, and manifest) is preserved under `legacyArtifactDir` —
+ * not just the worker source — so the legacy worker's own precache manifest is served real,
+ * matching legacy content rather than the new managed artifact's bytes under old URLs.
+ * @param legacyDistDir - Scratch build output directory for the legacy build.
+ * @param legacyArtifactDir - Destination directory the complete legacy artifact tree is copied
+ * into, served by the artifact server while legacy worker mode is selected.
  * @throws {Error} When the legacy worker build fails.
  */
-async function buildLegacyWorkboxWorker(legacyDistDir) {
+async function buildLegacyWorkboxWorker(legacyDistDir, legacyArtifactDir) {
   const viteBin = './node_modules/.bin/vite';
   const args = ['build', '--outDir', legacyDistDir];
   const env = {
@@ -48,7 +54,10 @@ async function buildLegacyWorkboxWorker(legacyDistDir) {
       `Legacy Workbox fixture worker build failed (status ${result.status}, signal ${result.signal}).`,
     );
   }
-  return readFileSync(join(legacyDistDir, 'sw.js'), 'utf8');
+  if (!existsSync(join(legacyDistDir, 'sw.js'))) {
+    throw new Error('Legacy Workbox fixture build did not produce a compiled sw.js.');
+  }
+  cpSync(legacyDistDir, legacyArtifactDir, { recursive: true });
 }
 
 /**
@@ -65,11 +74,13 @@ async function buildAlternateManagedWorker(altDistDir, release) {
     ...process.env,
     RELEASE_ARTIFACT_SKIP_BUILD: '0',
     GITHUB_SHA: release.releaseId,
+    // Rendered exactly once, directly to this release's own sequence: the strict renderer
+    // rejects re-rendering an already-different value, so this must not double-patch.
+    RELEASE_ARTIFACT_SEQUENCE: String(release.releaseSequence),
   });
   if (process.exitCode) {
     throw new Error(`Alternate managed fixture worker build for release ${release.label} failed.`);
   }
-  patchWorkerReleaseSequence(altDistDir, release.releaseSequence);
   return readFileSync(join(altDistDir, 'sw.js'), 'utf8');
 }
 
@@ -91,25 +102,25 @@ export async function buildManagedStableFixture(distDir = 'dist') {
       ...process.env,
       RELEASE_ARTIFACT_SKIP_BUILD: '0',
       GITHUB_SHA: releaseA.releaseId,
+      // The compiled worker embeds release A's build identity (`GITHUB_SHA: releaseA.releaseId`
+      // above) and its real sequence, the same way a genuine publish would, so the fixture
+      // actually exercises the worker's offline embedded-identity bootstrap path instead of
+      // always falling back to network/cache resolution in tests.
+      RELEASE_ARTIFACT_SEQUENCE: String(releaseA.releaseSequence),
     });
   } finally {
     delete process.env.VITE_RELEASE_TEST_HOOKS;
   }
   if (process.exitCode) return;
 
-  // The compiled worker embeds release A's build identity (the `vite build` above ran with
-  // `GITHUB_SHA: releaseA.releaseId`); patch in release A's real sequence the same way a genuine
-  // publish would, so the fixture actually exercises the worker's offline embedded-identity
-  // bootstrap path instead of always falling back to network/cache resolution in tests.
-  patchWorkerReleaseSequence(distDir, releaseA.releaseSequence);
-
-  // A real, previously-generated-style Workbox worker for the migration fixture (see
-  // `buildLegacyWorkboxWorker`), built once into a scratch directory and stored alongside the
-  // managed fixture for the artifact server to serve when the legacy worker mode is selected.
+  // A real, previously-generated-style Workbox worker and its complete precached application
+  // (see `buildLegacyWorkboxWorker`), built once into a scratch directory and the full tree
+  // copied alongside the managed fixture for the artifact server to serve entirely when the
+  // legacy worker mode is selected — not just a substituted `sw.js` over the new artifact's bytes.
   const legacyDistDir = `${distDir}-legacy-worker`;
+  const legacyArtifactDir = join(distDir, 'legacy-artifact');
   try {
-    const legacyWorkerSource = await buildLegacyWorkboxWorker(legacyDistDir);
-    writeFileSync(join(distDir, 'legacy-sw.js'), legacyWorkerSource);
+    await buildLegacyWorkboxWorker(legacyDistDir, legacyArtifactDir);
   } finally {
     rmSync(legacyDistDir, { recursive: true, force: true });
   }
