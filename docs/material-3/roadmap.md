@@ -18,12 +18,12 @@ Next action: complete and merge PR #162, then start the `MDButton` end-to-end m3
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | m3e-backed architecture reset | `active` | none | repository rules, Material docs, scoped instructions, and the adapter skill agree that Mioframe owns the public Vue API and m3e is a private renderer; obsolete custom-implementation workflow is removed; no production behavior changes |
-| M1 | `MDButton` adapter pilot | `planned` | M0 | exact m3e dependency and Vue integration are established; Button renderer viability is ready; one canonical Vue owner remains; consumers are migrated; legacy owner is removed; contract, browser, visual, build, and representative consumer proof pass |
-| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; only repeated integration helpers justified by both pilots are extracted |
-| M3 | sequential family migration | `planned` | M2 | one ready family at a time is migrated by product priority; blocked families retain their safe owner; every completed family has one canonical Vue owner and no renderer leakage |
+| ID  | Milestone                         | Status    | Depends on | Exit gate                                                                                                                                                                                                                                                |
+| --- | --------------------------------- | --------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset     | `active`  | none       | repository rules, Material docs, scoped instructions, and the adapter skill agree that Mioframe owns the public Vue API and m3e is a private renderer; obsolete custom-implementation workflow is removed; no production behavior changes                |
+| M1  | `MDButton` adapter pilot          | `planned` | M0         | exact m3e dependency and Vue integration are established; Button renderer viability is ready; one canonical Vue owner remains; consumers are migrated; legacy owner is removed; contract, browser, visual, build, and representative consumer proof pass |
+| M2  | `MDSwitch` stateful adapter pilot | `planned` | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; only repeated integration helpers justified by both pilots are extracted  |
+| M3  | sequential family migration       | `planned` | M2         | one ready family at a time is migrated by product priority; blocked families retain their safe owner; every completed family has one canonical Vue owner and no renderer leakage                                                                         |
 
 ## M0 scope
 

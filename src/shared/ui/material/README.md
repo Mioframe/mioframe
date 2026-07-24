@@ -78,12 +78,12 @@ The current Mioframe theme remains the global owner. `m3e-theme` is not installe
 
 ## Migration map
 
-| Area | Current owner | Canonical owner | Status |
-| --- | --- | --- | --- |
-| Existing public `MD*` families | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` | `retain-legacy` until individually assessed |
-| Vue-to-m3e integration | none | family-local adapter first; shared helper only after both pilots prove it | `planned` |
-| Public Material entry point | none | `@shared/ui/material` | `planned` |
-| Reference/system tokens and theme | existing `src/shared/lib/md` owners | unchanged until a focused architecture decision | `retained` |
+| Area                              | Current owner                         | Canonical owner                                                           | Status                                      |
+| --------------------------------- | ------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------- |
+| Existing public `MD*` families    | legacy `src/shared/ui/<Family>` paths | `material/components/<family>`                                            | `retain-legacy` until individually assessed |
+| Vue-to-m3e integration            | none                                  | family-local adapter first; shared helper only after both pilots prove it | `planned`                                   |
+| Public Material entry point       | none                                  | `@shared/ui/material`                                                     | `planned`                                   |
+| Reference/system tokens and theme | existing `src/shared/lib/md` owners   | unchanged until a focused architecture decision                           | `retained`                                  |
 
 ## Family statuses
 
