@@ -9,6 +9,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
+- `docs/material-3/architecture.md`, `component-adapter.md`, and `roadmap.md` are the canonical Material library architecture and migration records.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
@@ -42,6 +43,7 @@ Dependency rules:
 - Service and worker layers own persistence, protocol interpretation, indexing, lifecycle, cache invalidation, and canonical storage facts. UI layers request actions and render typed facts; they must not reconstruct service-owned state from implementation details.
 - Define errors next to the boundary that detects them. UI-facing records must not expose clients, adapters, providers, credentials, callbacks, capabilities, or service bags.
 - Do not duplicate schemas, type aliases, constants, or non-trivial algorithms across layers. Keep one owner and expose a narrow public contract.
+- Product and generic shared UI code must use Mioframe `MD*` Vue components. Direct `@m3e/web` imports, `m3e-*` elements, renderer element types, and `--m3e-*` variables are allowed only inside `src/shared/ui/material`.
 
 ## Required skills
 
@@ -49,7 +51,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives;
-- `material-component-design`: source-only `DESIGN.md` for one official Material component resolved through the configured `material3` MCP snapshot; no direct-site scraping or repository implementation analysis;
+- `material-component-adapter`: one official Material family implemented or migrated end to end as a stable Mioframe Vue API backed privately by the documented public `@m3e/web` contract when viable;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
 - `unit-testing`: deterministic pure/domain/service/storage/CRDT and module-boundary proof in the `unit-tests` lane;
 - `component-contract-testing`: Vue public API, native semantics, ARIA ownership, and non-browser wiring in the `unit-tests` lane;
