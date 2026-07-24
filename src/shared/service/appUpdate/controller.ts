@@ -116,6 +116,11 @@ export const createReleaseController = ({
         state.preparation.release.releaseId !== target.releaseId
       )
         return;
+      // A target that no longer matches the canonical latest is obsolete — the canonical latest
+      // has already moved on to a different release since this preparation was started, and an
+      // obsolete target must never start a trial.
+      if (state.latestRelease === undefined || !isSameReleaseIdentity(target, state.latestRelease))
+        return;
       await save(createTrial({ state, targetRelease: target, now: now() }));
       if (requestingClientId) await onTrialStarted(target, requestingClientId);
     });
@@ -137,7 +142,15 @@ export const createReleaseController = ({
           state.preparation.operationId !== token
         )
           return false;
+        // A target that no longer matches the canonical latest is obsolete: `latestRelease` has
+        // already advanced to a different release while this preparation was running. An
+        // obsolete completion may only clean up (fall to `idle`), never mark `ready` over the
+        // current canonical latest's state, and never activate a trial for it.
+        const targetsLatest =
+          state.latestRelease === undefined ||
+          isSameReleaseIdentity(latest.release, state.latestRelease);
         const eligible =
+          targetsLatest &&
           !state.failedReleaseIds.includes(latest.release.releaseId) &&
           isStrictlyNewerRelease(latest.release, committedRelease(state));
         await save(
@@ -161,6 +174,13 @@ export const createReleaseController = ({
           state.preparation.operationId !== token
         )
           return;
+        const targetsLatest =
+          state.latestRelease === undefined ||
+          isSameReleaseIdentity(latest.release, state.latestRelease);
+        if (!targetsLatest) {
+          await save({ ...state, preparation: { status: 'idle' } });
+          return;
+        }
         await save({
           ...state,
           preparation: { status: 'failed', release: latest.release },
@@ -193,7 +213,7 @@ export const createReleaseController = ({
     }
     if (
       state.preparation.status === 'running' &&
-      state.preparation.release.releaseId === latest.release.releaseId
+      isSameReleaseIdentity(state.preparation.release, latest.release)
     )
       return undefined;
     const token = operationId();
@@ -253,7 +273,11 @@ export const createReleaseController = ({
           check: { status: 'idle', lastSuccessAt: now().toISOString() },
           errorCode: undefined,
         });
-        if (next.mode === 'automatic') preparation = await startPreparation(next, latest, false);
+        // Always prepare the resolved canonical latest, never the raw incoming pointer: a stale
+        // incoming check response must not be handed to `startPreparation` even though it can
+        // never become the persisted canonical latest itself.
+        if (next.mode === 'automatic' && next.latestRelease)
+          preparation = await startPreparation(next, descriptorFor(next.latestRelease), false);
       });
       await preparation?.();
     } catch {
@@ -368,11 +392,21 @@ export const createReleaseController = ({
                 },
               };
             case 'CHECK_FOR_UPDATES':
+              // An active trial is an exclusive controller phase: no new check may start while
+              // it is in progress, and the trial itself is left byte-for-byte unchanged.
+              if (state.trial) {
+                return { response: { kind: 'action', result: { status: 'accepted' } } };
+              }
               return execution(
                 { kind: 'action', result: { status: 'accepted' } },
                 await startCheck(state),
               );
             case 'SET_MODE':
+              // Mode (and pin) must remain unchanged until trial commit or rollback — an active
+              // trial rejects mode changes as a no-op rather than switching mid-trial.
+              if (state.trial) {
+                return { response: { kind: 'action', result: { status: 'accepted' } } };
+              }
               return execution(
                 { kind: 'action', result: { status: 'accepted' } },
                 await setMode(state, command.mode),

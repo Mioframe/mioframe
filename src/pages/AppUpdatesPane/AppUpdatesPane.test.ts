@@ -172,5 +172,21 @@ describe('AppUpdatesPane', () => {
     expect(wrapper.text()).toContain('Could not prepare update');
     expect(wrapper.text()).toContain('could not be downloaded and verified');
   });
+
+  it('disables Update now, Automatic updates, and Check for updates while a trial is starting', async () => {
+    const { default: AppUpdatesPane } = await import('./AppUpdatesPane.vue');
+    snapshot.value = { ...snapshot.value, updateState: 'trialStarting' };
+    const wrapper = mount(AppUpdatesPane);
+    const updateNowButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Update now');
+    const checkButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Check for updates');
+    const automaticSwitch = wrapper.find('[role="switch"]');
+    expect(updateNowButton?.attributes('disabled')).toBeDefined();
+    expect(checkButton?.attributes('disabled')).toBeDefined();
+    expect(automaticSwitch.attributes('disabled')).toBeDefined();
+  });
 });
 /* eslint-enable vue/one-component-per-file -- End direct-child stubs. */

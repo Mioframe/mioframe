@@ -76,7 +76,11 @@ const projectUpdateState = (
   runningRelease: ReleaseIdentity,
 ): AppUpdateState => {
   if (state.trial) return 'trialStarting';
-  if (state.preparation.status === 'running') return 'preparing';
+  if (
+    state.preparation.status === 'running' &&
+    preparationTargetsLatest(state, state.preparation.release)
+  )
+    return 'preparing';
   if (
     state.preparation.status === 'ready' &&
     preparationTargetsLatest(state, state.preparation.release) &&

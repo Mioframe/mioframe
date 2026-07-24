@@ -1,7 +1,12 @@
 /// <reference lib="webworker" />
 
 import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
-import { RELEASE_DESCRIPTOR_SCHEMA_VERSION, releaseDescriptorSchema } from './contracts';
+import {
+  RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+  isSameReleaseIdentity,
+  releaseDescriptorSchema,
+  releaseIdentitySchema,
+} from './contracts';
 import { createReleaseController } from './controller';
 import { createReleaseControllerStateStore } from './persistence';
 import {
@@ -37,11 +42,34 @@ const registry = createStableClientRegistry();
 let currentReleasePromise: Promise<ReleaseIdentity> | undefined;
 
 /**
+ * This worker's own build-embedded release identity, resolved synchronously at module evaluation
+ * with no network or cache access. Trustworthy only when this exact build went through the
+ * managed release-publication pipeline, which patches `__RELEASE_SEQUENCE__` in place after the
+ * real sequence is allocated (see `scripts/pages/lib/stableRelease.mjs`); an un-patched value (a
+ * local, branch, or otherwise unpublished build) safely fails `releaseIdentitySchema` and is
+ * `undefined` here rather than being trusted with a wrong sequence.
+ */
+const embeddedRelease: ReleaseIdentity | undefined = (() => {
+  const parsed = releaseIdentitySchema.safeParse({
+    releaseId: __RELEASE_ID__,
+    releaseSequence: Number(__RELEASE_SEQUENCE__),
+    appVersion: __APP_VERSION__,
+    buildId: __BUILD_ID__,
+    buildDate: __BUILD_DATE__,
+  });
+  return parsed.success ? parsed.data : undefined;
+})();
+
+/**
  * Resolve this worker's own build-embedded release identity without depending on a successful
  * network request. The final release cache (already committed by a previous activation of this
  * exact build) is tried first; only a first-ever online install or a missing local bootstrap
  * cache falls through to fetching this build's own descriptor from the immutable online archive.
  * `latest.json` is never fetched here — only the explicit `CHECK_FOR_UPDATES` operation does.
+ *
+ * Used only as a fallback for {@link resolveBootstrapRelease} when {@link embeddedRelease} itself
+ * failed validation (an unpublished build); a genuinely published build never reaches this network
+ * path just to read persisted state or serve an already-cached release.
  * @returns This worker's own build-embedded release identity.
  */
 const loadCurrentRelease = (): Promise<ReleaseIdentity> => {
@@ -54,6 +82,16 @@ const loadCurrentRelease = (): Promise<ReleaseIdentity> => {
   })();
   return currentReleasePromise;
 };
+
+/**
+ * Resolve the identity used to seed persisted-state recovery: the build-embedded identity when
+ * valid (synchronous, no I/O), or the cache/network fallback otherwise. This is only ever a
+ * fallback value for an absent or unrecoverable persisted record — reading an existing persisted
+ * record and serving an already-cached release never depends on this resolving from the network.
+ * @returns This worker's own release identity.
+ */
+const resolveBootstrapRelease = (): Promise<ReleaseIdentity> =>
+  embeddedRelease ? Promise.resolve(embeddedRelease) : loadCurrentRelease();
 
 const descriptorFor = (release: ReleaseIdentity) => ({
   schemaVersion: RELEASE_DESCRIPTOR_SCHEMA_VERSION,
@@ -76,7 +114,7 @@ const broadcastSnapshot = async (state: ReleaseControllerState): Promise<void> =
 
 const createController = async () =>
   createReleaseController({
-    currentRelease: await loadCurrentRelease(),
+    currentRelease: await resolveBootstrapRelease(),
     store,
     liveStableWindows: () => getStableWindowClients(),
     async vfsReadiness(clientId) {
@@ -120,7 +158,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       try {
-        const currentRelease = await loadCurrentRelease();
+        const currentRelease = await resolveBootstrapRelease();
         const controller = await getController();
         await controller.reconcile();
         const read = await store.read(currentRelease);
@@ -131,9 +169,10 @@ self.addEventListener('activate', (event) => {
         }
         if (read.capability === 'available') await broadcastSnapshot(read.state);
       } catch {
-        // Neither a local bootstrap cache nor the network could establish this build's own
-        // identity (offline first-ever install): the worker still takes control below so normal
-        // network navigation keeps working, without selecting or claiming any managed release.
+        // The embedded build identity failed validation (an unpublished build) and neither a
+        // local bootstrap cache nor the network could establish an identity in its place (offline
+        // first-ever install): the worker still takes control below so normal network navigation
+        // keeps working, without selecting or claiming any managed release.
       } finally {
         await self.clients.claim();
       }
@@ -157,7 +196,7 @@ self.addEventListener('message', (event) => {
 });
 
 const selectNavigationRelease = async (navigatingClientId: string): Promise<ReleaseIdentity> => {
-  const currentRelease = await loadCurrentRelease();
+  const currentRelease = await resolveBootstrapRelease();
   const read = await store.read(currentRelease);
   if (read.capability === 'unavailable') return currentRelease;
 
@@ -194,7 +233,7 @@ self.addEventListener('fetch', (event) => {
       try {
         const navigation = event.request.mode === 'navigate';
         const requestingClientId = event.resultingClientId || event.clientId;
-        const currentRelease = await loadCurrentRelease();
+        const currentRelease = await resolveBootstrapRelease();
         const release = navigation
           ? await selectNavigationRelease(requestingClientId)
           : await (async () => {
@@ -209,7 +248,8 @@ self.addEventListener('fetch', (event) => {
           const isMissingManualPin =
             read.capability === 'available' &&
             read.state.mode === 'manual' &&
-            read.state.pinnedRelease?.releaseId === release.releaseId;
+            read.state.pinnedRelease !== undefined &&
+            isSameReleaseIdentity(read.state.pinnedRelease, release);
           if (isMissingManualPin) {
             try {
               await prepareRelease(descriptorFor(release));

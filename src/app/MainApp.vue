@@ -30,8 +30,22 @@ const overlayContainerEl = useTemplateRef('overlayContainerEl');
 provideOverlayContainer(overlayContainerEl);
 
 const { settings } = useLocalSettings();
-const { isActive: isVfsActive } = useVfsActivity();
-setupAppUpdateRestartReadiness(() => !isVfsActive.value);
+const vfsActivity = useVfsActivity();
+setupAppUpdateRestartReadiness(() => !vfsActivity.isActive.value);
+
+// Release-only browser test seam: exposes a way to start/finish one real, tracked VFS operation
+// so the release e2e suite can prove `Update now` blocking against genuine activity tracking
+// end to end, without overriding `vfsReady` directly. Never present outside a release-test build.
+if (
+  __RELEASE_TEST_HOOKS__ &&
+  vfsActivity.startReleaseTestPendingOperation &&
+  vfsActivity.finishReleaseTestPendingOperation
+) {
+  Reflect.set(window, '__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__', {
+    start: () => vfsActivity.startReleaseTestPendingOperation?.(),
+    finish: (token: string) => vfsActivity.finishReleaseTestPendingOperation?.(token),
+  });
+}
 
 const mainAriaHidden = useMainContentAriaHidden();
 

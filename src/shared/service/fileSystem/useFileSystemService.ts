@@ -338,6 +338,16 @@ const setupFileSystemService = () => {
     resolveFileSystemAccessRequest: registry.resolve,
     cancelFileSystemAccessRequest: registry.cancel,
     deviceFiles: fromObservable(activeDeviceFiles$),
+    // Release-only browser test seam: plain async functions (not the `vfs` instance itself,
+    // which cannot cross this service's worker RPC boundary) so a release e2e test can start and
+    // finish one real, tracked VFS operation through genuine activity tracking. Never present
+    // outside a release-test build.
+    ...(__RELEASE_TEST_HOOKS__ && {
+      startReleaseTestPendingOperation: () => vfs.startReleaseTestPendingOperation(),
+      finishReleaseTestPendingOperation: (token: string) => {
+        vfs.finishReleaseTestPendingOperation(token);
+      },
+    }),
   };
 };
 

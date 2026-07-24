@@ -1,4 +1,5 @@
 import type { ReleaseControllerState, ReleaseIdentity } from './contracts';
+import { isSameReleaseIdentity } from './contracts';
 import { committedRelease, releaseForClient } from './stateMachine';
 
 /**
@@ -56,11 +57,18 @@ export const selectServedRelease = (
 ): ReleaseIdentity => releaseForClient(state, clientId);
 
 /**
- * Claim an unclaimed trial for the navigation that just occurred, or roll back a repeat
- * navigation that occurred before the trial's target confirmed boot.
+ * Claim an unclaimed trial for the navigation that just occurred, roll back a repeat navigation
+ * from the exact claiming client that occurred before the trial's target confirmed boot, or leave
+ * an already-claimed trial untouched for an unrelated client's navigation.
+ *
+ * Only the claiming client's own repeat navigation is evidence of a failed boot. An unrelated
+ * client (any client id other than `trial.initiatingClientId`) navigating — opening a new window,
+ * following a deep link, or simply continuing to use the committed release — must never cancel
+ * another client's in-progress trial.
  * @param state - Current private state.
  * @param navigatingClientId - Client id created by this navigation.
- * @returns State with the trial claimed by this navigation, or rolled back once.
+ * @returns State with the trial claimed by this navigation, rolled back once for a repeat
+ * navigation from the claiming client, or unchanged for an unrelated client's navigation.
  */
 export const associateTrialNavigation = (
   state: ReleaseControllerState,
@@ -71,6 +79,7 @@ export const associateTrialNavigation = (
   if (trial.initiatingClientId === undefined) {
     return { ...state, trial: { ...trial, initiatingClientId: navigatingClientId } };
   }
+  if (trial.initiatingClientId !== navigatingClientId) return state;
   return rollbackFailedTrialBoot(state);
 };
 
@@ -105,7 +114,8 @@ export const confirmTrialBoot = (
     pinnedRelease: state.mode === 'manual' ? activeRelease : state.pinnedRelease,
     trial: undefined,
     preparation:
-      state.preparation.status === 'ready' && state.preparation.release.releaseId === releaseId
+      state.preparation.status === 'ready' &&
+      isSameReleaseIdentity(state.preparation.release, trial.targetRelease)
         ? { status: 'idle' }
         : state.preparation,
     failedReleaseIds: state.failedReleaseIds.filter((id) => id !== activeRelease.releaseId),

@@ -15,6 +15,8 @@ declare const __BUILD_DATE__: string;
 declare const __APP_VERSION__: string;
 declare const __BUILD_ID__: string;
 declare const __RELEASE_ID__: string;
+declare const __RELEASE_SEQUENCE__: string;
+declare const __RELEASE_TEST_HOOKS__: boolean;
 declare const __RELEASE_CHANNEL__: 'stable' | 'branch';
 
 interface FetchEvent {

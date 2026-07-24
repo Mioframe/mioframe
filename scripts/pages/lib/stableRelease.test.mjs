@@ -2,11 +2,13 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import toolingConfig from '../../../config/tooling.json' with { type: 'json' };
 import { applyManagedStablePublish, buildStableReleasePublication } from './stableRelease.mjs';
 
 let workDir;
 let distDir;
 const sha = 'a'.repeat(40);
+const placeholderToken = JSON.stringify(toolingConfig.release.releaseSequencePlaceholder);
 
 const write = (root, path, value) => {
   mkdirSync(join(root, path, '..'), { recursive: true });
@@ -16,7 +18,7 @@ const write = (root, path, value) => {
 const makeDist = (asset = 'asset') => {
   write(distDir, 'index.html', '<script src="/assets/app.js"></script>');
   write(distDir, 'assets/app.js', asset);
-  write(distDir, 'sw.js', 'controller');
+  write(distDir, 'sw.js', `const __RELEASE_SEQUENCE__=${placeholderToken};`);
   write(distDir, 'manifest.webmanifest', '{}');
   write(
     distDir,
@@ -88,7 +90,13 @@ describe('stable release publication', () => {
         buildId: previousId.slice(0, 7),
         buildDate: '2026-07-20T00:00:00.000Z',
         indexUrl: `/updates/releases/${previousId}/index.html`,
-        files: [],
+        files: [
+          {
+            url: `/updates/releases/${previousId}/index.html`,
+            byteSize: 3,
+            sha256: 'a'.repeat(64),
+          },
+        ],
       }),
     );
     write(workDir, `updates/releases/${previousId}/index.html`, 'old');
@@ -201,7 +209,13 @@ describe('stable release publication', () => {
         buildId: 'aaaaaaa',
         buildDate: '2026-07-23T00:00:00.000Z',
         indexUrl: `/updates/releases/${'a'.repeat(40)}/index.html`,
-        files: [],
+        files: [
+          {
+            url: `/updates/releases/${'a'.repeat(40)}/index.html`,
+            byteSize: 3,
+            sha256: 'a'.repeat(64),
+          },
+        ],
       }),
     );
     write(
@@ -215,7 +229,13 @@ describe('stable release publication', () => {
         buildId: 'bbbbbbb',
         buildDate: '2026-07-23T01:00:00.000Z',
         indexUrl: `/updates/releases/${'b'.repeat(40)}/index.html`,
-        files: [],
+        files: [
+          {
+            url: `/updates/releases/${'b'.repeat(40)}/index.html`,
+            byteSize: 3,
+            sha256: 'b'.repeat(64),
+          },
+        ],
       }),
     );
     expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('collision');
@@ -243,7 +263,13 @@ describe('stable release publication', () => {
         buildId: 'eeeeeee',
         buildDate: '2026-07-20T00:00:00.000Z',
         indexUrl: `/updates/releases/${'e'.repeat(40)}/index.html`,
-        files: [],
+        files: [
+          {
+            url: `/updates/releases/${'e'.repeat(40)}/index.html`,
+            byteSize: 3,
+            sha256: 'e'.repeat(64),
+          },
+        ],
       }),
     );
     expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('does not match');
@@ -269,6 +295,60 @@ describe('stable release publication', () => {
     );
     write(workDir, 'updates/releases/duplicate.json', descriptorFor('2026-07-21T00:00:00.000Z'));
     expect(() => applyManagedStablePublish(workDir, distDir)).toThrow();
+  });
+
+  it('patches the compiled worker with the real allocated sequence instead of the build placeholder', () => {
+    applyManagedStablePublish(workDir, distDir);
+    const workerSource = readFileSync(join(workDir, 'sw.js'), 'utf8');
+    expect(workerSource).toContain('__RELEASE_SEQUENCE__="1"');
+    expect(workerSource).not.toContain(placeholderToken);
+  });
+
+  it('leaves an already-patched or placeholder-free compiled worker untouched', () => {
+    write(distDir, 'sw.js', 'const __RELEASE_SEQUENCE__="already-patched";');
+    expect(() => applyManagedStablePublish(workDir, distDir)).not.toThrow();
+    expect(readFileSync(join(workDir, 'sw.js'), 'utf8')).toContain('already-patched');
+  });
+
+  it('leaves a dist directory with no compiled worker untouched', () => {
+    rmSync(join(distDir, 'sw.js'));
+    expect(() => applyManagedStablePublish(workDir, distDir)).not.toThrow();
+  });
+
+  it.each([
+    ['missing files array', { files: undefined }],
+    ['empty files array', { files: [] }],
+    ['non-canonical indexUrl', { indexUrl: '/updates/releases/wrong/index.html' }],
+    ['a file with an invalid sha256', { files: [{ url: 'a', byteSize: 1, sha256: 'nothex' }] }],
+    [
+      'a file with a negative byteSize',
+      { files: [{ url: 'a', byteSize: -1, sha256: 'a'.repeat(64) }] },
+    ],
+    ['a non-string appVersion', { appVersion: 1 }],
+    ['an invalid buildDate', { buildDate: 'not-a-date' }],
+    ['two files claiming the canonical index', {}],
+  ])('fails publication when a retained descriptor has %s', (_label, overrides) => {
+    const releaseId = 'e'.repeat(40);
+    const canonicalIndex = `/updates/releases/${releaseId}/index.html`;
+    const base = {
+      schemaVersion: 2,
+      releaseId,
+      releaseSequence: 9,
+      appVersion: '0.9.0',
+      buildId: releaseId.slice(0, 7),
+      buildDate: '2026-07-20T00:00:00.000Z',
+      indexUrl: canonicalIndex,
+      files: [{ url: canonicalIndex, byteSize: 1, sha256: 'a'.repeat(64) }],
+      ...overrides,
+    };
+    if (_label === 'two files claiming the canonical index') {
+      base.files = [
+        { url: canonicalIndex, byteSize: 1, sha256: 'a'.repeat(64) },
+        { url: canonicalIndex, byteSize: 1, sha256: 'b'.repeat(64) },
+      ];
+    }
+    write(workDir, `updates/releases/${releaseId}.json`, JSON.stringify(base));
+    expect(() => applyManagedStablePublish(workDir, distDir)).toThrow('invalid schema');
   });
 
   it('fails the complete artifact size guard before changing the latest pointer', () => {

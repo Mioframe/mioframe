@@ -112,7 +112,7 @@ export function createArtifactServer({ distDir, basePath, host = '127.0.0.1', po
       }
       if (fixture && requestUrl.pathname.startsWith('/__managed-fixture/worker/')) {
         const nextMode = requestUrl.pathname.slice('/__managed-fixture/worker/'.length);
-        if (!['legacy', 'current'].includes(nextMode)) {
+        if (!['legacy', 'current', 'B'].includes(nextMode)) {
           res.writeHead(400).end('unknown worker fixture mode');
           return;
         }
@@ -120,14 +120,22 @@ export function createArtifactServer({ distDir, basePath, host = '127.0.0.1', po
         res.writeHead(204).end();
         return;
       }
-      if (fixture && managedWorkerMode === 'legacy' && requestUrl.pathname === '/sw.js') {
-        res.writeHead(200, {
-          'Content-Type': 'text/javascript; charset=utf-8',
-          'Cache-Control': 'no-store',
-        });
-        res.end(
-          "self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));",
-        );
+      if (
+        fixture &&
+        (managedWorkerMode === 'legacy' || managedWorkerMode === 'B') &&
+        requestUrl.pathname === '/sw.js'
+      ) {
+        const workerFile = managedWorkerMode === 'legacy' ? 'legacy-sw.js' : 'worker-b-sw.js';
+        try {
+          const workerSource = await readFile(join(distDir, workerFile));
+          res.writeHead(200, {
+            'Content-Type': 'text/javascript; charset=utf-8',
+            'Cache-Control': 'no-store',
+          });
+          res.end(workerSource);
+        } catch {
+          res.writeHead(404).end('fixture worker unavailable');
+        }
         return;
       }
       if (fixture && requestUrl.pathname === '/updates/latest.json') {

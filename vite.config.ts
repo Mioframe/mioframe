@@ -112,8 +112,20 @@ export default defineConfig(({ mode, isPreview }) => {
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),
       __RELEASE_ID__: JSON.stringify(env.VITE_RELEASE_ID || process.env.GITHUB_SHA || buildId),
+      // Patched in-place to the real allocated sequence by
+      // `scripts/pages/lib/stableRelease.mjs` after publication allocates it (the sequence is
+      // only known after `vite build`, from the retained-release tree). An un-patched build
+      // (local/dev/branch/PR) keeps this placeholder, which safely fails release-identity
+      // validation in `sw.ts` instead of being trusted as a real sequence.
+      __RELEASE_SEQUENCE__: JSON.stringify(toolingConfig.release.releaseSequencePlaceholder),
       __RELEASE_CHANNEL__: JSON.stringify(releaseChannel),
       __DIAGNOSTICS_MODE__: JSON.stringify(isPreviewBuild ? 'preview' : 'production'),
+      // Gates a narrow release-only browser-test seam (see `MainApp.vue`); set only by the
+      // release e2e fixture build (`scripts/release/managedStableFixture.mjs`), never in the real
+      // stable/branch/PR deploy pipelines.
+      __RELEASE_TEST_HOOKS__: JSON.stringify(
+        env.VITE_RELEASE_TEST_HOOKS === '1' || process.env.VITE_RELEASE_TEST_HOOKS === '1',
+      ),
     },
   };
 });

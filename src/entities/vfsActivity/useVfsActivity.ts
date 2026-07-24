@@ -13,9 +13,8 @@ const DEFAULT_STATE: VfsActivityState = {
  * @returns Reactive VFS activity state plus derived UI flags.
  */
 export const useVfsActivity = () => {
-  const {
-    fileSystem: { vfsActivity },
-  } = useMainServiceClient();
+  const { fileSystem } = useMainServiceClient();
+  const { vfsActivity } = fileSystem;
 
   const { data, error, isLoading } = useObservable(vfsActivity);
 
@@ -31,5 +30,12 @@ export const useVfsActivity = () => {
     hasUnacknowledgedError,
     isActive,
     isLoading,
+    // Release-only browser test seam (see `MainApp.vue`): never present outside a release-test
+    // build, and application code never reads it.
+    ...(__RELEASE_TEST_HOOKS__ && {
+      startReleaseTestPendingOperation: () => fileSystem.startReleaseTestPendingOperation?.(),
+      finishReleaseTestPendingOperation: (token: string) =>
+        fileSystem.finishReleaseTestPendingOperation?.(token),
+    }),
   };
 };

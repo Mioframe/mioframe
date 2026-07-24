@@ -202,6 +202,104 @@ describe('background check and preparation', () => {
       startedAt: '2026-07-24T00:00:00.000Z',
     });
   });
+
+  it('never hands a stale incoming check pointer to preparation once canonical latest is already newer', async () => {
+    const c = release('c', 3);
+    // The check response reports B (sequence 2), stale against the already-canonical C
+    // (sequence 3) — a real scenario (e.g. CDN cache lag), not just an equal-sequence conflict.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(latestNext))));
+    vi.mocked(fetchValidatedReleaseMetadata).mockResolvedValue({
+      latest: latestNext,
+      descriptor: descriptorFor(next),
+    });
+    vi.mocked(isReleaseAvailable).mockResolvedValue(false);
+    const store = createMemoryReleaseControllerStateStore({
+      ...createInitialReleaseControllerState(current),
+      latestRelease: c,
+    });
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      operationId: () => 'op-c',
+    });
+    const execution = await controller.execute({ protocolVersion: 3, type: 'CHECK_FOR_UPDATES' });
+    await execution.background?.();
+
+    const after = (await store.read(current)).state;
+    expect(after.latestRelease).toEqual(c);
+    // The stale incoming B pointer must never reach `startPreparation`: only C, the resolved
+    // canonical latest, may ever be named by a preparation record.
+    expect(after.preparation).toMatchObject({ release: c });
+    expect(after.preparation).not.toMatchObject({ release: next });
+  });
+});
+
+describe('obsolete preparation vs a canonically advanced latest', () => {
+  const c = release('c', 3);
+
+  const manualState = (): ReleaseControllerState => ({
+    ...createInitialReleaseControllerState(current),
+    mode: 'manual' as const,
+    pinnedRelease: current,
+    latestRelease: next,
+  });
+
+  const runObsoletePreparation = async (prepareOutcome: 'succeeds' | 'fails') => {
+    let resolvePrepare: (() => void) | undefined;
+    let rejectPrepare: ((error: Error) => void) | undefined;
+    let notifyPrepareStarted: (() => void) | undefined;
+    const prepareStarted = new Promise<void>((resolve) => {
+      notifyPrepareStarted = resolve;
+    });
+    const prepareGate = new Promise<void>((resolve, reject) => {
+      resolvePrepare = resolve;
+      rejectPrepare = reject;
+    });
+    vi.mocked(isReleaseAvailable).mockResolvedValue(false);
+    vi.mocked(prepareRelease).mockImplementation(async () => {
+      notifyPrepareStarted?.();
+      await prepareGate;
+      return descriptorFor(next);
+    });
+    const store = createMemoryReleaseControllerStateStore(manualState());
+    const onTrialStarted = vi.fn().mockResolvedValue(undefined);
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      operationId: () => 'op-b',
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+      onTrialStarted,
+    });
+    const update = await controller.execute(
+      { protocolVersion: 3, type: 'UPDATE_NOW' },
+      'requester',
+    );
+    const background = update.background?.();
+    await prepareStarted;
+
+    // Manual mode never re-prepares C automatically once latest advances — `state.preparation`
+    // for B is left completely untouched, exactly as it would be in production.
+    const mid = await store.read(current);
+    await store.write({ ...mid.state, latestRelease: c });
+    if (prepareOutcome === 'succeeds') resolvePrepare?.();
+    else rejectPrepare?.(new Error('download failed'));
+    await background;
+
+    return { state: (await store.read(current)).state, onTrialStarted };
+  };
+
+  it('does not mark an obsolete Manual preparation ready or start a trial once latest advances to C', async () => {
+    const { state, onTrialStarted } = await runObsoletePreparation('succeeds');
+    expect(state.preparation).toEqual({ status: 'idle' });
+    expect(state.trial).toBeUndefined();
+    expect(onTrialStarted).not.toHaveBeenCalled();
+  });
+
+  it('does not mark an obsolete Manual preparation failed once latest advances to C', async () => {
+    const { state } = await runObsoletePreparation('fails');
+    expect(state.preparation).toEqual({ status: 'idle' });
+    expect(state.errorCode).not.toBe('preparationFailed');
+  });
 });
 
 describe('interrupted operation reconciliation', () => {
@@ -426,7 +524,7 @@ describe('single-window trial via Manual Update now', () => {
     });
   });
 
-  it('does not replace an active trial on a mode change, only its own mode/pin bookkeeping', async () => {
+  it('rejects a mode change as a no-op while a trial is active, leaving state byte-for-byte unchanged', async () => {
     vi.mocked(isReleaseAvailable).mockResolvedValue(true);
     const store = createMemoryReleaseControllerStateStore(readyState());
     const controller = createReleaseController({
@@ -441,13 +539,45 @@ describe('single-window trial via Manual Update now', () => {
       'requester',
     );
     await update.background?.();
-    const trialBefore = (await store.read(current)).state.trial;
+    const before = (await store.read(current)).state;
+    expect(before.trial).toBeDefined();
 
-    await controller.execute({ protocolVersion: 3, type: 'SET_MODE', mode: 'automatic' });
+    const execution = await controller.execute({
+      protocolVersion: 3,
+      type: 'SET_MODE',
+      mode: 'automatic',
+    });
+    expect(execution.response).toEqual({ kind: 'action', result: { status: 'accepted' } });
     const after = (await store.read(current)).state;
-    expect(after.mode).toBe('automatic');
-    expect(after.trial).toEqual(trialBefore);
-    expect(after.preparation).toEqual({ status: 'ready', release: next });
+    expect(after).toEqual(before);
+  });
+
+  it('rejects starting a new check as a no-op while a trial is active, leaving state byte-for-byte unchanged', async () => {
+    vi.mocked(isReleaseAvailable).mockResolvedValue(true);
+    const store = createMemoryReleaseControllerStateStore(readyState());
+    const controller = createReleaseController({
+      currentRelease: current,
+      store,
+      now: () => new Date('2026-07-25T00:00:00.000Z'),
+      vfsReadiness: () => Promise.resolve(true),
+      liveStableWindows: () => Promise.resolve([{ id: 'requester' }]),
+    });
+    const update = await controller.execute(
+      { protocolVersion: 3, type: 'UPDATE_NOW' },
+      'requester',
+    );
+    await update.background?.();
+    const before = (await store.read(current)).state;
+    expect(before.trial).toBeDefined();
+
+    const execution = await controller.execute({
+      protocolVersion: 3,
+      type: 'CHECK_FOR_UPDATES',
+    });
+    expect(execution.response).toEqual({ kind: 'action', result: { status: 'accepted' } });
+    expect(execution.background).toBeUndefined();
+    const after = (await store.read(current)).state;
+    expect(after).toEqual(before);
   });
 });
 

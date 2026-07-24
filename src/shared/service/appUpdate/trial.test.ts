@@ -43,7 +43,7 @@ describe('single-window trial', () => {
     expect(selectServedRelease(started, 'someone-else')).toEqual(active);
   });
 
-  it('claims an unclaimed trial for the first navigation and rolls back a repeat before confirmation', () => {
+  it('claims an unclaimed trial for the first navigation and rolls back a repeat from that same client before confirmation', () => {
     const started = createTrial({ state: preparedState('manual'), targetRelease: target, now });
     expect(started.trial?.initiatingClientId).toBeUndefined();
 
@@ -52,12 +52,32 @@ describe('single-window trial', () => {
     expect(claimed.activeRelease).toEqual(active);
     expect(selectServedRelease(claimed, 'client-1')).toEqual(target);
 
-    const retried = associateTrialNavigation(claimed, 'client-2');
+    const retried = associateTrialNavigation(claimed, 'client-1');
     expect(retried.trial).toBeUndefined();
     expect(retried.activeRelease).toEqual(active);
     expect(retried.pinnedRelease).toEqual(active);
     expect(retried.preparation).toEqual({ status: 'failed', release: target });
     expect(retried.failedReleaseIds).toEqual([target.releaseId]);
+  });
+
+  it('leaves a claimed trial untouched when an unrelated client navigates, and the claiming client can still confirm afterward', () => {
+    const started = createTrial({ state: preparedState('manual'), targetRelease: target, now });
+    const claimed = associateTrialNavigation(started, 'client-1');
+
+    const afterOtherNavigation = associateTrialNavigation(claimed, 'client-2');
+    expect(afterOtherNavigation).toBe(claimed);
+    expect(afterOtherNavigation.trial).toMatchObject({ initiatingClientId: 'client-1' });
+
+    // The unrelated client keeps receiving the committed release and cannot confirm the trial.
+    expect(selectServedRelease(afterOtherNavigation, 'client-2')).toEqual(active);
+    expect(confirmTrialBoot(afterOtherNavigation, 'client-2', target.releaseId)).toBe(
+      afterOtherNavigation,
+    );
+
+    // The claiming client can still confirm after the unrelated navigation.
+    const committed = confirmTrialBoot(afterOtherNavigation, 'client-1', target.releaseId);
+    expect(committed.trial).toBeUndefined();
+    expect(committed.activeRelease).toEqual(target);
   });
 
   it('does not touch state when no trial is active', () => {

@@ -193,6 +193,21 @@ describe('release controller state', () => {
       expect(snapshot.updateState).toBe('available');
     });
 
+    it('reports the newer target as available, not preparing, once a still-running B is stale against latest C', () => {
+      const snapshot = projectAppUpdateSnapshot({
+        ...base,
+        latestRelease: c,
+        preparation: {
+          status: 'running',
+          release: b,
+          operationId: 'op',
+          startedAt: '2026-07-23T00:00:00.000Z',
+        },
+      });
+      expect(snapshot.updateState).toBe('available');
+      expect(snapshot.latestRelease).toEqual(c);
+    });
+
     it('still reports ready/failed for a preparation whose target still matches the current latest', () => {
       expect(
         projectAppUpdateSnapshot({

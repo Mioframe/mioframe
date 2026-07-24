@@ -24,6 +24,7 @@ const isAutomatic = computed(() => snapshot.value?.mode === 'automatic');
 const isActionPending = computed(
   () => checkAction.pending.value || modeAction.pending.value || applyAction.pending.value,
 );
+const isTrialStarting = computed(() => snapshot.value?.updateState === 'trialStarting');
 const immediateErrorCode = computed(() => {
   const results = [checkAction.result.value, modeAction.result.value, applyAction.result.value];
   return results.find((result) => result !== undefined && result.status !== 'accepted')?.code;
@@ -136,7 +137,7 @@ const onUpdateNow = () => {
         v-if="showUpdateNow"
         label="Update now"
         :loading="applyAction.pending.value || snapshot?.updateState === 'preparing'"
-        :disabled="isActionPending"
+        :disabled="isActionPending || isTrialStarting"
         @click="onUpdateNow"
       />
 
@@ -144,7 +145,7 @@ const onUpdateNow = () => {
         headline="Automatic updates"
         :supporting-text="modeExplanation"
         :checked="isAutomatic"
-        :disabled="isActionPending || snapshot?.capability !== 'available'"
+        :disabled="isActionPending || isTrialStarting || snapshot?.capability !== 'available'"
         :lines="2"
         @change="onToggleAutomatic"
       />
@@ -152,7 +153,7 @@ const onUpdateNow = () => {
       <MDButton
         color="outlined"
         label="Check for updates"
-        :disabled="isActionPending || snapshot?.capability !== 'available'"
+        :disabled="isActionPending || isTrialStarting || snapshot?.capability !== 'available'"
         @click="onCheckForUpdates"
       />
 

@@ -7,6 +7,7 @@
   },
   "release": {
     "basePath": "/",
+    "releaseSequencePlaceholder": "__MIOFRAME_RELEASE_SEQUENCE_PENDING__",
     "artifactServer": {
       "port": 4174
     }

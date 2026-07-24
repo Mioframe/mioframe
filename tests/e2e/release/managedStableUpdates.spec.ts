@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
-import { createDirectory, launchApp, openOpfs } from '../helpers';
+import { launchApp } from '../helpers';
 import {
   createPersistentProfile,
   launchPersistentBrowser,
@@ -13,29 +13,47 @@ const waitForExecutedRelease = (page: Page, release: 'A' | 'B') =>
     (expected) => Reflect.get(globalThis, '__MIOFRAME_EXECUTED_RELEASE__') === expected,
     release,
   );
-const waitForManagedController = (page: Page) =>
+type ReleaseTestVfsActivity = {
+  /** Starts one real, tracked pending VFS operation and returns its token. */
+  start: () => Promise<string>;
+  /** Resolves the pending operation identified by `token`. */
+  finish: (token: string) => Promise<void>;
+};
+// Drives the release-only VFS-activity test seam (see `MainApp.vue`/`useVfsActivity.ts`): starts
+// or finishes one real, tracked VFS operation through the same production activity tracking
+// `useVfsActivity` exposes, without overriding `vfsReady` directly.
+const startReleaseTestVfsActivity = (page: Page): Promise<string> =>
+  page.evaluate(() => {
+    const activity: ReleaseTestVfsActivity = Reflect.get(
+      globalThis,
+      '__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__',
+    );
+    return activity.start();
+  });
+const finishReleaseTestVfsActivity = (page: Page, token: string): Promise<void> =>
+  page.evaluate((activeToken) => {
+    const activity: ReleaseTestVfsActivity = Reflect.get(
+      globalThis,
+      '__MIOFRAME_RELEASE_TEST_VFS_ACTIVITY__',
+    );
+    return activity.finish(activeToken);
+  }, token);
+// Triggers a real browser update check (the same API a returning visit or periodic background
+// check would use) — this is a genuine browser action, not a reproduction of the managed-update
+// connection protocol.
+const triggerControllerUpdateCheck = (page: Page) =>
   page.evaluate(async () => {
     const registration = await navigator.serviceWorker.getRegistration('/');
     await registration?.update();
-    await new Promise<void>((resolve, reject) => {
-      const deadline = window.setTimeout(() => {
-        reject(new Error('Managed controller unavailable.'));
-      }, 10_000);
-      const tryController = () => {
-        const controller = navigator.serviceWorker.controller;
-        if (!controller) return;
-        const channel = new MessageChannel();
-        channel.port1.onmessage = (event) => {
-          if (event.data?.kind !== 'snapshot') return;
-          window.clearTimeout(deadline);
-          resolve();
-        };
-        controller.postMessage({ protocolVersion: 3, type: 'GET_SNAPSHOT' }, [channel.port2]);
-      };
-      navigator.serviceWorker.addEventListener('controllerchange', tryController);
-      tryController();
-    });
   });
+
+// Waits only on public application UI: production's own `setupManagedAppUpdates()`/
+// `controllerchange` reconnect (see `client.ts`) is what actually establishes capability here —
+// this helper never sends or listens for controller protocol messages itself.
+const waitForManagedCapability = async (page: Page) => {
+  await goToAppUpdates(page);
+  await expect(page.getByRole('heading', { name: /status unavailable/i })).toHaveCount(0);
+};
 const corruptControllerPersistence = (page: Page) =>
   page.evaluate(
     () =>
@@ -119,7 +137,8 @@ test('1 migration from generated stable worker and 2 existing install initialize
   await request.post('/__managed-fixture/worker/current');
   const updating = await context.newPage();
   await launchApp(updating);
-  await waitForManagedController(updating);
+  await triggerControllerUpdateCheck(updating);
+  await waitForManagedCapability(updating);
   await updating.close();
   const migrated = await context.newPage();
   await initializeReleaseA(migrated);
@@ -154,11 +173,8 @@ test('production client reconnects after worker takeover, and conservative live-
   // Only `first` explicitly checks for a worker update; `second` does nothing of its own. Its
   // reconnect must come from production's own `controllerchange` handling, not a second explicit
   // check, and its liveness must count for blocking regardless of whether it has reconnected yet.
-  await first.evaluate(async () => {
-    const registration = await navigator.serviceWorker.getRegistration('/');
-    await registration?.update();
-  });
-  await waitForManagedController(first);
+  await triggerControllerUpdateCheck(first);
+  await waitForManagedCapability(first);
 
   await goToAppUpdates(first);
   await setManual(first);
@@ -294,33 +310,65 @@ test('10 Manual Update now is blocked while another stable window is open and su
   await waitForExecutedRelease(page, 'B');
 });
 
-test.fixme('11 active application work blocks update', async ({ page, request }) => {
+test('a pending trial serves only its claiming client B; an unrelated client keeps receiving the committed A and cannot confirm the trial', async ({
+  page,
+  context,
+  request,
+}) => {
   await initializeReleaseA(page);
   await openAppUpdates(page);
+  await setManual(page);
   await selectLatest(request, 'B');
-  await checkForUpdates(page, /update ready/i);
+  await checkForUpdates(page, /update available/i);
 
-  await page.getByRole('button', { name: /^home$/i }).click();
-  await openOpfs(page);
-  const directoryName = await createDirectory(page, 'active write fixture');
-  await page.getByRole('button', { name: new RegExp(`^options ${directoryName}$`, 'i') }).click();
-  await page.getByRole('menuitem', { name: /^rename$/i }).click();
-  const dialog = page.getByRole('dialog', { name: /^rename/i });
-  await dialog.getByLabel(/^name$/i).fill('active write fixture renamed');
-  await dialog.getByRole('button', { name: /^rename$/i }).click();
+  // The claiming client's own reload navigation is what actually claims the trial; waiting for it
+  // to start (real navigation lifecycle, not a sleep) before opening the unrelated client below
+  // guarantees the trial already exists and is already claimed by `page`, so `other`'s subsequent
+  // navigation exercises the "unrelated client during a pending trial" path deterministically.
+  await Promise.all([
+    page.waitForURL(/.*/),
+    page.getByRole('button', { name: /update now/i }).click(),
+  ]);
+
+  const other = await context.newPage();
+  await other.goto('/');
+  // The unrelated client is served the committed release, not the trial target, while the trial
+  // is still pending.
+  await waitForExecutedRelease(other, 'A');
+
+  // The claiming client's own reload completes its confirmation and commits the trial. Waiting
+  // for its own status to settle past `trialStarting` (not just its executed-release marker,
+  // which fires on parse, before the app has mounted and sent its own boot confirmation) proves
+  // the trial has actually committed before `other` reloads below.
+  await waitForExecutedRelease(page, 'B');
+  await openAppUpdates(page);
+
+  // The unrelated client never claimed or ran the trial target and still cannot receive or
+  // confirm it after commit either — it only sees the now-committed release on its own next
+  // navigation, exactly as any ordinary client would.
+  await other.reload();
+  await waitForExecutedRelease(other, 'B');
+});
+
+test('11 active application work blocks update', async ({ page, request }) => {
+  await initializeReleaseA(page);
+  await openAppUpdates(page);
+  await setManual(page);
+  await selectLatest(request, 'B');
+  await checkForUpdates(page, /update available/i);
+
+  const token = await startReleaseTestVfsActivity(page);
 
   await goToAppUpdates(page);
   await page.getByRole('button', { name: /update now/i }).click();
   await expect(page.getByText(/changes are still being saved/i)).toBeVisible();
+  expect(await marker(page)).toBe('A');
+
+  await finishReleaseTestVfsActivity(page, token);
+
+  await page.getByRole('button', { name: /update now/i }).click();
+  await waitForExecutedRelease(page, 'B');
 });
-// Left as `fixme` rather than deleted or left flaky: every VFS-mutating dialog in this app (a
-// shared DialogForm with a native <dialog> and loading-gated cancel) stays modal for its entire
-// async duration, so a same-window write is either already settled by the time navigation
-// reaches Update now (fast operations) or still blocks that same navigation via its own open
-// dialog (slowed operations, confirmed by patching the VFS worker's OPFS primitives). Reaching
-// this scenario for real needs a VFS mutation with no modal at all (e.g. an inline database cell
-// edit) with its own document/property/row setup, which is unit-proven already via
-// controller.test.ts's `vfsReadiness` gating but not yet reliably provable at the browser level.
 
 test('12 branch and PR windows neither block nor reload', async ({ page, context, request }) => {
   await initializeReleaseA(page);
@@ -412,6 +460,44 @@ test('Manual pin survives a real browser-process restart', async ({ request }) =
 
     const restarted = await launchPersistentBrowser(profileDir);
     try {
+      const page = await restarted.newPage();
+      await page.goto('/');
+      await waitForExecutedRelease(page, 'A');
+    } finally {
+      await restarted.close();
+    }
+  } finally {
+    removePersistentProfile(profileDir);
+  }
+});
+
+test('a newer worker whose own build differs from the pinned release still serves the pinned release after a real offline browser-process restart', async ({
+  request,
+}) => {
+  const profileDir = createPersistentProfile();
+  try {
+    const install = await launchPersistentBrowser(profileDir);
+    try {
+      const page = await install.newPage();
+      await initializeReleaseA(page);
+      await openAppUpdates(page);
+      await setManual(page);
+      await selectLatest(request, 'B');
+      await checkForUpdates(page, /update available/i);
+
+      // A newer controller worker whose own build identity is release B takes over, while the
+      // persisted pin remains release A — Manual mode never activates a discovered target on its
+      // own, so the pin is untouched by this worker takeover.
+      await request.post('/__managed-fixture/worker/B');
+      await triggerControllerUpdateCheck(page);
+      await waitForManagedCapability(page);
+    } finally {
+      await install.close();
+    }
+
+    const restarted = await launchPersistentBrowser(profileDir);
+    try {
+      await restarted.setOffline(true);
       const page = await restarted.newPage();
       await page.goto('/');
       await waitForExecutedRelease(page, 'A');

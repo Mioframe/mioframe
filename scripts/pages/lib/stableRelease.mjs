@@ -10,10 +10,42 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join, relative } from 'node:path';
+import toolingConfig from '../../../config/tooling.json' with { type: 'json' };
 import { buildSpaFallbackHtml } from './spaFallback.mjs';
 
 /** Maximum total byte size the published GitHub Pages tree may reach after a stable publish. */
 export const STABLE_PAGES_SIZE_LIMIT_BYTES = 900 * 1024 * 1024;
+
+const RELEASE_SEQUENCE_PLACEHOLDER = toolingConfig.release.releaseSequencePlaceholder;
+
+/**
+ * Patch the build-time release-sequence placeholder embedded in the compiled stable service
+ * worker (`vite.config.ts`'s `__RELEASE_SEQUENCE__` define) with the real allocated sequence.
+ *
+ * `releaseSequence` is only known after this build already exists (it is allocated from the
+ * retained-release tree during publication), so the worker bundle is built once with a
+ * distinctive placeholder token and patched in place here, the same way `buildStableReleasePublication`
+ * already patches `index.html` with a literal meta-tag injection after the real identity is known.
+ * A `distDir` with no built worker (a disabled-PWA or non-stable-channel build, or a test fixture
+ * without a real Vite build), or one whose worker no longer contains the placeholder (already
+ * patched by an earlier call, e.g. a retried publish over the same `distDir`), is left untouched.
+ * @param distDir - Production build output directory containing the compiled `sw.js`, if any.
+ * @param releaseSequence - The real allocated forward-only sequence for this release.
+ */
+export const patchWorkerReleaseSequence = (distDir, releaseSequence) => {
+  const workerPath = join(distDir, 'sw.js');
+  if (!existsSync(workerPath)) return;
+  const placeholderToken = JSON.stringify(RELEASE_SEQUENCE_PLACEHOLDER);
+  const source = readFileSync(workerPath, 'utf8');
+  // Absent covers a non-PWA/non-stable-channel build (nothing to patch) and a retried publish
+  // over an already-patched `distDir` (the worker was already correctly embedded by an earlier
+  // call for this exact release) — both are safe to leave untouched rather than fail.
+  if (!source.includes(placeholderToken)) return;
+  writeFileSync(
+    workerPath,
+    source.split(placeholderToken).join(JSON.stringify(String(releaseSequence))),
+  );
+};
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
@@ -120,6 +152,7 @@ export const buildStableReleasePublication = (distDir, releaseSequence = 1) => {
  */
 export const writeStableReleaseArtifact = (distDir) => {
   const publication = buildStableReleasePublication(distDir, 1);
+  patchWorkerReleaseSequence(distDir, 1);
   const releaseDir = join(distDir, 'updates', 'releases', publication.releaseId);
   mkdirSync(releaseDir, { recursive: true });
   writeFileSync(join(releaseDir, 'index.html'), publication.indexBytes);
@@ -142,11 +175,52 @@ const currentTreeSize = (root) =>
     ? walkFiles(root).reduce((total, file) => total + statSync(join(root, file)).size, 0)
     : 0;
 
-const isValidDescriptorIdentity = (value) =>
-  value?.schemaVersion === 2 &&
-  /^[0-9a-f]{40}$/.test(value.releaseId ?? '') &&
-  Number.isSafeInteger(value.releaseSequence) &&
-  value.releaseSequence >= 1;
+const isValidReleaseFile = (value) =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof value.url === 'string' &&
+  value.url.length > 0 &&
+  Number.isSafeInteger(value.byteSize) &&
+  value.byteSize >= 0 &&
+  /^[0-9a-f]{64}$/.test(value.sha256 ?? '');
+
+/**
+ * Validate the complete published release-descriptor contract (schema version, every identity
+ * field, the canonical index URL, and a non-empty, well-formed file list with exactly one
+ * canonical release index) — the same fields `releaseDescriptorSchema` validates at runtime,
+ * checked structurally here since Node publication code must not import the browser-facing
+ * `zod`-based schema module.
+ * @param value - Untrusted parsed descriptor JSON.
+ * @returns Whether `value` is a completely valid release descriptor.
+ */
+const isValidReleaseDescriptor = (value) => {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    value.schemaVersion !== 2 ||
+    !/^[0-9a-f]{40}$/.test(value.releaseId ?? '') ||
+    !Number.isSafeInteger(value.releaseSequence) ||
+    value.releaseSequence < 1 ||
+    typeof value.appVersion !== 'string' ||
+    value.appVersion.length === 0 ||
+    typeof value.buildId !== 'string' ||
+    value.buildId.length === 0 ||
+    typeof value.buildDate !== 'string' ||
+    Number.isNaN(Date.parse(value.buildDate)) ||
+    typeof value.indexUrl !== 'string' ||
+    value.indexUrl.length === 0 ||
+    !Array.isArray(value.files) ||
+    value.files.length === 0 ||
+    !value.files.every(isValidReleaseFile)
+  ) {
+    return false;
+  }
+  const canonicalIndex = `/updates/releases/${value.releaseId}/index.html`;
+  return (
+    value.indexUrl === canonicalIndex &&
+    value.files.filter((file) => file.url === canonicalIndex).length === 1
+  );
+};
 
 // Reads every retained release descriptor directly from disk, independent of `latest.json`.
 // `latest.json` is only a pointer and can be rolled back to an older release while newer
@@ -170,7 +244,7 @@ const readRetainedReleaseDescriptors = (workDir) => {
       } catch {
         throw new Error(`Retained release descriptor ${entry.name} is not valid JSON.`);
       }
-      if (!isValidDescriptorIdentity(parsed)) {
+      if (!isValidReleaseDescriptor(parsed)) {
         throw new Error(`Retained release descriptor ${entry.name} has an invalid schema.`);
       }
       const expectedName = `${parsed.releaseId}.json`;
@@ -235,6 +309,7 @@ export const applyManagedStablePublish = (
   const releaseId = readDeploymentMetadata(distDir).sha;
   const releaseSequence = allocateReleaseSequence(workDir, releaseId);
   const publication = buildStableReleasePublication(distDir, releaseSequence);
+  patchWorkerReleaseSequence(distDir, releaseSequence);
   const releaseDir = join(workDir, 'updates', 'releases', publication.releaseId);
   const descriptorPath = join(workDir, 'updates', 'releases', `${publication.releaseId}.json`);
   const archivedIndexPath = join(releaseDir, 'index.html');
