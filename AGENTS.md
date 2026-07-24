@@ -43,7 +43,7 @@ Dependency rules:
 - Service and worker layers own persistence, protocol interpretation, indexing, lifecycle, cache invalidation, and canonical storage facts. UI layers request actions and render typed facts; they must not reconstruct service-owned state from implementation details.
 - Define errors next to the boundary that detects them. UI-facing records must not expose clients, adapters, providers, credentials, callbacks, capabilities, or service bags.
 - Do not duplicate schemas, type aliases, constants, or non-trivial algorithms across layers. Keep one owner and expose a narrow public contract.
-- Product and generic shared UI code must use Mioframe `MD*` Vue components. Direct `@m3e/web` imports, `m3e-*` elements, renderer element types, and `--m3e-*` variables are allowed only inside `src/shared/ui/material`.
+- When product or generic shared UI consumes an official Material component, it must use the Mioframe `MD*` Vue API. Native HTML and project-specific or generic shared UI remain valid when they are the correct owner. Direct `@m3e/web` imports, `m3e-*` elements, renderer element types, and `--m3e-*` variables are allowed only inside `src/shared/ui/material`.
 
 ## Required skills
 
@@ -51,7 +51,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives;
-- `material-component-adapter`: one official Material family implemented or migrated end to end as a stable Mioframe Vue API backed privately by the documented public `@m3e/web` contract when viable;
+- `material-component-adapter`: one official Material component or proven inseparable family implemented or migrated end to end as a stable Mioframe Vue API backed privately by the documented public `@m3e/web` contract when viable;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
 - `unit-testing`: deterministic pure/domain/service/storage/CRDT and module-boundary proof in the `unit-tests` lane;
 - `component-contract-testing`: Vue public API, native semantics, ARIA ownership, and non-browser wiring in the `unit-tests` lane;
