@@ -7,7 +7,7 @@ description: 'Use for project-specific or generic src/shared/ui primitives outsi
 
 Use for project-specific presentation primitives, wrappers, layout primitives, and generic shared UI infrastructure outside official Material component families.
 
-Do not use this skill to define an official Material component design contract. Use `material-component-design` for the source-only `DESIGN.md` stage. Material implementation remains separate architecture work.
+Do not use this skill for an official Material family, a Vue-to-m3e adapter, or Material family migration. Use `material-component-adapter` and the scoped `src/shared/ui/material/AGENTS.md` rules instead.
 
 ## Scope
 
@@ -21,7 +21,7 @@ This skill owns general Vue/shared-UI implementation discipline:
 - consumer blast-radius review;
 - focused contract, browser, and visual verification.
 
-It does not own official Material design contracts, Material token inventories, foundation contracts, or Material family migration.
+It does not own official Material component contracts, m3e integration, Material token mapping, global theme ownership, or Material family migration.
 
 ## Before production edits
 
