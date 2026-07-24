@@ -59,11 +59,11 @@ Use the configured `material3` MCP and its validated cache snapshot as the codin
 
 Record inspected MCP records, original official routes, and snapshot metadata. Do not browse or scrape the Material site directly, rely on memory, reproduce the full documentation, or implement optional surface without a current scenario.
 
-## 3. Select and inspect the exact m3e contract
+## 3. Select and inspect the resolved m3e contract
 
-Inspect a current stable, non-prerelease version through primary package evidence. Verify:
+Inspect the exact lockfile-resolved version of a current stable, non-prerelease m3e release through primary package evidence. Verify:
 
-- exact package version and peer dependencies;
+- exact resolved package version and peer dependency requirements;
 - package exports and required family entry point;
 - declarations and Custom Elements Manifest;
 - properties and reflected attributes;
@@ -74,13 +74,13 @@ Inspect a current stable, non-prerelease version through primary package evidenc
 - documented CSS variables;
 - exposed accessibility behavior.
 
-Record the exact version and entry point in the family README before production edits. Do not use a version range, another version's examples, shadow DOM, copied source, or undocumented internals.
+Record the compatible package range, exact lockfile-resolved version, and entry point in the family README before production edits. Do not use `latest`, a wildcard, a prerelease, another version's examples, shadow DOM, copied source, or undocumented internals.
 
 ## 4. Decide renderer viability
 
 Set renderer viability independently from implementation ownership:
 
-- `unassessed` — exact version and required contract are not yet verified;
+- `unassessed` — the exact lockfile-resolved version and required contract are not yet verified;
 - `ready` — every required scenario is available through documented public APIs and a thin adapter;
 - `blocked-upstream` — a required public renderer contract is missing, defective, or unstable.
 
@@ -90,7 +90,7 @@ When blocked, record the exact missing contract, keep implementation ownership `
 
 Create or update `src/shared/ui/material/components/<family>/README.md` according to `src/shared/ui/material/docs/component-adapter.md`.
 
-The contract must define the explicit migration target, renderer viability, implementation ownership, required scenarios, non-goals, supported and unsupported Material surface, public Vue API, exact renderer version and entry point, custom-element recognition and registration ownership, explicit property/attribute/event/slot/state/token mapping, controlled-state semantics, native semantics, consumers, verification, obsolete-owner removal, and unresolved blockers.
+The contract must define the explicit migration target, renderer viability, implementation ownership, required scenarios, non-goals, supported and unsupported Material surface, public Vue API, compatible renderer range, exact lockfile-resolved renderer version and entry point, custom-element recognition and registration ownership, explicit property/attribute/event/slot/state/token mapping, controlled-state semantics, native semantics, consumers, verification, obsolete-owner removal, and unresolved blockers.
 
 Do not mechanically copy the m3e API or expose renderer element and event types.
 
@@ -104,19 +104,23 @@ Do not implement while renderer viability is not `ready`, the family contract ha
 
 The first adapter may add only:
 
-- the exact pinned `@m3e/web` dependency and verified peers;
+- `@m3e/web` declared with the repository-standard compatible semver range;
+- package-manager handling required by the selected renderer package without adding its implementation dependencies as direct Mioframe dependencies unless Mioframe imports them;
 - shared Vue compiler recognition of `m3e-*` for application, Storybook, and tests;
 - the selected component's required family entry-point import.
 
-Shared build configuration owns recognition. The selected family owns registration through its implementation import.
+The lockfile owns the exact installed renderer version. Shared build configuration owns recognition. The selected family owns registration through its implementation import.
 
 Forbidden:
 
+- `latest`, wildcard, or prerelease renderer specifiers;
 - all-components imports;
 - global runtime registration;
 - component registry;
 - support for multiple m3e versions;
 - runtime renderer switching.
+
+A lockfile-resolved m3e version change requires re-inspection of affected public contracts and risk-selected adapter verification.
 
 ## 8. Implement the thin adapter
 
@@ -174,7 +178,7 @@ MATERIAL ADAPTER RESULT
 Family:
 Migration target:
 Change mode:
-Renderer package, version, and entry point:
+Renderer package range, resolved version, and entry point:
 Renderer viability: unassessed | ready | blocked-upstream
 Implementation ownership: legacy | migrating | migrated
 Canonical Vue owner:
