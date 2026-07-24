@@ -14,7 +14,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 
 - Current official Material 3 Expressive documentation defines component meaning, usage, visual requirements, and accessibility intent.
 - Mioframe owns the public Vue `MD*` API, supported subset, controlled state, native integration, public tokens, consumer migration, and verification.
-- The exact selected `@m3e/web` public contract is a private renderer implementation dependency.
+- The exact lockfile-resolved `@m3e/web` public contract is a private renderer implementation dependency.
 - Current consumers define scenarios that must be preserved unless an explicit product decision changes them.
 - Existing legacy directories remain production owners until their focused migration reaches the exit gate.
 
@@ -38,7 +38,7 @@ Private shadow DOM, undocumented events/properties, internal classes, copied ren
 - Implement one explicit component target at a time. Expand to a family only when current ownership proves component-only migration technically unsafe.
 - Start from confirmed scenarios and current consumers.
 - Use the configured Material source interface and record traceable source evidence.
-- Select and inspect an exact stable, non-prerelease m3e version through primary package evidence.
+- Inspect the exact lockfile-resolved version of a current stable, non-prerelease m3e release through primary package evidence.
 - Record renderer viability, implementation ownership, and explicit Vue-to-m3e mapping in the family `README.md` before production edits.
 - Expose the minimum complete Vue API required by current scenarios; do not copy the complete m3e API.
 - Keep controlled semantic state consumer-owned and prevent hidden renderer-state drift.
@@ -53,7 +53,7 @@ Use explicit component-local code. Do not create a wrapper generator, universal 
 
 Renderer viability:
 
-- `unassessed` — exact version and required integration contract are not verified;
+- `unassessed` — the exact lockfile-resolved version and required integration contract are not verified;
 - `ready` — documented public m3e APIs cover every required scenario with a thin adapter;
 - `blocked-upstream` — a required renderer contract is missing, defective, or unstable.
 
@@ -67,7 +67,9 @@ A blocked renderer requires ownership to remain `legacy`. Do not work around a b
 
 ## Dependency and registration
 
-- Pin the verified `@m3e/web` version exactly, without a range.
+- Declare `@m3e/web` with the repository-standard compatible semver range.
+- Record the exact lockfile-resolved version used to verify each family contract.
+- Re-inspect affected public contracts and verification when the resolved m3e version changes.
 - Import only the required family entry point.
 - Shared build configuration owns Vue recognition of `m3e-*` consistently for application, Storybook, and tests.
 - The selected component family owns element registration through its implementation import.
