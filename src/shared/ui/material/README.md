@@ -1,14 +1,17 @@
 # Mioframe Material library
 
-`src/shared/ui/material` is the canonical owner of the project-facing Material component API.
+`src/shared/ui/material` is the canonical owner of the project-facing Material component API and all Material-specific architecture and workflow documentation.
 
 The library exposes Vue `MD*` components based on current Material 3 Expressive concepts. A component may use `@m3e/web` internally, but product consumers depend only on the Mioframe Vue contract.
 
 Canonical policy:
 
-- `docs/material-3/architecture.md`;
-- `docs/material-3/component-adapter.md`;
-- `docs/material-3/roadmap.md`.
+- [`docs/architecture.md`](./docs/architecture.md);
+- [`docs/component-adapter.md`](./docs/component-adapter.md);
+- [`docs/component-tokens.md`](./docs/component-tokens.md);
+- [`docs/roadmap.md`](./docs/roadmap.md).
+
+Repository-level `docs/` remains product and project documentation. Material library policy must not be duplicated there.
 
 ## Boundary
 
@@ -18,7 +21,7 @@ Allowed inside this directory:
 - family-local imports of required m3e entry points;
 - explicit Vue-to-m3e property, event, slot, state, and token mapping;
 - narrow shared m3e helpers only after repeated adapters prove one necessary;
-- family contracts, tests, stories, and curated public entry points.
+- library architecture, roadmap, family contracts, tests, stories, and curated public entry points.
 
 Not allowed:
 
@@ -36,6 +39,12 @@ Create only artifacts required by active work:
 material/
   AGENTS.md
   README.md
+  docs/
+    README.md
+    architecture.md
+    component-adapter.md
+    component-tokens.md
+    roadmap.md
   index.ts                         # when the first canonical family is ready
   components/
     <family>/
@@ -97,4 +106,4 @@ The current Mioframe theme remains the global owner. `m3e-theme` is not installe
 
 PR #162 owns the architecture reset only. It must not add `@m3e/web`, configure Vue custom elements, or change production Material components.
 
-The next implementation milestone is the `MDButton` adapter pilot recorded in `docs/material-3/roadmap.md`.
+The next implementation milestone is the `MDButton` adapter pilot recorded in [`docs/roadmap.md`](./docs/roadmap.md).
