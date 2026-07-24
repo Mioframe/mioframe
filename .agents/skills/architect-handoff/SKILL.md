@@ -31,7 +31,7 @@ You may skip this skill for:
 - narrow fixes where ownership, source of truth, final state, and verification are explicit and unchanged;
 - work covered by an applicable deterministic standard-authoring policy when the agent can derive a ready repository-backed contract from authoritative sources and no escalation condition is present.
 
-An approved `DESIGN.md` produced by `material-component-design` is normative Material design input, not an implementation contract. Material code, foundation, API, or migration changes still require this handoff unless another existing repository skill explicitly owns the architecture stage and produces a ready implementation contract.
+For one official Material family, `docs/material-3/architecture.md`, `component-adapter.md`, and a ready family `README.md` provide the normal deterministic architecture. Use `material-component-adapter` without a separate handoff when renderer viability, the public Vue contract, ownership, consumer migration, and verification are fully resolved. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision outside that contract.
 
 If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready artifact, and reason no unresolved architecture decision remains.
 
