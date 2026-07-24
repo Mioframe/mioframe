@@ -1,123 +1,105 @@
 # src/shared/ui/material
 
-Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical Material 3 Expressive library boundary.
+Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-facing Material library boundary, including migrated implementation, contracts, architecture documentation, and roadmap.
 
-## Routing
+## Required workflow
 
-- Use `material-library-status` for a read-only reconciliation of roadmap, inventory, registries, audits, visual acceptance, and verification state.
-- Use `material-library-next` when the user wants the program to continue without naming a family; it resolves and runs exactly one next family.
-- Use `material-component` when the user supplies a Material component or family name and expects autonomous creation, migration, or alignment from that name alone.
-- Use `material-component-review` when the user supplies a Material component or family name and expects a source-backed compliance review without production changes.
-- Use `material-component-authoring` as the canonical end-to-end execution workflow after the target family is resolved, or directly when the task already provides explicit family scope.
-- Use `material-foundation` when a cross-family foundation contract changes.
-- Use `material3-guidelines` for current official Material 3 Expressive sources, component choice, usage, composition, and supported surface.
-- Use Vue and testing skills only for applicable implementation and proof layers.
-- Use `docs/material-3/autonomous-review.md` for agent evidence review and operator visual handoff.
-- Use `library-roadmap.md` and `ui-library-inventory.md` through `material-library-next` to select sequential migration work when the user did not explicitly select a component.
+- Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, and `docs/roadmap.md` before Material implementation or migration work.
+- Use `material-component-adapter` for one explicitly selected official Material component or proven inseparable family implementation, migration, or adapter change.
+- Use `architect-handoff` first when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision not resolved by the adapter contract.
+- Use applicable Vue and testing skills for implementation mechanics and proof.
+- Do not create Material policy or architecture documents under repository-level `docs/`; this library is their sole owner.
 
-A component name is sufficient input for `material-component` and `material-component-review`. Do not require the user to predefine variants, API, foundations, files, tests, consumers, or expected defects. Resolve them from official sources and the repository. An explicit user-selected component overrides automatic queue selection for that run; real roadmap prerequisites still apply.
+## Authority and ownership
 
-`material-library-next` requires no component name. It follows the active roadmap milestone first and, after the pilots, selects one unblocked `queued` official-component family with satisfied dependencies. It must not start a second family in the same task or PR. `material-library-status` never modifies repository files.
+- Current official Material 3 Expressive documentation defines component meaning, usage, visual requirements, and accessibility intent.
+- Mioframe owns the public Vue `MD*` API, supported subset, controlled state, native integration, public tokens, consumer migration, and verification.
+- The exact lockfile-resolved `@m3e/web` public contract is a private renderer implementation dependency.
+- Current consumers define scenarios that must be preserved unless an explicit product decision changes them.
+- Existing legacy directories remain production owners until their focused migration reaches the exit gate.
 
-A completed `material-component-review` run creates or replaces `docs/material-3/audits/<family-slug>.md`. This is the only required repository change in review-only mode; implementation, tests, stories, snapshots, registries, family contracts, and policies remain unchanged.
+Do not treat m3e as the public API owner or as independent Material authority.
 
-Do not use `shared-ui-implementation` as the primary workflow for an official Material family.
+## Boundary
 
-## Canonical target
+Only code under `src/shared/ui/material` may directly:
 
-- Official components implement the current applicable Material 3 Expressive contract.
-- Baseline Material 3 is not a silent fallback.
-- Legacy output, existing snapshots, other implementations, and memory are not Material authority.
-- Missing or conflicting source evidence is resolved by narrowing scope, correcting rules, or reporting a genuine blocker.
+- import `@m3e/web`;
+- render `m3e-*` custom elements;
+- use renderer element types;
+- map documented `--m3e-*` CSS variables.
 
-## Contains
+Do not export or leak those details. When product or generic shared UI consumes an official Material component, it uses the curated Mioframe Vue component. Native HTML and project-specific or generic shared UI remain valid when they are the correct owner.
 
-Only:
+Private shadow DOM, undocumented events/properties, internal classes, copied renderer internals, and deep styling are forbidden.
 
-- `foundation` — cross-family Material contracts required by current work;
-- `components` — official public Material component families;
-- `patterns` — accepted reusable official Material compositions;
-- local family/domain contracts and curated public entry points.
+## Adapter design
 
-Policy documents remain under `docs/material-3`. Product-specific UI and generic platform infrastructure remain outside.
+- Implement one explicit component target at a time. Expand to a family only when current ownership proves component-only migration technically unsafe.
+- Start from confirmed scenarios and current consumers.
+- Use the configured Material source interface and record traceable source evidence.
+- Inspect the exact lockfile-resolved version of a current stable, non-prerelease m3e release through primary package evidence.
+- Record renderer viability, implementation ownership, and explicit Vue-to-m3e mapping in the family `README.md` before production edits.
+- Expose the minimum complete Vue API required by current scenarios; do not copy the complete m3e API.
+- Keep controlled semantic state consumer-owned and prevent hidden renderer-state drift.
+- Preserve native form, link, focus, keyboard, disabled, and accessibility behavior where required.
+- Keep project extensions explicit and narrowly justified.
 
-## Dependency direction
+For M1, the migration target is `MDButton` only. `MDIconButton`, `MDFab`, and `MDExtendedFab` remain legacy-owned unless the roadmap is changed from repository evidence before production edits.
 
-```text
-shared/lib generic infrastructure
-  ├─→ material/foundation
-  ├─→ material/components
-  └─→ material/patterns
+Use explicit component-local code. Do not create a wrapper generator, universal base component, runtime registry, generic property/event schema, token DSL, all-components import, or shared adapter helper for the first pilot. Extract only after at least two unrelated adapters prove the identical mechanism and extraction reduces total complexity.
 
-material/foundation → material/components → material/patterns
-material library → project-specific shared UI and product layers
-```
+## Renderer and ownership states
 
-- Any Material layer may use a correctly owned generic utility directly.
-- Do not create foundation wrappers merely to route generic behavior.
-- Foundation must not import components or patterns.
-- Families must not deep-import another family's private files.
-- Patterns use public component/foundation contracts only.
-- Library code must not import product layers.
-- Generic infrastructure must not depend on Material family knowledge.
+Renderer viability:
 
-## New artifacts
+- `unassessed` — the exact lockfile-resolved version and required integration contract are not verified;
+- `ready` — documented public m3e APIs cover every required scenario with a thin adapter;
+- `blocked-upstream` — a required renderer contract is missing, defective, or unstable.
 
-- New official components belong under `components/<family>`.
-- New foundation artifacts belong under `foundation/<domain>` only when current work proves a cross-family need.
-- New patterns require official composition evidence and a current scenario.
-- Multi-component families require an official relationship and a real current shared contract.
-- Do not add placeholder files, empty structural layers, speculative extension points, universal bases, or project-specific UI under official families.
+Implementation ownership:
 
-## Public API
+- `legacy` — the current component remains the production owner;
+- `migrating` — one focused change owns adapter creation, consumer migration, and target removal;
+- `migrated` — the canonical Vue adapter is the only public owner for the migration target.
 
-- Product consumers use `@shared/ui/material` after the root entry point exists.
-- Internal library code does not import the root barrel.
-- External deep imports into private implementation or testing files are forbidden.
-- Every public export has one clear owner.
+A blocked renderer requires ownership to remain `legacy`. Do not work around a blocker through shadow DOM, copied internals, broad CSS patches, duplicated interaction systems, or permanent compatibility paths.
 
-## Migration boundary
+## Dependency and registration
 
-- Existing Material code outside this directory is legacy, not a template for new work.
-- Strict local repairs may remain at legacy paths only under a valid `Architecture impact: none` decision.
-- Use one cohesive end-to-end family migration by default.
-- Split foundation, relocation, or alignment work only when blast radius, reviewability, compatibility, or a safer independent state justifies it.
-- Migrate affected consumers and remove obsolete ownership.
-- Update only contracts, maps, registries, inventory, roadmap, stories, tests, snapshots, and risk records whose owned facts changed.
-- Temporary compatibility requires exact consumers, no new usage, and a removal target.
+- Declare `@m3e/web` with the repository-standard compatible semver range.
+- Record the exact lockfile-resolved version used to verify each family contract.
+- Re-inspect affected public contracts and verification when the resolved m3e version changes.
+- Import only the required family entry point.
+- Shared build configuration owns Vue recognition of `m3e-*` consistently for application, Storybook, and tests.
+- The selected component family owns element registration through its implementation import.
+- Do not create global runtime registration or support multiple renderer versions.
 
-## Adaptive contract and proof
+## Theme and tokens
 
-- Resolve the mandatory family-contract core before production edits.
-- Add anatomy, state, token-routing, browser, visual, consumer, and foundation sections only when applicable.
-- Keep responsibilities clear without requiring a fixed number of CSS or helper files.
-- Every new or migrated component has component-contract tests.
-- Use browser, pure, consumer, visual-regression, and operator-review layers only when the component owns those contracts.
-- Use `StateMatrix` only when multiple distinct component-owned visual routes exist; a simple visible component may use one bounded canonical story.
+- Preserve accepted `--md-ref-*`, `--md-sys-*`, `--md-comp-*`, and `--app-*` contracts.
+- Map to documented `--m3e-*` variables only inside the owning family.
+- Do not expose `--m3e-*` to consumers or copy renderer defaults into public tokens without a current Mioframe contract.
+- The existing Mioframe theme remains authoritative. Do not introduce `m3e-theme` as a second global owner without a separate ready architecture handoff.
 
-## Rule refinement
+## Verification
 
-When a real migration exposes an inaccurate, contradictory, incomplete, obsolete, or needlessly complex rule:
+Every public adapter requires a colocated `<Component>.test.ts` component-contract test covering its stable Vue API and explicit integration mapping.
 
-- identify the concrete evidence and owning source;
-- make the smallest evidence-backed correction;
-- update only directly affected rule owners;
-- do not preserve the rule through a family-specific exception;
-- continue after the applicable rules are coherent.
+Add browser, visual, representative-consumer, and production-build proof according to risk. All are mandatory for the `MDButton` and `MDSwitch` pilots.
 
-Escalate only for a genuine product decision, materially unresolved official source, cross-project public-contract change, unsafe shared blast radius, unresolved verification failure, or rejected visual evidence.
+Do not duplicate m3e or Lit unit tests. Use final repository verification before reporting completion.
 
-## Verification and review
+## Migration completion
 
-- Use existing repository checks and focused tests.
-- Add automation only after real migrations prove a stable repeated and precisely detectable need.
-- `material-library-status` reports conflicts between owning records instead of silently reconciling them.
-- `material-component-review` treats code, family docs, tests, stories, snapshots, prior audits, and registry status as claims to verify against official sources, not as proof by themselves.
-- A review-only run writes the durable family audit and reports confirmed defects and evidence gaps without modifying production implementation or policies.
-- `material-component` and `material-component-authoring` inspect the current family audit when one exists and resolve or invalidate its findings using current evidence.
-- The coding agent owns source-backed architecture, Material, accessibility, behavior, migration, rule, and proof review.
-- The operator owns final comparison of prepared visible evidence when required.
-- The agent never reports operator acceptance as accepted.
-- Automation must not claim to prove free-form architecture or visual correctness.
+A migration target must:
 
-After a family reaches its accepted terminal state, update the queue and record the next candidate. Start that next family only through a new `material-library-next` or explicit `material-component` run.
+- have renderer viability `ready` and implementation ownership `migrated`;
+- migrate all affected target imports and consumers;
+- update target-owned public barrels, tests, stories, visual mappings, and documentation;
+- remove the obsolete target implementation, exports, tests, and exclusively owned compatibility paths;
+- preserve unrelated legacy components and shared modules;
+- record unsupported Material surface and confirmed m3e deviations;
+- update `docs/roadmap.md` only when milestone state, blocker, or next action changes.
+
+Never report a component migrated while parallel public ownership or renderer leakage remains.

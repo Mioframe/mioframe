@@ -1,92 +1,97 @@
 ---
 name: implementation-preflight
-description: 'Use before non-trivial implementation work to resolve owners, public entry points, minimum design, risks, passes, test design, impact metadata, and verification before the first production edit.'
+description: 'Use before non-trivial code edits to convert a ready architecture handoff or deterministic repository authoring contract into a compact implementation plan with explicit ownership, passes, TEST IMPACT, and verification.'
 ---
 
 # Implementation preflight
 
-Use before non-trivial code edits. Keep the artifact short and task-specific. Do not restate repository policy or copy complete domain contracts.
+Run this before non-trivial production edits.
 
-## Activation
+The preflight does not invent architecture. It consumes either:
 
-Use when work may change production code, tests, tooling, CI, configuration, storage semantics, diagnostics, browser behavior, performance, release behavior, or user-visible UI.
+- a ready `architect-handoff`; or
+- a deterministic repository-backed authoring contract whose applicable policy explicitly allows the handoff to be skipped.
 
-Skip only for a trivial typo, formatting-only edit, comment, or mechanical rename with no ownership, behavior, test-design, impact-metadata, or verification decision.
+## Stop conditions
 
-## Required artifact
+Do not begin implementation when:
 
-Record:
+- the applicable handoff is missing or `not ready`;
+- a deterministic workflow is unresolved or `blocked`;
+- required behavior, ownership, source of truth, target state, public contract, dependency, agent-access boundary, or test ownership is unresolved;
+- the proposed passes expand scope beyond the accepted contract;
+- task-specific `TEST IMPACT` is incomplete;
+- the simplest viable implementation has not been compared with the proposed design.
 
-0. **Authoring source** — ready architecture handoff or named deterministic repository workflow and authoritative sources.
-1. **Owner map** — source of truth, runtime owner, user-action owner, composition owner, error/recovery owner, and verification owner where applicable.
-2. **Public entry points** — owning layer and APIs; no deep imports.
-3. **Reuse** — existing helpers, components, configs, schemas, services, tests, and dependencies already owning nearby behavior.
-4. **Minimum sufficient design** — every planned concept mapped to a current requirement or boundary; simpler alternative compared explicitly.
-5. **Acceptance matrix** — only reachable happy, boundary, failure, cancellation, conflict, and recovery states required by the contract.
-6. **Risk matrix** — only applicable browser, lifecycle, async, data, accessibility, visual, performance, CI, tooling, release, and platform risks.
-7. **Breadth and passes** — independent domains and safe implementation order.
-8. **TEST IMPACT** — task-specific proof design and required repository impact-metadata maintenance.
-9. **Verification** — focused feedback for the highest risks plus final repository verification.
+Resolve the upstream contract first.
 
-Proceed without a separate architecture handoff only when an applicable repository policy defines a deterministic authoring path and every required decision is resolved from authoritative sources.
+## Required preflight record
 
-Stop when:
+Record compactly:
 
-- a required handoff is missing or not ready;
-- the deterministic path remains blocked;
-- ownership, source of truth, final state, compatibility, test ownership, or verification is unresolved;
-- a narrower design satisfies the same acceptance criteria;
-- a planned abstraction, extension, compatibility path, recovery mechanism, optimization, stronger guarantee, test framework, registry, benchmark framework, or helper lacks a current requirement.
+- authoring source: ready handoff or named deterministic workflow and artifact;
+- goal and non-goals;
+- confirmed current behavior and evidence;
+- owners and public entry points;
+- source of truth and state shape;
+- minimum implementation design and simpler alternative;
+- files and modules expected to change;
+- implementation passes and pass order;
+- consumer migration scope when applicable;
+- required removal of replaced logic;
+- `TEST IMPACT`;
+- final verification.
 
-Do not hide the same complexity by splitting it across more files.
+Do not repeat repository-wide policy or the complete upstream contract.
 
 ## TEST IMPACT
 
-Follow `docs/testing/architecture.md`. Record only task-specific decisions:
+For each materially changed contract or user scenario, record:
 
 ```text
 TEST IMPACT
-Changed contracts:
-Risks:
-Proof owners:
-Existing proof:
-New or changed tests:
-Repository impact metadata updates:
-Task-specific measurements:
+- Contract/scenario:
+  - Primary proof owner:
+  - Additional proof:
+  - Existing proof:
+  - New/updated proof:
+  - Risk or platform matrix:
+  - Persistent impact metadata:
 ```
 
-Rules:
+Follow `docs/testing/architecture.md`.
 
-- identify the lowest faithful proof for each changed contract;
-- name exact existing or planned tests/specs;
-- do not list every execution lane with ceremonial `not applicable` entries;
-- update source-to-spec mappings, standalone records, snapshot ownership conventions, project metadata, mutation targets, or persistent performance checks when their durable repository relation changes;
-- a new, moved, renamed, or removed Playwright spec updates its owning registry in the same change;
-- production, story, fixture, or owned support paths may be source mappings; spec paths must not be used as source prefixes to group tests;
-- use full owning-lane fallback when an impact relation is unknown or cross-cutting;
-- name a representative metric, scenario/dataset, environment, and budget/baseline for a performance or optimization claim;
-- do not create permanent benchmark infrastructure for one task;
-- update the preflight when implementation changes the planned contracts, proof, or repository impact metadata;
-- `TEST IMPACT` is a reviewable plan only; `verify` never parses or consumes it.
+The record must resolve:
 
-## Contract changes
+- the stable contract or scenario being changed;
+- the lowest faithful primary proof;
+- every additional proof type required because the change crosses multiple contracts;
+- existing tests, stories, snapshots, browser specs, consumer flows, performance evidence, or mutation targets affected;
+- new, moved, renamed, or removed proof files;
+- required automatic impact metadata updates;
+- browser, mobile, accessibility, visual, release, data-safety, and performance risks that apply;
+- exact metric and budget when the task makes a performance or optimization claim.
 
-For persisted formats, public APIs, shared UI, Material library/foundation, service/worker/provider, or cross-layer contracts also record:
+Do not list proof merely because a lane exists. Every selected proof maps to a changed contract or risk.
+
+## Consumer migration
+
+When a public or shared owner changes, record:
 
 - affected consumer inventory;
-- current and canonical owner when migration applies;
+- current and canonical owner;
 - compatibility decision;
 - applicable edge cases;
-- proof per materially distinct consumer path.
+- proof per materially distinct consumer path;
+- obsolete target-owned implementation and exports to remove;
+- unrelated legacy components or shared modules that must remain unchanged.
 
 ## Workflow routing
 
 Use the domain workflow as the primary execution contract:
 
-- official public Material component family: `material-component-authoring`;
-- Material foundation contract: `material-foundation`;
-- project-specific or generic shared UI primitive: `shared-ui-implementation`;
-- Material component choice, usage, composition, or product UI/UX: `material3-guidelines`;
+- official Material component target or proven inseparable family implementation, migration, or adapter change: `material-component-adapter`; use its ready family `README.md` as the deterministic authoring contract and escalate to `architect-handoff` only for unresolved cross-family, theme, renderer-strategy, or public-token architecture;
+- project-specific or generic shared UI primitive outside official Material targets: `shared-ui-implementation`;
 - storage/service/worker/provider: applicable scoped rules and `crdt-storage`;
 - diagnostics: `diagnostic-events`;
 - ordinary Vue implementation mechanics: `vue-component-implementation`.
@@ -100,23 +105,9 @@ The preflight records only task-specific owners, risks, pass order, proof, and m
 - Four or more independent domains require explicit passes and focused proof after risky passes.
 - Keep behavior-preserving cleanup separate from functional change when practical.
 - Do not start the next risky pass before the previous one has focused verification.
-- If repeated correction rounds add concepts or workarounds, stop and redo architecture/preflight.
+- Split the task when one independently valid prerequisite has materially wider blast radius than the selected target.
+- Do not split research, adapter implementation, target consumer migration, and target-owner removal into permanent independent work when one focused PR can safely complete them.
 
-## Feature-flow guardrails
+## Output
 
-For multi-step flows:
-
-- include only reachable cancellation, unsupported API, permission, invalid input, conflict, race, partial failure, rollback, and recovery states;
-- separate intents with different invariants or recovery contracts;
-- keep domain/storage invariants below UI;
-- refuse invalid targets instead of accepting broadly and compensating later;
-- keep typed outcomes local;
-- delete obsolete owners with their replacement unless compatibility is explicit.
-
-## Bounded reuse search
-
-Search only enough to identify the current owner, existing proof, and reusable mechanism. Do not perform broad exploration to justify a generic abstraction.
-
-## Output discipline
-
-Keep the written preflight usually within 10–20 short lines plus `TEST IMPACT`. Before completion, confirm the diff still matches the ready handoff or deterministic workflow and that owners, exports, tests, repository impact metadata, measurements, and review status remain consistent.
+Keep the preflight implementation-oriented and concise. It should tell a coding agent exactly what to change, what must remain unchanged, how to prove it, and when to stop.

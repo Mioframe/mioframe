@@ -31,9 +31,9 @@ You may skip this skill for:
 - narrow fixes where ownership, source of truth, final state, and verification are explicit and unchanged;
 - work covered by an applicable deterministic standard-authoring policy when the agent can derive a ready repository-backed contract from authoritative sources and no escalation condition is present.
 
-For official public Material component families, `material-component-authoring` owns that deterministic workflow and `component-architecture.md` owns its canonical blueprint. Use this handoff instead when the workflow reports `blocked` or the task explicitly uses `handoff-authoring`.
+For one explicit official Material component target or proven inseparable family, `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, and a ready family `README.md` provide the normal deterministic architecture. Use `material-component-adapter` without a separate handoff when renderer viability, implementation ownership, the public Vue contract, consumer migration, and verification are fully resolved. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision outside that contract.
 
-If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready contract, and reason no unresolved architecture decision remains.
+If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready artifact, and reason no unresolved architecture decision remains.
 
 ## Token budget
 
