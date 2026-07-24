@@ -9,7 +9,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
-- `docs/material-3/architecture.md`, `component-adapter.md`, and `roadmap.md` are the canonical Material library architecture and migration records.
+- `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, `component-tokens.md`, and `roadmap.md` are the canonical Material library architecture and migration records.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
