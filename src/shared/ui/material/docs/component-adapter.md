@@ -8,7 +8,7 @@ The target is one explicitly named public `MD*` component. Expand to a family on
 
 ```text
 current Mioframe scenarios
-+ selected documented m3e surface
++ documented m3e capabilities belonging to the canonical Material component
   → relevant official Material guidance
   → family contract
   → thin Vue adapter
@@ -23,9 +23,9 @@ Do not turn one migration into a complete audit of Material or m3e.
 The family contract covers the minimum complete union of:
 
 1. behavior required by current Mioframe consumers;
-2. documented m3e capabilities that map cleanly to canonical Material/Vue concepts.
+2. documented m3e capabilities that belong to the canonical Material component surface and can be exposed through direct typed mappings.
 
-This does not require exposing every raw m3e property, event, slot, or CSS variable. Optional Material surface unsupported by both Mioframe and m3e remains outside scope.
+This does not require copying raw renderer vocabulary or creating one test per capability. Optional Material surface unsupported by both Mioframe and m3e remains outside scope.
 
 ## Family README
 
@@ -44,7 +44,7 @@ Renderer viability: unassessed | ready | blocked-upstream
 Implementation ownership: legacy | migrating | migrated
 Current and canonical owner:
 Current Mioframe scenarios:
-Selected m3e surface:
+Canonical documented m3e surface:
 Non-goals:
 Official Material sources:
 Public Vue API:
@@ -80,7 +80,7 @@ Stop when the supported surface, divergence decisions, and minimum adapter are r
 Use:
 
 - `unassessed` before the exact required surface is verified;
-- `ready` when current Mioframe scenarios and selected m3e capabilities can be delivered through documented public APIs plus allowed thin corrections;
+- `ready` when current Mioframe scenarios and canonical documented m3e capabilities can be delivered through documented public APIs plus allowed thin corrections;
 - `blocked-upstream` when a Mioframe-required contract is missing or defective and cannot be corrected safely in the wrapper.
 
 Do not block migration because m3e lacks:
@@ -94,12 +94,12 @@ A blocker must identify a current Mioframe requirement, observable impact, and w
 
 ## m3e divergence classification
 
-Compare official Material guidance only with the selected supported m3e surface.
+Compare official Material guidance only with the supported surface.
 
 Record confirmed differences in a compact table:
 
-| Material expectation | Exact m3e behavior/version | Required by Mioframe | Decision                                                   |
-| -------------------- | -------------------------- | -------------------- | ---------------------------------------------------------- |
+| Material expectation | Exact m3e behavior/version | Required by Mioframe | Decision |
+| -------------------- | -------------------------- | -------------------- | -------- |
 | expected behavior    | observed implementation    | yes or no            | accept, wrapper correction, upstream follow-up, or blocker |
 
 Rules:
@@ -113,13 +113,13 @@ Rules:
 
 The public API follows canonical Material concepts and project conventions.
 
-- expose current scenarios and selected m3e capabilities as one coherent Vue API;
+- expose current scenarios and canonical documented m3e capabilities as one coherent Vue API;
 - keep props, emits, slots, defaults, and invalid combinations typed and explicit;
 - keep consumer-controlled state in Vue;
-- preserve native behavior needed by current scenarios;
+- preserve native behavior needed by current scenarios and directly supported by the canonical m3e surface;
 - normalize m3e events without leaking renderer event objects;
 - keep Mioframe extensions explicit;
-- do not copy the complete raw m3e API.
+- do not copy raw renderer-only vocabulary unnecessarily.
 
 ## Renderer TypeScript contract
 
@@ -161,7 +161,7 @@ A visible or behavioral difference must be:
 2. explicitly approved as a product change;
 3. recorded as a blocker.
 
-Do not compare every optional m3e capability with the legacy component. Newly exposed m3e functionality has no legacy compatibility requirement unless Mioframe already depended on an equivalent contract.
+Do not compare every newly exposed m3e capability with the legacy component. It has no legacy compatibility requirement unless Mioframe already depended on an equivalent contract.
 
 ## State and events
 
@@ -210,6 +210,8 @@ Additional proof is conditional:
 - representative-consumer proof only when consumer integration has material risk not already covered;
 - dedicated Storybook/production build proof only when registration or build configuration changed and final verification does not already prove it.
 
+Direct typed forwarding of documented m3e capabilities may be covered by representative component-contract tests rather than one test per property or slot.
+
 Do not create exhaustive proof tables for m3e-owned optional surface.
 
 ## Renderer-owned animation
@@ -234,9 +236,10 @@ A target is complete when:
 - package-derived renderer typing is used;
 - all current consumers are migrated;
 - current Mioframe scenarios and extensions are preserved;
+- canonical documented m3e capabilities are exposed through thin typed mappings;
 - confirmed divergences are recorded and required thin corrections are complete;
 - only active accepted public tokens are retained;
 - relevant risk-based automated verification passes;
 - operator accepts the first canonical visual result and renderer-owned motion where applicable.
 
-Do not keep a target `migrating` because optional Material/m3e surface lacks exhaustive tokens or tests. `partial` is valid when all repository-local work inside this scope is complete and only operator acceptance or a genuine external blocker remains.
+Do not keep a target `migrating` because m3e surface lacks exhaustive per-capability tests. `partial` is valid when all repository-local work inside this scope is complete and only operator acceptance or a genuine external blocker remains.
