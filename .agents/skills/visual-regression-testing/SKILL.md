@@ -36,7 +36,7 @@ Use `.visual-checker-backdrop` only when transparency, shape, elevation, or stat
 6. Update the owning visual source-to-spec mapping when the stable impact relation changes.
 7. Confirm added, moved, renamed, or removed specs and baselines preserve deterministic ownership or use the documented full-lane fallback.
 8. Inspect every intentional baseline diff.
-9. Run focused visual verification and final verification.
+9. Run focused visual verification and return to the top-level task. This skill does not run a separate final gate.
 10. Prepare operator Material evidence when applicable.
 
 ## Transient appearance
@@ -93,6 +93,8 @@ Intentional baseline update:
 pnpm test:visual:update
 pnpm verify --only visual --files <source-story-or-spec-paths...>
 ```
+
+Preserve applicable `--base`, `--profile`, and `--files` scope when rerunning visual verification. The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
 
 ## Forbidden
 
