@@ -33,7 +33,7 @@ Register a target only when repeated merge protection justifies automatic cost. 
 
 Do not use broad prefixes initially. Do not infer semantic applicability from sibling files or agent prose.
 
-Until the persistent registry is implemented and validated, current final verification may still run legacy sibling-derived mutation scope. Treat that as a migration constraint, not as the target policy.
+Until the persistent registry is implemented and validated, current final task-scope verification may still run legacy sibling-derived mutation scope. Treat that as a migration constraint, not as the target policy.
 
 ## Workflow
 
@@ -45,12 +45,12 @@ Until the persistent registry is implemented and validated, current final verifi
 6. Strengthen tests only when a meaningful mutant exposes a missing accepted outcome or boundary.
 7. Do not change production behavior merely to kill a mutant.
 8. Rerun focused tests and the same mutation scope after test changes.
-9. Run final verification.
+9. Return to the top-level task. This skill does not run a separate final gate; the top-level task runs one final read-only task-scope verification after all passes are complete.
 
 ## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <source-or-test-paths...>
+pnpm verify --only unit-tests --files <exact-owning-test-paths...>
 pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 ```
 
@@ -76,4 +76,4 @@ For equivalent or irrelevant mutants, record why no distinct accepted behavior i
 - automatic applicability inferred only from location or sibling tests;
 - automatic applicability dependent on `TEST IMPACT` text;
 - production changes or brittle assertions made only to improve mutation score;
-- replacing focused tests, type-checking, linting, browser proof, or final verification.
+- replacing focused tests, type-checking, linting, browser proof, or the top-level final task-scope verification.
