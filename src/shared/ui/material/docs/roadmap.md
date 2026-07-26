@@ -8,71 +8,67 @@ Last updated: 2026-07-26
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `operator-review`
+Status: `architecture-correction`
 
 Owner: current architecture-reset branch
 
-Blocker: none upstream. The last agent run incorrectly promoted renderer-owned press timing and expanded-target pressed feedback into Mioframe requirements. Repository evidence shows the legacy component also retained pressed state through its transition duration and used the same host pressed state for expanded-target activation. Neither behavior is an accepted blocker.
+Blocker: the public Button contract was derived from legacy Mioframe scenarios and m3e capabilities rather than from an official Material-first API matrix. Current implementation and verification are not sufficient to close M1 until the public API is normalized.
 
-Next action: operator reviews the canonical MDButton visual stories and renderer-owned press motion. Record explicit acceptance or rejection before closing M1.
+Next action: rerun `material-component-adapter` for `MDButton`. Build the source-backed Material–m3e–Vue matrix, select the required Material subset, resolve the non-Material loading requirement, normalize the Vue API and consumers, then rerun verification and operator review.
 
-Implementation ownership remains `migrating` until the required operator acceptance closes the M1 migration gate.
+Implementation ownership remains `migrating`.
 
 ## Milestones
 
-| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                                   |
-| --- | --------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset     | `verification` | none       | library-owned architecture and workflow; private renderer boundary; compatible dependency range; package-derived typing; final verification                                                                                                                                                 |
-| M1  | `MDButton` adapter pilot          | `correction`   | M0         | accepted Mioframe scenarios preserved; canonical documented m3e Button capabilities exposed through thin typed mappings; genuine divergences recorded; only evidenced required corrections added; no unused token catalogue; verification passes; operator accepts visual and motion result |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | current Switch scenarios plus canonical documented m3e surface; controlled state and event order; bounded divergence record; risk-based verification; operator acceptance                                                                                                                   |
-| M3  | sequential component migration    | `planned`      | M2         | one explicit component at a time; accepted scenarios plus canonical m3e surface; evidence-gated divergences; thin required corrections only; one canonical Vue owner; no renderer leakage                                                                                                   |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset | `verification` | none | Material-first public boundary; private m3e renderer boundary; contract-matrix workflow; package-derived typing; final verification |
+| M1 | `MDButton` adapter pilot | `architecture-correction` | M0 | accepted Material–m3e–Vue matrix; demand-driven official Material Vue API; non-Material requirements explicitly resolved; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance |
+| M3 | sequential component migration | `planned` | M2 | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage |
 
 ## M1 — MDButton pilot
 
-### Boundary
-
-The migration target is `MDButton` only. `MDIconButton`, `MDFab`, `MDExtendedFab`, and unrelated Button modules remain legacy-owned.
-
-### Completed
+### Reusable implementation work
 
 - `@m3e/web@^2.6.2` resolves to `2.6.2`;
 - application, Storybook, and tests recognize `m3e-*`;
-- canonical MDButton adapter and public export exist;
-- all existing consumers are migrated;
-- obsolete legacy MDButton owner and target-exclusive artifacts are removed;
+- an m3e-backed `MDButton` candidate and public export exist;
 - renderer typing derives from package exports;
-- submit/reset, pointer/keyboard, disabled, controlled-toggle, focus, loading, and expanded-target actionability scenarios are implemented;
-- loading preserves accepted presentation and enabled behavior;
-- no accepted scenario requires immediate pressed-shape release or suppressing pressed feedback for expanded-target activation.
+- consumers were moved to the candidate owner;
+- native, controlled-state, visual, and motion-assessment work exists;
+- the obsolete legacy renderer is removed.
 
-### Completed correction work
+This work remains reusable but does not establish the final public API.
 
-1. removed the broad `--m3e-*` bridge backed by unused or undefined public Button tokens;
-2. retained no Button-specific public tokens because none has consumer evidence;
-3. completed direct package-checked Vue mappings for the documented Button properties and slots in scope;
-4. kept renderer viability `ready`; no observation passed the blocker gate;
-5. recorded exact m3e Button press, retained-duration, release/interruption, and reduced-motion implementation paths;
-6. removed automated wording that overclaimed internal motion proof;
-7. passed focused component, type, Storybook behavior, and visual verification.
+### Required architecture correction
 
-Operator visual and motion acceptance remains required.
+1. derive Button names, options, values, defaults, states, combinations, behavior, and accessibility from official Material documentation;
+2. select only the subset required by current consumers and mark the remaining official surface deferred;
+3. create the Material–m3e–Vue matrix before further production edits;
+4. classify every current public prop, slot, event, and default as Material, Vue/native adaptation, deferred, or non-Material;
+5. resolve loading as consumer composition, a separate non-MD component, an explicitly approved extension, or a migration/removal;
+6. use m3e maximally for selected Material behavior;
+7. route renderer-owned gaps to m3e rather than recreating them in Vue;
+8. normalize implementation, consumers, tests, stories, and docs to the accepted API;
+9. run focused verification, final `pnpm verify`, and operator visual/motion review.
 
-M1 must not restore the legacy renderer, add a direct Lit dependency, access private shadow DOM, duplicate renderer motion/state systems, create a generic wrapper framework, or migrate unrelated Button-family components.
+M1 must not restore the legacy renderer, copy the m3e API into Vue, preserve legacy API merely for compatibility, add a non-Material public option silently, access private shadow DOM, or build a parallel renderer.
 
 ## Later milestones
 
-M2 applies the same bounded process to a materially different stateful component. Only after M1 and M2 may repeated concrete adapter code be considered for extraction.
+For every later component:
 
-For each M3 component:
+1. inspect official Material first;
+2. select the current required subset;
+3. create the Material–m3e–Vue matrix;
+4. define the public Vue API from Material terminology;
+5. resolve non-Material requirements separately;
+6. use m3e directly where conformant;
+7. assign gaps to wrapper or m3e according to ownership;
+8. migrate consumers and verify.
 
-1. select one product-relevant target;
-2. inspect current consumers and exact m3e family surface;
-3. establish accepted requirements before classifying source differences;
-4. compare only the supported surface with Material guidance;
-5. migrate when accepted behavior can be delivered safely;
-6. record non-required divergences for upstream work instead of expanding the wrapper;
-7. preserve active tokens only;
-8. run risk-based verification and operator review.
+Only after M1 and M2 may repeated concrete adapter code be considered for extraction.
 
 ## Update protocol
 
