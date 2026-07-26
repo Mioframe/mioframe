@@ -53,6 +53,8 @@ Record:
 - change mode: `new-adapter`, `end-to-end-migration`, or `adapter-change`;
 - implementation ownership: `legacy`, `migrating`, or `migrated`.
 
+For legacy CSS surface, classify each candidate retained token according to `component-tokens.md`: declared, internally consumed, behaviorally effective, externally consumed, publicly documented, test-only, or obsolete. Do not treat a declaration or value-only test as proof of an active public contract.
+
 ## 2. Resolve Material requirements
 
 Use the configured `material3` MCP and its validated cache snapshot as the coding agent's normative interface to official Material 3 Expressive guidance. Inspect only requirements needed by current scenarios: usage, variants, sizes, states, content, accessibility, visual and interaction behavior, and token meaning.
@@ -71,26 +73,49 @@ Inspect the exact lockfile-resolved version of a current stable, non-prerelease 
 - slots and content restrictions;
 - form and navigation behavior;
 - keyboard, pointer, disabled, selected, and lifecycle behavior;
-- documented CSS variables;
+- documented CSS variables and their Material component/system semantics;
 - exposed accessibility behavior.
 
 Record the compatible package range, exact lockfile-resolved version, and entry point in the family README before production edits. Do not use `latest`, a wildcard, a prerelease, another version's examples, shadow DOM, copied source, or undocumented internals.
+
+A documented m3e CSS variable with semantically equivalent component, state, part, and property meaning is a valid mapping target even when its name is not character-for-character identical to the official Material token path.
 
 ## 4. Decide renderer viability
 
 Set renderer viability independently from implementation ownership:
 
 - `unassessed` — the exact lockfile-resolved version and required contract are not yet verified;
-- `ready` — every required scenario is available through documented public APIs and a thin adapter;
-- `blocked-upstream` — a required public renderer contract is missing, defective, or unstable.
+- `ready` — every required user, native, accessibility, controlled-state, and active public styling scenario is available through documented public APIs and a thin adapter;
+- `blocked-upstream` — a required active public renderer contract is missing, defective, or unstable.
 
-When blocked, record the exact missing contract, keep implementation ownership `legacy`, and stop before replacement implementation. A similarly named m3e element is not proof of readiness.
+Do not equate exact legacy implementation parity with readiness. Renderer-owned equivalent ripple, focus, state-layer, elevation, or motion behavior is sufficient when it preserves the accepted observable contract and no active Mioframe consumer requires the old low-level tuning input.
+
+### Blocker evidence gate
+
+Before reporting `blocked-upstream`, prove all of the following in the family README:
+
+1. the missing capability belongs to a current user scenario or active public consumer contract;
+2. repository evidence identifies the consumer, documented promise, or required observable result;
+3. removing or changing it causes an observable regression, not only a different custom-property value, alias, or implementation detail;
+4. no documented m3e property, attribute, event, slot, semantically equivalent CSS variable, or renderer-owned equivalent behavior satisfies it through a thin adapter.
+
+The following do not satisfy the blocker gate by themselves:
+
+- a legacy custom property is declared;
+- a test reads its resolved value;
+- the token has an official-looking name;
+- m3e does not expose an unused internal tuning parameter;
+- m3e implements the same observable behavior with a different internal mechanism.
+
+Classify these as obsolete legacy surface, unsupported optional tuning, or renderer-owned behavior and continue when all required scenarios remain supported.
+
+When genuinely blocked, record the exact missing contract, evidence of impact, and condition for reconsideration; keep implementation ownership `legacy`; and stop before replacement implementation. A similarly named m3e element is not proof of readiness.
 
 ## 5. Complete the family contract
 
 Create or update `src/shared/ui/material/components/<family>/README.md` according to `src/shared/ui/material/docs/component-adapter.md`.
 
-The contract must define the explicit migration target, renderer viability, implementation ownership, required scenarios, non-goals, supported and unsupported Material surface, public Vue API, compatible renderer range, exact lockfile-resolved renderer version and entry point, custom-element recognition and registration ownership, explicit property/attribute/event/slot/state/token mapping, controlled-state semantics, native semantics, consumers, verification, obsolete-owner removal, and unresolved blockers.
+The contract must define the explicit migration target, renderer viability, implementation ownership, required scenarios, non-goals, supported and unsupported Material surface, public Vue API, compatible renderer range, exact lockfile-resolved renderer version and entry point, custom-element recognition and registration ownership, explicit property/attribute/event/slot/state/token mapping, legacy-token evidence classification, controlled-state semantics, native semantics, consumers, verification, obsolete-owner removal, and unresolved blockers.
 
 Do not mechanically copy the m3e API or expose renderer element and event types.
 
@@ -124,7 +149,9 @@ A lockfile-resolved m3e version change requires re-inspection of affected public
 
 ## 8. Implement the thin adapter
 
-Normally implement only explicit bindings, named slots, event normalization, controlled-state synchronization, required native integration, narrow private token mapping, and confirmed Mioframe extensions.
+Normally implement only explicit bindings, named slots, event normalization, controlled-state synchronization, required native integration, narrow semantic token mapping, and confirmed Mioframe extensions.
+
+Prefer direct `--md-sys-*` semantics when m3e documents the same system roles. Map active `--md-comp-*` contracts to documented semantically equivalent `--m3e-*` variables. Remove target-owned declaration-only or test-only token surface instead of recreating it.
 
 Forbidden unless later evidence proves a shared need:
 
@@ -154,6 +181,7 @@ For `end-to-end-migration`:
 - preserve required scenarios;
 - update target-owned barrels, stories, tests, visual mappings, and documentation;
 - remove the obsolete target implementation and exclusively owned compatibility paths;
+- remove declaration-only, test-only, and otherwise obsolete token surface owned only by the target;
 - leave unrelated legacy components and shared modules intact;
 - set implementation ownership to `migrated` only when one public target owner remains.
 
@@ -165,11 +193,21 @@ Every public `MD*` adapter requires a colocated `<Component>.test.ts` component-
 
 Add browser, visual, representative-consumer, and production-build proof according to the family contract. The `MDButton` and `MDSwitch` pilots require all of these proof types.
 
+For each retained active public CSS token:
+
+- set an intentional non-default value through the Mioframe public surface;
+- prove the intended rendered property or observable behavior changes;
+- verify only documented m3e mapping, never private renderer DOM.
+
+A declaration-value assertion alone does not establish a public token contract and cannot justify a blocker.
+
+For renderer-owned motion, verify public press/release, interruption, final state, and reduced-motion behavior where risk requires it. Do not assert private spring coefficients, Lit styles, or m3e shadow DOM.
+
 Do not duplicate m3e or Lit unit tests, test private DOM, or claim Material correctness from green automation alone.
 
 ## 12. Complete records
 
-Record confirmed m3e deviations and unsupported surface. Update `src/shared/ui/material/README.md` when physical ownership changes and `src/shared/ui/material/docs/roadmap.md` only when milestone state, blocker, or next action changes.
+Record confirmed m3e deviations, unsupported optional surface, renderer-owned behavior, and removed obsolete legacy surface. Update `src/shared/ui/material/README.md` when physical ownership changes and `src/shared/ui/material/docs/roadmap.md` only when milestone state, blocker, or next action changes.
 
 ## Completion report
 
@@ -184,13 +222,14 @@ Implementation ownership: legacy | migrating | migrated
 Canonical Vue owner:
 Supported surface:
 Unsupported surface:
+Removed obsolete legacy surface:
 Consumers migrated:
 Legacy target removal: complete | not applicable | blocked
 Unrelated legacy components preserved:
 Confirmed m3e deviations: none | <summary>
 Verification:
 Roadmap update: none | <summary>
-Status: complete | blocked (<exact reason>)
+Status: complete | blocked (<exact evidenced reason>)
 ```
 
 `complete` requires the component exit gate from `src/shared/ui/material/docs/component-adapter.md`, required focused checks, and final repository verification.
