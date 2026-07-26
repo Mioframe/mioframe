@@ -1,8 +1,8 @@
 # Development
 
 > **Status**: `CURRENT`  
-> **Last Updated**: 2026-05-11  
-> **Technical Debt**: None known
+> **Last Updated**: 2026-07-26  
+> **Technical Debt**: See `docs/testing/migration-plan.md`
 
 ---
 
@@ -98,55 +98,60 @@ pnpm dev
 
 ### Code Quality Gates
 
-Use fix mode only when automatic formatting or lint fixes are useful:
+Use verify-managed focused checks while iterating:
 
 ```bash
-pnpm verify --fix
+pnpm verify --only <label> --files <exact-paths...>
 ```
 
-Before reporting completion after code or documentation edits, run the read-only verification command:
+When only automatic formatting, lint fixes, or instruction compatibility generation is needed, use fix-only mode with the same task scope:
 
 ```bash
-pnpm verify
+pnpm verify --fix-only --base origin/develop
 ```
 
-By default, `pnpm verify` is summary-first:
+Inspect generated changes. `pnpm verify --fix` remains a combined convenience mode, but it is not the default agent workflow and never replaces the final read-only gate.
 
-- each successful check prints a concise pass line;
-- failed checks print the label, exact command, exit code, and a relevant output tail;
-- checks with warnings print a warning summary;
-- full stdout/stderr for each executed check is written to `.verify/logs/<check>.log`.
-
-Use verbose mode when you need full live command output in the terminal:
-
-```bash
-pnpm verify --verbose
-```
-
-`--verbose` can be combined with `--fix` when applying automatic fixes.
-
-Agent workflow:
-
-- Use `pnpm verify --fix` only to apply automatic formatting or lint fixes.
-- Do not treat `pnpm verify --fix` as the final gate.
-- The final completion check is always read-only `pnpm verify`.
-- Read the final `VERIFY RESULT` summary.
-- If verification fails, fix failures caused by the change, or report the exact failing command and output.
-- Same-repository CI autofix commits require the `BEAVER_CI_AUTOFIX_TOKEN` repository secret; without it, CI may still run read-only verification but must not push autofix commits.
-- If CI pushes an autofix commit, pull or rebase before continuing local work so your branch matches the new head.
-- CI autofix never updates visual snapshots; use `pnpm test:visual:update` in the canonical visual flow for that.
-
-To verify the full current feature branch against its parent branch locally:
+Before reporting completion, run exactly one read-only command that covers the complete task or PR diff:
 
 ```bash
 pnpm verify --base origin/develop
 ```
 
-For stacked branches, point `--base` to the parent feature branch instead:
+For stacked branches, use the actual parent feature branch:
 
 ```bash
 pnpm verify --base origin/<parent-feature-branch>
 ```
+
+Plain `pnpm verify` checks local changes against `HEAD`, or falls back to the last commit when the working tree is clean. It is sufficient only when that scope is the complete task; it must not be reported as proof of a multi-commit feature branch.
+
+By default, `pnpm verify` is summary-first:
+
+- each successful check prints a concise pass line;
+- failed checks print the label, exact child command, exit code, and a relevant output tail;
+- checks with warnings print a warning summary;
+- full stdout/stderr for each executed check is written to `.verify/logs/<check>.log`.
+
+The printed child command is diagnostic output, not the supported rerun boundary. Rerun through `pnpm verify --only <label>` and preserve applicable `--base`, `--full`, `--profile`, and `--files` arguments.
+
+Use verbose mode when you need full live command output in the terminal:
+
+```bash
+pnpm verify --verbose --base origin/develop
+```
+
+Agent workflow:
+
+- Use focused verify-managed lanes for red/green and development feedback.
+- Use `pnpm verify --fix-only --base <parent-ref>` when only supported automatic fixes are needed.
+- Do not treat `--fix`, `--fix-only`, or a focused lane as the final gate.
+- The top-level task runs one final read-only `pnpm verify --base <parent-ref>` after all focused proof is complete.
+- Preserve the original base, full, profile, file, and label scope when retrying; remove fix flags for the final rerun.
+- If verification fails, fix failures caused by the change, or report the exact failed label and output. Do not bypass `verify` with its raw child command.
+- Same-repository CI autofix commits require the `BEAVER_CI_AUTOFIX_TOKEN` repository secret; without it, CI may still run read-only verification but must not push autofix commits.
+- If CI pushes an autofix commit, pull or rebase before continuing local work so your branch matches the new head.
+- CI autofix never updates visual snapshots; use `pnpm test:visual:update` in the canonical visual flow for that.
 
 ### Commit Messages
 
@@ -367,8 +372,8 @@ pnpm exec oxfmt --check .
 
 ### Best Practices
 
-1. Use `pnpm verify` as the normal final gate.
-2. Use targeted commands while iterating on a small scope.
+1. Use focused verify-managed commands while iterating.
+2. Run one final read-only `pnpm verify --base <parent-ref>` for the complete task scope.
 3. Keep warnings actionable; do not ignore warning output from verification.
 
 ---
@@ -394,9 +399,7 @@ pnpm preview
 - Optimized JavaScript bundles
 - Minified CSS
 - Pre-rendered HTML (PWA support)
-- Source maps when configured by the build mode
-
-### Deployment Notes
+- Source maps
 
 1. **HTTPS required**: All features expect secure context
 2. **CORS**: Configure for production API endpoints
@@ -408,26 +411,30 @@ pnpm preview
 
 ### Command Reference
 
-| Command                   | Description                                                 |
-| ------------------------- | ----------------------------------------------------------- |
-| `pnpm dev`                | Start development server                                    |
-| `pnpm build`              | Production build                                            |
-| `pnpm preview`            | Preview production build                                    |
-| `pnpm verify`             | Final read-only verification                                |
-| `pnpm verify:fix`         | Automatic fix verification                                  |
-| `pnpm test`               | Vitest watch mode                                           |
-| `pnpm test:run`           | Single-run Vitest tests                                     |
-| `pnpm test:coverage`      | Coverage diagnostics                                        |
-| `pnpm test:mutate`        | Mutation testing                                            |
-| `pnpm storybook`          | Storybook dev server                                        |
-| `pnpm storybook:build`    | Build Storybook                                             |
-| `pnpm test:visual`        | Visual regression tests in the canonical Podman environment |
-| `pnpm test:visual:update` | Update visual snapshots in the canonical Podman environment |
-| `pnpm e2e`                | E2E tests                                                   |
-| `pnpm e2e:ui`             | E2E with UI runner                                          |
-| `pnpm lint`               | Full lint pipeline                                          |
-| `pnpm format`             | Format all files                                            |
-| `pnpm type-check`         | TypeScript type checking                                    |
+| Command                                   | Description                                                   |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| `pnpm dev`                                | Start development server                                      |
+| `pnpm build`                              | Production build                                              |
+| `pnpm preview`                            | Preview production build                                      |
+| `pnpm verify --base <parent-ref>`         | Final read-only verification for the complete branch diff      |
+| `pnpm verify --only <label> --files ...`  | Focused verify-managed development feedback                    |
+| `pnpm verify --fix-only --base <parent>`  | Apply supported automatic fixes without running proof lanes    |
+| `pnpm verify:release`                     | Unconditional full-project release verification               |
+| `pnpm verify:status`                      | Inspect active local verification                              |
+| `pnpm verify:resume`                      | Release a confirmed inactive verification state before retry   |
+| `pnpm test`                               | Vitest watch mode                                             |
+| `pnpm test:run`                           | Single-run Vitest tests                                       |
+| `pnpm test:coverage`                      | Coverage diagnostics                                          |
+| `pnpm test:mutate`                        | Mutation testing                                              |
+| `pnpm storybook`                          | Storybook dev server                                          |
+| `pnpm storybook:build`                    | Build Storybook                                               |
+| `pnpm test:visual`                        | Visual regression tests in the canonical Podman environment   |
+| `pnpm test:visual:update`                 | Update visual snapshots in the canonical Podman environment   |
+| `pnpm e2e`                                | E2E tests                                                     |
+| `pnpm e2e:ui`                             | E2E with UI runner                                            |
+| `pnpm lint`                               | Full lint pipeline                                            |
+| `pnpm format`                             | Format all files                                              |
+| `pnpm type-check`                         | TypeScript type checking                                      |
 
 ### Configuration Files
 
