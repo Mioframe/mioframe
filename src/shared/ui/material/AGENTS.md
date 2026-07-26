@@ -6,36 +6,68 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 
 - Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, `docs/roadmap.md`, and the selected family README.
 - Use `material-component-adapter` for one explicitly selected Material component.
-- Use `architect-handoff` when a requirement is outside official Material, changes cross-family ownership, changes renderer strategy, or cannot be assigned safely to the Vue adapter or m3e.
+- Use `architect-handoff` when a requirement changes cross-family ownership, renderer strategy, or cannot be assigned safely to the Vue adapter or m3e.
+- If the decision creates or changes a separate non-Material component under `src/shared/ui`, also apply `.agents/skills/shared-ui-implementation/SKILL.md`.
 - Keep Material policy inside this library.
 
 ## Authority
 
-1. Official Material 3 Expressive documentation owns the public `MD*` component model: component names, concepts, options, values, states, defaults, valid combinations, behavior, visuals, and accessibility.
+1. Official Material 3 Expressive documentation owns the public `MD*` component model: component names, concepts, options, values, states, defaults, valid combinations, composition patterns, behavior, visuals, and accessibility.
 2. Current Mioframe consumers determine which subset of that Material contract is required now.
 3. The exact lockfile-resolved `@m3e/web` public contract determines which parts of the selected Material subset can be delegated to the private renderer.
-4. The accepted family contract matrix records the selected Material subset, public Vue API, m3e mapping, missing behavior, ownership, and deferred surface.
+4. The accepted family contract matrix records the selected Material subset, public Vue API, m3e mapping, missing behavior, ownership, deferred surface, and source gaps.
 
 m3e and legacy Mioframe components are implementation evidence, not public API authorities.
 
+## Source interpretation
+
+Inspect the selected component's overview, specs, guidelines, and accessibility pages. Follow official references to related Material components when a requirement composes another primitive.
+
+- Explicit official prose, normative tables, captions, and diagrams may positively establish a capability or combination.
+- Token tables describe token coverage and values; they are not a complete validity matrix.
+- Absence from one page, one token family, m3e, legacy code, or tests is not proof that a capability is unsupported.
+- A missing token row must never be used to prohibit a combination that official overview or guidelines positively show.
+- Prior Mioframe documentation must be corrected when official Material evidence contradicts it.
+
+Before marking a combination invalid or a requirement `not-material`, require explicit positive evidence for that conclusion. Acceptable evidence is an official prohibition, a complete normative configuration matrix, or consistent unambiguous guidance across all relevant official pages.
+
+When official sources conflict, record `source-conflict`, preserve existing supported behavior, and stop only the affected API decision. Do not invent a restriction.
+
 ## Material-first public API
 
-A public `MD*` component must expose only Material concepts selected from official documentation.
+A public `MD*` component must expose only Material concepts selected from official documentation, including documented cross-component compositions.
 
 - Use Material terminology and semantics for public names, options, values, defaults, states, and invalid combinations.
-- Adapt those concepts idiomatically to Vue through props, emits, slots, `v-model`, refs, and native HTML integration without changing their meaning.
+- Adapt those concepts idiomatically to Vue through props, emits, slots, `v-model`, refs, and required native HTML integration without changing their meaning.
 - Do not expose raw m3e vocabulary merely because the renderer supports it.
 - Do not preserve a legacy Mioframe prop, state, extension, or naming choice unless it maps to the selected Material contract.
 - Do not add public behavior that has no Material source without a separate architecture decision.
+- Do not expose optional native or renderer surface for hypothetical completeness.
 
 The implementation is demand-driven, not exhaustive. Implement only the Material surface required by current consumers plus the minimum adjacent surface needed for a coherent, forward-compatible API. Mark the rest `deferred`.
+
+## Documented cross-component composition
+
+A Material pattern remains Material when its source is owned by another official component page. For example, Loading indicator and Progress indicator guidance may define how an indicator is placed inside a Button.
+
+Before classifying a requirement `not-material`:
+
+1. inspect the selected component pages;
+2. search related official component pages and placement/composition guidance;
+3. record the exact cross-component source in the matrix.
+
+Represent a documented composition through the smallest suitable Material-owned API: a prop/state, content slot, composition of canonical `MD*` components, or narrow internal composition using documented m3e entry points. Do not create a non-MD wrapper only because the selected component page lacks a framework-specific prop.
 
 ## Required contract matrix
 
 Before production implementation, the family README must contain a source-backed matrix with one row per relevant Material capability:
 
-| Material contract and source | Required now and evidence | Public Vue API | m3e exact-version support | Implementation owner | Decision and verification |
-| ---------------------------- | ------------------------- | -------------- | ------------------------- | -------------------- | ------------------------- |
+| Material contract and exact source | Required now and evidence | Public Vue API | m3e exact-version support | Implementation owner | Decision and verification |
+| ---------------------------------- | ------------------------- | -------------- | ------------------------- | -------------------- | ------------------------- |
+
+The matrix must cover public props, values, defaults, slots, events, native mappings, selected tokens, states, and cross-component compositions.
+
+For every negative or restrictive decision, record the positive official evidence establishing the restriction. “Not documented” and “no token route” are not sufficient.
 
 Allowed renderer statuses:
 
@@ -51,7 +83,8 @@ Allowed decisions:
 - `defer`;
 - `wrapper-correction`;
 - `m3e-fix`;
-- `blocked`.
+- `blocked`;
+- `source-conflict`.
 
 No public API or production mapping is accepted without a corresponding matrix row.
 
@@ -59,16 +92,16 @@ No public API or production mapping is accepted without a corresponding matrix r
 
 Use m3e as much as possible for the selected Material contract.
 
-- **Vue adapter** owns Material-to-Vue naming, typed mapping, slots, event normalization, controlled state, native web integration, and narrow light-DOM composition.
+- **Vue adapter** owns Material-to-Vue naming, typed mapping, slots, event normalization, controlled state, required native web integration, and narrow light-DOM or cross-component composition.
 - **m3e** owns internal rendering, private DOM, geometry, state layer, ripple, focus treatment, elevation, motion, and private accessibility behavior.
 - A missing Material capability may be implemented in the wrapper only when it can be added explicitly through documented m3e APIs or Mioframe-owned light DOM without recreating renderer internals.
 - A gap inside renderer-owned behavior requires an m3e fix or an explicit blocker; do not build a parallel renderer in Vue.
 
 ## Non-Material requirements
 
-A requirement with no official Material contract must not be added silently to an `MD*` component.
+Only a requirement with no official selected-component or related-component source may be classified non-Material.
 
-Resolve it separately as one of:
+Resolve a true non-Material requirement as one of:
 
 1. composition in a feature, widget, or consumer around the `MD*` component;
 2. a separate shared component without the `MD` prefix;
@@ -76,11 +109,15 @@ Resolve it separately as one of:
 
 The default is composition or a separate non-MD component. Existing legacy extensions remain provisional until this decision is made; compatibility alone does not make them Material API.
 
+A separate non-MD component must satisfy `shared-ui-implementation`: one meaningful root, native and ARIA semantics on the actual owner, no duplicated child state/color matrices, colocated stories under its own non-Material category, focused consumer review, and final verification.
+
 ## Boundary
 
 Only code under `src/shared/ui/material` may import `@m3e/web`, render `m3e-*`, use renderer types, or map documented `--m3e-*` variables.
 
 Do not leak renderer details, access private shadow DOM, use undocumented APIs, copy internals, duplicate renderer interaction systems, or create a generic adapter framework.
+
+Preserve normal native event propagation unless an accepted contract explicitly requires interception. Put `aria-*`, native state, focus, and interaction semantics on the actual interactive owner. Avoid an extra wrapper when the canonical root can own the required semantics. Prefer inherited `currentColor` or another public presentation route over duplicating renderer variant/state color logic.
 
 ## Renderer typing
 
@@ -95,6 +132,7 @@ Do not leak renderer details, access private shadow DOM, use undocumented APIs, 
 - Public `--md-ref-*`, `--md-sys-*`, and selected `--md-comp-*` names must follow verified Material token paths.
 - Expose only the Material token subset required now; mark the rest deferred.
 - A documented `--m3e-*` variable does not automatically become a public token.
+- Composed indicators and icons must follow official placement/contrast guidance and inherit the rendered label or icon color when Material specifies that relationship.
 - Non-Material customization uses `--app-*` only after the same extension decision required for non-Material component API.
 - Do not build a parallel component theme.
 
@@ -106,6 +144,7 @@ Compare m3e with official Material only for the selected and deferred-nearby sur
 - A required divergence is assigned to `wrapper-correction` or `m3e-fix` according to ownership.
 - `blocked` requires a selected Material requirement, a concrete observable gap, and no safe implementation path in either owner.
 - Different internal implementation is not a divergence when the Material-observable result is equivalent.
+- Incomplete official token coverage is a source gap, not an m3e divergence and not a reason to remove a positively documented capability.
 
 ## Motion verification
 
@@ -118,17 +157,21 @@ For renderer-owned motion:
 
 ## Verification and completion
 
-Verification is risk-based and proves the selected public Material Vue contract, Material-to-m3e mappings, wrapper-owned additions, consumer migration, and final repository health.
+Verification is risk-based and proves the selected public Material Vue contract, Material-to-m3e mappings, documented compositions, wrapper-owned additions, consumer migration, and final repository health.
+
+Tests must cover positively evidenced valid and invalid combinations, normal click bubbling, the actual ARIA/native owner, and production-used combinations such as disabled plus loading.
 
 A migration completes when:
 
 - the source-backed contract matrix is accepted;
 - the public Vue API is a demand-driven subset of official Material with no unresolved accidental extensions;
+- every public capability has an official selected-component source, related-component composition source, or approved extension;
+- every restrictive decision passes the source-evidence gate;
 - selected Material capabilities are implemented by the correct owner;
-- m3e divergences and deferred surface are recorded;
+- m3e divergences, source gaps, and deferred surface are recorded;
 - one canonical Vue owner remains and consumers are migrated;
 - package-derived renderer typing is used;
 - relevant verification passes;
 - operator accepts the visual and renderer-owned motion result.
 
-A skill invocation must complete all repository-local work inside this bounded scope. `partial` is valid only when an explicit extension decision, m3e change, operator acceptance, or genuine external blocker remains.
+A skill invocation must complete all repository-local work inside this bounded scope. `partial` is valid only when an explicit extension decision, unresolved official source conflict, m3e change, operator acceptance, or genuine external blocker remains.
