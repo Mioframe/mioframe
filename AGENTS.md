@@ -100,13 +100,15 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Inferred verify scope is an optimization. A skipped or empty lane is not proof that it is unnecessary. Unknown relevant impact must use full owning-lane fallback.
 - A new, moved, renamed, or removed Playwright spec must update its owning mapping or justified standalone entry in the same change. Source mappings contain production, story, fixture, or owned support paths; do not put spec paths in source prefixes to group tests.
 - Release-only contracts must have repository-owned impact mapping to build, artifact, or release-smoke proof. Until the focused release resolver is implemented, explicitly run `pnpm verify:release` for changes to build/release config, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies.
-- Use `pnpm verify --fix` only when safe automatic formatting, lint fixes, or instruction compatibility generation are useful.
-- Before reporting completion after edits, run final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
-- Use `pnpm verify --only <label> --files ...` for focused feedback when supported. `--files` is not status-aware deletion/rename planning. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks.
-- Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, final `pnpm verify` may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
+- Use `pnpm verify --fix-only` when only safe automatic formatting, lint fixes, or instruction compatibility generation is needed. Inspect generated changes before verification. `pnpm verify --fix` is a combined convenience mode, not the default agent workflow and never the final gate.
+- Use `pnpm verify --only <label> --files ...` for focused development feedback when supported. `--files` is not status-aware deletion/rename planning. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks, including raw commands printed as diagnostics by a failed verify step.
+- Run exactly one final read-only task-scope verification after all implementation passes and focused proof are complete. Nested implementation/testing skills do not own separate final gates.
+- For feature-branch or PR work, the final command must cover the complete branch diff: `pnpm verify --base <parent-ref>`; use `origin/develop` for an ordinary branch and the actual parent feature branch for stacked work. Plain `pnpm verify` is sufficient only when the complete task is exactly the current uncommitted diff against `HEAD`, or exactly the single last commit selected by its documented fallback; it must not be reported as PR-wide proof otherwise.
+- Preserve the invocation scope when retrying verification. Keep applicable `--base`, `--full`, `--profile`, `--files`, and `--only` arguments; remove `--fix` or `--fix-only` for the final read-only rerun. Do not follow a suggestion that silently falls back to plain `pnpm verify` or to a raw underlying command.
+- Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, final task-scope verification may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
 - Preserve the current app E2E desktop/mobile matrix until a dedicated audited migration demonstrates safe project filtering.
 - A minimum check named in a nested `AGENTS.md` describes required proof, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
-- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active.
+- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active. After `pnpm verify:resume`, rerun the same task-scope command recorded by `verify:status`; do not silently replace it with plain `pnpm verify`.
 - If final verification fails, repository impact metadata is invalid, or required proof is missing, do not claim the task is complete. Report the exact failure and remaining work.
 
 Final response after edits must include:
@@ -117,7 +119,7 @@ status: complete | partial | blocked
 remaining: none | <remaining required work, verification, or blocker>
 
 VERIFY RESULT
-command: pnpm verify
+command: <exact final task-scope command>
 status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
@@ -133,4 +135,4 @@ reason if not run:
 ## Agent environment compatibility
 
 - `AGENTS.md` and `.agents/skills/*/SKILL.md` are canonical. Do not edit generated `CLAUDE.md` or `.claude/skills` directly.
-- After changing the instruction tree, run `pnpm verify --fix` to regenerate compatibility files, then final `pnpm verify`.
+- After changing the instruction tree, run `pnpm verify --fix-only --base <parent-ref>` to regenerate compatibility files, inspect the generated diff, then run the single final read-only task-scope verification.
