@@ -1,6 +1,6 @@
 # Mioframe Material migration roadmap
 
-This file owns only the current migration sequence, milestone state, blocker, and next action. Durable rules live in `architecture.md` and `component-adapter.md`.
+This file owns only the current sequence, milestone state, blocker, and next action. Durable rules live in `architecture.md` and `component-adapter.md`.
 
 ## Current state
 
@@ -12,115 +12,95 @@ Status: `correction`
 
 Owner: current architecture-reset branch
 
-Blocker: implementation exit-gate findings, not an upstream renderer limitation. Package-derived renderer typing, accepted loading presentation, and the missing native/controlled-state paths are corrected. Retained token declaration/mapping ownership and complete scenario-linked proof for motion, themes, RTL, and active token effects remain incomplete.
+Blocker: repository-local completion work, not an upstream renderer limitation. Package-derived typing, current consumer migration, native behavior, controlled state, and loading compatibility are complete. The adapter still contains an unnecessary incomplete public Button-token bridge, the canonical documented m3e Button surface and Material/m3e divergence record need finalization, and renderer-owned animation needs exact-version source assessment before operator review.
 
-Next action: continue the `MDButton` correction pass with complete retained token ownership and exact motion, theme, RTL, active-token, build, and consumer proof before operator visual acceptance and before starting M2.
+Next action: rerun `material-component-adapter` for `MDButton`. Remove unused token mappings, finish direct typed coverage of canonical m3e Button capabilities, record bounded Material/m3e divergences, document animation source inspection, run focused checks and `pnpm verify`, then hand off visual and motion review to the operator.
 
-The m3e Button renderer remains `ready`. The new canonical adapter and migrated consumers remain in place while implementation ownership stays `migrating` until the complete exit gate passes.
+The m3e Button renderer remains `ready`; ownership stays `migrating` only until this bounded repository-local work is complete.
 
 ## Milestones
 
-| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                                                                              |
-| --- | --------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | m3e-backed architecture reset     | `verification` | none       | library-owned architecture, adapter, token, and roadmap documents; separate renderer-viability and implementation-ownership states; compatible dependency-range policy with exact lockfile-resolved contract and exported-type tracking; custom-element integration ownership; scoped agent workflow; final repository verification passes                                                             |
-| M1  | `MDButton` adapter pilot          | `correction`   | M0         | migration target is `MDButton` only; exact lockfile-resolved m3e version, Button entry point, and exported types are verified; viability is `ready`; ownership becomes `migrated`; all consumers move; retained token declarations/mappings and accepted behavior are complete; only obsolete ownership is removed; required type, contract, browser, visual, build, consumer, and operator proof pass |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, typed renderer boundary, and cleanup are proven without hidden state drift; ownership becomes `migrated`; only integration mechanisms proved by both pilots may be considered for extraction                                                                               |
-| M3  | sequential component migration    | `planned`      | M2         | one explicit ready component or inseparable family at a time is migrated by product priority; blocked renderers leave legacy ownership intact; every completed target has one canonical Vue owner, package-derived renderer typing, complete active token ownership, scenario-linked proof, and no renderer leakage                                                                                    |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --------- | ------ | ---------- | --------- |
+| M0 | m3e-backed architecture reset | `verification` | none | library-owned architecture and workflow; private renderer boundary; compatible dependency range; package-derived renderer typing policy; final verification passes |
+| M1 | `MDButton` adapter pilot | `correction` | M0 | current Mioframe scenarios preserved; canonical documented m3e Button capabilities exposed through thin typed mappings; confirmed Material/m3e differences recorded; only required wrapper corrections added; no unused public token catalogue; verification passes; operator accepts visual and motion result |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | current Switch scenarios plus canonical documented m3e Switch surface; controlled state and event order; bounded divergence record; risk-based verification; operator acceptance |
+| M3 | sequential component migration | `planned` | M2 | one explicit component at a time; current scenarios plus canonical m3e surface; recorded divergences; thin required corrections only; one canonical Vue owner; no renderer leakage |
 
 ## M0 scope
 
-M0 establishes architecture, documentation ownership, agent workflow, and the shared technical integration required before the first adapter.
+M0 establishes:
 
-Included:
-
-- canonical public Vue and private m3e ownership model;
-- source-of-truth and dependency boundaries;
-- distinction between renderer viability and implementation ownership;
-- token and theme boundary;
-- repository-standard compatible semver declaration with exact lockfile-resolved contract tracking;
-- Vue custom-element recognition and family-registration ownership;
-- component adapter contract and mandatory test minimum;
-- scoped Material instructions;
-- one implementation skill for an end-to-end component migration;
-- shared technical integration without production Material component behavior changes;
+- canonical public Vue and private m3e ownership;
+- library-owned Material documentation;
+- renderer viability and implementation ownership states;
+- dependency, registration, and package-derived typing policy;
+- demand-driven token and verification rules;
+- one deterministic adapter skill;
 - removal of the abandoned exhaustive custom-implementation workflow.
 
-Not included:
-
-- implementing a shared adapter framework;
-- changing global theme ownership;
-- migrating components beyond the selected pilot.
-
-`@m3e/web` is declared through the repository-standard compatible range, the lockfile resolves the inspected renderer version, and shared Vue custom-element recognition is established as the technical foundation required before M1.
+M0 does not create a generic adapter framework or change global theme ownership.
 
 ## M1 — MDButton pilot
 
-The first implementation milestone validates the complete boundary rather than only rendering an m3e element.
-
-### Migration boundary
+### Boundary
 
 The migration target is `MDButton` only.
 
-`MDIconButton`, `MDFab`, `MDExtendedFab`, and shared Button-directory modules not owned exclusively by `MDButton` remain with the legacy Button implementation until their own migration is approved.
+`MDIconButton`, `MDFab`, `MDExtendedFab`, and unrelated Button modules remain legacy-owned.
 
-### Completed prerequisites
+### Completed
 
-- `@m3e/web` is declared with the repository-standard compatible semver range and currently resolves through the lockfile to `2.6.2`;
-- shared Vue custom-element recognition is established for application, Storybook, and component-test compilation;
-- current MDButton consumers, public API, required scenarios, Material guidance, and exact m3e Button public contract have been inspected;
-- `@m3e/web/button` exports `M3eButtonElement`, `ButtonShape`, `ButtonSize`, `ButtonVariant`, and the `m3e-button` tag-map type required for a package-derived renderer boundary;
-- `components/button/README.md` records renderer viability `ready`, explicit mapping, consumer scope, obsolete legacy token surface, correction findings, and required proof;
-- no unresolved architecture or upstream blocker remains.
-
-### Current implementation state
-
-- the canonical adapter exists under `src/shared/ui/material/components/button`;
-- consumers and the public export have moved to `@shared/ui/material`;
-- the legacy MDButton implementation, story, test, fixture, and export have been removed;
-- unrelated Button-family components remain legacy-owned;
-- implementation ownership remains `migrating` because the exit gate is incomplete.
+- `@m3e/web@^2.6.2` is installed and resolves to `2.6.2`;
+- application, Storybook, and tests recognize `m3e-*` elements;
+- the canonical MDButton adapter and public export exist;
+- all existing MDButton consumers are migrated;
+- the legacy MDButton implementation, story, test, fixture, and export are removed;
+- renderer typing derives from `M3eButtonElement`, `ButtonShape`, `ButtonSize`, and `ButtonVariant`;
+- current submit/reset, pointer/keyboard, disabled, controlled-toggle, focus, and loading scenarios are implemented;
+- loading preserves the accepted visible presentation and enabled behavior.
 
 ### Required correction work
 
-1. transfer canonical defaults and complete semantic m3e mapping for every retained active public Button token;
-2. keep obsolete declaration-only spring stiffness/damping surface removed;
-3. complete exact proof for themes, RTL, active token effects, and actual motion/final-state claims;
-4. complete representative-consumer, Storybook-build, and production-build proof;
-5. update the Button proof ledger, run focused checks and final `pnpm verify`, then obtain operator visual acceptance for the complete corrected visual set.
+1. remove the broad `--m3e-*` bridge backed by unused/undefined public `--md-comp-button-*` variables;
+2. keep only actual active public tokens; currently no Button-specific public token contract has consumer evidence;
+3. expose canonical documented m3e Button capabilities through direct typed Vue mappings where they belong to the public Material Button surface;
+4. compare that bounded surface with official Material guidance and record each confirmed divergence as accepted, wrapper-corrected, upstream follow-up, or blocker;
+5. implement only Mioframe-required divergences that are safely correctable through public m3e APIs or Mioframe-owned light DOM;
+6. inspect and record the exact m3e Button animation implementation and reduced-motion path; do not add proxy automated animation proof;
+7. run focused verification and final `pnpm verify`;
+8. request operator visual and motion acceptance.
 
-M1 must not restore the legacy renderer, introduce a universal wrapper abstraction, add a direct Lit dependency, use private shadow DOM, duplicate renderer motion, use an all-components import or global registry, or migrate unrelated Button-family components.
+M1 must not restore the legacy renderer, add a direct Lit dependency, access private shadow DOM, duplicate renderer motion/state systems, create a generic wrapper framework, or migrate unrelated Button-family components.
 
 ## M2 — MDSwitch pilot
 
-The second pilot validates a materially different stateful contract:
+M2 validates a different stateful adapter while following the same bounded process:
 
+- current Mioframe Switch scenarios;
+- canonical documented m3e Switch capabilities;
+- consumer-controlled state and event normalization;
 - package-derived renderer typing;
-- consumer-controlled selected state;
-- user intent and event normalization;
-- programmatic prop updates;
-- no hidden renderer-state drift;
-- keyboard, pointer, touch, disabled, and focus behavior;
-- form and accessibility behavior when applicable;
-- mount, unmount, cancellation, and cleanup;
-- private token mapping with canonical public declarations;
-- scenario-linked proof.
+- bounded Material/m3e divergence record;
+- thin corrections only when Mioframe requires them;
+- active public tokens only;
+- risk-based verification and operator acceptance.
 
-Only after M1 and M2 may identical integration code be considered for extraction.
+Only after M1 and M2 may repeated concrete adapter code be considered for extraction.
 
 ## M3 — sequential migration
 
-After both pilots:
+For each next component:
 
-1. select one high-value component or inseparable family whose renderer is likely to cover current scenarios;
-2. complete bounded discovery, including package-exported types;
-3. set renderer viability to `ready` or `blocked-upstream` using the evidence gate;
-4. migrate only when viability is `ready`;
-5. retain `legacy` implementation ownership when viability is genuinely blocked;
-6. migrate consumers, preserve accepted observable behavior, transfer active token ownership, and remove target-owned obsolete ownership atomically;
-7. complete scenario-linked automated proof and required operator review;
-8. update this roadmap only when milestone state or the next action changes.
-
-Priority considers consumer reach, interaction frequency, product risk, implementation quality, migration blast radius, and removal value. Availability of a similarly named m3e element is not sufficient, and exact legacy implementation parity is not required when observable contracts are preserved.
+1. select one product-relevant target;
+2. inspect current consumers and exact m3e family surface;
+3. compare the bounded supported surface with Material guidance;
+4. set renderer viability to `ready` or `blocked-upstream`;
+5. migrate only when required behavior can be delivered safely;
+6. expose canonical m3e capabilities without mirroring raw renderer API;
+7. record non-required m3e divergences for upstream work rather than expanding the wrapper;
+8. preserve active tokens only and remove obsolete legacy routes;
+9. run risk-based verification and operator review.
 
 ## Update protocol
 
@@ -129,6 +109,6 @@ Update only:
 - current milestone and status;
 - exact blocker;
 - single next action;
-- milestone exit gate when new implementation evidence materially changes it.
+- milestone exit gate when implementation evidence changes it.
 
-Do not turn this file into a complete component inventory or implementation log.
+Do not turn this file into a component inventory or detailed implementation log.
