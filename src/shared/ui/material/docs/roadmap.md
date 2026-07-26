@@ -8,24 +8,24 @@ Last updated: 2026-07-26
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `operator-review`
+Status: `correction`
 
 Owner: current architecture-reset branch
 
-Blocker: explicit operator acceptance of the final Button visuals and renderer-owned press and selection motion remains required.
+Blocker: the latest Material-first pass is not ready for operator review. The Button matrix incorrectly rejects text toggle although official Material exposes default and toggle variants across all five color configurations. It also publishes unused link/form surface without current demand or an explicit non-Material decision. The new `LoadingButton` places `aria-busy` on a wrapper instead of the interactive owner, duplicates renderer color logic, and documents its non-Material presentation under the `MDButton` Storybook family.
 
-Next action: review the canonical Button stories in a real browser and explicitly accept or reject final visual and motion quality.
+Next action: correct the Button matrix and implementation, keep text toggle supported, reduce the public API to the selected Material surface plus required native adaptation, fix `LoadingButton` DOM/accessibility/color ownership and colocated stories, restore native click bubbling, then rerun focused and final verification before operator review.
 
 Implementation ownership remains `migrating`.
 
 ## Milestones
 
-| ID  | Milestone                         | Status            | Depends on | Exit gate                                                                                                                                                                                                                |
-| --- | --------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | m3e-backed architecture reset     | `verification`    | none       | Material-first public boundary; private m3e renderer boundary; contract-matrix workflow; package-derived typing; final verification                                                                                      |
-| M1  | `MDButton` adapter pilot          | `operator-review` | M0         | accepted Material–m3e–Vue matrix; demand-driven official Material Vue API; non-Material requirements explicitly resolved; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`         | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                          |
-| M3  | sequential component migration    | `planned`         | M2         | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage                                                              |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset | `verification` | none | Material-first public boundary; private m3e renderer boundary; contract-matrix workflow; package-derived typing; final verification |
+| M1 | `MDButton` adapter pilot | `correction` | M0 | accepted Material–m3e–Vue matrix; demand-driven official Material Vue API; non-Material requirements explicitly resolved; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance |
+| M3 | sequential component migration | `planned` | M2 | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage |
 
 ## M1 — MDButton pilot
 
@@ -33,25 +33,26 @@ Implementation ownership remains `migrating`.
 
 - `@m3e/web@^2.6.2` resolves to `2.6.2`;
 - application, Storybook, and tests recognize `m3e-*`;
-- an m3e-backed `MDButton` candidate and public export exist;
+- the m3e-backed `MDButton` owner and public export exist;
 - renderer typing derives from package exports;
-- consumers were moved to the candidate owner;
+- consumers use the canonical owner;
 - native, controlled-state, visual, and motion-assessment work exists;
-- the obsolete legacy renderer is removed.
+- the obsolete legacy renderer is removed;
+- loading has been separated into a non-MD shared component.
 
-This work remains reusable but does not establish the final public API.
+This work remains reusable but does not complete the public contract.
 
-### Required architecture correction
+### Required correction work
 
-1. derive Button names, options, values, defaults, states, combinations, behavior, and accessibility from official Material documentation;
-2. select only the subset required by current consumers and mark the remaining official surface deferred;
-3. create the Material–m3e–Vue matrix before further production edits;
-4. classify every current public prop, slot, event, and default as Material, Vue/native adaptation, deferred, or non-Material;
-5. resolve loading as consumer composition, a separate non-MD component, an explicitly approved extension, or a migration/removal;
-6. use m3e maximally for selected Material behavior;
-7. route renderer-owned gaps to m3e rather than recreating them in Vue;
-8. normalize implementation, consumers, tests, stories, and docs to the accepted API;
-9. run focused verification, final `pnpm verify`, and operator visual/motion review.
+1. Correct the matrix: Material supports text toggle; remove the normalization and warning that disable it.
+2. Keep only currently required Material API and required Vue/native adaptation. Defer unused `href`, `target`, `rel`, `download`, `name`, and `value` surface unless separately justified.
+3. Normalize selected-state content naming to Material/Vue terminology rather than exposing the renderer slot name directly.
+4. Preserve native click propagation; do not stop bubbling without an accepted requirement.
+5. Make `LoadingButton` put `aria-busy` on the actual interactive owner and avoid an unnecessary wrapper when the `MDButton` root can own the component.
+6. Let the progress indicator follow the rendered icon color instead of duplicating per-color renderer logic; cover disabled loading behavior.
+7. Give `LoadingButton` its own colocated non-Material Storybook documentation and keep Material Button stories limited to `MDButton`.
+8. Update focused contracts and browser/visual coverage, then run final `pnpm verify`.
+9. Request operator visual and renderer-owned motion review only after these corrections pass.
 
 M1 must not restore the legacy renderer, copy the m3e API into Vue, preserve legacy API merely for compatibility, add a non-Material public option silently, access private shadow DOM, or build a parallel renderer.
 
