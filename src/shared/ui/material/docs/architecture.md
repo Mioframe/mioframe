@@ -8,223 +8,180 @@ Mioframe exposes a canonical Vue Material library under:
 src/shared/ui/material
 ```
 
-Each public `MD*` component may use the corresponding `@m3e/web` custom element as its private renderer.
-
 ```text
 product layers
-  → @shared/ui/material Vue components
-  → private @m3e/web custom elements
+  → public Material-first Vue MD* components
+  → private @m3e/web renderers
 ```
 
-Mioframe does not reimplement the complete Material 3 Expressive rendering system.
+Official Material 3 Expressive is the public contract authority. m3e is the preferred private implementation, not the API authority.
 
-## Goals
+## Goal
 
-- provide stable Vue components using canonical Material concepts;
-- cover current Mioframe scenarios;
-- expose documented m3e capabilities that fit the canonical component without custom renderer reconstruction;
-- isolate product code from m3e implementation details and API drift;
-- use package-exported m3e types at compile time;
-- record m3e differences from official Material guidance;
-- correct only differences that Mioframe actually requires and that can be fixed safely in a thin wrapper;
-- keep one canonical public owner per migrated component.
+Each `MD*` component is a demand-driven Vue representation of the official Material component:
 
-## Non-goals
-
-- implementing optional Material surface unsupported by both Mioframe and m3e;
-- copying the complete m3e API into Vue;
-- recreating the full Material component-token catalogue;
-- duplicating m3e rendering, ripple, focus, state-layer, elevation, or motion systems;
-- proving private renderer animation through proxy automated assertions;
-- exposing m3e elements, types, CSS variables, or private DOM to product code;
-- building a generic wrapper framework before repeated concrete need exists.
+- public names, concepts, options, values, defaults, states, combinations, behavior, visuals, and accessibility follow Material documentation;
+- only the subset required by current Mioframe scenarios is implemented now;
+- the selected subset remains compatible with later expansion toward the full Material contract;
+- m3e is used maximally where its documented public surface implements that selected contract;
+- missing selected Material behavior is implemented by the correct owner rather than omitted or exposed under renderer-specific vocabulary.
 
 ## Sources of truth
 
-1. Official Material 3 Expressive documentation defines intended component behavior, visuals, and accessibility.
-2. Current Mioframe consumers define required application scenarios and compatibility constraints.
-3. The exact lockfile-resolved `@m3e/web` package defines the available private renderer surface through exports, declarations, element types, manifest, documentation, CSS variables, and implementation source where renderer-owned behavior must be assessed.
-4. The family README defines the accepted public Vue surface, selected m3e surface, known divergences, and wrapper corrections.
+1. **Official Material documentation** defines the public component contract.
+2. **Current Mioframe consumers** select which part of that contract is required now.
+3. **The exact lockfile-resolved m3e package** defines available private renderer capabilities and types.
+4. **The family contract matrix** records the accepted Material subset, Vue representation, m3e coverage, implementation owner, gaps, and deferred surface.
 
-m3e is an implementation dependency, not Material authority and not the public API owner.
+Legacy Mioframe components define migration evidence and current scenarios. They do not define the final `MD*` API when they differ from Material.
 
-## Supported surface
+## Demand-driven Material surface
 
-For each component, the supported surface is the minimum complete union of:
+Start with the full official Material component model, then classify each relevant capability:
 
-- current Mioframe scenarios;
-- documented m3e capabilities that map directly to canonical Material/Vue concepts.
+- `implement-now` — required by a current consumer or needed for a coherent selected API;
+- `defer` — official Material capability not required now;
+- `not-material` — legacy or product requirement with no Material source, requiring a separate decision.
 
-This does not mean mirroring every raw m3e field. The adapter exposes only a coherent canonical Vue API.
+Do not implement the full Material catalogue merely for completeness. Do not let the m3e API decide what becomes public.
 
-Capabilities missing from m3e are implemented in the wrapper only when:
+## Required Material–m3e–Vue matrix
 
-- Mioframe needs them now;
-- the correction is narrow and explicit;
-- it can be implemented through documented public m3e APIs or Mioframe-owned light DOM;
-- it does not duplicate the renderer's internal system.
+Before implementation, the family README must include:
 
-## Ownership
+| Material contract and source | Required now and evidence | Public Vue API | m3e support | Owner | Decision | Verification |
+| --- | --- | --- | --- | --- | --- | --- |
 
-### Mioframe Material library owns
+The matrix must cover all public props, values, slots, events, controlled state, defaults, native semantics, accessibility behavior, selected tokens, and materially relevant visual/motion behavior.
 
-- public `MD*` names and exports;
-- Vue props, emits, slots, defaults, and controlled state;
-- current application behavior and project extensions;
-- native integration constrained or normalized by the adapter;
-- accepted public token contracts;
-- consumer migration and obsolete-owner removal;
-- classification and documentation of m3e divergences;
-- wrapper corrections required by Mioframe;
-- tests for Mioframe-owned behavior.
+The matrix may group equivalent rows when that preserves exact ownership and decision clarity. It must not become a copied version of all Material documentation.
 
-### m3e owns internally
+## Public Vue API
 
-When provided through documented public contracts:
+The public API is Material-first and Vue-idiomatic:
 
-- rendering and private DOM;
-- state-layer, ripple, focus, elevation, and motion;
-- internal accessibility implementation;
-- component-local layout and visual behavior;
+```text
+Material concept
+  → Vue prop / slot / emit / v-model / ref / native mapping
+  → private m3e property / slot / event / CSS input
+```
+
+Rules:
+
+- use official Material terminology and semantics;
+- keep public types independent from m3e types;
+- map public values to package-exported m3e types at compile time;
+- do not expose raw custom-element attributes, event objects, types, or CSS variables;
+- do not preserve legacy naming when it conflicts with Material;
+- do not create public options that have no Material contract without an explicit extension decision.
+
+Framework adaptation such as Vue emits, `v-model`, slots, refs, and native HTML integration is allowed when it represents Material behavior without adding new product semantics.
+
+## Implementation ownership
+
+### Vue adapter owns
+
+- Material-to-Vue API normalization;
+- explicit typed property and attribute mapping;
+- slot placement;
+- event normalization;
+- controlled-state synchronization;
+- native web integration;
+- narrow Mioframe-owned light DOM needed to complete selected Material behavior;
+- public Material token mapping selected for current use.
+
+### m3e owns
+
+- internal rendering and private DOM;
+- component geometry and internal layout;
+- state layer, ripple, focus, elevation, and motion;
+- private accessibility implementation;
 - documented renderer CSS inputs and defaults.
 
-The wrapper must not reconstruct these systems merely to reproduce old implementation details.
+### Gap routing
 
-### Product layers own
+When m3e does not fully implement a selected Material capability:
 
-- workflows and domain state;
-- content and labels;
-- component placement and composition;
-- feature-specific loading, recovery, navigation, and persistence behavior.
+- use `wrapper-correction` for explicit Vue mapping, events, controlled state, native integration, or light-DOM composition that does not recreate renderer internals;
+- use `m3e-fix` for renderer geometry, private DOM, state-layer, ripple, focus, elevation, motion, or private accessibility behavior;
+- use `blocked` only when neither owner can deliver the selected Material contract safely.
 
-## Public boundary
+Mioframe may contribute the required renderer fix to m3e or temporarily consume an approved version containing it. Do not create a parallel Material renderer inside the Vue wrapper.
+
+## Non-Material requirements
+
+A requirement absent from official Material is not automatically part of an `MD*` component, even when a legacy component or consumer already uses it.
+
+Resolve it explicitly as:
+
+1. composition in the consumer, feature, or widget;
+2. a separate shared component without the `MD` prefix that composes Material primitives;
+3. an exceptional documented `MD*` extension approved by an architecture decision.
+
+The default is composition or a separate non-MD component. Compatibility migration must include the decision and consumer transition; it must not silently redefine the Material API.
+
+## Boundary
 
 Outside `src/shared/ui/material` it is forbidden to:
 
 - import `@m3e/web`;
 - render `m3e-*` tags;
-- use `M3e*Element` types;
+- use renderer types or event objects;
 - depend on `--m3e-*` variables;
-- inspect m3e shadow DOM or internal state.
+- inspect m3e private DOM or internal state.
 
-The public `MD*` API must not leak renderer-specific types or events.
+## Type boundary
 
-## Vue adapter contract
+- Public Vue types are authored from the selected Material contract.
+- Private mappings use exact family entry-point exports such as element classes and value aliases.
+- Vue custom-element declarations derive from package types and contain framework glue only.
+- Renderer type drift must fail type-check without changing the public Material API accidentally.
 
-A wrapper normally owns only:
+## Tokens and theme
 
-- explicit typed property and attribute mapping;
-- named slot placement;
-- event normalization;
-- controlled-state synchronization;
-- native behavior required by Mioframe;
-- current project extensions;
-- active public token mapping;
-- narrow corrections for Mioframe-required m3e divergences.
+Mioframe owns verified Material namespaces:
 
-Do not forward all `$attrs` blindly when semantic properties or events require explicit ownership.
+- `--md-ref-*`;
+- `--md-sys-*`;
+- the selected public subset of `--md-comp-*`;
+- `--app-*` only for separately approved non-Material extensions.
 
-## Renderer type boundary
+A public component token must use the official Material path and be selected by current need. A documented m3e variable remains private and does not automatically create a public token.
 
-The exact m3e family entry point owns private renderer element and value types.
+## Divergences
 
-- Use type-only imports from `@m3e/web/<family>`.
-- Keep Mioframe public prop types independently defined.
-- Require every mapped value to satisfy the package-exported renderer type.
-- Derive Vue custom-element typing from exported classes, aliases, or `HTMLElementTagNameMap`.
-- Do not maintain handwritten mirrors when package types exist.
+For each selected or closely deferred Material capability, record:
 
-## m3e divergence policy
-
-Compare official Material guidance with the selected supported m3e surface.
-
-For each confirmed divergence record:
-
-- Material expectation;
+- official Material expectation;
 - exact m3e behavior and version;
-- whether Mioframe currently requires the expectation;
-- decision: accept, wrapper correction, upstream follow-up, or blocker.
+- Vue exposure status;
+- current requirement status;
+- owner and decision: `accept`, `defer`, `wrapper-correction`, `m3e-fix`, or `blocked`.
 
-Use these rules:
+A difference in internal implementation is not a divergence when the observable Material result is equivalent.
 
-- a difference not required by Mioframe is documented for possible m3e work but does not expand the adapter;
-- a required difference may be fixed in the wrapper only through a minimal public-boundary correction;
-- a required difference that needs private DOM or duplicated renderer internals is an upstream blocker;
-- equivalent observable behavior implemented differently is not a divergence.
+## Verification
 
-## Theme and tokens
+Verification proves:
 
-Mioframe retains ownership of:
+- the selected public Vue API matches the accepted Material matrix;
+- Material-to-m3e mappings are package-type checked;
+- wrapper-owned behavior is correct;
+- current consumers use the canonical component;
+- visual baselines cover stable selected Material states with meaningful risk;
+- final repository verification passes.
 
-- `--md-ref-*` reference values;
-- `--md-sys-*` theme roles;
-- intentionally accepted active `--md-comp-*` contracts;
-- `--app-*` project extensions.
+Renderer-owned animation is verified by exact-version source inspection plus operator manual review. Proxy host assertions do not prove private animation lifecycle.
 
-A documented m3e variable is private and does not automatically require a Mioframe component-token alias.
+## Completion
 
-Prefer direct system-role semantics when m3e already implements them. Add a public `--md-comp-*` route only when a current consumer uses it or Mioframe intentionally documents it as supported API. Do not copy all m3e defaults into a parallel theme.
+A component migration is complete when:
 
-## Motion verification
-
-Renderer-owned animation is assessed differently from Mioframe-owned behavior.
-
-- Inspect the exact installed m3e implementation source to confirm state transitions, interruption handling, and reduced-motion handling.
-- Verify that the wrapper does not disable or replace the renderer implementation.
-- Use operator manual testing for actual animation quality and timing.
-- Do not use `:active`, host screenshots, or private DOM inspection as false proof of internal animation.
-
-Automated tests may verify public input behavior or wrapper-owned state, but only claim what they directly observe.
-
-## Verification ownership
-
-Every adapter requires:
-
-- package-derived type-check;
-- component-contract tests for the public Vue boundary;
-- focused browser tests for current user/native scenarios affected by the adapter;
-- stable visual baselines for Mioframe-visible output with meaningful regression risk;
-- final repository verification.
-
-Additional theme, RTL, token, consumer, or build proof is required only when Mioframe customizes that boundary, a current scenario depends on it, or final verification does not already cover it.
-
-Do not duplicate m3e or Lit tests.
-
-## Migration state
-
-Renderer viability:
-
-- `unassessed` — exact required surface is not verified;
-- `ready` — the resolved supported surface is available through documented m3e APIs plus allowed thin corrections;
-- `blocked-upstream` — a Mioframe-required contract cannot be delivered safely.
-
-Implementation ownership:
-
-- `legacy` — existing component remains production owner;
-- `migrating` — focused migration is incomplete;
-- `migrated` — one canonical adapter owns the component and all repository-local work within the resolved scope is complete.
-
-Operator visual and motion acceptance may remain after repository-local work and may be reported as the sole `partial` remainder.
-
-## Structure
-
-```text
-src/shared/ui/material/
-  AGENTS.md
-  README.md
-  docs/
-    architecture.md
-    component-adapter.md
-    component-tokens.md
-    roadmap.md
-  index.ts
-  components/
-    <family>/
-      README.md
-      <Component>.vue
-      <Component>.test.ts
-      <Component>.stories.ts
-      index.ts
-```
-
-Create only files required by current work. Shared adapter helpers require repeated concrete need across unrelated components.
+- its Material–m3e–Vue matrix is accepted;
+- every public `MD*` capability has an official Material source;
+- non-Material requirements have explicit composition, separate-component, or extension decisions;
+- selected Material capabilities are implemented by the correct owner;
+- deferred Material surface and m3e divergences are recorded;
+- one canonical Vue owner remains and consumers are migrated;
+- type-check, focused tests, visual verification, and repository verification pass;
+- operator accepts the final visual and motion behavior.
