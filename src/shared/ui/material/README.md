@@ -2,7 +2,7 @@
 
 `src/shared/ui/material` is the canonical owner of the project-facing Material component API and all Material-specific architecture and workflow documentation.
 
-The library exposes Vue `MD*` components based on current Material 3 Expressive concepts. A migrated component may use `@m3e/web` internally, but product consumers depend only on the Mioframe Vue contract.
+The library exposes Vue `MD*` components based on Material 3 Expressive concepts. Migrated components may use `@m3e/web` privately; product code depends only on the Mioframe Vue contract.
 
 Canonical policy:
 
@@ -11,57 +11,43 @@ Canonical policy:
 - [`docs/component-tokens.md`](./docs/component-tokens.md);
 - [`docs/roadmap.md`](./docs/roadmap.md).
 
-Repository-level `docs/` remains product and project documentation. Material library policy must not be duplicated there.
+Repository-level `docs/` remains product and project documentation. Material library policy is owned here.
 
 ## Boundary
 
 Allowed inside this directory:
 
-- public Vue Material components and explicitly approved inseparable families;
+- public Vue Material components;
 - family-local imports of required m3e entry points;
-- explicit Vue-to-m3e property, event, slot, state, and token mapping;
-- narrow shared m3e helpers only after unrelated adapters prove one necessary;
-- library architecture, roadmap, family contracts, tests, stories, and curated public entry points.
+- package-derived renderer typing;
+- explicit Vue-to-m3e property, event, slot, state, and active-token mapping;
+- narrow Mioframe-required corrections for confirmed m3e/Material divergences;
+- family contracts, tests, stories, and curated public exports.
 
 Not allowed:
 
 - product or domain behavior;
 - m3e APIs exported to consumers;
-- direct dependencies on features, entities, widgets, pages, or app modules;
 - private shadow-DOM access or copied renderer internals;
+- duplicate renderer ripple, focus, state-layer, elevation, or motion systems;
 - speculative wrapper frameworks, registries, generators, token DSLs, or universal base components.
 
-Legacy component directories under `src/shared/ui/<Family>` remain valid production owners until their focused migration. Their current implementation notes remain beside the code until that migration extracts the accepted contract and removes the replaced owner.
+Legacy component directories remain production owners until focused migration.
 
-## Intended structure
+## Supported surface
 
-Create only artifacts required by active work:
+Each adapter covers:
 
-```text
-material/
-  AGENTS.md
-  README.md
-  docs/
-    README.md
-    architecture.md
-    component-adapter.md
-    component-tokens.md
-    roadmap.md
-  index.ts                         # when the first canonical component is ready
-  components/
-    <family>/
-      README.md                    # accepted target and mapping contract
-      <Component>.vue
-      <Component>.test.ts
-      <Component>.stories.ts
-      index.ts
-```
+1. current Mioframe consumer scenarios;
+2. documented m3e capabilities that belong to the canonical Material component surface and can be exposed through thin typed mappings.
 
-A component may import its required `@m3e/web/<family>` entry point directly. Do not create an `internal/m3e` framework before two unrelated adapters prove an identical shared mechanism.
+The library does not mirror every raw m3e field, recreate the complete Material token catalogue, or implement optional surface unsupported by both Mioframe and m3e.
+
+Confirmed m3e differences from official Material guidance are recorded per family. Differences not required by Mioframe are upstream follow-up candidates, not automatic wrapper work.
 
 ## Public API
 
-The intended consumer import is:
+Consumers import from the curated entry point:
 
 ```ts
 import { MDButton } from '@shared/ui/material';
@@ -69,58 +55,53 @@ import { MDButton } from '@shared/ui/material';
 
 Rules:
 
-- when product or generic shared UI consumes an official Material component, it imports the Mioframe Vue component from the curated Material entry point;
-- native HTML and project-specific or generic shared UI remain valid when they are the correct owner;
-- internal family code does not import the root barrel;
-- renderer element classes, renderer events, private helpers, tests, and `--m3e-*` variables are not exported;
-- public props, emits, slots, defaults, and tokens remain stable across m3e upgrades unless a deliberate Mioframe API change is approved.
+- official Material components use Mioframe Vue wrappers;
+- native HTML and generic/project-specific shared UI remain valid where appropriate;
+- family code does not import the root barrel;
+- renderer classes, events, private helpers, and `--m3e-*` variables are not exported;
+- public props, emits, slots, defaults, and intentionally accepted tokens remain stable across renderer upgrades unless deliberately changed.
 
 ## Theme and tokens
 
-The accepted Mioframe token layers remain consumer-facing:
+Consumer-facing layers are:
 
 - `--md-ref-*`;
 - `--md-sys-*`;
-- accepted `--md-comp-*`;
-- `--app-*` for explicit project extensions.
+- intentionally accepted active `--md-comp-*` contracts;
+- `--app-*` extensions.
 
-Family code may privately map those values to documented `--m3e-*` variables. Consumers must not set or read renderer variables.
+A documented m3e variable does not automatically require a public Mioframe alias. Family code maps only active public component tokens and otherwise relies on existing Material system roles or documented renderer defaults.
 
-The current Mioframe theme remains the global owner. `m3e-theme` is not installed as a second theme authority by default.
+The existing Mioframe theme remains global owner. `m3e-theme` is not a second theme authority.
+
+## Renderer typing
+
+Renderer element properties and value types come from the exact installed m3e family entry point. Vue ambient declarations contain only framework glue derived from package types. Renderer types do not leak through the public `MD*` API.
+
+## Motion
+
+m3e-owned animation is assessed through exact-version source inspection and operator manual testing. Automated tests verify only Mioframe-owned integration and publicly observable behavior; they do not use private DOM or proxy assertions to claim internal animation correctness.
 
 ## Migration map
 
-| Area                              | Current owner                         | Canonical owner                                                              | Current state                                       |
-| --------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------- |
-| `MDButton`                        | `material/components/button`          | `material/components/button`                                                 | renderer `ready`; owner `migrated`                  |
-| Other public `MD*` components     | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration                       | renderer `unassessed`; owner `legacy`               |
-| Shared m3e compiler integration   | shared Vite/Vue configuration         | shared Vite/Vue configuration                                                | established for app, Storybook, and component tests |
-| Vue-to-m3e component adapters     | Button component-local adapter        | component-local adapter first; shared helper only after both pilots prove it | Button established                                  |
-| Public Material entry point       | `@shared/ui/material`                 | `@shared/ui/material`                                                        | established                                         |
-| Reference/system tokens and theme | existing `src/shared/lib/md` owners   | unchanged until a focused architecture decision                              | `retained`                                          |
+| Area | Current owner | Canonical owner | Current state |
+| ---- | ------------- | --------------- | ------------- |
+| `MDButton` | `material/components/button` | `material/components/button` | renderer `ready`; owner `migrating` until bounded correction and operator review complete |
+| Other public `MD*` components | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration | renderer `unassessed`; owner `legacy` |
+| Shared m3e compiler integration | shared Vite/Vue configuration | shared Vite/Vue configuration | established |
+| Public Material entry point | `@shared/ui/material` | `@shared/ui/material` | established |
+| Reference/system theme tokens | existing foundation owners | unchanged | retained |
 
-## State model
+## Verification
 
-Renderer viability:
+Every public adapter requires a colocated component-contract test and final repository verification.
 
-- `unassessed` — the exact lockfile-resolved renderer version and required public integration contract are not verified for the selected family;
-- `ready` — every required scenario is supported by documented public m3e APIs;
-- `blocked-upstream` — a required public renderer contract is missing, defective, or unstable.
+Browser, visual, consumer, token, theme, RTL, and dedicated build proof are selected by current Mioframe scenarios and changed integration risk. They are not mandatory merely because m3e exposes the capability.
 
-Implementation ownership:
-
-- `legacy` — the current component remains the production owner;
-- `migrating` — one focused change owns adapter creation, consumer migration, and target removal;
-- `migrated` — the canonical Vue adapter is the only public owner for the migration target.
-
-`blocked-upstream` requires ownership to remain `legacy`. Retaining legacy is a decision derived from those two facts, not another status value.
-
-## Verification minimum
-
-Every public adapter requires a colocated `<Component>.test.ts` component-contract test. Browser, visual, representative-consumer, and production-build proof are added according to risk; all are mandatory for the `MDButton` and `MDSwitch` pilots.
+The first canonical visual result and renderer-owned motion require operator review.
 
 ## Current work
 
-PR #162 owns the architecture reset and shared technical m3e integration. The current branch declares `@m3e/web` through the repository-standard compatible range, records the exact installed version in `pnpm-lock.yaml`, and configures shared Vue recognition of `m3e-*` without registering or rendering a production m3e family.
+PR #162 owns the architecture reset, shared m3e integration, and `MDButton` pilot.
 
-The `MDButton`-only adapter pilot is implemented on this branch. Merge readiness still depends on its final repository verification and required operator visual review; no other Button-family component migrated with it.
+The MDButton adapter, public export, consumer migration, package-derived typing, and current application behavior are implemented. Remaining repository-local work is bounded to removing unused token mappings, completing canonical direct m3e Button coverage, recording Material/m3e divergences and animation source assessment, and running verification before operator review.
