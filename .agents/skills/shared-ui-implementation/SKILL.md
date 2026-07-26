@@ -7,7 +7,7 @@ description: 'Use for project-specific or generic src/shared/ui primitives outsi
 
 Use for project-specific presentation primitives, wrappers, layout primitives, and generic shared UI infrastructure outside official Material component families.
 
-Do not use this skill for an official Material family, a Vue-to-m3e adapter, or Material family migration. Use `material-component-adapter` and the scoped `src/shared/ui/material/AGENTS.md` rules instead.
+Do not use this skill as the primary workflow for an official Material family, a Vue-to-m3e adapter, or Material family migration. Use `material-component-adapter` and the scoped `src/shared/ui/material/AGENTS.md` rules instead. When the Material workflow chooses a separate non-MD shared component, apply this skill to that component in addition to the Material workflow.
 
 ## Scope
 
@@ -32,7 +32,8 @@ Record briefly:
 3. affected consumers and preserved scenarios;
 4. existing primitives, helpers, and infrastructure to reuse;
 5. minimum implementation and rejected broader alternatives;
-6. applicable contract, browser, visual, and consumer verification.
+6. applicable contract, browser, visual, and consumer verification;
+7. why a separate component is necessary instead of consumer composition or extending an existing correctly owned component.
 
 Use `implementation-preflight` for non-trivial work. Stop when ownership, consumer impact, native semantics, final behavior, or required verification is unresolved.
 
@@ -50,7 +51,7 @@ Product layers retain:
 
 Do not move product behavior into shared UI merely to centralize files or reduce duplication.
 
-## Vue and state
+## Vue, roots, and state
 
 - Use typed props, emits, slots, small named computeds, and composables with one clear owner.
 - Prefer several readable computed conditions over inline boolean algebra or a synthetic render-plan object.
@@ -58,21 +59,28 @@ Do not move product behavior into shared UI merely to centralize files or reduce
 - Keep transient state only when the component owns the lifecycle; define acquire, release, cancellation, disabled behavior, failure behavior, and unmount cleanup.
 - Extract behavior only when complexity or current reuse justifies a separate helper/composable.
 - Do not hide unrelated behavior behind a broad options object.
+- Keep one stable meaningful root whose class matches the component name.
+- Do not add a wrapper only to carry a class, ARIA attribute, color variable, or layout that the actual child owner can carry directly.
+- When a composed child can be the root, prefer forwarding the component root class and required public attributes to that child over adding a neutral `<span>` or `<div>`.
 
 ## DOM and accessibility
 
-- Keep `href`, `type`, `disabled`, `readonly`, `tabindex`, `role`, and `aria-*` explicit on the actual DOM owner.
-- Prefer native button, link, form, focus, and keyboard behavior.
-- Do not synthesize native activation to compensate for an incorrect element choice.
+- Keep `href`, `type`, `disabled`, `readonly`, `tabindex`, `role`, and `aria-*` explicit on the actual DOM or component owner.
+- `aria-busy` belongs on the interactive control or region whose state is busy, not on a decorative wrapper.
+- Prefer native button, link, form, focus, event bubbling, and keyboard behavior.
+- Do not synthesize native activation or stop propagation to preserve incidental legacy behavior.
 - Use object `v-bind` only for controlled consumer-attribute forwarding, not as the sole owner of component-critical attributes.
-- Define accessible names, focus owner, keyboard behavior, target area, and disabled/readonly semantics where applicable.
+- Define accessible names, focus owner, keyboard behavior, target area, disabled/readonly semantics, and busy-state announcements where applicable.
+- When composing another shared component, require an explicit public path for critical ARIA/native state instead of attaching semantics to a non-owning ancestor.
 
 ## Parent and child boundaries
 
 - A parent must not use `:deep()` to style another component's private anatomy.
-- Pass required facts through a narrow prop or context and let the child style its own root and internals.
+- Pass required facts through a narrow prop, slot, attribute, or context and let the child style its own root and internals.
 - Internal classes, private CSS variables, DOM structure, and test adapters are not public APIs.
 - Do not reposition or restyle neighboring elements in a consumer's parent flow.
+- Do not duplicate a child's variant, disabled, selected, hover, focus, pressed, or theme color matrix in the wrapper.
+- Prefer public inheritance such as `currentColor` or an explicit child-owned semantic hook when composed content must follow the child's rendered state.
 
 ## CSS and presentation
 
@@ -81,6 +89,7 @@ Do not move product behavior into shared UI merely to centralize files or reduce
 - Use accepted shared typography and token utilities rather than recreating their declarations locally.
 - Keep layout, scrolling, sticky/floating behavior, teleport, and overlays tied to the actual rendered hierarchy.
 - `!important` and cross-component private styling are forbidden.
+- A wrapper must not recreate a Material or child component theme. Styling should derive from public semantic tokens, inherited color, or a narrow owned extension.
 
 ## Public API and reuse
 
@@ -89,16 +98,25 @@ Do not move product behavior into shared UI merely to centralize files or reduce
 - Update in-repository consumers when changing an internal shared API; do not keep compatibility aliases by default.
 - Use public entry points and do not expose implementation or testing files.
 - Similar syntax, file count, hypothetical reuse, or test convenience does not justify a new abstraction.
+- Do not mirror every prop of a composed child. Expose only the subset needed by current consumers and define how unsupported child capabilities are handled.
+
+## Stories and documentation
+
+- Colocate stories as `<Component>.stories.ts` next to the component.
+- A non-Material component must have its own non-Material Storybook title and documentation. Do not place it under an `MD*` story family or imply that its API belongs to Material.
+- Stories must demonstrate the component's own public contract, including disabled, busy, focus, and inherited presentation combinations that it owns.
 
 ## Testing
 
 Use the proof layer that owns the changed contract:
 
-- Vue Test Utils for props, emits, slots, native owner, ARIA, and structural wiring;
+- Vue Test Utils for props, emits, slots, actual native/ARIA owner, root structure, attribute forwarding, bubbling, and structural wiring;
 - focused Vitest for extracted pure behavior;
-- Playwright for focus, keyboard, pointer/touch, layout, scrolling, overlays, responsive behavior, and cleanup;
+- Playwright for focus, keyboard, pointer/touch, event propagation, layout, scrolling, overlays, responsive behavior, and cleanup;
 - visual regression for appearance and layout;
 - focused consumer checks when a shared contract changes.
+
+For wrappers or compositions, test production-used combinations rather than only the happy path. Include disabled plus busy/loading, restoration of replaced slot content, inherited color/state, native form behavior, and click bubbling when those scenarios exist.
 
 Do not use unit tests to claim browser behavior or visual correctness. Do not duplicate framework/browser behavior without a project-owned contract.
 
@@ -108,6 +126,10 @@ Before completion confirm:
 
 - public contract and ownership remain narrow;
 - no product logic or domain dependency entered shared UI;
+- one meaningful root owns the component semantics;
+- ARIA/native state is attached to the actual owner;
+- child variant/state/color logic is not duplicated;
+- the component has colocated stories under its own correct category;
 - consumers and preserved scenarios were reviewed;
-- no obsolete path, alias, or parallel implementation remains without an explicit compatibility requirement;
+- no obsolete path, alias, wrapper, or parallel implementation remains without an explicit requirement;
 - applicable focused checks and final repository verification pass.
