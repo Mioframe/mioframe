@@ -20,12 +20,12 @@ Implementation ownership remains `migrating`.
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | m3e-backed architecture reset | `verification` | none | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; package-derived typing; final verification |
-| M1 | `MDButton` adapter pilot | `correction` | M0 | accepted source-backed Material–m3e–Vue matrix; text toggle supported; loading/progress Button composition resolved in Material ownership; demand-driven official Vue API; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
-| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance |
-| M3 | sequential component migration | `planned` | M2 | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage |
+| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                 |
+| --- | --------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset     | `verification` | none       | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; package-derived typing; final verification                                                                                                                        |
+| M1  | `MDButton` adapter pilot          | `correction`   | M0         | accepted source-backed Material–m3e–Vue matrix; text toggle supported; loading/progress Button composition resolved in Material ownership; demand-driven official Vue API; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
+| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                                                                           |
+| M3  | sequential component migration    | `planned`      | M2         | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage                                                                                                               |
 
 ## M1 — MDButton pilot
 
