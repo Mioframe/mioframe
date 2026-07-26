@@ -31,7 +31,7 @@ Do not route reusable component behavior into app E2E merely because the compone
 6. Assert user-visible state, focus, URL, persisted result, or another accepted contract.
 7. Add or update the owning source-to-spec mapping when the stable repository impact relation changes.
 8. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
-9. Run the focused lane, then final verification.
+9. Run the focused owning lane and return to the top-level task. This skill does not run a separate final gate.
 
 ## Interaction fidelity
 
@@ -80,6 +80,8 @@ Reusable responsive UI normally uses focused Storybook viewports rather than dup
 pnpm verify --only storybook-behavior --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
+
+Preserve applicable `--base`, `--profile`, and `--files` scope when rerunning a failed browser lane. The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
 
 ## Forbidden
 
