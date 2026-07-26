@@ -1,0 +1,82 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { runAutofixIdempotencyCheck, snapshotWorkingTree } from './ciAutofix.mjs';
+
+function runGit(root, args) {
+  const result = spawnSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+  });
+
+  if (result.status !== 0) {
+    throw new Error(result.stderr || `git ${args.join(' ')} failed`);
+  }
+}
+
+function makeRepo() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-autofix-test-'));
+  runGit(root, ['init']);
+  runGit(root, ['config', 'user.name', 'Test']);
+  runGit(root, ['config', 'user.email', 'test@example.com']);
+  fs.writeFileSync(path.join(root, 'fixture.txt'), 'initial\n', 'utf8');
+  runGit(root, ['add', 'fixture.txt']);
+  runGit(root, ['commit', '-m', 'initial']);
+  return root;
+}
+
+let tempRoot;
+
+beforeEach(() => {
+  tempRoot = makeRepo();
+});
+
+afterEach(() => {
+  fs.rmSync(tempRoot, { recursive: true, force: true });
+});
+
+describe('snapshotWorkingTree', () => {
+  it('changes for tracked and untracked working-tree content', () => {
+    const clean = snapshotWorkingTree(tempRoot);
+
+    fs.writeFileSync(path.join(tempRoot, 'fixture.txt'), 'changed\n', 'utf8');
+    const tracked = snapshotWorkingTree(tempRoot);
+
+    fs.writeFileSync(path.join(tempRoot, 'untracked.txt'), 'new\n', 'utf8');
+    const untracked = snapshotWorkingTree(tempRoot);
+
+    expect(tracked).not.toBe(clean);
+    expect(untracked).not.toBe(tracked);
+  });
+});
+
+describe('runAutofixIdempotencyCheck', () => {
+  it('accepts a fixer that reaches a fixed point after the first pass', () => {
+    const result = runAutofixIdempotencyCheck(tempRoot, () => {
+      fs.writeFileSync(path.join(tempRoot, 'fixture.txt'), 'canonical\n', 'utf8');
+      return 0;
+    });
+
+    expect(result).toEqual({ firstStatus: 0, secondStatus: 0, stable: true });
+  });
+
+  it('rejects oscillating fixers', () => {
+    let next = 'first\n';
+    const result = runAutofixIdempotencyCheck(tempRoot, () => {
+      fs.writeFileSync(path.join(tempRoot, 'fixture.txt'), next, 'utf8');
+      next = next === 'first\n' ? 'second\n' : 'first\n';
+      return 0;
+    });
+
+    expect(result.stable).toBe(false);
+  });
+
+  it('preserves stable fixer failures for the workflow decision', () => {
+    const result = runAutofixIdempotencyCheck(tempRoot, () => 2);
+
+    expect(result).toEqual({ firstStatus: 2, secondStatus: 2, stable: true });
+  });
+});
