@@ -12,9 +12,9 @@ Status: `correction`
 
 Owner: current architecture-reset branch
 
-Blocker: repository-local completion work, not an upstream renderer limitation. Package-derived typing, current consumer migration, native behavior, controlled state, and loading compatibility are complete. The adapter still contains an unnecessary incomplete public Button-token bridge, the canonical documented m3e Button surface and Material/m3e divergence record need finalization, and renderer-owned animation needs exact-version source assessment before operator review.
+Blocker: bounded repository-local completion work, not an upstream renderer limitation. Package-derived typing, current consumer migration, native behavior, controlled state, and loading compatibility are complete. The adapter still contains unnecessary incomplete Button-token routing, direct typed coverage of canonical documented m3e Button capabilities needs finalization, and the Material/m3e divergence plus animation source assessment remains incomplete.
 
-Next action: rerun `material-component-adapter` for `MDButton`. Remove unused token mappings, finish direct typed coverage of canonical m3e Button capabilities, record bounded Material/m3e divergences, document animation source inspection, run focused checks and `pnpm verify`, then hand off visual and motion review to the operator.
+Next action: rerun `material-component-adapter` for `MDButton`. Remove unused token mappings, finish canonical m3e Button API forwarding, record bounded Material/m3e divergences, inspect exact-version animation code, run focused checks and `pnpm verify`, then hand off visual and motion review to the operator.
 
 The m3e Button renderer remains `ready`; ownership stays `migrating` only until this bounded repository-local work is complete.
 
@@ -22,7 +22,7 @@ The m3e Button renderer remains `ready`; ownership stays `migrating` only until 
 
 | ID | Milestone | Status | Depends on | Exit gate |
 | --- | --------- | ------ | ---------- | --------- |
-| M0 | m3e-backed architecture reset | `verification` | none | library-owned architecture and workflow; private renderer boundary; compatible dependency range; package-derived renderer typing policy; final verification passes |
+| M0 | m3e-backed architecture reset | `verification` | none | library-owned architecture and workflow; private renderer boundary; compatible dependency range; package-derived typing policy; final verification passes |
 | M1 | `MDButton` adapter pilot | `correction` | M0 | current Mioframe scenarios preserved; canonical documented m3e Button capabilities exposed through thin typed mappings; confirmed Material/m3e differences recorded; only required wrapper corrections added; no unused public token catalogue; verification passes; operator accepts visual and motion result |
 | M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | current Switch scenarios plus canonical documented m3e Switch surface; controlled state and event order; bounded divergence record; risk-based verification; operator acceptance |
 | M3 | sequential component migration | `planned` | M2 | one explicit component at a time; current scenarios plus canonical m3e surface; recorded divergences; thin required corrections only; one canonical Vue owner; no renderer leakage |
@@ -64,7 +64,7 @@ The migration target is `MDButton` only.
 
 1. remove the broad `--m3e-*` bridge backed by unused/undefined public `--md-comp-button-*` variables;
 2. keep only actual active public tokens; currently no Button-specific public token contract has consumer evidence;
-3. expose canonical documented m3e Button capabilities through direct typed Vue mappings where they belong to the public Material Button surface;
+3. expose canonical documented m3e Button capabilities through direct typed Vue mappings where they belong to the public Material Button surface; direct forwarding does not require one dedicated test per capability;
 4. compare that bounded surface with official Material guidance and record each confirmed divergence as accepted, wrapper-corrected, upstream follow-up, or blocker;
 5. implement only Mioframe-required divergences that are safely correctable through public m3e APIs or Mioframe-owned light DOM;
 6. inspect and record the exact m3e Button animation implementation and reduced-motion path; do not add proxy automated animation proof;
