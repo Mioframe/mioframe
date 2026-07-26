@@ -117,6 +117,20 @@ export function runAutofixIdempotencyCheck(root, runFixers) {
   };
 }
 
+/**
+ * Restore the ephemeral CI checkout so the workflow cannot commit an unstable
+ * fixer result. This is only called after the fixed-point check fails.
+ * @param root Repository root.
+ */
+function discardUnstableResult(root) {
+  const resetStatus = run(root, 'git', ['reset', '--hard', 'HEAD'], 'inherit');
+  const cleanStatus = run(root, 'git', ['clean', '-fd'], 'inherit');
+
+  if (resetStatus !== 0 || cleanStatus !== 0) {
+    throw new Error('Unable to clean the checkout after non-idempotent autofix output.');
+  }
+}
+
 function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const result = runAutofixIdempotencyCheck(root, () =>
@@ -131,6 +145,7 @@ function main() {
       '[ci:autofix] fix conflicting generators/formatters so one pass reaches a stable fixed point.',
     );
     run(root, 'git', ['status', '--short'], 'inherit');
+    discardUnstableResult(root);
     process.exit(1);
   }
 
