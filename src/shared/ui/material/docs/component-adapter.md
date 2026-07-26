@@ -17,7 +17,7 @@ required scenarios
   → obsolete-owner removal
 ```
 
-Do not split research, architecture, implementation, and migration into permanent independent processes. A focused prerequisite is allowed only when a real cross-family dependency or upstream blocker prevents a safe complete component PR.
+Do not split research, architecture, implementation, and migration into permanent independent processes. A focused prerequisite is allowed only when a real cross-family dependency or evidenced upstream blocker prevents a safe complete component PR.
 
 ## Family README
 
@@ -48,7 +48,7 @@ Vue custom-element recognition and registration ownership:
 Vue-to-m3e mapping:
 Controlled-state contract:
 Native form/navigation semantics:
-Token mapping:
+Token mapping and legacy-token classification:
 Confirmed m3e deviations or defects:
 Affected consumers:
 Migration and obsolete-owner removal:
@@ -58,7 +58,7 @@ Unresolved: none | <blocking decisions>
 
 Omit inapplicable detail. Do not reproduce the full official Material documentation, m3e documentation, or repository-wide policy.
 
-## Required mapping table
+## Required mapping tables
 
 Use one explicit table for every integration boundary used by the supported surface:
 
@@ -67,6 +67,8 @@ Use one explicit table for every integration boundary used by the supported surf
 | prop, emit, slot, token, or native behavior | property, attribute, event, slot, or CSS variable | Vue → m3e or m3e → Vue | Mioframe, consumer, browser, or m3e | normalization, cancellation, default, or unsupported behavior |
 
 The table must make controlled state, event order, native behavior, and unsupported mappings unambiguous.
+
+For legacy CSS surface, also use the compact evidence table defined by `component-tokens.md`. Distinguish declared, internally consumed, behaviorally effective, externally consumed, publicly documented, test-only, and obsolete tokens before deciding preservation or a renderer blocker.
 
 ## Discovery
 
@@ -84,10 +86,11 @@ Inspect only what is needed for the selected migration target:
    - slots and content restrictions;
    - form and navigation behavior;
    - focus, keyboard, pointer, disabled, selected, and lifecycle behavior;
-   - documented CSS custom properties;
+   - documented CSS custom properties and their Material semantics;
    - accessibility behavior exposed to consumers;
 5. existing Mioframe token and theme owners used by the component;
-6. shared build, Storybook, and test configuration required to recognize `m3e-*` as custom elements.
+6. whether each proposed legacy public contract has a real consumer, documented promise, and observable effect;
+7. shared build, Storybook, and test configuration required to recognize `m3e-*` as custom elements.
 
 Stop discovery when renderer viability and every required mapping decision are resolved. Do not audit unrelated components or optional Material capabilities.
 
@@ -96,12 +99,31 @@ Stop discovery when renderer viability and every required mapping decision are r
 Use:
 
 - `unassessed` before the exact lockfile-resolved version and required integration surface are verified;
-- `ready` only when every required scenario can be implemented through documented public m3e APIs and a thin Vue adapter;
-- `blocked-upstream` when a required scenario depends on missing, defective, or unstable public m3e behavior.
+- `ready` when every required user, native, accessibility, controlled-state, and active public styling scenario can be implemented through documented public m3e APIs and a thin Vue adapter;
+- `blocked-upstream` when a required active contract depends on missing, defective, or unstable public m3e behavior.
 
-A similarly named m3e element is not proof of readiness.
+A required scenario is an observable user scenario, native or accessibility guarantee, controlled-state contract, or evidenced consumer-facing API. It is not automatically every legacy declaration, internal mechanism, test fixture, alias, or renderer tuning parameter.
 
-When viability is `blocked-upstream`, implementation ownership remains `legacy`. Record the exact missing public contract and the condition for reconsideration. Do not start a replacement implementation.
+Before setting `blocked-upstream`, record evidence for all of the following:
+
+1. the missing contract is required by a current user scenario or active public consumer contract;
+2. repository evidence identifies the consumer, documented promise, or required observable result;
+3. changing or removing the contract causes an observable regression, not only a different custom-property value or internal implementation;
+4. no documented m3e property, attribute, event, slot, semantically equivalent CSS variable, or renderer-owned equivalent behavior can satisfy it through a thin adapter.
+
+The following are not blockers by themselves:
+
+- a legacy token is only declared or read by a value-only test;
+- m3e uses a different CSS-variable name with equivalent documented Material semantics;
+- m3e owns an equivalent ripple, focus, state-layer, elevation, or motion behavior but does not expose the old internal tuning parameter;
+- the new renderer cannot reproduce an unused legacy implementation detail;
+- an optional unsupported surface has no current scenario or consumer.
+
+Record those cases as obsolete legacy surface, unsupported optional tuning, or confirmed renderer-owned behavior. Remove obsolete target-owned declarations and tests during atomic migration instead of recreating them.
+
+A similarly named m3e element is not proof of readiness. Conversely, exact internal implementation parity is not required when the documented renderer provides the accepted observable Material behavior.
+
+When viability is genuinely `blocked-upstream`, implementation ownership remains `legacy`. Record the exact missing public contract, evidence of impact, and the condition for reconsideration. Do not start a replacement implementation.
 
 ## Implementation ownership
 
@@ -151,7 +173,7 @@ The wrapper should normally contain only:
 - event normalization;
 - controlled-state synchronization;
 - required native form/navigation integration;
-- narrow token mapping;
+- narrow semantic token mapping;
 - project extensions required by preserved scenarios.
 
 Prefer direct readable code over generic mappings and configuration objects.
@@ -173,12 +195,18 @@ Record event ordering and cancellation when it affects correctness. Do not infer
 
 ## Token rules
 
-- public consumers use accepted `--md-ref-*`, `--md-sys-*`, `--md-comp-*`, and `--app-*` contracts only;
-- map to documented `--m3e-*` variables privately inside the family;
+Follow `component-tokens.md`.
+
+- public consumers use accepted active `--md-ref-*`, `--md-sys-*`, `--md-comp-*`, and `--app-*` contracts only;
+- prefer direct shared `--md-sys-*` semantics when documented by m3e;
+- map active component contracts to documented semantically equivalent `--m3e-*` variables privately inside the family;
+- do not require exact variable-name equality when component, state, part, property, and meaning match;
 - do not expose `--m3e-*` through documentation or public exports;
 - do not target private shadow DOM to compensate for a missing CSS API;
 - retain the existing global theme owner unless a separate architecture decision changes it;
-- avoid copying m3e defaults into Mioframe unless a public Mioframe token contract requires it.
+- avoid copying m3e defaults into Mioframe unless an active public Mioframe token contract requires it;
+- remove declaration-only, test-only, or otherwise obsolete target-owned token surface during migration;
+- do not recreate low-level tuning that belongs to renderer-owned behavior and has no evidenced active consumer contract.
 
 ## Consumer migration
 
@@ -199,6 +227,16 @@ Every public adapter requires:
 - production-build proof for compiler recognition, family registration, and bundling;
 - final repository verification.
 
+For every retained public CSS token selected as a meaningful contract:
+
+- set a non-default value through the public Mioframe surface;
+- prove the intended rendered property or observable behavior changes;
+- verify the mapping uses documented m3e semantics without inspecting private shadow DOM.
+
+A test that only reads a declared or resolved custom-property value does not prove an active public contract and must not justify `blocked-upstream`.
+
+For renderer-owned motion, verify public acquisition, release, interruption, final state, and reduced-motion behavior according to risk. Do not assert m3e spring coefficients, Lit styles, or private animation implementation.
+
 The `MDButton` and `MDSwitch` pilots require all proof types above.
 
 Do not duplicate m3e or Lit internals, inspect private shadow DOM, or infer Material correctness from green automation alone.
@@ -211,7 +249,7 @@ A target is complete only when:
 - implementation ownership is `migrated`;
 - one canonical public Vue owner remains;
 - all affected consumers are migrated;
-- obsolete target-owned implementation, exports, tests, stories, and compatibility paths are removed;
+- obsolete target-owned implementation, exports, tests, stories, compatibility paths, and declaration-only token surface are removed;
 - unrelated legacy ownership is preserved;
 - supported, unsupported, and defective renderer surface is recorded;
 - every required proof passes.
