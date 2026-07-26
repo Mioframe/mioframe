@@ -15,7 +15,24 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const MANAGED_MARKER = '<!-- managed:agent-compat -->';
-const SUPPORTED_SKILL_FRONTMATTER_KEYS = new Set(['name', 'description']);
+const REQUIRED_PROJECT_SKILL_FRONTMATTER_KEYS = new Set(['name', 'description']);
+const SUPPORTED_SKILL_FRONTMATTER_KEYS = new Set([
+  'name',
+  'description',
+  'when_to_use',
+  'argument-hint',
+  'arguments',
+  'disable-model-invocation',
+  'user-invocable',
+  'allowed-tools',
+  'model',
+  'effort',
+  'context',
+  'agent',
+  'hooks',
+  'paths',
+  'shell',
+]);
 
 const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
@@ -25,7 +42,7 @@ const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/*/SKILL.md instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\*/SKILL.md instead.
 `;
 
 const NESTED_CLAUDE_MD = `<!-- managed:agent-compat -->
@@ -112,8 +129,9 @@ function findClaudeMd(root) {
 
 /**
  * Validate canonical Claude Code SKILL.md frontmatter.
- * Claude Code currently supports only the required name and description keys.
- * Unknown top-level keys may cause a skill to be skipped during discovery.
+ * The project requires explicit name and description, and permits the current
+ * documented Claude Code skill fields. Unknown top-level keys may cause a
+ * skill to be skipped or interpreted incorrectly during discovery.
  * @param root Repository root.
  * @returns Collected frontmatter errors.
  */
@@ -152,9 +170,9 @@ export function checkSkillFrontmatter(root) {
       }
     }
 
-    for (const requiredKey of SUPPORTED_SKILL_FRONTMATTER_KEYS) {
+    for (const requiredKey of REQUIRED_PROJECT_SKILL_FRONTMATTER_KEYS) {
       if (!keys.includes(requiredKey)) {
-        errors.push(`${displayPath} is missing required frontmatter key '${requiredKey}'.`);
+        errors.push(`${displayPath} is missing required project frontmatter key '${requiredKey}'.`);
       }
     }
 
@@ -164,8 +182,8 @@ export function checkSkillFrontmatter(root) {
 
     if (unsupportedKeys.length > 0) {
       errors.push(
-        `${displayPath} uses unsupported Claude Code skill frontmatter keys: ${unsupportedKeys.join(', ')}. ` +
-          `Keep only name and description; put routing and scope instructions in the skill body.`,
+        `${displayPath} uses undocumented Claude Code skill frontmatter keys: ${unsupportedKeys.join(', ')}. ` +
+          `Use documented frontmatter fields or put project routing instructions in the skill body.`,
       );
     }
   }
