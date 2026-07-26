@@ -4,28 +4,28 @@ This file owns only the current migration sequence, milestone state, blocker, an
 
 ## Current state
 
-Last updated: 2026-07-24
+Last updated: 2026-07-26
 
-Current milestone: `M0 — m3e-backed architecture reset`
+Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `verification`
+Status: `blocked-upstream`
 
-Owner: PR #162
+Owner: current architecture-reset branch
 
-Blocker: final repository verification for the current branch state.
+Blocker: `@m3e/web` 2.6.2 exposes no documented public Button motion/spring CSS inputs for Mioframe's accepted per-size pressed-corner stiffness and damping token contract.
 
-Next action: complete M0 verification, then continue with the `MDButton` adapter pilot in the same branch; evaluate PR #162 merge readiness only after the pilot and its required verification are complete.
+Next action: reassess a stable m3e release after it publishes the required public Button motion inputs, or obtain an explicit breaking Mioframe decision to remove the accepted token contract before restarting implementation.
 
 The repository-standard `@m3e/web` dependency range, exact lockfile-resolved renderer version, and shared Vue custom-element recognition for application, Storybook, and component tests are already established on this branch. M1 still owns the Button family contract, family-local registration, adapter implementation, consumer migration, and component proof.
 
 ## Milestones
 
-| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                               |
-| --- | --------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset     | `verification` | none       | library-owned architecture, adapter, token, and roadmap documents; separate renderer-viability and implementation-ownership states; compatible dependency-range policy with exact lockfile-resolved contract tracking; custom-element integration ownership; scoped agent workflow; no production behavior change; final repository verification passes |
-| M1  | `MDButton` adapter pilot          | `planned`      | M0         | migration target is `MDButton` only; exact lockfile-resolved m3e version and Button entry point are verified; viability is `ready`; ownership becomes `migrated`; all MDButton consumers move; only MDButton-exclusive legacy ownership is removed; required contract, browser, visual, build, and consumer proof pass                                  |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; ownership becomes `migrated`; only integration mechanisms proved by both pilots may be considered for extraction                                                         |
-| M3  | sequential component migration    | `planned`      | M2         | one explicit ready component or inseparable family at a time is migrated by product priority; blocked renderers leave legacy ownership intact; every completed target has one canonical Vue owner and no renderer leakage                                                                                                                               |
+| ID  | Milestone                         | Status             | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                               |
+| --- | --------------------------------- | ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset     | `verification`     | none       | library-owned architecture, adapter, token, and roadmap documents; separate renderer-viability and implementation-ownership states; compatible dependency-range policy with exact lockfile-resolved contract tracking; custom-element integration ownership; scoped agent workflow; no production behavior change; final repository verification passes |
+| M1  | `MDButton` adapter pilot          | `blocked-upstream` | M0         | migration target is `MDButton` only; exact lockfile-resolved m3e version and Button entry point are verified; viability is `ready`; ownership becomes `migrated`; all MDButton consumers move; only MDButton-exclusive legacy ownership is removed; required contract, browser, visual, build, and consumer proof pass                                  |
+| M2  | `MDSwitch` stateful adapter pilot | `planned`          | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; ownership becomes `migrated`; only integration mechanisms proved by both pilots may be considered for extraction                                                         |
+| M3  | sequential component migration    | `planned`          | M2         | one explicit ready component or inseparable family at a time is migrated by product priority; blocked renderers leave legacy ownership intact; every completed target has one canonical Vue owner and no renderer leakage                                                                                                                               |
 
 ## M0 scope
 
