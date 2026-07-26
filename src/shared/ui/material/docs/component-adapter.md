@@ -37,7 +37,7 @@ src/shared/ui/material/components/<family>/README.md
 It must contain a Material–m3e–Vue matrix:
 
 | Material contract and source | Required now and evidence | Public Vue representation | m3e exact-version support | Owner | Decision | Verification |
-| --- | --- | --- | --- | --- | --- | --- |
+| ---------------------------- | ------------------------- | ------------------------- | ------------------------- | ----- | -------- | ------------ |
 
 Each relevant row must identify:
 

@@ -35,7 +35,7 @@ The implementation is demand-driven, not exhaustive. Implement only the Material
 Before production implementation, the family README must contain a source-backed matrix with one row per relevant Material capability:
 
 | Material contract and source | Required now and evidence | Public Vue API | m3e exact-version support | Implementation owner | Decision and verification |
-| --- | --- | --- | --- | --- | --- |
+| ---------------------------- | ------------------------- | -------------- | ------------------------- | -------------------- | ------------------------- |
 
 Allowed renderer statuses:
 
