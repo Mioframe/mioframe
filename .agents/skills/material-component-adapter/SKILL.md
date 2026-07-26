@@ -1,6 +1,6 @@
 ---
 name: material-component-adapter
-description: 'Use for implementing, migrating, or materially changing one official Mioframe Material component or inseparable family as a stable Vue MD* API backed privately by @m3e/web when its documented public contract is sufficient.'
+description: 'Use for implementing, migrating, or materially changing one official Mioframe Material component or inseparable family as a stable Vue MD* API backed privately by @m3e/web.'
 paths:
   - 'src/shared/ui/material/**'
   - 'src/shared/ui/**/MD*.vue'
@@ -8,20 +8,21 @@ paths:
 
 # Material component adapter
 
-Implement one explicitly selected public Material component, or one proven inseparable family, end to end through the Mioframe Vue-to-m3e boundary.
+Implement one explicitly selected public Material component end to end through the Mioframe Vue-to-m3e boundary.
 
 ## Canonical rules
 
 Read first:
 
+- `src/shared/ui/material/AGENTS.md`;
 - `src/shared/ui/material/docs/architecture.md`;
 - `src/shared/ui/material/docs/component-adapter.md`;
 - `src/shared/ui/material/docs/component-tokens.md`;
 - `src/shared/ui/material/docs/roadmap.md`;
-- applicable `AGENTS.md` files;
-- the selected component's current implementation notes and family README.
+- the selected family README;
+- applicable parent `AGENTS.md` files.
 
-Normal ownership is already resolved:
+Normal ownership:
 
 ```text
 product consumers
@@ -29,225 +30,206 @@ product consumers
   → private documented @m3e/web custom element
 ```
 
-Use `architect-handoff` only when the task changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision unresolved by the canonical documents.
+Use `architect-handoff` only when the task changes cross-family ownership, renderer strategy, global theme ownership, or another unresolved architecture decision.
 
 ## Scope
 
-A component or family name is sufficient input. Resolve one explicit migration target. Expand to a family only when current code ownership makes component-only migration technically unsafe, and record that evidence before implementation.
+A component name is sufficient input.
 
-Do not combine unrelated components, general shared UI cleanup, global theme replacement, or speculative adapter infrastructure.
+The supported surface is the minimum complete union of:
 
-For M1, the target is `MDButton` only. Do not migrate `MDIconButton`, `MDFab`, or `MDExtendedFab` unless repository evidence proves a technically inseparable owner and the roadmap is updated before production edits.
+1. current Mioframe consumer scenarios;
+2. documented m3e capabilities that map directly to the canonical Material/Vue component without custom renderer reconstruction.
+
+Do not expand the task to:
+
+- optional Material capabilities unsupported by both Mioframe and m3e;
+- every raw m3e property, event, slot, or CSS variable;
+- a complete Material component-token catalogue;
+- unrelated components or general shared UI cleanup.
+
+For M1, migrate `MDButton` only. Leave `MDIconButton`, `MDFab`, and `MDExtendedFab unchanged.
 
 ## 1. Resolve current scenarios and ownership
 
-Inspect the current implementation, public exports, direct consumers, required user flows, props, emits, slots, native behavior, project extensions, stable visible presentation, stories, tests, implementation notes, known defects, and current roadmap milestone.
+Inspect:
+
+- current production implementation and public exports;
+- direct consumers;
+- props, emits, slots, native behavior, controlled state, and project extensions;
+- stable visible behavior that current consumers depend on;
+- stories, tests, known defects, family README, and roadmap.
 
 Record:
 
 - migration target;
-- required scenarios and non-goals;
-- current implementation owner;
-- canonical owner after migration;
+- current and canonical owner;
 - affected consumers;
+- required current scenarios;
+- m3e capabilities selected for the canonical public API;
+- non-goals;
 - change mode: `new-adapter`, `end-to-end-migration`, or `adapter-change`;
-- implementation ownership: `legacy`, `migrating`, or `migrated`.
+- ownership: `legacy`, `migrating`, or `migrated`.
 
-For every current scenario, record the accepted observable result, including visible content/layout for project extensions such as loading. A prop name or green test does not prove that the scenario was preserved.
-
-For legacy CSS surface, classify each candidate retained token according to `component-tokens.md`: declared, internally consumed, behaviorally effective, externally consumed, publicly documented, test-only, or obsolete. Do not treat a declaration or value-only test as proof of an active public contract.
+Preserve current Mioframe behavior unless an explicit product decision approves a change.
 
 ## 2. Resolve Material requirements
 
-Use the configured `material3` MCP and its validated cache snapshot as the coding agent's normative interface to official Material 3 Expressive guidance. Inspect only requirements needed by current scenarios: usage, variants, sizes, states, content, accessibility, visual and interaction behavior, and token meaning.
+Use the configured `material3` MCP and validated cache snapshot.
 
-Record inspected MCP records, original official routes, and snapshot metadata. Do not browse or scrape the Material site directly, rely on memory, reproduce the full documentation, or implement optional surface without a current scenario.
+Inspect only the official guidance relevant to:
 
-## 3. Select and inspect the resolved m3e contract
+- current Mioframe scenarios;
+- the selected documented m3e surface;
+- accessibility, state, visual, and interaction requirements needed to judge m3e conformance.
 
-Inspect the exact lockfile-resolved version of a current stable, non-prerelease m3e release through primary package evidence. Verify:
+Do not reproduce the complete Material documentation or audit unrelated optional surface.
 
-- exact resolved package version and peer dependency requirements;
-- package exports and required family entry point;
-- exported element class, value aliases, declarations, `HTMLElementTagNameMap`, and Custom Elements Manifest;
-- properties and reflected attributes;
-- events, cancellation, and ordering;
-- slots and content restrictions;
-- form and navigation behavior;
-- keyboard, pointer, disabled, selected, and lifecycle behavior;
-- documented CSS variables and their Material component/system semantics;
-- exposed accessibility behavior.
+## 3. Inspect the exact m3e contract
 
-Record the compatible package range, exact lockfile-resolved version, family entry point, and exact exported types used by the adapter before production edits. Do not use `latest`, a wildcard, a prerelease, another version's examples, shadow DOM, copied source, or undocumented internals.
+Inspect the exact lockfile-resolved stable m3e version through primary package evidence:
 
-A documented m3e CSS variable with semantically equivalent component, state, part, and property meaning is a valid mapping target even when its name is not character-for-character identical to the official Material token path.
+- package version, exports, and peer requirements;
+- family entry point;
+- exported element class and value types;
+- declarations, `HTMLElementTagNameMap`, and Custom Elements Manifest;
+- documented properties, attributes, events, slots, native behavior, accessibility, and CSS variables;
+- implementation source only where necessary to assess renderer-owned behavior such as animation.
 
-## 4. Decide renderer viability
+Record the package range, exact version, entry point, and exported types in the family README.
 
-Set renderer viability independently from implementation ownership:
+Do not use another version's examples, prereleases, private shadow DOM, copied internals, or undocumented APIs.
 
-- `unassessed` — the exact lockfile-resolved version and required contract are not yet verified;
-- `ready` — every required user, native, accessibility, controlled-state, active public styling, and typing scenario is available through documented public APIs and a thin adapter;
-- `blocked-upstream` — a required active public renderer contract is missing, defective, or unstable.
+## 4. Compare m3e with Material
 
-Do not equate exact legacy implementation parity with readiness. Renderer-owned equivalent ripple, focus, state-layer, elevation, or motion behavior is sufficient when it preserves the accepted observable contract and no active Mioframe consumer requires the old low-level tuning input.
+Compare only the supported surface.
 
-### Blocker evidence gate
+For each confirmed difference, record:
 
-Before reporting `blocked-upstream`, prove all of the following in the family README:
+| Material expectation | m3e behavior | Required by Mioframe | Decision |
+| -------------------- | ------------ | -------------------- | -------- |
+| expected behavior    | actual behavior | yes or no          | accept, wrapper correction, upstream follow-up, or blocker |
 
-1. the missing capability belongs to a current user scenario or active public consumer contract;
-2. repository evidence identifies the consumer, documented promise, or required observable result;
-3. removing or changing it causes an observable regression, not only a different custom-property value, alias, type spelling, or implementation detail;
-4. no documented m3e property, attribute, event, slot, semantically equivalent CSS variable, exported type, or renderer-owned equivalent behavior satisfies it through a thin adapter.
+Classify differences:
 
-The following do not satisfy the blocker gate by themselves:
+- **not required by Mioframe** — record for possible m3e improvement and continue without wrapper work;
+- **required and thinly correctable** — implement the smallest explicit correction through documented m3e APIs or Mioframe-owned light DOM;
+- **required but not safely correctable** — set `blocked-upstream` and retain legacy ownership.
 
-- a legacy custom property is declared;
-- a test reads its resolved value;
-- the token has an official-looking name;
-- m3e does not expose an unused internal tuning parameter;
-- m3e implements the same observable behavior with a different internal mechanism.
+Equivalent observable behavior implemented through another internal mechanism is not a divergence.
 
-Classify these as obsolete legacy surface, unsupported optional tuning, or renderer-owned behavior and continue when all required scenarios remain supported.
+## 5. Decide renderer viability
 
-When genuinely blocked, record the exact missing contract, evidence of impact, and condition for reconsideration; keep implementation ownership `legacy`; and stop before replacement implementation. A similarly named m3e element is not proof of readiness.
+Use:
 
-## 5. Complete the family contract
+- `unassessed` — the exact required contract is not verified;
+- `ready` — current scenarios and selected m3e surface can be delivered through documented public APIs and a thin adapter;
+- `blocked-upstream` — a Mioframe-required behavior is missing or defective and cannot be safely corrected in the wrapper.
 
-Create or update `src/shared/ui/material/components/<family>/README.md` according to `src/shared/ui/material/docs/component-adapter.md`.
+Do not block migration because m3e lacks an unused Material capability, legacy tuning parameter, or internal implementation detail.
 
-The contract must define:
+## 6. Complete the family contract
 
-- explicit migration target and ownership states;
-- required scenarios, accepted observable results, and non-goals;
-- supported and unsupported Material surface;
-- public Vue API;
-- compatible renderer range, exact lockfile-resolved version, and entry point;
-- renderer type source and Vue typing strategy;
-- custom-element recognition and registration ownership;
-- explicit property/attribute/event/slot/state/token mapping;
-- legacy-token evidence classification and canonical declaration transfer;
+Update `src/shared/ui/material/components/<family>/README.md` with only implementation-relevant decisions:
+
+- supported current scenarios and selected m3e surface;
+- public Vue API and renderer mapping;
+- renderer package, entry point, and package-derived typing;
 - controlled-state and native semantics;
-- affected consumers and obsolete-owner removal;
-- compatibility deltas;
-- scenario-to-proof ledger with exact test/story/spec ownership;
-- unresolved blockers or review findings.
+- project extensions;
+- active public token contracts, if any;
+- confirmed m3e divergences and decisions;
+- required verification;
+- unresolved blockers.
 
-Do not mechanically copy the m3e API or expose renderer element and event types through the public Mioframe API.
+Do not mechanically copy the whole m3e or Material API.
 
-## 6. Run implementation preflight
+## 7. Implement dependency, typing, and registration
 
-Use `implementation-preflight` before production edits. Record the family contract, owners, public entry points, minimum adapter design, simpler alternative, exact passes, compatibility comparison, `TEST IMPACT`, and final verification.
-
-Do not implement while renderer viability is not `ready`, the family contract has unresolved architecture decisions, or implementation ownership cannot move atomically from `legacy` through `migrating` to `migrated`.
-
-Existing review findings are implementation work, not a reason to restart architecture. Keep ownership `migrating` until every exit-gate finding is resolved.
-
-## 7. Implement dependency, typing, and custom-element integration
-
-The first adapter may add only:
-
-- `@m3e/web` declared with the repository-standard compatible semver range;
-- package-manager handling required by the selected renderer package without adding its implementation dependencies as direct Mioframe dependencies unless Mioframe imports them;
-- shared Vue compiler recognition of `m3e-*` for application, Storybook, and tests;
-- the selected component's required family entry-point import;
-- minimal Vue typing glue derived from the same family entry point.
-
-The lockfile owns the exact installed renderer version. Shared build configuration owns recognition. The selected family owns registration through its implementation import.
-
-Use type-only imports from `@m3e/web/<family>` for the renderer element class and exported value types. Keep Mioframe props independently defined, but make every mapping result satisfy the package-exported renderer type.
-
-Vue ambient declarations may add framework glue only. Derive renderer properties with `Pick`, indexed access, `InstanceType`, package `HTMLElementTagNameMap`, or another direct type relation. Do not create a parallel handwritten renderer interface or repeat literal unions already exported by m3e.
-
-A compatibility shim is allowed only when the exact package exports no usable public type. Record the missing export and keep the shim to the smallest missing framework surface. It must have compile-time proof and a removal condition.
-
-Forbidden:
-
-- `latest`, wildcard, or prerelease renderer specifiers;
-- all-components imports;
-- global runtime registration;
-- component registry;
-- support for multiple m3e versions;
-- runtime renderer switching;
-- avoidable handwritten mirrors of renderer properties, literal unions, defaults, or element classes.
-
-A lockfile-resolved m3e version change requires re-inspection of affected public contracts, exported types, and risk-selected adapter verification.
+- Import only the required `@m3e/web/<family>` entry point.
+- Use type-only imports for exported renderer element and value types.
+- Keep Mioframe props independently defined, but require mapped values to satisfy m3e types.
+- Vue ambient declarations may contain only framework glue derived from package types.
+- Do not add a direct Lit dependency, all-components import, runtime registry, multiple-version support, or handwritten renderer type mirror.
 
 ## 8. Implement the thin adapter
 
-Normally implement only explicit typed bindings, named slots, event normalization, controlled-state synchronization, required native integration, narrow semantic token mapping, and confirmed Mioframe extensions.
+Normally implement only:
 
-Prefer direct `--md-sys-*` semantics when m3e documents the same system roles. Map active `--md-comp-*` contracts to documented semantically equivalent `--m3e-*` variables. Transfer canonical defaults for retained active component tokens before removing the legacy owner. Remove target-owned declaration-only or test-only token surface instead of recreating it.
+- explicit typed property and attribute bindings;
+- slot placement;
+- event normalization;
+- controlled-state synchronization;
+- required native integration;
+- current Mioframe extensions;
+- narrow corrections for Mioframe-required m3e divergences;
+- active public token mapping only when Mioframe actually exposes that token.
 
-Preserve the accepted visible presentation and layout of project extensions such as loading unless the family contract records an explicit approved change. Do not treat a visually different result as equivalent merely because the prop still works.
+Do not duplicate m3e ripple, focus, state-layer, elevation, or motion systems. Do not add a generic adapter framework.
 
-Forbidden unless later evidence proves a shared need:
+## 9. Tokens
 
-- wrapper generator or universal base component;
-- generic property/event schema;
-- token mapping DSL;
-- broad options object;
-- shadow-DOM access;
-- copied m3e internals;
-- duplicate state-layer, ripple, focus, or motion implementation.
+Follow `component-tokens.md`.
 
-Extract a shared helper only after two unrelated adapters prove an identical concrete need and extraction reduces total complexity.
+- Preserve tokens only when repository evidence or intentional Mioframe documentation makes them active public contracts.
+- A documented `--m3e-*` variable does not require a public `--md-comp-*` mirror.
+- Prefer existing `--md-sys-*` roles when m3e already implements the correct Material semantics.
+- Remove unused declaration-only and test-only legacy token routes.
+- Do not complete or verify a full unused token matrix.
 
-## 9. Preserve controlled state and native behavior
+## 10. Migrate consumers and remove obsolete ownership
 
-Vue props remain the source of truth. m3e interaction provides intent, the wrapper emits the stable Vue event, the consumer updates state, and the wrapper prevents renderer drift. Programmatic prop updates must not emit false user actions.
+For an end-to-end migration:
 
-Preserve applicable native button, link, form, focus, keyboard, disabled, readonly, and accessibility semantics. Required native variants and input methods must be explicitly represented in the proof ledger; one activation path does not prove every required path.
+- create the canonical adapter;
+- migrate all target consumers and exports;
+- preserve required current scenarios;
+- remove the obsolete target implementation and target-exclusive compatibility paths;
+- leave unrelated family components and shared modules intact.
 
-## 10. Migrate consumers and remove target ownership
+## 11. Verify Mioframe-owned contracts
 
-For `end-to-end-migration`:
+Required baseline:
 
-- set implementation ownership to `migrating`;
-- create the canonical target owner;
-- migrate every affected target usage;
-- preserve required scenarios and accepted observable presentation;
-- update target-owned barrels, stories, tests, visual mappings, and documentation;
-- transfer retained active token declarations and mappings;
-- remove the obsolete target implementation and exclusively owned compatibility paths;
-- remove declaration-only, test-only, and otherwise obsolete token surface owned only by the target;
-- leave unrelated legacy components and shared modules intact;
-- set implementation ownership to `migrated` only after the complete exit gate passes.
+- package-derived type-check;
+- colocated component-contract tests for Vue API, mapping, extensions, and controlled state;
+- focused browser tests for current user/native behavior changed or constrained by the adapter;
+- stable visual baselines only for Mioframe-visible states with meaningful regression risk;
+- final `pnpm verify`.
 
-Temporary compatibility is allowed only when atomic migration is technically unsafe, with exact remaining consumers, no-new-usage enforcement, and a removal target.
+Add representative-consumer or dedicated build proof only when the migration changes that boundary and final verification does not already cover it.
 
-## 11. Verify owned contracts
+Do not require dedicated theme, RTL, token, or optional m3e capability tests unless Mioframe customizes them or a current scenario depends on them.
 
-Every public `MD*` adapter requires:
+### Renderer-owned animation
 
-- type-check proof derived from the exact package-exported renderer types;
-- a colocated `<Component>.test.ts` component-contract test for its Vue API and explicit integration mapping;
-- browser, visual, representative-consumer, Storybook-build, and production-build proof according to the family contract;
-- final repository verification.
+Animation quality cannot be proven through proxy host assertions when the effect is inside private renderer DOM.
 
-The `MDButton` and `MDSwitch` pilots require all proof types above.
+For m3e-owned animation:
 
-For each retained active public CSS token:
+1. inspect the exact installed source and record the relevant implementation path, state transitions, interruption handling, and reduced-motion branch;
+2. verify the adapter does not override or disable that implementation;
+3. require operator manual testing for actual visual behavior and timing;
+4. do not use `:active`, screenshots, or private DOM inspection as false automated proof of the animation itself.
 
-- ensure one canonical declaration remains after legacy removal;
-- set an intentional non-default value through the Mioframe public surface;
-- prove the intended rendered property or observable behavior changes;
-- verify only documented m3e mapping, never private renderer DOM.
+Automated browser tests may verify public input acquisition when that is a Mioframe scenario, but must describe only what they actually prove.
 
-A declaration-value assertion alone does not establish a public token contract and cannot justify a blocker.
+## 12. Completion
 
-For renderer-owned motion, prove the claimed public outcome. `:active` alone proves only press acquisition; it does not prove shape morphing, release restoration, interruption safety, or reduced-motion behavior. Use public observables, pair interaction proof with bounded visual evidence when needed, and record any limitation instead of claiming an unproven result.
+A target may be `migrated` when:
 
-For visual proof, cover every materially distinct stable visible scenario in the family contract, including project extensions, themes, and RTL when they change output. Reuse a baseline when it truly covers multiple scenarios; do not build a Cartesian product. A refreshed baseline is not proof that a compatibility change was intended.
+- renderer viability is `ready` for the resolved supported surface;
+- one canonical Vue owner remains and consumers are migrated;
+- package-derived renderer typing is used;
+- current Mioframe scenarios and extensions are preserved;
+- required m3e divergences are recorded and required thin corrections are complete;
+- only active accepted public tokens are retained;
+- risk-based automated verification passes;
+- operator accepts the first canonical visual result and renderer-owned motion where applicable.
 
-Before reporting completion, audit the scenario-to-proof ledger. Every required scenario must name exact passing proof or an explicit evidence-based reason no separate proof is needed.
+Do not keep implementation ownership `migrating` merely because optional Material or m3e surface lacks exhaustive tests.
 
-Do not duplicate m3e or Lit unit tests, test private DOM, or claim Material correctness from green automation alone.
-
-## 12. Complete records
-
-Record confirmed m3e deviations, unsupported optional surface, renderer-owned behavior, renderer typing strategy, removed obsolete legacy surface, compatibility decisions, and proof status. Update `src/shared/ui/material/README.md` when physical ownership changes and `src/shared/ui/material/docs/roadmap.md` only when milestone state, blocker, or next action changes.
+A run must complete all repository-local work inside the resolved scope. It must not invent new scope to avoid finishing. `partial` is valid when implementation and automated verification are complete and only operator acceptance or a genuine external blocker remains.
 
 ## Completion report
 
@@ -260,20 +242,15 @@ Renderer package range, resolved version, and entry point:
 Renderer type source:
 Renderer viability: unassessed | ready | blocked-upstream
 Implementation ownership: legacy | migrating | migrated
-Canonical Vue owner:
-Supported surface:
-Unsupported surface:
-Removed obsolete legacy surface:
-Compatibility changes: none | <approved changes>
+Current Mioframe scenarios:
+Selected m3e surface:
+Public Vue API:
+Confirmed m3e divergences: none | <summary and decisions>
+Wrapper corrections: none | <summary>
+Active public tokens: none | <summary>
 Consumers migrated:
 Legacy target removal: complete | not applicable | blocked
-Unrelated legacy components preserved:
-Confirmed m3e deviations: none | <summary>
-Scenario proof coverage: complete | incomplete (<exact gaps>)
 Automated verification:
-Operator visual acceptance: accepted | required | blocked
-Roadmap update: none | <summary>
-Status: complete | partial (<exact remaining work>) | blocked (<exact evidenced reason>)
+Operator visual and motion acceptance: accepted | required | blocked
+Status: complete | partial (<operator/external remainder>) | blocked (<exact reason>)
 ```
-
-`complete` requires the component exit gate from `src/shared/ui/material/docs/component-adapter.md`, complete scenario-linked proof, final repository verification, and required operator visual acceptance. Never report `migrated` or `complete` while renderer typing is duplicated, active token ownership is incomplete, an observable compatibility delta is unapproved, or required proof is missing.
