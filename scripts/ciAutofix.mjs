@@ -6,11 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 /**
  * Run a command synchronously and return its exit status.
- * @param {string} root Repository root.
- * @param {string} command Executable name.
- * @param {string[]} args Command arguments.
- * @param {'inherit' | 'pipe'} stdio Child stdio mode.
- * @returns {number} Process exit status.
+ * @param root Repository root.
+ * @param command Executable name.
+ * @param args Command arguments.
+ * @param stdio Child stdio mode.
+ * @returns Process exit status.
  */
 function run(root, command, args, stdio = 'inherit') {
   const result = spawnSync(command, args, {
@@ -28,9 +28,9 @@ function run(root, command, args, stdio = 'inherit') {
 
 /**
  * Read stdout from a successful Git command.
- * @param {string} root Repository root.
- * @param {string[]} args Git arguments.
- * @returns {string} Command stdout.
+ * @param root Repository root.
+ * @param args Git arguments.
+ * @returns Command stdout.
  */
 function readGit(root, args) {
   const result = spawnSync('git', args, {
@@ -52,9 +52,9 @@ function readGit(root, args) {
 
 /**
  * Describe one untracked path without modifying the Git index.
- * @param {string} root Repository root.
- * @param {string} relPath Repository-relative path.
- * @returns {string} Stable path description.
+ * @param root Repository root.
+ * @param relPath Repository-relative path.
+ * @returns Stable path description.
  */
 function describeUntrackedPath(root, relPath) {
   const absPath = path.join(root, relPath);
@@ -75,8 +75,8 @@ function describeUntrackedPath(root, relPath) {
 /**
  * Create a stable snapshot of tracked and untracked working-tree changes.
  * The snapshot intentionally ignores the index state and never stages files.
- * @param {string} root Repository root.
- * @returns {string} SHA-256 snapshot digest.
+ * @param root Repository root.
+ * @returns SHA-256 snapshot digest.
  */
 export function snapshotWorkingTree(root) {
   const trackedDiff = readGit(root, ['diff', '--binary', '--no-ext-diff', 'HEAD', '--']);
@@ -100,9 +100,9 @@ export function snapshotWorkingTree(root) {
  * Run the complete autofix pipeline twice and require the second pass to be a
  * fixed point. A stable non-zero fixer status is preserved so the workflow may
  * still commit mechanical changes before reporting unresolved failures.
- * @param {string} root Repository root.
- * @param {() => number} runFixers Complete autofix runner.
- * @returns {{ firstStatus: number, secondStatus: number, stable: boolean }} Result.
+ * @param root Repository root.
+ * @param runFixers Complete autofix runner.
+ * @returns Result.
  */
 export function runAutofixIdempotencyCheck(root, runFixers) {
   const firstStatus = runFixers();
