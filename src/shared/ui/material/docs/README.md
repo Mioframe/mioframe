@@ -4,51 +4,41 @@ This directory is the canonical documentation owner for `src/shared/ui/material`
 
 ## Canonical documents
 
-- [Architecture](./architecture.md) — public Vue/private m3e ownership, supported-surface policy, divergence handling, typing, tokens, and verification boundaries.
-- [Component adapter contract](./component-adapter.md) — minimum end-to-end workflow for one component.
-- [Component tokens](./component-tokens.md) — active public token ownership and private m3e mapping rules.
+- [Architecture](./architecture.md) — Material-first public API, private m3e renderer ownership, gap routing, typing, tokens, and verification.
+- [Component adapter contract](./component-adapter.md) — required Material–m3e–Vue matrix and end-to-end workflow.
+- [Component tokens](./component-tokens.md) — demand-driven official Material token selection and private m3e mapping.
 - [Roadmap](./roadmap.md) — current milestone, blocker, and next action.
-- [Library root](../README.md) — physical boundary, public API, and migration map.
+- [Library root](../README.md) — boundary, public API, and migration state.
 
 ## Operating model
 
 ```text
-current Mioframe scenarios
-+ canonical documented m3e component capabilities
-  → relevant official Material guidance
-  → recorded Material/m3e divergences
-  → thin Mioframe Vue adapter
-  → consumer migration
-  → risk-based verification
+current Mioframe requirement
+  → selected official Material component contract
+  → source-backed Material–m3e–Vue matrix
+  → public Vue MD* API
+  → private m3e implementation plus correctly owned gap work
+  → consumer migration and risk-based verification
   → operator visual and motion review
 ```
 
-The public contract is Vue `MD*` components. `@m3e/web`, `m3e-*` elements, renderer types, private DOM, and `--m3e-*` variables remain implementation details.
+The public contract is a demand-driven subset of official Material expressed idiomatically in Vue. `@m3e/web`, `m3e-*` elements, renderer types, private DOM, and `--m3e-*` variables remain implementation details.
 
-The workflow is intentionally bounded:
+The workflow must:
 
-- preserve current application scenarios;
-- expose documented m3e capabilities that belong to the canonical Material component surface through direct typed mappings;
-- record confirmed differences between m3e and official Material guidance;
-- implement only Mioframe-required differences that are safely correctable in a thin wrapper;
-- preserve only active public tokens;
-- do not recreate complete Material documentation, token catalogues, renderer internals, or exhaustive third-party tests.
+- derive public naming and semantics from Material, not legacy Mioframe or m3e;
+- select only the surface required now and mark the rest deferred;
+- use m3e maximally for selected Material behavior;
+- assign remaining gaps to the Vue wrapper or m3e according to ownership;
+- resolve functionality absent from Material separately instead of silently adding it to `MD*`;
+- avoid complete documentation copies, token catalogues, renderer duplication, and exhaustive third-party tests.
 
-Renderer-owned animation is assessed through exact-version source inspection and operator manual testing. Automated tests cover only Mioframe-owned integration and publicly observable behavior.
-
-## State axes
-
-Each migration records:
-
-- renderer viability: `unassessed`, `ready`, or `blocked-upstream`;
-- implementation ownership: `legacy`, `migrating`, or `migrated`.
-
-A blocked renderer leaves implementation ownership `legacy`.
+Renderer-owned animation is assessed through exact-version source inspection and operator manual testing. Automated tests cover the selected public Vue contract and Mioframe-owned integration only.
 
 ## Workflow
 
-Use `material-component-adapter` for one explicit component. Use architecture handoff only when cross-family ownership, renderer strategy, global theme ownership, or another unresolved architecture decision changes.
+Use `material-component-adapter` for one explicit official Material component. Use architecture handoff for unresolved non-Material functionality, m3e changes, cross-family ownership, renderer strategy, or public architecture decisions.
 
 ## Current next action
 
-Follow [Roadmap](./roadmap.md). PR #162 owns the architecture reset and MDButton pilot.
+Follow [Roadmap](./roadmap.md). PR #162 owns the architecture reset and the Material-first correction of the `MDButton` pilot.
