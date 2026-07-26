@@ -5,79 +5,91 @@ description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch,
 
 # UI browser behavior workflow
 
-Follow `docs/testing/architecture.md`. Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, or visual appearance.
+Follow `docs/testing/architecture.md`. Browser proof uses Playwright and real public input. It does not own deterministic logic, Vue-only contracts, private third-party implementation, or visual appearance.
 
 ## Activation
 
-Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, Material state acquisition/release, motion completion, reduced motion, or the observable effect of a public CSS token override.
+Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, public motion outcomes, or the observable effect of an active public CSS token override.
 
 ## Choose the execution lane
 
-Use `storybook-behavior` when the behavior belongs to reusable UI or foundation and can be exercised with deterministic fixture data without product routing, persistence, services, or feature orchestration.
+Use `storybook-behavior` when behavior belongs to reusable UI and can be exercised without product routing, persistence, services, or feature orchestration.
 
-Use `e2e` when the complete user scenario is the contract or behavior crosses page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries.
+Use `e2e` when the complete product scenario crosses page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, or repository boundaries.
 
 Do not route reusable component behavior into app E2E merely because the component has product consumers.
 
 ## Workflow
 
 1. Name the browser-owned contract and owning lane.
-2. Inspect native owners, rendered hierarchy, focus order, scroll ownership, teleport boundaries, responsive composition, and public styling inputs that matter.
+2. Inspect native owners, rendered hierarchy, focus order, layout ownership, and public inputs that matter.
 3. Establish deterministic initial state without performing the action under test.
-4. Drive public controls through real keyboard, pointer, touch, drag, scroll, browser input, or a supported public CSS override.
+4. Drive public controls through real user input.
 5. Wait for observable readiness and outcomes.
-6. Assert the exact accepted user-visible or browser-observable result, not a proxy that merely correlates with it.
-7. Link the scenario to the exact spec in the owning contract or `TEST IMPACT` record.
-8. Add or update the owning source-to-spec mapping when the stable repository impact relation changes.
-9. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
-10. Run the focused lane, then final verification.
+6. Assert the exact public result, not a proxy that merely correlates with it.
+7. Update source-to-spec metadata when the stable impact relation changes.
+8. Run the focused lane, then final verification.
 
-## Scenario completeness
+## Scenario selection
 
-When a component contract lists multiple materially distinct paths, each path must be represented explicitly or linked to evidence that one proof covers it.
+Test materially distinct current scenarios, not every theoretical path.
 
-Examples include:
+Separate paths are required when they have different owners or failure risks, for example:
 
-- Enter and Space when both are required;
-- pointer and keyboard toggle intent;
-- submit and reset when both native types are supported scenarios;
-- disabled attempted activation, not only a static disabled assertion;
-- programmatic controlled-state updates without false user-action emits;
-- form association and representative consumer integration.
+- Enter and Space when the adapter or current scenario could treat them differently;
+- submit and reset when both are used or changed;
+- pointer and keyboard controlled-state intent when wrapper normalization differs;
+- attempted disabled activation when the adapter owns disabled forwarding;
+- programmatic state updates when hidden renderer drift is a risk.
 
-Do not infer complete native or accessibility coverage from one successful activation path.
+Do not duplicate native or renderer behavior merely because the underlying component supports it. Use repository scenarios and changed risk to choose proof.
 
 ## Public CSS token proof
 
-When a public CSS token is claimed as an active contract:
+Only an active Mioframe public token requires browser proof.
 
-- set a distinctive non-default value through the public Mioframe surface;
-- assert that the intended rendered property or observable behavior changes;
-- use the host or another public observable surface;
-- do not inspect private m3e shadow DOM or Lit implementation;
-- do not treat a declaration, alias, or resolved custom-property value alone as proof of effect.
+When such a token is part of the accepted contract:
+
+- set a distinctive non-default value through the public surface;
+- assert the intended public rendered result when it is observable;
+- do not inspect private renderer shadow DOM;
+- do not treat a declaration or resolved custom-property value alone as proof.
+
+Do not test every third-party renderer variable or internal default.
 
 ## Motion and transient state
 
-For renderer-owned motion, test public press/release, interruption, completion or stable final state, and `prefers-reduced-motion` behavior according to risk.
+Distinguish Mioframe-owned motion from private renderer-owned animation.
 
-- `element.matches(':active')` proves only that the browser acquired or released the press. It does not prove shape morphing, ripple, transition behavior, final rendered shape, or reduced-motion handling.
-- Assert the claimed public outcome through host-observable geometry/style/state when available.
-- When the visible effect is not inspectable without private renderer DOM, pair real interaction lifecycle proof with bounded visual evidence and record the limitation. Do not claim that the effect itself was proven by `:active`.
-- Do not assert private spring stiffness, damping, duration constants, Lit styles, custom states, or internal animation nodes unless Mioframe explicitly owns them as an active public contract.
+### Mioframe-owned or publicly observable motion
+
+Use real input and assert the exact public acquisition, release, interruption, completion, or final-state contract that Mioframe owns.
+
+### Private renderer-owned animation
+
+When the animation occurs inside inaccessible third-party private DOM and Mioframe does not own the timing or implementation:
+
+- do not invent host-level proxy assertions;
+- `element.matches(':active')` proves only browser press acquisition/release, not internal shape morph, ripple, transition, or reduced-motion handling;
+- do not use screenshots as proof of a transition lifecycle;
+- do not inspect private shadow DOM in tests;
+- use exact-version implementation source review plus operator manual testing, as required by the owning component workflow;
+- test only Mioframe-owned integration, such as ensuring the adapter does not disable or replace the renderer behavior.
+
+Report limitations accurately instead of claiming unobservable animation was automated.
 
 ## Interaction fidelity
 
 - Prefer role, accessible name, and label locators.
-- Do not invoke private APIs, component methods, internal handlers, or synthetic internal events.
-- Lower-level setup may create a valid initial state only outside the behavior under test.
-- Wait for observable contracts, not Vue callbacks, DOM identity, arbitrary sleeps, or assumed animation durations.
-- Treat detachment, lost ordinary input, or unexplained scrolling as possible product defects before changing the test.
+- Do not invoke private APIs, component methods, or internal handlers.
+- Lower-level setup may establish initial state only outside the behavior under test.
+- Wait for observable contracts, not arbitrary sleeps or assumed animation durations.
+- Treat detachment, lost input, or unexplained scrolling as possible product defects before weakening tests.
 - Do not use `force`, broad retries, or recovery loops that may repeat an already-delivered action.
 
 ## Accessibility
 
-This proof owns real focus order, keyboard operation, focus restoration, pointer target actionability, overlay containment, and other browser-observable accessibility behavior. Automated accessibility scans are supplemental only.
+This proof owns real focus order, keyboard operation, focus restoration, pointer target actionability, overlay containment, and other browser-observable accessibility behavior. Automated scans are supplemental only.
 
 ## Storybook rules
 
@@ -88,24 +100,18 @@ This proof owns real focus order, keyboard operation, focus restoration, pointer
 
 ## Impact metadata
 
-For the owning Playwright lane:
-
 - map production, story, fixture, or owned support sources to specs;
 - do not use spec paths as source prefixes to group tests;
 - a changed spec selects itself;
 - use standalone only when no truthful stable source mapping exists;
-- shared config/helpers require full-lane fallback unless all consumers are explicit and validated;
+- shared helpers require full-lane fallback unless all consumers are explicit;
 - new, moved, renamed, or removed specs update the registry in the same change.
 
 ## Mobile and responsive execution
 
 Source impact chooses scenarios; project applicability belongs to persistent test metadata.
 
-Current selected app E2E scenarios continue to use the existing desktop/mobile project matrix until every scenario is audited and a separate migration proves that narrower execution preserves mobile-risk coverage.
-
-Do not introduce a generic criticality tag as a substitute for real touch, viewport, responsive composition, overlay, capability, lifecycle, or platform differences.
-
-Reusable responsive UI normally uses focused Storybook viewports rather than duplicating complete product scenarios.
+Do not reduce established desktop/mobile coverage without a dedicated audited migration. Reusable responsive UI normally uses focused Storybook viewports rather than duplicated full product scenarios.
 
 ## Commands
 
@@ -122,7 +128,7 @@ pnpm verify --only e2e --files <paths...>
 - screenshots in behavior specs;
 - architectural boundary violations to simplify setup;
 - source mappings overloaded with spec grouping;
-- reducing desktop/mobile coverage without the dedicated audited migration;
-- declaration-only or resolved-value-only CSS assertions presented as proof that an override affects rendered behavior;
-- private renderer DOM, Lit internals, or m3e implementation parameters;
-- proxy assertions presented as proof of a different observable contract.
+- declaration-only CSS assertions presented as rendered proof;
+- private renderer DOM, Lit internals, or third-party animation parameters;
+- proxy assertions presented as proof of a different contract;
+- exhaustive testing of third-party behavior unchanged by Mioframe.
