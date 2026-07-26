@@ -174,7 +174,7 @@ export default defineConfigWithVueTs(
         },
       ],
       'vue/no-this-in-before-route-enter': 'error',
-      'vue/no-undef-components': 'error',
+      'vue/no-undef-components': ['error', { ignorePatterns: ['m3e-*'] }],
       'vue/no-undef-directives': 'error',
       'vue/no-undef-properties': 'error',
       'vue/no-unused-emit-declarations': 'error',

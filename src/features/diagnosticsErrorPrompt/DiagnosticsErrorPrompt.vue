@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { MDCard } from '@shared/ui/Card';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { useDiagnosticsErrorPromptEligibility } from './useDiagnosticsErrorPromptEligibility';
 
 /** Copy variant for this prompt instance. Drives only copy here, not visibility routing. */

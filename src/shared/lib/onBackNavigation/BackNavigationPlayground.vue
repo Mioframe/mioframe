@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { PlaygroundStory } from '../playground';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { isNumber } from 'es-toolkit/compat';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

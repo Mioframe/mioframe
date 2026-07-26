@@ -363,7 +363,9 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 
   it('focuses the smoke spec and the button family spec for an MDButton story change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.stories.ts']);
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/ui/material/components/button/MDButton.stories.ts',
+    ]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
@@ -373,7 +375,9 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 
   it('focuses the smoke spec and the button family spec for an MDButton component change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.vue']);
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/ui/material/components/button/MDButton.vue',
+    ]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
@@ -412,7 +416,7 @@ describe('resolveStorybookBehaviorPlan', () => {
 
   it('focuses the button family spec for a colocated Button story fixture change', () => {
     const plan = resolveStorybookBehaviorPlan([
-      'src/shared/ui/Button/MDButtonTargetHitVisualStory.vue',
+      'src/shared/ui/material/components/button/MDButtonTargetHitVisualStory.vue',
     ]);
 
     expect(plan.mode).toBe('focused');

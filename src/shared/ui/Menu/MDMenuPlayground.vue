@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { PlaygroundStory } from '@shared/lib/playground';
 import MDMenu from './MDMenu.vue';
-import { MDButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
 import { ref, useTemplateRef } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
 import { faker } from '@faker-js/faker';

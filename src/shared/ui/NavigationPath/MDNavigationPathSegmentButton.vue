@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MDButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
 
 const props = defineProps<{
   label: string;

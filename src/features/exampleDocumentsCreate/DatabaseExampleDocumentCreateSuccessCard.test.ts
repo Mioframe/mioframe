@@ -1,6 +1,21 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { defineComponent } from 'vue';
 import DatabaseExampleDocumentCreateSuccessCard from './DatabaseExampleDocumentCreateSuccessCard.vue';
+
+vi.mock('@shared/ui/material', () => ({
+  MDButton: defineComponent({
+    props: { label: { type: String, required: true } },
+    emits: ['click'],
+    setup(_, { emit }) {
+      const onClick = (event: MouseEvent) => {
+        emit('click', event);
+      };
+      return { onClick };
+    },
+    template: '<button type="button" @click="onClick">{{ label }}</button>',
+  }),
+}));
 
 describe('DatabaseExampleDocumentCreateSuccessCard', () => {
   it('renders the headline and supporting text', () => {

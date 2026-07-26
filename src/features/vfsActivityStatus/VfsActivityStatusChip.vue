@@ -2,7 +2,7 @@
 import { useVfsActivity } from '@entity/vfsActivity';
 import { useMainServiceClient } from '@shared/service';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDAssistChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useSnackbar } from '@shared/ui/Snackbar';

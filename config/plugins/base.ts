@@ -20,6 +20,10 @@ import { isM3eCustomElement } from '../vueCustomElements';
 export const getVuePlugin = (): Plugin<Api> =>
   vue({ template: { compilerOptions: { isCustomElement: isM3eCustomElement } } });
 
+/**
+ * Create the shared Vite plugin list used by application-facing builds.
+ * @returns Fresh plugin instances for one Vite configuration.
+ */
 export const getBaseVitePlugins = (): PluginOption[] => [
   wasm(),
   topLevelAwait(),
@@ -28,6 +32,10 @@ export const getBaseVitePlugins = (): PluginOption[] => [
   TurboConsole(),
 ];
 
+/**
+ * Create the worker-safe Vite plugin list without application Vue custom-element configuration.
+ * @returns Fresh plugin instances for one worker Vite configuration.
+ */
 export const getBaseWorkerPlugins = (): PluginOption[] => [
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- vite-plugin-wasm doesn't have types
   wasm() as PluginOption,

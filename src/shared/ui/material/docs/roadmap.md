@@ -8,24 +8,24 @@ Last updated: 2026-07-26
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `implementation`
+Status: `verification`
 
 Owner: current architecture-reset branch
 
 Blocker: none. The assessed m3e Button public contract covers the required observable scenarios. Legacy per-size spring stiffness/damping declarations are obsolete value-only surface, not an active consumer contract.
 
-Next action: implement the thin `MDButton` adapter, migrate all target consumers, remove MDButton-exclusive legacy ownership and obsolete token declarations, and complete the required contract, browser, visual, build, and representative-consumer proof.
+Next action: complete final repository verification and operator review of the refreshed canonical MDButton visual baselines, then begin M2 only after M1's exit gate is accepted.
 
 The repository-standard `@m3e/web` dependency range, exact lockfile-resolved renderer version, shared Vue custom-element recognition, and ready Button family contract are established on this branch.
 
 ## Milestones
 
-| ID  | Milestone                         | Status           | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                               |
-| --- | --------------------------------- | ---------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset     | `verification`   | none       | library-owned architecture, adapter, token, and roadmap documents; separate renderer-viability and implementation-ownership states; compatible dependency-range policy with exact lockfile-resolved contract tracking; custom-element integration ownership; scoped agent workflow; no production behavior change; final repository verification passes |
-| M1  | `MDButton` adapter pilot          | `implementation` | M0         | migration target is `MDButton` only; exact lockfile-resolved m3e version and Button entry point are verified; viability is `ready`; ownership becomes `migrated`; all MDButton consumers move; only MDButton-exclusive legacy ownership and obsolete surface are removed; required contract, browser, visual, build, and consumer proof pass            |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`        | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; ownership becomes `migrated`; only integration mechanisms proved by both pilots may be considered for extraction                                                         |
-| M3  | sequential component migration    | `planned`        | M2         | one explicit ready component or inseparable family at a time is migrated by product priority; blocked renderers leave legacy ownership intact; every completed target has one canonical Vue owner and no renderer leakage                                                                                                                               |
+| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                                                                                               |
+| --- | --------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset     | `verification` | none       | library-owned architecture, adapter, token, and roadmap documents; separate renderer-viability and implementation-ownership states; compatible dependency-range policy with exact lockfile-resolved contract tracking; custom-element integration ownership; scoped agent workflow; no production behavior change; final repository verification passes |
+| M1  | `MDButton` adapter pilot          | `verification` | M0         | migration target is `MDButton` only; exact lockfile-resolved m3e version and Button entry point are verified; viability is `ready`; ownership becomes `migrated`; all MDButton consumers move; only MDButton-exclusive legacy ownership and obsolete surface are removed; required contract, browser, visual, build, and consumer proof pass            |
+| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | controlled state, event order, keyboard/pointer behavior, disabled state, property updates, form/accessibility integration, and cleanup are proven without hidden state drift; ownership becomes `migrated`; only integration mechanisms proved by both pilots may be considered for extraction                                                         |
+| M3  | sequential component migration    | `planned`      | M2         | one explicit ready component or inseparable family at a time is migrated by product priority; blocked renderers leave legacy ownership intact; every completed target has one canonical Vue owner and no renderer leakage                                                                                                                               |
 
 ## M0 scope
 

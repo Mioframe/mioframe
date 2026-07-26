@@ -11,7 +11,7 @@ import {
 } from '@shared/config';
 import { dayjs } from '@shared/lib/dayjs';
 import { MDAppBar } from '@shared/ui/AppBar';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDPane } from '@shared/ui/Layout';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { getDiagnosticsText, getPlatformFromUserAgentData } from './diagnosticsText';

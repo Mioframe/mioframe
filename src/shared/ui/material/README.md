@@ -92,10 +92,11 @@ The current Mioframe theme remains the global owner. `m3e-theme` is not installe
 
 | Area                              | Current owner                         | Canonical owner                                                              | Current state                                       |
 | --------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------- |
-| Existing public `MD*` components  | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration                       | renderer `unassessed`; owner `legacy`               |
+| `MDButton`                        | `material/components/button`          | `material/components/button`                                                 | renderer `ready`; owner `migrated`                  |
+| Other public `MD*` components     | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration                       | renderer `unassessed`; owner `legacy`               |
 | Shared m3e compiler integration   | shared Vite/Vue configuration         | shared Vite/Vue configuration                                                | established for app, Storybook, and component tests |
-| Vue-to-m3e component adapters     | none                                  | component-local adapter first; shared helper only after both pilots prove it | `planned`                                           |
-| Public Material entry point       | none                                  | `@shared/ui/material`                                                        | `planned`                                           |
+| Vue-to-m3e component adapters     | Button component-local adapter        | component-local adapter first; shared helper only after both pilots prove it | Button established                                  |
+| Public Material entry point       | `@shared/ui/material`                 | `@shared/ui/material`                                                        | established                                         |
 | Reference/system tokens and theme | existing `src/shared/lib/md` owners   | unchanged until a focused architecture decision                              | `retained`                                          |
 
 ## State model
@@ -122,4 +123,4 @@ Every public adapter requires a colocated `<Component>.test.ts` component-contra
 
 PR #162 owns the architecture reset and shared technical m3e integration. The current branch declares `@m3e/web` through the repository-standard compatible range, records the exact installed version in `pnpm-lock.yaml`, and configures shared Vue recognition of `m3e-*` without registering or rendering a production m3e family.
 
-After M0 verification, the `MDButton`-only adapter pilot continues in the same branch. The PR remains draft and is not merge-ready until that pilot and its required verification are complete.
+The `MDButton`-only adapter pilot is implemented on this branch. Merge readiness still depends on its final repository verification and required operator visual review; no other Button-family component migrated with it.

@@ -2,7 +2,7 @@
 import { computed, toRefs } from 'vue';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { GoogleDriveAccessRecoveryState } from '@entity/googleDriveAccess';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
