@@ -20,12 +20,12 @@ The m3e Button renderer remains `ready`; ownership stays `migrating` only until 
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --------- | ------ | ---------- | --------- |
-| M0 | m3e-backed architecture reset | `verification` | none | library-owned architecture and workflow; private renderer boundary; compatible dependency range; package-derived typing policy; final verification passes |
-| M1 | `MDButton` adapter pilot | `correction` | M0 | current Mioframe scenarios preserved; canonical documented m3e Button capabilities exposed through thin typed mappings; confirmed Material/m3e differences recorded; only required wrapper corrections added; no unused public token catalogue; verification passes; operator accepts visual and motion result |
-| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | current Switch scenarios plus canonical documented m3e Switch surface; controlled state and event order; bounded divergence record; risk-based verification; operator acceptance |
-| M3 | sequential component migration | `planned` | M2 | one explicit component at a time; current scenarios plus canonical m3e surface; recorded divergences; thin required corrections only; one canonical Vue owner; no renderer leakage |
+| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                                                      |
+| --- | --------------------------------- | -------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset     | `verification` | none       | library-owned architecture and workflow; private renderer boundary; compatible dependency range; package-derived typing policy; final verification passes                                                                                                                                                      |
+| M1  | `MDButton` adapter pilot          | `correction`   | M0         | current Mioframe scenarios preserved; canonical documented m3e Button capabilities exposed through thin typed mappings; confirmed Material/m3e differences recorded; only required wrapper corrections added; no unused public token catalogue; verification passes; operator accepts visual and motion result |
+| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | current Switch scenarios plus canonical documented m3e Switch surface; controlled state and event order; bounded divergence record; risk-based verification; operator acceptance                                                                                                                               |
+| M3  | sequential component migration    | `planned`      | M2         | one explicit component at a time; current scenarios plus canonical m3e surface; recorded divergences; thin required corrections only; one canonical Vue owner; no renderer leakage                                                                                                                             |
 
 ## M0 scope
 

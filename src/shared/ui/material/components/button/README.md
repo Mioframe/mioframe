@@ -69,18 +69,18 @@ No handwritten renderer property or literal-union mirror remains.
 
 ## Vue-to-m3e mapping
 
-| Mioframe contract | m3e contract | Ownership |
-| ----------------- | ------------ | --------- |
-| appearance | typed `variant` property | Mioframe vocabulary, m3e rendering |
-| size | typed `size` property | direct mapping |
-| round/square | typed rounded/square `shape` property | Mioframe normalization |
-| controlled selection | `toggle`, `selected`, cancelable `beforeinput` | consumer state, adapter intent normalization |
-| native action/link semantics | documented form and link properties | browser/m3e, thin forwarding |
-| disabled states | documented disabled properties | m3e, thin forwarding |
-| label and icon content | documented slots | adapter slot mapping |
-| loading | Mioframe light-DOM extension | Mioframe |
-| focus, ripple, elevation, motion | renderer implementation | m3e |
-| theme roles | documented Material system semantics | existing Mioframe theme and m3e |
+| Mioframe contract                | m3e contract                                   | Ownership                                    |
+| -------------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| appearance                       | typed `variant` property                       | Mioframe vocabulary, m3e rendering           |
+| size                             | typed `size` property                          | direct mapping                               |
+| round/square                     | typed rounded/square `shape` property          | Mioframe normalization                       |
+| controlled selection             | `toggle`, `selected`, cancelable `beforeinput` | consumer state, adapter intent normalization |
+| native action/link semantics     | documented form and link properties            | browser/m3e, thin forwarding                 |
+| disabled states                  | documented disabled properties                 | m3e, thin forwarding                         |
+| label and icon content           | documented slots                               | adapter slot mapping                         |
+| loading                          | Mioframe light-DOM extension                   | Mioframe                                     |
+| focus, ripple, elevation, motion | renderer implementation                        | m3e                                          |
+| theme roles                      | documented Material system semantics           | existing Mioframe theme and m3e              |
 
 ## Active public tokens
 
@@ -108,9 +108,9 @@ Official Material records used for assessment:
 
 Before M1 completion, record confirmed differences for the supported surface:
 
-| Material expectation | m3e behavior in 2.6.2 | Required by Mioframe | Decision |
-| -------------------- | --------------------- | -------------------- | -------- |
-| pending bounded comparison | pending | pending | accept, wrapper correction, upstream follow-up, or blocker |
+| Material expectation       | m3e behavior in 2.6.2 | Required by Mioframe | Decision                                                   |
+| -------------------------- | --------------------- | -------------------- | ---------------------------------------------------------- |
+| pending bounded comparison | pending               | pending              | accept, wrapper correction, upstream follow-up, or blocker |
 
 Rules:
 

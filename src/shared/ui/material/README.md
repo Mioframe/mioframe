@@ -84,13 +84,13 @@ m3e-owned animation is assessed through exact-version source inspection and oper
 
 ## Migration map
 
-| Area | Current owner | Canonical owner | Current state |
-| ---- | ------------- | --------------- | ------------- |
-| `MDButton` | `material/components/button` | `material/components/button` | renderer `ready`; owner `migrating` until bounded correction and operator review complete |
-| Other public `MD*` components | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration | renderer `unassessed`; owner `legacy` |
-| Shared m3e compiler integration | shared Vite/Vue configuration | shared Vite/Vue configuration | established |
-| Public Material entry point | `@shared/ui/material` | `@shared/ui/material` | established |
-| Reference/system theme tokens | existing foundation owners | unchanged | retained |
+| Area                            | Current owner                         | Canonical owner                                        | Current state                                                                             |
+| ------------------------------- | ------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `MDButton`                      | `material/components/button`          | `material/components/button`                           | renderer `ready`; owner `migrating` until bounded correction and operator review complete |
+| Other public `MD*` components   | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration | renderer `unassessed`; owner `legacy`                                                     |
+| Shared m3e compiler integration | shared Vite/Vue configuration         | shared Vite/Vue configuration                          | established                                                                               |
+| Public Material entry point     | `@shared/ui/material`                 | `@shared/ui/material`                                  | established                                                                               |
+| Reference/system theme tokens   | existing foundation owners            | unchanged                                              | retained                                                                                  |
 
 ## Verification
 
