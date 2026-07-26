@@ -97,18 +97,18 @@ The legacy `border-radius` transition used duration/easing variables rather than
 
 ## Vue-to-m3e mapping
 
-| Mioframe Vue contract                     | m3e public contract                                      | Direction | Owner             | Notes                                                                         |
-| ----------------------------------------- | -------------------------------------------------------- | --------- | ----------------- | ----------------------------------------------------------------------------- |
-| `color`                                   | typed `variant` property                                 | Vue → m3e | Mioframe          | Exact five-value mapping; output satisfies exported `ButtonVariant`.           |
-| `shape` (`round` or `square`)             | typed `shape` (`rounded` or `square`)                    | Vue → m3e | Mioframe          | Private vocabulary normalization; output satisfies exported `ButtonShape`.    |
-| `size`                                    | typed `size` property                                    | Vue → m3e | Mioframe          | Output satisfies exported `ButtonSize`.                                       |
-| toggle `selected`                         | `toggle`, `selected`, cancelable `beforeinput`           | both      | Consumer/Mioframe | Cancel renderer mutation, emit controlled intent, prop remains authoritative. |
-| `disabled` / loading                      | `disabled` plus host `aria-busy`                         | Vue → m3e | Mioframe          | Loading alone remains actionable; explicit `disabled` blocks activation.      |
-| `nativeType`                              | form-associated `type`                                   | Vue → m3e | Browser/m3e       | `button`, `submit`, or `reset`.                                               |
-| label and icon                            | default and `icon` slots                                 | Vue → m3e | Mioframe          | Leading icon only.                                                            |
+| Mioframe Vue contract                     | m3e public contract                                     | Direction | Owner             | Notes                                                                         |
+| ----------------------------------------- | ------------------------------------------------------- | --------- | ----------------- | ----------------------------------------------------------------------------- |
+| `color`                                   | typed `variant` property                                | Vue → m3e | Mioframe          | Exact five-value mapping; output satisfies exported `ButtonVariant`.          |
+| `shape` (`round` or `square`)             | typed `shape` (`rounded` or `square`)                   | Vue → m3e | Mioframe          | Private vocabulary normalization; output satisfies exported `ButtonShape`.    |
+| `size`                                    | typed `size` property                                   | Vue → m3e | Mioframe          | Output satisfies exported `ButtonSize`.                                       |
+| toggle `selected`                         | `toggle`, `selected`, cancelable `beforeinput`          | both      | Consumer/Mioframe | Cancel renderer mutation, emit controlled intent, prop remains authoritative. |
+| `disabled` / loading                      | `disabled` plus host `aria-busy`                        | Vue → m3e | Mioframe          | Loading alone remains actionable; explicit `disabled` blocks activation.      |
+| `nativeType`                              | form-associated `type`                                  | Vue → m3e | Browser/m3e       | `button`, `submit`, or `reset`.                                               |
+| label and icon                            | default and `icon` slots                                | Vue → m3e | Mioframe          | Leading icon only.                                                            |
 | public Button color/shape/geometry tokens | documented semantically equivalent Button CSS variables | Vue → m3e | Mioframe          | Private component-local bridge plus canonical Mioframe declarations.          |
 | shared system roles                       | documented Material system-token semantics              | Vue → m3e | theme/m3e         | Prefer direct `--md-sys-*` semantics where supported.                         |
-| pressed-corner motion                     | renderer-owned public behavior                           | m3e       | m3e               | No retained Mioframe stiffness/damping tuning contract.                       |
+| pressed-corner motion                     | renderer-owned public behavior                          | m3e       | m3e               | No retained Mioframe stiffness/damping tuning contract.                       |
 
 ## Current review findings
 
@@ -186,20 +186,20 @@ Simpler alternatives rejected:
 
 ## Scenario-to-proof status
 
-| Scenario or contract                     | Accepted result                                      | Current proof                                      | Status     |
-| ---------------------------------------- | ---------------------------------------------------- | -------------------------------------------------- | ---------- |
-| public Vue defaults and basic mapping    | stable typed adapter mapping                         | colocated component test                           | partial    |
-| renderer type compatibility              | package-derived, compile-time checked                | handwritten local mirror                           | missing    |
-| pointer/Enter activation and submit      | one activation and native submit                     | Storybook browser spec                             | partial    |
-| Space and reset                          | native behavior preserved                            | none identified                                    | missing    |
-| disabled activation                      | no action delivered                                  | static disabled assertion                          | incomplete |
-| controlled toggle                        | intent emit, prop authority, no drift                | pointer path and unit cancellation                 | partial    |
-| loading behavior                         | actionable, accessible, stable legacy presentation   | action/busy test; no presentation baseline         | incomplete |
-| public active tokens                     | canonical defaults and observable overrides          | partial CSS bridge; no complete rendered proof     | incomplete |
-| shape motion and reduced motion          | correct press/release/final result                    | `:active` acquisition/release only                  | incomplete |
-| themes and RTL                           | accepted theme roles and leading-icon directionality | no explicit canonical proof identified             | missing    |
-| migrated consumers                       | all consumers use canonical public owner             | import migration and selected consumer tests       | partial    |
-| visual compatibility                     | all distinct stable scenarios reviewed               | four refreshed baselines; required gaps remain     | incomplete |
+| Scenario or contract                  | Accepted result                                      | Current proof                                  | Status     |
+| ------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- | ---------- |
+| public Vue defaults and basic mapping | stable typed adapter mapping                         | colocated component test                       | partial    |
+| renderer type compatibility           | package-derived, compile-time checked                | handwritten local mirror                       | missing    |
+| pointer/Enter activation and submit   | one activation and native submit                     | Storybook browser spec                         | partial    |
+| Space and reset                       | native behavior preserved                            | none identified                                | missing    |
+| disabled activation                   | no action delivered                                  | static disabled assertion                      | incomplete |
+| controlled toggle                     | intent emit, prop authority, no drift                | pointer path and unit cancellation             | partial    |
+| loading behavior                      | actionable, accessible, stable legacy presentation   | action/busy test; no presentation baseline     | incomplete |
+| public active tokens                  | canonical defaults and observable overrides          | partial CSS bridge; no complete rendered proof | incomplete |
+| shape motion and reduced motion       | correct press/release/final result                   | `:active` acquisition/release only             | incomplete |
+| themes and RTL                        | accepted theme roles and leading-icon directionality | no explicit canonical proof identified         | missing    |
+| migrated consumers                    | all consumers use canonical public owner             | import migration and selected consumer tests   | partial    |
+| visual compatibility                  | all distinct stable scenarios reviewed               | four refreshed baselines; required gaps remain | incomplete |
 
 ## Exit gate
 
