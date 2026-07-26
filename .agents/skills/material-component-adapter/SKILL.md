@@ -1,9 +1,6 @@
 ---
 name: material-component-adapter
 description: 'Use for implementing, migrating, or materially changing one official Material component as a demand-driven Material-first Vue MD* API backed privately by @m3e/web.'
-paths:
-  - 'src/shared/ui/material/**'
-  - 'src/shared/ui/**/MD*.vue'
 ---
 
 # Material component adapter
