@@ -106,9 +106,9 @@ Compare only the supported surface.
 
 For each confirmed difference, record:
 
-| Material expectation | m3e behavior | Required by Mioframe | Decision |
-| -------------------- | ------------ | -------------------- | -------- |
-| expected behavior    | actual behavior | yes or no          | accept, wrapper correction, upstream follow-up, or blocker |
+| Material expectation | m3e behavior    | Required by Mioframe | Decision                                                   |
+| -------------------- | --------------- | -------------------- | ---------------------------------------------------------- |
+| expected behavior    | actual behavior | yes or no            | accept, wrapper correction, upstream follow-up, or blocker |
 
 Classify differences:
 
