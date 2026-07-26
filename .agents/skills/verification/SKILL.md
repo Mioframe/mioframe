@@ -29,7 +29,7 @@ pnpm verify --only mutation --files <paths...>
 
 Use focused runs for development feedback and explicit existing targets. `--files` does not represent deleted files or both sides of a rename; status-aware automatic planning must use Git diff/base-ref modes.
 
-Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or Stryker commands are diagnostic exceptions only. Return to verify-managed checks before completion.
+Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or Stryker commands are diagnostic exceptions only. A failed verify step may print its raw child command for diagnosis; do not use that command as the rerun or completion gate. Return to a verify-managed command that preserves the original invocation scope.
 
 ## Automatic scope
 
@@ -74,7 +74,7 @@ pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 
 The durable target is automatic selection from persistent registered high-risk source/test pairs. Do not infer semantic applicability merely from sibling files, and do not make automatic selection depend on agent prose.
 
-Until the persistent registry replaces legacy inference, final `pnpm verify` may still execute broader mutation scope. Do not skip the mandatory final gate or present that incidental run as a deliberate task-specific audit.
+Until the persistent registry replaces legacy inference, final task-scope verification may still execute broader mutation scope. Do not skip the mandatory final gate or present that incidental run as a deliberate task-specific audit.
 
 ## Browser, visual, and project selection
 
@@ -100,27 +100,31 @@ For a one-off performance, memory, startup, main-thread, or bundle-size claim:
 2. use the recorded representative scenario/dataset and environment;
 3. report the baseline or budget and measured result;
 4. rerun after implementation when comparison is required;
-5. still run final `pnpm verify`.
+5. still run the single final task-scope verification.
 
 A durable product budget belongs in a repository-owned automated check with impact metadata. Do not create permanent benchmark infrastructure for one task.
 
 ## Fix mode
 
-Use safe autofix only when needed:
+When only automatic formatting, lint fixes, or instruction compatibility generation is needed, use fix-only mode with the same task scope:
 
 ```bash
-pnpm verify --fix
+pnpm verify --fix-only --base <parent-ref>
 ```
 
-Inspect generated changes. After instruction-tree edits, use fix mode to regenerate compatibility files. Never use `--fix` for the final gate.
+Inspect generated changes. `pnpm verify --fix` remains available as a combined convenience run, but it is not the default agent workflow and never replaces the final read-only gate. Remove `--fix` or `--fix-only` from the final rerun.
 
 ## Final and release gates
 
-After code or instruction-tree edits, run read-only:
+The top-level task owns exactly one final read-only verification after every implementation pass and focused proof is complete. Nested implementation and testing skills do not run separate final gates.
+
+For ordinary feature-branch or PR work:
 
 ```bash
-pnpm verify
+pnpm verify --base origin/develop
 ```
+
+For a stacked branch, replace `origin/develop` with the actual parent feature branch. Plain `pnpm verify` is sufficient only when the complete task is exactly the current uncommitted diff against `HEAD`, or exactly the single last commit selected by verify's documented fallback; never report it as proof of a multi-commit PR.
 
 Release verification:
 
@@ -136,7 +140,7 @@ When tooling, scripts, CI, Storybook, Playwright, build config, package scripts,
 
 Examples:
 
-- verify runner: default and affected `--only`, `--files`, `--fix`, `--verbose`, base-ref, resume, or full modes;
+- verify runner: default and affected `--only`, `--files`, `--fix`, `--fix-only`, `--verbose`, base-ref, resume, or full modes;
 - changed-path planner: local, base-ref, GitHub Actions, deletion, and rename;
 - resolver: table-driven resolver tests plus representative command planning;
 - Playwright config: every affected project/lane;
@@ -144,7 +148,7 @@ Examples:
 - release resolver: focused development planning and unconditional full release mode;
 - package/build config: affected type-check, build, artifact, or release mode.
 
-Final `pnpm verify` does not replace a mode or measurement it does not exercise.
+The final task-scope command does not replace a mode or measurement it does not exercise.
 
 ## Process ownership
 
@@ -161,12 +165,14 @@ When a required check, registry validation, or measurement fails:
 1. identify the failed label, plan state, command, metric, or budget;
 2. determine whether the current change caused it;
 3. fix in-scope failures or stale repository impact metadata;
-4. rerun the narrow failed proof;
-5. rerun final `pnpm verify`;
+4. rerun the narrow failed proof through `pnpm verify --only <label>` while preserving applicable `--base`, `--full`, `--profile`, and `--files` arguments;
+5. after all fixes, rerun the original final task-scope command without `--fix` or `--fix-only`;
 6. report unrelated or unresolved failures exactly;
 7. never claim completion while required verification or evidence is missing or failing.
 
-If verification is active, use `pnpm verify:status`, inspect `.verify/logs`, and use `pnpm verify:resume` only when instructed by status. Do not start duplicate expensive runs.
+Do not follow a failure summary that drops the original base, full, profile, file, or label scope, and do not substitute a printed raw child command for the verify-managed rerun.
+
+If verification is active, use `pnpm verify:status`, inspect `.verify/logs`, and use `pnpm verify:resume` only when instructed by status. Do not start duplicate expensive runs. After resume, rerun the exact original task-scope command recorded by status/metadata; plain `pnpm verify` is not an acceptable fallback when the original invocation had scope arguments.
 
 ## Warnings
 
@@ -180,9 +186,9 @@ status: complete | partial | blocked
 remaining: none | <remaining required work, verification, or blocker>
 
 VERIFY RESULT
-command: pnpm verify
+command: <exact final task-scope command>
 status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
 
-`complete` requires assigned scope, acceptance criteria, required proof and measurements, consistent repository impact metadata, and final verification to pass.
+`complete` requires assigned scope, acceptance criteria, required proof and measurements, consistent repository impact metadata, and the single final task-scope verification to pass.
