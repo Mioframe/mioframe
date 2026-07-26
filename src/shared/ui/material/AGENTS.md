@@ -102,6 +102,17 @@ The family README must map every required scenario and retained public styling c
 
 Do not duplicate m3e or Lit unit tests. Use final repository verification before reporting completion.
 
+## Execution completeness
+
+A `material-component-adapter` invocation owns all known, unblocked implementation, documentation, migration, and automated-proof work recorded for its selected target in the family README and roadmap.
+
+- Do not stop after completing only a convenient subset while repository-local exit-gate work remains.
+- Continue through focused implementation and verification passes until every implementable item is complete or a genuine evidenced blocker is reached.
+- Passing `pnpm verify` before the scenario ledger and exit gate are complete is an intermediate checkpoint, not a valid stopping condition.
+- The `partial` status offered by the skill is permitted only when all repository-local work is complete and the sole remainder is operator visual acceptance, unavailable external access, or an explicit product/architecture decision that the coding agent cannot make.
+- `partial` is forbidden when the remaining list contains code changes, token declarations or mappings, tests, stories, source-to-spec metadata, representative-consumer proof, build proof, or documentation that the agent can complete in the repository.
+- When genuinely blocked, report the exact external dependency or unresolved decision and do not disguise ordinary remaining work as a blocker.
+
 ## Migration completion
 
 A migration target must:
