@@ -1534,15 +1534,79 @@ function selectOnlyCommands(commands) {
   throw new Error(`Verify command list is missing required label: ${cliOnlyLabel}`);
 }
 
+function stripVerifyArg(argv, index, flag) {
+  const argument = argv[index];
+
+  if (argument === flag) {
+    return 2;
+  }
+
+  return argument.startsWith(`${flag}=`) ? 1 : 0;
+}
+
+/**
+ * Build a supported read-only verify command while preserving the invocation scope.
+ * Fix flags are removed. Optional profile and label overrides replace the corresponding
+ * original arguments without dropping base, full, files, or verbose arguments.
+ * @param argv Original verify CLI arguments.
+ * @param [overrides] Optional rerun overrides.
+ * @param [overrides.profile] Replacement runtime profile.
+ * @param [overrides.onlyLabel] Replacement focused verify label.
+ * @returns Formatted `pnpm verify` command.
+ */
+export function getVerifyRerunCommand(argv, overrides = {}) {
+  const { profile = null, onlyLabel = null } = overrides;
+  const args = [];
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === '--fix' || argument === '--fix-only') {
+      continue;
+    }
+
+    if (profile !== null) {
+      const consumed = stripVerifyArg(argv, index, '--profile');
+
+      if (consumed > 0) {
+        index += consumed - 1;
+        continue;
+      }
+    }
+
+    if (onlyLabel !== null) {
+      const consumed = stripVerifyArg(argv, index, '--only');
+
+      if (consumed > 0) {
+        index += consumed - 1;
+        continue;
+      }
+    }
+
+    args.push(argument);
+  }
+
+  if (profile !== null) {
+    args.push('--profile', profile);
+  }
+
+  if (onlyLabel !== null) {
+    args.push('--only', onlyLabel);
+  }
+
+  return formatCommand('pnpm', ['verify', ...args]);
+}
+
 /**
  * Build the `action required` lines for the verify summary.
  * @param results Collected command results in run order.
  * @param [options] Summary options.
  * @param [options.ciProfileRisk] Pending GitHub Actions profile risk details.
+ * @param [options.verifyArgs] Original verify CLI arguments.
  * @returns Action lines; `['None.']` when nothing failed or warned.
  */
 export function getActionRequired(results, options = {}) {
-  const { ciProfileRisk = null } = options;
+  const { ciProfileRisk = null, verifyArgs = [] } = options;
   const actions = [];
   const failedResults = results.filter((result) => result.status === 'failed');
   const warningResults = results.filter(
@@ -1550,7 +1614,9 @@ export function getActionRequired(results, options = {}) {
   );
 
   for (const result of failedResults) {
-    actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
+    actions.push(
+      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(verifyArgs, { onlyLabel: result.label })}`,
+    );
 
     if (result.blockingLogIssue) {
       actions.push(
@@ -1563,17 +1629,26 @@ export function getActionRequired(results, options = {}) {
   }
 
   if (failedResults.length > 0) {
-    actions.push(`After fixes, run: pnpm verify${isFixMode ? ' --fix' : ''}`);
+    actions.push(
+      `After fixes, rerun the original read-only scope: ${getVerifyRerunCommand(verifyArgs)}`,
+    );
   }
 
   for (const result of warningResults) {
-    actions.push(`Fix ${result.label} warnings. Run: ${result.command}`);
+    actions.push(
+      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(verifyArgs, { onlyLabel: result.label })}`,
+    );
     actions.push(`Reason: ${result.warningSummary}`);
   }
 
   if (ciProfileRisk !== null) {
     const rerunChecks = ciProfileRisk.affectedChecks
-      .map((label) => `pnpm verify --profile github-actions --only ${label}`)
+      .map((label) =>
+        getVerifyRerunCommand(verifyArgs, {
+          onlyLabel: label,
+          profile: 'github-actions',
+        }),
+      )
       .join(' ; ');
     actions.push(
       `CI-profile risk remains for ${ciProfileRisk.affectedChecks.join(', ')} because local Playwright used profile ${ciProfileRisk.activeProfile.name}.`,
@@ -1601,6 +1676,7 @@ export function getActionRequired(results, options = {}) {
  * @param [options.ciProfileRisk] Precomputed GitHub Actions profile risk details.
  * @param [options.profileSummary] Precomputed verify profile summary details.
  * @param [options.heavyCheckTriggers] Precomputed heavy-check trigger lines.
+ * @param [options.verifyArgs] Original verify CLI arguments.
  * @returns Overall run status derived from the results.
  */
 export function printSummary(changedFiles, scope, results, options = {}) {
@@ -1614,7 +1690,10 @@ export function printSummary(changedFiles, scope, results, options = {}) {
     : ciProfileRisk === null
       ? 'passed ✅'
       : 'passed with CI-profile risk ⚠️';
-  const actionRequired = getActionRequired(results, { ciProfileRisk });
+  const actionRequired = getActionRequired(results, {
+    ciProfileRisk,
+    verifyArgs: options.verifyArgs ?? cliArgs,
+  });
   const mode = isFixOnlyMode ? 'fix-only' : isFixMode ? 'fix' : 'check';
   const heavyCheckTriggers = options.heavyCheckTriggers ?? getHeavyCheckTriggerLines(results);
   const baseRef = options.baseRef ?? null;
@@ -1851,6 +1930,7 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
   const summary = printSummary(changedFiles, scope, results, {
     baseRef,
     processEnv: verifyProcessEnv,
+    verifyArgs: cliArgs,
   });
   process.exitCode = summary.hasFailed ? 1 : 0;
 }
