@@ -98,8 +98,8 @@ Compare official Material guidance only with the supported surface.
 
 Record confirmed differences in a compact table:
 
-| Material expectation | Exact m3e behavior/version | Required by Mioframe | Decision |
-| -------------------- | -------------------------- | -------------------- | -------- |
+| Material expectation | Exact m3e behavior/version | Required by Mioframe | Decision                                                   |
+| -------------------- | -------------------------- | -------------------- | ---------------------------------------------------------- |
 | expected behavior    | observed implementation    | yes or no            | accept, wrapper correction, upstream follow-up, or blocker |
 
 Rules:
