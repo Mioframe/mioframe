@@ -399,7 +399,9 @@ pnpm preview
 - Optimized JavaScript bundles
 - Minified CSS
 - Pre-rendered HTML (PWA support)
-- Source maps
+- Source maps when configured by the build mode
+
+### Deployment Notes
 
 1. **HTTPS required**: All features expect secure context
 2. **CORS**: Configure for production API endpoints
