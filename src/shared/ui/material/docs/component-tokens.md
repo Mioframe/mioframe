@@ -65,14 +65,23 @@ Removing an obsolete or declaration-only token during atomic migration is cleanu
 
 ## Canonical declarations
 
-Every active public `--md-comp-*` token has one canonical declaration owner.
+Every retained active public `--md-comp-*` token has one canonical declaration owner and one meaningful default source.
 
 - Reference and system tokens remain theme/foundation-owned.
 - Before migration, the legacy component owns the defaults used by its active current contract.
 - During migration, the family README records which tokens transfer, which map directly to system roles, and which obsolete declarations are removed.
+- Before deleting the legacy owner, transfer canonical declarations for all retained active tokens into the adapter family.
 - After migration, the canonical adapter family owns the component tokens used by its supported surface.
 - Consumers may override public component tokens but do not own their defaults.
 - Do not create token files for symmetry, hypothetical reuse, or a complete unused Material surface.
+
+A renderer mapping such as:
+
+```css
+--m3e-filled-button-container-color: var(--md-comp-button-filled-container-color);
+```
+
+is incomplete when no canonical owner declares `--md-comp-button-filled-container-color`. Successful renderer fallback to its own default does not satisfy Mioframe public token ownership.
 
 Canonical declarations remain independent of active configuration and state. Keep selectors, pseudo-classes, private aliases, and final DOM properties out of the declaration owner unless the accepted contract explicitly requires otherwise.
 
@@ -95,7 +104,8 @@ shared Material system role
   --md-sys-* → renderer consumes the same role
 
 component contract
-  public --md-comp-* → documented semantically equivalent --m3e-<component>-* input
+  canonical public --md-comp-* declaration
+    → documented semantically equivalent --m3e-<component>-* input
 
 renderer-owned behavior without retained public tuning
   renderer default/public behavior → renderer-owned DOM and motion
@@ -108,6 +118,7 @@ Rules:
 - map only variables required by the supported target surface;
 - prefer direct `--md-sys-*` consumption when m3e documents the same Material system-token semantics;
 - map active `--md-comp-*` contracts mechanically to documented semantically equivalent `--m3e-*` inputs;
+- audit declaration ownership and renderer mapping as separate requirements;
 - keep component mappings inside `src/shared/ui/material/components/<family>` unless two unrelated adapters prove the same genuinely shared mechanism;
 - do not expose `--m3e-*` through public documentation, barrels, props, or consumer examples;
 - do not read renderer defaults back as application state;
@@ -154,10 +165,10 @@ A project-owned generic state-layer, ripple, focus, elevation, or motion primiti
 
 Each migration family README records the supported token surface in a compact evidence table:
 
-| Material meaning | Mioframe token | Documented m3e input or renderer owner | Legacy evidence  | Consumer evidence | Decision |
-| ---------------- | -------------- | -------------------------------------- | ---------------- | ----------------- | -------- |
-| retained role    | public token   | semantic mapping                       | effective        | used or promised  | preserve |
-| unused tuning    | legacy token   | renderer-owned behavior                | declaration-only | none              | remove   |
+| Material meaning | Mioframe token | Canonical default owner | Documented m3e input or renderer owner | Legacy evidence  | Consumer evidence | Decision |
+| ---------------- | -------------- | ----------------------- | -------------------------------------- | ---------------- | ----------------- | -------- |
+| retained role    | public token   | adapter family          | semantic mapping                       | effective        | used or promised  | preserve |
+| unused tuning    | legacy token   | removed                 | renderer-owned behavior                | declaration-only | none              | remove   |
 
 Also record:
 
@@ -173,12 +184,14 @@ A renderer variable with a different name is acceptable when its documented sema
 
 Verify contracts owned by Mioframe:
 
-- set an intentional non-default active public override and prove that the intended rendered property or observable behavior changes;
-- verify component-local mapping selects the documented semantically equivalent renderer variable;
-- verify configuration and state routing do not leak private variables;
-- verify no `--m3e-*` usage exists outside `src/shared/ui/material`;
-- use visual regression for stable visible consequences where the risk is material;
-- verify the production build includes only required renderer entry points.
+- every retained active token has exactly one canonical declaration after legacy removal;
+- the canonical declaration resolves to the intended system role or literal default;
+- component-local mapping selects the documented semantically equivalent renderer variable;
+- an intentional non-default public override changes the intended rendered property or observable behavior;
+- configuration and state routing do not leak private variables;
+- no `--m3e-*` usage exists outside `src/shared/ui/material`;
+- visual regression covers stable token-sensitive surfaces where the risk is material;
+- the production build includes only required renderer entry points.
 
 Reading a custom property's declared or resolved value without proving its effect does not establish an active public contract. For renderer-owned motion, verify public press/release, interruption, final state, and reduced-motion behavior where required; do not assert private spring coefficients, Lit styles, or shadow-DOM implementation.
 
