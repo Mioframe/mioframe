@@ -6,9 +6,7 @@ import type {
   ButtonVariant as RendererButtonVariant,
   M3eButtonElement,
 } from '@m3e/web/button';
-import { isNumber } from 'es-toolkit/compat';
 import { computed, defineComponent, h, onMounted, warn, watchEffect } from 'vue';
-import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 
 const props = withDefaults(
   defineProps<{
@@ -20,14 +18,10 @@ const props = withDefaults(
     label: string;
     /** Blocks focus and activation through the renderer's documented disabled contract. */
     disabled?: boolean | undefined;
-    /** Blocks activation while retaining focusability and disabled semantics. */
-    disabledInteractive?: boolean | undefined;
     /** Optional filename when the Button acts as a download link. */
     download?: string | null | undefined;
     /** Optional URL that makes the Button act as a link. */
     href?: string | undefined;
-    /** Shows an indeterminate or determinate progress indicator while preserving activation. */
-    loading?: number | boolean | undefined;
     /** Form field name used by submit Buttons. */
     name?: string | undefined;
     /** Stateless action or consumer-controlled toggle intent. */
@@ -68,8 +62,6 @@ const slots = defineSlots<{
   selected(): unknown;
   /** Leading icon rendered while a toggle Button is selected. */
   'selected-icon'(): unknown;
-  /** Trailing icon content. */
-  'trailing-icon'(): unknown;
 }>();
 
 const MDButtonSlottedContent = defineComponent({
@@ -85,7 +77,6 @@ const MDButtonSlottedContent = defineComponent({
   },
 });
 
-const isLoading = computed(() => props.loading !== undefined && props.loading !== false);
 const isUnsupportedTextToggle = computed(
   () => props.color === 'text' && props.variant === 'toggle',
 );
@@ -134,9 +125,7 @@ if (import.meta.env.DEV) {
   <!-- eslint-disable vue/attribute-hyphenation -- The m3e Boolean must be bound as a camel-case property; its dashed attribute would treat false as present. -->
   <m3e-button
     class="md-button"
-    :aria-busy="isLoading ? 'true' : undefined"
     :disabled="props.disabled"
-    :disabledInteractive="props.disabledInteractive"
     :download="rendererDownload"
     :href="rendererHref"
     :name="rendererName"
@@ -152,47 +141,24 @@ if (import.meta.env.DEV) {
     @beforeinput="onBeforeInput"
     @click.stop="onClick"
   >
-    <MDButtonSlottedContent
-      v-if="!!slots.icon"
-      class="md-button__icon"
-      :class="{ 'md-button__content_loading': isLoading }"
-      slot-name="icon"
-    >
+    <MDButtonSlottedContent v-if="!!slots.icon" class="md-button__icon" slot-name="icon">
       <slot name="icon" />
     </MDButtonSlottedContent>
     <MDButtonSlottedContent
       v-if="!!slots['selected-icon']"
       class="md-button__icon"
-      :class="{ 'md-button__content_loading': isLoading }"
       slot-name="selected-icon"
     >
       <slot name="selected-icon" />
     </MDButtonSlottedContent>
-    <span class="md-button__label-text" :class="{ 'md-button__content_loading': isLoading }">{{
-      props.label
-    }}</span>
+    <span class="md-button__label-text">{{ props.label }}</span>
     <MDButtonSlottedContent
       v-if="!!slots.selected"
       class="md-button__label-text"
-      :class="{ 'md-button__content_loading': isLoading }"
       slot-name="selected"
     >
       <slot name="selected" />
     </MDButtonSlottedContent>
-    <MDButtonSlottedContent
-      v-if="!!slots['trailing-icon']"
-      class="md-button__icon"
-      :class="{ 'md-button__content_loading': isLoading }"
-      slot-name="trailing-icon"
-    >
-      <slot name="trailing-icon" />
-    </MDButtonSlottedContent>
-    <MDCircularProgressIndicator
-      v-if="isLoading"
-      class="md-button__progress-indicator md-button__progress-indicator_centered"
-      :progress="isNumber(props.loading) ? props.loading : undefined"
-      :size="24"
-    />
   </m3e-button>
   <!-- eslint-enable vue/attribute-hyphenation -->
 </template>
@@ -212,56 +178,5 @@ if (import.meta.env.DEV) {
 .md-button__icon {
   display: inline-flex;
   color: inherit;
-}
-
-.md-button__content_loading {
-  opacity: 0;
-}
-
-.md-button__progress-indicator {
-  display: inline-flex;
-  --md-circular-progress-color: var(--md-private-button-loading-indicator-color);
-}
-
-.md-button__progress-indicator_centered {
-  position: absolute;
-  inset-block-start: 50%;
-  inset-inline-start: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.md-button[variant='elevated'] {
-  --md-private-button-loading-indicator-color: var(
-    --md-comp-button-elevated-label-text-color,
-    var(--md-sys-color-primary)
-  );
-}
-
-.md-button[variant='filled'] {
-  --md-private-button-loading-indicator-color: var(
-    --md-comp-button-filled-label-text-color,
-    var(--md-sys-color-on-primary)
-  );
-}
-
-.md-button[variant='tonal'] {
-  --md-private-button-loading-indicator-color: var(
-    --md-comp-button-tonal-label-text-color,
-    var(--md-sys-color-on-secondary-container)
-  );
-}
-
-.md-button[variant='outlined'] {
-  --md-private-button-loading-indicator-color: var(
-    --md-comp-button-outlined-label-text-color,
-    var(--md-sys-color-primary)
-  );
-}
-
-.md-button[variant='text'] {
-  --md-private-button-loading-indicator-color: var(
-    --md-comp-button-text-label-text-color,
-    var(--md-sys-color-primary)
-  );
 }
 </style>

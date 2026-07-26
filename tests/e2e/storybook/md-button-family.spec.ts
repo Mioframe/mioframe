@@ -108,7 +108,7 @@ test('MDButton expanded target activates clicks outside the visible button box',
   await expect(count).toHaveText('1');
 });
 
-test('MDButton preserves form, controlled toggle, loading, disabled, and public press contracts', async ({
+test('Button adapters preserve form, controlled toggle, loading, disabled, and public press contracts', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--behavior-contracts');
@@ -117,6 +117,9 @@ test('MDButton preserves form, controlled toggle, loading, disabled, and public 
   const reset = page.getByRole('button', { name: 'Reset action', exact: true });
   const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
   const loading = page.getByRole('button', { name: 'Loading action', exact: true });
+  const loadingPresentation = loading.locator(
+    'xpath=ancestor::span[contains(@class, "loading-button")]',
+  );
   const disabled = page.getByRole('button', { name: 'Disabled action', exact: true });
   const pressTarget = page.getByRole('button', { name: 'Press action', exact: true });
 
@@ -146,7 +149,7 @@ test('MDButton preserves form, controlled toggle, loading, disabled, and public 
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#md-button-selection-intent-count')).toHaveText('2');
 
-  await expect(loading).toHaveAttribute('aria-busy', 'true');
+  await expect(loadingPresentation).toHaveAttribute('aria-busy', 'true');
   await expect(loading).toBeEnabled();
   await expect(loading.locator('.md-circular-progress-indicator')).toBeVisible();
   await expect(loading.locator('.md-circular-progress-indicator__progress')).not.toHaveCSS(

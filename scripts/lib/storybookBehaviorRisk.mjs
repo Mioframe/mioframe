@@ -100,6 +100,7 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     // the `reorder` scenario comment above) so editing it re-selects itself.
     sourcePrefixes: [
       'src/shared/ui/Button/',
+      'src/shared/ui/LoadingButton/',
       'src/shared/ui/material/components/button/',
       'src/shared/ui/State/useFocusIndicator.ts',
       'src/shared/ui/State/md-focus-indicator.css',

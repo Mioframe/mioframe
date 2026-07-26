@@ -3,6 +3,7 @@ import { useVfsActivity } from '@entity/vfsActivity';
 import { useMainServiceClient } from '@shared/service';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
 import { MDButton } from '@shared/ui/material';
+import { LoadingButton } from '@shared/ui/LoadingButton';
 import { MDAssistChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -218,7 +219,7 @@ const onInteractionOutside = () => {
     </div>
 
     <div class="vfs-activity-status-chip__actions">
-      <MDButton
+      <LoadingButton
         v-if="hasWriteAccessRecovery"
         color="text"
         :disabled="isGrantWriteAccessLoading"

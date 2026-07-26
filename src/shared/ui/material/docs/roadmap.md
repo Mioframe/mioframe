@@ -8,24 +8,24 @@ Last updated: 2026-07-26
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `architecture-correction`
+Status: `operator-review`
 
 Owner: current architecture-reset branch
 
-Blocker: the public Button contract was derived from legacy Mioframe scenarios and m3e capabilities rather than from an official Material-first API matrix. Current implementation and verification are not sufficient to close M1 until the public API is normalized.
+Blocker: explicit operator acceptance of the final Button visuals and renderer-owned press and selection motion remains required.
 
-Next action: rerun `material-component-adapter` for `MDButton`. Build the source-backed Material–m3e–Vue matrix, select the required Material subset, resolve the non-Material loading requirement, normalize the Vue API and consumers, then rerun verification and operator review.
+Next action: review the canonical Button stories in a real browser and explicitly accept or reject final visual and motion quality.
 
 Implementation ownership remains `migrating`.
 
 ## Milestones
 
-| ID  | Milestone                         | Status                    | Depends on | Exit gate                                                                                                                                                                                                                |
-| --- | --------------------------------- | ------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | m3e-backed architecture reset     | `verification`            | none       | Material-first public boundary; private m3e renderer boundary; contract-matrix workflow; package-derived typing; final verification                                                                                      |
-| M1  | `MDButton` adapter pilot          | `architecture-correction` | M0         | accepted Material–m3e–Vue matrix; demand-driven official Material Vue API; non-Material requirements explicitly resolved; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`                 | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                          |
-| M3  | sequential component migration    | `planned`                 | M2         | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage                                                              |
+| ID  | Milestone                         | Status            | Depends on | Exit gate                                                                                                                                                                                                                |
+| --- | --------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M0  | m3e-backed architecture reset     | `verification`    | none       | Material-first public boundary; private m3e renderer boundary; contract-matrix workflow; package-derived typing; final verification                                                                                      |
+| M1  | `MDButton` adapter pilot          | `operator-review` | M0         | accepted Material–m3e–Vue matrix; demand-driven official Material Vue API; non-Material requirements explicitly resolved; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
+| M2  | `MDSwitch` stateful adapter pilot | `planned`         | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                          |
+| M3  | sequential component migration    | `planned`         | M2         | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage                                                              |
 
 ## M1 — MDButton pilot
 

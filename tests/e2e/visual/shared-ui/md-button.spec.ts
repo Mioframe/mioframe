@@ -32,7 +32,9 @@ test('MDButton disabled toggle and text routes match the canonical baseline', as
   await expect(surface).toHaveScreenshot('md-button-toggle-interaction-states.png');
 });
 
-test('MDButton loading preserves content geometry with a centered indicator', async ({ page }) => {
+test('LoadingButton keeps its label visible with a leading progress indicator', async ({
+  page,
+}) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--loading-presentation');
   const surface = page.getByTestId('visual-md-button-loading');
 

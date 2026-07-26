@@ -73,10 +73,35 @@ vi.mock('@shared/ui/material', () => ({
     props: {
       label: { type: String, required: true },
       disabled: { type: Boolean, default: false },
-      loading: {
-        type: [Boolean, Number],
-        default: undefined,
-      },
+    },
+    emits: ['click'],
+    setup(props, { emit }) {
+      return () =>
+        h(
+          'button',
+          {
+            type: 'button',
+            disabled: props.disabled,
+            onClick: () => {
+              if (props.disabled) {
+                return;
+              }
+              emit('click');
+            },
+          },
+          props.label,
+        );
+    },
+  }),
+}));
+
+vi.mock('@shared/ui/LoadingButton', () => ({
+  LoadingButton: defineComponent({
+    name: 'LoadingButtonStub',
+    props: {
+      label: { type: String, required: true },
+      disabled: { type: Boolean, default: false },
+      loading: { type: [Boolean, Number], default: undefined },
     },
     emits: ['click'],
     setup(props, { emit }) {
@@ -89,10 +114,7 @@ vi.mock('@shared/ui/material', () => ({
             'data-loading':
               props.loading !== undefined && props.loading !== false ? String(props.loading) : '',
             onClick: () => {
-              if (props.disabled) {
-                return;
-              }
-              emit('click');
+              if (!props.disabled) emit('click');
             },
           },
           props.label,

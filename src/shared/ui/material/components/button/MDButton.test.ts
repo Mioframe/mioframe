@@ -30,7 +30,6 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(defaultButton.element, 'size')).toBe('small');
     expect(getElementProperty(defaultButton.element, 'shape')).toBe('rounded');
     expect(getElementProperty(defaultButton.element, 'type')).toBe('button');
-    expect(getElementProperty(defaultButton.element, 'disabledInteractive')).toBe(false);
     expect(getElementProperty(defaultButton.element, 'toggle')).toBe(false);
     expect(getElementProperty(defaultButton.element, 'selected')).toBe(false);
 
@@ -50,42 +49,6 @@ describe('MDButton adapter', () => {
     expect(button.get('.md-button__icon').attributes('slot')).toBe('icon');
   });
 
-  it('keeps loading actionable, exposes busy state, and renders progress', async () => {
-    const wrapper = mountButton({ loading: 0 });
-    const button = wrapper.get('m3e-button');
-
-    expect(button.attributes('aria-busy')).toBe('true');
-    expect(button.attributes('disabled')).toBeUndefined();
-    expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
-      '0',
-    );
-    expect(wrapper.get('.md-button__label-text').classes()).toContain('md-button__content_loading');
-    expect(wrapper.get('.md-button__progress-indicator').classes()).toContain(
-      'md-button__progress-indicator_centered',
-    );
-
-    await button.trigger('click');
-    expect(wrapper.emitted('click')).toHaveLength(1);
-  });
-
-  it('preserves icon and label layout while loading replaces their visible presentation', () => {
-    const wrapper = mount(MDButton, {
-      props: { label: 'Create', loading: true },
-      slots: { icon: '<span data-icon>+</span>' },
-      global: {
-        stubs: {
-          MDCircularProgressIndicator: {
-            template: '<span class="md-circular-progress-indicator-stub" />',
-          },
-        },
-      },
-    });
-
-    expect(wrapper.get('.md-button__icon').classes()).toContain('md-button__content_loading');
-    expect(wrapper.get('.md-button__label-text').text()).toBe('Create');
-    expect(wrapper.get('.md-button__progress-indicator')).toBeDefined();
-  });
-
   it('maps explicit disabled and native type', () => {
     const button = mountButton({ disabled: true, nativeType: 'submit' }).get('m3e-button');
 
@@ -93,9 +56,8 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(button.element, 'type')).toBe('submit');
   });
 
-  it('maps documented disabled-interactive, link, and form properties', () => {
+  it('maps documented link and form properties', () => {
     const button = mountButton({
-      disabledInteractive: true,
       download: 'report.pdf',
       href: '/report',
       name: 'action',
@@ -104,7 +66,6 @@ describe('MDButton adapter', () => {
       value: 'export',
     }).get('m3e-button');
 
-    expect(getElementProperty(button.element, 'disabledInteractive')).toBe(true);
     expect(getElementProperty(button.element, 'download')).toBe('report.pdf');
     expect(getElementProperty(button.element, 'href')).toBe('/report');
     expect(getElementProperty(button.element, 'name')).toBe('action');
@@ -113,19 +74,17 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(button.element, 'value')).toBe('export');
   });
 
-  it('routes selected content and trailing icons through documented renderer slots', () => {
+  it('routes selected content and selected icons through documented renderer slots', () => {
     const wrapper = mount(MDButton, {
       props: { label: 'Start', selected: true, variant: 'toggle' },
       slots: {
         selected: 'Stop',
         'selected-icon': '<span data-selected-icon />',
-        'trailing-icon': '<span data-trailing-icon />',
       },
     });
 
     expect(wrapper.get('[slot="selected"]').text()).toBe('Stop');
     expect(wrapper.get('[slot="selected-icon"]').get('[data-selected-icon]')).toBeDefined();
-    expect(wrapper.get('[slot="trailing-icon"]').get('[data-trailing-icon]')).toBeDefined();
   });
 
   it('cancels renderer toggle mutation and emits controlled selection intent', () => {

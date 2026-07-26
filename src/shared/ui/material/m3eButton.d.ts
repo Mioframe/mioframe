@@ -4,7 +4,6 @@ import type { HTMLAttributes, PublicProps } from 'vue';
 type RendererButtonProps = Pick<
   M3eButtonElement,
   | 'disabled'
-  | 'disabledInteractive'
   | 'download'
   | 'href'
   | 'name'

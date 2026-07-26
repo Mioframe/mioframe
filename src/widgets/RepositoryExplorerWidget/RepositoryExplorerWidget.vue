@@ -3,6 +3,7 @@ import { computed, toRefs } from 'vue';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { GoogleDriveAccessRecoveryState } from '@entity/googleDriveAccess';
 import { MDButton } from '@shared/ui/material';
+import { LoadingButton } from '@shared/ui/LoadingButton';
 import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
@@ -111,14 +112,14 @@ const onClickGrantFullAccess = () => {
         </template>
 
         <template #actions>
-          <MDButton
+          <LoadingButton
             color="text"
             label="Read only"
             :disabled="isGrantLocalDirectoryAccessDisabled"
             :loading="isGrantReadOnlyAccessLoading"
             @click="onClickGrantReadOnlyAccess"
           />
-          <MDButton
+          <LoadingButton
             label="Grant full access"
             :disabled="isGrantLocalDirectoryAccessDisabled"
             :loading="isGrantFullAccessLoading"
@@ -134,7 +135,7 @@ const onClickGrantFullAccess = () => {
         :errors="recoveryErrors"
       >
         <template #actions>
-          <MDButton
+          <LoadingButton
             label="Retry authorization"
             :loading="isRetryAuthorizationLoading"
             @click="onRetryAuthorization"

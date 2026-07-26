@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useFocusIndicator } from '../../../State/useFocusIndicator';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
+import { LoadingButton } from '@shared/ui/LoadingButton';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDButton',
@@ -14,7 +15,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Mioframe Button adapter backed privately by @m3e/web. Supports five appearances and sizes, round/square shapes, disabled, controlled toggle intent, native form types, a leading icon slot, and the loading extension.',
+          'Mioframe Material Button adapter backed privately by @m3e/web. Supports default and controlled toggle variants, five color configurations and sizes, round/square shapes, disabled state, native form types, and leading icon content.',
       },
     },
   },
@@ -28,7 +29,7 @@ export const Default: Story = {};
 export const VisualStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDButton },
+    components: { LoadingButton, MDButton },
     template: `
       <div data-testid="visual-md-button-states" class="visual-checker-backdrop">
         <div class="visual-row">
@@ -129,7 +130,7 @@ export const FocusIndicatorTarget: Story = {
 
 export const BehaviorContracts: Story = {
   render: () => ({
-    components: { MDButton },
+    components: { LoadingButton, MDButton },
     setup() {
       const selected = ref(false);
       const selectionIntentCount = ref(0);
@@ -176,7 +177,7 @@ export const BehaviorContracts: Story = {
         <output id="md-button-selected">{{ selected }}</output>
         <output id="md-button-selection-intent-count">{{ selectionIntentCount }}</output>
         <button id="md-button-programmatic-select" type="button" @click="selected = true">Select programmatically</button>
-        <MDButton label="Loading action" loading @click="onLoadingClick" />
+        <LoadingButton label="Loading action" loading @click="onLoadingClick" />
         <output id="md-button-loading-count">{{ loadingClickCount }}</output>
         <MDButton label="Disabled action" disabled @click="onDisabledClick" />
         <output id="md-button-disabled-count">{{ disabledClickCount }}</output>
@@ -189,11 +190,11 @@ export const BehaviorContracts: Story = {
 export const LoadingPresentation: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDButton },
+    components: { LoadingButton },
     template: `
       <div data-testid="visual-md-button-loading" class="visual-checker-backdrop visual-row">
-        <MDButton label="Saving" :loading="0.25" />
-        <MDButton label="Uploading file" :loading="0.5"><template #icon>+</template></MDButton>
+        <LoadingButton label="Saving" :loading="0.25" />
+        <LoadingButton label="Uploading file" :loading="0.5"><template #icon>+</template></LoadingButton>
       </div>
     `,
   }),
