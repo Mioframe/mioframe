@@ -411,30 +411,30 @@ pnpm preview
 
 ### Command Reference
 
-| Command                                   | Description                                                   |
-| ----------------------------------------- | ------------------------------------------------------------- |
-| `pnpm dev`                                | Start development server                                      |
-| `pnpm build`                              | Production build                                              |
-| `pnpm preview`                            | Preview production build                                      |
-| `pnpm verify --base <parent-ref>`         | Final read-only verification for the complete branch diff      |
-| `pnpm verify --only <label> --files ...`  | Focused verify-managed development feedback                    |
-| `pnpm verify --fix-only --base <parent>`  | Apply supported automatic fixes without running proof lanes    |
-| `pnpm verify:release`                     | Unconditional full-project release verification               |
-| `pnpm verify:status`                      | Inspect active local verification                              |
-| `pnpm verify:resume`                      | Release a confirmed inactive verification state before retry   |
-| `pnpm test`                               | Vitest watch mode                                             |
-| `pnpm test:run`                           | Single-run Vitest tests                                       |
-| `pnpm test:coverage`                      | Coverage diagnostics                                          |
-| `pnpm test:mutate`                        | Mutation testing                                              |
-| `pnpm storybook`                          | Storybook dev server                                          |
-| `pnpm storybook:build`                    | Build Storybook                                               |
-| `pnpm test:visual`                        | Visual regression tests in the canonical Podman environment   |
-| `pnpm test:visual:update`                 | Update visual snapshots in the canonical Podman environment   |
-| `pnpm e2e`                                | E2E tests                                                     |
-| `pnpm e2e:ui`                             | E2E with UI runner                                            |
-| `pnpm lint`                               | Full lint pipeline                                            |
-| `pnpm format`                             | Format all files                                              |
-| `pnpm type-check`                         | TypeScript type checking                                      |
+| Command                                  | Description                                                  |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `pnpm dev`                               | Start development server                                     |
+| `pnpm build`                             | Production build                                             |
+| `pnpm preview`                           | Preview production build                                     |
+| `pnpm verify --base <parent-ref>`        | Final read-only verification for the complete branch diff    |
+| `pnpm verify --only <label> --files ...` | Focused verify-managed development feedback                  |
+| `pnpm verify --fix-only --base <parent>` | Apply supported automatic fixes without running proof lanes  |
+| `pnpm verify:release`                    | Unconditional full-project release verification              |
+| `pnpm verify:status`                     | Inspect active local verification                            |
+| `pnpm verify:resume`                     | Release a confirmed inactive verification state before retry |
+| `pnpm test`                              | Vitest watch mode                                            |
+| `pnpm test:run`                          | Single-run Vitest tests                                      |
+| `pnpm test:coverage`                     | Coverage diagnostics                                         |
+| `pnpm test:mutate`                       | Mutation testing                                             |
+| `pnpm storybook`                         | Storybook dev server                                         |
+| `pnpm storybook:build`                   | Build Storybook                                              |
+| `pnpm test:visual`                       | Visual regression tests in the canonical Podman environment  |
+| `pnpm test:visual:update`                | Update visual snapshots in the canonical Podman environment  |
+| `pnpm e2e`                               | E2E tests                                                    |
+| `pnpm e2e:ui`                            | E2E with UI runner                                           |
+| `pnpm lint`                              | Full lint pipeline                                           |
+| `pnpm format`                            | Format all files                                             |
+| `pnpm type-check`                        | TypeScript type checking                                     |
 
 ### Configuration Files
 

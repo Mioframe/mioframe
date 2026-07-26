@@ -46,9 +46,7 @@ describe('getRetryInstruction', () => {
       getRetryInstruction({
         command: 'pnpm verify --base origin/develop --profile github-actions --only e2e',
       }),
-    ).toBe(
-      '  Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.',
-    );
+    ).toBe('  Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.');
   });
 
   it('does not invent a plain verify fallback when scope metadata is unavailable', () => {
@@ -129,9 +127,7 @@ describe('resumeVerification', () => {
     expect(exitCode).toBe(0);
     expect(fs.existsSync(stateDir)).toBe(false);
     expect(logs.join('\n')).toContain('verification: ready to retry');
-    expect(logs.join('\n')).toContain(
-      'pnpm verify --base origin/develop --profile github-actions',
-    );
+    expect(logs.join('\n')).toContain('pnpm verify --base origin/develop --profile github-actions');
     expect(forbiddenTermsIn(logs.join('\n'))).toEqual([]);
   });
 

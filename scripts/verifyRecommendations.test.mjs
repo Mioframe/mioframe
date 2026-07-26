@@ -15,9 +15,7 @@ describe('getVerifyRerunCommand', () => {
         'src/foo.ts',
         'src/bar.vue',
       ]),
-    ).toBe(
-      'pnpm verify --base origin/develop --profile local --files src/foo.ts src/bar.vue',
-    );
+    ).toBe('pnpm verify --base origin/develop --profile local --files src/foo.ts src/bar.vue');
   });
 
   it('replaces focused label and profile without dropping full or file scope', () => {
@@ -72,14 +70,7 @@ describe('getActionRequired scoped recommendations', () => {
 
   it('preserves base and file scope for CI-profile reruns', () => {
     const actions = getActionRequired([], {
-      verifyArgs: [
-        '--base',
-        'origin/develop',
-        '--profile',
-        'local',
-        '--files',
-        'src/foo.ts',
-      ],
+      verifyArgs: ['--base', 'origin/develop', '--profile', 'local', '--files', 'src/foo.ts'],
       ciProfileRisk: {
         affectedChecks: ['e2e'],
         activeProfile: { name: 'local' },
