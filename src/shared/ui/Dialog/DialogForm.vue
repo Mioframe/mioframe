@@ -6,7 +6,6 @@ import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnBackNavigationStacked } from '@shared/lib/onBackNavigation';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
 import { MDButton } from '@shared/ui/material';
-import { LoadingButton } from '@shared/ui/LoadingButton';
 import { tryOnBeforeUnmount } from '@vueuse/core';
 import { useMonitorOpenDialog } from './Alert';
 
@@ -129,7 +128,7 @@ useOnEscapeKeyStacked(() => {
       <div class="md-dialog__actions">
         <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
 
-        <LoadingButton :label="applyLabel" :loading="loading" color="text" native-type="submit" />
+        <MDButton :label="applyLabel" :loading="!!loading" color="text" native-type="submit" />
       </div>
     </form>
   </dialog>

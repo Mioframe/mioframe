@@ -8,53 +8,39 @@ Last updated: 2026-07-26
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `correction`
+Status: `verification`
 
 Owner: current architecture-reset branch
 
-Blocker: the latest pass misinterpreted official Material sources. It rejected text toggle from incomplete token coverage despite positive Button overview/guideline evidence, and classified loading as non-Material without checking Loading indicator and Progress indicator placement guidance. The resulting separate `LoadingButton` is not accepted final ownership and also has DOM, ARIA, color, story, and bubbling defects.
+Blocker: none. The correction pass fixed both source-interpretation errors: text toggle is enabled (no prohibition existed — only incomplete token coverage, which is not evidence), and indeterminate loading is implemented as a Button-owned Material composition backed by `m3e-loading-indicator`, with `aria-busy` on the interactive owner and color inherited via `currentColor`. The separate `LoadingButton` is removed; its 3 consumers (`RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue`) use `MDButton` directly. Unused link/form surface (`href`, `download`, `target`, `rel`, `name`, `value`) was also removed since no current consumer used it. Determinate progress-in-button remains deferred: no current consumer passes a real fractional value to a Button.
 
-Next action: rerun `material-component-adapter` for `MDButton`. Correct the matrix with positive source evidence, keep text toggle enabled, treat loading/progress inside Button as official cross-component Material composition, inspect exact m3e Button/Loading indicator/Progress indicator entry points, normalize the demand-driven Vue API, remove the separate `LoadingButton` unless the corrected matrix proves it necessary, migrate consumers, and rerun focused plus final verification before operator review.
+Next action: run focused and final `pnpm verify`, then request operator visual/motion review of the corrected `MDButton.stories.ts` (text toggle, `LoadingIndicatorPresentation`). Move status to `complete` only after both pass.
 
-Implementation ownership remains `migrating`.
+Implementation ownership remains `migrating` until verification and operator acceptance land; see `components/button/README.md` for the accepted matrix.
 
 ## Milestones
 
 | ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                 |
 | --- | --------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0  | m3e-backed architecture reset     | `verification` | none       | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; package-derived typing; final verification                                                                                                                        |
-| M1  | `MDButton` adapter pilot          | `correction`   | M0         | accepted source-backed Material–m3e–Vue matrix; text toggle supported; loading/progress Button composition resolved in Material ownership; demand-driven official Vue API; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
+| M1  | `MDButton` adapter pilot          | `verification` | M0         | accepted source-backed Material–m3e–Vue matrix; text toggle supported; loading/progress Button composition resolved in Material ownership; demand-driven official Vue API; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
 | M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                                                                           |
 | M3  | sequential component migration    | `planned`      | M2         | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage                                                                                                               |
 
 ## M1 — MDButton pilot
 
-### Reusable implementation work
+Implementation evidence:
 
-- `@m3e/web@^2.6.2` resolves to `2.6.2`;
-- application, Storybook, and tests recognize `m3e-*`;
-- the m3e-backed `MDButton` owner and public export exist;
-- renderer typing derives from package exports;
-- consumers use the canonical Material owner or the provisional loading wrapper;
-- native, controlled-state, visual, and motion-assessment work exists;
-- the obsolete legacy renderer is removed.
+- `@m3e/web@^2.6.2` resolves to `2.6.2`; Button and Loading indicator entry points are used directly;
+- application, Storybook, and tests recognize `m3e-button` and `m3e-loading-indicator`;
+- the m3e-backed `MDButton` owner and public export exist; renderer typing derives from package exports;
+- text toggle is supported (no normalization/warning);
+- indeterminate loading is a Button-owned composition (`loading` prop, internal `m3e-loading-indicator`, `aria-busy` on the interactive owner, `currentColor` inheritance); determinate progress-in-button is deferred (no current numeric consumer);
+- unused `href`, `target`, `rel`, `download`, `name`, and `value` surface is removed;
+- the separate `LoadingButton` is removed; all 3 former consumers use `MDButton` directly;
+- native click bubbling is preserved; focused component-contract tests and visual stories cover the corrected contract.
 
-The separate `LoadingButton` commit is evidence and may contain reusable consumer/test changes, but its ownership decision is reopened.
-
-### Required correction work
-
-1. Correct the evidence process: token-table absence cannot prohibit a positively documented Material combination.
-2. Keep text toggle supported and remove its normalization/warning.
-3. Add Loading indicator and Progress indicator pages to the Button matrix as official cross-component sources.
-4. Resolve the exact demand-driven Vue API for indeterminate loading and determinate progress without copying legacy shape automatically.
-5. Inspect exact m3e `button`, `loading-indicator`, and `progress-indicator` entry points and use them maximally where conformant.
-6. Keep documented indicator composition in the Material Button owner unless a source-backed architecture comparison proves another owner simpler and semantically correct.
-7. Remove unused `href`, `target`, `rel`, `download`, `name`, and `value` surface unless current demand or an explicit decision justifies it.
-8. Normalize selected-state content names to Material/Vue terminology rather than renderer slot vocabulary.
-9. Preserve native click bubbling.
-10. Put busy/native semantics on the interactive Button owner, inherit indicator color from rendered label/icon state, and cover disabled plus loading/progress.
-11. Keep Material Button stories limited to the final `MDButton` contract; remove obsolete provisional `LoadingButton` stories/components when ownership returns to Button.
-12. Run focused verification, final `pnpm verify`, and only then request operator visual/motion review.
+Remaining before `complete`: final `pnpm verify` and operator visual/motion acceptance of `MDButton.stories.ts` (see `components/button/README.md`).
 
 M1 must not restore the legacy renderer, infer prohibitions from missing tokens, search only the selected component page, copy the m3e API into Vue, preserve unused public surface for completeness, access private shadow DOM, or build a parallel renderer.
 

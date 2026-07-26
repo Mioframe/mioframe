@@ -3,19 +3,7 @@ import type { HTMLAttributes, PublicProps } from 'vue';
 
 type RendererButtonProps = Pick<
   M3eButtonElement,
-  | 'disabled'
-  | 'download'
-  | 'href'
-  | 'name'
-  | 'rel'
-  | 'selected'
-  | 'shape'
-  | 'size'
-  | 'target'
-  | 'toggle'
-  | 'type'
-  | 'value'
-  | 'variant'
+  'disabled' | 'selected' | 'shape' | 'size' | 'toggle' | 'type' | 'variant'
 >;
 
 type M3eButtonProps = HTMLAttributes &

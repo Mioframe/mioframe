@@ -117,9 +117,6 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
   const reset = page.getByRole('button', { name: 'Reset action', exact: true });
   const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
   const loading = page.getByRole('button', { name: 'Loading action', exact: true });
-  const loadingPresentation = loading.locator(
-    'xpath=ancestor::span[contains(@class, "loading-button")]',
-  );
   const disabled = page.getByRole('button', { name: 'Disabled action', exact: true });
   const pressTarget = page.getByRole('button', { name: 'Press action', exact: true });
 
@@ -149,13 +146,9 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#md-button-selection-intent-count')).toHaveText('2');
 
-  await expect(loadingPresentation).toHaveAttribute('aria-busy', 'true');
+  await expect(loading).toHaveAttribute('aria-busy', 'true');
   await expect(loading).toBeEnabled();
-  await expect(loading.locator('.md-circular-progress-indicator')).toBeVisible();
-  await expect(loading.locator('.md-circular-progress-indicator__progress')).not.toHaveCSS(
-    'stroke',
-    'none',
-  );
+  await expect(loading.locator('m3e-loading-indicator')).toBeVisible();
   await loading.click();
   await expect(page.locator('#md-button-loading-count')).toHaveText('1');
 

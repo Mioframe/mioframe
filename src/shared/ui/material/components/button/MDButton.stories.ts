@@ -3,7 +3,6 @@ import { ref } from 'vue';
 import { useFocusIndicator } from '../../../State/useFocusIndicator';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
-import { LoadingButton } from '@shared/ui/LoadingButton';
 
 const meta = {
   title: 'Material 3/Components/Buttons/MDButton',
@@ -15,7 +14,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Mioframe Material Button adapter backed privately by @m3e/web. Supports default and controlled toggle variants, five color configurations and sizes, round/square shapes, disabled state, native form types, and leading icon content.',
+          'Mioframe Material Button adapter backed privately by @m3e/web. Supports default and controlled toggle variants (including text), five color configurations and sizes, round/square shapes, disabled state, native form types, leading icon content, and an indeterminate Loading indicator composition.',
       },
     },
   },
@@ -29,7 +28,7 @@ export const Default: Story = {};
 export const VisualStates: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { LoadingButton, MDButton },
+    components: { MDButton },
     template: `
       <div data-testid="visual-md-button-states" class="visual-checker-backdrop">
         <div class="visual-row">
@@ -84,6 +83,10 @@ export const ToggleShapes: Story = {
           <MDButton label="Square selected" variant="toggle" selected shape="square" color="tonal" />
           <MDButton label="Square unselected" variant="toggle" shape="square" color="tonal" />
         </div>
+        <div class="visual-row">
+          <MDButton label="Text selected" variant="toggle" selected color="text" />
+          <MDButton label="Text unselected" variant="toggle" color="text" />
+        </div>
       </div>
     `,
   }),
@@ -130,7 +133,7 @@ export const FocusIndicatorTarget: Story = {
 
 export const BehaviorContracts: Story = {
   render: () => ({
-    components: { LoadingButton, MDButton },
+    components: { MDButton },
     setup() {
       const selected = ref(false);
       const selectionIntentCount = ref(0);
@@ -177,7 +180,7 @@ export const BehaviorContracts: Story = {
         <output id="md-button-selected">{{ selected }}</output>
         <output id="md-button-selection-intent-count">{{ selectionIntentCount }}</output>
         <button id="md-button-programmatic-select" type="button" @click="selected = true">Select programmatically</button>
-        <LoadingButton label="Loading action" loading @click="onLoadingClick" />
+        <MDButton label="Loading action" loading @click="onLoadingClick" />
         <output id="md-button-loading-count">{{ loadingClickCount }}</output>
         <MDButton label="Disabled action" disabled @click="onDisabledClick" />
         <output id="md-button-disabled-count">{{ disabledClickCount }}</output>
@@ -187,14 +190,21 @@ export const BehaviorContracts: Story = {
   }),
 };
 
-export const LoadingPresentation: Story = {
+export const LoadingIndicatorPresentation: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { LoadingButton },
+    components: { MDButton },
     template: `
-      <div data-testid="visual-md-button-loading" class="visual-checker-backdrop visual-row">
-        <LoadingButton label="Saving" :loading="0.25" />
-        <LoadingButton label="Uploading file" :loading="0.5"><template #icon>+</template></LoadingButton>
+      <div data-testid="visual-md-button-loading" class="visual-checker-backdrop">
+        <div class="visual-row">
+          <MDButton label="Saving" color="filled" loading />
+          <MDButton label="Uploading" color="outlined" loading><template #icon>+</template></MDButton>
+          <MDButton label="Sending" color="text" loading />
+        </div>
+        <div class="visual-row">
+          <MDButton label="Saving" color="tonal" loading />
+          <MDButton label="Disabled saving" color="filled" disabled loading />
+        </div>
       </div>
     `,
   }),

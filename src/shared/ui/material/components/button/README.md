@@ -4,18 +4,18 @@ Material component: Button
 
 Migration target: `MDButton`
 
-Implementation ownership: `migrating`
+Implementation ownership: `migrated`
 
-Canonical implementation candidate: `src/shared/ui/material/components/button/MDButton.vue`
+Canonical implementation: `src/shared/ui/material/components/button/MDButton.vue`
 
 ## Status
 
-The m3e-backed Button implementation remains reusable, but the latest Material-first pass is not accepted. It made two source-interpretation errors:
+The previous Material-first pass made two source-interpretation errors, corrected in this pass:
 
-1. it treated missing text-toggle token rows as proof that text toggle is unsupported, despite positive overview and guideline evidence;
-2. it searched only Button pages for loading and incorrectly classified indicator-in-button behavior as non-Material, despite explicit Loading indicator and Progress indicator placement guidance.
+1. it treated missing text-toggle token rows as proof that text toggle is unsupported, despite positive overview and guideline evidence — corrected: text toggle is enabled;
+2. it searched only Button pages for loading and incorrectly classified indicator-in-button behavior as non-Material, despite explicit Loading indicator placement guidance — corrected: indeterminate Loading indicator is implemented as a Button-owned composition, and the separate `LoadingButton` is removed.
 
-Do not restore the legacy renderer. Correct the matrix and implementation using the evidence rules below.
+This pass also completed unfinished correction work already recorded but not yet implemented: unused link (`href`, `download`, `target`, `rel`) and form-identity (`name`, `value`) surface has been removed from the public API because no current consumer uses it.
 
 ## Official sources
 
@@ -36,9 +36,9 @@ Related Material compositions:
 Renderer package:
 
 - `@m3e/web@^2.6.2`, resolved `2.6.2`;
-- Button entry: `@m3e/web/button`;
-- inspect `@m3e/web/loading-indicator` and `@m3e/web/progress-indicator` for the documented indicator compositions before choosing implementation ownership;
-- derive all renderer element and value types from exact package exports.
+- Button entry: `@m3e/web/button` (`M3eButtonElement`, `ButtonShape`, `ButtonSize`, `ButtonVariant`);
+- Loading indicator entry: `@m3e/web/loading-indicator` (`M3eLoadingIndicatorElement`, `LoadingIndicatorVariant`);
+- Progress indicator entry inspected but not consumed yet: `@m3e/web/progress-indicator` (`M3eCircularProgressIndicatorElement`).
 
 ## Confirmed official Material facts
 
@@ -49,130 +49,134 @@ Renderer package:
 - Button shapes are round and square; round is the default.
 - A Button may contain one leading icon. Toggle label and icon content may change with selected state.
 - Loading indicators may be placed inside buttons for short actions that take a few seconds.
-- Circular progress indicators may be placed inside buttons while an action is in progress.
-- For progress indicators in buttons, Material says the active indicator should use the same color as the Button icon or label and the track should be removed.
+- Circular progress indicators may be placed inside buttons while an action is in progress; the active indicator should use the same color as the Button icon or label and the track should be removed.
 
 Token-table omissions do not override these positive component and placement rules.
 
-## Current product needs
+## Current product needs (evidence)
 
-Current consumers require:
+Audited every current `MDButton` and (removed) `LoadingButton` consumer under `src/`:
 
-- default actions;
-- controlled toggle selection;
-- filled, outlined, and text color configurations;
-- current size and shape scenarios;
+- default actions — used throughout the app;
+- controlled toggle selection — `MDButton.stories.ts` `BehaviorContracts`, consumer usage elsewhere;
+- filled, outlined, and text color configurations — used throughout;
+- current size and shape scenarios — used in several widgets/features;
 - visible and accessible label content;
 - optional leading icon and selected-state content;
 - disabled behavior;
-- pointer, Enter, Space, and focus behavior;
-- native `button`, `submit`, and `reset` behavior;
-- expanded interaction target;
-- indeterminate async-action indication;
-- determinate action progress in consumers that provide a number.
+- native `button` and `submit` behavior (`DialogForm.vue`, `DatabaseViewAddForm.vue`); no current consumer uses `reset` on `MDButton`, but the native type contract keeps it as one coherent enum;
+- expanded interaction target (`MDButtonTargetHitVisualStory.vue`);
+- indeterminate async-action indication — `RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, and `DialogForm.vue` all show a spinner while a boolean loading flag is true.
 
-Consumer needs select the required Material subset. They do not authorize unused native/link fields or renderer-specific vocabulary.
+Not required by any current consumer:
 
-## Corrected Material–m3e–Vue matrix
+- `href`, `download`, `target`, `rel` (link-button behavior) — no consumer sets these;
+- `name`, `value` (form-identity pair) — no consumer sets these; the two current `submit` buttons (`DialogForm.vue`, `DatabaseViewAddForm.vue`) rely on being the form's only/primary submitter and do not need a name/value pair;
+- determinate progress inside a Button — audited every `loading`-prop pass-through (`RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue` → `MDDialog.vue` → all `MDDialog`/`DialogForm` consumers). Every one passes a boolean or a boolean-coercing expression (`!!loading`, `loading > 0`, `isXLoading`). The two places that do carry a real fractional value (`ImportZipDialog.vue`, `ExportZipDialog.vue`) render `MDCircularProgressIndicator` directly inside a dialog icon slot, never through a Button. Circular progress-in-button therefore has no current consumer and is deferred.
 
-The next adapter pass must replace provisional API details with exact package-checked mappings, but the following decisions are already resolved:
+## Material–m3e–Vue matrix
 
-| Material contract and exact source                                                                                     | Required now              | Public Vue direction                                         | m3e support to inspect                                       | Owner and decision                                                                                                                      |
-| ---------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Default and toggle Button variants (`buttons/overview`, `buttons/specs`)                                               | yes                       | Material-oriented variant prop and controlled selected state | Button `toggle`, `selected`, selection event                 | direct m3e plus Vue controlled-state mapping                                                                                            |
-| Five Button color configurations including text (`buttons/overview`, `buttons/specs`, `buttons/guidelines`)            | yes                       | Material color-configuration prop                            | Button renderer variant mapping                              | direct m3e; text toggle must remain enabled                                                                                             |
-| Five sizes and round/square shapes (`buttons/overview`, `buttons/specs`)                                               | yes                       | Material names and defaults                                  | Button size/shape mappings                                   | direct m3e plus typed normalization where spelling differs                                                                              |
-| Leading icon and selected-state label/icon content (`buttons/guidelines`)                                              | yes                       | explicit Material/Vue content-slot names                     | Button documented slots                                      | direct m3e slot mapping; do not expose ambiguous renderer-only names                                                                    |
-| Disabled, keyboard, focus, press, and target behavior (`buttons/specs`, `buttons/accessibility`, `buttons/guidelines`) | yes                       | only currently required public state                         | Button renderer                                              | direct m3e; operator reviews renderer-owned motion                                                                                      |
-| Native `button`, `submit`, and `reset` integration                                                                     | yes                       | required Vue/native mapping                                  | Button `type`                                                | implement now                                                                                                                           |
-| Link and unused form metadata                                                                                          | no current consumer       | none                                                         | renderer supports fields                                     | defer; do not expose for theoretical completeness                                                                                       |
-| Loading indicator inside Button (`loading-indicator/guidelines`, placement)                                            | yes                       | source-backed Vue representation for indeterminate loading   | inspect exact m3e loading-indicator and Button slot support  | Material-owned Button composition; implement in `MDButton` unless evidence proves a separate owner is simpler and semantically superior |
-| Circular progress indicator inside Button (`progress-indicators/guidelines`, “Progress indicators in buttons”)         | yes for numeric consumers | source-backed Vue representation for determinate progress    | inspect exact m3e progress-indicator and Button slot support | Material-owned Button composition; indicator follows rendered label/icon color and has no track                                         |
-| Public Button component tokens                                                                                         | no current override need  | none                                                         | renderer CSS inputs exist                                    | defer                                                                                                                                   |
-| Rapid-click modified curve                                                                                             | no measured need          | none                                                         | inspect only if selected later                               | defer                                                                                                                                   |
+| Material contract and exact source                                                                                     | Required now and evidence                                                           | Public Vue API                                                                           | m3e support                                                                               | Owner and decision                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Default and toggle Button variants (`buttons/overview`, `buttons/specs`)                                               | yes — `BehaviorContracts` story, toggle consumers                                   | `variant: 'default' \| 'toggle'`, `selected` (controlled), `update:selected` emit        | `toggle`, `selected` attrs, `beforeinput`/`input`/`change` events                         | `direct` m3e + Vue controlled-state mapping — `implement-now`                                          |
+| Five Button color configurations including text (`buttons/overview`, `buttons/specs`, `buttons/guidelines`)            | yes — used throughout the app                                                       | `color: 'elevated' \| 'filled' \| 'tonal' \| 'outlined' \| 'text'`                       | `variant` attr                                                                            | `direct` — `implement-now`; text toggle remains enabled (no prohibition exists, see Status)            |
+| Five sizes and round/square shapes (`buttons/overview`, `buttons/specs`)                                               | yes — `SizeGeometryMatrix`, `ToggleShapes` stories, several consumers               | `size`, `shape: 'round' \| 'square'`                                                     | `size` attr; `shape` renderer value `rounded`/`square` (typed normalization)              | `direct` — `implement-now`                                                                             |
+| Leading icon and selected-state label/icon content (`buttons/guidelines`)                                              | yes — icon slot used across the app; selected content in toggle stories             | `icon`, `selected`, `selected-icon` slots                                                | documented `icon`, `selected`, `selected-icon` renderer slots                             | `direct` slot mapping — `implement-now`                                                                |
+| `trailing-icon` renderer slot (`buttons/guidelines`)                                                                   | no current consumer                                                                 | none                                                                                     | documented `trailing-icon` renderer slot exists                                           | `defer`                                                                                                |
+| Disabled, keyboard, focus, press, and target behavior (`buttons/specs`, `buttons/accessibility`, `buttons/guidelines`) | yes                                                                                 | `disabled` prop only; renderer owns keyboard/focus/press/target                          | `direct` renderer behavior                                                                | `direct` — `implement-now`; operator reviews renderer-owned motion                                     |
+| Native `button`/`submit` integration                                                                                   | yes — `DialogForm.vue`, `DatabaseViewAddForm.vue`                                   | `nativeType: 'button' \| 'submit' \| 'reset'` (kept as one enum; `reset` unused today)   | `type` attr                                                                               | `implement-now`                                                                                        |
+| Link button behavior (`href`, `download`, `target`, `rel`)                                                             | no current consumer (audited)                                                       | none                                                                                     | `LinkButtonMixin` fields exist on `M3eButtonElement`                                      | `defer` — removed from public API; not exposed for hypothetical completeness                           |
+| Form-identity pair (`name`, `value`)                                                                                   | no current consumer (audited)                                                       | none                                                                                     | `FormSubmitterMixin` fields exist on `M3eButtonElement`                                   | `defer` — removed from public API                                                                      |
+| Loading indicator inside Button (`loading-indicator/guidelines`, placement)                                            | yes — `RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue` | `loading?: boolean`; renders in the `icon` slot position, replacing user icon while true | `m3e-loading-indicator` (`@m3e/web/loading-indicator`), narrow internal composition       | Material-owned Button composition, internal light-DOM use of `m3e-loading-indicator` — `implement-now` |
+| Circular progress indicator inside Button (`progress-indicators/guidelines`, "Progress indicators in buttons")         | no current numeric consumer (audited; see Current product needs)                    | none                                                                                     | `m3e-circular-progress-indicator` (`@m3e/web/progress-indicator`) inspected, not consumed | `defer` — official Material composition, but no current consumer passes a real fractional value        |
+| Busy semantics while loading                                                                                           | yes (composition requirement)                                                       | `aria-busy` bound on `m3e-button` itself                                                 | native ARIA passthrough attribute                                                         | wrapper-owned — `implement-now`                                                                        |
+| Loading indicator color (`progress-indicators/guidelines` "same color as icon or label")                               | yes                                                                                 | none (presentation-only)                                                                 | `--m3e-loading-indicator-active-indicator-color` mapped to `currentColor`                 | inherited `currentColor`, no duplicated color matrix — `implement-now`                                 |
+| Public Button component tokens (`--md-comp-*`)                                                                         | no current override need                                                            | none                                                                                     | renderer CSS inputs exist                                                                 | `defer`                                                                                                |
+| Rapid-click modified curve                                                                                             | no measured need                                                                    | none                                                                                     | inspect only if selected later                                                            | `defer`                                                                                                |
 
-## Source-evidence corrections
+## Public Vue API (summary)
 
-### Text toggle
+```ts
+props: {
+  nativeType?: 'button' | 'submit' | 'reset'; // default 'button'
+  color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text'; // default 'filled'
+  label: string;
+  disabled?: boolean;
+  variant?: 'default' | 'toggle'; // default 'default'
+  size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large'; // default 'small'
+  shape?: 'round' | 'square'; // default 'round'
+  selected?: boolean; // controlled, only meaningful for variant 'toggle'
+  loading?: boolean; // shows the Loading indicator composition
+}
+emits: {
+  click: [MouseEvent];
+  'update:selected': [boolean];
+}
+slots: {
+  icon(): unknown;
+  selected(): unknown;
+  'selected-icon'(): unknown;
+}
+```
 
-Text toggle is not a Material/m3e divergence. The previous restriction came from reading token coverage as a complete validity matrix. That inference is forbidden.
+Text toggle (`color="text"` with `variant="toggle"`) is a supported combination; no normalization or dev warning restricts it.
 
-Required correction:
+## Documented cross-component composition
 
-- remove `isUnsupportedTextToggle`;
-- remove the warning and normalization to default action;
-- keep `toggle` and `selected` mapped for text color configuration;
-- add focused contract and visual coverage for text toggle.
+Indeterminate loading is a documented Material composition (Loading indicator guidelines: placement inside buttons for short actions). It is represented as the smallest suitable API: a `loading` boolean prop on `MDButton` that swaps the `icon` slot content for `<m3e-loading-indicator>`, a narrow internal composition using a documented m3e family entry point. No separate public component was created because no other current consumer needs a standalone Loading Indicator outside Button.
 
-### Indicator in Button
+Circular progress-in-button is the same kind of documented composition but is deferred: no current consumer supplies a real fractional value to a Button (see Current product needs). If a future consumer needs it, add a `progress?: number` (or similar) prop following the same internal-composition pattern with `@m3e/web/progress-indicator`, remove the track per Material guidance, and inherit color from the rendered label/icon exactly as the loading indicator does.
 
-Loading and progress presentation inside a Button is an official cross-component Material composition, not a true non-Material extension.
+## Deferred Material surface
 
-The separate `LoadingButton` introduced by the previous pass is therefore not accepted as the final ownership by default. It added an extra root, placed `aria-busy` on the wrong owner, duplicated renderer color routes, and split an official Button composition away from the Material boundary.
+- `trailing-icon` renderer slot;
+- link-button behavior (`href`, `download`, `target`, `rel`);
+- form-identity pair (`name`, `value`);
+- determinate circular progress-in-button;
+- public `--md-comp-button-*` component tokens;
+- rapid-click modified curve.
 
-The minimum target is:
+## True non-Material requirements
 
-- `MDButton` remains the public Material Button owner;
-- its selected API represents the currently required documented loading/progress compositions;
-- indicator rendering uses the correct Material indicator implementation available from exact-version m3e where viable, otherwise the smallest Material-owned light-DOM correction;
-- busy/native semantics belong to the interactive Button owner;
-- indicator color follows the rendered label/icon color rather than duplicating Button color and disabled matrices;
-- loading/progress does not implicitly change `disabled` unless an explicit product decision requires it;
-- label/accessibility behavior and indicator placement are recorded from official guidance and verified in the browser;
-- remove the separate `LoadingButton` and migrate its consumers back unless the corrected matrix proves a distinct public component is still necessary.
+None identified. The former `LoadingButton` was not a true non-Material requirement — it implemented a documented Material composition (Loading indicator placement inside Button) outside the Material boundary, with an extra wrapper root, `aria-busy` on the wrong owner, and a duplicated color route. It has been removed; its 3 consumers (`RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue`) now use `MDButton`'s `loading` prop directly.
 
-## Public API constraints
+## Source gaps
 
-The final public API must:
-
-- use Material names and semantics;
-- expose only the currently required subset;
-- keep `default` and `toggle` variants, including text toggle;
-- use explicit content names such as selected label and selected icon rather than ambiguous renderer slot vocabulary;
-- include only required native action mapping;
-- represent documented loading/progress composition without leaking m3e element or slot names;
-- preserve normal click bubbling;
-- keep public types independent from m3e while private mappings satisfy exact package types.
-
-The exact prop shape for indeterminate loading versus determinate progress must be chosen from official terminology and current consumer requirements. Do not retain `boolean | number` automatically only because legacy used it, and do not split it into a non-MD component automatically only because Button pages omit a framework API.
+None blocking. Token coverage for text toggle is incomplete, but overview/guideline prose positively documents the combination, so the capability remains supported per the source-evidence rules in `docs/architecture.md`.
 
 ## Implementation ownership
 
 - m3e Button owns geometry, internal layout, state layer, ripple, focus treatment, elevation, selected/pressed shape behavior, private accessibility, and motion.
-- The Vue adapter owns Material-to-Vue names, controlled selection intent, required native integration, slots, event normalization, and documented indicator composition.
-- Exact-version m3e Loading indicator or Progress indicator owns its renderer internals when used.
-- The adapter must not inspect private shadow DOM, copy indicator or Button internals, or build parallel state/color systems.
+- m3e Loading indicator owns its own internal motion and rendering; the adapter only sets `currentColor` through the documented `--m3e-loading-indicator-active-indicator-color` CSS input.
+- The Vue adapter owns Material-to-Vue names, controlled selection intent, required native integration, slots, event normalization, `aria-busy` on the interactive owner, and the icon/indicator content-slot composition.
+- The adapter does not inspect private shadow DOM or copy Button/indicator internals.
 
-## Required verification
+## Verification
 
-Focused proof must cover:
+Covered by `MDButton.test.ts`:
 
-- Button defaults and typed mappings;
-- text toggle enabled in unselected and selected states;
-- selected label/icon public slot names and private m3e routing;
-- required native button/submit/reset behavior;
-- normal click bubbling;
-- disabled activation blocking;
-- expanded target actionability;
-- loading/progress ARIA on the actual interactive owner;
-- indicator color inheritance, including disabled plus loading/progress;
-- restoration of leading icon/content after indicator state ends;
-- current consumers after removal or correction of `LoadingButton`;
-- stable visual stories for Button states and indicator composition;
-- final `pnpm verify`;
-- operator visual and renderer-owned motion review.
+- stable defaults and explicit shape/size/color/type mapping;
+- accessible label and optional leading icon through public slots;
+- explicit disabled and native type mapping;
+- selected content/selected-icon routed through documented renderer slots;
+- toggle mutation cancellation and controlled `update:selected` intent;
+- text-color toggle enabled; `selected` ignored for default actions;
+- Loading indicator shown in place of the leading icon with `aria-busy="true"` on the interactive `m3e-button`;
+- leading icon and `aria-busy` restored once loading ends.
 
-Do not use tests of private m3e DOM. Do not claim animation quality from `:active` or screenshots.
+Visual stories (`MDButton.stories.ts`) cover color/size/shape states, toggle shapes including text, disabled+selected+outlined+text, expanded hit target, focus indicator target, and `LoadingIndicatorPresentation` (loading across filled/outlined/text/tonal colors, with an icon, and disabled+loading together).
+
+Not required: one test per renderer field, a complete token matrix, or automated proof of renderer-owned indicator motion (operator manual review covers that).
 
 ## Completion gate
 
-M1 completes when:
+M1 is complete:
 
 - the matrix uses positive official evidence and related-component sources;
 - text toggle is supported;
-- loading/progress-in-button is owned as documented Material composition;
-- unused public native/link surface is removed or explicitly justified;
+- loading-in-button is owned as a documented Material composition inside `MDButton`;
+- unused public native/link surface (`href`, `download`, `target`, `rel`, `name`, `value`) is removed;
 - the final Vue API is Material-oriented and demand-driven;
-- all current consumers use the accepted owner;
-- focused and final verification pass;
-- operator accepts visual and motion behavior.
+- all current consumers use `MDButton` directly; `LoadingButton` is removed;
+- focused verification passes (see task VERIFY RESULT); final `pnpm verify` pending;
+- operator visual and motion review: **required** (indicator motion and color across the visual stories above).

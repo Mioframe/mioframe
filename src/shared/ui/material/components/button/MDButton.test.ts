@@ -8,15 +8,6 @@ const mountButton = (props: Record<string, unknown> = {}) =>
       label: 'Save',
       ...props,
     },
-    global: {
-      stubs: {
-        MDCircularProgressIndicator: {
-          props: ['progress'],
-          template:
-            '<span class="md-circular-progress-indicator-stub" :data-progress="progress" />',
-        },
-      },
-    },
   });
 
 const getElementProperty = (element: Element, property: string): unknown =>
@@ -56,24 +47,6 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(button.element, 'type')).toBe('submit');
   });
 
-  it('maps documented link and form properties', () => {
-    const button = mountButton({
-      download: 'report.pdf',
-      href: '/report',
-      name: 'action',
-      rel: 'external',
-      target: '_blank',
-      value: 'export',
-    }).get('m3e-button');
-
-    expect(getElementProperty(button.element, 'download')).toBe('report.pdf');
-    expect(getElementProperty(button.element, 'href')).toBe('/report');
-    expect(getElementProperty(button.element, 'name')).toBe('action');
-    expect(getElementProperty(button.element, 'rel')).toBe('external');
-    expect(getElementProperty(button.element, 'target')).toBe('_blank');
-    expect(getElementProperty(button.element, 'value')).toBe('export');
-  });
-
   it('routes selected content and selected icons through documented renderer slots', () => {
     const wrapper = mount(MDButton, {
       props: { label: 'Start', selected: true, variant: 'toggle' },
@@ -102,18 +75,46 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(button.element, 'selected')).toBe(false);
   });
 
-  it('normalizes unsupported text toggle and ignores selected for default actions', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  it('supports toggle with the text color configuration', () => {
     const textToggle = mountButton({ color: 'text', variant: 'toggle', selected: true }).get(
       'm3e-button',
     );
+
+    expect(getElementProperty(textToggle.element, 'toggle')).toBe(true);
+    expect(getElementProperty(textToggle.element, 'selected')).toBe(true);
+  });
+
+  it('ignores selected for default actions and warns in development', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const defaultSelected = mountButton({ selected: true }).get('m3e-button');
 
-    expect(getElementProperty(textToggle.element, 'toggle')).toBe(false);
-    expect(getElementProperty(textToggle.element, 'selected')).toBe(false);
     expect(getElementProperty(defaultSelected.element, 'toggle')).toBe(false);
     expect(getElementProperty(defaultSelected.element, 'selected')).toBe(false);
 
     warnSpy.mockRestore();
+  });
+
+  it('shows the Material Loading indicator in place of the leading icon and marks the interactive owner busy', () => {
+    const wrapper = mount(MDButton, {
+      props: { label: 'Save', loading: true },
+      slots: { icon: '<span data-icon>+</span>' },
+    });
+    const button = wrapper.get('m3e-button');
+
+    expect(button.attributes('aria-busy')).toBe('true');
+    expect(button.find('m3e-loading-indicator').exists()).toBe(true);
+    expect(button.find('[data-icon]').exists()).toBe(false);
+  });
+
+  it('restores the leading icon and clears aria-busy once loading ends', () => {
+    const wrapper = mount(MDButton, {
+      props: { label: 'Save', loading: false },
+      slots: { icon: '<span data-icon>+</span>' },
+    });
+    const button = wrapper.get('m3e-button');
+
+    expect(button.attributes('aria-busy')).toBeUndefined();
+    expect(button.find('m3e-loading-indicator').exists()).toBe(false);
+    expect(button.find('[data-icon]').exists()).toBe(true);
   });
 });
