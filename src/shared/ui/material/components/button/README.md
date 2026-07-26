@@ -47,10 +47,10 @@ The legacy implementation declares these official per-size tokens:
 
 They are not active public migration contracts:
 
-| Material meaning | Mioframe token | Renderer owner | Legacy evidence | Consumer evidence | Decision |
-| ---------------- | -------------- | -------------- | --------------- | ----------------- | -------- |
+| Material meaning                | Mioframe token                                                                  | Renderer owner                   | Legacy evidence                                                            | Consumer evidence                                   | Decision                                |
+| ------------------------------- | ------------------------------------------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------- |
 | pressed-corner spring stiffness | `--md-comp-button-<size>-pressed-container-corner-size-motion-spring-stiffness` | m3e renderer-owned Button motion | declared; value-only visual test; not used by the actual legacy transition | no repository override or documented consumer found | remove as obsolete target-owned surface |
-| pressed-corner spring damping | `--md-comp-button-<size>-pressed-container-corner-size-motion-spring-damping` | m3e renderer-owned Button motion | declared; value-only visual test; not used by the actual legacy transition | no repository override or documented consumer found | remove as obsolete target-owned surface |
+| pressed-corner spring damping   | `--md-comp-button-<size>-pressed-container-corner-size-motion-spring-damping`   | m3e renderer-owned Button motion | declared; value-only visual test; not used by the actual legacy transition | no repository override or documented consumer found | remove as obsolete target-owned surface |
 
 The legacy `border-radius` transition uses duration/easing variables rather than these stiffness/damping declarations. The existing test proves only that the declarations resolve to system-token values; it does not prove that an override changes motion. Their absence from m3e's public Button CSS inputs is therefore not an upstream blocker.
 
@@ -58,18 +58,18 @@ m3e owns the observable pressed-corner motion. The adapter must verify press/rel
 
 ## Planned mapping
 
-| Mioframe Vue contract                     | m3e public contract                            | Direction | Owner             | Notes                                                                         |
-| ----------------------------------------- | ---------------------------------------------- | --------- | ----------------- | ----------------------------------------------------------------------------- |
-| `color`                                   | `variant` property                             | Vue → m3e | Mioframe          | Exact five-value mapping.                                                     |
-| `shape` (`round` or `square`)             | `shape` (`rounded` or `square`)                | Vue → m3e | Mioframe          | Private vocabulary normalization.                                             |
-| `size`                                    | `size` property                                | Vue → m3e | Mioframe          | Exact five-value mapping.                                                     |
-| toggle `selected`                         | `toggle`, `selected`, cancelable `beforeinput` | both      | Consumer/Mioframe | Cancel renderer mutation, emit controlled intent, prop remains authoritative. |
-| `disabled` / loading                      | `disabled` plus host `aria-busy`               | Vue → m3e | Mioframe          | Loading remains a justified project extension.                                |
-| `nativeType`                              | form-associated `type`                         | Vue → m3e | Browser/m3e       | `button`, `submit`, or `reset`.                                               |
-| label and icon                            | default and `icon` slots                       | Vue → m3e | Mioframe          | Leading icon only.                                                            |
-| public Button color/shape/geometry tokens | documented semantically equivalent Button CSS variables | Vue → m3e | Mioframe | Private component-local bridge.                                               |
-| shared system roles                       | documented Material system-token semantics     | Vue → m3e | theme/m3e         | Prefer direct `--md-sys-*` semantics where supported.                         |
-| pressed-corner motion                     | renderer-owned public behavior                  | m3e       | m3e               | No retained Mioframe stiffness/damping tuning contract.                       |
+| Mioframe Vue contract                     | m3e public contract                                     | Direction | Owner             | Notes                                                                         |
+| ----------------------------------------- | ------------------------------------------------------- | --------- | ----------------- | ----------------------------------------------------------------------------- |
+| `color`                                   | `variant` property                                      | Vue → m3e | Mioframe          | Exact five-value mapping.                                                     |
+| `shape` (`round` or `square`)             | `shape` (`rounded` or `square`)                         | Vue → m3e | Mioframe          | Private vocabulary normalization.                                             |
+| `size`                                    | `size` property                                         | Vue → m3e | Mioframe          | Exact five-value mapping.                                                     |
+| toggle `selected`                         | `toggle`, `selected`, cancelable `beforeinput`          | both      | Consumer/Mioframe | Cancel renderer mutation, emit controlled intent, prop remains authoritative. |
+| `disabled` / loading                      | `disabled` plus host `aria-busy`                        | Vue → m3e | Mioframe          | Loading remains a justified project extension.                                |
+| `nativeType`                              | form-associated `type`                                  | Vue → m3e | Browser/m3e       | `button`, `submit`, or `reset`.                                               |
+| label and icon                            | default and `icon` slots                                | Vue → m3e | Mioframe          | Leading icon only.                                                            |
+| public Button color/shape/geometry tokens | documented semantically equivalent Button CSS variables | Vue → m3e | Mioframe          | Private component-local bridge.                                               |
+| shared system roles                       | documented Material system-token semantics              | Vue → m3e | theme/m3e         | Prefer direct `--md-sys-*` semantics where supported.                         |
+| pressed-corner motion                     | renderer-owned public behavior                          | m3e       | m3e               | No retained Mioframe stiffness/damping tuning contract.                       |
 
 ## Consumers and migration state
 
