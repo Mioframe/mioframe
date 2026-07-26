@@ -41,7 +41,7 @@ Vue props, emits, slots, `v-model`, refs, and native mappings may adapt Material
 Every migrated component owns a Material–m3e–Vue matrix in its family README:
 
 | Material contract | Required now | Public Vue API | m3e support | Owner | Decision |
-| --- | --- | --- | --- | --- | --- |
+| ----------------- | ------------ | -------------- | ----------- | ----- | -------- |
 
 The matrix distinguishes selected Material API, deferred Material API, renderer gaps, wrapper corrections, m3e fixes, and non-Material requirements.
 
@@ -94,13 +94,13 @@ Tests prove the selected public Material Vue contract, wrapper-owned behavior, a
 
 ## Migration map
 
-| Area | Current state |
-| --- | --- |
-| `MDButton` | m3e-backed implementation candidate; public API contract reopened for Material-first normalization |
-| Other public `MD*` components | legacy-owned until focused Material-first migration |
-| Shared m3e integration | established |
-| Public entry point | established |
-| Global reference/system theme | retained |
+| Area                          | Current state                                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| `MDButton`                    | m3e-backed implementation candidate; public API contract reopened for Material-first normalization |
+| Other public `MD*` components | legacy-owned until focused Material-first migration                                                |
+| Shared m3e integration        | established                                                                                        |
+| Public entry point            | established                                                                                        |
+| Global reference/system theme | retained                                                                                           |
 
 ## Current work
 

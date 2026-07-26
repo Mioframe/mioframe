@@ -42,18 +42,18 @@ These needs select the required Material subset. They do not define public termi
 
 The next adapter pass must replace this provisional matrix with exact source-backed rows.
 
-| Material area | Required now | Public Vue API | m3e 2.6.2 | Owner and decision |
-| --- | --- | --- | --- | --- |
-| official Button naming and taxonomy | yes | pending Material terminology | private renderer vocabulary | Vue adapter, implement now |
-| documented styles or variants | yes | pending exact Material names and defaults | typed renderer variants | direct m3e mapping |
-| documented sizes | yes | pending exact Material names and defaults | typed renderer sizes | direct m3e mapping |
-| documented shapes, configurations, and selected states | yes | pending official classification | shape, toggle, selected APIs | Vue normalization plus m3e |
-| official label and icon content roles | yes | pending Material-oriented slots | renderer slots | Vue slot mapping plus m3e |
-| native action semantics | yes | Vue/native mapping | button, submit, reset, link APIs | Vue plus browser/m3e |
-| disabled, focus, target, and interaction behavior | yes | only Material-configurable public options | mainly renderer-owned | m3e; wrapper only for public mapping |
-| asynchronous/loading presentation | consumer need; Material source not established | unresolved | current wrapper extension | decide composition, separate non-MD component, approved extension, or migration |
-| other official Button capabilities | not yet required | deferred | some are available | defer unless needed for coherent API |
-| official component tokens | not currently required | deferred selected subset | private CSS inputs | expose only when selected |
+| Material area                                          | Required now                                   | Public Vue API                            | m3e 2.6.2                        | Owner and decision                                                              |
+| ------------------------------------------------------ | ---------------------------------------------- | ----------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------- |
+| official Button naming and taxonomy                    | yes                                            | pending Material terminology              | private renderer vocabulary      | Vue adapter, implement now                                                      |
+| documented styles or variants                          | yes                                            | pending exact Material names and defaults | typed renderer variants          | direct m3e mapping                                                              |
+| documented sizes                                       | yes                                            | pending exact Material names and defaults | typed renderer sizes             | direct m3e mapping                                                              |
+| documented shapes, configurations, and selected states | yes                                            | pending official classification           | shape, toggle, selected APIs     | Vue normalization plus m3e                                                      |
+| official label and icon content roles                  | yes                                            | pending Material-oriented slots           | renderer slots                   | Vue slot mapping plus m3e                                                       |
+| native action semantics                                | yes                                            | Vue/native mapping                        | button, submit, reset, link APIs | Vue plus browser/m3e                                                            |
+| disabled, focus, target, and interaction behavior      | yes                                            | only Material-configurable public options | mainly renderer-owned            | m3e; wrapper only for public mapping                                            |
+| asynchronous/loading presentation                      | consumer need; Material source not established | unresolved                                | current wrapper extension        | decide composition, separate non-MD component, approved extension, or migration |
+| other official Button capabilities                     | not yet required                               | deferred                                  | some are available               | defer unless needed for coherent API                                            |
+| official component tokens                              | not currently required                         | deferred selected subset                  | private CSS inputs               | expose only when selected                                                       |
 
 ## Public API rules
 
