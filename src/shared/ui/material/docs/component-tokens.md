@@ -154,9 +154,9 @@ A project-owned generic state-layer, ripple, focus, elevation, or motion primiti
 
 Each migration family README records the supported token surface in a compact evidence table:
 
-| Material meaning | Mioframe token | Documented m3e input or renderer owner | Legacy evidence | Consumer evidence | Decision |
-| ---------------- | -------------- | -------------------------------------- | --------------- | ----------------- | -------- |
-| retained role    | public token   | semantic mapping                       | effective       | used or promised  | preserve |
+| Material meaning | Mioframe token | Documented m3e input or renderer owner | Legacy evidence  | Consumer evidence | Decision |
+| ---------------- | -------------- | -------------------------------------- | ---------------- | ----------------- | -------- |
+| retained role    | public token   | semantic mapping                       | effective        | used or promised  | preserve |
 | unused tuning    | legacy token   | renderer-owned behavior                | declaration-only | none              | remove   |
 
 Also record:
