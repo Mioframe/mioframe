@@ -58,9 +58,31 @@ describe('MDButton adapter', () => {
     expect(wrapper.get('.md-circular-progress-indicator-stub').attributes('data-progress')).toBe(
       '0',
     );
+    expect(wrapper.get('.md-button__label-text').classes()).toContain('md-button__content_loading');
+    expect(wrapper.get('.md-button__progress-indicator').classes()).toContain(
+      'md-button__progress-indicator_centered',
+    );
 
     await button.trigger('click');
     expect(wrapper.emitted('click')).toHaveLength(1);
+  });
+
+  it('preserves icon and label layout while loading replaces their visible presentation', () => {
+    const wrapper = mount(MDButton, {
+      props: { label: 'Create', loading: true },
+      slots: { icon: '<span data-icon>+</span>' },
+      global: {
+        stubs: {
+          MDCircularProgressIndicator: {
+            template: '<span class="md-circular-progress-indicator-stub" />',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.get('.md-button__icon').classes()).toContain('md-button__content_loading');
+    expect(wrapper.get('.md-button__label-text').text()).toBe('Create');
+    expect(wrapper.get('.md-button__progress-indicator')).toBeDefined();
   });
 
   it('maps explicit disabled and native type', () => {

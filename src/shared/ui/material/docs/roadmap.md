@@ -12,9 +12,9 @@ Status: `correction`
 
 Owner: current architecture-reset branch
 
-Blocker: implementation exit-gate findings, not an upstream renderer limitation. The current adapter uses an avoidable handwritten m3e Button type mirror, has incomplete retained token declaration/mapping ownership, changes the accepted loading presentation, and lacks complete scenario-linked proof for motion, native paths, themes, RTL, and active token effects.
+Blocker: implementation exit-gate findings, not an upstream renderer limitation. Package-derived renderer typing, accepted loading presentation, and the missing native/controlled-state paths are corrected. Retained token declaration/mapping ownership and complete scenario-linked proof for motion, themes, RTL, and active token effects remain incomplete.
 
-Next action: rerun `material-component-adapter` for `MDButton` as a correction pass using the updated Button contract. Complete package-derived renderer typing, token ownership, loading compatibility, and exact proof coverage before operator visual acceptance and before starting M2.
+Next action: continue the `MDButton` correction pass with complete retained token ownership and exact motion, theme, RTL, active-token, build, and consumer proof before operator visual acceptance and before starting M2.
 
 The m3e Button renderer remains `ready`. The new canonical adapter and migrated consumers remain in place while implementation ownership stays `migrating` until the complete exit gate passes.
 
@@ -82,14 +82,11 @@ The migration target is `MDButton` only.
 
 ### Required correction work
 
-1. replace the handwritten `m3eButton.d.ts` renderer property/union mirror with minimal Vue framework glue derived from exact `@m3e/web/button` exports;
-2. require all renderer-bound values to satisfy package-exported types and add compile-time drift proof;
-3. transfer canonical defaults and complete semantic m3e mapping for every retained active public Button token;
-4. keep obsolete declaration-only spring stiffness/damping surface removed;
-5. preserve the accepted loading presentation: stable geometry, visually replaced label/icon, centered progress, retained accessible name, and enabled activation unless explicitly disabled;
-6. complete exact proof for Space, reset, disabled attempted activation, keyboard toggle, programmatic selected updates, themes, RTL, active token effects, and actual motion/final-state claims;
-7. add deterministic loading and other missing visual evidence without creating Cartesian-product baselines;
-8. update the Button proof ledger, run focused checks and final `pnpm verify`, then obtain operator visual acceptance for the complete corrected visual set.
+1. transfer canonical defaults and complete semantic m3e mapping for every retained active public Button token;
+2. keep obsolete declaration-only spring stiffness/damping surface removed;
+3. complete exact proof for themes, RTL, active token effects, and actual motion/final-state claims;
+4. complete representative-consumer, Storybook-build, and production-build proof;
+5. update the Button proof ledger, run focused checks and final `pnpm verify`, then obtain operator visual acceptance for the complete corrected visual set.
 
 M1 must not restore the legacy renderer, introduce a universal wrapper abstraction, add a direct Lit dependency, use private shadow DOM, duplicate renderer motion, use an all-components import or global registry, or migrate unrelated Button-family components.
 

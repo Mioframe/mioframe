@@ -114,6 +114,7 @@ test('MDButton preserves form, controlled toggle, loading, disabled, and motion 
   await openStory(page, 'material-3-components-buttons-mdbutton--behavior-contracts');
 
   const submit = page.getByRole('button', { name: 'Submit action', exact: true });
+  const reset = page.getByRole('button', { name: 'Reset action', exact: true });
   const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
   const loading = page.getByRole('button', { name: 'Loading action', exact: true });
   const disabled = page.getByRole('button', { name: 'Disabled action', exact: true });
@@ -123,16 +124,45 @@ test('MDButton preserves form, controlled toggle, loading, disabled, and motion 
   await page.keyboard.press('Enter');
   await expect(page.locator('#md-button-submit-count')).toHaveText('1');
 
-  await toggle.click();
+  await submit.focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('#md-button-submit-count')).toHaveText('2');
+
+  const resetValue = page.getByRole('textbox', { name: 'Reset value' });
+  await resetValue.fill('changed');
+  await reset.click();
+  await expect(resetValue).toHaveValue('initial');
+  await expect(page.locator('#md-button-reset-count')).toHaveText('1');
+
+  await toggle.focus();
+  await page.keyboard.press('Space');
   await expect(page.locator('#md-button-selected')).toHaveText('true');
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#md-button-selection-intent-count')).toHaveText('1');
+
+  await toggle.click();
+  await expect(page.locator('#md-button-selected')).toHaveText('false');
+  await page.locator('#md-button-programmatic-select').click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#md-button-selection-intent-count')).toHaveText('2');
 
   await expect(loading).toHaveAttribute('aria-busy', 'true');
   await expect(loading).toBeEnabled();
+  await expect(loading.locator('.md-circular-progress-indicator')).toBeVisible();
+  await expect(loading.locator('.md-circular-progress-indicator__progress')).not.toHaveCSS(
+    'stroke',
+    'none',
+  );
   await loading.click();
   await expect(page.locator('#md-button-loading-count')).toHaveText('1');
 
   await expect(disabled).toBeDisabled();
+  const disabledBox = await disabled.boundingBox();
+  if (!disabledBox) throw new Error('Missing disabled MDButton geometry.');
+  await page.mouse.click(
+    disabledBox.x + disabledBox.width / 2,
+    disabledBox.y + disabledBox.height / 2,
+  );
   await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
 
   const motionBox = await motion.boundingBox();

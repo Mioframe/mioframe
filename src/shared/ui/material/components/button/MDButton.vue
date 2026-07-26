@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import '@m3e/web/button';
+import type {
+  ButtonShape as RendererButtonShape,
+  ButtonSize as RendererButtonSize,
+  ButtonVariant as RendererButtonVariant,
+  M3eButtonElement,
+} from '@m3e/web/button';
 import { isNumber } from 'es-toolkit/compat';
 import { computed, defineComponent, h, onMounted, warn, watchEffect } from 'vue';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
@@ -59,7 +65,12 @@ const isUnsupportedTextToggle = computed(
 );
 const isToggle = computed(() => props.variant === 'toggle' && !isUnsupportedTextToggle.value);
 const appliedSelected = computed(() => isToggle.value && !!props.selected);
-const rendererShape = computed(() => (props.shape === 'round' ? 'rounded' : 'square'));
+const rendererVariant = computed<RendererButtonVariant>(() => props.color);
+const rendererSize = computed<RendererButtonSize>(() => props.size);
+const rendererShape = computed<RendererButtonShape>(() =>
+  props.shape === 'round' ? 'rounded' : 'square',
+);
+const rendererType = computed<M3eButtonElement['type']>(() => props.nativeType);
 
 const onBeforeInput = (event: InputEvent) => {
   if (!isToggle.value) return;
@@ -94,21 +105,24 @@ if (import.meta.env.DEV) {
     :disabled="props.disabled"
     :selected="appliedSelected"
     :shape="rendererShape"
-    :size="props.size"
+    :size="rendererSize"
     :toggle="isToggle"
-    :type="props.nativeType"
-    :variant="props.color"
+    :type="rendererType"
+    :variant="rendererVariant"
     @beforeinput="onBeforeInput"
     @click.stop="onClick"
   >
-    <MDButtonIconSlot v-if="!!slots.icon">
+    <MDButtonIconSlot v-if="!!slots.icon" :class="{ 'md-button__content_loading': isLoading }">
       <slot name="icon" />
     </MDButtonIconSlot>
-    <span class="md-button__label-text">{{ props.label }}</span>
+    <span class="md-button__label-text" :class="{ 'md-button__content_loading': isLoading }">{{
+      props.label
+    }}</span>
     <MDCircularProgressIndicator
       v-if="isLoading"
-      class="md-button__progress-indicator"
+      class="md-button__progress-indicator md-button__progress-indicator_centered"
       :progress="isNumber(props.loading) ? props.loading : undefined"
+      :size="24"
     />
   </m3e-button>
 </template>
@@ -280,6 +294,7 @@ if (import.meta.env.DEV) {
     --md-comp-button-tonal-pressed-state-layer-opacity
   );
   vertical-align: middle;
+  position: relative;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -293,10 +308,54 @@ if (import.meta.env.DEV) {
   color: inherit;
 }
 
+.md-button__content_loading {
+  opacity: 0;
+}
+
 .md-button__progress-indicator {
   display: inline-flex;
-  margin-inline-start: 8px;
-  color: inherit;
-  --md-circular-progress-indicator-size: 18px;
+  --md-circular-progress-color: var(--md-private-button-loading-indicator-color);
+}
+
+.md-button__progress-indicator_centered {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.md-button[variant='elevated'] {
+  --md-private-button-loading-indicator-color: var(
+    --md-comp-button-elevated-label-text-color,
+    var(--md-sys-color-primary)
+  );
+}
+
+.md-button[variant='filled'] {
+  --md-private-button-loading-indicator-color: var(
+    --md-comp-button-filled-label-text-color,
+    var(--md-sys-color-on-primary)
+  );
+}
+
+.md-button[variant='tonal'] {
+  --md-private-button-loading-indicator-color: var(
+    --md-comp-button-tonal-label-text-color,
+    var(--md-sys-color-on-secondary-container)
+  );
+}
+
+.md-button[variant='outlined'] {
+  --md-private-button-loading-indicator-color: var(
+    --md-comp-button-outlined-label-text-color,
+    var(--md-sys-color-primary)
+  );
+}
+
+.md-button[variant='text'] {
+  --md-private-button-loading-indicator-color: var(
+    --md-comp-button-text-label-text-color,
+    var(--md-sys-color-primary)
+  );
 }
 </style>

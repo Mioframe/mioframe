@@ -65,17 +65,12 @@ Those APIs cover the required adapter surface. Renderer viability remains `ready
 
 ## Renderer typing decision
 
-The private renderer boundary must derive from the exact package-exported types.
-
-The current `src/shared/ui/material/m3eButton.d.ts` manually repeats renderer properties and literal unions. That is not the accepted final state because it can drift silently from `@m3e/web/button`.
-
-Correction requirement:
-
-- use type-only imports from `@m3e/web/button`;
-- derive Vue template property typing from `M3eButtonElement`, exported aliases, or `HTMLElementTagNameMap['m3e-button']`;
-- keep only the minimal Vue-specific `GlobalComponents` and event-handler glue locally;
-- require mapped adapter values to satisfy the exported renderer types;
-- remove the avoidable handwritten renderer property/union mirror.
+The private renderer boundary derives from the exact package-exported types.
+`src/shared/ui/material/m3eButton.d.ts` uses `Pick<M3eButtonElement, ...>` and retains only
+Vue `GlobalComponents` and event-handler glue. `MDButton.vue` keeps its independently owned
+public props while mapped variant, size, shape, and native type satisfy the package-exported
+aliases and class property types. The handwritten renderer property and literal-union mirror is
+removed.
 
 The Mioframe Vue prop API remains Mioframe-owned and must not become a direct re-export of the complete m3e API.
 
@@ -112,11 +107,7 @@ The legacy `border-radius` transition used duration/easing variables rather than
 
 ## Current review findings
 
-### 1. Renderer type mirror
-
-`src/shared/ui/material/m3eButton.d.ts` manually describes the m3e Button property surface instead of deriving it from `@m3e/web/button`. Replace it with package-derived Vue framework glue and compile-time drift detection.
-
-### 2. Incomplete active token ownership and mapping
+### 1. Incomplete active token ownership and mapping
 
 The current adapter maps only part of the active state/variant color surface. It does not yet transfer and map the complete retained active Button contract, including applicable:
 
@@ -126,28 +117,16 @@ The current adapter maps only part of the active state/variant color surface. It
 
 Mapping a renderer variable to an undefined `--md-comp-*` source is incomplete. The correction must establish one canonical declaration owner and semantic m3e mapping for every retained active token, while leaving obsolete stiffness/damping declarations removed.
 
-### 3. Loading presentation regression
-
-The accepted legacy loading presentation kept the button geometry stable, hid label/icon visually, and centered the progress indicator in their place while retaining the accessible name and enabled activation behavior.
-
-The current adapter renders the progress indicator beside the visible label/icon, changing content, width, and layout. No explicit product decision approved this change. Preserve the accepted loading presentation through public slots and adapter-owned light-DOM styling without accessing m3e shadow DOM, then add deterministic visual proof.
-
-### 4. Motion proof overclaims the result
+### 2. Motion proof overclaims the result
 
 The current browser test checks only `:active` before and after release, including under reduced motion. That proves press acquisition/release but does not prove pressed-shape morphing, selected-shape restoration, interruption safety, or reduced-motion behavior.
 
 Use public observables where available. Where the rendered shape is not host-inspectable without private DOM, pair real input lifecycle proof with bounded deterministic visual evidence and report the limitation accurately.
 
-### 5. Required scenario proof is incomplete
+### 3. Required scenario proof is incomplete
 
 Add or link exact proof for materially distinct required paths, including:
 
-- Space activation;
-- reset behavior;
-- attempted disabled activation;
-- keyboard-controlled toggle intent;
-- programmatic `selected` updates without false emits;
-- loading presentation;
 - RTL icon placement;
 - supported theme output;
 - active public token overrides through rendered effects;
@@ -186,20 +165,20 @@ Simpler alternatives rejected:
 
 ## Scenario-to-proof status
 
-| Scenario or contract                  | Accepted result                                      | Current proof                                  | Status     |
-| ------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- | ---------- |
-| public Vue defaults and basic mapping | stable typed adapter mapping                         | colocated component test                       | partial    |
-| renderer type compatibility           | package-derived, compile-time checked                | handwritten local mirror                       | missing    |
-| pointer/Enter activation and submit   | one activation and native submit                     | Storybook browser spec                         | partial    |
-| Space and reset                       | native behavior preserved                            | none identified                                | missing    |
-| disabled activation                   | no action delivered                                  | static disabled assertion                      | incomplete |
-| controlled toggle                     | intent emit, prop authority, no drift                | pointer path and unit cancellation             | partial    |
-| loading behavior                      | actionable, accessible, stable legacy presentation   | action/busy test; no presentation baseline     | incomplete |
-| public active tokens                  | canonical defaults and observable overrides          | partial CSS bridge; no complete rendered proof | incomplete |
-| shape motion and reduced motion       | correct press/release/final result                   | `:active` acquisition/release only             | incomplete |
-| themes and RTL                        | accepted theme roles and leading-icon directionality | no explicit canonical proof identified         | missing    |
-| migrated consumers                    | all consumers use canonical public owner             | import migration and selected consumer tests   | partial    |
-| visual compatibility                  | all distinct stable scenarios reviewed               | four refreshed baselines; required gaps remain | incomplete |
+| Scenario or contract                  | Accepted result                                      | Current proof                                   | Status     |
+| ------------------------------------- | ---------------------------------------------------- | ----------------------------------------------- | ---------- |
+| public Vue defaults and basic mapping | stable typed adapter mapping                         | colocated component test                        | partial    |
+| renderer type compatibility           | package-derived, compile-time checked                | package-derived ambient glue and type-check     | complete   |
+| pointer/Enter/Space activation/submit | one activation and native submit                     | Storybook browser spec                          | complete   |
+| reset                                 | native form reset preserved                          | Storybook browser spec                          | complete   |
+| disabled activation                   | no action delivered                                  | unit plus real pointer attempt                  | complete   |
+| controlled toggle                     | intent emit, prop authority, no drift                | unit plus keyboard/pointer/programmatic browser | complete   |
+| loading behavior                      | actionable, accessible, stable legacy presentation   | unit, browser, inspected visual baseline        | complete   |
+| public active tokens                  | canonical defaults and observable overrides          | partial CSS bridge; no complete rendered proof  | incomplete |
+| shape motion and reduced motion       | correct press/release/final result                   | `:active` acquisition/release only              | incomplete |
+| themes and RTL                        | accepted theme roles and leading-icon directionality | no explicit canonical proof identified          | missing    |
+| migrated consumers                    | all consumers use canonical public owner             | import migration and selected consumer tests    | partial    |
+| visual compatibility                  | all distinct stable scenarios reviewed               | four refreshed baselines; required gaps remain  | incomplete |
 
 ## Exit gate
 
@@ -214,4 +193,6 @@ M1 is complete only when:
 - focused and final repository verification pass;
 - operator visual acceptance covers the complete corrected visual set.
 
-Unresolved: renderer type mirror, incomplete active token ownership/mapping, loading presentation regression, incomplete motion/native/token/theme/RTL proof, and operator visual acceptance.
+Unresolved: incomplete active token ownership/mapping, incomplete motion/token/theme/RTL proof,
+and operator visual acceptance. Package-derived typing, loading presentation, and the missing
+native and controlled-state paths listed above are corrected with passing focused proof.

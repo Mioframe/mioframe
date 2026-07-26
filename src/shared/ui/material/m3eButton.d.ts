@@ -1,14 +1,15 @@
+import type { M3eButtonElement } from '@m3e/web/button';
 import type { HTMLAttributes, PublicProps } from 'vue';
+
+type RendererButtonProps = Pick<
+  M3eButtonElement,
+  'disabled' | 'selected' | 'shape' | 'size' | 'toggle' | 'type' | 'variant'
+>;
 
 type M3eButtonProps = HTMLAttributes &
   PublicProps & {
-    disabled?: boolean;
-    selected?: boolean;
-    shape?: 'rounded' | 'square';
-    size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large';
-    toggle?: boolean;
-    type?: 'button' | 'submit' | 'reset';
-    variant?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text';
+    [Property in keyof RendererButtonProps]?: RendererButtonProps[Property];
+  } & {
     onBeforeinput?: (event: InputEvent) => void;
     onClick?: (event: MouseEvent) => void;
   };
