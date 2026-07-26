@@ -4,6 +4,22 @@ import { pathToFileURL } from 'node:url';
 import { getMachineLockStatus, releaseOwnedLock } from './lib/commandLock.mjs';
 
 /**
+ * Build the retry instruction for a released verification state.
+ * @param metadata Verification lock metadata, when available.
+ * @returns Instruction that preserves the original command or explicitly
+ * reports that its scope must be reconstructed.
+ */
+export function getRetryInstruction(metadata) {
+  const command = metadata?.command;
+
+  if (typeof command === 'string' && command.trim().length > 0) {
+    return `  Run \`${command.trim()}\` again.`;
+  }
+
+  return '  Re-run the original task-scope verify command; do not default to plain `pnpm verify`.';
+}
+
+/**
  * Resume local verification when the previous run is known to be no longer active.
  * Active and inconsistent verification states are never changed by this command.
  * @param status Structured verification status.
@@ -44,7 +60,9 @@ export function resumeVerification(status = getMachineLockStatus()) {
     );
 
     if (resumed) {
-      console.log(['verification: ready to retry', '  Run `pnpm verify` again.'].join('\n'));
+      console.log(
+        ['verification: ready to retry', getRetryInstruction(status.metadata)].join('\n'),
+      );
       return 0;
     }
 
@@ -59,7 +77,7 @@ export function resumeVerification(status = getMachineLockStatus()) {
 
   try {
     fs.rmSync(status.lockPath, { recursive: true, force: false });
-    console.log(['verification: ready to retry', '  Run `pnpm verify` again.'].join('\n'));
+    console.log(['verification: ready to retry', getRetryInstruction(null)].join('\n'));
     return 0;
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
