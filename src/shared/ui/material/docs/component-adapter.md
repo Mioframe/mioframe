@@ -77,9 +77,9 @@ If any item is missing, viability remains `ready` for the resolved scope. Do not
 
 Compare only the supported surface:
 
-| Material expectation | Exact m3e behavior/version | Required by Mioframe | Evidence | Decision |
-| --- | --- | --- | --- | --- |
-| observable expectation | actual behavior | yes or no | accepted requirement or none | accept, wrapper correction, upstream follow-up, or blocker |
+| Material expectation   | Exact m3e behavior/version | Required by Mioframe | Evidence                     | Decision                                                   |
+| ---------------------- | -------------------------- | -------------------- | ---------------------------- | ---------------------------------------------------------- |
+| observable expectation | actual behavior            | yes or no            | accepted requirement or none | accept, wrapper correction, upstream follow-up, or blocker |
 
 - **not required** — record for possible m3e improvement; no adapter work;
 - **required and thinly correctable** — implement the smallest correction using documented APIs or Mioframe-owned light DOM;

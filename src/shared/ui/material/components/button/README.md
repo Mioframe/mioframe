@@ -56,18 +56,18 @@ The documented renderer supports the required variants, sizes, shapes, toggle/se
 
 ## Public Vue mapping
 
-| Mioframe contract | m3e contract | Ownership |
-| --- | --- | --- |
-| appearance | typed `variant` | Mioframe vocabulary, m3e rendering |
-| size | typed `size` | direct mapping |
-| round/square | typed `shape` | Mioframe normalization |
-| controlled selection | `toggle`, `selected`, cancelable `beforeinput` | consumer state, adapter intent normalization |
-| native actions | documented form properties | browser/m3e |
-| disabled | documented disabled property | m3e |
-| label and leading icon | documented slots | adapter mapping |
-| loading | Mioframe light-DOM extension | Mioframe |
-| focus, ripple, elevation, motion | renderer implementation | m3e |
-| theme roles | documented Material system semantics | existing Mioframe theme and m3e |
+| Mioframe contract                | m3e contract                                   | Ownership                                    |
+| -------------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| appearance                       | typed `variant`                                | Mioframe vocabulary, m3e rendering           |
+| size                             | typed `size`                                   | direct mapping                               |
+| round/square                     | typed `shape`                                  | Mioframe normalization                       |
+| controlled selection             | `toggle`, `selected`, cancelable `beforeinput` | consumer state, adapter intent normalization |
+| native actions                   | documented form properties                     | browser/m3e                                  |
+| disabled                         | documented disabled property                   | m3e                                          |
+| label and leading icon           | documented slots                               | adapter mapping                              |
+| loading                          | Mioframe light-DOM extension                   | Mioframe                                     |
+| focus, ripple, elevation, motion | renderer implementation                        | m3e                                          |
+| theme roles                      | documented Material system semantics           | existing Mioframe theme and m3e              |
 
 The private renderer boundary derives from package exports. No handwritten renderer property or literal-union mirror remains.
 
@@ -95,10 +95,10 @@ Official Material records used:
 - `/components/buttons/accessibility`;
 - verified cache snapshot `2026-07-20T16:16:49.323Z`.
 
-| Observation | Exact m3e behavior in 2.6.2 | Accepted Mioframe requirement | Repository evidence | Decision |
-| --- | --- | --- | --- | --- |
-| minimum retained pressed state | `PressedController` retains pressed state for at least 150 ms | none requiring immediate geometry release | legacy `MDButton` drove pressed shape from `durationPressedState`; `usePressed` retained that state until the transition duration elapsed | renderer-owned behavior; not a blocker; operator evaluates visual quality |
-| expanded target participates in pressed state | activation through the expanded target drives the same Button pressed state | target must be actionable; no no-morph requirement | legacy expanded target was inside the same native button and drove the same host pressed state and `:active` shape route | accepted renderer behavior; not a blocker |
+| Observation                                   | Exact m3e behavior in 2.6.2                                                 | Accepted Mioframe requirement                      | Repository evidence                                                                                                                       | Decision                                                                  |
+| --------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| minimum retained pressed state                | `PressedController` retains pressed state for at least 150 ms               | none requiring immediate geometry release          | legacy `MDButton` drove pressed shape from `durationPressedState`; `usePressed` retained that state until the transition duration elapsed | renderer-owned behavior; not a blocker; operator evaluates visual quality |
+| expanded target participates in pressed state | activation through the expanded target drives the same Button pressed state | target must be actionable; no no-morph requirement | legacy expanded target was inside the same native button and drove the same host pressed state and `:active` shape route                  | accepted renderer behavior; not a blocker                                 |
 
 These observations are not confirmed Material conformance defects requiring Mioframe corrections. They may be reported upstream only if comparison with official guidance or operator review identifies an actual visual defect.
 
