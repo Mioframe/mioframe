@@ -59,7 +59,7 @@ Legacy source and m3e capabilities are evidence, not public API authority.
 Before production edits, update the family README with:
 
 | Material contract and source | Required now and evidence | Public Vue representation | m3e exact-version support | Owner | Decision | Verification |
-| --- | --- | --- | --- | --- | --- | --- |
+| ---------------------------- | ------------------------- | ------------------------- | ------------------------- | ----- | -------- | ------------ |
 
 Cover every public prop, value, default, slot, event, `v-model`, native mapping, selected token, and materially relevant state included in the target scope.
 
