@@ -1,194 +1,99 @@
 # Button adapter contract
 
-Family: Button
+Material component: Button
 
-Migration target: `MDButton` (label-bearing Button)
-
-Renderer viability: `ready`
+Migration target: current `MDButton`
 
 Implementation ownership: `migrating`
 
-Current and canonical owner: `src/shared/ui/material/components/button/MDButton.vue`
+Canonical implementation candidate: `src/shared/ui/material/components/button/MDButton.vue`
 
-Public export: `@shared/ui/material` → `MDButton`
+## Status
 
-The legacy owner is removed and all existing consumers use the canonical adapter. No confirmed upstream blocker exists. Repository-local adapter work is complete; operator visual and motion acceptance remains the M1 exit gate.
+The current m3e-backed component is reusable implementation work, but its public API is not yet accepted.
 
-## M1 correction implementation preflight
+The final API must be derived from official Material Button documentation. Legacy Mioframe names and m3e names are evidence only. Current props, values, slots, defaults, and extensions remain provisional until the matrix below assigns each one an official Material source or a separate non-Material decision.
 
-- Authoring source: this ready family contract plus the deterministic `material-component-adapter` workflow.
-- Goal: complete the thin documented m3e Button mapping, remove the unused public-token bridge, correct motion-proof wording, and close repository-local M1 work.
-- Non-goals: renderer reconstruction, new public Button tokens, consumer redesign, direct Lit or private-shadow-DOM access, and migration of any other Button component.
-- Current owner and public entry: `MDButton.vue`, exported as `MDButton` from `@shared/ui/material`; all production consumers already use it and require no migration.
-- State and ownership: consumers own `selected`; the adapter cancels renderer mutation and emits selection intent; m3e owns native/link semantics and interaction rendering; Mioframe owns loading light DOM.
-- Minimum design: add explicit package-derived mappings only for documented Button properties and slots, retain the single custom-element root, delete all unsupported token aliases, and keep only the private loading color route. Merely deleting CSS is simpler but does not complete the required canonical Button surface.
-- Expected files: `MDButton.vue`, `MDButton.test.ts`, package-derived `m3eButton.d.ts` Vue glue, `MDButton.stories.ts`, the Button README, the Material library README/roadmap, and existing Button browser wording where it overclaims motion.
-- Pass order: component-contract red check; typed adapter and token cleanup; focused unit/type proof; browser wording and existing focused behavior proof; existing visual proof; documentation/status closeout; final `pnpm verify`.
-- Removal: all Button `--m3e-*` mappings backed by unaccepted `--md-comp-button-*` tokens; no compatibility aliases remain.
+Do not restore the legacy renderer.
 
-TEST IMPACT
+## Sources
 
-- Canonical documented Button property and slot mapping:
-  - Primary proof owner: colocated `MDButton.test.ts` component-contract test.
-  - Additional proof: package-derived type-check.
-  - Existing proof: defaults, native type, disabled, controlled toggle, loading, label, and leading icon mappings.
-  - New/updated proof: disabled-interactive, link/form values, and selected/trailing slot routing.
-  - Risk or platform matrix: Vue-to-custom-element property/slot wiring only; no browser matrix expansion.
-  - Persistent impact metadata: existing unit import relation; no registry change.
-- Preserved native, controlled-state, focus, loading, disabled, and expanded-target behavior:
-  - Primary proof owner: existing Storybook behavior spec.
-  - Additional proof: component contract for controlled intent and explicit properties.
-  - Existing proof: `tests/e2e/storybook/md-button-family.spec.ts`.
-  - New/updated proof: rename the overclaimed motion scenario and retain only public press acquisition/release assertions.
-  - Risk or platform matrix: established Storybook browser profile; real pointer and keyboard input.
-  - Persistent impact metadata: existing Button source/story mapping remains accurate; no new spec.
-- Stable accepted Button appearance after token-bridge removal:
-  - Primary proof owner: existing bounded MDButton visual specs and baselines.
-  - Additional proof: operator visual and renderer-owned motion review.
-  - Existing proof: `tests/e2e/visual/shared-ui/md-button.spec.ts` and canonical snapshots.
-  - New/updated proof: none unless an inspected baseline changes.
-  - Risk or platform matrix: canonical Linux visual profile; animation quality remains manual.
-  - Persistent impact metadata: existing mapping remains accurate; no new spec.
-
-## Accepted current Mioframe scenarios
-
-The application requires:
-
-- pointer, Enter, and Space activation;
-- disabled activation blocking;
-- native `button`, `submit`, and `reset` behavior;
-- visible and accessible label;
-- optional leading icon;
-- loading that preserves geometry, accessible name, and enabled activation unless explicitly disabled;
-- consumer-controlled toggle state without renderer drift;
-- programmatic focus;
-- five appearances, five sizes, and round/square shapes;
-- an expanded pointer target that remains actionable;
-- existing application theme roles.
-
-The expanded-target requirement is actionability only. No accepted consumer, public documentation, or product decision requires the visible container to avoid pressed feedback when activation begins through that target.
-
-No accepted scenario specifies immediate pressed-shape release or a different minimum visual duration from the renderer.
-
-## Renderer contract
-
-Dependency range: `@m3e/web@^2.6.2`
-
-Inspected version: `2.6.2`
-
-Entry point: `@m3e/web/button`
-
-Element: `m3e-button`
-
-Package-derived type sources:
-
-- `M3eButtonElement`;
-- `ButtonShape`;
-- `ButtonSize`;
-- `ButtonVariant`;
-- `HTMLElementTagNameMap['m3e-button']`.
-
-The documented renderer supports the required variants, sizes, shapes, toggle/selected state, disabled behavior, button/submit/reset/link behavior, content slots, Material CSS inputs, and renderer-owned state layer, ripple, focus, elevation, and pressed-shape motion.
-
-## Public Vue mapping
-
-| Mioframe contract                | m3e contract                                                            | Ownership                                    |
-| -------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------- |
-| appearance                       | typed `variant`                                                         | Mioframe vocabulary, m3e rendering           |
-| size                             | typed `size`                                                            | direct mapping                               |
-| round/square                     | typed `shape`                                                           | Mioframe normalization                       |
-| controlled selection             | `toggle`, `selected`, cancelable `beforeinput`                          | consumer state, adapter intent normalization |
-| native actions                   | documented form properties                                              | browser/m3e                                  |
-| link and form values             | `href`, `target`, `rel`, `download`, `name`, `value`                    | browser/m3e                                  |
-| disabled                         | documented disabled property                                            | m3e                                          |
-| focusable disabled state         | documented `disabledInteractive` property                               | m3e                                          |
-| labels and icons                 | default, `icon`, `selected`, `selected-icon`, and `trailing-icon` slots | adapter mapping                              |
-| loading                          | Mioframe light-DOM extension                                            | Mioframe                                     |
-| focus, ripple, elevation, motion | renderer implementation                                                 | m3e                                          |
-| theme roles                      | documented Material system semantics                                    | existing Mioframe theme and m3e              |
-
-The private renderer boundary derives from package exports. No handwritten renderer property or literal-union mirror remains.
-
-## Active public tokens
-
-No current consumer or accepted public Mioframe documentation requires a Button-specific `--md-comp-button-*` override contract.
-
-Therefore the adapter:
-
-- do not complete a public Button-token catalogue;
-- has removed unused `--m3e-*` mappings backed by undefined `--md-comp-button-*` variables;
-- let m3e consume documented Material system roles and renderer defaults;
-- retain only Mioframe-private routing needed by the loading extension;
-- keep obsolete legacy stiffness/damping declarations removed.
-
-A public Button token may be added later only for a real consumer or intentional API requirement.
-
-## Material and m3e assessment
-
-Official Material records used:
+Official Material:
 
 - `/components/buttons/overview`;
 - `/components/buttons/specs`;
 - `/components/buttons/guidelines`;
 - `/components/buttons/accessibility`;
-- verified cache snapshot `2026-07-20T16:16:49.323Z`.
+- cache snapshot `2026-07-20T16:16:49.323Z`.
 
-| Observation                                   | Exact m3e behavior in 2.6.2                                                 | Accepted Mioframe requirement                      | Repository evidence                                                                                                                       | Decision                                                                  |
-| --------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| minimum retained pressed state                | `PressedController` retains pressed state for at least 150 ms               | none requiring immediate geometry release          | legacy `MDButton` drove pressed shape from `durationPressedState`; `usePressed` retained that state until the transition duration elapsed | renderer-owned behavior; not a blocker; operator evaluates visual quality |
-| expanded target participates in pressed state | activation through the expanded target drives the same Button pressed state | target must be actionable; no no-morph requirement | legacy expanded target was inside the same native button and drove the same host pressed state and `:active` shape route                  | accepted renderer behavior; not a blocker                                 |
+Renderer:
 
-These observations are not confirmed Material conformance defects requiring Mioframe corrections. They may be reported upstream only if comparison with official guidance or operator review identifies an actual visual defect.
+- `@m3e/web@^2.6.2`, resolved `2.6.2`;
+- `@m3e/web/button`;
+- `M3eButtonElement`, `ButtonShape`, `ButtonSize`, `ButtonVariant`.
 
-## Motion assessment
+## Current product needs
 
-Pressed-shape motion is renderer-owned.
+Consumers currently need activation, disabled behavior, button/submit/reset integration, accessible label content, icon content, multiple styles and sizes, shape and selected scenarios, focus, expanded target behavior, and an asynchronous/loading presentation.
 
-Repository-local verification consists of:
+These needs select the required Material subset. They do not define public terminology and do not prove that loading belongs inside Material Button.
 
-1. recording the exact installed implementation paths for press acquisition, retained duration, release/interruption, and reduced motion;
-2. confirming the adapter does not override, disable, or duplicate renderer motion;
-3. retaining only truthful automated assertions for public input behavior.
+## Required Material–m3e–Vue matrix
 
-For `@m3e/web@2.6.2`, the exact installed implementation is:
+The next adapter pass must replace this provisional matrix with exact source-backed rows.
 
-- `dist/button.js` constructs `PressedController` with Space-key acquisition, a 150 ms minimum retained duration, and a callback that updates the renderer's private pressed/resting custom states and group geometry;
-- `dist/core.js` acquires pointer presses on `pointerdown`, acquires keyboard presses on Space `keydown`, releases through document `pointerup`, `touchend`/`touchcancel`, or Space `keyup`, and defers the release callback only for the remaining minimum duration;
-- `dist/button.js` clears pressed/resting states when disabled and on disconnection, removes transient shape/group values on disconnection, and routes subsequent acquisition/release callbacks through the same state transition owner;
-- the Button stylesheet in `dist/button.js` disables base, label, icon, pressed/resting, and group transitions under `@media (prefers-reduced-motion)`.
+| Material area | Required now | Public Vue API | m3e 2.6.2 | Owner and decision |
+| --- | --- | --- | --- | --- |
+| official Button naming and taxonomy | yes | pending Material terminology | private renderer vocabulary | Vue adapter, implement now |
+| documented styles or variants | yes | pending exact Material names and defaults | typed renderer variants | direct m3e mapping |
+| documented sizes | yes | pending exact Material names and defaults | typed renderer sizes | direct m3e mapping |
+| documented shapes, configurations, and selected states | yes | pending official classification | shape, toggle, selected APIs | Vue normalization plus m3e |
+| official label and icon content roles | yes | pending Material-oriented slots | renderer slots | Vue slot mapping plus m3e |
+| native action semantics | yes | Vue/native mapping | button, submit, reset, link APIs | Vue plus browser/m3e |
+| disabled, focus, target, and interaction behavior | yes | only Material-configurable public options | mainly renderer-owned | m3e; wrapper only for public mapping |
+| asynchronous/loading presentation | consumer need; Material source not established | unresolved | current wrapper extension | decide composition, separate non-MD component, approved extension, or migration |
+| other official Button capabilities | not yet required | deferred | some are available | defer unless needed for coherent API |
+| official component tokens | not currently required | deferred selected subset | private CSS inputs | expose only when selected |
 
-`MDButton.vue` does not override these transitions, inspect their private DOM, or install a second press/motion system.
+## Public API rules
 
-Actual animation quality and timing require operator manual testing. `:active` proves only browser press acquisition/release; screenshots do not prove animation lifecycle; private shadow-DOM tests are forbidden.
+- Use official Material terminology, values, defaults, combinations, behavior, and accessibility semantics.
+- Implement only the subset required now, but keep it compatible with later Material expansion.
+- Do not expose raw m3e vocabulary or types.
+- Do not preserve legacy names when they conflict with Material.
+- Do not keep a non-Material capability in `MDButton` without an explicit architecture decision.
+- Public types come from the Material contract; private mapper outputs must satisfy m3e package types.
 
-The existing behavior-test title or claims must not present `:active` assertions as proof of motion lifecycle.
+## Ownership
 
-## Current implementation status
+Use m3e directly for selected Material behavior it implements correctly.
 
-Completed:
+The Vue adapter owns Material-to-Vue normalization, typed mapping, slots, events, controlled state, native integration, and narrow light-DOM composition.
 
+Renderer geometry, private DOM, accessibility internals, state layer, ripple, focus treatment, elevation, and motion belong to m3e. Missing behavior in those areas requires an m3e fix, not a parallel Vue renderer.
+
+## Existing implementation evidence
+
+Reusable after contract normalization:
+
+- private m3e registration and rendering;
 - package-derived renderer typing;
-- canonical m3e-backed owner and public export;
-- all existing consumer migration and legacy removal;
-- native, disabled, controlled-toggle, focus, loading, and expanded-target actionability scenarios;
-- restored loading presentation.
-- direct package-checked disabled-interactive, link/form-value, and selected/trailing slot mappings;
-- removal of the unused incomplete Button-token bridge;
-- public-press-only automated wording and exact-version renderer motion assessment;
-- focused component, type, Storybook behavior, and visual verification.
+- native and controlled-state integration;
+- migrated consumers;
+- focused tests, stories, and motion source inspection.
 
-The only remaining M1 work is operator visual and motion acceptance plus the final repository gate recorded by this run.
+Passing tests do not accept provisional public API.
+
+## Remaining M1 work
+
+1. complete and accept the exact Material–m3e–Vue matrix;
+2. define the demand-driven official Material Vue API;
+3. classify every current public capability as Material, Vue/native adaptation, deferred, or non-Material;
+4. resolve loading separately;
+5. normalize implementation, consumers, tests, and stories;
+6. route Material gaps to wrapper correction or m3e fix;
+7. run verification and operator visual/motion review.
 
 ## Completion gate
 
-M1 completes when:
-
-- renderer viability remains `ready`;
-- implementation ownership becomes `migrated`;
-- one canonical Vue owner and public export remain;
-- accepted current scenarios are preserved;
-- canonical documented m3e Button capabilities are available through thin typed mappings where they belong to the public component;
-- genuine Material/m3e divergences are recorded and only evidenced required corrections are implemented;
-- no unused public token catalogue or renderer leak remains;
-- risk-based verification passes;
-- operator accepts the canonical visual and motion result.
+M1 completes when every public `MDButton` capability has an official Material source or an explicitly approved extension decision, selected Material behavior is implemented by the correct owner, deferred surface and divergences are recorded, consumers use the accepted API, verification passes, and the operator accepts the result.
