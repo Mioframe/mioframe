@@ -180,7 +180,7 @@ export const BehaviorContracts: Story = {
         <output id="md-button-loading-count">{{ loadingClickCount }}</output>
         <MDButton label="Disabled action" disabled @click="onDisabledClick" />
         <output id="md-button-disabled-count">{{ disabledClickCount }}</output>
-        <MDButton label="Motion action" size="medium" />
+        <MDButton label="Press action" size="medium" />
       </div>
     `,
   }),

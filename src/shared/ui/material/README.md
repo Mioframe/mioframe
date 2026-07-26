@@ -84,13 +84,13 @@ m3e-owned animation is assessed through exact-version source inspection and oper
 
 ## Migration map
 
-| Area                            | Current owner                         | Canonical owner                                        | Current state                                                                             |
-| ------------------------------- | ------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| `MDButton`                      | `material/components/button`          | `material/components/button`                           | renderer `ready`; owner `migrating` until bounded correction and operator review complete |
-| Other public `MD*` components   | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration | renderer `unassessed`; owner `legacy`                                                     |
-| Shared m3e compiler integration | shared Vite/Vue configuration         | shared Vite/Vue configuration                          | established                                                                               |
-| Public Material entry point     | `@shared/ui/material`                 | `@shared/ui/material`                                  | established                                                                               |
-| Reference/system theme tokens   | existing foundation owners            | unchanged                                              | retained                                                                                  |
+| Area                            | Current owner                         | Canonical owner                                        | Current state                                                                    |
+| ------------------------------- | ------------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `MDButton`                      | `material/components/button`          | `material/components/button`                           | renderer `ready`; repository-local correction complete; operator review required |
+| Other public `MD*` components   | legacy `src/shared/ui/<Family>` paths | `material/components/<family>` after focused migration | renderer `unassessed`; owner `legacy`                                            |
+| Shared m3e compiler integration | shared Vite/Vue configuration         | shared Vite/Vue configuration                          | established                                                                      |
+| Public Material entry point     | `@shared/ui/material`                 | `@shared/ui/material`                                  | established                                                                      |
+| Reference/system theme tokens   | existing foundation owners            | unchanged                                              | retained                                                                         |
 
 ## Verification
 
@@ -104,4 +104,4 @@ The first canonical visual result and renderer-owned motion require operator rev
 
 PR #162 owns the architecture reset, shared m3e integration, and `MDButton` pilot.
 
-The MDButton adapter, public export, consumer migration, package-derived typing, and current application behavior are implemented. Remaining repository-local work is bounded to removing unused token mappings, completing canonical direct m3e Button coverage, recording Material/m3e divergences and animation source assessment, and running verification before operator review.
+The MDButton adapter, public export, consumer migration, package-derived typing, canonical direct m3e Button coverage, token cleanup, and exact-version motion assessment are implemented. Operator visual and motion acceptance remains required before M1 closes.

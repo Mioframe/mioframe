@@ -8,15 +8,15 @@ Last updated: 2026-07-26
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `correction`
+Status: `operator-review`
 
 Owner: current architecture-reset branch
 
 Blocker: none upstream. The last agent run incorrectly promoted renderer-owned press timing and expanded-target pressed feedback into Mioframe requirements. Repository evidence shows the legacy component also retained pressed state through its transition duration and used the same host pressed state for expanded-target activation. Neither behavior is an accepted blocker.
 
-Next action: rerun `material-component-adapter` for `MDButton`. Keep renderer viability `ready`; remove unused token mappings; finish bounded typed API alignment; record exact-version motion implementation without proxy claims; run focused checks and `pnpm verify`; then hand off visual and motion review to the operator.
+Next action: operator reviews the canonical MDButton visual stories and renderer-owned press motion. Record explicit acceptance or rejection before closing M1.
 
-Implementation ownership remains `migrating` only until this bounded repository-local work is complete.
+Implementation ownership remains `migrating` until the required operator acceptance closes the M1 migration gate.
 
 ## Milestones
 
@@ -45,16 +45,17 @@ The migration target is `MDButton` only. `MDIconButton`, `MDFab`, `MDExtendedFab
 - loading preserves accepted presentation and enabled behavior;
 - no accepted scenario requires immediate pressed-shape release or suppressing pressed feedback for expanded-target activation.
 
-### Required correction work
+### Completed correction work
 
-1. remove the broad `--m3e-*` bridge backed by unused or undefined public Button tokens;
-2. keep only actual active public tokens; currently no Button-specific public token contract has consumer evidence;
-3. finish direct typed Vue mappings for canonical documented m3e Button capabilities that belong to the public component;
-4. keep renderer viability `ready` unless a divergence passes the accepted requirement and blocker evidence gates;
-5. record exact m3e Button press, retained-duration, release/interruption, and reduced-motion implementation paths;
-6. remove automated wording that overclaims internal motion proof;
-7. run focused verification and final `pnpm verify`;
-8. request operator visual and motion acceptance.
+1. removed the broad `--m3e-*` bridge backed by unused or undefined public Button tokens;
+2. retained no Button-specific public tokens because none has consumer evidence;
+3. completed direct package-checked Vue mappings for the documented Button properties and slots in scope;
+4. kept renderer viability `ready`; no observation passed the blocker gate;
+5. recorded exact m3e Button press, retained-duration, release/interruption, and reduced-motion implementation paths;
+6. removed automated wording that overclaimed internal motion proof;
+7. passed focused component, type, Storybook behavior, and visual verification.
+
+Operator visual and motion acceptance remains required.
 
 M1 must not restore the legacy renderer, add a direct Lit dependency, access private shadow DOM, duplicate renderer motion/state systems, create a generic wrapper framework, or migrate unrelated Button-family components.
 

@@ -108,7 +108,7 @@ test('MDButton expanded target activates clicks outside the visible button box',
   await expect(count).toHaveText('1');
 });
 
-test('MDButton preserves form, controlled toggle, loading, disabled, and motion lifecycle contracts', async ({
+test('MDButton preserves form, controlled toggle, loading, disabled, and public press contracts', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--behavior-contracts');
@@ -118,7 +118,7 @@ test('MDButton preserves form, controlled toggle, loading, disabled, and motion 
   const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
   const loading = page.getByRole('button', { name: 'Loading action', exact: true });
   const disabled = page.getByRole('button', { name: 'Disabled action', exact: true });
-  const motion = page.getByRole('button', { name: 'Motion action', exact: true });
+  const pressTarget = page.getByRole('button', { name: 'Press action', exact: true });
 
   await submit.focus();
   await page.keyboard.press('Enter');
@@ -165,24 +165,28 @@ test('MDButton preserves form, controlled toggle, loading, disabled, and motion 
   );
   await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
 
-  const motionBox = await motion.boundingBox();
-  if (!motionBox) throw new Error('Missing MDButton motion host geometry.');
-  const motionPoint = {
-    x: motionBox.x + motionBox.width / 2,
-    y: motionBox.y + motionBox.height / 2,
+  const pressTargetBox = await pressTarget.boundingBox();
+  if (!pressTargetBox) throw new Error('Missing MDButton press host geometry.');
+  const pressPoint = {
+    x: pressTargetBox.x + pressTargetBox.width / 2,
+    y: pressTargetBox.y + pressTargetBox.height / 2,
   };
 
-  await page.mouse.move(motionPoint.x, motionPoint.y);
+  await page.mouse.move(pressPoint.x, pressPoint.y);
   await page.mouse.down();
-  expect(await motion.evaluate((element) => element.matches(':active'))).toBe(true);
+  expect(await pressTarget.evaluate((element) => element.matches(':active'))).toBe(true);
   await page.mouse.up();
-  await expect.poll(() => motion.evaluate((element) => element.matches(':active'))).toBe(false);
+  await expect
+    .poll(() => pressTarget.evaluate((element) => element.matches(':active')))
+    .toBe(false);
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.mouse.down();
-  expect(await motion.evaluate((element) => element.matches(':active'))).toBe(true);
+  expect(await pressTarget.evaluate((element) => element.matches(':active'))).toBe(true);
   await page.mouse.up();
-  await expect.poll(() => motion.evaluate((element) => element.matches(':active'))).toBe(false);
+  await expect
+    .poll(() => pressTarget.evaluate((element) => element.matches(':active')))
+    .toBe(false);
 });
 
 test('MDIconButton expanded target activates clicks outside the visible button box', async ({

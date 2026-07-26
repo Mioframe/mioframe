@@ -20,8 +20,16 @@ const props = withDefaults(
     label: string;
     /** Blocks focus and activation through the renderer's documented disabled contract. */
     disabled?: boolean | undefined;
+    /** Blocks activation while retaining focusability and disabled semantics. */
+    disabledInteractive?: boolean | undefined;
+    /** Optional filename when the Button acts as a download link. */
+    download?: string | null | undefined;
+    /** Optional URL that makes the Button act as a link. */
+    href?: string | undefined;
     /** Shows an indeterminate or determinate progress indicator while preserving activation. */
     loading?: number | boolean | undefined;
+    /** Form field name used by submit Buttons. */
+    name?: string | undefined;
     /** Stateless action or consumer-controlled toggle intent. */
     variant?: 'default' | 'toggle' | undefined;
     /** Material Button size. */
@@ -30,6 +38,12 @@ const props = withDefaults(
     shape?: 'round' | 'square' | undefined;
     /** Consumer-controlled toggle selection. Ignored for default and text buttons. */
     selected?: boolean | undefined;
+    /** Link browsing-context target. */
+    target?: string | undefined;
+    /** Link relationship tokens. */
+    rel?: string | undefined;
+    /** Form value used by submit Buttons. */
+    value?: string | null | undefined;
   }>(),
   {
     color: 'filled',
@@ -50,12 +64,24 @@ const emit = defineEmits<{
 const slots = defineSlots<{
   /** Leading icon content. */
   icon(): unknown;
+  /** Label content rendered while a toggle Button is selected. */
+  selected(): unknown;
+  /** Leading icon rendered while a toggle Button is selected. */
+  'selected-icon'(): unknown;
+  /** Trailing icon content. */
+  'trailing-icon'(): unknown;
 }>();
 
-const MDButtonIconSlot = defineComponent({
-  name: 'MDButtonIconSlot',
-  setup(_, { slots: iconSlots }) {
-    return () => h('span', { class: 'md-button__icon', slot: 'icon' }, iconSlots.default?.());
+const MDButtonSlottedContent = defineComponent({
+  name: 'MDButtonSlottedContent',
+  props: {
+    slotName: {
+      type: String,
+      required: true,
+    },
+  },
+  setup(slotProps, { slots: contentSlots }) {
+    return () => h('span', { slot: slotProps.slotName }, contentSlots.default?.());
   },
 });
 
@@ -71,6 +97,12 @@ const rendererShape = computed<RendererButtonShape>(() =>
   props.shape === 'round' ? 'rounded' : 'square',
 );
 const rendererType = computed<M3eButtonElement['type']>(() => props.nativeType);
+const rendererDownload = computed<M3eButtonElement['download'] | undefined>(() => props.download);
+const rendererHref = computed<M3eButtonElement['href'] | undefined>(() => props.href);
+const rendererName = computed<M3eButtonElement['name'] | undefined>(() => props.name);
+const rendererRel = computed<M3eButtonElement['rel'] | undefined>(() => props.rel);
+const rendererTarget = computed<M3eButtonElement['target'] | undefined>(() => props.target);
+const rendererValue = computed<M3eButtonElement['value'] | undefined>(() => props.value);
 
 const onBeforeInput = (event: InputEvent) => {
   if (!isToggle.value) return;
@@ -99,25 +131,62 @@ if (import.meta.env.DEV) {
 </script>
 
 <template>
+  <!-- eslint-disable vue/attribute-hyphenation -- The m3e Boolean must be bound as a camel-case property; its dashed attribute would treat false as present. -->
   <m3e-button
     class="md-button"
     :aria-busy="isLoading ? 'true' : undefined"
     :disabled="props.disabled"
+    :disabledInteractive="props.disabledInteractive"
+    :download="rendererDownload"
+    :href="rendererHref"
+    :name="rendererName"
+    :rel="rendererRel"
     :selected="appliedSelected"
     :shape="rendererShape"
     :size="rendererSize"
     :toggle="isToggle"
+    :target="rendererTarget"
     :type="rendererType"
+    :value="rendererValue"
     :variant="rendererVariant"
     @beforeinput="onBeforeInput"
     @click.stop="onClick"
   >
-    <MDButtonIconSlot v-if="!!slots.icon" :class="{ 'md-button__content_loading': isLoading }">
+    <MDButtonSlottedContent
+      v-if="!!slots.icon"
+      class="md-button__icon"
+      :class="{ 'md-button__content_loading': isLoading }"
+      slot-name="icon"
+    >
       <slot name="icon" />
-    </MDButtonIconSlot>
+    </MDButtonSlottedContent>
+    <MDButtonSlottedContent
+      v-if="!!slots['selected-icon']"
+      class="md-button__icon"
+      :class="{ 'md-button__content_loading': isLoading }"
+      slot-name="selected-icon"
+    >
+      <slot name="selected-icon" />
+    </MDButtonSlottedContent>
     <span class="md-button__label-text" :class="{ 'md-button__content_loading': isLoading }">{{
       props.label
     }}</span>
+    <MDButtonSlottedContent
+      v-if="!!slots.selected"
+      class="md-button__label-text"
+      :class="{ 'md-button__content_loading': isLoading }"
+      slot-name="selected"
+    >
+      <slot name="selected" />
+    </MDButtonSlottedContent>
+    <MDButtonSlottedContent
+      v-if="!!slots['trailing-icon']"
+      class="md-button__icon"
+      :class="{ 'md-button__content_loading': isLoading }"
+      slot-name="trailing-icon"
+    >
+      <slot name="trailing-icon" />
+    </MDButtonSlottedContent>
     <MDCircularProgressIndicator
       v-if="isLoading"
       class="md-button__progress-indicator md-button__progress-indicator_centered"
@@ -125,174 +194,11 @@ if (import.meta.env.DEV) {
       :size="24"
     />
   </m3e-button>
+  <!-- eslint-enable vue/attribute-hyphenation -->
 </template>
 
 <style scoped>
 .md-button {
-  /* Public Mioframe Button tokens map only to documented m3e Button inputs. */
-  --m3e-elevated-button-focus-container-elevation: var(
-    --md-comp-button-elevated-focused-container-elevation
-  );
-  --m3e-elevated-button-focus-icon-color: var(--md-comp-button-elevated-focused-icon-color);
-  --m3e-elevated-button-focus-label-text-color: var(
-    --md-comp-button-elevated-focused-label-text-color
-  );
-  --m3e-elevated-button-focus-state-layer-color: var(
-    --md-comp-button-elevated-focused-state-layer-color
-  );
-  --m3e-elevated-button-focus-state-layer-opacity: var(
-    --md-comp-button-elevated-focused-state-layer-opacity
-  );
-  --m3e-elevated-button-hover-container-elevation: var(
-    --md-comp-button-elevated-hovered-container-elevation
-  );
-  --m3e-elevated-button-hover-icon-color: var(--md-comp-button-elevated-hovered-icon-color);
-  --m3e-elevated-button-hover-label-text-color: var(
-    --md-comp-button-elevated-hovered-label-text-color
-  );
-  --m3e-elevated-button-hover-state-layer-color: var(
-    --md-comp-button-elevated-hovered-state-layer-color
-  );
-  --m3e-elevated-button-hover-state-layer-opacity: var(
-    --md-comp-button-elevated-hovered-state-layer-opacity
-  );
-  --m3e-elevated-button-icon-color: var(--md-comp-button-elevated-icon-color);
-  --m3e-elevated-button-label-text-color: var(--md-comp-button-elevated-label-text-color);
-  --m3e-elevated-button-pressed-container-elevation: var(
-    --md-comp-button-elevated-pressed-container-elevation
-  );
-  --m3e-elevated-button-pressed-icon-color: var(--md-comp-button-elevated-pressed-icon-color);
-  --m3e-elevated-button-pressed-label-text-color: var(
-    --md-comp-button-elevated-pressed-label-text-color
-  );
-  --m3e-elevated-button-pressed-state-layer-color: var(
-    --md-comp-button-elevated-pressed-state-layer-color
-  );
-  --m3e-elevated-button-pressed-state-layer-opacity: var(
-    --md-comp-button-elevated-pressed-state-layer-opacity
-  );
-  --m3e-filled-button-container-color: var(--md-comp-button-filled-container-color);
-  --m3e-filled-button-focus-container-elevation: var(
-    --md-comp-button-filled-focused-container-elevation
-  );
-  --m3e-filled-button-focus-icon-color: var(--md-comp-button-filled-focused-icon-color);
-  --m3e-filled-button-focus-label-text-color: var(--md-comp-button-filled-focused-label-text-color);
-  --m3e-filled-button-focus-state-layer-color: var(
-    --md-comp-button-filled-focused-state-layer-color
-  );
-  --m3e-filled-button-focus-state-layer-opacity: var(
-    --md-comp-button-filled-focused-state-layer-opacity
-  );
-  --m3e-filled-button-hover-container-elevation: var(
-    --md-comp-button-filled-hovered-container-elevation
-  );
-  --m3e-filled-button-hover-icon-color: var(--md-comp-button-filled-hovered-icon-color);
-  --m3e-filled-button-hover-label-text-color: var(--md-comp-button-filled-hovered-label-text-color);
-  --m3e-filled-button-hover-state-layer-color: var(
-    --md-comp-button-filled-hovered-state-layer-color
-  );
-  --m3e-filled-button-hover-state-layer-opacity: var(
-    --md-comp-button-filled-hovered-state-layer-opacity
-  );
-  --m3e-filled-button-icon-color: var(--md-comp-button-filled-icon-color);
-  --m3e-filled-button-label-text-color: var(--md-comp-button-filled-label-text-color);
-  --m3e-filled-button-pressed-container-elevation: var(
-    --md-comp-button-filled-pressed-container-elevation
-  );
-  --m3e-filled-button-pressed-icon-color: var(--md-comp-button-filled-pressed-icon-color);
-  --m3e-filled-button-pressed-label-text-color: var(
-    --md-comp-button-filled-pressed-label-text-color
-  );
-  --m3e-filled-button-pressed-state-layer-color: var(
-    --md-comp-button-filled-pressed-state-layer-color
-  );
-  --m3e-filled-button-pressed-state-layer-opacity: var(
-    --md-comp-button-filled-pressed-state-layer-opacity
-  );
-  --m3e-outlined-button-focus-icon-color: var(--md-comp-button-outlined-focused-icon-color);
-  --m3e-outlined-button-focus-label-text-color: var(
-    --md-comp-button-outlined-focused-label-text-color
-  );
-  --m3e-outlined-button-focus-outline-color: var(--md-comp-button-outlined-focused-outline-color);
-  --m3e-outlined-button-focus-state-layer-color: var(
-    --md-comp-button-outlined-focused-state-layer-color
-  );
-  --m3e-outlined-button-focus-state-layer-opacity: var(
-    --md-comp-button-outlined-focused-state-layer-opacity
-  );
-  --m3e-outlined-button-hover-icon-color: var(--md-comp-button-outlined-hovered-icon-color);
-  --m3e-outlined-button-hover-label-text-color: var(
-    --md-comp-button-outlined-hovered-label-text-color
-  );
-  --m3e-outlined-button-hover-outline-color: var(--md-comp-button-outlined-hovered-outline-color);
-  --m3e-outlined-button-hover-state-layer-color: var(
-    --md-comp-button-outlined-hovered-state-layer-color
-  );
-  --m3e-outlined-button-hover-state-layer-opacity: var(
-    --md-comp-button-outlined-hovered-state-layer-opacity
-  );
-  --m3e-outlined-button-pressed-icon-color: var(--md-comp-button-outlined-pressed-icon-color);
-  --m3e-outlined-button-pressed-label-text-color: var(
-    --md-comp-button-outlined-pressed-label-text-color
-  );
-  --m3e-outlined-button-pressed-outline-color: var(--md-comp-button-outlined-pressed-outline-color);
-  --m3e-outlined-button-pressed-state-layer-color: var(
-    --md-comp-button-outlined-pressed-state-layer-color
-  );
-  --m3e-outlined-button-pressed-state-layer-opacity: var(
-    --md-comp-button-outlined-pressed-state-layer-opacity
-  );
-  --m3e-text-button-focus-icon-color: var(--md-comp-button-text-focused-icon-color);
-  --m3e-text-button-focus-label-text-color: var(--md-comp-button-text-focused-label-text-color);
-  --m3e-text-button-focus-state-layer-color: var(--md-comp-button-text-focused-state-layer-color);
-  --m3e-text-button-focus-state-layer-opacity: var(
-    --md-comp-button-text-focused-state-layer-opacity
-  );
-  --m3e-text-button-hover-icon-color: var(--md-comp-button-text-hovered-icon-color);
-  --m3e-text-button-hover-label-text-color: var(--md-comp-button-text-hovered-label-text-color);
-  --m3e-text-button-hover-state-layer-color: var(--md-comp-button-text-hovered-state-layer-color);
-  --m3e-text-button-hover-state-layer-opacity: var(
-    --md-comp-button-text-hovered-state-layer-opacity
-  );
-  --m3e-text-button-icon-color: var(--md-comp-button-text-icon-color);
-  --m3e-text-button-label-text-color: var(--md-comp-button-text-label-text-color);
-  --m3e-text-button-pressed-icon-color: var(--md-comp-button-text-pressed-icon-color);
-  --m3e-text-button-pressed-label-text-color: var(--md-comp-button-text-pressed-label-text-color);
-  --m3e-text-button-pressed-state-layer-color: var(--md-comp-button-text-pressed-state-layer-color);
-  --m3e-text-button-pressed-state-layer-opacity: var(
-    --md-comp-button-text-pressed-state-layer-opacity
-  );
-  --m3e-tonal-button-focus-container-elevation: var(
-    --md-comp-button-tonal-focused-container-elevation
-  );
-  --m3e-tonal-button-focus-icon-color: var(--md-comp-button-tonal-focused-icon-color);
-  --m3e-tonal-button-focus-label-text-color: var(--md-comp-button-tonal-focused-label-text-color);
-  --m3e-tonal-button-focus-state-layer-color: var(--md-comp-button-tonal-focused-state-layer-color);
-  --m3e-tonal-button-focus-state-layer-opacity: var(
-    --md-comp-button-tonal-focused-state-layer-opacity
-  );
-  --m3e-tonal-button-hover-container-elevation: var(
-    --md-comp-button-tonal-hovered-container-elevation
-  );
-  --m3e-tonal-button-hover-icon-color: var(--md-comp-button-tonal-hovered-icon-color);
-  --m3e-tonal-button-hover-label-text-color: var(--md-comp-button-tonal-hovered-label-text-color);
-  --m3e-tonal-button-hover-state-layer-color: var(--md-comp-button-tonal-hovered-state-layer-color);
-  --m3e-tonal-button-hover-state-layer-opacity: var(
-    --md-comp-button-tonal-hovered-state-layer-opacity
-  );
-  --m3e-tonal-button-icon-color: var(--md-comp-button-tonal-icon-color);
-  --m3e-tonal-button-label-text-color: var(--md-comp-button-tonal-label-text-color);
-  --m3e-tonal-button-pressed-container-elevation: var(
-    --md-comp-button-tonal-pressed-container-elevation
-  );
-  --m3e-tonal-button-pressed-icon-color: var(--md-comp-button-tonal-pressed-icon-color);
-  --m3e-tonal-button-pressed-label-text-color: var(--md-comp-button-tonal-pressed-label-text-color);
-  --m3e-tonal-button-pressed-state-layer-color: var(
-    --md-comp-button-tonal-pressed-state-layer-color
-  );
-  --m3e-tonal-button-pressed-state-layer-opacity: var(
-    --md-comp-button-tonal-pressed-state-layer-opacity
-  );
   vertical-align: middle;
   position: relative;
   cursor: pointer;
