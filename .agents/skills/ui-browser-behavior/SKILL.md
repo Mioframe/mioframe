@@ -26,10 +26,26 @@ Do not route reusable component behavior into app E2E merely because the compone
 3. Establish deterministic initial state without performing the action under test.
 4. Drive public controls through real keyboard, pointer, touch, drag, scroll, browser input, or a supported public CSS override.
 5. Wait for observable readiness and outcomes.
-6. Assert user-visible state, focus, URL, persisted result, geometry, computed public result, motion lifecycle, or another accepted contract.
-7. Add or update the owning source-to-spec mapping when the stable repository impact relation changes.
-8. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
-9. Run the focused lane, then final verification.
+6. Assert the exact accepted user-visible or browser-observable result, not a proxy that merely correlates with it.
+7. Link the scenario to the exact spec in the owning contract or `TEST IMPACT` record.
+8. Add or update the owning source-to-spec mapping when the stable repository impact relation changes.
+9. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
+10. Run the focused lane, then final verification.
+
+## Scenario completeness
+
+When a component contract lists multiple materially distinct paths, each path must be represented explicitly or linked to evidence that one proof covers it.
+
+Examples include:
+
+- Enter and Space when both are required;
+- pointer and keyboard toggle intent;
+- submit and reset when both native types are supported scenarios;
+- disabled attempted activation, not only a static disabled assertion;
+- programmatic controlled-state updates without false user-action emits;
+- form association and representative consumer integration.
+
+Do not infer complete native or accessibility coverage from one successful activation path.
 
 ## Public CSS token proof
 
@@ -41,7 +57,14 @@ When a public CSS token is claimed as an active contract:
 - do not inspect private m3e shadow DOM or Lit implementation;
 - do not treat a declaration, alias, or resolved custom-property value alone as proof of effect.
 
-For renderer-owned motion, test public press/release, interruption, completion or stable final state, and `prefers-reduced-motion` behavior according to risk. Do not assert private spring stiffness, damping, duration constants, or internal animation nodes unless Mioframe itself explicitly owns those values as an active public contract.
+## Motion and transient state
+
+For renderer-owned motion, test public press/release, interruption, completion or stable final state, and `prefers-reduced-motion` behavior according to risk.
+
+- `element.matches(':active')` proves only that the browser acquired or released the press. It does not prove shape morphing, ripple, transition behavior, final rendered shape, or reduced-motion handling.
+- Assert the claimed public outcome through host-observable geometry/style/state when available.
+- When the visible effect is not inspectable without private renderer DOM, pair real interaction lifecycle proof with bounded visual evidence and record the limitation. Do not claim that the effect itself was proven by `:active`.
+- Do not assert private spring stiffness, damping, duration constants, Lit styles, custom states, or internal animation nodes unless Mioframe explicitly owns them as an active public contract.
 
 ## Interaction fidelity
 
@@ -101,4 +124,5 @@ pnpm verify --only e2e --files <paths...>
 - source mappings overloaded with spec grouping;
 - reducing desktop/mobile coverage without the dedicated audited migration;
 - declaration-only or resolved-value-only CSS assertions presented as proof that an override affects rendered behavior;
-- private renderer DOM, Lit internals, or m3e implementation parameters.
+- private renderer DOM, Lit internals, or m3e implementation parameters;
+- proxy assertions presented as proof of a different observable contract.
