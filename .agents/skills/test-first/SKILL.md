@@ -18,7 +18,7 @@ Use only when all conditions are true:
 
 Skip for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, and appearance-only changes without a meaningful pre-implementation failure.
 
-Skipping test-first does not skip required proof from `TEST IMPACT`, repository impact-metadata maintenance, or final verification.
+Skipping test-first does not skip required proof from `TEST IMPACT`, repository impact-metadata maintenance, or the top-level task's final task-scope verification.
 
 ## Workflow
 
@@ -31,7 +31,7 @@ Skipping test-first does not skip required proof from `TEST IMPACT`, repository 
 7. Implement the minimum production change.
 8. Rerun the same target and confirm it passes.
 9. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
-10. Run final read-only `pnpm verify`.
+10. Return to the top-level task after focused proof. This skill does not run a separate final gate; the top-level task runs one final read-only task-scope verification after all passes are complete.
 
 ## Proof routing
 
