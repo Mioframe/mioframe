@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const MANAGED_MARKER = '<!-- managed:agent-compat -->';
+const SUPPORTED_SKILL_FRONTMATTER_KEYS = new Set(['name', 'description']);
 
 const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
@@ -24,7 +25,7 @@ const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\\*/SKILL.md instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\*/SKILL.md instead.
 `;
 
 const NESTED_CLAUDE_MD = `<!-- managed:agent-compat -->
@@ -107,6 +108,69 @@ function findAgentsMd(root) {
  */
 function findClaudeMd(root) {
   return findNamedFiles(root, 'CLAUDE.md');
+}
+
+/**
+ * Validate canonical Claude Code SKILL.md frontmatter.
+ * Claude Code currently supports only the required name and description keys.
+ * Unknown top-level keys may cause a skill to be skipped during discovery.
+ * @param root Repository root.
+ * @returns Collected frontmatter errors.
+ */
+export function checkSkillFrontmatter(root) {
+  const skillsRoot = path.join(root, '.agents', 'skills');
+  const errors = [];
+
+  if (!fs.existsSync(skillsRoot)) {
+    return { errors, fixes: [] };
+  }
+
+  for (const skillRelPath of findNamedFiles(skillsRoot, 'SKILL.md')) {
+    const displayPath = path.posix.join('.agents/skills', skillRelPath);
+    const content = fs.readFileSync(path.join(skillsRoot, skillRelPath), 'utf8');
+    const lines = content.split(/\r?\n/);
+
+    if (lines[0] !== '---') {
+      errors.push(`${displayPath} must start with YAML frontmatter delimited by ---.`);
+      continue;
+    }
+
+    const closingIndex = lines.indexOf('---', 1);
+
+    if (closingIndex === -1) {
+      errors.push(`${displayPath} has no closing --- for YAML frontmatter.`);
+      continue;
+    }
+
+    const keys = [];
+
+    for (const line of lines.slice(1, closingIndex)) {
+      const match = /^([a-zA-Z0-9_-]+):(?:\s|$)/.exec(line);
+
+      if (match) {
+        keys.push(match[1]);
+      }
+    }
+
+    for (const requiredKey of SUPPORTED_SKILL_FRONTMATTER_KEYS) {
+      if (!keys.includes(requiredKey)) {
+        errors.push(`${displayPath} is missing required frontmatter key '${requiredKey}'.`);
+      }
+    }
+
+    const unsupportedKeys = [...new Set(keys)].filter(
+      (key) => !SUPPORTED_SKILL_FRONTMATTER_KEYS.has(key),
+    );
+
+    if (unsupportedKeys.length > 0) {
+      errors.push(
+        `${displayPath} uses unsupported Claude Code skill frontmatter keys: ${unsupportedKeys.join(', ')}. ` +
+          `Keep only name and description; put routing and scope instructions in the skill body.`,
+      );
+    }
+  }
+
+  return { errors, fixes: [] };
 }
 
 /**
@@ -391,11 +455,22 @@ export function checkGitignoreCompatibility(root) {
 export function checkAgentEnvironment(root, fix) {
   const claudeResult = checkClaudeMdAdapters(root, fix);
   const skillsResult = checkSkillsSymlink(root, fix);
+  const skillFrontmatterResult = checkSkillFrontmatter(root);
   const gitignoreResult = checkGitignoreCompatibility(root);
 
   return {
-    errors: [...claudeResult.errors, ...skillsResult.errors, ...gitignoreResult.errors],
-    fixes: [...claudeResult.fixes, ...skillsResult.fixes, ...gitignoreResult.fixes],
+    errors: [
+      ...claudeResult.errors,
+      ...skillsResult.errors,
+      ...skillFrontmatterResult.errors,
+      ...gitignoreResult.errors,
+    ],
+    fixes: [
+      ...claudeResult.fixes,
+      ...skillsResult.fixes,
+      ...skillFrontmatterResult.fixes,
+      ...gitignoreResult.fixes,
+    ],
   };
 }
 
