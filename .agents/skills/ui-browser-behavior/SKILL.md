@@ -9,7 +9,7 @@ Follow `docs/testing/architecture.md`. Browser proof uses Playwright and real pu
 
 ## Activation
 
-Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, Material state acquisition/release, motion completion, or reduced motion.
+Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, Material state acquisition/release, motion completion, reduced motion, or the observable effect of a public CSS token override.
 
 ## Choose the execution lane
 
@@ -22,14 +22,26 @@ Do not route reusable component behavior into app E2E merely because the compone
 ## Workflow
 
 1. Name the browser-owned contract and owning lane.
-2. Inspect native owners, rendered hierarchy, focus order, scroll ownership, teleport boundaries, and responsive composition that matter.
+2. Inspect native owners, rendered hierarchy, focus order, scroll ownership, teleport boundaries, responsive composition, and public styling inputs that matter.
 3. Establish deterministic initial state without performing the action under test.
-4. Drive public controls through real keyboard, pointer, touch, drag, scroll, or browser input.
+4. Drive public controls through real keyboard, pointer, touch, drag, scroll, browser input, or a supported public CSS override.
 5. Wait for observable readiness and outcomes.
-6. Assert user-visible state, focus, URL, persisted result, or another accepted contract.
+6. Assert user-visible state, focus, URL, persisted result, geometry, computed public result, motion lifecycle, or another accepted contract.
 7. Add or update the owning source-to-spec mapping when the stable repository impact relation changes.
 8. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
 9. Run the focused lane, then final verification.
+
+## Public CSS token proof
+
+When a public CSS token is claimed as an active contract:
+
+- set a distinctive non-default value through the public Mioframe surface;
+- assert that the intended rendered property or observable behavior changes;
+- use the host or another public observable surface;
+- do not inspect private m3e shadow DOM or Lit implementation;
+- do not treat a declaration, alias, or resolved custom-property value alone as proof of effect.
+
+For renderer-owned motion, test public press/release, interruption, completion or stable final state, and `prefers-reduced-motion` behavior according to risk. Do not assert private spring stiffness, damping, duration constants, or internal animation nodes unless Mioframe itself explicitly owns those values as an active public contract.
 
 ## Interaction fidelity
 
@@ -87,4 +99,6 @@ pnpm verify --only e2e --files <paths...>
 - screenshots in behavior specs;
 - architectural boundary violations to simplify setup;
 - source mappings overloaded with spec grouping;
-- reducing desktop/mobile coverage without the dedicated audited migration.
+- reducing desktop/mobile coverage without the dedicated audited migration;
+- declaration-only or resolved-value-only CSS assertions presented as proof that an override affects rendered behavior;
+- private renderer DOM, Lit internals, or m3e implementation parameters.
