@@ -19,23 +19,27 @@ Use for applicable:
 - controlled semantic-state ownership;
 - invalid public combinations and documented normalization;
 - simple child or foundation wiring;
-- explicit custom-element property, attribute, event, and slot mapping owned by a public adapter;
+- explicit custom-element property, attribute, event, slot, and documented CSS-variable mapping owned by a public adapter;
 - small structural invariants explicitly included in the public contract.
 
 ## Workflow
 
 1. Name the stable public contract.
-2. Confirm real browser semantics are not required for each assertion.
+2. Confirm real browser semantics or computed rendered appearance are not required for each assertion.
 3. Test the smallest representative set of configurations, states, invalid combinations, explicit attributes, and adapter mappings.
-4. Stub only direct dependencies whose public wiring is the assertion.
-5. Assert public output or explicit child wiring.
-6. Run focused `unit-tests`, then final verification.
+4. For CSS mapping, assert only the adapter-owned public-to-documented-renderer wiring available at the Vue boundary.
+5. Route proof that an override changes geometry, color, motion, focus, or another rendered effect to real browser behavior or visual proof.
+6. Stub only direct dependencies whose public wiring is the assertion.
+7. Assert public output or explicit child wiring.
+8. Run focused `unit-tests`, then final verification.
 
 ## Assertions
 
 Prefer emitted events, native tags and attributes, direct-child props, slots, accessible names, documented warning/normalization output, and explicit custom-element mapping visible at the Vue boundary.
 
-Avoid complete rendered-tree snapshots, incidental internal classes, test-only ids, template restatement, private renderer DOM, and broad global mock sets.
+A custom-property declaration, alias, or resolved value does not by itself prove that the token is an active public contract. Unit proof may establish that the adapter maps a retained public token to a documented renderer input; browser proof must establish any claimed rendered effect.
+
+Avoid complete rendered-tree snapshots, incidental internal classes, test-only ids, template restatement, private renderer DOM, computed appearance, and broad global mock sets.
 
 ## Accessibility
 
@@ -57,4 +61,5 @@ pnpm verify --only unit-tests --files <component-or-test-paths...>
 - complete product flows through component stubs;
 - duplicated deterministic logic already owned by `unit-testing`;
 - forced visual-state assertions that claim appearance or behavior;
-- private m3e shadow DOM, Lit internals, or renderer implementation details.
+- private m3e shadow DOM, Lit internals, or renderer implementation details;
+- reading a custom property's value and presenting that alone as proof of a public token contract or observable renderer behavior.
