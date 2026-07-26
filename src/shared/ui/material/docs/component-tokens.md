@@ -8,14 +8,14 @@ Mioframe retains ownership of the accepted consumer-facing namespaces:
 
 1. `--md-ref-*` — reference values;
 2. `--md-sys-*` — system and theme roles;
-3. `--md-comp-*` — exact accepted component contracts;
+3. `--md-comp-*` — accepted component contracts;
 4. `--app-*` — explicit Mioframe extensions outside Material vocabulary.
 
 `@m3e/web` renderer variables such as `--m3e-*` are private implementation details. Consumers must not set or read them.
 
 The existing Mioframe theme remains the global owner. Component migration does not make `m3e-theme` a second theme source.
 
-Legacy component directories remain the declaration owners of their accepted public tokens until their focused migration transfers that ownership.
+A declaration in an accepted namespace is not by itself proof that the token is an active public contract. Legacy component directories remain the declaration owners of their tokens until focused migration classifies and transfers only the active supported surface.
 
 ## Public token naming
 
@@ -35,18 +35,46 @@ When an official component path is unavailable:
 - use `--app-*` only for a current project extension;
 - record the unsupported or deviated contract in the family README.
 
+## Legacy token classification
+
+Before preserving, removing, or declaring a renderer blocker for a legacy token, classify the token using repository evidence:
+
+- **declared** — a default custom property exists;
+- **internally consumed** — production implementation reads it into a rendered property or behavior;
+- **behaviorally effective** — changing it changes an observable rendered property or interaction behavior;
+- **externally consumed** — an in-repository consumer, theme, story, or documented integration overrides it;
+- **publicly documented** — current Mioframe documentation or examples promise it as supported API;
+- **test-only** — tests only read the declaration or resolved value without proving an effect;
+- **obsolete** — it has no confirmed consumer-facing effect or retained contract.
+
+A token is part of the active migration contract only when evidence shows at least one of the following:
+
+1. a consumer or theme overrides it and the override has a proven observable effect;
+2. current public documentation intentionally promises it and the implementation provides that effect;
+3. the component uses it for an observable behavior that the family contract explicitly retains as public configuration.
+
+The following are insufficient by themselves:
+
+- the token is declared;
+- the token follows an official Material name;
+- a test reads its computed custom-property value;
+- the legacy implementation contains an alias chain for it;
+- an equivalent internal renderer parameter exists.
+
+Removing an obsolete or declaration-only token during atomic migration is cleanup, not automatically a breaking API change. Record the evidence and decision in the family README. An externally consumed or intentionally documented effective token requires an explicit compatibility decision.
+
 ## Canonical declarations
 
-Every public `--md-comp-*` token has one canonical declaration owner.
+Every active public `--md-comp-*` token has one canonical declaration owner.
 
 - Reference and system tokens remain theme/foundation-owned.
-- Before migration, the legacy component owns the accepted defaults used by its current consumers.
-- During migration, the family README records which accepted tokens transfer to the adapter.
+- Before migration, the legacy component owns the defaults used by its active current contract.
+- During migration, the family README records which tokens transfer, which map directly to system roles, and which obsolete declarations are removed.
 - After migration, the canonical adapter family owns the component tokens used by its supported surface.
 - Consumers may override public component tokens but do not own their defaults.
 - Do not create token files for symmetry, hypothetical reuse, or a complete unused Material surface.
 
-Canonical declarations remain independent of active configuration and state. Keep selectors, pseudo-classes, private aliases, and final DOM properties out of the declaration owner unless the existing accepted contract explicitly requires otherwise.
+Canonical declarations remain independent of active configuration and state. Keep selectors, pseudo-classes, private aliases, and final DOM properties out of the declaration owner unless the accepted contract explicitly requires otherwise.
 
 Resolve component tokens to system tokens when the official model uses a system role:
 
@@ -58,24 +86,46 @@ Use a direct value only when the verified component contract defines that measur
 
 ## Adapter mapping
 
-An m3e-backed component maps public Mioframe tokens to documented renderer variables privately:
+m3e CSS variables intentionally follow Material component semantics. Treat a documented semantically equivalent renderer variable as the normal adapter target even when its spelling is not identical to the official Material path.
+
+Use the simplest valid route:
 
 ```text
-public --md-comp-* or --md-sys-* source
-  → optional component-local state/configuration resolution
-  → documented private --m3e-* input
-  → renderer-owned DOM
+shared Material system role
+  --md-sys-* → renderer consumes the same role
+
+component contract
+  public --md-comp-* → documented semantically equivalent --m3e-<component>-* input
+
+renderer-owned behavior without retained public tuning
+  renderer default/public behavior → renderer-owned DOM and motion
 ```
+
+For component mapping, compare component, configuration or state, part, property, and meaning. Do not require character-for-character name equality when the documented semantics are equivalent.
 
 Rules:
 
 - map only variables required by the supported target surface;
-- keep mappings inside `src/shared/ui/material/components/<family>` unless two unrelated adapters prove the same genuinely shared mechanism;
+- prefer direct `--md-sys-*` consumption when m3e documents the same Material system-token semantics;
+- map active `--md-comp-*` contracts mechanically to documented semantically equivalent `--m3e-*` inputs;
+- keep component mappings inside `src/shared/ui/material/components/<family>` unless two unrelated adapters prove the same genuinely shared mechanism;
 - do not expose `--m3e-*` through public documentation, barrels, props, or consumer examples;
 - do not read renderer defaults back as application state;
 - do not target private shadow DOM or undocumented renderer CSS to compensate for a missing public variable;
-- do not copy all m3e defaults into Mioframe merely to create a parallel theme;
-- keep renderer viability `blocked-upstream` and implementation ownership `legacy` when required theming cannot be achieved through documented public renderer APIs.
+- do not copy all m3e defaults into Mioframe merely to create a parallel theme.
+
+## Renderer-owned behavior and blockers
+
+A missing low-level renderer tuning input is not a blocker when:
+
+- no active Mioframe consumer contract requires that input;
+- the legacy declaration has no proven observable effect;
+- m3e provides the required observable Material behavior through its documented public component;
+- preserving the old internal mechanism would duplicate renderer-owned state, focus, ripple, elevation, or motion.
+
+Record such a difference as renderer-owned behavior, an unsupported optional tuning surface, or obsolete legacy surface. Do not recreate it in the adapter.
+
+Keep renderer viability `blocked-upstream` only when an active required theming contract cannot be delivered through documented public renderer APIs and its loss would cause a confirmed consumer, accessibility, native, or observable UI regression.
 
 ## Private variables
 
@@ -102,27 +152,34 @@ A project-owned generic state-layer, ripple, focus, elevation, or motion primiti
 
 ## Family contract
 
-Each migration family README records for the explicit target:
+Each migration family README records the supported token surface in a compact evidence table:
 
-- public tokens preserved or introduced;
+| Material meaning | Mioframe token | Documented m3e input or renderer owner | Legacy evidence | Consumer evidence | Decision |
+| ---------------- | -------------- | -------------------------------------- | --------------- | ----------------- | -------- |
+| retained role    | public token   | semantic mapping                       | effective       | used or promised  | preserve |
+| unused tuning    | legacy token   | renderer-owned behavior                | declaration-only | none              | remove   |
+
+Also record:
+
 - exact official source paths where applicable;
 - defaults and current/canonical declaration owner;
-- private mapping to documented m3e variables;
 - unsupported theming surface;
 - confirmed m3e deviations;
-- consumer migration impact and required visual proof.
+- consumer migration impact and required proof.
 
-The adapter must preserve an accepted public token unless an explicit breaking API decision removes it. A renderer variable with a similar name is not automatically an equivalent contract.
+A renderer variable with a different name is acceptable when its documented semantics are equivalent. A legacy declaration is not automatically preserved merely because its name is official.
 
 ## Verification
 
 Verify contracts owned by Mioframe:
 
-- accepted public overrides affect the intended rendered property;
-- component-local mapping selects the correct documented renderer variable;
-- configuration and state routing do not leak private variables;
-- no `--m3e-*` usage exists outside `src/shared/ui/material`;
-- visual regression covers stable token-sensitive surfaces where the risk is material;
-- production build includes only required renderer entry points.
+- set an intentional non-default active public override and prove that the intended rendered property or observable behavior changes;
+- verify component-local mapping selects the documented semantically equivalent renderer variable;
+- verify configuration and state routing do not leak private variables;
+- verify no `--m3e-*` usage exists outside `src/shared/ui/material`;
+- use visual regression for stable visible consequences where the risk is material;
+- verify the production build includes only required renderer entry points.
 
-Do not test m3e internal CSS implementation or claim Material conformance from token names alone.
+Reading a custom property's declared or resolved value without proving its effect does not establish an active public contract. For renderer-owned motion, verify public press/release, interruption, final state, and reduced-motion behavior where required; do not assert private spring coefficients, Lit styles, or shadow-DOM implementation.
+
+Do not claim Material conformance from token names alone.
