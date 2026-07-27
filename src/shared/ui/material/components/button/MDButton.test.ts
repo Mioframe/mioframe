@@ -104,7 +104,8 @@ describe('MDButton adapter', () => {
 
     expect(button.attributes('aria-busy')).toBe('true');
     expect(indicator.attributes('aria-label')).toBe('Save');
-    expect(indicator.attributes('style')).toContain('--m3e-loading-indicator-size: 24px');
+    expect(indicator.attributes('style')).toContain('width: 24px');
+    expect(indicator.attributes('style')).toContain('height: 24px');
     expect(button.find('[data-icon]').exists()).toBe(false);
   });
 
@@ -115,16 +116,17 @@ describe('MDButton adapter', () => {
     ['large', 32],
     ['extra-large', 40],
   ] as const)(
-    'maps Button size %s to the Loading indicator composition size %ipx',
+    'maps Button size %s to the Loading indicator composition overall size %ipx',
     (size, expectedSize) => {
       const button = mount(MDButton, { props: { label: 'Save', loading: true, size } }).get(
         'm3e-button',
       );
       const indicator = button.get('m3e-loading-indicator');
 
-      expect(indicator.attributes('style')).toContain(
-        `--m3e-loading-indicator-size: ${expectedSize}px`,
-      );
+      // MDButton hands off the composition's overall size only; MDLoadingIndicator
+      // owns the private overall-to-active-size mapping (see its own test suite).
+      expect(indicator.attributes('style')).toContain(`width: ${expectedSize}px`);
+      expect(indicator.attributes('style')).toContain(`height: ${expectedSize}px`);
     },
   );
 

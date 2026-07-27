@@ -11,10 +11,13 @@ const props = withDefaults(
      */
     label: string;
     /**
-     * Active indicator size in Material dp, mapped 1:1 to CSS px. Accepted range is
-     * 24 through 240 inclusive (Loading indicator overview/specs: the indicator "can
-     * scale in size" between 24dp and 240dp); values outside that range are clamped
-     * to the nearest bound. Defaults to the official Material default of 48.
+     * Overall Loading indicator component size in Material dp, mapped 1:1 to CSS
+     * px. Accepted range is 24 through 240 inclusive (Loading indicator
+     * overview/specs: the indicator "can scale in size" between 24dp and 240dp);
+     * values outside that range are clamped to the nearest bound. Defaults to the
+     * official Material default of 48. The active-indicator area scales
+     * proportionally within this overall size (specs: 38dp active indicator
+     * within the 48dp default overall size).
      */
     size?: number;
   }>(),
@@ -26,9 +29,18 @@ const MIN_SIZE = 24;
 const MAX_SIZE = 240;
 const DEFAULT_SIZE = 48;
 
+/**
+ * Official Material default active-indicator/overall ratio (38dp active indicator
+ * within a 48dp overall/container size, Loading indicator specs). Preserved when
+ * resizing so the public `size` keeps meaning the overall component size.
+ */
+const MATERIAL_ACTIVE_SIZE_RATIO = 38 / 48;
+
 const normalizedSize = computed(() =>
   Number.isFinite(props.size) ? Math.min(MAX_SIZE, Math.max(MIN_SIZE, props.size)) : DEFAULT_SIZE,
 );
+
+const activeIndicatorSize = computed(() => normalizedSize.value * MATERIAL_ACTIVE_SIZE_RATIO);
 
 if (import.meta.env.DEV) {
   onMounted(() => {
@@ -46,7 +58,18 @@ if (import.meta.env.DEV) {
   });
 }
 
-const style = computed(() => ({ '--m3e-loading-indicator-size': `${normalizedSize.value}px` }));
+/**
+ * Explicit host width/height carry the public overall Material size; the exact
+ * m3e 2.6.2 renderer otherwise derives the uncontained host width from the same
+ * private active-size input, which would collapse the overall/active distinction.
+ * The private input keeps the confirmed effective (documented-name-divergent) m3e
+ * 2.6.2 CSS variable, scaled to the official active-indicator ratio.
+ */
+const style = computed(() => ({
+  width: `${normalizedSize.value}px`,
+  height: `${normalizedSize.value}px`,
+  '--m3e-loading-indicator-size': `${activeIndicatorSize.value}px`,
+}));
 </script>
 
 <template>
