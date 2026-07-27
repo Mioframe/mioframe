@@ -255,30 +255,50 @@ function removeFileAndEmptyParents(root, fileAbsPath) {
 }
 
 /**
- * Check whether git ignores a path.
- * git check-ignore semantics:
- *   - exit code 0: ignored
- *   - exit code 1: not ignored
- *   - exit code >1: operational failure
+ * Query git's ignore decision for a single path using git itself as the
+ * source of truth for ignore-pattern semantics.
+ *
+ * Uses `--verbose --stdin -z` so the single queried path returns full
+ * decision metadata (source file, line number, pattern) instead of only a
+ * boolean, which is required to tell a repository `.gitignore` rule apart
+ * from an external source such as `core.excludesFile` or
+ * `.git/info/exclude`.
  * @param root Absolute repository path.
  * @param relPath Relative path to test with git check-ignore.
- * @returns True when git ignores the path.
+ * @returns Ignore decision: 'none', 'ignored', 'unignored', or 'error'.
  */
-function isIgnoredByGit(root, relPath) {
-  const result = spawnSync('git', ['check-ignore', '-q', '--no-index', relPath], {
+function queryGitIgnoreDecision(root, relPath) {
+  const result = spawnSync('git', ['check-ignore', '--verbose', '--stdin', '-z', '--no-index'], {
     cwd: root,
-    stdio: 'ignore',
+    input: `${relPath}\0`,
+    encoding: 'utf8',
   });
 
-  if (result.status === 0) {
-    return true;
+  if (result.error) {
+    return { kind: 'error', message: result.error.message };
   }
 
-  if (result.status === 1) {
-    return false;
+  if (result.status !== 0 && result.status !== 1) {
+    return {
+      kind: 'error',
+      message:
+        (result.stderr && result.stderr.trim()) ||
+        `git check-ignore exited with status ${result.status}`,
+    };
   }
 
-  throw new Error(`git check-ignore failed for ${relPath}`);
+  const [source, lineNumber, pattern] = result.stdout.split('\0');
+
+  if (!pattern) {
+    return { kind: 'none' };
+  }
+
+  return {
+    kind: pattern.startsWith('!') ? 'unignored' : 'ignored',
+    source,
+    lineNumber,
+    pattern,
+  };
 }
 
 /**
@@ -436,28 +456,54 @@ export function getDirectorySymlinkType(platform) {
 
 /**
  * Validate .gitignore rules that affect managed compatibility files.
+ *
+ * Enforces two distinct invariants:
+ *   1. `.claude/settings.local.json` is protected by a positive rule owned
+ *      by the repository root `.gitignore` specifically — an external
+ *      source (core.excludesFile, .git/info/exclude, a global/system
+ *      ignore file) must not be accepted as proof of this repository
+ *      invariant, since that would make the check pass or fail based on the
+ *      environment instead of the repository contents.
+ *   2. `.claude/skills` is not effectively ignored by git in the current
+ *      repository (any source may satisfy this).
  * @param root Repository root.
  * @returns Collected .gitignore validation errors.
  */
 export function checkGitignoreCompatibility(root) {
   const errors = [];
 
-  try {
-    if (isIgnoredByGit(root, '.claude/skills')) {
-      errors.push(
-        `.claude/skills must not be ignored by git. Update .gitignore so the managed compatibility symlink stays visible, then rerun pnpm verify --fix if adapters or links need repair.`,
-      );
+  const skillsDecision = queryGitIgnoreDecision(root, '.claude/skills');
+
+  if (skillsDecision.kind === 'error') {
+    errors.push(
+      `Unable to validate .gitignore compatibility with git check-ignore for .claude/skills: ${skillsDecision.message}. Fix the repository git setup and rerun pnpm verify.`,
+    );
+  } else if (skillsDecision.kind === 'ignored') {
+    errors.push(
+      `.claude/skills must not be ignored by git, but ${skillsDecision.source}:${skillsDecision.lineNumber} ('${skillsDecision.pattern}') ignores it. Update .gitignore so the managed compatibility symlink stays visible, then rerun pnpm verify --fix if adapters or links need repair.`,
+    );
+  }
+
+  const settingsPath = '.claude/settings.local.json';
+  const settingsDecision = queryGitIgnoreDecision(root, settingsPath);
+
+  if (settingsDecision.kind === 'error') {
+    errors.push(
+      `Unable to validate .gitignore compatibility with git check-ignore for ${settingsPath}: ${settingsDecision.message}. Fix the repository git setup and rerun pnpm verify.`,
+    );
+  } else if (settingsDecision.kind !== 'ignored' || settingsDecision.source !== '.gitignore') {
+    let detail;
+
+    if (settingsDecision.kind === 'none') {
+      detail = 'no ignore rule matches it';
+    } else if (settingsDecision.kind === 'unignored') {
+      detail = `a negated rule at ${settingsDecision.source}:${settingsDecision.lineNumber} ('${settingsDecision.pattern}') un-ignores it`;
+    } else {
+      detail = `the deciding rule comes from ${settingsDecision.source}:${settingsDecision.lineNumber} ('${settingsDecision.pattern}'), not the repository .gitignore`;
     }
 
-    if (!isIgnoredByGit(root, '.claude/settings.local.json')) {
-      errors.push(
-        `.claude/settings.local.json must remain ignored by git. Update .gitignore so local Claude state stays untracked; pnpm verify --fix will not change .gitignore for you.`,
-      );
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     errors.push(
-      `Unable to validate .gitignore compatibility with git check-ignore: ${message}. Fix the repository git setup and rerun pnpm verify.`,
+      `${settingsPath} must be protected by a positive rule in the repository root .gitignore, but ${detail}. Update .gitignore so local Claude state stays untracked; pnpm verify --fix will not change .gitignore for you.`,
     );
   }
 
