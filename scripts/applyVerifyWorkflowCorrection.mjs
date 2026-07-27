@@ -240,11 +240,15 @@ const effectiveScopeTests = lines([
   '    expect(command.endsWith("\'")).toBe(true);',
   "    expect(command).toContain('$(touch unsafe)');",
   '    expect(command).toContain(backtick);',
-  '    expect(command).toContain("\'\\\\\'\'");',
+  "    expect(command).toContain(\"'\\\\''\");",
   '  });',
   '});',
 ]);
-appendExact('scripts/verify.test.mjs', "describe('effective verify retry scope'", effectiveScopeTests);
+appendExact(
+  'scripts/verify.test.mjs',
+  "describe('effective verify retry scope'",
+  effectiveScopeTests,
+);
 
 replaceExact(
   'scripts/verifyResume.test.mjs',
