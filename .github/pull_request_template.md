@@ -27,10 +27,10 @@
 
 ## Verification
 
-- Focused development proof:
-- Final task-scope command:
-- Final task-scope result:
-- Release/full gate: N/A | <command and result>
+- Focused and mode-specific proof:
+- Final completion gate: `pnpm verify --base <parent-ref>` | `pnpm verify:release`
+- Final completion result:
+- Why this single gate is applicable:
 
 ## PR Readiness
 
