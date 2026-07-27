@@ -10,6 +10,7 @@ import {
   isPackageJsonRuntimeRelevantChange,
   isVisualRelevantPackageJsonChange,
 } from './lib/packageJsonImpact.mjs';
+import { resolveVerifyInvocation } from './lib/verifyInvocation.mjs';
 import {
   buildCommandEnv,
   buildCommands,
@@ -691,6 +692,9 @@ describe('getActionRequired', () => {
           affectedChecks: ['e2e'],
           activeProfile: { name: 'local' },
         },
+        invocation: resolveVerifyInvocation(['--base', 'origin/develop'], {
+          GITHUB_ACTIONS: 'false',
+        }),
       },
     );
 
