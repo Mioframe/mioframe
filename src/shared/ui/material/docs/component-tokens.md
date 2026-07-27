@@ -1,97 +1,189 @@
-# Material component tokens
+# Material token architecture
 
-This document defines token ownership for Material-first Vue adapters backed privately by m3e.
+This document defines runtime ownership, public API selection, renderer mapping, and migration rules for Material tokens used by the Mioframe Material library.
 
-## Namespaces
+## Decision
 
-Mioframe owns:
+`src/shared/ui/material` owns the Material token contract consumed by the application and by canonical `MD*` adapters.
 
-1. `--md-ref-*` — official Material reference values;
-2. `--md-sys-*` — official Material system and theme roles;
-3. `--md-comp-*` — the demand-driven selected subset of official Material component tokens;
-4. `--app-*` — explicitly approved non-Material application extensions.
+```text
+application theme selection and overrides
+  → Material foundation and theme tokens
+  → selected component-family tokens
+  → private m3e renderer mappings
+```
 
-`--m3e-*` variables are private renderer inputs. Consumers must not use them directly.
+The physical owner must match the semantic owner:
 
-## Material-first selection
+| Contract | Canonical runtime owner | Public status |
+| --- | --- | --- |
+| Material reference and system foundations | `src/shared/ui/material/foundation/tokens.css` | public when declared and catalogued |
+| Default palette and light/dark system color assignments | `src/shared/ui/material/foundation/theme.css` | public theme contract when declared and catalogued |
+| Selected official component tokens | `src/shared/ui/material/components/<family>/tokens.css` | public for that family |
+| Private renderer mappings and owner-local bridges | the owning foundation or component family | private |
+| Approved application tokens (`--app-*`) | outside `src/shared/ui/material` | application API, not Material API |
+| Public token catalogue | `src/shared/ui/material/docs/token-api.md` | consumer-facing documentation |
 
-A public `--md-comp-*` token must satisfy both conditions:
+`--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace is part of the public token catalogue.
 
-1. its name and semantics are verified against an official Material component-token path;
-2. it is required now by a current consumer, theme, selected component scenario, or intentional public library contract.
+## Public availability states
 
-Current need selects an official token; it does not invent a new Material token contract.
+An official Material token is classified as one of:
+
+- `supported` — declared by its canonical runtime owner, listed in `token-api.md`, mapped where required, and verified;
+- `deferred` — official Material token not required or not implemented now; recorded only in the relevant family matrix;
+- `private` — renderer or implementation detail that is not a public Material contract;
+- `not-material` — project customization with no official Material source; requires an application or extension owner.
+
+Existence in Material documentation or m3e does not by itself make a token part of the Mioframe public API.
+
+## Foundation ownership
+
+`foundation/tokens.css` owns renderer-independent Material reference and system roles intentionally supported by Mioframe, including applicable shape, typography, motion, elevation, state, and other shared foundations.
+
+`foundation/theme.css` owns the standard Mioframe Material theme:
+
+- reference palette values used by the theme;
+- light system color-role assignments;
+- dark system color-role assignments.
+
+The application may select or override a theme through the same public `--md-ref-*` and `--md-sys-*` contract. Product-specific theme state or persistence remains outside the Material library.
+
+Do not place feature, domain, storage, or product tokens in Material foundation.
+
+## Component-family ownership
+
+Each component family owns only the official `--md-comp-*` subset intentionally supported by that family.
+
+```text
+src/shared/ui/material/components/button/tokens.css
+  → selected --md-comp-button-* declarations
+  → private mapping to documented --m3e-button-* inputs
+```
+
+A family must not:
+
+- define another family's component tokens;
+- mirror the complete Material component-token catalogue;
+- mirror all m3e variables;
+- rely on a global component-token file as a second owner;
+- expose an m3e token name to consumers.
+
+A parent component uses a dependency's public props, slots, inherited color, or supported official `--md-comp-*` tokens. It must not set dependency-private renderer inputs.
+
+## Effect of using m3e
+
+Using m3e removes the need for Mioframe to reproduce every Material component default in CSS.
+
+Mioframe still owns:
+
+1. the supported Material foundation and theme contract;
+2. the selected public component-token API;
+3. explicit Material-to-m3e mappings where m3e does not already consume the correct system role;
+4. documented, removable workarounds for confirmed renderer divergences.
+
+m3e owns its private defaults and internal rendering. Do not copy those defaults merely to make Mioframe appear to expose a complete token surface.
+
+## Selecting a public component token
+
+A public `--md-comp-*` token must satisfy all conditions:
+
+1. its path and semantics are verified against official Material documentation;
+2. it is required by a current consumer, theme, selected component scenario, or intentional current library contract;
+3. it has one family owner and a meaningful runtime default or fallback;
+4. its mapping to the rendered result is implemented and verified;
+5. it is listed in `token-api.md`.
+
+Current need selects an official token; it does not invent a Material token contract.
 
 If no official Material token exists, choose one explicit outcome:
 
-- use an existing `--md-sys-*` role;
+- use an existing supported `--md-sys-*` role;
 - keep renderer-only configuration private;
-- use `--app-*` after an approved non-Material extension decision;
+- use an approved `--app-*` token outside the Material library;
 - assign a confirmed renderer gap to m3e;
 - leave the customization unsupported.
-
-## Demand-driven coverage
-
-Do not copy the full Material or m3e token catalogue.
-
-For each relevant token, record it in the family Material–m3e–Vue matrix as:
-
-- `implement-now` — selected official token required now;
-- `defer` — official token not required now;
-- `not-material` — legacy or product customization without an official token source.
-
-A documented m3e CSS variable does not automatically require a public Mioframe alias.
 
 ## Mapping
 
 ```text
-selected official Material token
-  → public --md-comp-* name
-  → documented semantically equivalent --m3e-* input
+supported official Material token
+  → canonical --md-ref-* / --md-sys-* / --md-comp-* declaration
+  → documented semantically equivalent m3e input when mapping is required
 ```
 
 For each selected token:
 
-- preserve the official component, variant/state, part, and property semantics;
+- preserve official component, variant/state, part, property, and value semantics;
 - keep one canonical declaration owner and meaningful default;
-- map only to documented public m3e inputs;
-- exact spelling equality is not required, semantic equivalence is;
-- verify that the chosen CSS value representation is accepted by every selected current consumer grammar; equal numeric meaning does not make forms such as a unitless number and a percentage interchangeable in every CSS function or property;
-- prefer one canonical foundation representation when it preserves the official meaning and works for all selected current consumers;
-- when no shared representation is compatible, keep the conversion private to the owning adapter and treat it as a documented renderer mapping or exact-version workaround rather than changing unrelated public semantics;
-- keep mappings inside the owning family;
-- do not expose m3e names through props, exports, docs, or consumer examples.
+- prefer direct `--md-sys-*` consumption when m3e already uses the correct Material role;
+- map component tokens only inside the owning family;
+- use documented m3e inputs by default;
+- treat an undocumented effective input as an exact-version workaround only under the accepted workaround gate;
+- do not expose m3e names through props, exports, documentation examples, or consumer CSS.
 
-Prefer direct `--md-sys-*` behavior when m3e already consumes the correct Material system roles with a compatible CSS value grammar.
+## CSS value grammar
 
-## Legacy tokens
+Semantic equality is not enough when CSS consumers accept different grammars.
 
-Classify legacy tokens only as far as required for migration:
+For every supported token:
 
-- `selected-material` — verified official token required now;
-- `deferred-material` — verified official token not required now;
-- `internal` — old implementation detail, not public API;
-- `not-material` — project extension requiring a separate decision;
-- `obsolete` — no valid destination.
+- verify that the chosen representation is accepted by every selected current consumer grammar;
+- do not assume a unitless number and a percentage are interchangeable in every CSS function, property, or registered custom property;
+- prefer one canonical foundation representation when it preserves Material meaning and works for all selected consumers;
+- when no shared representation is compatible, keep conversion private to the owning adapter and record it as a renderer mapping or exact-version workaround;
+- require rendered browser proof when value grammar changes visible behavior.
 
-Do not preserve a token merely because it exists in old code, resembles Material naming, has a corresponding m3e variable, or is referenced only by tests.
+## Public token catalogue
 
-## Renderer-owned behavior
+`docs/token-api.md` is the complete human-facing index of tokens supported for application use.
 
-Low-level state-layer, ripple, focus, elevation, geometry, and motion configuration belongs to m3e unless a selected official Material token is intentionally exposed by the public component contract.
+Each supported token entry records at least:
 
-A missing selected Material customization in renderer-owned behavior requires an m3e fix or explicit blocker. Do not reproduce private renderer systems in Vue merely to support a token.
+- exact token name;
+- namespace and semantic purpose;
+- CSS grammar;
+- canonical default or fallback source;
+- scope and owner;
+- official Material source;
+- renderer mapping when applicable;
+- representative verification.
+
+The executable CSS declaration remains the source of the runtime value. The catalogue and declaration must change in the same commit.
+
+After the ownership migration, absence from `token-api.md` means the token is not a supported Mioframe public API, even if m3e or official Material defines a similarly named token.
+
+Do not create a TypeScript token enum, token DSL, or duplicate runtime registry. CSS custom properties are the executable API.
+
+## Legacy migration
+
+`src/shared/lib/md/tokens.css` is a legacy mixed-owner file, not the accepted final source of truth.
+
+During the migration:
+
+1. inventory every retained declaration and current import;
+2. move Material reference/system foundations to `material/foundation`;
+3. move selected component tokens to their owning families;
+4. move `--app-*` tokens to an application/shared owner outside Material;
+5. co-locate each retained `--md-private-*` bridge with its actual owner;
+6. update the single global import path;
+7. populate `token-api.md` for every retained public token;
+8. remove `src/shared/lib/md/tokens.css` after all consumers have migrated.
+
+Do not add new public tokens to the legacy file. Do not retain it as a compatibility alias or second declaration owner after migration.
 
 ## Verification
 
-Verify only selected public Material tokens:
+Verify only supported public Material tokens:
 
 - exact official source and semantic path are recorded;
-- canonical declaration and default exist;
-- mapping targets a documented semantic m3e input;
-- the token representation is valid for every selected current CSS consumer;
-- a representative non-default override changes the intended public result when observable;
-- rendered browser proof is required when the value grammar affects visible behavior; declaration presence or a computed token string alone is insufficient;
-- no `--m3e-*` usage leaks outside `src/shared/ui/material`.
+- canonical runtime owner and declaration exist;
+- `token-api.md` matches the runtime surface;
+- CSS grammar is valid for every selected current consumer;
+- family mappings target documented semantic m3e inputs or a fully gated exact-version workaround;
+- a representative non-default override changes the intended result when observable;
+- rendered browser proof exists when representation or mapping affects visible behavior;
+- no `--m3e-*` usage leaks outside `src/shared/ui/material`;
+- no duplicate public declaration owner remains.
 
-Do not require one test per renderer variable, a complete token matrix, computed-value assertions for unused declarations, tests of m3e defaults, or automated proof of renderer-owned animation.
+Do not require one test per renderer variable, copy the full Material token catalogue, test m3e defaults, or create automated infrastructure solely to enumerate third-party internals.
