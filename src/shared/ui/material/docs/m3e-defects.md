@@ -57,10 +57,10 @@ Mioframe status:
 
 ## Summary
 
-| ID | Component | Summary | Affected version | Mioframe status | Upstream status |
-| --- | --- | --- | --- | --- | --- |
-| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2` | `workaround-active` | `unreported` |
-| `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size | `2.6.2` | `workaround-active` | `unreported` |
+| ID        | Component         | Summary                                                                 | Affected version | Mioframe status     | Upstream status |
+| --------- | ----------------- | ----------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
+| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`          | `workaround-active` | `unreported`    |
+| `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size   | `2.6.2`          | `workaround-active` | `unreported`    |
 
 ## M3E-001 — Loading indicator documented size input is not implemented
 
@@ -125,9 +125,9 @@ Mioframe consumes an m3e version whose documented active-indicator size input is
 
 ### Revalidation history
 
-| m3e version | Date | Result | Evidence |
-| --- | --- | --- | --- |
-| `2.6.2` | 2026-07-27 | confirmed | exact source inspection and Mioframe focused mapping tests |
+| m3e version | Date       | Result    | Evidence                                                   |
+| ----------- | ---------- | --------- | ---------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection and Mioframe focused mapping tests |
 
 ## M3E-002 — Uncontained host size is coupled to active-indicator size
 
@@ -183,9 +183,9 @@ Mioframe consumes an m3e version with independent Material-correct uncontained o
 
 ### Revalidation history
 
-| m3e version | Date | Result | Evidence |
-| --- | --- | --- | --- |
-| `2.6.2` | 2026-07-27 | confirmed | exact source inspection, host bounding-box tests, and inspected visual baselines |
+| m3e version | Date       | Result    | Evidence                                                                         |
+| ----------- | ---------- | --------- | -------------------------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection, host bounding-box tests, and inspected visual baselines |
 
 ## Update protocol
 
