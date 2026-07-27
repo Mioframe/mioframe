@@ -17,45 +17,13 @@ function replaceExact(path, oldText, newText) {
 }
 
 replaceExact(
-  'AGENTS.md',
-  '- Ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`, plus direct hotfix PRs into `main`, use squash merge.',
-  '- Ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`, plus direct hotfix and pre-tag repair PRs into `main`, use squash merge.',
-);
-replaceExact(
-  'docs/release.md',
-  'hotfix/* -> main -> develop',
-  'hotfix/*, release-repair/* -> main -> develop when the change is main-only',
-);
-replaceExact(
-  'docs/release.md',
-  `- **Hotfix flow**: for a defect that must be fixed directly on the stable branch,
-  branch from \`main\` as \`hotfix/<name>\`, open a PR into \`main\`, and squash merge
-  after the release gate. After the hotfix ships, open the documented release
-  sync-back PR into \`develop\` and merge it with a merge commit so the branches do
-  not diverge.`,
-  `- **Direct main repair flow**: for a defect in an already-published stable version,
-  branch from \`main\` as \`hotfix/<name>\`. For an unpublished current-main release
-  candidate, branch as \`release-repair/<name>\`. Open the PR into \`main\` and squash
-  merge after the release gate. When the resulting commit is not already in
-  \`develop\`, open the documented release sync-back PR into \`develop\` and merge it
-  with a merge commit so the branches do not diverge.`,
-);
-replaceExact(
-  'docs/release.md',
-  'including `feature/`, `feat/`, `fix/`, `hotfix/`, `refactor/`, `docs/`, `chore/`, or `agent/`.',
-  'including `feature/`, `feat/`, `fix/`, `hotfix/`, `release-repair/`, `refactor/`, `docs/`, `chore/`, or `agent/`.',
-);
-replaceExact(
-  'docs/release.md',
-  '- direct hotfix PRs into `main`: **squash merge**;',
-  '- direct hotfix and pre-tag repair PRs into `main`: **squash merge**;',
-);
-replaceExact(
   'docs/release-checklist.md',
   `Use this checklist for every promotion of \`develop\` into \`main\`, and for
- every hotfix directly into \`main\`.`,
+every hotfix directly into \`main\`. See \`docs/release.md\` for the full policy
+this checklist enforces.`,
   `Use this checklist for every promotion of \`develop\` into \`main\`, direct
- hotfix, and pre-tag release repair into \`main\`.`,
+hotfix, and pre-tag release repair into \`main\`. See \`docs/release.md\` for the
+full policy this checklist enforces.`,
 );
 replaceExact(
   'docs/release-checklist.md',
