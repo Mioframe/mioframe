@@ -4,14 +4,14 @@ This document defines the minimum accepted contract for a Mioframe Vue Material 
 
 ## Unit of work
 
-The target is one explicitly named official Material component and any official Material composition required to deliver its selected consumer scenarios.
+The target is one explicitly named official Material component and any directly required official Material dependency adapters needed to deliver its selected consumer scenarios.
 
 ```text
 current product requirement
-  → selected official Material and related-component contract
-  → public Vue API
-  → exact-version m3e mapping
-  → wrapper or m3e gap implementation
+  → selected official Material and related-component contracts
+  → canonical dependency MD* adapters
+  → selected parent Vue API
+  → exact-version m3e mappings inside each owner
   → consumer migration and verification
 ```
 
@@ -21,11 +21,13 @@ Do not start from the legacy API or the m3e API and infer the public `MD*` contr
 
 1. Inspect the official component overview, specs, guidelines, and accessibility pages.
 2. Follow official references and search related component pages for documented cross-component composition.
-3. Select only the subset required by current Mioframe consumers plus the minimum adjacent surface needed to keep the API coherent and forward-compatible.
-4. Mark all other official Material capabilities `deferred`.
-5. Classify a current requirement `not-material` only after no official selected-component or related-component source can be found.
+3. Identify every related official Material component used by the composition.
+4. Implement or complete each required dependency as its own canonical demand-scoped `MD*` adapter.
+5. Select only the subset required by current Mioframe consumers and parent compositions plus the minimum adjacent surface needed to keep each API coherent and forward-compatible.
+6. Mark all other official Material capabilities `deferred`.
+7. Classify a current requirement `not-material` only after no official selected-component or related-component source can be found.
 
-A partial implementation is acceptable. A non-Material or renderer-shaped public API is not.
+A partial component surface is acceptable. A non-Material, renderer-shaped, or hidden cross-component implementation is not.
 
 ## Source evidence and negative claims
 
@@ -45,20 +47,51 @@ A missing token row is never sufficient negative evidence. When overview or guid
 
 If official sources conflict, record `source-conflict`, preserve the already supported observable scenario, and do not finalize the affected API until the conflict is resolved. Do not invent the narrower rule.
 
+## Official Material dependency rule
+
+An official Material component remains independently owned even when it is currently used only inside another Material component.
+
+A parent `MD*` adapter must not directly render a raw `m3e-*` element representing another official Material catalog component with its own overview, specs, guidelines, accessibility, tokens, and behavior contract.
+
+Required sequence:
+
+1. identify the official dependency in the parent composition;
+2. create or complete the dependency's canonical `MD*` adapter;
+3. give the dependency its own source-backed Material–m3e–Vue matrix, demand-scoped public API, public export, exact renderer typing, accessibility contract, tokens, divergence record, tests, stories, visual proof, and operator review where relevant;
+4. compose the dependency adapter from the parent;
+5. keep raw renderer imports, renderer types, private CSS inputs, geometry normalization, accessibility implementation, and motion assessment inside the dependency adapter.
+
+The dependency adapter is demand-driven. It implements only the official Material subset required by current direct consumers and current parent compositions plus the minimum coherent adjacent surface. This rule does not require implementing the complete component catalog.
+
+A parent may directly use raw m3e only for its own renderer family and renderer-internal primitives that are not separate official Material catalog components.
+
+Example:
+
+```text
+MDButton.loading
+  → MDLoadingIndicator
+      → m3e-loading-indicator
+```
+
+`MDButton` owns the loading composition meaning, placement, and state handoff. `MDLoadingIndicator` owns Loading indicator semantics, accessible progress labeling, sizing, official tokens, renderer mapping, divergences, and motion.
+
+If the dependency adapter is missing or unaccepted, the parent remains `migrating` or `blocked`. Passing tests on a raw embedded dependency does not complete the parent.
+
 ## Documented cross-component composition
 
 Material guidance owned by another component page still belongs to the Material contract. Examples include a Loading indicator or circular Progress indicator placed inside a Button.
 
-A documented composition may be represented as:
+The parent composition may be represented as:
 
-- a prop or state on the selected `MD*` component;
+- a prop or state on the selected parent `MD*` component;
 - a Material content slot;
-- composition of canonical `MD*` components;
-- narrow Material-owned internal composition using documented m3e family entry points.
+- an explicit composition of canonical `MD*` components.
 
-Choose the smallest API that expresses the documented behavior and current need. Do not create a non-MD component only because the selected component page does not define a framework-specific prop.
+Choose the smallest parent API that expresses the documented behavior and current need. Every official component participant must still be implemented through its own canonical adapter.
 
-## Required family artifact
+Do not create a non-MD component merely because the selected component page does not define a framework-specific prop.
+
+## Required family artifacts
 
 Before production edits, update:
 
@@ -66,7 +99,7 @@ Before production edits, update:
 src/shared/ui/material/components/<family>/README.md
 ```
 
-It must contain a Material–m3e–Vue matrix:
+The parent and every required dependency family must contain a Material–m3e–Vue matrix:
 
 | Material contract and exact source | Required now and evidence | Public Vue representation | m3e exact-version support | Owner | Decision | Verification |
 | ---------------------------------- | ------------------------- | ------------------------- | ------------------------- | ----- | -------- | ------------ |
@@ -75,20 +108,25 @@ Each relevant row must identify:
 
 - the exact Material concept and source;
 - whether it is required now, deferred, not Material, or source-conflicted;
-- the consumer or architecture evidence for current need;
+- the consumer or parent-composition evidence for current need;
 - the public Vue prop, value, slot, emit, `v-model`, ref, native mapping, token, or composition;
 - exact m3e property, event, slot, CSS input, family entry point, or missing capability;
 - implementation owner;
 - implementation, deferral, source-conflict, or blocker decision;
 - required proof.
 
+The parent matrix must additionally identify every official Material dependency, canonical adapter path, status, public API used by the parent, and required handoff proof.
+
+The dependency matrix must stand on its own. A row in the parent matrix does not replace the dependency's own contract.
+
 For every negative or restrictive decision, include the positive official evidence that establishes the restriction. “Not documented” and “no token route” are not sufficient.
 
-The artifact must also include:
+Each artifact must also include:
 
-- exact m3e package range, resolved version, required family entry points, and exported type sources;
+- exact m3e package range, resolved version, family entry point, and exported type sources owned by that adapter;
 - a compact public Vue API summary;
 - documented cross-component compositions;
+- dependency adapters and statuses;
 - deferred Material surface;
 - Material/m3e divergences and source gaps;
 - true non-Material requirement decisions;
@@ -114,11 +152,12 @@ Forbidden by default:
 - legacy Mioframe names that conflict with Material terminology;
 - public options or states with no selected-component, related-component, or approved extension source;
 - optional native/link/form fields added for hypothetical completeness;
-- silently retained project extensions.
+- silently retained project extensions;
+- public dependence on another component's renderer type or private renderer CSS inputs.
 
-A convenience prop may model an official Material composition when its meaning, states, owner, and rendering rules are explicit in the matrix.
+A parent convenience prop may model an official Material composition when its meaning, state ownership, dependency adapter, accessibility handoff, and rendering rules are explicit in the matrix.
 
-Public types are authored from the selected Material contract. Private mapping results must satisfy package-exported m3e types.
+Public types are authored from the selected Material contract. Private mapping results must satisfy package-exported m3e types inside the owning adapter. Parent adapters type against dependency public Vue APIs, not dependency renderer classes.
 
 ## m3e coverage statuses
 
@@ -130,22 +169,33 @@ Use one status per matrix row:
 - `divergent` — the documented or inspected result differs observably from Material;
 - `not-applicable` — the capability belongs entirely to Vue/native integration.
 
-Use m3e maximally for every `direct` part. Do not reimplement it in Vue.
+Use m3e maximally for every `direct` part inside its owning adapter. Do not reimplement it in Vue and do not duplicate a dependency renderer mapping in multiple parents.
 
 ## Gap ownership
 
-### Wrapper correction
+### Parent wrapper correction
 
-Use the Vue adapter for:
+Use the parent Vue adapter for:
 
-- Material-to-Vue naming and value normalization;
-- explicit property, attribute, slot, and event mapping;
-- controlled-state synchronization;
-- currently required native form, link, keyboard, and focus integration;
-- narrow Mioframe-owned light DOM;
-- documented cross-component composition that does not reconstruct private renderer systems.
+- parent Material-to-Vue naming and value normalization;
+- composition state and placement;
+- parent slots and event normalization;
+- controlled parent state;
+- parent-to-dependency public API handoff;
+- currently required native integration.
 
-Preserve normal native event propagation unless an accepted contract requires interception. Put ARIA, native state, focus, and interaction semantics on the actual interactive owner. Avoid an extra wrapper when the canonical root can own the required behavior. Prefer inherited `currentColor` or another public presentation path over duplicating renderer variant/state color rules.
+### Dependency adapter correction
+
+Use the dependency `MD*` adapter for:
+
+- dependency Material-to-Vue naming and renderer mapping;
+- dependency public accessibility and native semantics;
+- dependency public tokens and inherited presentation boundary;
+- dependency geometry normalization;
+- dependency wrapper-owned behavior;
+- dependency renderer divergences and motion assessment.
+
+Preserve normal native event propagation unless an accepted contract requires interception. Put ARIA, native state, focus, and interaction semantics on the actual owner. Avoid an extra wrapper when the canonical root can own the required behavior. Prefer inherited `currentColor` or official public `--md-comp-*` tokens over duplicating state/color rules.
 
 ### m3e fix
 
@@ -157,11 +207,11 @@ Assign the gap to m3e when it concerns:
 - private accessibility behavior;
 - a renderer-owned Material state or visual transition.
 
-Do not work around an m3e-owned gap by copying internals or building a second renderer in the wrapper.
+Do not work around an m3e-owned gap by copying internals, building a second renderer, or duplicating the same dependency workaround in each parent.
 
 ### Blocker
 
-Use `blocked` only when a selected Material requirement cannot be delivered safely by either owner. A deferred capability, source/token coverage gap, or unresolved optional surface is not a blocker.
+Use `blocked` only when a selected Material requirement cannot be delivered safely by either owner. A deferred capability or source/token coverage gap is not a blocker. A missing required dependency adapter is a parent blocker until completed.
 
 ## True non-Material requirements
 
@@ -183,11 +233,12 @@ Do not complete migration while a current true non-Material requirement is silen
 
 ## Renderer type boundary
 
-- Import exact family element classes and value aliases with type-only imports.
+- Import exact family element classes and value aliases with type-only imports inside the owning adapter.
 - Derive Vue custom-element glue from exported package types or `HTMLElementTagNameMap`.
 - Keep public Material Vue types independent.
 - Require every mapper output to satisfy the exact m3e type.
 - Do not publish m3e types or hand-copy renderer interfaces and literal unions.
+- Keep each renderer declaration with its canonical adapter; parents must not maintain declaration glue for dependency renderers.
 
 ## Tokens and composed presentation
 
@@ -195,8 +246,10 @@ Public component tokens are selected Material API.
 
 - Use verified official Material token paths and names.
 - Expose only the subset required now.
-- Map selected tokens to documented semantic m3e inputs.
+- Map selected tokens to documented semantic m3e inputs inside the owning adapter.
 - Do not create a public alias for every m3e variable.
+- Parent-to-dependency presentation uses dependency public props, slots, inherited color, or official public `--md-comp-*` tokens.
+- Parents must not set dependency-private `--m3e-*` variables.
 - Follow official placement and contrast rules for composed indicators; inherit the rendered label/icon color when Material specifies that relationship.
 - Non-Material styling extensions require the same explicit decision as non-Material props.
 
@@ -205,28 +258,39 @@ Public component tokens are selected Material API.
 Migrate consumers to the selected Material Vue API, not merely to the new import path.
 
 - Update legacy prop names and values where they conflict with Material.
-- Keep documented Material compositions in the Material owner unless a separate architecture decision says otherwise.
+- Keep documented Material compositions in the Material owner.
+- Replace raw official Material renderer dependencies inside parents with canonical `MD*` adapters.
 - Move true non-Material behavior to the decided owner.
 - Remove the obsolete target owner only after all current scenarios have a valid new path.
 - Leave unrelated components intact.
 
 ## Verification
 
-Verification is selected-contract based:
+Verification is selected-contract and dependency-contract based.
+
+For the parent and each dependency adapter:
 
 - package-derived type-check for Vue-to-m3e mappings;
-- component-contract tests for public Material names, values, defaults, positively evidenced valid/invalid combinations, slots, events, controlled state, native bubbling, ARIA owner, and wrapper-owned behavior;
-- browser tests for current user/native scenarios affected by the migration;
-- stable visual baselines for selected Material states and documented compositions with meaningful regression risk;
-- focused consumer checks for production-used combinations such as disabled plus loading;
-- final `pnpm verify`.
+- colocated component-contract tests for public Material names, values, defaults, valid/invalid combinations, slots, events, controlled state, native behavior, ARIA owner, and wrapper-owned mappings;
+- browser tests for current user, accessibility, and native scenarios;
+- stable colocated stories and visual baselines for selected Material states;
+- exact-version renderer divergence and reduced-motion assessment;
+- operator visual and motion review where applicable.
+
+For the composition:
+
+- prove the parent renders the dependency `MD*` adapter rather than raw m3e;
+- prove parent-to-dependency state, label, accessibility, size, color/token, disabled, and slot handoff;
+- cover production-used combinations such as disabled plus loading and selected plus loading;
+- preserve normal event bubbling;
+- run final `pnpm verify`.
 
 Do not duplicate m3e or Lit tests. Direct m3e delegation does not require one test per renderer field.
 
 ## Renderer-owned motion
 
 - Inspect the exact installed source and record relevant state, interruption, and reduced-motion paths.
-- Confirm the wrapper does not disable, replace, or duplicate the implementation.
+- Confirm the owning adapter does not disable, replace, or duplicate the implementation.
 - Use operator manual testing for visual quality and timing.
 - Do not use `:active`, screenshots, or private DOM inspection as proof of internal animation.
 
@@ -234,14 +298,16 @@ Do not duplicate m3e or Lit tests. Direct m3e delegation does not require one te
 
 A target completes when:
 
-- the Material–m3e–Vue matrix is accepted;
+- its Material–m3e–Vue matrix is accepted;
 - the public API is a selected subset of official Material, expressed idiomatically in Vue;
 - every public capability has a selected-component source, related-component composition source, or explicitly approved extension decision;
 - every negative and restrictive decision passes the source-evidence gate;
 - selected gaps are assigned to and completed by the correct owner;
-- deferred Material surface, source gaps, and m3e divergences are recorded;
-- consumers use the canonical API and obsolete ownership is removed;
+- every required official Material dependency has an accepted canonical `MD*` adapter;
+- the parent composes dependencies through their public Vue boundaries with no raw dependency m3e usage;
+- deferred Material surface, source gaps, and m3e divergences are recorded by the owning adapter;
+- consumers use the canonical APIs and obsolete ownership is removed;
 - relevant verification passes;
 - operator accepts the final visual and motion behavior.
 
-Do not keep a target `migrating` because deferred Material surface is not implemented. Do not mark it complete while a true non-Material extension or source conflict remains unresolved.
+Do not keep a target `migrating` because deferred Material surface is not implemented. Do not mark it complete while an official dependency adapter, true non-Material extension, source conflict, m3e blocker, verification, or operator review remains unresolved.
