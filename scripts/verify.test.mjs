@@ -700,7 +700,9 @@ describe('getActionRequired', () => {
       ),
     );
     expect(actions).toContainEqual(
-      expect.stringContaining('pnpm verify --profile github-actions --only e2e'),
+      expect.stringContaining(
+        'pnpm verify --base origin/develop --profile github-actions --only e2e',
+      ),
     );
   });
 
