@@ -32,6 +32,7 @@ Each `MD*` component is a demand-driven Vue representation of the official Mater
 2. **Current Mioframe consumers** select which part of that contract is required now.
 3. **The exact lockfile-resolved m3e package** defines available private renderer capabilities and types.
 4. **The family contract matrix** records the accepted Material subset, Vue representation, m3e coverage, implementation owner, gaps, and deferred surface.
+5. **`m3e-defects.md`** records confirmed incorrect m3e implementations and documentation mismatches, their stable `M3E-*` identities, upstream lifecycle, Mioframe mitigation, revalidation history, and removal triggers.
 
 Legacy Mioframe components define migration evidence and current scenarios. They do not define the final `MD*` API when they differ from Material.
 
@@ -55,6 +56,8 @@ Before implementation, the family README must include:
 The matrix must cover all public props, values, slots, events, controlled state, defaults, native semantics, accessibility behavior, selected tokens, and materially relevant visual/motion behavior.
 
 The matrix may group equivalent rows when that preserves exact ownership and decision clarity. It must not become a copied version of all Material documentation.
+
+A confirmed `divergent` row must reference its stable `M3E-*` record in `m3e-defects.md`. A `missing` capability remains only in the family matrix unless exact-version evidence later confirms an incorrect documented or implemented m3e contract.
 
 ## Public Vue API
 
@@ -108,7 +111,7 @@ When m3e does not fully implement a selected Material capability:
 - use `m3e-fix` for the underlying private DOM, geometry engine, state-layer, ripple, focus, elevation, motion, or private accessibility defect;
 - use `blocked` only when neither owner can deliver the selected Material contract safely.
 
-A temporary renderer workaround is a narrow delivery bridge, not a transfer of the private renderer system into Mioframe. It must remain removable, exact-version-recorded, independently tested, and absent from parent adapters and public APIs.
+A temporary renderer workaround is a narrow delivery bridge, not a transfer of the private renderer system into Mioframe. It must remain removable, exact-version-recorded, independently tested, absent from parent adapters and public APIs, and linked to a confirmed `M3E-*` defect record.
 
 Mioframe may contribute the underlying renderer fix to m3e and remove the workaround after consuming a corrected version. Do not create a parallel Material renderer inside the Vue wrapper.
 
@@ -152,9 +155,20 @@ Mioframe owns verified Material namespaces:
 
 A public component token must use the official Material path and be selected by current need. A documented m3e variable remains private and does not automatically create a public token.
 
-## Divergences
+## Divergences and upstream defects
 
-For each selected or closely deferred Material capability, record:
+Keep missing capability and incorrect implementation distinct:
+
+```text
+m3e capability absent
+  → family matrix: `missing`
+
+m3e capability documented or implemented incorrectly
+  → family matrix: `divergent` + stable `M3E-*` reference
+  → `m3e-defects.md`
+```
+
+For each selected or closely deferred Material capability, the family matrix records:
 
 - official Material expectation;
 - exact m3e behavior and version;
@@ -163,7 +177,19 @@ For each selected or closely deferred Material capability, record:
 - owner and decision: `accept`, `defer`, `wrapper-correction`, `temporary-renderer-workaround`, `m3e-fix`, `blocked`, or `source-conflict`;
 - for a temporary workaround, risk, exact host-level input, independent proof, long-term owner `m3e-fix`, and removal trigger.
 
-A difference in internal implementation is not a divergence when the observable Material result is equivalent.
+For every confirmed incorrect m3e implementation or documentation mismatch, `m3e-defects.md` additionally owns:
+
+- the stable `M3E-*` identity;
+- affected and last-revalidated versions;
+- upstream and Mioframe statuses;
+- exact implementation evidence and affected family matrices;
+- current mitigation or blocker;
+- correct upstream result and removal trigger;
+- version-by-version revalidation history.
+
+A difference in internal implementation is not a divergence when the observable Material result is equivalent. An unverified suspicion does not receive an `M3E-*` ID.
+
+Every m3e version update must revalidate all non-resolved defect entries affecting the consumed renderer families. An upstream fix remains `awaiting-upgrade` for Mioframe until the fixed version is consumed, the workaround or blocker is removed, and owned verification passes.
 
 ## Verification
 
@@ -174,6 +200,7 @@ Verification proves:
 - wrapper-owned behavior and public geometry normalization are correct;
 - current consumers use the canonical component;
 - visual baselines cover stable selected Material states with meaningful risk;
+- every confirmed `divergent` matrix row links to a complete `M3E-*` record;
 - final repository verification passes.
 
 Renderer-owned animation and private geometry implementation are verified by exact-version source inspection plus operator manual review. Proxy host assertions prove only the public host contract, not private renderer lifecycle or internal geometry.
@@ -187,6 +214,7 @@ A component migration is complete when:
 - non-Material requirements have explicit composition, separate-component, or extension decisions;
 - selected Material capabilities are implemented by the correct owner;
 - deferred Material surface, m3e divergences, and temporary exact-version workarounds are recorded with their risks and removal triggers;
+- every confirmed m3e defect has a linked complete `M3E-*` record with current statuses;
 - one canonical Vue owner remains and consumers are migrated;
 - type-check, focused tests, visual verification, and repository verification pass;
 - operator accepts the final visual and motion behavior.
