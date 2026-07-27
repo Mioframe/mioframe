@@ -20,6 +20,8 @@ Corrected source decisions:
 - determinate progress-in-button is deferred because current Button consumers use only boolean loading;
 - loading takes precedence over **both** the normal icon route and the selected-icon route (the combination of `toggle` + `selected` + a `selected-icon` slot + `loading` is a valid, tested combination, not a mutually-exclusive or unreachable one).
 
+Operator review found one unresolved renderer defect: Button activation works, but the visible ripple is absent with the lockfile-resolved m3e `2.6.2`. The cause is recorded as [`M3E-003`](../../docs/m3e-defects.md#m3e-003--unitless-pressed-opacity-makes-the-262-ripple-color-invalid). m3e `2.6.3` contains the upstream fix, so the required correction is a controlled dependency upgrade and revalidation, not a new Mioframe ripple implementation or local token rewrite.
+
 See `../loading-indicator/README.md` for the dependency contract, its public numeric `size` API, and its exact-version renderer workaround. The dependency owns confirmed renderer defects [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented) and [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size); Button only consumes the corrected public overall-size contract.
 
 ## Official sources
@@ -42,7 +44,8 @@ Related official dependencies and compositions:
 
 Renderer package:
 
-- `@m3e/web@^2.6.2`, resolved `2.6.2`;
+- declared `@m3e/web@^2.6.2`, currently resolved `2.6.2`;
+- `2.6.3` is the required upstream-fixed version for `M3E-003`, pending controlled lockfile update and full revalidation;
 - Button adapter owns `@m3e/web/button` only;
 - `MDLoadingIndicator` owns `@m3e/web/loading-indicator`;
 - Progress indicator remains deferred and must receive its own canonical adapter before future Button composition.
@@ -55,6 +58,7 @@ Renderer package:
 - Button sizes are extra small, small, medium, large, and extra large; small is the default. Official `md.comp.button.<size>.icon.size` tokens are 20dp (extra-small/small), 24dp (medium), 32dp (large), 40dp (extra-large).
 - Button shapes are round and square; round is the default.
 - A Button may contain one leading icon. Toggle label and icon content may change with selected state.
+- Button interaction requires observable hover, focus, and pressed feedback; the current renderer implements pressed feedback through its state and ripple primitives.
 - Loading indicators may be placed inside buttons for short actions (`loading-indicator/guidelines`, "Placement").
 - Loading indicator is an independent Material component, not renderer-private Button anatomy.
 - Circular progress indicators may be placed inside buttons, but no current Button consumer requires determinate progress.
@@ -72,7 +76,7 @@ Current consumers require:
 - visible and accessible label content;
 - optional leading icon and selected-state content;
 - disabled behavior;
-- pointer, Enter, Space, focus, and expanded target behavior;
+- pointer, Enter, Space, focus, visible pressed feedback, and expanded target behavior;
 - native `button`, `submit`, and coherent `reset` behavior;
 - boolean indeterminate loading in `RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, and `DialogForm.vue`.
 
@@ -92,7 +96,7 @@ Not currently required:
 | Five color configurations including text (`buttons/overview`, `buttons/guidelines`)             | yes                                      | `color` prop                                                                                                                                                                                                                                                                                                                                                                                                                                  | `m3e-button.variant`                                                                                                                                                                                                                             | Button adapter — `implement-now`; text toggle remains enabled                                      |
 | Five sizes and round/square shapes (`buttons/specs`)                                            | yes                                      | `size`/`shape` props                                                                                                                                                                                                                                                                                                                                                                                                                          | typed Button renderer mapping                                                                                                                                                                                                                    | Button adapter — `implement-now`                                                                   |
 | Leading icon and selected-state label/icon (`buttons/guidelines`)                               | yes                                      | `icon`, `selected-label`, `selected-icon` slots                                                                                                                                                                                                                                                                                                                                                                                               | private mapping to renderer `icon`/`selected`/`selected-icon` slots                                                                                                                                                                              | Button adapter — `implement-now`; `selected-label` replaces the ambiguous raw `selected` slot name |
-| Disabled, keyboard, focus, press, and target behavior                                           | yes                                      | `disabled` prop                                                                                                                                                                                                                                                                                                                                                                                                                               | Button renderer                                                                                                                                                                                                                                  | direct renderer ownership plus browser/operator verification                                       |
+| Disabled, keyboard, focus, pressed feedback, and target behavior                                | yes                                      | `disabled` prop; no renderer-specific ripple API                                                                                                                                                                                                                                                                                                                                                                                              | m3e Button state/focus/ripple primitives; `2.6.2` ripple color becomes invalid when the Material pressed opacity token resolves to unitless `0.1`, `divergent` (`M3E-003`)                                                                    | `m3e-fix` — fixed upstream in `2.6.3`; update dependency and reverify, do not duplicate ripple in Vue |
 | Native action type                                                                              | yes                                      | `nativeType: 'button' \| 'submit' \| 'reset'`                                                                                                                                                                                                                                                                                                                                                                                                 | Button renderer `type`                                                                                                                                                                                                                           | `implement-now`                                                                                    |
 | Link/form identity surface                                                                      | no current consumer                      | none                                                                                                                                                                                                                                                                                                                                                                                                                                          | renderer supports additional fields                                                                                                                                                                                                              | `defer`; removed from public API                                                                   |
 | Loading indicator inside Button (`loading-indicator/guidelines`)                                | yes                                      | `loading?: boolean` as parent composition state, taking precedence over both the normal and selected-icon routes                                                                                                                                                                                                                                                                                                                              | `MDButton` → canonical `MDLoadingIndicator`; no raw loading renderer in Button                                                                                                                                                                   | `implement-now` — dependency adapter accepted (`../loading-indicator/README.md`)                   |
@@ -158,23 +162,30 @@ Completed:
 - real-browser accessibility proof, not attribute presence alone: `md-button-family.spec.ts` resolves the nested Loading indicator as a named `progressbar` via `getByRole` for the loading, disabled-plus-loading, and toggle-plus-loading scenarios, while the Button itself remains discoverable as a `button`;
 - current consumers (`RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue`) unaffected — no public API change to `loading`, and the renamed `selected-label` slot has no external consumer;
 - stable executable visual-regression proof for Button itself (`tests/e2e/visual/shared-ui/md-button.spec.ts`, including the regenerated `md-button-loading.png` baseline after the dependency's overall/active-indicator geometry correction — inspected: Loading indicators remain centered in the leading-icon position, labels remain visible, rows have coherent spacing, and disabled/outlined loading presentation remains legible); the composed `MDLoadingIndicator` dependency additionally owns its own standalone executable visual-regression proof (`tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts`, see `../loading-indicator/README.md`) rather than relying on this Button screenshot as its only visual evidence. The Button-to-Loading-indicator size mapping (`24/24/24/32/40`) is unchanged by that correction — it is a Button-owned overall-size composition mapping, not the dependency's internal geometry;
-- dependency defect ownership is explicit: `M3E-001` and `M3E-002` are linked from the Loading size/color matrix row but remain owned by `MDLoadingIndicator` and `../../docs/m3e-defects.md`.
+- dependency defect ownership is explicit: `M3E-001` and `M3E-002` are linked from the Loading size/color matrix row but remain owned by `MDLoadingIndicator` and `../../docs/m3e-defects.md`;
+- pointer and keyboard activation reach the renderer and the host enters/leaves `:active`; this does **not** prove visible ripple feedback and is no longer treated as sufficient press-presentation evidence.
 
 Pending:
 
-- final `pnpm verify`;
+- resolve `@m3e/web` to `2.6.3` or later and revalidate `M3E-001`, `M3E-002`, and `M3E-003` against the consumed version;
+- prove visible ripple feedback for pointer press and Space activation through observable browser/visual behavior without inspecting or reproducing private shadow DOM;
+- inspect any Button visual or timing changes caused by the `2.6.3` shared ripple and pressed-duration changes;
+- final `pnpm verify` after the dependency update;
 - operator Button and dependency motion/visual acceptance.
 
 ## Completion gate
 
-M1 remains `migrating` pending final verification and operator review:
+M1 remains `migrating` and returns to `correction` until:
 
-- `MDLoadingIndicator` is accepted as a canonical dependency adapter;
+- `@m3e/web` is updated to the upstream-fixed ripple implementation;
+- `M3E-003` is marked `resolved` only after the fixed version is consumed and visible feedback is proven;
+- `M3E-001` and `M3E-002` are revalidated against the consumed m3e version and their workarounds retained, updated, or removed from evidence;
+- `MDLoadingIndicator` remains an accepted canonical dependency adapter;
 - Button composes it through the public Vue boundary;
 - no dependency raw m3e import, tag, type, declaration, private token, or defect lifecycle remains in Button ownership;
 - text toggle is supported;
 - public naming and native bubbling are corrected;
 - loading accessibility, size, color, and the full selected/disabled precedence matrix (including toggle plus selected plus `selected-icon` plus loading) are verified in the browser, not only via attributes;
 - current consumers use the canonical Button API;
-- focused tests and type-check pass;
-- final `pnpm verify` and operator visual/motion review remain (tracked in `../../docs/roadmap.md`).
+- focused tests, visual proof, and type-check pass;
+- final `pnpm verify` and operator visual/motion review pass (tracked in `../../docs/roadmap.md`).
