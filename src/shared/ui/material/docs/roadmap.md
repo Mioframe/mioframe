@@ -22,13 +22,13 @@ The current CI run is green, but it proves only the current implementation. It d
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | m3e-backed architecture reset | `verification` | none | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; canonical adapters for official Material dependencies; package-derived typing; final verification |
-| M1a | `MDLoadingIndicator` dependency adapter | `required` | M0 | accepted Loading indicator Material–m3e–Vue matrix; demand-scoped public Vue API; official accessibility and token contract; exact renderer typing; geometry and divergence ownership; stories, tests, visual/motion review |
-| M1 | `MDButton` adapter pilot | `correction` | M1a | accepted Button matrix; text toggle supported; loading composition delegates to `MDLoadingIndicator`; no raw dependency m3e usage; normalized Vue API; migrated consumers; verification and operator acceptance |
-| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance |
-| M3 | sequential component migration | `planned` | M2 | one official Material component at a time; dependency adapters implemented first; demand-driven Material API; explicit m3e mapping and gap ownership; no renderer leakage |
+| ID  | Milestone                               | Status         | Depends on | Exit gate                                                                                                                                                                                                                   |
+| --- | --------------------------------------- | -------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset           | `verification` | none       | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; canonical adapters for official Material dependencies; package-derived typing; final verification                   |
+| M1a | `MDLoadingIndicator` dependency adapter | `required`     | M0         | accepted Loading indicator Material–m3e–Vue matrix; demand-scoped public Vue API; official accessibility and token contract; exact renderer typing; geometry and divergence ownership; stories, tests, visual/motion review |
+| M1  | `MDButton` adapter pilot                | `correction`   | M1a        | accepted Button matrix; text toggle supported; loading composition delegates to `MDLoadingIndicator`; no raw dependency m3e usage; normalized Vue API; migrated consumers; verification and operator acceptance             |
+| M2  | `MDSwitch` stateful adapter pilot       | `planned`      | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                             |
+| M3  | sequential component migration          | `planned`      | M2         | one official Material component at a time; dependency adapters implemented first; demand-driven Material API; explicit m3e mapping and gap ownership; no renderer leakage                                                   |
 
 ## M1a — MDLoadingIndicator prerequisite
 
