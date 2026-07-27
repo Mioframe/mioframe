@@ -36,6 +36,8 @@ export const FIX_ONLY_LABELS = new Set(['agent-environment', 'format', 'oxlint',
 const FULL_FORBIDDEN_LABELS = new Set(['mutation']);
 const VERIFY_PROFILES = new Set(['local', 'github-actions']);
 const FIX_MODES = new Set(['none', 'fix', 'fix-only']);
+const BOOLEAN_FLAGS = new Set(['--verbose', '--fix', '--fix-only', '--full']);
+const VALUE_FLAGS = new Set(['--base', '--only', '--profile']);
 
 function toPosixPath(filePath) {
   return filePath.split(path.sep).join(path.posix.sep);
@@ -43,6 +45,63 @@ function toPosixPath(filePath) {
 
 function uniqSorted(values) {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+}
+
+function findEqualsFlag(argument) {
+  return [...VALUE_FLAGS, '--files'].find((flag) => argument.startsWith(`${flag}=`)) ?? null;
+}
+
+function assertUniqueOption(seenOptions, flag) {
+  if (seenOptions.has(flag)) {
+    throw new Error(`Duplicate verify option: ${flag}`);
+  }
+
+  seenOptions.add(flag);
+}
+
+/**
+ * Reject unknown, positional, or repeated verify arguments before any scope is resolved.
+ * A typo must never silently downgrade a full or explicitly scoped verification run.
+ * @param argv Raw CLI arguments after the script name.
+ */
+function assertRecognizedCliArgs(argv) {
+  const seenOptions = new Set();
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (BOOLEAN_FLAGS.has(argument)) {
+      assertUniqueOption(seenOptions, argument);
+      continue;
+    }
+
+    const equalsFlag = findEqualsFlag(argument);
+
+    if (equalsFlag !== null) {
+      assertUniqueOption(seenOptions, equalsFlag);
+      continue;
+    }
+
+    if (VALUE_FLAGS.has(argument)) {
+      assertUniqueOption(seenOptions, argument);
+      index += 1;
+      continue;
+    }
+
+    if (argument === '--files') {
+      assertUniqueOption(seenOptions, argument);
+      let cursor = index + 1;
+
+      while (cursor < argv.length && !argv[cursor].startsWith('--')) {
+        cursor += 1;
+      }
+
+      index = cursor - 1;
+      continue;
+    }
+
+    throw new Error(`Unknown verify argument: ${argument}`);
+  }
 }
 
 function getCliOption(argv, flag, missingMessage) {
@@ -222,9 +281,9 @@ function assertModeCombination({ scope, onlyLabel, fixMode }) {
     );
   }
 
-  if (fixMode === 'fix-only' && onlyLabel !== null && !FIX_ONLY_LABELS.has(onlyLabel)) {
+  if (fixMode !== 'none' && onlyLabel !== null && !FIX_ONLY_LABELS.has(onlyLabel)) {
     throw new Error(
-      `--fix-only --only ${onlyLabel} is unsupported. Accepted fix-only labels: ${[
+      `--${fixMode} --only ${onlyLabel} is unsupported. Accepted ${fixMode} labels: ${[
         ...FIX_ONLY_LABELS,
       ].join(', ')}`,
     );
@@ -240,6 +299,7 @@ function assertModeCombination({ scope, onlyLabel, fixMode }) {
  * @returns Structured effective invocation.
  */
 export function resolveVerifyInvocation(argv, processEnv = process.env) {
+  assertRecognizedCliArgs(argv);
   const explicitBaseRef = getCliBaseRef(argv);
   const explicitFiles = getCliFilesOverride(argv);
   const onlyLabel = getCliOnlyLabel(argv);
