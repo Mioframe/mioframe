@@ -54,9 +54,9 @@ describe('getRetryInstruction', () => {
     );
   });
 
-  it('keeps compatibility with legacy string-only lock metadata', () => {
+  it('does not trust legacy string-only lock metadata', () => {
     expect(getRetryInstruction({ command: 'pnpm verify --base origin/develop' })).toBe(
-      '  Run `pnpm verify --base origin/develop` again.',
+      '  Re-run the original task-scope verify command; do not default to plain `pnpm verify`.',
     );
   });
 
@@ -117,8 +117,12 @@ describe('resumeVerification', () => {
 
   it('makes a resumable verification state ready to retry with the original scoped command', () => {
     const { stateDir, metadataPath } = createTempVerificationDir();
+    const invocation = resolveVerifyInvocation(['--base', 'origin/develop'], {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_BASE_REF: 'develop',
+    });
     const metadata = {
-      command: 'pnpm verify --base origin/develop --profile github-actions',
+      ...getVerifyLockMetadata(invocation),
       heartbeatAt: new Date(Date.now() - 60_000).toISOString(),
       ownerToken: 'inactive-owner',
       pid: 9_999_999,
