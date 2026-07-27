@@ -10,7 +10,7 @@ src/shared/ui/material
 
 ```text
 product layers
-  → public Material-first Vue MD* components
+  → public Material-first Vue MD* components and token API
   → private @m3e/web renderers
 ```
 
@@ -20,7 +20,7 @@ Official Material 3 Expressive is the public contract authority. m3e is the pref
 
 Each `MD*` component is a demand-driven Vue representation of the official Material component:
 
-- public names, concepts, options, values, defaults, states, combinations, behavior, visuals, and accessibility follow Material documentation;
+- public names, concepts, options, values, defaults, states, combinations, behavior, visuals, accessibility, and supported tokens follow Material documentation;
 - only the subset required by current Mioframe scenarios is implemented now;
 - the selected subset remains compatible with later expansion toward the full Material contract;
 - m3e is used maximally where its documented public surface implements that selected contract;
@@ -28,13 +28,14 @@ Each `MD*` component is a demand-driven Vue representation of the official Mater
 
 ## Sources of truth
 
-1. **Official Material documentation** defines the public component contract.
-2. **Current Mioframe consumers** select which part of that contract is required now.
-3. **The exact lockfile-resolved m3e package** defines available private renderer capabilities and types.
-4. **The family contract matrix** records the accepted Material subset, Vue representation, m3e coverage, implementation owner, gaps, and deferred surface.
-5. **`m3e-defects.md`** records confirmed incorrect m3e implementations and documentation mismatches, their stable `M3E-*` identities, upstream lifecycle, Mioframe mitigation, revalidation history, and removal triggers.
+1. **Official Material documentation** defines the public component and token contracts.
+2. **Current Mioframe consumers** select which part of those contracts is required now.
+3. **The installed lockfile-resolved m3e package and observable browser behavior** define available private renderer capabilities and actual runtime behavior.
+4. **The family contract matrix** records the accepted Material subset, Vue representation, m3e coverage, implementation owner, gaps, selected/deferred tokens, and proof.
+5. **`token-api.md` plus canonical Material CSS declarations** define the supported public token surface and runtime values.
+6. **`m3e-defects.md`** records confirmed incorrect m3e implementations and documentation mismatches, their stable `M3E-*` identities, lifecycle, mitigation, revalidation history, and removal triggers.
 
-Legacy Mioframe components define migration evidence and current scenarios. They do not define the final `MD*` API when they differ from Material.
+Upstream m3e repository source, tags, demos, and changelogs are supporting evidence only. Legacy Mioframe components and token files define migration evidence and current scenarios; they do not define the final public API when they differ from the accepted Material contract.
 
 ## Demand-driven Material surface
 
@@ -51,13 +52,13 @@ Do not implement the full Material catalogue merely for completeness. Do not let
 Before implementation, the family README must include:
 
 | Material contract and source | Required now and evidence | Public Vue API | m3e support | Owner | Decision | Verification |
-| ---------------------------- | ------------------------- | -------------- | ----------- | ----- | -------- | ------------ |
+| --- | --- | --- | --- | --- | --- | --- |
 
-The matrix must cover all public props, values, slots, events, controlled state, defaults, native semantics, accessibility behavior, selected tokens, and materially relevant visual/motion behavior.
+The matrix must cover all public props, values, slots, events, controlled state, defaults, native semantics, accessibility behavior, selected tokens, materially relevant visual/motion behavior, and required dependencies.
 
 The matrix may group equivalent rows when that preserves exact ownership and decision clarity. It must not become a copied version of all Material documentation.
 
-A confirmed `divergent` row must reference its stable `M3E-*` record in `m3e-defects.md`. A `missing` capability remains only in the family matrix unless exact-version evidence later confirms an incorrect documented or implemented m3e contract.
+A confirmed `divergent` row must reference its stable `M3E-*` record in `m3e-defects.md`. A `missing` capability remains only in the family matrix unless installed-package and browser evidence later confirms an incorrect documented or implemented m3e contract.
 
 ## Public Vue API
 
@@ -82,6 +83,37 @@ Framework adaptation such as Vue emits, `v-model`, slots, refs, and native HTML 
 
 ## Implementation ownership
 
+### Material foundation owns
+
+- supported `--md-ref-*` reference values;
+- supported `--md-sys-*` foundations and standard theme roles;
+- canonical CSS value grammar and defaults for those roles;
+- default light/dark Material theme assignments;
+- the foundation part of the public token catalogue.
+
+Canonical runtime locations:
+
+```text
+src/shared/ui/material/foundation/tokens.css
+src/shared/ui/material/foundation/theme.css
+```
+
+Application theme selection, persistence, and approved `--app-*` extensions remain outside the Material library.
+
+### Component family owns
+
+- the selected official `--md-comp-<family>-*` public token subset;
+- family-local defaults and fallbacks;
+- private mapping from supported Material tokens to documented m3e inputs;
+- token rows in the family matrix and public catalogue;
+- representative override proof.
+
+Canonical runtime location:
+
+```text
+src/shared/ui/material/components/<family>/tokens.css
+```
+
 ### Vue adapter owns
 
 - Material-to-Vue API normalization;
@@ -91,12 +123,12 @@ Framework adaptation such as Vue emits, `v-model`, slots, refs, and native HTML 
 - controlled-state synchronization;
 - native web integration;
 - narrow Mioframe-owned light DOM needed to complete selected Material behavior;
-- public Material token mapping selected for current use;
 - public geometry normalization and host-level sizing required to represent the selected Material contract, provided it does not inspect or recreate the renderer's private geometry engine.
 
 ### m3e owns
 
 - internal rendering and private DOM;
+- private component defaults not selected as Mioframe public API;
 - the private geometry engine and internal layout;
 - state layer, ripple, focus, elevation, and motion;
 - private accessibility implementation;
@@ -111,9 +143,27 @@ When m3e does not fully implement a selected Material capability:
 - use `m3e-fix` for the underlying private DOM, geometry engine, state-layer, ripple, focus, elevation, motion, or private accessibility defect;
 - use `blocked` only when neither owner can deliver the selected Material contract safely.
 
-A temporary renderer workaround is a narrow delivery bridge, not a transfer of the private renderer system into Mioframe. It must remain removable, exact-version-recorded, independently tested, absent from parent adapters and public APIs, and linked to a confirmed `M3E-*` defect record.
+A temporary renderer workaround is a narrow delivery bridge, not a transfer of the private renderer system into Mioframe. It must remain removable, exact-version-recorded, independently tested, absent from parents and public APIs, and linked to a confirmed `M3E-*` record.
 
 Mioframe may contribute the underlying renderer fix to m3e and remove the workaround after consuming a corrected version. Do not create a parallel Material renderer inside the Vue wrapper.
+
+## Token API and theme
+
+The Material library owns the supported consumer-facing namespaces:
+
+- `--md-ref-*` declared by Material foundation/theme;
+- `--md-sys-*` declared by Material foundation/theme;
+- the selected public subset of `--md-comp-*` declared by component families.
+
+`--app-*` belongs outside the Material library. `--m3e-*` and `--md-private-*` remain private and are excluded from the public token catalogue.
+
+`docs/token-api.md` is the complete human-facing list of supported tokens. Canonical CSS files are the executable runtime declarations. Both must change together.
+
+Using m3e removes the need to reproduce every Material component token and renderer default. An official token becomes public only when it is selected, declared by the correct owner, mapped where required, catalogued, and verified. Other official tokens remain `deferred` in family matrices.
+
+Do not create a TypeScript token registry, generic token DSL, global component-token owner, or public aliases for every m3e variable.
+
+`src/shared/lib/md/tokens.css` is a temporary mixed-owner legacy source. The architecture-reset PR must split retained declarations into Material foundation, component families, and non-Material application ownership, update the global import, populate `token-api.md`, and remove the legacy file. It must not remain a compatibility alias or second source of truth.
 
 ## Non-Material requirements
 
@@ -137,23 +187,19 @@ Outside `src/shared/ui/material` it is forbidden to:
 - depend on `--m3e-*` variables;
 - inspect m3e private DOM or internal state.
 
+Outside the correct token owner it is forbidden to:
+
+- declare public Material foundation or component tokens as a second source of truth;
+- place `--app-*` tokens in Material foundation;
+- place one component family's `--md-comp-*` tokens in another family;
+- expose owner-local `--md-private-*` bridges as public API.
+
 ## Type boundary
 
 - Public Vue types are authored from the selected Material contract.
 - Private mappings use exact family entry-point exports such as element classes and value aliases.
 - Vue custom-element declarations derive from package types and contain framework glue only.
 - Renderer type drift must fail type-check without changing the public Material API accidentally.
-
-## Tokens and theme
-
-Mioframe owns verified Material namespaces:
-
-- `--md-ref-*`;
-- `--md-sys-*`;
-- the selected public subset of `--md-comp-*`;
-- `--app-*` only for separately approved non-Material extensions.
-
-A public component token must use the official Material path and be selected by current need. A documented m3e variable remains private and does not automatically create a public token.
 
 ## Divergences and upstream defects
 
@@ -171,7 +217,7 @@ m3e capability documented or implemented incorrectly
 For each selected or closely deferred Material capability, the family matrix records:
 
 - official Material expectation;
-- exact m3e behavior and version;
+- exact installed m3e behavior and version;
 - Vue exposure status;
 - current requirement status;
 - owner and decision: `accept`, `defer`, `wrapper-correction`, `temporary-renderer-workaround`, `m3e-fix`, `blocked`, or `source-conflict`;
@@ -182,28 +228,30 @@ For every confirmed incorrect m3e implementation or documentation mismatch, `m3e
 - the stable `M3E-*` identity;
 - affected and last-revalidated versions;
 - upstream and Mioframe statuses;
-- exact implementation evidence and affected family matrices;
+- installed-package and browser evidence and affected family matrices;
 - current mitigation or blocker;
 - correct upstream result and removal trigger;
 - version-by-version revalidation history.
 
-A difference in internal implementation is not a divergence when the observable Material result is equivalent. An unverified suspicion does not receive an `M3E-*` ID.
+A different internal implementation is not a divergence when the observable Material result is equivalent. An unverified suspicion does not receive an `M3E-*` ID.
 
-Every m3e version update must revalidate all non-resolved defect entries affecting the consumed renderer families. An upstream fix remains `awaiting-upgrade` for Mioframe until the fixed version is consumed, the workaround or blocker is removed, and owned verification passes.
+Every m3e version update must revalidate all non-resolved entries affecting consumed renderer families. An upstream fix remains `awaiting-upgrade` until the fixed version is consumed, the workaround or blocker is removed, and owned verification passes.
 
 ## Verification
 
 Verification proves:
 
 - the selected public Vue API matches the accepted Material matrix;
+- public token declarations, `token-api.md`, owners, mappings, and CSS grammars agree;
 - Material-to-m3e mappings are package-type checked;
 - wrapper-owned behavior and public geometry normalization are correct;
 - current consumers use the canonical component;
 - visual baselines cover stable selected Material states with meaningful risk;
+- selected renderer-owned interaction feedback is observable in browser or visual proof rather than inferred from host state or source inspection;
 - every confirmed `divergent` matrix row links to a complete `M3E-*` record;
 - final repository verification passes.
 
-Renderer-owned animation and private geometry implementation are verified by exact-version source inspection plus operator manual review. Proxy host assertions prove only the public host contract, not private renderer lifecycle or internal geometry.
+Private renderer implementation may be inspected in the installed package for diagnosis, but completion claims rely on owned observable browser proof and operator review. Proxy host assertions prove only the public host contract.
 
 ## Completion
 
@@ -213,8 +261,11 @@ A component migration is complete when:
 - every public `MD*` capability has an official Material source;
 - non-Material requirements have explicit composition, separate-component, or extension decisions;
 - selected Material capabilities are implemented by the correct owner;
-- deferred Material surface, m3e divergences, and temporary exact-version workarounds are recorded with their risks and removal triggers;
+- supported public tokens have canonical declarations and `token-api.md` entries;
+- deferred Material surface, m3e divergences, and temporary exact-version workarounds are recorded with risks and removal triggers;
 - every confirmed m3e defect has a linked complete `M3E-*` record with current statuses;
 - one canonical Vue owner remains and consumers are migrated;
 - type-check, focused tests, visual verification, and repository verification pass;
 - operator accepts the final visual and motion behavior.
+
+The architecture-reset milestone is not complete while the legacy mixed-owner token file remains the runtime source of truth.
