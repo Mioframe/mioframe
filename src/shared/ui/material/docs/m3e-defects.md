@@ -61,6 +61,7 @@ Mioframe status:
 | --------- | ----------------- | ----------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
 | `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`          | `workaround-active` | `unreported`    |
 | `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size   | `2.6.2`          | `workaround-active` | `unreported`    |
+| `M3E-003` | Button / ripple   | Unitless pressed opacity makes the 2.6.2 ripple color invalid            | `2.6.2`          | `awaiting-upgrade`  | `fixed`         |
 
 ## M3E-001 — Loading indicator documented size input is not implemented
 
@@ -186,6 +187,81 @@ Mioframe consumes an m3e version with independent Material-correct uncontained o
 | m3e version | Date       | Result    | Evidence                                                                         |
 | ----------- | ---------- | --------- | -------------------------------------------------------------------------------- |
 | `2.6.2`     | 2026-07-27 | confirmed | exact source inspection, host bounding-box tests, and inspected visual baselines |
+
+## M3E-003 — Unitless pressed opacity makes the 2.6.2 ripple color invalid
+
+- Component: Button / shared ripple primitive
+- First confirmed version: `2.6.2`
+- Last revalidated version: `2.6.3`
+- Upstream status: `fixed`
+- Mioframe status: `awaiting-upgrade`
+- Family matrix: `../components/button/README.md`
+- Upstream issue: none identified
+- Upstream pull request: none identified
+
+### Official Material contract
+
+A Button press requires visible state feedback. The selected Mioframe Button contract delegates renderer-owned pressed feedback, including ripple presentation, to m3e while preserving the standard Material pressed-state opacity token.
+
+Sources:
+
+- `/components/buttons/specs`;
+- `/components/buttons/guidelines`;
+- `/components/buttons/accessibility`.
+
+### Documented m3e contract
+
+`m3e-button` renders and attaches an internal `m3e-ripple`. Ripple opacity is controlled by `--m3e-ripple-opacity`, ultimately falling back to `--md-sys-state-pressed-state-layer-opacity`.
+
+### Observed m3e behavior
+
+In `2.6.2`, `RippleElement` builds the ripple background with:
+
+```css
+background-color: color-mix(in srgb, <ripple-color> <ripple-opacity>, transparent);
+```
+
+The color weight in `color-mix()` must be a percentage. m3e's own fallback is `10%`, so its showcase works when no system token overrides it. Mioframe defines the equivalent Material state opacity as the valid unitless opacity value `0.1`. Substitution therefore produces an invalid color weight and the ripple has no visible background.
+
+In `2.6.3`, m3e fixes the representation mismatch by applying the values independently:
+
+```css
+opacity: <ripple-opacity>;
+background-color: <ripple-color>;
+```
+
+CSS `opacity` accepts both `0.1` and `10%`, so the standard Mioframe token works without a renderer-specific conversion.
+
+### Evidence
+
+- m3e `2.6.2` source: `packages/web/src/core/shared/primitives/RippleElement.ts`;
+- m3e `2.6.2` source: `packages/web/src/core/shared/primitives/RippleToken.ts`;
+- m3e `2.6.3` source: `packages/web/src/core/shared/primitives/RippleElement.ts`;
+- Mioframe system token: `src/shared/lib/md/tokens.css`;
+- operator reproduction: Button ripple visible in the m3e showcase but absent in the Mioframe Button pilot.
+
+### Mioframe impact
+
+The selected `MDButton` press contract is incomplete despite green automated verification: pointer and keyboard activation work, but the expected visible ripple feedback is absent. Existing tests prove only host `:active` state and do not prove the renderer-owned visual feedback.
+
+### Current Mioframe mitigation
+
+None. Do not add a new wrapper ripple or locally rewrite the Material system opacity token. The upstream fix already exists in `@m3e/web` `2.6.3`.
+
+### Correct upstream result
+
+Completed in m3e `2.6.3`: ripple color and opacity are applied through properties that accept the public opacity representation without requiring callers to convert a system opacity value into a `color-mix()` percentage.
+
+### Removal trigger
+
+Mioframe resolves `@m3e/web` to `2.6.3` or later, revalidates all non-resolved Button, Loading indicator, and shared-core defects affected by the upgrade, proves visible pointer and keyboard pressed feedback, passes final repository verification, and receives operator motion acceptance.
+
+### Revalidation history
+
+| m3e version | Date       | Result                          | Evidence                                      |
+| ----------- | ---------- | ------------------------------- | --------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed                       | source inspection and operator reproduction  |
+| `2.6.3`     | 2026-07-27 | fixed upstream, not yet consumed | exact source comparison against `v2.6.2`      |
 
 ## Update protocol
 
