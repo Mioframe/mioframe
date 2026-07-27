@@ -32,12 +32,17 @@ fix/*, hotfix/* -> main -> develop
 - Stable publish only ever happens from `main`. `develop` never deploys the
   stable build; it may still build/deploy PR previews for review.
 
-### Merge strategy for `develop` <-> `main` synchronization
+Branch prefixes are descriptive, not an allow-list. Use a prefix that communicates ownership and intent, including `feature/`, `feat/`, `fix/`, `hotfix/`, `refactor/`, `docs/`, `chore/`, or `agent/`. The target branch and release flow determine policy; the prefix alone does not grant an exception.
 
-`develop` -> `main` promotion PRs and `main` -> `develop` release sync-back
-PRs **must be merged with a merge commit, not squash or rebase**. Ordinary
-feature/fix PRs into `develop` may keep the repository's normal merge policy
-unless another rule says otherwise.
+### Merge strategy
+
+Use these merge methods explicitly:
+
+- ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`: **squash merge**;
+- direct hotfix PRs into `main`: **squash merge**;
+- `develop` -> `main` promotion PRs and `main` -> `develop` release sync-back PRs: **merge commit**.
+
+Rebase merge is forbidden. Synchronization PRs preserve shared ancestry; ordinary PRs collapse implementation-history noise into one reviewed change.
 
 - **Why**: `develop` and `main` are both long-lived branches. Squashing or
   rebasing a promotion/sync-back merge rewrites history and breaks shared

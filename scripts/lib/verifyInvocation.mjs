@@ -2,6 +2,8 @@ import path from 'node:path';
 
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from '../playwrightContainer.mjs';
 
+export const VERIFY_INVOCATION_VERSION = 2;
+
 export const VERIFY_LABELS = [
   'agent-environment',
   'format',
@@ -29,6 +31,9 @@ export const FULL_ONLY_LABELS = new Set([
   'release-smoke',
 ]);
 
+export const FIX_ONLY_LABELS = new Set(['agent-environment', 'format', 'oxlint', 'eslint']);
+
+const FULL_FORBIDDEN_LABELS = new Set(['mutation']);
 const VERIFY_PROFILES = new Set(['local', 'github-actions']);
 const FIX_MODES = new Set(['none', 'fix', 'fix-only']);
 
@@ -173,9 +178,63 @@ export function getCliFilesOverride(argv) {
     : uniqSorted(explicitFiles.map((filePath) => toPosixPath(filePath)));
 }
 
+function isInvocationScope(scope) {
+  if (!scope || typeof scope !== 'object') {
+    return false;
+  }
+
+  if (scope.kind === 'full' || scope.kind === 'local') {
+    return true;
+  }
+
+  if (scope.kind === 'local-base' || scope.kind === 'github-base') {
+    return typeof scope.baseRef === 'string' && scope.baseRef.length > 0;
+  }
+
+  return (
+    scope.kind === 'explicit-files' &&
+    Array.isArray(scope.files) &&
+    scope.files.length > 0 &&
+    scope.files.every((filePath) => typeof filePath === 'string' && filePath.length > 0)
+  );
+}
+
+function assertModeCombination({ scope, onlyLabel, fixMode }) {
+  if (!isInvocationScope(scope)) {
+    throw new Error('Invalid verify scope.');
+  }
+
+  if (onlyLabel !== null && !VERIFY_LABELS.includes(onlyLabel)) {
+    throw new Error(`Invalid value for --only: ${onlyLabel}`);
+  }
+
+  if (!FIX_MODES.has(fixMode)) {
+    throw new Error(`Invalid verify fix mode: ${fixMode}`);
+  }
+
+  if (scope.kind === 'full') {
+    if (onlyLabel !== null && FULL_FORBIDDEN_LABELS.has(onlyLabel)) {
+      throw new Error(`--only ${onlyLabel} is not available with --full.`);
+    }
+  } else if (onlyLabel !== null && FULL_ONLY_LABELS.has(onlyLabel)) {
+    throw new Error(
+      `--only ${onlyLabel} requires --full. Run: pnpm verify --full --only ${onlyLabel}`,
+    );
+  }
+
+  if (fixMode === 'fix-only' && onlyLabel !== null && !FIX_ONLY_LABELS.has(onlyLabel)) {
+    throw new Error(
+      `--fix-only --only ${onlyLabel} is unsupported. Accepted fix-only labels: ${[
+        ...FIX_ONLY_LABELS,
+      ].join(', ')}`,
+    );
+  }
+}
+
 /**
- * Resolve the complete verify invocation once. The returned scope is consumed by
- * changed-path planning and the same object is persisted for retry/resume output.
+ * Resolve the complete verify invocation once. Full mode owns an unconditional
+ * full-project scope; changed-path inputs are rejected instead of being retained
+ * or evaluated. The same structured invocation is used by execution and resume.
  * @param argv Raw verify CLI arguments.
  * @param [processEnv] Environment used for base and profile defaults.
  * @returns Structured effective invocation.
@@ -193,9 +252,13 @@ export function resolveVerifyInvocation(argv, processEnv = process.env) {
     throw new Error('Use either --fix or --fix-only, not both.');
   }
 
-  if (onlyLabel !== null && FULL_ONLY_LABELS.has(onlyLabel) && !full) {
+  if (full && explicitBaseRef !== null) {
+    throw new Error('--full cannot be combined with --base; full mode ignores changed-file scope.');
+  }
+
+  if (full && explicitFiles !== null) {
     throw new Error(
-      `--only ${onlyLabel} requires --full. Run: pnpm verify --full --only ${onlyLabel}`,
+      '--full cannot be combined with --files; full mode ignores changed-file scope.',
     );
   }
 
@@ -209,7 +272,9 @@ export function resolveVerifyInvocation(argv, processEnv = process.env) {
   const profile = resolvePlaywrightContainerProfile(profileEnv).name;
   let scope;
 
-  if (explicitFiles !== null) {
+  if (full) {
+    scope = { kind: 'full' };
+  } else if (explicitFiles !== null) {
     scope = { kind: 'explicit-files', files: explicitFiles };
   } else if (processEnv.GITHUB_BASE_REF) {
     scope = { kind: 'github-base', baseRef: `origin/${processEnv.GITHUB_BASE_REF}` };
@@ -221,36 +286,16 @@ export function resolveVerifyInvocation(argv, processEnv = process.env) {
     scope = { kind: 'local' };
   }
 
-  return {
-    version: 1,
+  const invocation = {
+    version: VERIFY_INVOCATION_VERSION,
     scope,
     profile,
     onlyLabel,
-    full,
     verbose: argv.includes('--verbose'),
     fixMode: hasFix ? 'fix' : hasFixOnly ? 'fix-only' : 'none',
   };
-}
-
-function isInvocationScope(scope) {
-  if (!scope || typeof scope !== 'object') {
-    return false;
-  }
-
-  if (scope.kind === 'local') {
-    return true;
-  }
-
-  if (scope.kind === 'local-base' || scope.kind === 'github-base') {
-    return typeof scope.baseRef === 'string' && scope.baseRef.length > 0;
-  }
-
-  return (
-    scope.kind === 'explicit-files' &&
-    Array.isArray(scope.files) &&
-    scope.files.length > 0 &&
-    scope.files.every((filePath) => typeof filePath === 'string' && filePath.length > 0)
-  );
+  assertModeCombination(invocation);
+  return invocation;
 }
 
 /**
@@ -259,18 +304,22 @@ function isInvocationScope(scope) {
  * @returns Whether the value matches the supported invocation contract.
  */
 export function isResolvedVerifyInvocation(value) {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    value.version === 1 &&
-    isInvocationScope(value.scope) &&
-    VERIFY_PROFILES.has(value.profile) &&
-    (value.onlyLabel === null || VERIFY_LABELS.includes(value.onlyLabel)) &&
-    typeof value.full === 'boolean' &&
-    (value.onlyLabel === null || !FULL_ONLY_LABELS.has(value.onlyLabel) || value.full) &&
-    typeof value.verbose === 'boolean' &&
-    FIX_MODES.has(value.fixMode)
-  );
+  if (
+    value === null ||
+    typeof value !== 'object' ||
+    value.version !== VERIFY_INVOCATION_VERSION ||
+    !VERIFY_PROFILES.has(value.profile) ||
+    typeof value.verbose !== 'boolean'
+  ) {
+    return false;
+  }
+
+  try {
+    assertModeCombination(value);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function quoteShellArg(value) {
@@ -295,46 +344,40 @@ export function formatVerifyInvocationCommand(invocation, options = {}) {
     throw new Error('Invalid resolved verify invocation.');
   }
 
-  const readOnly = options.readOnly ?? false;
-  const onlyLabel = Object.hasOwn(options, 'onlyLabel') ? options.onlyLabel : invocation.onlyLabel;
-  const profile = options.profile ?? invocation.profile;
+  const candidate = {
+    ...invocation,
+    profile: options.profile ?? invocation.profile,
+    onlyLabel: Object.hasOwn(options, 'onlyLabel') ? options.onlyLabel : invocation.onlyLabel,
+    fixMode: options.readOnly ? 'none' : invocation.fixMode,
+  };
 
-  if (onlyLabel !== null && !VERIFY_LABELS.includes(onlyLabel)) {
-    throw new Error(`Invalid value for --only: ${onlyLabel}`);
+  if (!VERIFY_PROFILES.has(candidate.profile)) {
+    throw new Error(`Invalid value for --profile: ${candidate.profile}`);
   }
 
-  if (onlyLabel !== null && FULL_ONLY_LABELS.has(onlyLabel) && !invocation.full) {
-    throw new Error(`--only ${onlyLabel} requires --full.`);
-  }
-
-  if (!VERIFY_PROFILES.has(profile)) {
-    throw new Error(`Invalid value for --profile: ${profile}`);
-  }
-
+  assertModeCombination(candidate);
   const args = [];
 
-  if (invocation.verbose) {
+  if (candidate.verbose) {
     args.push('--verbose');
   }
 
-  if (!readOnly && invocation.fixMode !== 'none') {
-    args.push(`--${invocation.fixMode}`);
+  if (candidate.fixMode !== 'none') {
+    args.push(`--${candidate.fixMode}`);
   }
 
-  if (invocation.full) {
+  if (candidate.scope.kind === 'full') {
     args.push('--full');
+  } else if (candidate.scope.kind === 'explicit-files') {
+    args.push('--files', ...candidate.scope.files);
+  } else if (candidate.scope.kind === 'local-base' || candidate.scope.kind === 'github-base') {
+    args.push('--base', candidate.scope.baseRef);
   }
 
-  if (invocation.scope.kind === 'explicit-files') {
-    args.push('--files', ...invocation.scope.files);
-  } else if (invocation.scope.kind === 'local-base' || invocation.scope.kind === 'github-base') {
-    args.push('--base', invocation.scope.baseRef);
-  }
+  args.push('--profile', candidate.profile);
 
-  args.push('--profile', profile);
-
-  if (onlyLabel !== null) {
-    args.push('--only', onlyLabel);
+  if (candidate.onlyLabel !== null) {
+    args.push('--only', candidate.onlyLabel);
   }
 
   return ['pnpm', 'verify', ...args].map(quoteShellArg).join(' ');

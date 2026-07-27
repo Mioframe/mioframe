@@ -27,8 +27,17 @@
 
 ## Verification
 
-- Focused:
-- Full:
+- Focused development proof:
+- Final task-scope command:
+- Final task-scope result:
+- Release/full gate: N/A | <command and result>
+
+## PR Readiness
+
+- Current reviewed head:
+- Draft blockers: none | <remaining work>
+- Unresolved review threads: none | <threads>
+- Merge method: squash | merge commit
 
 ## Known Risks
 

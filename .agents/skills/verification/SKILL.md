@@ -31,6 +31,15 @@ Use focused runs for development feedback and explicit existing targets. `--file
 
 Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or Stryker commands are diagnostic exceptions only. A failed verify step may print its raw child command for diagnosis; do not use that command as the rerun or completion gate. Return to a verify-managed command that preserves the original invocation scope.
 
+## Mode constraints
+
+Invocation mode is validated before planning and again when persisted retry metadata is read:
+
+- `--full` is an unconditional full-project scope and must not be combined with `--base` or `--files`; environment base refs are ignored in full mode;
+- release-only labels require `--full`;
+- mutation is a PR-quality tool and is not available as `--full --only mutation`;
+- `--fix-only --only` is limited to `agent-environment`, `format`, `oxlint`, and `eslint`, the checks that actually execute in fix-only mode.
+
 ## Automatic scope
 
 The target automatic planner is defined only by repository facts:
@@ -152,11 +161,11 @@ The final task-scope command does not replace a mode or measurement it does not 
 
 ## Process ownership
 
-Local coding agents own repository files and local commands, not GitHub CI, PR metadata, review threads, or merge decisions.
+GitHub PR ownership, draft/ready transitions, current-head review, and merge decisions follow the root `AGENTS.md` pull request workflow. This skill owns local verification planning, execution, failure handling, and reporting only.
 
 Unless the task targets verification infrastructure, treat container/browser runtime internals as an opaque project boundary. Report the failing verify step rather than bypassing repository commands or reconfiguring runtime internals.
 
-If CI autofix commits changes, synchronize the local checkout before continuing.
+If CI autofix commits changes, synchronize the local checkout before continuing and re-review the resulting current head.
 
 ## Failure handling
 

@@ -18,8 +18,8 @@ this checklist enforces.
 ## Opening the PR into `main`
 
 - [ ] PR target branch is `main`.
-- [ ] PR description fills in the pull request template's ownership matrix
-      and verification sections.
+- [ ] PR description fills in the pull request template's ownership matrix, verification, current-head readiness, and merge-method sections.
+- [ ] Merge method is `merge commit` for `develop` -> `main` promotion PRs and `squash` for direct hotfix PRs.
 - [ ] The `release` workflow run is green:
   - [ ] `pnpm verify:release` full-project gate passed (format, lint,
         type-check, unit tests, full app e2e, full visual regression).
@@ -46,10 +46,7 @@ this checklist enforces.
       The tag push runs the lightweight `release-tag` workflow, which only
       confirms the tag matches `package.json` — it does not rerun the full
       release gate.
-- [ ] Merge (or cherry-pick) the same change back into `develop` so the
-      branches do not diverge. For a normal promotion (`develop` -> `main`
-      with no `main`-only commits), this is a fast-forward or a trivial
-      merge back.
+- [ ] If `main` received commits that are not already in `develop` (for example a direct hotfix or pre-tag repair), open the documented `main` -> `develop` sync-back PR and merge it with a merge commit. Do not cherry-pick or squash the sync-back. A normal `develop` -> `main` promotion requires no content replay back into `develop`.
 
 ## If the release gate fails
 

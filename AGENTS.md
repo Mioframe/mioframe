@@ -93,6 +93,13 @@ Use the applicable skill instead of duplicating its rules in the task:
 - `use*` exposes reactive or lifecycle-managed capabilities; `setup*` wires dependencies and cleanup; `define*` is side-effect-light; `create*` returns a fresh owned instance; `get*` derives or looks up; `is*` is boolean; `zod*` exports schemas; `*Service` is background infrastructure; `on*` names handlers; `$` suffix is reserved for raw RxJS observables.
 - Add a child `AGENTS.md` only for stable local invariants that the parent cannot express cleanly. Child files refine rather than repeat parent rules.
 
+## Pull request workflow
+
+- Local coding agents own repository files and local commands. The operator or architect owns PR title and body, draft/ready state, review threads, complete resulting-PR review, merge readiness, and merge execution.
+- Keep a PR in draft while implementation, required proof, current-head verification, or review blockers remain. Mark it ready only after the current head has complete required checks, the full resulting diff has been reviewed, PR metadata is accurate, and no unresolved review threads remain.
+- Green CI proves only that automated checks passed. It is not architecture approval or merge readiness. Re-review the current head after every pushed commit, including CI autofix commits.
+- Branch prefixes are descriptive rather than an allow-list. Use a clear prefix such as `feature/`, `feat/`, `fix/`, `hotfix/`, `refactor/`, `docs/`, `chore/`, or `agent/` that reflects the work.
+
 ## Mandatory verification
 
 - Use `implementation-preflight` to resolve task-specific `TEST IMPACT` before non-trivial edits and `verification` to inspect and execute repository verification.
@@ -108,7 +115,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, final task-scope verification may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
 - Preserve the current app E2E desktop/mobile matrix until a dedicated audited migration demonstrates safe project filtering.
 - A minimum check named in a nested `AGENTS.md` describes required proof, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
-- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active. After `pnpm verify:resume`, rerun the exact task-scope command printed by the resume command; do not silently replace it with plain `pnpm verify`.
+- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active. After `pnpm verify:resume`, rerun the exact task-scope command printed when validated structured metadata is available; otherwise reconstruct the original scope explicitly. Never silently replace it with plain `pnpm verify`.
 - If final verification fails, repository impact metadata is invalid, or required proof is missing, do not claim the task is complete. Report the exact failure and remaining work.
 
 Final response after edits must include:
@@ -128,7 +135,8 @@ reason if not run:
 
 - `develop` is the active development branch; `main` is the stable public branch.
 - Every PR into `develop` or `main` must increase `package.json` version, except the documented pre-tag repair and `main` to `develop` release-sync cases.
-- `develop`/`main` synchronization PRs use merge commits, never squash or rebase.
+- Ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`, plus direct hotfix PRs into `main`, use squash merge.
+- `develop` to `main` promotion PRs and `main` to `develop` release sync-back PRs use merge commits. Rebase merge is forbidden for all repository flows.
 - `pnpm verify` is the focused development gate. Its target architecture includes automatic focused release proof for release-relevant changes. `pnpm verify:release` remains the unconditional full release gate required for `main`.
 - Follow `docs/release.md` and `docs/release-checklist.md` for the complete release policy.
 

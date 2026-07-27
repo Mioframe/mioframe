@@ -167,6 +167,8 @@ Types: feat, fix, docs, refactor, test, chore
 
 ## Testing
 
+Commands shown in the testing subsections below are interactive/manual diagnostic interfaces. Coding agents must use verify-managed commands for focused proof, failure reruns, and the final task-scope gate. A raw child command never becomes PR completion evidence. Snapshot-update commands remain intentional write operations and must be followed by verify-managed visual proof.
+
 ### Test Strategy
 
 ```mermaid
@@ -186,7 +188,7 @@ graph TB
 # Watch mode
 pnpm test
 
-# Single run
+# Manual diagnostic single run
 pnpm test:run
 
 # With coverage diagnostics
@@ -297,6 +299,8 @@ pnpm test:visual:update -- tests/e2e/visual/<surface>.spec.ts
 ### Mutation Testing (StrykerJS)
 
 **Purpose**: verify focused test quality by introducing mutations.
+
+The direct Stryker commands below are manual diagnostics, not agent rerun or completion gates. Agents use `pnpm verify --only mutation --files ...`.
 
 Use mutation testing narrowly for high-risk pure logic, schemas, migrations, storage helpers, CRDT helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations.
 

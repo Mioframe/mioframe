@@ -14,11 +14,10 @@ describe('resolveVerifyInvocation', () => {
         GITHUB_BASE_REF: 'develop',
       }),
     ).toEqual({
-      version: 1,
+      version: 2,
       scope: { kind: 'github-base', baseRef: 'origin/develop' },
       profile: 'github-actions',
       onlyLabel: 'unit-tests',
-      full: false,
       verbose: false,
       fixMode: 'none',
     });
@@ -30,7 +29,7 @@ describe('resolveVerifyInvocation', () => {
     ).toEqual({ kind: 'local-base', baseRef: 'origin/parent' });
   });
 
-  it('treats explicit files as the effective scope and does not retain an ignored base', () => {
+  it('treats explicit files as the effective focused scope and drops an ignored base', () => {
     const invocation = resolveVerifyInvocation(
       ['--base', 'origin/wrong', '--files', 'src/path with space.ts', '--only', 'eslint'],
       { GITHUB_ACTIONS: 'true', GITHUB_BASE_REF: 'develop' },
@@ -45,15 +44,56 @@ describe('resolveVerifyInvocation', () => {
     );
   });
 
-  it('rejects a release-only label without full mode', () => {
-    expect(() => resolveVerifyInvocation(['--only', 'artifact'], {})).toThrow(
-      '--only artifact requires --full',
+  it('resolves full mode to an unconditional scope and ignores environment bases', () => {
+    expect(
+      resolveVerifyInvocation(['--full'], {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_BASE_REF: 'develop',
+        VERIFY_BASE: 'origin/other',
+      }),
+    ).toEqual({
+      version: 2,
+      scope: { kind: 'full' },
+      profile: 'github-actions',
+      onlyLabel: null,
+      verbose: false,
+      fixMode: 'none',
+    });
+  });
+
+  it('rejects explicit changed-path scope in full mode', () => {
+    expect(() => resolveVerifyInvocation(['--full', '--base', 'origin/develop'], {})).toThrow(
+      '--full cannot be combined with --base',
+    );
+    expect(() => resolveVerifyInvocation(['--full', '--files', 'src/foo.ts'], {})).toThrow(
+      '--full cannot be combined with --files',
     );
   });
 
-  it('accepts a release-only label in full mode', () => {
+  it('requires full mode for release-only labels', () => {
+    expect(() => resolveVerifyInvocation(['--only', 'artifact'], {})).toThrow(
+      '--only artifact requires --full',
+    );
     expect(resolveVerifyInvocation(['--full', '--only', 'artifact'], {}).onlyLabel).toBe(
       'artifact',
+    );
+  });
+
+  it('rejects mutation in full mode', () => {
+    expect(() => resolveVerifyInvocation(['--full', '--only', 'mutation'], {})).toThrow(
+      '--only mutation is not available with --full',
+    );
+  });
+
+  it('limits fix-only labels to checks that actually run in fix-only mode', () => {
+    expect(resolveVerifyInvocation(['--fix-only', '--only', 'eslint'], {}).onlyLabel).toBe(
+      'eslint',
+    );
+    expect(() => resolveVerifyInvocation(['--fix-only', '--only', 'type-check'], {})).toThrow(
+      'Accepted fix-only labels',
+    );
+    expect(() => resolveVerifyInvocation(['--fix-only', '--only', 'e2e'], {})).toThrow(
+      'Accepted fix-only labels',
     );
   });
 
@@ -65,19 +105,9 @@ describe('resolveVerifyInvocation', () => {
 });
 
 describe('formatVerifyInvocationCommand', () => {
-  it('preserves full, verbose, files, profile, and label while removing fix mode for reruns', () => {
+  it('renders a read-only full rerun without changed-path arguments', () => {
     const invocation = resolveVerifyInvocation(
-      [
-        '--fix-only',
-        '--verbose',
-        '--full',
-        '--profile',
-        'local',
-        '--only',
-        'visual',
-        '--files',
-        'tests/e2e/visual/path with space.spec.ts',
-      ],
+      ['--fix-only', '--verbose', '--full', '--profile', 'local', '--only', 'format'],
       {},
     );
 
@@ -87,8 +117,14 @@ describe('formatVerifyInvocationCommand', () => {
         onlyLabel: 'artifact',
         profile: 'github-actions',
       }),
-    ).toBe(
-      "pnpm verify --verbose --full --files 'tests/e2e/visual/path with space.spec.ts' --profile github-actions --only artifact",
+    ).toBe('pnpm verify --verbose --full --profile github-actions --only artifact');
+  });
+
+  it('rejects an override that is invalid for the resolved mode', () => {
+    const invocation = resolveVerifyInvocation(['--full'], {});
+
+    expect(() => formatVerifyInvocationCommand(invocation, { onlyLabel: 'mutation' })).toThrow(
+      '--only mutation is not available with --full',
     );
   });
 
@@ -106,20 +142,39 @@ describe('formatVerifyInvocationCommand', () => {
 });
 
 describe('isResolvedVerifyInvocation', () => {
-  it('rejects corrupted persisted metadata', () => {
-    expect(isResolvedVerifyInvocation({ version: 1, scope: { kind: 'local' } })).toBe(false);
-  });
-
-  it('rejects a persisted release-only label without full mode', () => {
+  it('rejects corrupted and legacy persisted metadata', () => {
+    expect(isResolvedVerifyInvocation({ version: 2, scope: { kind: 'local' } })).toBe(false);
     expect(
       isResolvedVerifyInvocation({
         version: 1,
         scope: { kind: 'local' },
         profile: 'local',
-        onlyLabel: 'artifact',
-        full: false,
+        onlyLabel: null,
         verbose: false,
         fixMode: 'none',
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects persisted invalid mode and label combinations', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 2,
+        scope: { kind: 'full' },
+        profile: 'local',
+        onlyLabel: 'mutation',
+        verbose: false,
+        fixMode: 'none',
+      }),
+    ).toBe(false);
+    expect(
+      isResolvedVerifyInvocation({
+        version: 2,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: 'type-check',
+        verbose: false,
+        fixMode: 'fix-only',
       }),
     ).toBe(false);
   });

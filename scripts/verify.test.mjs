@@ -26,6 +26,7 @@ import {
   printSummary,
   resolveCommandStatus,
   resolvePlaywrightCommandTimeoutMs,
+  resolveVerifyChangedPathContext,
   runVerifyCli,
 } from './verify.mjs';
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
@@ -837,5 +838,28 @@ describe('runVerifyCli', () => {
     ).rejects.toThrow('Another local pnpm verify is already running.');
 
     expect(runMain).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveVerifyChangedPathContext', () => {
+  it('does not resolve Git changed paths for full-project scope', () => {
+    const resolveScope = vi.fn();
+    const projectChangedFiles = vi.fn();
+    const invocation = resolveVerifyInvocation(['--full'], {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_BASE_REF: 'develop',
+      VERIFY_BASE: 'origin/other',
+    });
+
+    expect(
+      resolveVerifyChangedPathContext(invocation, { resolveScope, projectChangedFiles }),
+    ).toEqual({
+      changedFiles: [],
+      scope: 'full-project',
+      baseRef: null,
+      packageJsonOldRef: null,
+    });
+    expect(resolveScope).not.toHaveBeenCalled();
+    expect(projectChangedFiles).not.toHaveBeenCalled();
   });
 });

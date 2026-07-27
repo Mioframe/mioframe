@@ -13,6 +13,7 @@ import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
+  FIX_ONLY_LABELS,
   formatVerifyInvocationCommand,
   FULL_ONLY_LABELS,
   getCliFilesOverride,
@@ -35,7 +36,7 @@ const currentVerifyInvocation = isHelpMode
 const isFixMode = currentVerifyInvocation?.fixMode === 'fix';
 const isFixOnlyMode = currentVerifyInvocation?.fixMode === 'fix-only';
 const isVerboseMode = currentVerifyInvocation?.verbose ?? false;
-const isFullMode = currentVerifyInvocation?.full ?? false;
+const isFullMode = currentVerifyInvocation?.scope.kind === 'full';
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
@@ -569,24 +570,32 @@ function printHelp() {
   console.log('  --verbose           Stream command output to stdout/stderr.');
   console.log('  --fix               Apply supported format/lint fixes, then run verification.');
   console.log('  --fix-only          Apply supported format/lint fixes only.');
+  console.log(
+    `                      With --only, accepted labels: ${[...FIX_ONLY_LABELS].join(', ')}.`,
+  );
   console.log('  --base <ref>        Verify changes against a local base ref.');
   console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
+  console.log('                      Cannot be combined with --full.');
   console.log('  --profile <name>    Override the verify runtime profile.');
   console.log(`                      Env alternative: ${VERIFY_PROFILE_ENV}=local|github-actions.`);
   console.log('  --only <label>      Run one focused verification check.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
+  console.log('                      Cannot be combined with --full.');
   console.log(
-    '  --full              Full-project release mode: ignore changed-file scope, run every',
+    '  --full              Unconditional full-project release scope: do not resolve changed paths,',
   );
-  console.log(
-    '                      check unconditionally, plus release-version/release-config/build/',
-  );
+  console.log('                      run full proof plus release-version/release-config/build/');
   console.log('                      artifact/release-smoke. Equivalent to `pnpm verify:release`.');
   console.log('');
   console.log('Labels for --only:');
 
   for (const label of VERIFY_LABELS) {
-    console.log(`  ${label}${FULL_ONLY_LABELS.has(label) ? ' (requires --full)' : ''}`);
+    const modeNote = FULL_ONLY_LABELS.has(label)
+      ? ' (requires --full)'
+      : label === 'mutation'
+        ? ' (not available with --full)'
+        : '';
+    console.log(`  ${label}${modeNote}`);
   }
 
   console.log('');
@@ -606,7 +615,8 @@ function printHelp() {
   console.log('  pnpm verify:release');
   console.log('');
   console.log('Notes:');
-  console.log('  - In GitHub Actions, verify scope is based on GITHUB_BASE_REF.');
+  console.log('  - In GitHub Actions, focused verify scope is based on GITHUB_BASE_REF.');
+  console.log('  - Full mode ignores GITHUB_BASE_REF, VERIFY_BASE, --base, and --files.');
   console.log('  - Focused --only runs preserve logs from other focused steps.');
   console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
   console.log('  - Expensive checks have internal heartbeat/timeouts:');
@@ -1571,12 +1581,43 @@ export function buildCommandEnv(entry, priorResults, options = {}) {
       };
 }
 
+/**
+ * Resolve changed-path context only for focused invocations. Full mode is an
+ * unconditional scope and must not depend on Git refs, a working tree, or file projection.
+ * @param invocation Resolved verify invocation.
+ * @param [deps] Test seams for changed-path execution.
+ * @param [deps.resolveScope] Changed-path scope resolver.
+ * @param [deps.projectChangedFiles] Changed-file projection.
+ * @returns Execution context used by command planning and summary output.
+ */
+export function resolveVerifyChangedPathContext(invocation, deps = {}) {
+  if (invocation.scope.kind === 'full') {
+    return {
+      changedFiles: [],
+      scope: 'full-project',
+      baseRef: null,
+      packageJsonOldRef: null,
+    };
+  }
+
+  const resolveScope = deps.resolveScope ?? resolveChangedPathsScope;
+  const projectChangedFiles = deps.projectChangedFiles ?? getChangedFileProjection;
+  const { input, scope, baseRef, packageJsonOldRef } = resolveScope({
+    invocationScope: invocation.scope,
+  });
+
+  return {
+    changedFiles: projectChangedFiles(input),
+    scope,
+    baseRef,
+    packageJsonOldRef,
+  };
+}
+
 async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata: () => {} }) {
   const verifyProcessEnv = getVerifyProcessEnv(process.env);
-  const { input, scope, baseRef, packageJsonOldRef } = resolveChangedPathsScope({
-    invocationScope: currentVerifyInvocation.scope,
-  });
-  const changedFiles = getChangedFileProjection(input);
+  const { changedFiles, scope, baseRef, packageJsonOldRef } =
+    resolveVerifyChangedPathContext(currentVerifyInvocation);
   const commands = selectOnlyCommands(buildCommands(changedFiles, { packageJsonOldRef }));
   const results = [];
   let hasFailed = false;
