@@ -184,6 +184,10 @@ export const BehaviorContracts: Story = {
         <output id="md-button-loading-count">{{ loadingClickCount }}</output>
         <MDButton label="Disabled action" disabled @click="onDisabledClick" />
         <output id="md-button-disabled-count">{{ disabledClickCount }}</output>
+        <MDButton label="Disabled loading action" disabled loading @click="onDisabledClick" />
+        <MDButton label="Toggle loading action" variant="toggle" selected loading>
+          <template #selected-icon><span data-selected-icon>&#9733;</span></template>
+        </MDButton>
         <MDButton label="Press action" size="medium" />
       </div>
     `,

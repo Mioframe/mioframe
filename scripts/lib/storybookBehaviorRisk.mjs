@@ -109,6 +109,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
   },
   {
+    name: 'loading indicator standalone accessibility',
+    sourcePrefixes: [
+      'src/shared/ui/material/components/loading-indicator/',
+      'tests/e2e/storybook/md-loading-indicator.spec.ts',
+    ],
+    specs: ['tests/e2e/storybook/md-loading-indicator.spec.ts'],
+  },
+  {
     name: 'bottom sheet keyboard focus wrap visibility',
     sourcePrefixes: [
       'src/shared/ui/Sheets/MDBottomSheetContainer2.vue',

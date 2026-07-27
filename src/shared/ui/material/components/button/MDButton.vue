@@ -29,7 +29,9 @@ const props = withDefaults(
     selected?: boolean | undefined;
     /**
      * Shows a Material Loading indicator in place of the leading icon for a short
-     * async action (Loading indicator placement guidance).
+     * async action (Loading indicator placement guidance). Takes precedence over
+     * both the normal and selected-state icon routes; the appropriate icon is
+     * restored once loading ends.
      */
     loading?: boolean | undefined;
   }>(),
@@ -81,18 +83,18 @@ const rendererShape = computed<RendererButtonShape>(() =>
 );
 const rendererType = computed<M3eButtonElement['type']>(() => props.nativeType);
 /**
- * Normalizes the composed Loading indicator to this Button's official leading-icon
- * size token (Button specs: extra-small/small 20dp, medium 24dp, large 32dp,
- * extra-large 40dp), expressed in rem to match the m3e Button icon-size defaults.
+ * Mioframe Button-to-Loading-indicator composition mapping (not the official Loading
+ * indicator size API, and not the Button icon-size tokens): extra-small/small/medium
+ * map to 24, large to 32, extra-large to 40.
  */
-const loadingIndicatorSize = computed<string>(
+const loadingIndicatorSize = computed<number>(
   () =>
     ({
-      'extra-small': '1.25rem',
-      small: '1.25rem',
-      medium: '1.5rem',
-      large: '2rem',
-      'extra-large': '2.5rem',
+      'extra-small': 24,
+      small: 24,
+      medium: 24,
+      large: 32,
+      'extra-large': 40,
     })[props.size],
 );
 
@@ -142,7 +144,7 @@ if (import.meta.env.DEV) {
       <slot v-else name="icon" />
     </MDButtonSlottedContent>
     <MDButtonSlottedContent
-      v-if="!!slots['selected-icon']"
+      v-if="!isLoading && !!slots['selected-icon']"
       class="md-button__icon"
       slot-name="selected-icon"
     >

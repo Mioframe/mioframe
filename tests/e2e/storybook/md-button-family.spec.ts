@@ -118,6 +118,11 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
   const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
   const loading = page.getByRole('button', { name: 'Loading action', exact: true });
   const disabled = page.getByRole('button', { name: 'Disabled action', exact: true });
+  const disabledLoading = page.getByRole('button', {
+    name: 'Disabled loading action',
+    exact: true,
+  });
+  const toggleLoading = page.getByRole('button', { name: 'Toggle loading action', exact: true });
   const pressTarget = page.getByRole('button', { name: 'Press action', exact: true });
 
   await submit.focus();
@@ -153,6 +158,10 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
   // MDButton hands off its own label to the canonical MDLoadingIndicator as the
   // dependency's accessible purpose, instead of leaving the progressbar unlabeled.
   await expect(loadingIndicator).toHaveAttribute('aria-label', 'Loading action');
+  // Real browser accessibility-tree resolution (not attribute presence alone): the
+  // nested Loading indicator resolves as a named progressbar within the Button,
+  // which itself remains discoverable as a button.
+  await expect(loading.getByRole('progressbar', { name: 'Loading action' })).toBeVisible();
   await loading.click();
   await expect(page.locator('#md-button-loading-count')).toHaveText('1');
 
@@ -164,6 +173,29 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
     disabledBox.y + disabledBox.height / 2,
   );
   await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
+
+  // Disabled plus loading: the disabled renderer contract (blocked activation) and
+  // the loading composition (aria-busy, nested progressbar) both hold together.
+  await expect(disabledLoading).toBeDisabled();
+  await expect(disabledLoading).toHaveAttribute('aria-busy', 'true');
+  await expect(
+    disabledLoading.getByRole('progressbar', { name: 'Disabled loading action' }),
+  ).toBeVisible();
+  const disabledLoadingBox = await disabledLoading.boundingBox();
+  if (!disabledLoadingBox) throw new Error('Missing disabled+loading MDButton geometry.');
+  await page.mouse.click(
+    disabledLoadingBox.x + disabledLoadingBox.width / 2,
+    disabledLoadingBox.y + disabledLoadingBox.height / 2,
+  );
+  await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
+
+  // Loading takes precedence over the selected-icon route even when toggle,
+  // selected, and a selected-icon slot are all active together.
+  await expect(toggleLoading).toHaveAttribute('aria-busy', 'true');
+  await expect(
+    toggleLoading.getByRole('progressbar', { name: 'Toggle loading action' }),
+  ).toBeVisible();
+  await expect(toggleLoading.locator('[data-selected-icon]')).toHaveCount(0);
 
   const pressTargetBox = await pressTarget.boundingBox();
   if (!pressTargetBox) throw new Error('Missing MDButton press host geometry.');

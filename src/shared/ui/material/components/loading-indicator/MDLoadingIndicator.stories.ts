@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Mioframe Material Loading indicator adapter backed privately by @m3e/web. Demand-scoped to the default/uncontained indeterminate presentation required by MDButton loading composition: an accessible purpose label, an optional scalable size, and inherited active-indicator color.',
+          'Mioframe Material Loading indicator adapter backed privately by @m3e/web. Demand-scoped to the default/uncontained indeterminate presentation required by MDButton loading composition: an accessible purpose label, an optional numeric size (24-240 dp, default 48, clamped outside that range), and inherited active-indicator color.',
       },
     },
   },
@@ -28,11 +28,10 @@ export const SizeMatrix: Story = {
     template: `
       <div data-testid="visual-md-loading-indicator-sizes" class="visual-checker-backdrop">
         <div class="visual-row">
-          <MDLoadingIndicator label="Extra small" size="1.25rem" />
-          <MDLoadingIndicator label="Medium" size="1.5rem" />
-          <MDLoadingIndicator label="Large" size="2rem" />
-          <MDLoadingIndicator label="Extra large" size="2.5rem" />
-          <MDLoadingIndicator label="Default" />
+          <MDLoadingIndicator label="Size 24" :size="24" />
+          <MDLoadingIndicator label="Size 32" :size="32" />
+          <MDLoadingIndicator label="Size 40" :size="40" />
+          <MDLoadingIndicator label="Default size 48" />
         </div>
       </div>
     `,

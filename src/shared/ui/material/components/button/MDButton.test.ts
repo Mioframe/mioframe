@@ -104,9 +104,29 @@ describe('MDButton adapter', () => {
 
     expect(button.attributes('aria-busy')).toBe('true');
     expect(indicator.attributes('aria-label')).toBe('Save');
-    expect(indicator.attributes('style')).toContain('--m3e-loading-indicator-size: 1.5rem');
+    expect(indicator.attributes('style')).toContain('--m3e-loading-indicator-size: 24px');
     expect(button.find('[data-icon]').exists()).toBe(false);
   });
+
+  it.each([
+    ['extra-small', 24],
+    ['small', 24],
+    ['medium', 24],
+    ['large', 32],
+    ['extra-large', 40],
+  ] as const)(
+    'maps Button size %s to the Loading indicator composition size %ipx',
+    (size, expectedSize) => {
+      const button = mount(MDButton, { props: { label: 'Save', loading: true, size } }).get(
+        'm3e-button',
+      );
+      const indicator = button.get('m3e-loading-indicator');
+
+      expect(indicator.attributes('style')).toContain(
+        `--m3e-loading-indicator-size: ${expectedSize}px`,
+      );
+    },
+  );
 
   it('restores the leading icon and clears aria-busy once loading ends', () => {
     const wrapper = mount(MDButton, {
@@ -118,5 +138,59 @@ describe('MDButton adapter', () => {
     expect(button.attributes('aria-busy')).toBeUndefined();
     expect(button.find('m3e-loading-indicator').exists()).toBe(false);
     expect(button.find('[data-icon]').exists()).toBe(true);
+  });
+
+  it('replaces the selected icon route with the Loading indicator when toggle, selected, selected-icon, and loading are combined', () => {
+    const wrapper = mount(MDButton, {
+      props: { label: 'Start', variant: 'toggle', selected: true, loading: true },
+      slots: {
+        'selected-icon': '<span data-selected-icon />',
+        icon: '<span data-icon />',
+      },
+    });
+    const button = wrapper.get('m3e-button');
+
+    expect(button.find('m3e-loading-indicator').exists()).toBe(true);
+    expect(button.find('[data-selected-icon]').exists()).toBe(false);
+    expect(button.find('[slot="selected-icon"]').exists()).toBe(false);
+    expect(button.find('[data-icon]').exists()).toBe(false);
+  });
+
+  it('restores the selected icon after loading ends while still selected', async () => {
+    const wrapper = mount(MDButton, {
+      props: { label: 'Start', variant: 'toggle', selected: true, loading: true },
+      slots: { 'selected-icon': '<span data-selected-icon />' },
+    });
+
+    expect(wrapper.get('m3e-button').find('[data-selected-icon]').exists()).toBe(false);
+
+    await wrapper.setProps({ loading: false });
+    const button = wrapper.get('m3e-button');
+
+    expect(button.find('m3e-loading-indicator').exists()).toBe(false);
+    expect(button.find('[data-selected-icon]').exists()).toBe(true);
+  });
+
+  it('restores the normal icon after loading ends when no longer selected', async () => {
+    const wrapper = mount(MDButton, {
+      props: { label: 'Start', variant: 'toggle', selected: false, loading: true },
+      slots: { icon: '<span data-icon />' },
+    });
+
+    expect(wrapper.get('m3e-button').find('[data-icon]').exists()).toBe(false);
+
+    await wrapper.setProps({ loading: false });
+    const button = wrapper.get('m3e-button');
+
+    expect(button.find('m3e-loading-indicator').exists()).toBe(false);
+    expect(button.find('[data-icon]').exists()).toBe(true);
+  });
+
+  it('keeps loading, aria-busy, and the disabled renderer contract together when disabled and loading are combined', () => {
+    const button = mountButton({ disabled: true, loading: true }).get('m3e-button');
+
+    expect(getElementProperty(button.element, 'disabled')).toBe(true);
+    expect(button.attributes('aria-busy')).toBe('true');
+    expect(button.find('m3e-loading-indicator').exists()).toBe(true);
   });
 });
