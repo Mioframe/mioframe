@@ -884,6 +884,39 @@ describe('effective verify retry scope', () => {
     ).toEqual(['--base', 'origin/develop', '--profile', 'github-actions']);
   });
 
+  it('preserves full and file scope while replacing label and profile', () => {
+    expect(
+      getVerifyRerunCommand(
+        [
+          '--fix-only',
+          '--verbose',
+          '--full',
+          '--only=visual',
+          '--profile=local',
+          '--files',
+          'tests/e2e/visual/path with space.spec.ts',
+        ],
+        { onlyLabel: 'artifact', profile: 'github-actions' },
+      ),
+    ).toBe(
+      "pnpm verify --verbose --full --files 'tests/e2e/visual/path with space.spec.ts' --profile github-actions --only artifact",
+    );
+  });
+
+  it('removes fix mode from the original read-only rerun without dropping scope', () => {
+    expect(
+      getVerifyRerunCommand([
+        '--fix',
+        '--base',
+        'origin/develop',
+        '--profile',
+        'local',
+        '--only',
+        'unit-tests',
+      ]),
+    ).toBe('pnpm verify --base origin/develop --profile local --only unit-tests');
+  });
+
   it('shell-quotes spaces, substitutions, backticks, and single quotes in file paths', () => {
     const backtick = String.fromCharCode(96);
     const unsafePath =
