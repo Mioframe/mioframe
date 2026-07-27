@@ -39,6 +39,7 @@ function isGitHubActions(processEnv = process.env) {
  * @param input.command Display command for lock metadata.
  * @param [input.cwd] Working directory for lock metadata.
  * @param [input.logPath] Associated log file or directory for diagnostics.
+ * @param [input.verifyInvocation] Structured verify invocation used for exact retry recovery.
  * @param run Callback that runs the guarded command.
  * @param [options] Optional overrides (used in testing).
  * @param [options.machineLockDirectoryPath] Override the machine lock directory path.
@@ -113,6 +114,9 @@ async function withCommandLock(kind, input, run, options = {}) {
 
   const ownerToken = crypto.randomUUID();
   const baseMetadata = {
+    ...(input.verifyInvocation === undefined
+      ? {}
+      : { verifyInvocation: input.verifyInvocation }),
     kind,
     label: input.label,
     command: input.command,
