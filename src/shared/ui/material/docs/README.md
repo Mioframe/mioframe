@@ -4,10 +4,11 @@ This directory is the canonical documentation owner for `src/shared/ui/material`
 
 ## Canonical documents
 
-- [Architecture](./architecture.md) — Material-first public API, private m3e renderer ownership, gap routing, typing, tokens, and verification.
+- [Architecture](./architecture.md) — Material-first component and token boundaries, private m3e ownership, gap routing, typing, and verification.
 - [Component adapter contract](./component-adapter.md) — required Material–m3e–Vue matrix and end-to-end workflow.
-- [Component tokens](./component-tokens.md) — demand-driven official Material token selection and private m3e mapping.
-- [Confirmed m3e defects](./m3e-defects.md) — stable `M3E-*` identities, upstream and Mioframe lifecycle statuses, exact-version evidence, mitigations, revalidation history, and removal triggers for incorrect m3e implementations.
+- [Token architecture](./component-tokens.md) — foundation, theme, component-family, application, and private token ownership.
+- [Public token API](./token-api.md) — complete consumer-facing catalogue of supported Material tokens.
+- [Confirmed m3e defects](./m3e-defects.md) — stable `M3E-*` identities, lifecycle statuses, installed-version evidence, mitigations, history, and removal triggers.
 - [Roadmap](./roadmap.md) — current milestone, blocker, and next action.
 - [Library root](../README.md) — boundary, public API, and migration state.
 
@@ -15,34 +16,57 @@ This directory is the canonical documentation owner for `src/shared/ui/material`
 
 ```text
 current Mioframe requirement
-  → selected official Material component contract
+  → selected official Material component and token contracts
   → source-backed Material–m3e–Vue matrix
-  → public Vue MD* API
+  → public Vue MD* API and supported CSS token API
   → private m3e implementation plus correctly owned gap work
-  → confirmed upstream defects linked to stable M3E-* records
   → consumer migration and risk-based verification
   → operator visual and motion review
 ```
 
-The public contract is a demand-driven subset of official Material expressed idiomatically in Vue. `@m3e/web`, `m3e-*` elements, renderer types, private DOM, and `--m3e-*` variables remain implementation details.
+The public component contract is a demand-driven subset of official Material expressed idiomatically in Vue. The public token contract contains supported `--md-ref-*`, `--md-sys-*`, and selected `--md-comp-*` declarations owned inside the Material library.
+
+`@m3e/web`, `m3e-*` elements, renderer types, private DOM, `--m3e-*`, and `--md-private-*` remain implementation details. `--app-*` remains outside Material ownership.
 
 The workflow must:
 
 - derive public naming and semantics from Material, not legacy Mioframe or m3e;
 - select only the surface required now and mark the rest deferred;
+- keep Material foundation/theme tokens under `material/foundation`;
+- keep selected component tokens and private renderer mappings in the owning family;
+- keep `token-api.md` synchronized with executable declarations;
+- avoid copying the full Material component-token catalogue or m3e defaults;
 - use m3e maximally for selected Material behavior;
-- assign remaining gaps to the Vue wrapper or m3e according to ownership;
-- distinguish absent m3e capability (`missing` in the family matrix) from confirmed incorrect m3e behavior (`divergent` plus a stable `M3E-*` record);
-- revalidate affected non-resolved defect records on every m3e version update;
+- assign remaining gaps to the Vue wrapper, foundation, component family, or m3e according to ownership;
+- distinguish absent m3e capability (`missing`) from confirmed incorrect behavior (`divergent` plus `M3E-*`);
+- revalidate affected non-resolved defects on every m3e version update;
 - resolve functionality absent from Material separately instead of silently adding it to `MD*`;
-- avoid complete documentation copies, token catalogues, renderer duplication, generic defect infrastructure, and exhaustive third-party tests.
+- avoid renderer duplication, generic defect infrastructure, token DSLs, and exhaustive third-party tests.
 
-Renderer-owned animation and private geometry are assessed through exact-version source inspection and operator manual testing. Automated tests cover the selected public Vue contract, public host geometry, and Mioframe-owned integration only.
+Installed lockfile-resolved artifacts and observable browser behavior define consumed m3e runtime behavior. Upstream source, demos, tags, and changelogs are supporting evidence only.
+
+## Token ownership migration
+
+The current mixed-owner file:
+
+```text
+src/shared/lib/md/tokens.css
+```
+
+is temporary. PR #162 must:
+
+1. move retained Material reference/system declarations to `material/foundation`;
+2. move selected component tokens to their families;
+3. move `--app-*` outside Material;
+4. co-locate private bridges with their actual owner;
+5. update the global import;
+6. populate `token-api.md`;
+7. remove the legacy file without a compatibility alias or duplicate owner.
 
 ## Workflow
 
-Use `material-component-adapter` for one explicit official Material component. Use architecture handoff for unresolved non-Material functionality, cross-family ownership, renderer strategy, public architecture decisions, or an m3e change that cannot be delivered through the accepted exact-version workaround gate.
+Use `material-component-adapter` for one explicit official Material component. Use architecture handoff for unresolved non-Material functionality, cross-family ownership, renderer strategy, or public token architecture not already resolved by these documents.
 
 ## Current next action
 
-Follow [Roadmap](./roadmap.md). PR #162 owns the architecture reset and the Material-first correction of the `MDButton` pilot.
+Follow [Roadmap](./roadmap.md). PR #162 owns token-ownership migration followed by the state-opacity and visible Button-feedback correction.

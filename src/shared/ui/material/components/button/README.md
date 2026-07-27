@@ -12,17 +12,19 @@ Canonical implementation: `src/shared/ui/material/components/button/MDButton.vue
 
 The m3e-backed Button implementation composes the canonical `MDLoadingIndicator` dependency adapter and no longer embeds raw Loading indicator renderer surface.
 
-Corrected source decisions:
+Accepted source decisions:
 
 - text toggle is supported across all five Button color configurations;
-- loading inside Button is an official Material cross-component composition, delegated to `MDLoadingIndicator`;
-- unused link/form surface is deferred and removed from the current public API;
-- determinate progress-in-button is deferred because current Button consumers use only boolean loading;
-- loading takes precedence over **both** the normal icon route and the selected-icon route (the combination of `toggle` + `selected` + a `selected-icon` slot + `loading` is a valid, tested combination, not a mutually-exclusive or unreachable one).
+- loading inside Button is an official Material cross-component composition delegated to `MDLoadingIndicator`;
+- unused link/form surface is deferred;
+- determinate progress-in-button is deferred because current consumers use only boolean loading;
+- loading takes precedence over both normal and selected-icon routes and restores the correct route afterward.
 
 Operator review found Button activation working but visible pressed feedback absent with the lockfile-resolved m3e `2.6.2`, initially recorded as an m3e ripple defect. After consuming `@m3e/web` `2.6.3` and inspecting the exact installed artifact, the real cause was identified as Mioframe's own foundation-token representation: `src/shared/lib/md/tokens.css` defined the four `--md-sys-state-*-state-layer-opacity` tokens as unitless numbers (`0.08`/`0.1`/`0.1`/`0.16`), which is invalid in the color-weight position of `color-mix()` — the CSS function m3e's `M3eStateLayerElement` uses for hover/focus presentation. The originally suspected ripple defect did not reproduce against the installed `2.6.3` artifact (its `M3eRippleElement` applies opacity and color as independent declarations, which accept unitless numbers). The former `M3E-003` registry entry was removed as a pre-merge misclassification; see `../../docs/m3e-defects.md#removed-records`. The correction is a foundation-level representation change (`8%`/`10%`/`10%`/`16%`), not a renderer upgrade, a new Mioframe ripple, or a Button-local conversion.
 
-See `../loading-indicator/README.md` for the dependency contract, its public numeric `size` API, and its exact-version renderer workaround. The dependency owns confirmed renderer defects [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented) and [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size); Button only consumes the corrected public overall-size contract.
+This is not currently a confirmed m3e defect. The provisional `M3E-003` classification was withdrawn before merge and its ID retired. The correction must audit installed m3e artifacts and all selected state-opacity consumers, then choose the compatible foundation representation or narrowest owner-local mapping. Button must not implement a second ripple.
+
+See `../loading-indicator/README.md` for the dependency contract. The dependency owns confirmed renderer defects [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented) and [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size); Button only consumes the corrected public overall-size contract.
 
 ## Official sources
 
@@ -33,7 +35,7 @@ Button:
 - `/components/buttons/guidelines`;
 - `/components/buttons/accessibility`.
 
-Related official dependencies and compositions:
+Related dependencies and compositions:
 
 - `/components/loading-indicator/overview`;
 - `/components/loading-indicator/specs`;
@@ -47,20 +49,20 @@ Renderer package:
 - declared `@m3e/web@^2.6.3`, currently resolved `2.6.3`;
 - Button adapter owns `@m3e/web/button` only;
 - `MDLoadingIndicator` owns `@m3e/web/loading-indicator`;
-- Progress indicator remains deferred and must receive its own canonical adapter before future Button composition.
+- installed package artifacts and observable browser behavior are runtime evidence;
+- upstream source, demos, tags, and changelogs are supporting evidence only.
 
 ## Confirmed official Material facts
 
 - Button has `default` and `toggle` variants.
 - Elevated, filled, tonal, outlined, and text are five color configurations.
-- Official Button guidance shows default, unselected toggle, and selected toggle across all five color configurations; text toggle is supported.
-- Button sizes are extra small, small, medium, large, and extra large; small is the default. Official `md.comp.button.<size>.icon.size` tokens are 20dp (extra-small/small), 24dp (medium), 32dp (large), 40dp (extra-large).
-- Button shapes are round and square; round is the default.
-- A Button may contain one leading icon. Toggle label and icon content may change with selected state.
-- Button interaction requires observable hover, focus, and pressed feedback; the current renderer implements pressed feedback through its state and ripple primitives.
-- Loading indicators may be placed inside buttons for short actions (`loading-indicator/guidelines`, "Placement").
-- Loading indicator is an independent Material component, not renderer-private Button anatomy.
-- Circular progress indicators may be placed inside buttons, but no current Button consumer requires determinate progress.
+- Text toggle is supported.
+- Sizes are extra small, small, medium, large, and extra large; small is default.
+- Shapes are round and square; round is default.
+- A Button may contain one leading icon; toggle content may change with selected state.
+- Button interaction requires observable hover, focus, and pressed feedback.
+- Loading indicators may be placed inside buttons for short actions.
+- Loading indicator is an independent Material component.
 
 Token-table omissions do not override positive overview or guideline evidence.
 
@@ -68,24 +70,22 @@ Token-table omissions do not override positive overview or guideline evidence.
 
 Current consumers require:
 
-- default actions;
-- controlled toggle selection;
-- filled, outlined, and text color configurations;
+- default actions and controlled toggle selection;
+- filled, outlined, and text configurations;
 - current size and shape scenarios;
-- visible and accessible label content;
-- optional leading icon and selected-state content;
+- label, leading icon, and selected-state content;
 - disabled behavior;
-- pointer, Enter, Space, focus, visible pressed feedback, and expanded target behavior;
+- pointer, Enter, Space, focus, visible interaction feedback, and expanded target behavior;
 - native `button`, `submit`, and coherent `reset` behavior;
-- boolean indeterminate loading in `RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, and `DialogForm.vue`.
+- boolean indeterminate loading in current product consumers.
 
 Not currently required:
 
-- `href`, `download`, `target`, `rel`;
-- `name`, `value`;
+- link fields;
+- `name` and `value`;
 - trailing icon;
 - determinate progress inside Button;
-- complete public Button token surface.
+- complete official Button token surface.
 
 ## Material–m3e–Vue matrix
 
@@ -105,35 +105,48 @@ Not currently required:
 | Circular progress inside Button                                                                 | no numeric consumer                      | none                                                                                                                                                                                                                                                                                                                                                                                                                                          | future canonical Progress indicator adapter                                                                                                                                                                                                      | `defer`                                                                                                                                                           |
 | Native click propagation                                                                        | yes                                      | normal bubbling plus Vue `click` emit                                                                                                                                                                                                                                                                                                                                                                                                         | `@click` (no `.stop` modifier)                                                                                                                                                                                                                   | `implement-now`                                                                                                                                                   |
 
-## Dependency
+## Token ownership
 
-Canonical dependency:
+Button owns only supported official `--md-comp-button-*` tokens and their private renderer mappings in:
 
 ```text
-src/shared/ui/material/components/loading-indicator/MDLoadingIndicator.vue
+src/shared/ui/material/components/button/tokens.css
 ```
 
-Parent boundary, as implemented:
+Shared `--md-ref-*` and `--md-sys-*` roles, including state opacity, belong to Material foundation. Button must not define a component-local public replacement for a shared system role.
+
+Every supported Button token must be listed in `../../docs/token-api.md`. Official but unsupported Button tokens remain `deferred` in this matrix.
+
+## Dependency boundary
 
 ```text
 MDButton loading state
-  → MDLoadingIndicator public Vue API (label, numeric size)
+  → MDLoadingIndicator public Vue API
       → private @m3e/web/loading-indicator mapping
 ```
 
 `MDButton` does not:
 
-- import `@m3e/web/loading-indicator`;
-- render `m3e-loading-indicator`;
-- maintain a Loading indicator ambient renderer declaration;
-- set private `--m3e-loading-indicator-*` variables;
-- own Loading indicator progressbar labeling, geometry normalization, renderer divergences, defect registry entries, or motion assessment.
+- import or render raw Loading indicator m3e;
+- set dependency-private variables;
+- own Loading indicator accessibility, geometry, defects, or motion;
+- implement or copy a ripple;
+- expose m3e token vocabulary.
 
-`MDLoadingIndicator` owns those concerns through its own matrix, implementation, tests, stories, public API, and the linked `M3E-001`/`M3E-002` records in `../../docs/m3e-defects.md`.
+## Verification
 
-## Public Button API
+Completed proof includes:
 
-The Button API:
+- public defaults and typed renderer mappings;
+- text toggle and selected content routing;
+- native button/submit/reset behavior and click bubbling;
+- disabled activation and expanded target actionability;
+- canonical Loading indicator composition;
+- accessible loading-purpose and progressbar resolution in the browser;
+- loading precedence/restoration combinations;
+- current consumer migration;
+- stable Button and Loading indicator visual baselines;
+- pointer and keyboard activation reaching host `:active`.
 
 - uses official Material terminology;
 - exposes only the current demand-scoped subset;
@@ -174,7 +187,7 @@ Pending:
 
 ## Completion gate
 
-M1 remains `migrating` and returns to `correction` until:
+M1 remains `migrating` and `correction` until:
 
 - `@m3e/web` `2.6.3` is consumed and `M3E-001`/`M3E-002` are revalidated against it, with the former `M3E-003` ripple record removed as a pre-merge misclassification (`../../docs/m3e-defects.md`);
 - the canonical Material state-opacity tokens use the percentage representation and no Button-local opacity conversion or ripple implementation exists;
