@@ -116,7 +116,7 @@ Inspect generated changes. `pnpm verify --fix` remains available as a combined c
 
 ## Final and release gates
 
-The top-level task owns exactly one final read-only verification after every implementation pass and focused proof is complete. Nested implementation and testing skills do not run separate final gates.
+The top-level task owns exactly one final read-only verification after all implementation passes and focused proof are complete. Nested implementation and testing skills do not run separate final gates.
 
 For ordinary feature-branch or PR work:
 
