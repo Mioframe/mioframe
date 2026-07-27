@@ -382,12 +382,16 @@ export function isResolvedVerifyInvocation(value) {
   }
 }
 
-export function quoteShellArg(value) {
+export export function quoteShellArg(value) {
   if (/^[A-Za-z0-9_./:-]+$/.test(value)) {
     return value;
   }
 
   return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+export function formatShellCommand(command, args = []) {
+  return [command, ...args].map(quoteShellArg).join(' ');
 }
 
 export function formatShellCommand(command, args = []) {
