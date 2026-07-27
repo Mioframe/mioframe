@@ -132,6 +132,10 @@ updateFile('src/shared/ui/Lists/MDListSelectionItem.test.ts', (source) => {
     'uses div root tag even when the parent list tag is ul (selection lists force div)',
     suppressExpectedWarning,
   );
+  next = next.replace(
+    "    expect(wrapper.get('.md-list-selection-item').element.tagName.toLowerCase()).toBe('div');    warnSpy.mockRestore();\n",
+    "    expect(wrapper.get('.md-list-selection-item').element.tagName.toLowerCase()).toBe('div');\n\n    warnSpy.mockRestore();\n",
+  );
 
   return next;
 });
