@@ -26,4 +26,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/widgets` and its descen
 ## Constraints
 
 - Widgets may depend on `features`, `entities`, and `shared`, but should remain composition-only.
-- Minimum verification: run `pnpm verify --only type-check`, then exercise the affected widget in its host page and confirm the touched action or read state still updates in place. Use focused verify-managed browser coverage when the observable behavior depends on the DOM. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.
+- Minimum verification: run `pnpm verify --only type-check`, then exercise the affected widget in its host page and confirm the touched action or read state still updates in place. Use focused verify-managed browser coverage when the observable behavior depends on the DOM.

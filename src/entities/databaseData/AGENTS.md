@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 ## Constraints
 
 - Changes here affect what rows appear in an active database view.
-- Minimum verification: run `pnpm verify --only type-check`, then edit data in an active view and confirm refresh or reopen keeps the same row set for the touched filter, sort, and default-value semantics. Use focused verify-managed tests where available. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.
+- Minimum verification: run `pnpm verify --only type-check`, then edit data in an active view and confirm refresh or reopen keeps the same row set for the touched filter, sort, and default-value semantics. Use focused verify-managed tests where available.

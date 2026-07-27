@@ -21,4 +21,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/mount
 ## Constraints
 
 - Changes here affect local directory selection, mounted-directory visibility, and disconnect flows.
-- Minimum verification: run `pnpm verify --only type-check`, then mount or disconnect the touched directory source through the existing feature and confirm the visible state updates in the consuming screen. Use focused verify-managed coverage where available. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.
+- Minimum verification: run `pnpm verify --only type-check`, then mount or disconnect the touched directory source through the existing feature and confirm the visible state updates in the consuming screen. Use focused verify-managed coverage where available.

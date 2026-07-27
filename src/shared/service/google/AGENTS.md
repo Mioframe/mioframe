@@ -23,4 +23,4 @@ Inherits the rules from `src/shared/service/AGENTS.md`. Applies to `src/shared/s
 ## Constraints
 
 - Changes here affect login state and every Google-backed flow.
-- Minimum verification: run `pnpm verify --only type-check`, run focused verify-managed Google service tests when the touched branch is covered, then verify cached session display plus the touched login, reuse, refresh, or invalidation flow in the app. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.
+- Minimum verification: run `pnpm verify --only type-check`, run focused verify-managed Google service tests when the touched branch is covered, then verify cached session display plus the touched login, reuse, refresh, or invalidation flow in the app.

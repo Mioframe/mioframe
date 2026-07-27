@@ -27,4 +27,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/features` and its desce
 ## Constraints
 
 - Features should stay replaceable composition units rather than hidden global state.
-- Minimum verification: run `pnpm verify --only type-check`, then open the touched action, exercise cancel and submit paths, and reopen it to confirm state reset or persistence behavior. Use focused verify-managed unit or browser checks for the changed flow. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.
+- Minimum verification: run `pnpm verify --only type-check`, then open the touched action, exercise cancel and submit paths, and reopen it to confirm state reset or persistence behavior. Use focused verify-managed unit or browser checks for the changed flow.

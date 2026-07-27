@@ -27,4 +27,4 @@ not add new consumers or features here — migrate to `@shared/lib/reorder` inst
 ## Constraints
 
 - Reorder changes are user-visible on touch, mouse, and hybrid devices.
-- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed sortable tests for the touched logic and verify the affected surface on both touch-style and mouse-style input. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.
+- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed sortable tests for the touched logic and verify the affected surface on both touch-style and mouse-style input.
