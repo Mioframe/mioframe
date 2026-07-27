@@ -46,10 +46,7 @@ describe('verify invocation validation', () => {
     const invocation = resolveVerifyInvocation(['--base', 'origin/develop'], LOCAL_ENV);
 
     expect(() =>
-      formatVerifyInvocationCommand(
-        { ...invocation, fixMode: 'fix', onlyLabel: 'type-check' },
-        {},
-      ),
+      formatVerifyInvocationCommand({ ...invocation, fixMode: 'fix', onlyLabel: 'type-check' }, {}),
     ).toThrow('Invalid resolved verify invocation');
   });
 });
