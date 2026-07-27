@@ -28,7 +28,8 @@ Do not route reusable component behavior into app E2E merely because the compone
 5. Wait for observable readiness and outcomes.
 6. Assert the exact public result, not a proxy that merely correlates with it.
 7. Update source-to-spec metadata when the stable impact relation changes.
-8. Run the focused lane, then final verification.
+8. Preserve the current browser project matrix unless a dedicated audited project-applicability migration explicitly changes it.
+9. Run the focused owning lane and return to the top-level task. This skill does not run a separate final gate.
 
 ## Scenario selection
 
@@ -81,10 +82,10 @@ Report limitations accurately instead of claiming unobservable animation was aut
 ## Interaction fidelity
 
 - Prefer role, accessible name, and label locators.
-- Do not invoke private APIs, component methods, or internal handlers.
+- Do not invoke private APIs, component methods, internal handlers, or synthetic internal events.
 - Lower-level setup may establish initial state only outside the behavior under test.
-- Wait for observable contracts, not arbitrary sleeps or assumed animation durations.
-- Treat detachment, lost input, or unexplained scrolling as possible product defects before weakening tests.
+- Wait for observable contracts, not Vue callbacks, DOM identity, arbitrary sleeps, or assumed animation durations.
+- Treat detachment, lost ordinary input, or unexplained scrolling as possible product defects before weakening tests.
 - Do not use `force`, broad retries, or recovery loops that may repeat an already-delivered action.
 
 ## Accessibility
@@ -100,18 +101,24 @@ This proof owns real focus order, keyboard operation, focus restoration, pointer
 
 ## Impact metadata
 
+For the owning Playwright lane:
+
 - map production, story, fixture, or owned support sources to specs;
 - do not use spec paths as source prefixes to group tests;
 - a changed spec selects itself;
 - use standalone only when no truthful stable source mapping exists;
-- shared helpers require full-lane fallback unless all consumers are explicit;
+- shared config/helpers require full-lane fallback unless all consumers are explicit and validated;
 - new, moved, renamed, or removed specs update the registry in the same change.
 
 ## Mobile and responsive execution
 
 Source impact chooses scenarios; project applicability belongs to persistent test metadata.
 
-Do not reduce established desktop/mobile coverage without a dedicated audited migration. Reusable responsive UI normally uses focused Storybook viewports rather than duplicated full product scenarios.
+Current selected app E2E scenarios continue to use the existing desktop/mobile project matrix until every scenario is audited and a separate migration proves that narrower execution preserves mobile-risk coverage.
+
+Do not introduce a generic criticality tag as a substitute for real touch, viewport, responsive composition, overlay, capability, lifecycle, or platform differences.
+
+Reusable responsive UI normally uses focused Storybook viewports rather than duplicating complete product scenarios.
 
 ## Commands
 
@@ -119,6 +126,8 @@ Do not reduce established desktop/mobile coverage without a dedicated audited mi
 pnpm verify --only storybook-behavior --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
+
+Preserve applicable `--base`, `--profile`, and `--files` scope when rerunning a failed browser lane. The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
 
 ## Forbidden
 
@@ -128,6 +137,7 @@ pnpm verify --only e2e --files <paths...>
 - screenshots in behavior specs;
 - architectural boundary violations to simplify setup;
 - source mappings overloaded with spec grouping;
+- reducing desktop/mobile coverage without the dedicated audited migration;
 - declaration-only CSS assertions presented as rendered proof;
 - private renderer DOM, Lit internals, or third-party animation parameters;
 - proxy assertions presented as proof of a different contract;
