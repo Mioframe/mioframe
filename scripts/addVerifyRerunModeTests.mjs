@@ -6,7 +6,8 @@ const rootDir = process.cwd();
 const selfPath = fileURLToPath(import.meta.url);
 const testPath = path.join(rootDir, 'scripts/verify.test.mjs');
 const content = fs.readFileSync(testPath, 'utf8');
-const marker = "  it('shell-quotes spaces, substitutions, backticks, and single quotes in file paths', () => {";
+const marker =
+  "  it('shell-quotes spaces, substitutions, backticks, and single quotes in file paths', () => {";
 
 if (!content.includes(marker)) {
   throw new Error('Expected verify rerun test insertion point');
