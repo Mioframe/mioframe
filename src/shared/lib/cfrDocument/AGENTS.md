@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/c
 ## Constraints
 
 - Any change here needs a backward-compatibility check.
-- Minimum verification: run `pnpm verify --only type-check`, then verify the touched legacy caller still loads and migrates the relevant document or repo state through focused verify-managed coverage. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then verify the touched legacy caller still loads and migrates the relevant document or repo state through focused verify-managed coverage. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

@@ -11,7 +11,11 @@ import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
-import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
+import {
+  getChangedFileProjection,
+  getVerifyBaseRef,
+  resolveChangedPathsScope,
+} from './lib/changedPaths.mjs';
 import {
   comparePlaywrightContainerProfiles,
   resolvePlaywrightContainerProfile,
@@ -20,12 +24,13 @@ import {
 
 applyProjectEnv();
 
-const cliArgs = process.argv.slice(2);
-const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
-const isFixMode = process.argv.includes('--fix');
-const isFixOnlyMode = process.argv.includes('--fix-only');
-const isVerboseMode = process.argv.includes('--verbose');
-const isFullMode = process.argv.includes('--full');
+const rawCliArgs = process.argv.slice(2);
+const isHelpMode = process.argv.includes('--help') || rawCliArgs.includes('help');
+const cliArgs = isHelpMode ? rawCliArgs : getEffectiveVerifyArgs(rawCliArgs);
+const isFixMode = cliArgs.includes('--fix');
+const isFixOnlyMode = cliArgs.includes('--fix-only');
+const isVerboseMode = cliArgs.includes('--verbose');
+const isFullMode = cliArgs.includes('--full');
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
 const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
 const VERIFY_LABELS = [
@@ -258,6 +263,53 @@ function validateProfile(profile) {
       '\n',
     ),
   );
+}
+
+function removeCliOption(argv, flag) {
+  const args = [];
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+
+    if (argument === flag) {
+      index += 1;
+      continue;
+    }
+
+    if (argument.startsWith(`${flag}=`)) {
+      continue;
+    }
+
+    args.push(argument);
+  }
+
+  return args;
+}
+
+/**
+ * Normalize the verify CLI to the effective repository scope used by the runner.
+ * Environment-derived base/profile values become explicit so summaries, lock metadata,
+ * and copied retry commands preserve the same behavior outside the original process.
+ * @param argv Raw verify CLI arguments.
+ * @param [processEnv] Environment used to resolve GitHub/base/profile defaults.
+ * @returns Effective verify arguments with explicit base and profile values.
+ */
+export function getEffectiveVerifyArgs(argv, processEnv = process.env) {
+  const explicitBaseRef = getCliBaseRef(argv);
+  const githubBaseRef = processEnv.GITHUB_BASE_REF ? `origin/${processEnv.GITHUB_BASE_REF}` : null;
+  const effectiveBaseRef = githubBaseRef ?? explicitBaseRef ?? getVerifyBaseRef(processEnv);
+  const explicitProfile = getCliProfile(argv);
+  const effectiveProfile = resolvePlaywrightContainerProfile(
+    getVerifyProcessEnv(processEnv, explicitProfile),
+  ).name;
+  const argsWithoutResolvedOptions = removeCliOption(removeCliOption(argv, '--base'), '--profile');
+
+  if (effectiveBaseRef !== null) {
+    argsWithoutResolvedOptions.push('--base', effectiveBaseRef);
+  }
+
+  argsWithoutResolvedOptions.push('--profile', effectiveProfile);
+  return argsWithoutResolvedOptions;
 }
 
 /**
@@ -559,7 +611,13 @@ function getMutationScope(changedFiles) {
 }
 
 function quoteArg(value) {
-  return /^[A-Za-z0-9_./:-]+$/.test(value) ? value : JSON.stringify(value);
+  if (/^[A-Za-z0-9_./:-]+$/.test(value)) {
+    return value;
+  }
+
+  const singleQuote = String.fromCharCode(39);
+  const escapedSingleQuote = singleQuote + '\\' + singleQuote + singleQuote;
+  return singleQuote + value.replaceAll(singleQuote, escapedSingleQuote) + singleQuote;
 }
 
 function formatCommand(command, args) {
@@ -1956,7 +2014,7 @@ export async function runVerifyCli(deps = {}) {
 
   await withVerifyLock(
     {
-      command: ['pnpm', 'verify', ...cliArgs].join(' ').trim(),
+      command: formatCommand('pnpm', ['verify', ...cliArgs]),
       label: 'verify',
       logPath: VERIFY_LOG_DIR,
     },

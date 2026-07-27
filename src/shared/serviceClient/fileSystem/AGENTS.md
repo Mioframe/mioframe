@@ -14,4 +14,4 @@ Inherits the rules from `src/shared/serviceClient/AGENTS.md`. Applies to main-th
 
 ## Constraints
 
-- Use focused verify-managed browser coverage for changed permission or picker behavior. Final completion still requires `pnpm verify`.
+- Use focused verify-managed browser coverage for changed permission or picker behavior. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

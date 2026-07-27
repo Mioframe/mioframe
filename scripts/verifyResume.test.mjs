@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { getEffectiveVerifyArgs, getVerifyRerunCommand } from './verify.mjs';
 import { getRetryInstruction, resumeVerification } from './verifyResume.mjs';
 
 const tempDirs = [];
@@ -150,5 +151,19 @@ describe('resumeVerification', () => {
     expect(logs.join('\n')).toContain('Re-run the original task-scope verify command');
     expect(logs.join('\n')).not.toContain('Run `pnpm verify` again.');
     expect(forbiddenTermsIn(logs.join('\n'))).toEqual([]);
+  });
+});
+
+describe('effective retry metadata integration', () => {
+  it('round-trips the effective CI scope through retry metadata', () => {
+    const effectiveArgs = getEffectiveVerifyArgs(['--only', 'e2e'], {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_BASE_REF: 'develop',
+    });
+    const command = getVerifyRerunCommand(effectiveArgs);
+
+    expect(getRetryInstruction({ command })).toBe(
+      '  Run `pnpm verify --only e2e --base origin/develop --profile github-actions` again.',
+    );
   });
 });

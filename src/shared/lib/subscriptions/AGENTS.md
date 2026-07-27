@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/s
 ## Constraints
 
 - Subscription changes affect client and service code at once.
-- Minimum verification: run `pnpm verify --only type-check`, then verify subscribe, initial value, update, unsubscribe, resubscribe, and dedupe behavior for the touched key shape through focused verify-managed tests. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then verify subscribe, initial value, update, unsubscribe, resubscribe, and dedupe behavior for the touched key shape through focused verify-managed tests. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

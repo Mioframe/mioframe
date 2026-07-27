@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/datab
 ## Constraints
 
 - Property contract changes affect rendering, editors, filters, sorting, and persistence.
-- Minimum verification: run `pnpm verify --only type-check`, then confirm the touched property kind still renders in list or table surfaces and remains usable from create, edit, filter, or sort flows. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then confirm the touched property kind still renders in list or table surfaces and remains usable from create, edit, filter, or sort flows. Use focused verify-managed coverage where available. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

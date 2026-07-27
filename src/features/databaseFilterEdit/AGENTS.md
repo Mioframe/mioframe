@@ -20,4 +20,4 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 ## Constraints
 
 - Changes here must stay compatible with persisted view filters and row matching.
-- Minimum verification: run `pnpm verify --only type-check`, then add or edit the touched filter shape, save it, reopen the same view, and confirm both the rendered chips and the resulting row set still match. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then add or edit the touched filter shape, save it, reopen the same view, and confirm both the rendered chips and the resulting row set still match. Use focused verify-managed coverage where available. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

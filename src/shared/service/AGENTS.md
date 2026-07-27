@@ -34,4 +34,4 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/service` 
 
 - Service changes often affect every caller above this layer.
 - Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed tests or reproducible checks for the touched contract, including invalidation and reload behavior after a mutation.
-- When changing public service exports, also run `pnpm verify --only oxlint` and confirm UI/FSD layers import only from `@shared/service`, not from `@shared/service/*` or relative `shared/service/**` paths. Final completion still requires `pnpm verify`.
+- When changing public service exports, also run `pnpm verify --only oxlint` and confirm UI/FSD layers import only from `@shared/service`, not from `@shared/service/*` or relative `shared/service/**` paths. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

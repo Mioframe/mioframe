@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/serviceCl
 ## Constraints
 
 - Keep imports directed downward into `shared` infrastructure and approved service proxies only.
-- Use verify-managed browser coverage when a client adapter changes a user-activation or permission flow. Final completion still requires `pnpm verify`.
+- Use verify-managed browser coverage when a client adapter changes a user-activation or permission flow. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

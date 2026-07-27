@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/g
 ## Constraints
 
 - Changes here affect Drive-backed reads, cache freshness, and mutation follow-up behavior.
-- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed Drive tests when available and verify the touched query or cache path for cache hit, cache bust, and normalized error handling. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed Drive tests when available and verify the touched query or cache path for cache hit, cache bust, and normalized error handling. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

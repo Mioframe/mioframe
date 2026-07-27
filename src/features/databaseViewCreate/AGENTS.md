@@ -20,4 +20,4 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 ## Constraints
 
 - Changes here must stay compatible with view selection, sorting, filtering, and persistence flows.
-- Minimum verification: run `pnpm verify --only type-check`, then create a view using the touched defaults, switch to it, and refresh or reopen the document to confirm the selected layout persisted. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then create a view using the touched defaults, switch to it, and refresh or reopen the document to confirm the selected layout persisted. Use focused verify-managed coverage where available. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.

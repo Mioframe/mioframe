@@ -20,4 +20,4 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 ## Constraints
 
 - Changes here affect multiple property kinds at once.
-- Minimum verification: run `pnpm verify --only type-check`, then add or edit an item using the touched property kinds, save and reopen to confirm persistence, and verify the cancel path leaves stored data unchanged. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then add or edit an item using the touched property kinds, save and reopen to confirm persistence, and verify the cancel path leaves stored data unchanged. Use focused verify-managed coverage where available. Final completion uses the single task-scope gate defined by the root `AGENTS.md`; this nested minimum does not add another command boundary.
