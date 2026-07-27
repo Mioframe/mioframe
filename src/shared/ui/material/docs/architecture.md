@@ -88,12 +88,13 @@ Framework adaptation such as Vue emits, `v-model`, slots, refs, and native HTML 
 - controlled-state synchronization;
 - native web integration;
 - narrow Mioframe-owned light DOM needed to complete selected Material behavior;
-- public Material token mapping selected for current use.
+- public Material token mapping selected for current use;
+- public geometry normalization and host-level sizing required to represent the selected Material contract, provided it does not inspect or recreate the renderer's private geometry engine.
 
 ### m3e owns
 
 - internal rendering and private DOM;
-- component geometry and internal layout;
+- the private geometry engine and internal layout;
 - state layer, ripple, focus, elevation, and motion;
 - private accessibility implementation;
 - documented renderer CSS inputs and defaults.
@@ -102,11 +103,14 @@ Framework adaptation such as Vue emits, `v-model`, slots, refs, and native HTML 
 
 When m3e does not fully implement a selected Material capability:
 
-- use `wrapper-correction` for explicit Vue mapping, events, controlled state, native integration, or light-DOM composition that does not recreate renderer internals;
-- use `m3e-fix` for renderer geometry, private DOM, state-layer, ripple, focus, elevation, motion, or private accessibility behavior;
+- use `wrapper-correction` for explicit Vue mapping, events, controlled state, native integration, public geometry normalization, or light-DOM composition that does not recreate renderer internals;
+- use `temporary-renderer-workaround` only for a confirmed exact-version divergence that can be corrected through a host-level property, attribute, CSS custom property, or host dimension inside the canonical owner under the complete gate in `component-adapter.md`;
+- use `m3e-fix` for the underlying private DOM, geometry engine, state-layer, ripple, focus, elevation, motion, or private accessibility defect;
 - use `blocked` only when neither owner can deliver the selected Material contract safely.
 
-Mioframe may contribute the required renderer fix to m3e or temporarily consume an approved version containing it. Do not create a parallel Material renderer inside the Vue wrapper.
+A temporary renderer workaround is a narrow delivery bridge, not a transfer of the private renderer system into Mioframe. It must remain removable, exact-version-recorded, independently tested, and absent from parent adapters and public APIs.
+
+Mioframe may contribute the underlying renderer fix to m3e and remove the workaround after consuming a corrected version. Do not create a parallel Material renderer inside the Vue wrapper.
 
 ## Non-Material requirements
 
@@ -156,7 +160,8 @@ For each selected or closely deferred Material capability, record:
 - exact m3e behavior and version;
 - Vue exposure status;
 - current requirement status;
-- owner and decision: `accept`, `defer`, `wrapper-correction`, `m3e-fix`, or `blocked`.
+- owner and decision: `accept`, `defer`, `wrapper-correction`, `temporary-renderer-workaround`, `m3e-fix`, `blocked`, or `source-conflict`;
+- for a temporary workaround, risk, exact host-level input, independent proof, long-term owner `m3e-fix`, and removal trigger.
 
 A difference in internal implementation is not a divergence when the observable Material result is equivalent.
 
@@ -166,12 +171,12 @@ Verification proves:
 
 - the selected public Vue API matches the accepted Material matrix;
 - Material-to-m3e mappings are package-type checked;
-- wrapper-owned behavior is correct;
+- wrapper-owned behavior and public geometry normalization are correct;
 - current consumers use the canonical component;
 - visual baselines cover stable selected Material states with meaningful risk;
 - final repository verification passes.
 
-Renderer-owned animation is verified by exact-version source inspection plus operator manual review. Proxy host assertions do not prove private animation lifecycle.
+Renderer-owned animation and private geometry implementation are verified by exact-version source inspection plus operator manual review. Proxy host assertions prove only the public host contract, not private renderer lifecycle or internal geometry.
 
 ## Completion
 
@@ -181,7 +186,7 @@ A component migration is complete when:
 - every public `MD*` capability has an official Material source;
 - non-Material requirements have explicit composition, separate-component, or extension decisions;
 - selected Material capabilities are implemented by the correct owner;
-- deferred Material surface and m3e divergences are recorded;
+- deferred Material surface, m3e divergences, and temporary exact-version workarounds are recorded with their risks and removal triggers;
 - one canonical Vue owner remains and consumers are migrated;
 - type-check, focused tests, visual verification, and repository verification pass;
 - operator accepts the final visual and motion behavior.
