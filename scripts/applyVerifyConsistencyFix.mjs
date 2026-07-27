@@ -112,4 +112,6 @@ replaceOnce(
   'It uses NUL-delimited, status-aware Git output (`git diff --name-status -z --find-renames --diff-filter=ADMRT`) for local, local-base (fork-point), and GitHub Actions (merge-base) planning, and preserves `packageJsonOldRef` package comparison support for every Git-backed scope. `scripts/verify.mjs` consumes the invocation resolved by `verifyInvocation`, calls `resolveChangedPathsScope()` only for non-full changed-path execution, and uses `getChangedFileProjection()` to obtain the transitional string-path list its current command planners still consume (see "Diff planning" above).',
 );
 
-console.log('[verify-consistency-fix] updated verify help, shell formatting, skill, and migration ownership');
+console.log(
+  '[verify-consistency-fix] updated verify help, shell formatting, skill, and migration ownership',
+);
