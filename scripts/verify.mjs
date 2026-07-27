@@ -127,10 +127,6 @@ const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx
 const SOURCE_EXTENSIONS = ['.ts', '.vue'];
 const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
-function toPosixPath(filePath) {
-  return filePath.split(path.sep).join(path.posix.sep);
-}
-
 function isFormatLintIgnored(filePath) {
   return FORMAT_LINT_IGNORED_PREFIXES.some(
     (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
