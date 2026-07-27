@@ -21,4 +21,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/d
 ## Constraints
 
 - Changes here affect old-document loading, services, entities, and import or export behavior.
-- Minimum verification: run `pnpm verify --only type-check`, then verify the touched schema path against validation, migration from an older payload, and effective-value behavior when defaults are involved through focused verify-managed tests. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then verify the touched schema path against validation, migration from an older payload, and effective-value behavior when defaults are involved through focused verify-managed tests.

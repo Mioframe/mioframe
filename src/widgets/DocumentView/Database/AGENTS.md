@@ -24,4 +24,4 @@ Inherits the rules from `src/widgets/AGENTS.md`. Applies to `src/widgets/Documen
 ## Constraints
 
 - Changes here affect multiple property and value types at once.
-- Minimum verification: run `pnpm verify --only type-check`, then open a database document, exercise the touched inline or sheet flow, and refresh or reopen the same view to confirm the rendered state still persists correctly. Use focused verify-managed browser coverage where available. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then open a database document, exercise the touched inline or sheet flow, and refresh or reopen the same view to confirm the rendered state still persists correctly. Use focused verify-managed browser coverage where available.

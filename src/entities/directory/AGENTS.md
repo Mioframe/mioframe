@@ -20,4 +20,4 @@ Inherits the rules from `src/entities/AGENTS.md`. Applies to `src/entities/direc
 ## Constraints
 
 - Changes here affect repository and local-filesystem navigation surfaces.
-- Minimum verification: run `pnpm verify --only type-check`, then enter the touched directory view, trigger a rename, create, or remove flow through the existing features, and confirm the listing updates without losing navigation state. Use focused verify-managed browser coverage when available. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then enter the touched directory view, trigger a rename, create, or remove flow through the existing features, and confirm the listing updates without losing navigation state. Use focused verify-managed browser coverage when available.

@@ -281,7 +281,7 @@ describe('runPlaywrightInContainer', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     try {
-      await withProcessEnv({ GITHUB_ACTIONS: 'false' }, async () => {
+      await withProcessEnv({ GITHUB_ACTIONS: 'false', [VERIFY_PROFILE_ENV]: 'local' }, async () => {
         await runPlaywrightInContainer(
           {
             ...baseOptions,

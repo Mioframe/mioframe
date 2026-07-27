@@ -20,4 +20,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/app` and its descendant
 ## Constraints
 
 - Any new global dependency must justify its startup cost and lifetime.
-- Minimum verification: run `pnpm verify --only type-check`, then exercise cold start into the default route, deep-link into the touched route, and refresh that route. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then exercise cold start into the default route, deep-link into the touched route, and refresh that route.
