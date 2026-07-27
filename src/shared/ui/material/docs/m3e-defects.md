@@ -60,15 +60,15 @@ Mioframe status:
 
 ## Summary
 
-| ID | Component | Summary | Affected version | Mioframe status | Upstream status |
-| --- | --- | --- | --- | --- | --- |
-| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2` | `workaround-active` | `unreported` |
-| `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size | `2.6.2` | `workaround-active` | `unreported` |
+| ID        | Component         | Summary                                                                 | Affected version | Mioframe status     | Upstream status |
+| --------- | ----------------- | ----------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
+| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`          | `workaround-active` | `unreported`    |
+| `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size   | `2.6.2`          | `workaround-active` | `unreported`    |
 
 ## Retired pre-merge IDs
 
-| ID | Reason | Reuse |
-| --- | --- | --- |
+| ID        | Reason                                                                                                                                                                                                                                                                                                                                       | Reuse     |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | `M3E-003` | Withdrawn during PR #162 calibration. The missing Button ripple is currently proven as an incompatibility between Mioframe's unitless state-opacity representation and the percentage-compatible consumed renderer path. It is not a confirmed m3e defect unless installed-artifact and documented-contract evidence later proves otherwise. | forbidden |
 
 The Button family keeps the current interaction issue in its family matrix as an integration/foundation correction until the installed package and all selected token consumers are audited. Do not reference `M3E-003` as a confirmed defect.
@@ -135,9 +135,9 @@ Mioframe consumes an m3e version whose documented active-indicator size input is
 
 ### Revalidation history
 
-| m3e version | Date | Result | Evidence |
-| --- | --- | --- | --- |
-| `2.6.2` | 2026-07-27 | confirmed | installed artifact inspection and focused mapping tests |
+| m3e version | Date       | Result    | Evidence                                                |
+| ----------- | ---------- | --------- | ------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | installed artifact inspection and focused mapping tests |
 
 ## M3E-002 — Uncontained host size is coupled to active-indicator size
 
@@ -193,9 +193,9 @@ Mioframe consumes a version with independent Material-correct sizing, removes ex
 
 ### Revalidation history
 
-| m3e version | Date | Result | Evidence |
-| --- | --- | --- | --- |
-| `2.6.2` | 2026-07-27 | confirmed | installed artifact inspection, host geometry tests, and inspected baselines |
+| m3e version | Date       | Result    | Evidence                                                                    |
+| ----------- | ---------- | --------- | --------------------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | installed artifact inspection, host geometry tests, and inspected baselines |
 
 ## Update protocol
 

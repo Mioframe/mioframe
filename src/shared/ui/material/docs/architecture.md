@@ -52,7 +52,7 @@ Do not implement the full Material catalogue merely for completeness. Do not let
 Before implementation, the family README must include:
 
 | Material contract and source | Required now and evidence | Public Vue API | m3e support | Owner | Decision | Verification |
-| --- | --- | --- | --- | --- | --- | --- |
+| ---------------------------- | ------------------------- | -------------- | ----------- | ----- | -------- | ------------ |
 
 The matrix must cover all public props, values, slots, events, controlled state, defaults, native semantics, accessibility behavior, selected tokens, materially relevant visual/motion behavior, and required dependencies.
 

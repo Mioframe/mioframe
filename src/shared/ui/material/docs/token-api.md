@@ -20,12 +20,12 @@ Official Material tokens not yet supported remain `deferred` in the relevant com
 
 ## Runtime owners
 
-| Namespace | Runtime owner | Meaning |
-| --- | --- | --- |
-| `--md-ref-*` | `src/shared/ui/material/foundation/tokens.css` or `foundation/theme.css` | supported Material reference values |
-| `--md-sys-*` | `src/shared/ui/material/foundation/tokens.css` or `foundation/theme.css` | supported Material system and theme roles |
-| `--md-comp-*` | `src/shared/ui/material/components/<family>/tokens.css` | supported official component-family customization |
-| `--app-*` | outside `src/shared/ui/material` | application extension, not Material API |
+| Namespace     | Runtime owner                                                            | Meaning                                           |
+| ------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| `--md-ref-*`  | `src/shared/ui/material/foundation/tokens.css` or `foundation/theme.css` | supported Material reference values               |
+| `--md-sys-*`  | `src/shared/ui/material/foundation/tokens.css` or `foundation/theme.css` | supported Material system and theme roles         |
+| `--md-comp-*` | `src/shared/ui/material/components/<family>/tokens.css`                  | supported official component-family customization |
+| `--app-*`     | outside `src/shared/ui/material`                                         | application extension, not Material API           |
 
 Private namespaces:
 
@@ -38,17 +38,17 @@ Private namespaces are excluded from this catalogue.
 
 Every supported token must have an entry with:
 
-| Field | Required content |
-| --- | --- |
-| Token | exact CSS custom-property name |
-| Grammar | accepted CSS value grammar |
-| Purpose | Material semantic role |
-| Default | canonical default or fallback source |
-| Scope | foundation, theme, or component family |
-| Owner | canonical declaration file |
-| Material source | official token/role source |
+| Field            | Required content                                           |
+| ---------------- | ---------------------------------------------------------- |
+| Token            | exact CSS custom-property name                             |
+| Grammar          | accepted CSS value grammar                                 |
+| Purpose          | Material semantic role                                     |
+| Default          | canonical default or fallback source                       |
+| Scope            | foundation, theme, or component family                     |
+| Owner            | canonical declaration file                                 |
+| Material source  | official token/role source                                 |
 | Renderer mapping | direct system consumption, documented m3e mapping, or none |
-| Verification | representative contract/browser/visual proof |
+| Verification     | representative contract/browser/visual proof               |
 
 ## Foundation catalogue
 
@@ -73,8 +73,8 @@ Each migrated component family adds only its supported official `--md-comp-*` su
 
 Example entry shape:
 
-| Token | Grammar | Purpose | Default | Scope | Owner | Material source | Renderer mapping | Verification |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Token                                            | Grammar   | Purpose                          | Default                       | Scope            | Owner                            | Material source               | Renderer mapping                  | Verification                  |
+| ------------------------------------------------ | --------- | -------------------------------- | ----------------------------- | ---------------- | -------------------------------- | ----------------------------- | --------------------------------- | ----------------------------- |
 | `--md-comp-<family>-<variant>-<part>-<property>` | `<color>` | selected official component role | a supported `--md-sys-*` role | component family | `components/<family>/tokens.css` | official component token path | documented family-local m3e input | representative override proof |
 
 Do not add placeholder entries for the complete Material component-token catalogue. Unsupported official tokens remain visible only as `deferred` rows in the family matrix.

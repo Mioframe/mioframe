@@ -70,7 +70,7 @@ If the public API permits states simultaneously, treat the combination as valid 
 Before production edits, update the selected family README and every required dependency family README.
 
 | Material contract and exact source | Required now and evidence | Public Vue representation | m3e exact-version support | Owner | Decision | Verification |
-| --- | --- | --- | --- | --- | --- | --- |
+| ---------------------------------- | ------------------------- | ------------------------- | ------------------------- | ----- | -------- | ------------ |
 
 Cover every selected public prop, value, default, slot, emit, controlled state, native mapping, token, relevant combination, cross-component composition, dependency, divergence, and proof.
 

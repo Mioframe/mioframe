@@ -68,7 +68,7 @@ Using m3e means Mioframe does not reproduce every Material component token or re
 Every migrated component owns a Material–m3e–Vue matrix in its family README:
 
 | Material contract | Required now | Public Vue/token API | m3e support | Owner | Decision |
-| --- | --- | --- | --- | --- | --- |
+| ----------------- | ------------ | -------------------- | ----------- | ----- | -------- |
 
 The matrix distinguishes selected Material API, deferred Material API, renderer gaps, wrapper corrections, m3e fixes, and non-Material requirements.
 
@@ -119,16 +119,16 @@ Every m3e version update revalidates affected non-resolved `M3E-*` records again
 
 ## Migration map
 
-| Area | Current state |
-| --- | --- |
-| `MDButton` | m3e-backed pilot in correction |
-| `MDLoadingIndicator` | canonical dependency adapter in correction |
-| Other public `MD*` components | legacy-owned until focused migration |
-| Shared m3e integration | established |
-| Confirmed m3e defect registry | established |
-| Public component entry point | established |
-| Material foundation/theme runtime owner | migration required |
-| Public token catalogue | established, population required during migration |
+| Area                                    | Current state                                     |
+| --------------------------------------- | ------------------------------------------------- |
+| `MDButton`                              | m3e-backed pilot in correction                    |
+| `MDLoadingIndicator`                    | canonical dependency adapter in correction        |
+| Other public `MD*` components           | legacy-owned until focused migration              |
+| Shared m3e integration                  | established                                       |
+| Confirmed m3e defect registry           | established                                       |
+| Public component entry point            | established                                       |
+| Material foundation/theme runtime owner | migration required                                |
+| Public token catalogue                  | established, population required during migration |
 
 ## Current work
 

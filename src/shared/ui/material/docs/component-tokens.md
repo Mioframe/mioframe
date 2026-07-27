@@ -15,14 +15,14 @@ application theme selection and overrides
 
 The physical owner must match the semantic owner:
 
-| Contract | Canonical runtime owner | Public status |
-| --- | --- | --- |
-| Material reference and system foundations | `src/shared/ui/material/foundation/tokens.css` | public when declared and catalogued |
-| Default palette and light/dark system color assignments | `src/shared/ui/material/foundation/theme.css` | public theme contract when declared and catalogued |
-| Selected official component tokens | `src/shared/ui/material/components/<family>/tokens.css` | public for that family |
-| Private renderer mappings and owner-local bridges | the owning foundation or component family | private |
-| Approved application tokens (`--app-*`) | outside `src/shared/ui/material` | application API, not Material API |
-| Public token catalogue | `src/shared/ui/material/docs/token-api.md` | consumer-facing documentation |
+| Contract                                                | Canonical runtime owner                                 | Public status                                      |
+| ------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| Material reference and system foundations               | `src/shared/ui/material/foundation/tokens.css`          | public when declared and catalogued                |
+| Default palette and light/dark system color assignments | `src/shared/ui/material/foundation/theme.css`           | public theme contract when declared and catalogued |
+| Selected official component tokens                      | `src/shared/ui/material/components/<family>/tokens.css` | public for that family                             |
+| Private renderer mappings and owner-local bridges       | the owning foundation or component family               | private                                            |
+| Approved application tokens (`--app-*`)                 | outside `src/shared/ui/material`                        | application API, not Material API                  |
+| Public token catalogue                                  | `src/shared/ui/material/docs/token-api.md`              | consumer-facing documentation                      |
 
 `--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace is part of the public token catalogue.
 

@@ -79,11 +79,11 @@ The adapter sets host width/height from public overall size and maps the effecti
 Examples:
 
 | Public size | Host size | Active-size input |
-| --- | --- | --- |
-| `24` | `24px` | `19px` |
-| `32` | `32px` | `25.333333…px` |
-| `40` | `40px` | `31.666667…px` |
-| `48` | `48px` | `38px` |
+| ----------- | --------- | ----------------- |
+| `24`        | `24px`    | `19px`            |
+| `32`        | `32px`    | `25.333333…px`    |
+| `40`        | `40px`    | `31.666667…px`    |
+| `48`        | `48px`    | `38px`            |
 
 ## Button composition mapping
 
@@ -117,18 +117,18 @@ Both defects must be revalidated against installed m3e `2.6.3`. The workaround r
 
 ## Material–m3e–Vue matrix
 
-| Material contract | Required now | Public Vue/token API | Installed m3e mapping | Owner and decision | Verification |
-| --- | --- | --- | --- | --- | --- |
-| Component identity | yes | canonical exported `MDLoadingIndicator` | `m3e-loading-indicator` | `implement-now` | unit, story, visual proof |
-| Uncontained presentation | yes | no variant prop | renderer default | `implement-now` | story/browser |
-| Contained presentation | no | none | renderer supports it | `defer` | none |
-| Indeterminate process | yes | mounted while parent loading is true | renderer indeterminate | `implement-now` | unit/browser |
-| Accessible purpose and progressbar | yes | required `label` | wrapper supplies accessible name; renderer supplies role | `wrapper-correction` | real browser role/name |
-| Inherited active color | yes | inherited `currentColor` | documented active color input | `implement-now` | visual proof |
-| Overall and active geometry | yes | numeric overall `size` | `M3E-001`/`M3E-002` workaround pending 2.6.3 revalidation | `temporary-renderer-workaround` | unit, host-box, visual |
-| Official component tokens | demand-driven | future supported `--md-comp-loading-indicator-*` entries in family `tokens.css` and `token-api.md` | family-local documented mappings | currently `defer`; props/inherited color satisfy demand | none until selected |
-| Renderer motion | yes | no public motion controls selected | renderer-owned | assess installed 2.6.3 and operator review | pending |
-| Forced colors | yes | none needed | renderer-owned | accept if verified | operator/browser as applicable |
+| Material contract                  | Required now  | Public Vue/token API                                                                               | Installed m3e mapping                                     | Owner and decision                                      | Verification                   |
+| ---------------------------------- | ------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------- | ------------------------------ |
+| Component identity                 | yes           | canonical exported `MDLoadingIndicator`                                                            | `m3e-loading-indicator`                                   | `implement-now`                                         | unit, story, visual proof      |
+| Uncontained presentation           | yes           | no variant prop                                                                                    | renderer default                                          | `implement-now`                                         | story/browser                  |
+| Contained presentation             | no            | none                                                                                               | renderer supports it                                      | `defer`                                                 | none                           |
+| Indeterminate process              | yes           | mounted while parent loading is true                                                               | renderer indeterminate                                    | `implement-now`                                         | unit/browser                   |
+| Accessible purpose and progressbar | yes           | required `label`                                                                                   | wrapper supplies accessible name; renderer supplies role  | `wrapper-correction`                                    | real browser role/name         |
+| Inherited active color             | yes           | inherited `currentColor`                                                                           | documented active color input                             | `implement-now`                                         | visual proof                   |
+| Overall and active geometry        | yes           | numeric overall `size`                                                                             | `M3E-001`/`M3E-002` workaround pending 2.6.3 revalidation | `temporary-renderer-workaround`                         | unit, host-box, visual         |
+| Official component tokens          | demand-driven | future supported `--md-comp-loading-indicator-*` entries in family `tokens.css` and `token-api.md` | family-local documented mappings                          | currently `defer`; props/inherited color satisfy demand | none until selected            |
+| Renderer motion                    | yes           | no public motion controls selected                                                                 | renderer-owned                                            | assess installed 2.6.3 and operator review              | pending                        |
+| Forced colors                      | yes           | none needed                                                                                        | renderer-owned                                            | accept if verified                                      | operator/browser as applicable |
 
 ## Token ownership
 

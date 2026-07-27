@@ -68,7 +68,7 @@ The parent owns composition meaning, placement, and state handoff. The dependenc
 Before production edits, the parent and every dependency family README must contain:
 
 | Material contract and exact source | Required now and evidence | Public Vue representation | m3e exact-version support | Owner | Decision | Verification |
-| --- | --- | --- | --- | --- | --- | --- |
+| ---------------------------------- | ------------------------- | ------------------------- | ------------------------- | ----- | -------- | ------------ |
 
 Each relevant row identifies:
 
@@ -130,12 +130,12 @@ The token contract follows `component-tokens.md` and `token-api.md`.
 
 Canonical runtime owners:
 
-| Token layer | Owner |
-| --- | --- |
-| supported reference/system foundations | `src/shared/ui/material/foundation/tokens.css` |
-| default palette and light/dark color roles | `src/shared/ui/material/foundation/theme.css` |
+| Token layer                                              | Owner                                                   |
+| -------------------------------------------------------- | ------------------------------------------------------- |
+| supported reference/system foundations                   | `src/shared/ui/material/foundation/tokens.css`          |
+| default palette and light/dark color roles               | `src/shared/ui/material/foundation/theme.css`           |
 | supported component tokens and private renderer mappings | `src/shared/ui/material/components/<family>/tokens.css` |
-| application extensions | outside `src/shared/ui/material` |
+| application extensions                                   | outside `src/shared/ui/material`                        |
 
 Rules:
 

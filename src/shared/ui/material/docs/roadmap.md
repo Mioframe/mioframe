@@ -24,13 +24,13 @@ Implementation ownership: `migrating`.
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | m3e-backed architecture reset and token foundation | `correction` | none | Material-first component boundary; private m3e boundary; canonical foundation/theme and family token owners; complete public token catalogue; legacy mixed-owner token file removed; defect registry; final verification |
-| M1a | `MDLoadingIndicator` dependency adapter | `correction` | M0 | accepted matrix and public Vue/token API; exact renderer typing; corrected geometry; `M3E-001`/`M3E-002` revalidated against consumed m3e; tests and operator review |
-| M1 | `MDButton` adapter pilot | `correction` | M1a | accepted Button matrix; visible hover/focus/pressed/ripple feedback; correct state-opacity ownership; Loading indicator composition; migrated consumers; verification and operator acceptance |
-| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; selected Vue/token API; controlled state and event order; m3e gap ownership; verification and operator acceptance |
-| M3 | sequential component migration | `planned` | M2 | one component at a time; dependencies first; demand-driven Vue/token APIs; explicit m3e mapping and gap ownership; no renderer or token-owner leakage |
+| ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                                                                                                |
+| --- | -------------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M0  | m3e-backed architecture reset and token foundation | `correction` | none       | Material-first component boundary; private m3e boundary; canonical foundation/theme and family token owners; complete public token catalogue; legacy mixed-owner token file removed; defect registry; final verification |
+| M1a | `MDLoadingIndicator` dependency adapter            | `correction` | M0         | accepted matrix and public Vue/token API; exact renderer typing; corrected geometry; `M3E-001`/`M3E-002` revalidated against consumed m3e; tests and operator review                                                     |
+| M1  | `MDButton` adapter pilot                           | `correction` | M1a        | accepted Button matrix; visible hover/focus/pressed/ripple feedback; correct state-opacity ownership; Loading indicator composition; migrated consumers; verification and operator acceptance                            |
+| M2  | `MDSwitch` stateful adapter pilot                  | `planned`    | M1         | source-backed matrix; selected Vue/token API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                                  |
+| M3  | sequential component migration                     | `planned`    | M2         | one component at a time; dependencies first; demand-driven Vue/token APIs; explicit m3e mapping and gap ownership; no renderer or token-owner leakage                                                                    |
 
 ## M0 — token foundation correction
 
