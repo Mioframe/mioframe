@@ -16,6 +16,7 @@ Canonical policy:
 - [`docs/architecture.md`](./docs/architecture.md);
 - [`docs/component-adapter.md`](./docs/component-adapter.md);
 - [`docs/component-tokens.md`](./docs/component-tokens.md);
+- [`docs/m3e-defects.md`](./docs/m3e-defects.md);
 - [`docs/roadmap.md`](./docs/roadmap.md).
 
 ## Public API
@@ -45,6 +46,8 @@ Every migrated component owns a Material–m3e–Vue matrix in its family README
 
 The matrix distinguishes selected Material API, deferred Material API, renderer gaps, wrapper corrections, m3e fixes, and non-Material requirements.
 
+Confirmed incorrect m3e implementations or documentation mismatches use `divergent`, reference a stable `M3E-*` ID, and link to `docs/m3e-defects.md`. A capability that m3e does not implement remains `missing` only in the family matrix.
+
 ## Boundary
 
 Allowed inside this directory:
@@ -54,6 +57,7 @@ Allowed inside this directory:
 - package-derived renderer typing;
 - explicit Material-to-Vue-to-m3e mappings;
 - narrow wrapper corrections for selected Material behavior;
+- gated exact-version host-level workarounds linked to `M3E-*` records;
 - family contracts, tests, stories, and curated exports.
 
 Not allowed:
@@ -61,17 +65,19 @@ Not allowed:
 - product or domain behavior;
 - m3e APIs exported to consumers;
 - private shadow-DOM access or copied renderer internals;
-- duplicate renderer geometry, state layer, ripple, focus, elevation, or motion systems;
-- speculative wrapper frameworks or token DSLs;
+- duplicate renderer geometry engines, state layers, ripple, focus, elevation, or motion systems;
+- speculative wrapper frameworks, defect databases, or token DSLs;
 - silent preservation of legacy non-Material extensions.
 
-## Missing behavior
+## Missing and incorrect renderer behavior
 
 Use m3e directly when it implements the selected Material contract.
 
-- Vue owns naming, typed mapping, slots, events, controlled state, native integration, and narrow light-DOM composition.
-- m3e owns internal rendering, geometry, private accessibility, state layer, ripple, focus treatment, elevation, and motion.
-- Renderer-owned gaps require an m3e fix or explicit blocker, not a second renderer in Vue.
+- Vue owns naming, typed mapping, slots, events, controlled state, native integration, public host geometry normalization, and narrow light-DOM composition.
+- m3e owns internal rendering, the private geometry engine and layout, private accessibility, state layer, ripple, focus treatment, elevation, and motion.
+- A missing selected capability is recorded as `missing` in the family matrix and routed to the correct owner.
+- A confirmed incorrect m3e implementation is recorded as `divergent`, linked to `docs/m3e-defects.md`, and routed to `temporary-renderer-workaround`, `m3e-fix`, or `blocked` according to the accepted gate.
+- A temporary workaround must remain host-level, exact-version-specific, independently tested, removable, and private to the canonical owning adapter.
 
 A requirement absent from Material must be resolved as consumer composition, a separate non-MD component, an explicitly approved extension, or removal/migration.
 
@@ -90,7 +96,7 @@ A documented m3e variable remains private and does not automatically create a pu
 
 Public types are based on the selected Material contract. Private mapper outputs are checked against exact package-exported m3e types.
 
-Tests prove the selected public Material Vue contract, wrapper-owned behavior, affected native scenarios, consumer migration, and repository health. m3e-owned animation requires exact-version source inspection and operator manual review.
+Tests prove the selected public Material Vue contract, wrapper-owned behavior, affected native scenarios, consumer migration, and repository health. m3e-owned animation and private geometry require exact-version source inspection and operator manual review. Every m3e version update revalidates affected non-resolved `M3E-*` records.
 
 ## Migration map
 
@@ -99,9 +105,10 @@ Tests prove the selected public Material Vue contract, wrapper-owned behavior, a
 | `MDButton`                    | m3e-backed implementation candidate; public API contract reopened for Material-first normalization |
 | Other public `MD*` components | legacy-owned until focused Material-first migration                                                |
 | Shared m3e integration        | established                                                                                        |
+| Confirmed m3e defect registry | established                                                                                        |
 | Public entry point            | established                                                                                        |
 | Global reference/system theme | retained                                                                                           |
 
 ## Current work
 
-PR #162 owns the architecture reset and `MDButton` pilot. M1 is not complete until its source-backed Material–m3e–Vue matrix, public API, non-Material extension decisions, verification, and operator review are accepted.
+PR #162 owns the architecture reset and `MDButton` pilot. M1 is not complete until its source-backed Material–m3e–Vue matrix, public API, non-Material extension decisions, confirmed renderer-defect records, verification, and operator review are accepted.
