@@ -190,8 +190,7 @@ function siblingAgentsPath(claudeRelPath) {
 
 function isManagedClaudeMd(claudeAbsPath) {
   return (
-    fs.existsSync(claudeAbsPath) &&
-    fs.readFileSync(claudeAbsPath, 'utf8').includes(MANAGED_MARKER)
+    fs.existsSync(claudeAbsPath) && fs.readFileSync(claudeAbsPath, 'utf8').includes(MANAGED_MARKER)
   );
 }
 
