@@ -10,18 +10,12 @@ import {
 /**
  * Build the retry instruction for a released verification state.
  * @param metadata Verification lock metadata, when available.
- * @returns Instruction that preserves the original command or explicitly
- * reports that its scope must be reconstructed.
+ * @returns Instruction that preserves a validated structured invocation or
+ * explicitly reports that the scope must be reconstructed.
  */
 export function getRetryInstruction(metadata) {
   if (isResolvedVerifyInvocation(metadata?.verifyInvocation)) {
     return `  Run \`${formatVerifyInvocationCommand(metadata.verifyInvocation)}\` again.`;
-  }
-
-  const legacyCommand = metadata?.command;
-
-  if (typeof legacyCommand === 'string' && legacyCommand.trim().length > 0) {
-    return `  Run \`${legacyCommand.trim()}\` again.`;
   }
 
   return '  Re-run the original task-scope verify command; do not default to plain `pnpm verify`.';
