@@ -47,7 +47,7 @@ describe('MDList', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList
+          <MDList aria-label="Options"
             selection-mode="single"
             :model-value="selected"
             @update:model-value="onUpdateModelValue"
@@ -82,7 +82,7 @@ describe('MDList', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single">
+          <MDList aria-label="Options" selection-mode="single">
             <MDListSelectionItem label-text="Has value" value="two" />
           </MDList>
         `,
@@ -102,7 +102,7 @@ describe('MDList', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" model-value="two">
+          <MDList aria-label="Options" selection-mode="single" model-value="two">
             <MDListSelectionItem label-text="Disabled selected" value="two" disabled />
             <MDListSelectionItem label-text="Enabled one" value="one" />
             <MDListSelectionItem label-text="Disabled two" value="three" disabled />
@@ -141,7 +141,7 @@ describe('MDList', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" model-value="two">
+          <MDList aria-label="Options" selection-mode="single" model-value="two">
             <MDListSelectionItem label-text="One" value="one" />
             <MDListSelectionItem label-text="Two" value="two" />
             <MDListSelectionItem label-text="Three" value="three" />
@@ -184,7 +184,7 @@ describe('MDList', () => {
           return { options, selected };
         },
         template: `
-          <MDList selection-mode="single" :model-value="selected">
+          <MDList aria-label="Options" selection-mode="single" :model-value="selected">
             <MDListSelectionItem
               v-for="option in options"
               :key="option.value"
@@ -243,7 +243,7 @@ describe('MDList', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="multiple" :model-value="[]">
+          <MDList aria-label="Options" selection-mode="multiple" :model-value="[]">
             <MDListSelectionItem label-text="One" value="one" disabled />
             <MDListSelectionItem label-text="Two" value="two" disabled />
           </MDList>
@@ -265,11 +265,11 @@ describe('MDList', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" model-value="outer-two">
+          <MDList aria-label="Options" selection-mode="single" model-value="outer-two">
             <MDListSelectionItem label-text="Outer one" value="outer-one" />
             <MDListSelectionItem label-text="Outer two" value="outer-two" />
             <div class="nested-owner">
-              <MDList selection-mode="single" model-value="inner-one">
+              <MDList aria-label="Options" selection-mode="single" model-value="inner-one">
                 <MDListSelectionItem label-text="Inner one" value="inner-one" />
                 <MDListSelectionItem label-text="Inner two" value="inner-two" />
               </MDList>
@@ -304,11 +304,11 @@ describe('MDList', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" model-value="outer-two">
+          <MDList aria-label="Options" selection-mode="single" model-value="outer-two">
             <MDListSelectionItem label-text="Outer one" value="outer-one" />
             <MDListSelectionItem label-text="Outer two" value="outer-two">
               <template #trailing>
-                <MDList selection-mode="single" model-value="inner-one">
+                <MDList aria-label="Options" selection-mode="single" model-value="inner-one">
                   <MDListSelectionItem label-text="Inner one" value="inner-one" />
                   <MDListSelectionItem label-text="Inner two" value="inner-two" />
                 </MDList>
@@ -436,7 +436,7 @@ describe('MDList', () => {
       {
         components: { MDList, MDListItem },
         template: `
-          <MDList selection-mode="single">
+          <MDList aria-label="Options" selection-mode="single">
             <MDListItem label-text="Wrong component" />
           </MDList>
         `,
@@ -802,6 +802,7 @@ describe('MDList', () => {
   });
 
   it('keeps keyboard listeners attached across a tag="ul" + selectionMode round trip that swaps the root element', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const selectionMode = ref<'none' | 'single'>('none');
     const wrapper = mount(
       {
@@ -845,10 +846,12 @@ describe('MDList', () => {
     await actions[1]?.trigger('keydown', { key: 'ArrowUp' });
     expect(document.activeElement).toBe(actions[0]?.element);
 
+    warnSpy.mockRestore();
     document.body.innerHTML = '';
   });
 
   it('does not duplicate keyboard handling after repeated tag/selectionMode root-element swaps', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const selectionMode = ref<'none' | 'single'>('none');
     const wrapper = mount(
       {
@@ -883,6 +886,7 @@ describe('MDList', () => {
     // as landing two rows down instead of one.
     expect(document.activeElement).toBe(actions[1]?.element);
 
+    warnSpy.mockRestore();
     document.body.innerHTML = '';
   });
 

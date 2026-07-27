@@ -17,7 +17,7 @@ const mountSelectionItem = (
       `,
       setup: () => ({
         itemProps: { labelText: 'Option', value: 'opt', ...props },
-        listProps,
+        listProps: { 'aria-label': 'Options', ...listProps },
       }),
     },
     { attachTo: document.body },
@@ -56,7 +56,7 @@ describe('MDListSelectionItem', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" :model-value="null" @update:model-value="onUpdateModelValue">
+          <MDList aria-label="Options" selection-mode="single" :model-value="null" @update:model-value="onUpdateModelValue">
             <MDListSelectionItem label-text="Disabled" value="opt" disabled />
           </MDList>
         `,
@@ -78,7 +78,7 @@ describe('MDListSelectionItem', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" model-value="b">
+          <MDList aria-label="Options" selection-mode="single" model-value="b">
             <MDListSelectionItem label-text="A" value="a" />
             <MDListSelectionItem label-text="B" value="b" />
           </MDList>
@@ -98,7 +98,7 @@ describe('MDListSelectionItem', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" :model-value="null" @update:model-value="onUpdateModelValue">
+          <MDList aria-label="Options" selection-mode="single" :model-value="null" @update:model-value="onUpdateModelValue">
             <MDListSelectionItem label-text="Pick me" value="pick" />
           </MDList>
         `,
@@ -117,7 +117,7 @@ describe('MDListSelectionItem', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="single" :model-value="null" @update:model-value="onUpdateModelValue">
+          <MDList aria-label="Options" selection-mode="single" :model-value="null" @update:model-value="onUpdateModelValue">
             <MDListSelectionItem label-text="Pick me" value="pick" />
           </MDList>
         `,
@@ -151,9 +151,11 @@ describe('MDListSelectionItem', () => {
   });
 
   it('uses div root tag even when the parent list tag is ul (selection lists force div)', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const wrapper = mountSelectionItem({ value: 'opt' }, { selectionMode: 'single', tag: 'ul' });
 
-    expect(wrapper.get('.md-list-selection-item').element.tagName.toLowerCase()).toBe('div');
+    expect(wrapper.get('.md-list-selection-item').element.tagName.toLowerCase()).toBe('div');    warnSpy.mockRestore();
+
   });
 
   it('adds _selected modifier class when the item is selected', () => {
@@ -315,7 +317,7 @@ describe('MDListSelectionItem', () => {
       {
         components: { MDList, MDListSelectionItem },
         template: `
-          <MDList selection-mode="none" :model-value="null" @update:model-value="onUpdateModelValue">
+          <MDList aria-label="Options" selection-mode="none" :model-value="null" @update:model-value="onUpdateModelValue">
             <MDListSelectionItem label-text="Pick me" value="pick" />
           </MDList>
         `,
