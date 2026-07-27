@@ -24,7 +24,7 @@ const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\\*/SKILL.md instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\*/SKILL.md instead.
 `;
 
 const NESTED_CLAUDE_MD = `<!-- managed:agent-compat -->
@@ -178,9 +178,9 @@ function removeFileAndEmptyParents(root, fileAbsPath) {
  *   - exit code 0: ignored
  *   - exit code 1: not ignored
  *   - exit code >1: operational failure
- * @param root Absolute repository path.
- * @param relPath Relative path to test with git check-ignore.
- * @returns True when git ignores the path.
+ * @param root Absolute temp repo root.
+ * @param relPath Relative path to check.
+ * @returns Whether the path is ignored.
  */
 function isIgnoredByGit(root, relPath) {
   const result = spawnSync('git', ['check-ignore', '-q', '--no-index', relPath], {
@@ -223,7 +223,7 @@ export function checkClaudeMdAdapters(root, fix) {
         fixes.push(`created ${claudeRelPath}`);
       } else {
         errors.push(
-          `Missing managed adapter: ${claudeRelPath} (run pnpm verify --fix to create it)`,
+          `Missing managed adapter: ${claudeRelPath} (run \`pnpm verify --fix-only\` with the original task scope to create it)`,
         );
       }
 
@@ -246,7 +246,7 @@ export function checkClaudeMdAdapters(root, fix) {
         fixes.push(`updated ${claudeRelPath}`);
       } else {
         errors.push(
-          `Stale managed adapter: ${claudeRelPath} content differs from expected (run pnpm verify --fix to update it)`,
+          `Stale managed adapter: ${claudeRelPath} content differs from expected (run \`pnpm verify --fix-only\` with the original task scope to update it)`,
         );
       }
     }
@@ -271,7 +271,7 @@ export function checkClaudeMdAdapters(root, fix) {
       fixes.push(`deleted orphan ${claudeRelPath}`);
     } else {
       errors.push(
-        `Orphan managed adapter: ${claudeRelPath} has no sibling ${agentsRelPath} (run pnpm verify --fix to delete it)`,
+        `Orphan managed adapter: ${claudeRelPath} has no sibling ${agentsRelPath} (run \`pnpm verify --fix-only\` with the original task scope to delete it)`,
       );
     }
   }
@@ -315,7 +315,7 @@ export function checkSkillsSymlink(root, fix) {
       fixes.push(`created .claude/skills -> ${expectedLinkTarget}`);
     } else {
       errors.push(
-        `.agents/skills exists but .claude/skills symlink is missing (run pnpm verify --fix to create it)`,
+        `.agents/skills exists but .claude/skills symlink is missing (run \`pnpm verify --fix-only\` with the original task scope to create it)`,
       );
     }
 
@@ -325,7 +325,7 @@ export function checkSkillsSymlink(root, fix) {
   if (!stat.isSymbolicLink()) {
     errors.push(
       `.claude/skills is a real directory or file, not a symlink. ` +
-        `Remove it manually and run pnpm verify --fix to create the correct symlink.`,
+        `Remove it manually and run \`pnpm verify --fix-only\` with the original task scope to create the correct symlink.`,
     );
     return { errors, fixes };
   }
@@ -335,7 +335,7 @@ export function checkSkillsSymlink(root, fix) {
   if (actualTarget !== expectedLinkTarget) {
     errors.push(
       `.claude/skills symlink points to '${actualTarget}' but expected '${expectedLinkTarget}'. ` +
-        `Remove it manually and run pnpm verify --fix to recreate.`,
+        `Remove it manually and run \`pnpm verify --fix-only\` with the original task scope to recreate it.`,
     );
   }
 
@@ -363,13 +363,13 @@ export function checkGitignoreCompatibility(root) {
   try {
     if (isIgnoredByGit(root, '.claude/skills')) {
       errors.push(
-        `.claude/skills must not be ignored by git. Update .gitignore so the managed compatibility symlink stays visible, then rerun pnpm verify --fix if adapters or links need repair.`,
+        `.claude/skills must not be ignored by git. Update .gitignore so the managed compatibility symlink stays visible, then rerun the scoped \`pnpm verify --fix-only\` command if adapters or links need repair.`,
       );
     }
 
     if (!isIgnoredByGit(root, '.claude/settings.local.json')) {
       errors.push(
-        `.claude/settings.local.json must remain ignored by git. Update .gitignore so local Claude state stays untracked; pnpm verify --fix will not change .gitignore for you.`,
+        `.claude/settings.local.json must remain ignored by git. Update .gitignore so local Claude state stays untracked; \`pnpm verify --fix-only\` will not change .gitignore for you.`,
       );
     }
   } catch (error) {
