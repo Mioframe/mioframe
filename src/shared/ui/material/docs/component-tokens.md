@@ -56,10 +56,13 @@ For each selected token:
 - keep one canonical declaration owner and meaningful default;
 - map only to documented public m3e inputs;
 - exact spelling equality is not required, semantic equivalence is;
+- verify that the chosen CSS value representation is accepted by every selected current consumer grammar; equal numeric meaning does not make forms such as a unitless number and a percentage interchangeable in every CSS function or property;
+- prefer one canonical foundation representation when it preserves the official meaning and works for all selected current consumers;
+- when no shared representation is compatible, keep the conversion private to the owning adapter and treat it as a documented renderer mapping or exact-version workaround rather than changing unrelated public semantics;
 - keep mappings inside the owning family;
 - do not expose m3e names through props, exports, docs, or consumer examples.
 
-Prefer direct `--md-sys-*` behavior when m3e already consumes the correct Material system roles.
+Prefer direct `--md-sys-*` behavior when m3e already consumes the correct Material system roles with a compatible CSS value grammar.
 
 ## Legacy tokens
 
@@ -86,7 +89,9 @@ Verify only selected public Material tokens:
 - exact official source and semantic path are recorded;
 - canonical declaration and default exist;
 - mapping targets a documented semantic m3e input;
+- the token representation is valid for every selected current CSS consumer;
 - a representative non-default override changes the intended public result when observable;
+- rendered browser proof is required when the value grammar affects visible behavior; declaration presence or a computed token string alone is insufficient;
 - no `--m3e-*` usage leaks outside `src/shared/ui/material`.
 
 Do not require one test per renderer variable, a complete token matrix, computed-value assertions for unused declarations, tests of m3e defaults, or automated proof of renderer-owned animation.
