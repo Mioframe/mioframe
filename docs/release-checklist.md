@@ -1,14 +1,15 @@
 # Release checklist
 
-Use this checklist for every promotion of `develop` into `main`, and for
-every hotfix directly into `main`. See `docs/release.md` for the full policy
-this checklist enforces.
+Use this checklist for every promotion of `develop` into `main`, direct
+hotfix, and pre-tag release repair into `main`. See `docs/release.md` for the
+full policy this checklist enforces.
 
 ## Before opening the PR into `main`
 
 - [ ] `develop` (or the hotfix branch) is green on its own `verify` workflow.
-- [ ] `package.json` `version` is bumped above the version currently on
-      `main`, following SemVer (`docs/release.md#choosing-patch--minor--major`).
+- [ ] For a promotion or hotfix, `package.json` `version` is bumped above the
+      version currently on `main`. A pre-tag repair may keep the current `main`
+      version only while its matching tag does not exist.
 - [ ] `docs/releases/<version>.md` exists and describes what changed in this
       release, in product-facing language.
 - [ ] No storage format, data model, routing model, or product UX behavior
@@ -19,7 +20,7 @@ this checklist enforces.
 
 - [ ] PR target branch is `main`.
 - [ ] PR description fills in the pull request template's ownership matrix, verification, current-head readiness, and merge-method sections.
-- [ ] Merge method is `merge commit` for `develop` -> `main` promotion PRs and `squash` for direct hotfix PRs.
+- [ ] Merge method is `merge commit` for `develop` -> `main` promotion PRs and `squash` for direct hotfix or pre-tag repair PRs.
 - [ ] The `release` workflow run is green:
   - [ ] `pnpm verify:release` full-project gate passed (format, lint,
         type-check, unit tests, full app e2e, full visual regression).
@@ -59,10 +60,14 @@ this checklist enforces.
       (e.g. a lint or type-check failure outside the PR's changed files),
       treat it as a release blocker and fix it before promoting.
 
-## Hotfix-specific steps
+## Direct-main repair steps
 
-- [ ] Branch from `main` as `hotfix/<name>`.
-- [ ] Bump the version (PATCH unless the fix requires more).
+- [ ] For a published stable defect, branch from `main` as `hotfix/<name>` and
+      bump the version (PATCH unless the fix requires more).
+- [ ] For an unpublished current-main release candidate, branch as
+      `release-repair/<name>`; keep the same version only while its matching tag
+      does not exist.
 - [ ] Follow the same PR-into-`main` and after-merge steps above.
-- [ ] After the hotfix ships, open the documented `main` -> `develop` sync-back
-      PR in the same release cycle and merge it with a merge commit.
+- [ ] When the repair commit is not already in `develop`, open the documented
+      `main` -> `develop` sync-back PR in the same release cycle and merge it
+      with a merge commit.
