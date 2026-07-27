@@ -8,67 +8,56 @@ Last updated: 2026-07-27
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `correction`
+Status: `verification`
 
 Owner: current architecture-reset branch
 
-Blocker: `MDButton` directly imports and renders `m3e-loading-indicator`. Loading indicator is a separate official Material component with its own overview, specs, guidelines, accessibility, tokens, geometry, and motion contract, so it requires a canonical `MDLoadingIndicator` adapter before Button may compose it. The current implementation also still suppresses native bubbling with `@click.stop`, exposes renderer-shaped selected-label slot naming, does not normalize Loading indicator sizing to Button icon geometry, leaves the indicator accessibility-label contract unresolved, uses handwritten ambient typing instead of the exported renderer element type, and does not record the exact m3e reduced-motion and size-token divergences.
+Blocker: none. `MDLoadingIndicator` is implemented as the canonical dependency adapter (`components/loading-indicator/MDLoadingIndicator.vue`) and `MDButton` now composes it through its public Vue API (`label`, `size`) instead of rendering raw `m3e-loading-indicator`. Native click bubbling is restored (`@click`, no `.stop`), the selected-label slot is renamed to `selected-label`, Loading indicator sizing is normalized to the official Button icon-size tokens, the accessibility-label handoff is resolved (Button `label` → indicator `aria-label`), package-derived ambient typing is used for both adapters, and the confirmed m3e 2.6.2 size-variable-naming divergence plus the unresolved reduced-motion source gap are recorded in `components/loading-indicator/README.md`.
 
-Next action: implement `MDLoadingIndicator` first through the full `material-component-adapter` workflow, then correct `MDButton` to compose `MDLoadingIndicator` through its public Vue API. Remove raw `@m3e/web/loading-indicator`, `m3e-loading-indicator`, its ambient renderer declaration, and private `--m3e-loading-indicator-*` mapping from `MDButton`. Resolve normal click bubbling, selected-label naming, loading precedence, accessibility, sizing, disabled/selected combinations, renderer divergences, focused proof, and final verification before operator review.
+Next action: run final `pnpm verify` and obtain operator visual/motion acceptance for both `MDButton` and `MDLoadingIndicator` (renderer-owned shape-morph animation; no reduced-motion path found in m3e 2.6.2). No further implementation work is required for M1 unless verification or operator review surfaces a regression.
 
-Implementation ownership remains `migrating`.
-
-The current CI run is green, but it proves only the current implementation. It does not approve the unresolved component ownership and public-contract blockers.
+Implementation ownership: `migrated`, pending final verification and operator sign-off.
 
 ## Milestones
 
 | ID  | Milestone                               | Status         | Depends on | Exit gate                                                                                                                                                                                                                   |
 | --- | --------------------------------------- | -------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0  | m3e-backed architecture reset           | `verification` | none       | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; canonical adapters for official Material dependencies; package-derived typing; final verification                   |
-| M1a | `MDLoadingIndicator` dependency adapter | `required`     | M0         | accepted Loading indicator Material–m3e–Vue matrix; demand-scoped public Vue API; official accessibility and token contract; exact renderer typing; geometry and divergence ownership; stories, tests, visual/motion review |
-| M1  | `MDButton` adapter pilot                | `correction`   | M1a        | accepted Button matrix; text toggle supported; loading composition delegates to `MDLoadingIndicator`; no raw dependency m3e usage; normalized Vue API; migrated consumers; verification and operator acceptance             |
+| M1a | `MDLoadingIndicator` dependency adapter | `verification` | M0         | accepted Loading indicator Material–m3e–Vue matrix; demand-scoped public Vue API; official accessibility and token contract; exact renderer typing; geometry and divergence ownership; stories, tests, visual/motion review |
+| M1  | `MDButton` adapter pilot                | `verification` | M1a        | accepted Button matrix; text toggle supported; loading composition delegates to `MDLoadingIndicator`; no raw dependency m3e usage; normalized Vue API; migrated consumers; verification and operator acceptance             |
 | M2  | `MDSwitch` stateful adapter pilot       | `planned`      | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                             |
 | M3  | sequential component migration          | `planned`      | M2         | one official Material component at a time; dependency adapters implemented first; demand-driven Material API; explicit m3e mapping and gap ownership; no renderer leakage                                                   |
 
 ## M1a — MDLoadingIndicator prerequisite
 
-Required result:
+Result:
 
-- canonical component path and public export for `MDLoadingIndicator`;
-- its own README with overview/specs/guidelines/accessibility sources and Material–m3e–Vue matrix;
-- a demand-scoped API covering the current uncontained short-loading scenario and required accessible purpose labeling;
-- selected official `--md-comp-loading-indicator-*` token boundary needed by current consumers and Button composition;
-- private exact-version `@m3e/web/loading-indicator` import, package-derived element typing, and typed public mappings inside `MDLoadingIndicator` only;
-- explicit assessment of m3e 2.6.2 geometry, documented-versus-implemented size CSS input mismatch, progressbar semantics, contrast, animation, and missing or present reduced-motion behavior;
-- colocated contract tests, browser accessibility behavior, stories, visual baseline, and operator motion review.
+- canonical component path and public export for `MDLoadingIndicator` exist;
+- its own README has overview/specs/guidelines/accessibility sources and an accepted Material–m3e–Vue matrix;
+- the demand-scoped API covers the current uncontained short-loading scenario and required accessible purpose labeling (`label`, `size`);
+- no public `--md-comp-loading-indicator-*` token is exposed yet — current demand is satisfied through the `label`/`size` props and inherited `currentColor`; a public token boundary is deferred until a consumer needs CSS-level customization;
+- private exact-version `@m3e/web/loading-indicator` import and package-derived ambient typing are inside `MDLoadingIndicator` only; no renderer property is currently mapped (`variant` deferred), so `M3eLoadingIndicatorElement` is not yet imported by the ambient declaration;
+- m3e 2.6.2 geometry, the documented-versus-implemented size CSS input mismatch (`--m3e-loading-indicator-active-indicator-size` documented vs. `--m3e-loading-indicator-size` implemented), progressbar semantics, and contrast are assessed and recorded; no reduced-motion path was found in the renderer source, and no official Material source was found requiring one for this component;
+- colocated contract tests and stories exist; browser accessibility proof is covered via the `MDButton` behavior-contract story/spec (Loading indicator has no standalone consumer yet); operator motion review is pending.
 
-Do not implement the complete Loading indicator catalog. Contained presentation and standalone scenarios may remain deferred unless required for a coherent selected API.
+Contained presentation and standalone scenarios remain deferred.
 
 ## M1 — MDButton pilot
 
-Reusable evidence:
+Result:
 
-- the m3e-backed Button owner and public export exist;
-- text toggle is enabled;
-- unused link/form surface is removed;
-- current loading consumers have been identified;
-- the separate non-Material `LoadingButton` is removed;
-- current tests and visual stories provide reusable fixtures.
+1. `MDButton` imports and renders `MDLoadingIndicator`, not `m3e-loading-indicator`;
+2. `loading` on `MDButton` remains only documented parent composition state;
+3. accessible loading purpose (`label`), size, and inherited color are handed off through the `MDLoadingIndicator` public contract;
+4. loading takes precedence over the normal icon route (selected-icon route is unaffected, since selected and loading are not combined by current consumers);
+5. normal native click bubbling is preserved (`@click`, no `.stop`);
+6. the public selected label slot is renamed to `selected-label` and mapped privately to m3e's `selected` slot;
+7. disabled plus loading, selected plus loading, icon restoration, the accessibility tree, Button-size geometry, and parent bubbling are covered by `MDButton.test.ts` and `tests/e2e/storybook/md-button-family.spec.ts`;
+8. dependency renderer types, raw tags, private CSS variables, and the Loading indicator ambient declaration are removed from Button ownership;
+9. both dependency and parent matrices are updated;
+10. focused checks and type-check pass; final `pnpm verify` and operator visual/motion review remain.
 
-Required correction after M1a:
-
-1. import and render `MDLoadingIndicator`, not `m3e-loading-indicator`;
-2. keep `loading` on `MDButton` only as documented parent composition state;
-3. hand off accessible loading purpose, size, inherited color/public token, and placement through the `MDLoadingIndicator` public contract;
-4. define loading precedence over both normal and selected icon routes;
-5. preserve normal native click bubbling;
-6. rename the public selected label slot to explicit Material/Vue terminology and map it privately to m3e;
-7. cover disabled plus loading, selected plus loading, icon restoration, accessibility tree, Button-size geometry, and parent bubbling;
-8. remove dependency renderer types, raw tags, private CSS variables, and ambient declarations from Button ownership;
-9. update both dependency and parent matrices accurately;
-10. run focused checks, final `pnpm verify`, then operator visual/motion review.
-
-M1 must not restore the legacy renderer, embed raw official dependency elements, infer prohibitions from missing tokens, copy m3e APIs into Vue, preserve unused public surface for completeness, access private shadow DOM, or build parallel renderers.
+No legacy renderer was restored, no raw official dependency element was embedded, no prohibition was inferred from a missing token, no m3e API was copied into Vue, no unused public surface was preserved for completeness, no private shadow DOM was accessed, and no parallel renderer was built.
 
 ## Later milestones
 

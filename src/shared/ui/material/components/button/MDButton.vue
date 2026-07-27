@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import '@m3e/web/button';
-import '@m3e/web/loading-indicator';
 import type {
   ButtonShape as RendererButtonShape,
   ButtonSize as RendererButtonSize,
@@ -8,6 +7,7 @@ import type {
   M3eButtonElement,
 } from '@m3e/web/button';
 import { computed, defineComponent, h, onMounted, warn, watchEffect } from 'vue';
+import { MDLoadingIndicator } from '../loading-indicator';
 
 const props = withDefaults(
   defineProps<{
@@ -53,7 +53,7 @@ const slots = defineSlots<{
   /** Leading icon content. */
   icon(): unknown;
   /** Label content rendered while a toggle Button is selected. */
-  selected(): unknown;
+  'selected-label'(): unknown;
   /** Leading icon rendered while a toggle Button is selected. */
   'selected-icon'(): unknown;
 }>();
@@ -80,6 +80,21 @@ const rendererShape = computed<RendererButtonShape>(() =>
   props.shape === 'round' ? 'rounded' : 'square',
 );
 const rendererType = computed<M3eButtonElement['type']>(() => props.nativeType);
+/**
+ * Normalizes the composed Loading indicator to this Button's official leading-icon
+ * size token (Button specs: extra-small/small 20dp, medium 24dp, large 32dp,
+ * extra-large 40dp), expressed in rem to match the m3e Button icon-size defaults.
+ */
+const loadingIndicatorSize = computed<string>(
+  () =>
+    ({
+      'extra-small': '1.25rem',
+      small: '1.25rem',
+      medium: '1.5rem',
+      large: '2rem',
+      'extra-large': '2.5rem',
+    })[props.size],
+);
 
 const onBeforeInput = (event: InputEvent) => {
   if (!isToggle.value) return;
@@ -116,14 +131,14 @@ if (import.meta.env.DEV) {
     :type="rendererType"
     :variant="rendererVariant"
     @beforeinput="onBeforeInput"
-    @click.stop="onClick"
+    @click="onClick"
   >
     <MDButtonSlottedContent
       v-if="isLoading || !!slots.icon"
       class="md-button__icon"
       slot-name="icon"
     >
-      <m3e-loading-indicator v-if="isLoading" class="md-button__loading-indicator" />
+      <MDLoadingIndicator v-if="isLoading" :label="props.label" :size="loadingIndicatorSize" />
       <slot v-else name="icon" />
     </MDButtonSlottedContent>
     <MDButtonSlottedContent
@@ -135,11 +150,11 @@ if (import.meta.env.DEV) {
     </MDButtonSlottedContent>
     <span class="md-button__label-text">{{ props.label }}</span>
     <MDButtonSlottedContent
-      v-if="!!slots.selected"
+      v-if="!!slots['selected-label']"
       class="md-button__label-text"
       slot-name="selected"
     >
-      <slot name="selected" />
+      <slot name="selected-label" />
     </MDButtonSlottedContent>
   </m3e-button>
   <!-- eslint-enable vue/attribute-hyphenation -->
@@ -160,9 +175,5 @@ if (import.meta.env.DEV) {
 .md-button__icon {
   display: inline-flex;
   color: inherit;
-}
-
-.md-button__loading-indicator {
-  --m3e-loading-indicator-active-indicator-color: currentColor;
 }
 </style>

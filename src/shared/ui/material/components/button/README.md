@@ -4,28 +4,22 @@ Material component: Button
 
 Migration target: `MDButton`
 
-Implementation ownership: `migrating`
+Implementation ownership: `migrated`
 
-Canonical implementation candidate: `src/shared/ui/material/components/button/MDButton.vue`
+Canonical implementation: `src/shared/ui/material/components/button/MDButton.vue`
 
 ## Status
 
-The current m3e-backed Button implementation contains reusable work, but it is not accepted or complete.
+The m3e-backed Button implementation composes the canonical `MDLoadingIndicator` dependency adapter and no longer embeds raw Loading indicator renderer surface.
 
 Corrected source decisions:
 
 - text toggle is supported across all five Button color configurations;
-- loading inside Button is an official Material cross-component composition;
+- loading inside Button is an official Material cross-component composition, delegated to `MDLoadingIndicator`;
 - unused link/form surface is deferred and removed from the current public API;
 - determinate progress-in-button is deferred because current Button consumers use only boolean loading.
 
-Remaining ownership error:
-
-- `MDButton` imports and renders raw `m3e-loading-indicator` directly;
-- Loading indicator is a separate official Material component and must first be implemented as canonical `MDLoadingIndicator` through the full adapter workflow;
-- Button may retain `loading?: boolean` as parent composition state, but it must render `MDLoadingIndicator` and use only its public Vue/token boundary.
-
-See `../loading-indicator/README.md` for the required dependency contract.
+See `../loading-indicator/README.md` for the dependency contract.
 
 ## Official sources
 
@@ -49,7 +43,7 @@ Renderer package:
 
 - `@m3e/web@^2.6.2`, resolved `2.6.2`;
 - Button adapter owns `@m3e/web/button` only;
-- `MDLoadingIndicator` must own `@m3e/web/loading-indicator`;
+- `MDLoadingIndicator` owns `@m3e/web/loading-indicator`;
 - Progress indicator remains deferred and must receive its own canonical adapter before future Button composition.
 
 ## Confirmed official Material facts
@@ -57,10 +51,10 @@ Renderer package:
 - Button has `default` and `toggle` variants.
 - Elevated, filled, tonal, outlined, and text are five color configurations.
 - Official Button guidance shows default, unselected toggle, and selected toggle across all five color configurations; text toggle is supported.
-- Button sizes are extra small, small, medium, large, and extra large; small is the default.
+- Button sizes are extra small, small, medium, large, and extra large; small is the default. Official `md.comp.button.<size>.icon.size` tokens are 20dp (extra-small/small), 24dp (medium), 32dp (large), 40dp (extra-large).
 - Button shapes are round and square; round is the default.
 - A Button may contain one leading icon. Toggle label and icon content may change with selected state.
-- Loading indicators may be placed inside buttons for short actions.
+- Loading indicators may be placed inside buttons for short actions (`loading-indicator/guidelines`, "Placement").
 - Loading indicator is an independent Material component, not renderer-private Button anatomy.
 - Circular progress indicators may be placed inside buttons, but no current Button consumer requires determinate progress.
 
@@ -91,22 +85,22 @@ Not currently required:
 
 ## Material–m3e–Vue matrix
 
-| Material contract and exact source                                                  | Required now and evidence | Public Vue API direction                                                             | Renderer/dependency mapping                                                          | Owner and decision                                                                     |
-| ----------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Default and toggle variants (`buttons/overview`, `buttons/specs`)                   | yes                       | `variant: 'default' \| 'toggle'`, controlled `selected`, `update:selected`           | `m3e-button.toggle`, `selected`, selection intent event                              | Button adapter — `implement-now`                                                       |
-| Five color configurations including text (`buttons/overview`, `buttons/guidelines`) | yes                       | Material color prop                                                                  | `m3e-button.variant`                                                                 | Button adapter — `implement-now`; text toggle remains enabled                          |
-| Five sizes and round/square shapes (`buttons/specs`)                                | yes                       | Material size/shape names                                                            | typed Button renderer mapping                                                        | Button adapter — `implement-now`                                                       |
-| Leading icon and selected-state label/icon (`buttons/guidelines`)                   | yes                       | explicit Vue names such as `icon`, `selected-label`, `selected-icon`                 | private mapping to renderer slots                                                    | Button adapter — correction required; do not expose ambiguous raw `selected` slot name |
-| Disabled, keyboard, focus, press, and target behavior                               | yes                       | selected public state only                                                           | Button renderer                                                                      | direct renderer ownership plus browser/operator verification                           |
-| Native action type                                                                  | yes                       | `nativeType: 'button' \| 'submit' \| 'reset'`                                        | Button renderer `type`                                                               | `implement-now`                                                                        |
-| Link/form identity surface                                                          | no current consumer       | none                                                                                 | renderer supports additional fields                                                  | `defer`; removed from public API                                                       |
-| Loading indicator inside Button (`loading-indicator/guidelines`)                    | yes                       | `loading?: boolean` as parent composition state                                      | `MDButton` → canonical `MDLoadingIndicator`; no raw loading renderer in Button       | dependency adapter required before Button completion                                   |
-| Loading purpose/accessibility                                                       | yes                       | exact parent-to-dependency label handoff must be defined                             | `MDLoadingIndicator` owns progressbar semantics and accessible name                  | dependency correction required                                                         |
-| Loading size and color in Button                                                    | yes                       | handoff through `MDLoadingIndicator` public API or selected official Material tokens | dependency owns renderer sizing/color mapping; parent must not set private `--m3e-*` | dependency correction required                                                         |
-| Circular progress inside Button                                                     | no numeric consumer       | none                                                                                 | future canonical Progress indicator adapter                                          | `defer`                                                                                |
-| Native click propagation                                                            | yes                       | normal bubbling plus Vue `click` emit                                                | current code still uses `.stop`                                                      | Button correction required                                                             |
+| Material contract and exact source                                                  | Required now and evidence | Public Vue API direction                                                                                                                                                                                                             | Renderer/dependency mapping                                                                  | Owner and decision                                                                                 |
+| ----------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Default and toggle variants (`buttons/overview`, `buttons/specs`)                   | yes                       | `variant: 'default' \| 'toggle'`, controlled `selected`, `update:selected`                                                                                                                                                           | `m3e-button.toggle`, `selected`, selection intent event                                      | Button adapter — `implement-now`                                                                   |
+| Five color configurations including text (`buttons/overview`, `buttons/guidelines`) | yes                       | `color` prop                                                                                                                                                                                                                         | `m3e-button.variant`                                                                         | Button adapter — `implement-now`; text toggle remains enabled                                      |
+| Five sizes and round/square shapes (`buttons/specs`)                                | yes                       | `size`/`shape` props                                                                                                                                                                                                                 | typed Button renderer mapping                                                                | Button adapter — `implement-now`                                                                   |
+| Leading icon and selected-state label/icon (`buttons/guidelines`)                   | yes                       | `icon`, `selected-label`, `selected-icon` slots                                                                                                                                                                                      | private mapping to renderer `icon`/`selected`/`selected-icon` slots                          | Button adapter — `implement-now`; `selected-label` replaces the ambiguous raw `selected` slot name |
+| Disabled, keyboard, focus, press, and target behavior                               | yes                       | `disabled` prop                                                                                                                                                                                                                      | Button renderer                                                                              | direct renderer ownership plus browser/operator verification                                       |
+| Native action type                                                                  | yes                       | `nativeType: 'button' \| 'submit' \| 'reset'`                                                                                                                                                                                        | Button renderer `type`                                                                       | `implement-now`                                                                                    |
+| Link/form identity surface                                                          | no current consumer       | none                                                                                                                                                                                                                                 | renderer supports additional fields                                                          | `defer`; removed from public API                                                                   |
+| Loading indicator inside Button (`loading-indicator/guidelines`)                    | yes                       | `loading?: boolean` as parent composition state                                                                                                                                                                                      | `MDButton` → canonical `MDLoadingIndicator`; no raw loading renderer in Button               | `implement-now` — dependency adapter accepted (`../loading-indicator/README.md`)                   |
+| Loading purpose/accessibility                                                       | yes                       | `MDButton` hands off its own `label` to `MDLoadingIndicator`'s required `label` prop                                                                                                                                                 | `MDLoadingIndicator` owns progressbar semantics and the `aria-label` mapping                 | `implement-now`                                                                                    |
+| Loading size and color in Button                                                    | yes                       | `MDButton` computes `loadingIndicatorSize` from its own `size` per the official Button icon-size tokens and passes it to `MDLoadingIndicator`'s `size` prop; color relies on `MDLoadingIndicator`'s inherited-`currentColor` mapping | dependency owns renderer sizing/color mapping; parent never sets private `--m3e-*` variables | `implement-now`                                                                                    |
+| Circular progress inside Button                                                     | no numeric consumer       | none                                                                                                                                                                                                                                 | future canonical Progress indicator adapter                                                  | `defer`                                                                                            |
+| Native click propagation                                                            | yes                       | normal bubbling plus Vue `click` emit                                                                                                                                                                                                | `@click` (no `.stop` modifier)                                                               | `implement-now`                                                                                    |
 
-## Required dependency
+## Dependency
 
 Canonical dependency:
 
@@ -114,75 +108,62 @@ Canonical dependency:
 src/shared/ui/material/components/loading-indicator/MDLoadingIndicator.vue
 ```
 
-Required parent boundary:
+Parent boundary, as implemented:
 
 ```text
 MDButton loading state
-  → MDLoadingIndicator public Vue API
+  → MDLoadingIndicator public Vue API (label, size)
       → private @m3e/web/loading-indicator mapping
 ```
 
-`MDButton` must not:
+`MDButton` does not:
 
 - import `@m3e/web/loading-indicator`;
 - render `m3e-loading-indicator`;
-- maintain `m3eLoadingIndicator.d.ts`;
+- maintain a Loading indicator ambient renderer declaration;
 - set private `--m3e-loading-indicator-*` variables;
 - own Loading indicator progressbar labeling, geometry normalization, renderer divergences, or motion assessment.
 
-`MDLoadingIndicator` must own those concerns through its own matrix, implementation, tests, stories, public tokens, and operator review.
+`MDLoadingIndicator` owns those concerns through its own matrix, implementation, tests, stories, and public API (see `../loading-indicator/README.md`).
 
-## Public Button API constraints
+## Public Button API
 
-The final Button API must:
+The Button API:
 
-- use official Material terminology;
-- expose only the current demand-scoped subset;
-- support text toggle;
-- rename the public selected label slot to explicit Material/Vue terminology and map it privately to m3e `selected`;
-- preserve normal native click bubbling;
-- retain loading only as documented parent composition state;
-- delegate Loading indicator rendering and accessibility to `MDLoadingIndicator`;
-- keep renderer types and vocabulary private.
-
-## Current implementation blockers
-
-1. `@click.stop` still suppresses native bubbling.
-2. Public `selected` slot still copies renderer vocabulary instead of an explicit selected-label contract.
-3. Raw `m3e-loading-indicator` bypasses the missing `MDLoadingIndicator` adapter.
-4. Loading indicator default renderer geometry does not match Button icon geometry and is not normalized by an owning dependency adapter.
-5. Loading indicator accessible-purpose labeling is unresolved.
-6. Loading precedence over selected-icon routing is unresolved.
-7. Loading indicator ambient typing is handwritten instead of package-derived inside its own adapter.
-8. Exact m3e size-input naming and reduced-motion divergences are not assigned to the dependency owner.
-9. README/roadmap completion claims from the prior pass were premature despite green verification.
+- uses official Material terminology;
+- exposes only the current demand-scoped subset;
+- supports text toggle;
+- names the public selected label slot `selected-label` (mapped privately to m3e's `selected` slot);
+- preserves normal native click bubbling (`@click`, no `.stop`);
+- retains `loading` only as documented parent composition state;
+- delegates Loading indicator rendering and accessibility to `MDLoadingIndicator`;
+- keeps renderer types and vocabulary private.
 
 ## Required verification
 
-Button-focused proof after `MDLoadingIndicator` is accepted:
+Completed:
 
-- stable Button defaults and exact typed renderer mappings;
-- text toggle selected/unselected;
-- explicit selected-label and selected-icon public naming with private renderer routing;
-- native button/submit/reset behavior;
-- normal parent click bubbling;
-- disabled activation blocking;
-- expanded target actionability;
-- `MDButton` renders `MDLoadingIndicator`, not raw m3e;
-- parent-to-dependency accessible label, icon-size, inherited color/public-token, and active-state handoff;
-- loading precedence for normal and selected icon routes;
-- icon restoration after loading;
-- disabled plus loading and selected plus loading;
-- current consumers;
-- stable visual stories;
+- stable Button defaults and exact typed renderer mappings (`MDButton.test.ts`);
+- text toggle selected/unselected (`MDButton.test.ts`, story `ToggleShapes`);
+- explicit `selected-label`/`selected-icon` public naming with private renderer routing (`MDButton.test.ts`);
+- native button/submit/reset behavior (story `BehaviorContracts`, `md-button-family.spec.ts`);
+- normal parent click bubbling (`md-button-family.spec.ts`, "preserves normal native click bubbling to ancestor listeners");
+- disabled activation blocking, expanded target actionability (`md-button-family.spec.ts`);
+- `MDButton` renders `MDLoadingIndicator`, not raw m3e (`MDButton.test.ts`, `md-button-family.spec.ts`);
+- parent-to-dependency accessible label and icon-size handoff (`MDButton.test.ts`, `md-button-family.spec.ts`);
+- loading precedence over the normal icon route, icon restoration after loading (`MDButton.test.ts`);
+- disabled plus loading and selected plus loading (existing stories `LoadingIndicatorPresentation`, `DisabledSelectedOutlinedAndText`);
+- current consumers (`RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue`) unaffected — no public API change to `loading`, and the renamed `selected-label` slot has no external consumer;
+- stable visual stories.
+
+Pending:
+
 - final `pnpm verify`;
 - operator Button and dependency motion/visual acceptance.
 
-Green CI for the current raw dependency implementation is reusable evidence only. It is not architecture approval.
-
 ## Completion gate
 
-M1 completes only when:
+M1 is complete pending final verification and operator review:
 
 - `MDLoadingIndicator` is accepted as a canonical dependency adapter;
 - Button composes it through the public Vue boundary;
@@ -191,5 +172,5 @@ M1 completes only when:
 - public naming and native bubbling are corrected;
 - loading accessibility, size, color, selected/disabled precedence, and restoration are verified;
 - current consumers use the canonical Button API;
-- focused and final verification pass;
-- operator accepts Button and Loading indicator visual/motion behavior.
+- focused tests and type-check pass;
+- final `pnpm verify` and operator visual/motion review remain (tracked in `../../docs/roadmap.md`).

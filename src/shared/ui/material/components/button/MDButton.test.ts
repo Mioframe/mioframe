@@ -47,11 +47,11 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(button.element, 'type')).toBe('submit');
   });
 
-  it('routes selected content and selected icons through documented renderer slots', () => {
+  it('routes selected label and selected icons through documented renderer slots', () => {
     const wrapper = mount(MDButton, {
       props: { label: 'Start', selected: true, variant: 'toggle' },
       slots: {
-        selected: 'Stop',
+        'selected-label': 'Stop',
         'selected-icon': '<span data-selected-icon />',
       },
     });
@@ -94,15 +94,17 @@ describe('MDButton adapter', () => {
     warnSpy.mockRestore();
   });
 
-  it('shows the Material Loading indicator in place of the leading icon and marks the interactive owner busy', () => {
+  it('composes the canonical MDLoadingIndicator in place of the leading icon, handing off label and size, and marks the interactive owner busy', () => {
     const wrapper = mount(MDButton, {
-      props: { label: 'Save', loading: true },
+      props: { label: 'Save', loading: true, size: 'medium' },
       slots: { icon: '<span data-icon>+</span>' },
     });
     const button = wrapper.get('m3e-button');
+    const indicator = button.get('m3e-loading-indicator');
 
     expect(button.attributes('aria-busy')).toBe('true');
-    expect(button.find('m3e-loading-indicator').exists()).toBe(true);
+    expect(indicator.attributes('aria-label')).toBe('Save');
+    expect(indicator.attributes('style')).toContain('--m3e-loading-indicator-size: 1.5rem');
     expect(button.find('[data-icon]').exists()).toBe(false);
   });
 

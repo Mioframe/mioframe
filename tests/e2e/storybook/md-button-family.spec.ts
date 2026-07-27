@@ -148,7 +148,11 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
 
   await expect(loading).toHaveAttribute('aria-busy', 'true');
   await expect(loading).toBeEnabled();
-  await expect(loading.locator('m3e-loading-indicator')).toBeVisible();
+  const loadingIndicator = loading.locator('m3e-loading-indicator');
+  await expect(loadingIndicator).toBeVisible();
+  // MDButton hands off its own label to the canonical MDLoadingIndicator as the
+  // dependency's accessible purpose, instead of leaving the progressbar unlabeled.
+  await expect(loadingIndicator).toHaveAttribute('aria-label', 'Loading action');
   await loading.click();
   await expect(page.locator('#md-button-loading-count')).toHaveText('1');
 
@@ -183,6 +187,28 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
   await expect
     .poll(() => pressTarget.evaluate((element) => element.matches(':active')))
     .toBe(false);
+});
+
+test('MDButton preserves normal native click bubbling to ancestor listeners', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--behavior-contracts');
+
+  const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
+  const bubbledToDocument = page.evaluate(
+    () =>
+      new Promise<boolean>((resolve) => {
+        document.addEventListener(
+          'click',
+          () => {
+            resolve(true);
+          },
+          { once: true },
+        );
+      }),
+  );
+
+  await toggle.click();
+
+  expect(await bubbledToDocument).toBe(true);
 });
 
 test('MDIconButton expanded target activates clicks outside the visible button box', async ({
