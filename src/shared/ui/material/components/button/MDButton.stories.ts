@@ -194,6 +194,18 @@ export const BehaviorContracts: Story = {
   }),
 };
 
+export const RealInteractionFeedback: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="visual-md-button-real-interaction" class="visual-checker-backdrop">
+        <MDButton label="Press me" color="filled" />
+      </div>
+    `,
+  }),
+};
+
 export const LoadingIndicatorPresentation: Story = {
   tags: ['visual'],
   render: () => ({

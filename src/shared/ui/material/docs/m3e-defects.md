@@ -59,15 +59,16 @@ Mioframe status:
 
 | ID        | Component         | Summary                                                                 | Affected version | Mioframe status     | Upstream status |
 | --------- | ----------------- | ----------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
-| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`          | `workaround-active` | `unreported`    |
-| `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size   | `2.6.2`          | `workaround-active` | `unreported`    |
-| `M3E-003` | Button / ripple   | Unitless pressed opacity makes the 2.6.2 ripple color invalid           | `2.6.2`          | `awaiting-upgrade`  | `fixed`         |
+| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
+| `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size   | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
+
+`M3E-003` (Button/ripple: unitless pressed opacity invalid in `2.6.2`'s ripple `color-mix()`) was created against `2.6.2` exact-source inspection but is removed before merge as a misclassification. See "Removed records" below.
 
 ## M3E-001 — Loading indicator documented size input is not implemented
 
 - Component: Loading indicator
 - First confirmed version: `2.6.2`
-- Last revalidated version: `2.6.2`
+- Last revalidated version: `2.6.3`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
 - Family matrix: `../components/loading-indicator/README.md`
@@ -105,12 +106,13 @@ Therefore consumers following the public m3e documentation cannot control the im
 
 - m3e source: `packages/web/src/loading-indicator/LoadingIndicatorElement.ts`;
 - m3e source: `packages/web/src/loading-indicator/LoadingIndicatorToken.ts`;
+- installed `2.6.3` artifact: `node_modules/@m3e/web/dist/loading-indicator.js` (`activeIndicatorSize: unsafeCSS('var(--m3e-loading-indicator-size, 2.375rem)')`);
 - Mioframe contract and reproduction: `../components/loading-indicator/README.md`;
 - focused mapping proof: `../components/loading-indicator/MDLoadingIndicator.test.ts`.
 
 ### Mioframe impact
 
-The canonical `MDLoadingIndicator.size` contract cannot be mapped through the documented m3e CSS input in `2.6.2`.
+The canonical `MDLoadingIndicator.size` contract cannot be mapped through the documented m3e CSS input in `2.6.2`–`2.6.3`.
 
 ### Current Mioframe mitigation
 
@@ -126,15 +128,16 @@ Mioframe consumes an m3e version whose documented active-indicator size input is
 
 ### Revalidation history
 
-| m3e version | Date       | Result    | Evidence                                                   |
-| ----------- | ---------- | --------- | ---------------------------------------------------------- |
-| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection and Mioframe focused mapping tests |
+| m3e version | Date       | Result    | Evidence                                                                                                                                                                         |
+| ----------- | ---------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection and Mioframe focused mapping tests                                                                                                                       |
+| `2.6.3`     | 2026-07-27 | confirmed | installed `node_modules/@m3e/web/dist/loading-indicator.js`: `activeIndicatorSize` still reads `--m3e-loading-indicator-size`, unchanged from `2.6.2`; workaround retained as-is |
 
 ## M3E-002 — Uncontained host size is coupled to active-indicator size
 
 - Component: Loading indicator
 - First confirmed version: `2.6.2`
-- Last revalidated version: `2.6.2`
+- Last revalidated version: `2.6.3`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
 - Family matrix: `../components/loading-indicator/README.md`
@@ -161,6 +164,7 @@ In `2.6.2`, the uncontained host width is assigned directly from `LoadingIndicat
 ### Evidence
 
 - m3e source: `packages/web/src/loading-indicator/LoadingIndicatorElement.ts`;
+- installed `2.6.3` artifact: `node_modules/@m3e/web/dist/loading-indicator.js` (`:host([variant="uncontained"]) { width: ${LoadingIndicatorToken.activeIndicatorSize}; }`);
 - Mioframe contract and geometry analysis: `../components/loading-indicator/README.md`;
 - focused mapping proof: `../components/loading-indicator/MDLoadingIndicator.test.ts`;
 - browser host-box proof: `../../../../../tests/e2e/storybook/md-loading-indicator.spec.ts`;
@@ -184,84 +188,28 @@ Mioframe consumes an m3e version with independent Material-correct uncontained o
 
 ### Revalidation history
 
-| m3e version | Date       | Result    | Evidence                                                                         |
-| ----------- | ---------- | --------- | -------------------------------------------------------------------------------- |
-| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection, host bounding-box tests, and inspected visual baselines |
+| m3e version | Date       | Result    | Evidence                                                                                                                                                                                         |
+| ----------- | ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection, host bounding-box tests, and inspected visual baselines                                                                                                                 |
+| `2.6.3`     | 2026-07-27 | confirmed | installed `node_modules/@m3e/web/dist/loading-indicator.js`: uncontained host `width` still reads `LoadingIndicatorToken.activeIndicatorSize`, unchanged from `2.6.2`; workaround retained as-is |
 
-## M3E-003 — Unitless pressed opacity makes the 2.6.2 ripple color invalid
+## Removed records
 
-- Component: Button / shared ripple primitive
-- First confirmed version: `2.6.2`
-- Last revalidated version: `2.6.3`
-- Upstream status: `fixed`
-- Mioframe status: `awaiting-upgrade`
-- Family matrix: `../components/button/README.md`
-- Upstream issue: none identified
-- Upstream pull request: none identified
+### M3E-003 (removed) — Unitless pressed opacity makes the 2.6.2 ripple color invalid
 
-### Official Material contract
+Created against `2.6.2` exact-source inspection and operator reproduction, then revisited when `2.6.3` was targeted for upgrade. Removed before merge as a misclassification once installed-artifact inspection distinguished two separate m3e primitives that had been conflated under one ID:
 
-A Button press requires visible state feedback. The selected Mioframe Button contract delegates renderer-owned pressed feedback, including ripple presentation, to m3e while preserving the standard Material pressed-state opacity token.
+- **Ripple** (`M3eRippleElement`, installed `2.6.3`: `node_modules/@m3e/web/dist/core.js`): applies `opacity: ${RippleToken.opacity}` and `background-color: ${RippleToken.color}` as two independent CSS declarations, not `color-mix()`. The CSS `opacity` property accepts both a unitless `<number>` and a `<percentage>` as a valid `<alpha-value>`, so this primitive was never actually broken by Mioframe's unitless system token once `2.6.3` was consumed — the original `2.6.2` diagnosis (a `color-mix()`-based ripple background) no longer described the artifact actually in use.
+- **State layer** (`M3eStateLayerElement`, installed `2.6.3`: `node_modules/@m3e/web/dist/core.js`): applies `background-color: color-mix(in srgb, ${StateLayerToken.hoverColor} ${StateLayerToken.hoverOpacity}, transparent)` (and the equivalent `focused` rule). `color-mix()`'s color-weight position requires a `<percentage>`; a unitless `<number>` there is invalid and drops the whole declaration, so hover/focus rendered with no visible background. This is the same shape of representation problem as the original ripple diagnosis, but it lives in a different primitive (state layer, not ripple), and it was still present after consuming `2.6.3`.
 
-Sources:
+`DesignToken.state.hoverStateLayerOpacity`/`focusStateLayerOpacity`/`pressedStateLayerOpacity` (`node_modules/@m3e/web/dist/core.js`) fall back to `8%`/`10%`/`10%` respectively when no Mioframe token overrides them — i.e. the installed package's own shipped default is already percentage-based and works correctly with `color-mix()`. m3e's shipped/documented contract is therefore internally consistent; the defect was Mioframe's own foundation-token representation (`src/shared/lib/md/tokens.css`, unitless `0.08`/`0.1`/`0.16`) being incompatible with one specific consumer grammar it needed to support. That is a foundation-representation correction, not a confirmed m3e defect per this registry's inclusion boundary, so no replacement `M3E-*` ID was created for the state-layer finding. See `../components/button/README.md` for the resulting token-representation correction and the real-interaction browser/visual proof.
 
-- `/components/buttons/specs`;
-- `/components/buttons/guidelines`;
-- `/components/buttons/accessibility`.
+### Revalidation history (retained for audit trail)
 
-### Documented m3e contract
-
-`m3e-button` renders and attaches an internal `m3e-ripple`. Ripple opacity is controlled by `--m3e-ripple-opacity`, ultimately falling back to `--md-sys-state-pressed-state-layer-opacity`.
-
-### Observed m3e behavior
-
-In `2.6.2`, `RippleElement` builds the ripple background with:
-
-```css
-background-color: color-mix(in srgb, <ripple-color> <ripple-opacity>, transparent);
-```
-
-The color weight in `color-mix()` must be a percentage. m3e's own fallback is `10%`, so its showcase works when no system token overrides it. Mioframe defines the equivalent Material state opacity as the valid unitless opacity value `0.1`. Substitution therefore produces an invalid color weight and the ripple has no visible background.
-
-In `2.6.3`, m3e fixes the representation mismatch by applying the values independently:
-
-```css
-opacity: <ripple-opacity>;
-background-color: <ripple-color>;
-```
-
-CSS `opacity` accepts both `0.1` and `10%`, so the standard Mioframe token works without a renderer-specific conversion.
-
-### Evidence
-
-- m3e `2.6.2` source: `packages/web/src/core/shared/primitives/RippleElement.ts`;
-- m3e `2.6.2` source: `packages/web/src/core/shared/primitives/RippleToken.ts`;
-- m3e `2.6.3` source: `packages/web/src/core/shared/primitives/RippleElement.ts`;
-- Mioframe system token: `src/shared/lib/md/tokens.css`;
-- operator reproduction: Button ripple visible in the m3e showcase but absent in the Mioframe Button pilot.
-
-### Mioframe impact
-
-The selected `MDButton` press contract is incomplete despite green automated verification: pointer and keyboard activation work, but the expected visible ripple feedback is absent. Existing tests prove only host `:active` state and do not prove the renderer-owned visual feedback.
-
-### Current Mioframe mitigation
-
-None. Do not add a new wrapper ripple or locally rewrite the Material system opacity token. The upstream fix already exists in `@m3e/web` `2.6.3`.
-
-### Correct upstream result
-
-Completed in m3e `2.6.3`: ripple color and opacity are applied through properties that accept the public opacity representation without requiring callers to convert a system opacity value into a `color-mix()` percentage.
-
-### Removal trigger
-
-Mioframe resolves `@m3e/web` to `2.6.3` or later, revalidates all non-resolved Button, Loading indicator, and shared-core defects affected by the upgrade, proves visible pointer and keyboard pressed feedback, passes final repository verification, and receives operator motion acceptance.
-
-### Revalidation history
-
-| m3e version | Date       | Result                           | Evidence                                    |
-| ----------- | ---------- | -------------------------------- | ------------------------------------------- |
-| `2.6.2`     | 2026-07-27 | confirmed                        | source inspection and operator reproduction |
-| `2.6.3`     | 2026-07-27 | fixed upstream, not yet consumed | exact source comparison against `v2.6.2`    |
+| m3e version | Date       | Result                      | Evidence                                                                                                                         |
+| ----------- | ---------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed                   | source inspection and operator reproduction                                                                                      |
+| `2.6.3`     | 2026-07-27 | reclassified, entry removed | installed-artifact inspection distinguished the ripple (fine) from the state layer (the real cause); see "Removed records" above |
 
 ## Update protocol
 

@@ -8,25 +8,25 @@ Last updated: 2026-07-27
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `correction`
+Status: `verification`
 
 Owner: current architecture-reset branch
 
-Blocker: operator review confirmed that the selected Button pressed-feedback contract is incomplete on the lockfile-resolved `@m3e/web` `2.6.2`: Button activation and host pressed state work, but the visible ripple is absent. `M3E-003` records the exact cause: m3e `2.6.2` inserts the unitless Material system opacity value `0.1` into a `color-mix()` percentage position, making the ripple background invalid. The m3e showcase works with its `10%` fallback. m3e `2.6.3` fixes the representation by applying color and opacity separately, so Mioframe must consume the fixed version rather than implement a second ripple or rewrite the Material system token.
+Blocker: none remaining in automated scope. `@m3e/web` is resolved to `2.6.3`. Installed-artifact inspection (`node_modules/@m3e/web/dist/core.js`) found the actual cause of the previously observed missing hover/focus/pressed presentation: Mioframe's four canonical `--md-sys-state-*-state-layer-opacity` tokens (`src/shared/lib/md/tokens.css`) were unitless numbers (`0.08`/`0.1`/`0.1`/`0.16`), which is invalid in the color-weight position of `color-mix()` — the CSS function m3e's `M3eStateLayerElement` uses for hover/focus. The previously recorded `M3E-003` ripple defect did not reproduce against the installed `2.6.3` artifact (its ripple applies opacity/color as independent declarations, which already accept unitless numbers) and was removed as a pre-merge misclassification (`../../docs/m3e-defects.md#removed-records`).
 
-Next action: update the lockfile-resolved `@m3e/web` version to `2.6.3`, revalidate `M3E-001`, `M3E-002`, and `M3E-003` against the consumed package, add observable browser proof for visible pointer and Space-key ripple feedback without inspecting private renderer DOM, inspect Button and Loading indicator visual/motion changes, then run final `pnpm verify` and obtain operator acceptance.
+Next action: the four canonical tokens were normalized to the percentage representation (`8%`/`10%`/`10%`/`16%`, same opacity magnitude, compatible with every selected current consumer's CSS grammar); `M3E-001`/`M3E-002` were revalidated against the installed `2.6.3` artifact and retained unchanged; new real-browser interaction proof for pointer hover, keyboard focus, pointer-press ripple, and Space-key ripple was added (`tests/e2e/visual/shared-ui/md-button.spec.ts`, story `RealInteractionFeedback`) and its baselines were regenerated and inspected. Focused verification and the final `pnpm verify --base origin/develop` completion gate both passed. Remaining: operator visual/motion acceptance of the new interaction-feedback baselines and the `2.6.3` ripple/state-layer presentation.
 
 Implementation ownership: `migrating`.
 
 ## Milestones
 
-| ID  | Milestone                               | Status         | Depends on | Exit gate                                                                                                                                                                                                                                               |
-| --- | --------------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset           | `verification` | none       | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; canonical defect registry; canonical adapters for official Material dependencies; package-derived typing; final verification                    |
-| M1a | `MDLoadingIndicator` dependency adapter | `correction`   | M0         | accepted Loading indicator Material–m3e–Vue matrix; demand-scoped public Vue API; official accessibility and token contract; exact renderer typing; corrected geometry; `M3E-001`/`M3E-002` revalidated against consumed m3e; tests and operator review |
-| M1  | `MDButton` adapter pilot                | `correction`   | M1a        | accepted Button matrix; visible pressed feedback restored through upstream-fixed m3e; text toggle supported; Loading indicator composition delegated correctly; migrated consumers; verification and operator acceptance                                |
-| M2  | `MDSwitch` stateful adapter pilot       | `planned`      | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; confirmed-defect registry integration; verification and operator acceptance                                                                  |
-| M3  | sequential component migration          | `planned`      | M2         | one official Material component at a time; dependency adapters implemented first; demand-driven Material API; explicit m3e mapping and gap ownership; confirmed defects tracked centrally; no renderer leakage                                          |
+| ID  | Milestone                               | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                              |
+| --- | --------------------------------------- | -------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset           | `verification` | none       | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; canonical defect registry; canonical adapters for official Material dependencies; package-derived typing; final verification                                                   |
+| M1a | `MDLoadingIndicator` dependency adapter | `verification` | M0         | accepted Loading indicator Material–m3e–Vue matrix; demand-scoped public Vue API; official accessibility and token contract; exact renderer typing; corrected geometry; `M3E-001`/`M3E-002` revalidated against consumed m3e; tests and operator review                                |
+| M1  | `MDButton` adapter pilot                | `verification` | M1a        | accepted Button matrix; visible hover/focus/pressed feedback restored through the corrected Material state-opacity foundation token representation; text toggle supported; Loading indicator composition delegated correctly; migrated consumers; verification and operator acceptance |
+| M2  | `MDSwitch` stateful adapter pilot       | `planned`      | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; confirmed-defect registry integration; verification and operator acceptance                                                                                                 |
+| M3  | sequential component migration          | `planned`      | M2         | one official Material component at a time; dependency adapters implemented first; demand-driven Material API; explicit m3e mapping and gap ownership; confirmed defects tracked centrally; no renderer leakage                                                                         |
 
 ## M1a — MDLoadingIndicator prerequisite
 
@@ -48,11 +48,10 @@ Implemented geometry correction:
 - m3e's internal `0.842` shape scale remains renderer-owned and is not inverted or compensated;
 - browser geometry tests and regenerated, inspected visual baselines prove the corrected mapping on `2.6.2`.
 
-Required after the m3e upgrade:
+Completed after the m3e `2.6.3` upgrade:
 
-- revalidate `M3E-001` and `M3E-002` against `2.6.3`;
-- retain, update, or remove each exact-version workaround only from new evidence;
-- rerun Loading indicator contract, browser, and visual proof.
+- `M3E-001` and `M3E-002` were revalidated against the installed `2.6.3` artifact and retained unchanged, with a new revalidation-history row in `../../docs/m3e-defects.md`;
+- Loading indicator contract, browser, and visual proof remain valid — no active-indicator geometry regression was found in `2.6.3`.
 
 Contained presentation remains deferred.
 
@@ -67,15 +66,17 @@ The Button adapter architecture remains accepted:
 5. Button hands off the action label as the loading-purpose label because the indicator represents progress of that same named action;
 6. Button uses the accepted overall Loading indicator size mapping `24/24/24/32/40` and does not access dependency-private m3e inputs;
 7. Button references dependency defects only through the Loading indicator contract;
-8. `M3E-003` owns the confirmed missing-ripple defect and is `fixed` upstream / `awaiting-upgrade` in Mioframe.
+8. the canonical Material state-opacity foundation tokens (`src/shared/lib/md/tokens.css`) own the percentage representation Button's renderer-owned hover/focus/pressed feedback depends on; Button does not own a local opacity conversion or ripple implementation.
 
-Current correction:
+Completed in this correction:
 
-- consume `@m3e/web` `2.6.3` rather than creating a wrapper ripple or changing the Material opacity token;
-- prove that pointer press and Space activation produce visible feedback;
-- inspect the `2.6.3` ripple presentation and the Button pressed-duration change;
-- update only affected proof and documentation;
-- complete final verification and operator review.
+- normalized the four canonical `--md-sys-state-*-state-layer-opacity` tokens to percentages rather than creating a wrapper ripple or a Button-local conversion;
+- proved that pointer hover, keyboard focus, pointer press, and Space activation each produce visible renderer-owned feedback (`tests/e2e/visual/shared-ui/md-button.spec.ts`);
+- inspected the resulting Button visual baselines (four new, zero regressed);
+- updated affected proof and documentation;
+- ran the final `pnpm verify --base origin/develop` completion gate: passed.
+
+Remaining: operator visual/motion review of the new interaction-feedback baselines and the `2.6.3` ripple/state-layer presentation.
 
 ## Later milestones
 

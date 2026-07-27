@@ -339,20 +339,23 @@
 
   /* md.sys.state */
   /* md.sys.state.hover */
-  --md-sys-state-hover-state-layer-opacity: 0.08;
+  /* Percentage form (see component-tokens.md, "Mapping"): the same opacity magnitude as
+     a unitless number, but valid in every selected consumer's CSS grammar, including
+     m3e's color-mix() percentage position. */
+  --md-sys-state-hover-state-layer-opacity: 8%;
 
   /* md.sys.state.focus-indicator */
   --md-sys-state-focus-indicator-thickness: 3px;
   --md-sys-state-focus-indicator-outer-offset: 2px;
 
   /* md.sys.state.focus */
-  --md-sys-state-focus-state-layer-opacity: 0.1;
+  --md-sys-state-focus-state-layer-opacity: 10%;
 
   /* md.sys.state.pressed */
-  --md-sys-state-pressed-state-layer-opacity: 0.1;
+  --md-sys-state-pressed-state-layer-opacity: 10%;
 
   /* md.sys.state.dragged */
-  --md-sys-state-dragged-state-layer-opacity: 0.16;
+  --md-sys-state-dragged-state-layer-opacity: 16%;
 
   /* md.sys.motion */
   /* md.sys.motion.easing */
