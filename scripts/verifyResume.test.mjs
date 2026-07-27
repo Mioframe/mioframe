@@ -165,7 +165,7 @@ describe('resumeVerification', () => {
 });
 
 describe('effective retry metadata integration', () => {
-  it('round-trips the metadata emitted by runVerifyCli through resume guidance', async () => {
+  it('round-trips runVerifyCli metadata through the public resume consumer', async () => {
     const invocation = resolveVerifyInvocation(['--only', 'e2e'], {
       GITHUB_ACTIONS: 'true',
       GITHUB_BASE_REF: 'develop',
@@ -182,10 +182,31 @@ describe('effective retry metadata integration', () => {
       }),
     });
 
+    const { stateDir, metadataPath } = createTempVerificationDir();
+    const persistedMetadata = {
+      ...lockMetadata,
+      heartbeatAt: new Date(Date.now() - 60_000).toISOString(),
+      ownerToken: 'integration-owner',
+      pid: 9_999_999,
+    };
+    writeMetadata(metadataPath, persistedMetadata);
+    const logs = [];
+    vi.spyOn(console, 'log').mockImplementation((message) => logs.push(message));
+
+    const exitCode = resumeVerification({
+      lockPath: stateDir,
+      metadata: persistedMetadata,
+      metadataPath,
+      state: 'stale',
+      statusReason: null,
+    });
+
     expect(runMain).toHaveBeenCalledOnce();
     expect(lockMetadata?.verifyInvocation).toEqual(invocation);
-    expect(getRetryInstruction(lockMetadata)).toBe(
-      '  Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.',
+    expect(exitCode).toBe(0);
+    expect(fs.existsSync(stateDir)).toBe(false);
+    expect(logs.join('\n')).toContain(
+      'Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.',
     );
   });
 });
