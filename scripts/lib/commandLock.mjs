@@ -114,9 +114,7 @@ async function withCommandLock(kind, input, run, options = {}) {
 
   const ownerToken = crypto.randomUUID();
   const baseMetadata = {
-    ...(input.verifyInvocation === undefined
-      ? {}
-      : { verifyInvocation: input.verifyInvocation }),
+    ...(input.verifyInvocation === undefined ? {} : { verifyInvocation: input.verifyInvocation }),
     kind,
     label: input.label,
     command: input.command,
