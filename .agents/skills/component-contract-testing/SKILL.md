@@ -33,7 +33,7 @@ Use for applicable:
 6. Route proof that an override changes geometry, color, motion, focus, or another rendered effect to real browser behavior or visual proof.
 7. Stub only direct dependencies whose public wiring is the assertion.
 8. Assert public output or explicit child wiring.
-9. Run focused unit and type-check feedback, then final verification.
+9. Run focused unit and type-check feedback and return to the top-level task. This skill does not run a separate final gate.
 
 ## Typed custom-element boundary
 
@@ -62,8 +62,10 @@ This proof type owns native semantics, explicit ARIA ownership, accessible name,
 ## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <component-or-test-paths...>
+pnpm verify --only unit-tests --files <exact-component-or-test-paths...>
 ```
+
+Until the unit resolver migration is implemented, prefer the exact owning component test path when a production source path would rely on an unconfirmed relation. The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
 
 ## Forbidden
 
