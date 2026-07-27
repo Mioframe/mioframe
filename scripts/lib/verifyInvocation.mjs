@@ -382,12 +382,16 @@ export function isResolvedVerifyInvocation(value) {
   }
 }
 
-function quoteShellArg(value) {
+export function quoteShellArg(value) {
   if (/^[A-Za-z0-9_./:-]+$/.test(value)) {
     return value;
   }
 
   return `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+export function formatShellCommand(command, args = []) {
+  return [command, ...args].map(quoteShellArg).join(' ');
 }
 
 /**
@@ -440,5 +444,5 @@ export function formatVerifyInvocationCommand(invocation, options = {}) {
     args.push('--only', candidate.onlyLabel);
   }
 
-  return ['pnpm', 'verify', ...args].map(quoteShellArg).join(' ');
+  return formatShellCommand('pnpm', ['verify', ...args]);
 }

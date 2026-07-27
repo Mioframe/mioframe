@@ -14,6 +14,7 @@ import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
   FIX_ONLY_LABELS,
+  formatShellCommand,
   formatVerifyInvocationCommand,
   FULL_ONLY_LABELS,
   getCliFilesOverride,
@@ -354,18 +355,8 @@ function getMutationScope(changedFiles) {
   return uniqSorted(scope);
 }
 
-function quoteArg(value) {
-  if (/^[A-Za-z0-9_./:-]+$/.test(value)) {
-    return value;
-  }
-
-  const singleQuote = String.fromCharCode(39);
-  const escapedSingleQuote = singleQuote + '\\' + singleQuote + singleQuote;
-  return singleQuote + value.replaceAll(singleQuote, escapedSingleQuote) + singleQuote;
-}
-
 function formatCommand(command, args) {
-  return [command, ...args].map(quoteArg).join(' ');
+  return formatShellCommand(command, args);
 }
 
 function getLogPath(label) {
@@ -568,7 +559,7 @@ function printHelp() {
   console.log('  --fix               Apply supported format/lint fixes, then run verification.');
   console.log('  --fix-only          Apply supported format/lint fixes only.');
   console.log(
-    `                      With --only, accepted labels: ${[...FIX_ONLY_LABELS].join(', ')}.`,
+    `                      With either fix mode and --only, accepted labels: ${[...FIX_ONLY_LABELS].join(', ')}.`,
   );
   console.log('  --base <ref>        Verify changes against a local base ref.');
   console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
