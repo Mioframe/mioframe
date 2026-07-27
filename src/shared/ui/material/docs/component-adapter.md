@@ -76,7 +76,8 @@ Each relevant row identifies:
 - exact m3e entry point and documented or inspected mapping;
 - renderer status;
 - implementation owner and decision;
-- required proof.
+- required proof;
+- stable `M3E-*` defect ID when the renderer status is a confirmed `divergent` implementation or documentation defect.
 
 Renderer statuses:
 
@@ -97,6 +98,38 @@ Decisions:
 - `source-conflict`.
 
 For every dependency, the parent matrix also records adapter path, root export, status, public API used, exact handoff, and proof required before parent completion.
+
+No production mapping or composition may exist without a matrix row.
+
+## m3e defect registry
+
+`m3e-defects.md` is the canonical cross-component owner for confirmed incorrect m3e implementations and documentation mismatches.
+
+Keep these cases separate:
+
+```text
+m3e does not implement a Material capability
+  → family matrix: `missing`
+
+m3e documents or implements a capability incorrectly
+  → family matrix: `divergent` + `M3E-*`
+  → `m3e-defects.md`
+```
+
+Create or update an `M3E-*` record when exact-version evidence confirms:
+
+- observable m3e behavior differs from the selected official Material contract;
+- a documented m3e public API is broken or implemented under a different contract;
+- m3e documentation and implementation disagree;
+- a renderer defect requires a `temporary-renderer-workaround` or blocks a selected scenario.
+
+Do not create a defect record for a missing capability, deferred optional surface, Material source conflict, Mioframe extension, equivalent internal implementation, or unverified suspicion.
+
+Each record owns the stable ID, affected and last-revalidated versions, upstream and Mioframe statuses, evidence, affected family matrices, current mitigation or blocker, correct upstream result, removal trigger, and revalidation history.
+
+A confirmed `divergent` matrix row without its applicable `M3E-*` reference is incomplete. A temporary workaround for a confirmed m3e defect without a complete registry record is forbidden.
+
+Every m3e version update must revalidate all non-resolved entries for the affected renderer families. Upstream status `fixed` does not resolve Mioframe work until the fixed version is consumed, the workaround or blocked path is removed, and owned verification passes.
 
 ## Public Vue API
 
@@ -144,13 +177,14 @@ A `temporary-renderer-workaround` is accepted only when:
 
 1. the selected current Material scenario requires the behavior;
 2. documented m3e API is missing, broken, or observably divergent;
-3. exact lockfile-resolved source confirms a host-level property, attribute, or CSS custom property that produces the required observable result;
+3. exact lockfile-resolved source confirms a host-level property, attribute, CSS custom property, or host dimension that produces the required observable result;
 4. the workaround exists only inside the canonical owning adapter;
 5. it does not access private DOM/methods or recreate interaction, accessibility, state, geometry engine, or motion systems;
 6. it does not leak to public Vue API, parent adapters, or consumers;
-7. the matrix records renderer status `divergent`, current decision `temporary-renderer-workaround`, long-term owner `m3e-fix`, exact package version, risk, and removal trigger;
-8. focused tests cover the observable behavior;
-9. every dependency version update revalidates or removes it.
+7. the matrix records renderer status `divergent`, current decision `temporary-renderer-workaround`, long-term owner `m3e-fix`, exact package version, risk, removal trigger, and applicable `M3E-*` ID;
+8. the linked `m3e-defects.md` entry records current upstream and Mioframe statuses, exact evidence, mitigation, correct upstream result, and revalidation history;
+9. focused tests cover the observable behavior;
+10. every dependency version update revalidates or removes it.
 
 A workaround meeting this gate is tracked technical debt, not a blocker. Undocumented renderer usage without this gate is forbidden.
 
@@ -159,7 +193,7 @@ A workaround meeting this gate is tracked technical debt, not a blocker. Undocum
 - Import exact exported element classes and value aliases with type-only imports.
 - Derive Vue custom-element glue from the element class or `HTMLElementTagNameMap`.
 - Handwritten `new () => HTMLElement` glue is not package-derived.
-- There is no exemption merely because no current public prop maps to a typed renderer property.
+- There is no exemption merely because no current public prop maps to a typed element property.
 - Keep public Material types independent and constrain private mapping with exact package types.
 - Keep renderer declaration glue with its canonical adapter.
 
@@ -192,6 +226,7 @@ For each parent and dependency adapter require:
 - meaningful independent stories for selected presentation states;
 - executable visual-regression proof through the repository visual runner when the adapter owns stable visible geometry or presentation;
 - exact-version divergence and reduced-motion assessment;
+- complete `M3E-*` records for confirmed renderer defects;
 - operator visual and motion review where applicable.
 
 A Storybook story, a `visual` tag, or a behavior/accessibility test is not visual-regression proof. Accepted automated visual proof requires a visual-runner test that captures the owned surface (currently Playwright `toHaveScreenshot`) and a committed baseline for every claimed stable case.
@@ -220,8 +255,9 @@ A target completes only when:
 - required visual-regression specs and baselines exist for every claimed stable visual surface;
 - selected gaps have the correct owner;
 - divergences and temporary workarounds have exact versions, risks, tests, and removal triggers;
+- every confirmed incorrect m3e implementation has a linked complete `M3E-*` record with current lifecycle statuses;
 - consumers use canonical APIs and obsolete ownership is removed;
 - final verification passes;
 - operator accepts required visual and motion behavior.
 
-README and roadmap statements must map to exact existing implementation, tests, stories, baselines, or review evidence. Green CI alone is not architecture approval. Do not mark a target `migrated`, remove blockers, or claim “no further implementation work” while required verification, visual baselines, operator review, source conflict, dependency work, root export, or workaround documentation remains incomplete.
+README and roadmap statements must map to exact existing implementation, tests, stories, baselines, defect records, or review evidence. Green CI alone is not architecture approval. Do not mark a target `migrated`, remove blockers, or claim “no further implementation work” while required verification, visual baselines, operator review, source conflict, dependency work, root export, workaround documentation, or confirmed-defect registry work remains incomplete.
