@@ -4,8 +4,9 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { withVerifyCommandLock } from './commandLock.mjs';
+import { getMachineLockStatus, withVerifyCommandLock } from './commandLock.mjs';
 import { resolveVerifyInvocation } from './verifyInvocation.mjs';
+import { getRetryInstruction } from '../verifyResume.mjs';
 
 const tempDirs = [];
 
@@ -18,7 +19,7 @@ afterEach(() => {
 });
 
 describe('verify lock invocation persistence', () => {
-  it('writes the structured invocation through the real machine-lock writer', async () => {
+  it('round-trips the structured invocation through the real lock writer and status reader', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-invocation-lock-'));
     const lockDir = path.join(baseDir, 'machine.lock');
     const metadataPath = path.join(lockDir, 'metadata.json');
@@ -29,6 +30,7 @@ describe('verify lock invocation persistence', () => {
       { GITHUB_ACTIONS: 'false' },
     );
     let persistedMetadata = null;
+    let activeStatus = null;
 
     await withVerifyCommandLock(
       {
@@ -39,15 +41,27 @@ describe('verify lock invocation persistence', () => {
       },
       async () => {
         persistedMetadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+        activeStatus = getMachineLockStatus({
+          lockDirectoryPath: lockDir,
+          staleAfterMs: 50_000,
+        });
       },
       {
         forceLock: true,
+        heartbeatIntervalMs: 50_000,
         machineLockDirectoryPath: lockDir,
         staleAfterMs: 50_000,
       },
     );
 
     expect(persistedMetadata.verifyInvocation).toEqual(invocation);
+    expect(activeStatus).toMatchObject({
+      state: 'active',
+      metadata: { verifyInvocation: invocation },
+    });
+    expect(getRetryInstruction(activeStatus.metadata)).toBe(
+      '  Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.',
+    );
     expect(persistedMetadata.kind).toBe('verify');
     expect(persistedMetadata.command).toContain('--base origin/develop');
     expect(fs.existsSync(lockDir)).toBe(false);
