@@ -35,10 +35,11 @@ Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or Stryk
 
 Invocation mode is validated before planning and again when persisted retry metadata is read:
 
+- unknown, positional, or repeated CLI arguments are rejected rather than silently changing scope;
 - `--full` is an unconditional full-project scope and must not be combined with `--base` or `--files`; environment base refs are ignored in full mode;
 - release-only labels require `--full`;
 - mutation is a PR-quality tool and is not available as `--full --only mutation`;
-- `--fix-only --only` is limited to `agent-environment`, `format`, `oxlint`, and `eslint`, the checks that actually execute in fix-only mode.
+- `--fix --only` and `--fix-only --only` are limited to `agent-environment`, `format`, `oxlint`, and `eslint`, the checks that actually apply fixers.
 
 ## Automatic scope
 
@@ -55,7 +56,7 @@ The target automatic planner is defined only by repository facts:
 - persistent mutation targets;
 - persistent performance checks for durable budgets.
 
-Each lane resolves to `skip`, `focused`, `full`, or blocking `invalid` with inspectable reasons. Unknown relevant impact selects the full owning lane.
+Each lane resolves to `skip`, `focused`, `full`, or blocking `invalid` with inspectable reasons. Unknown relevant impact selects the full owning lane. Blocking `invalid` remains blocking in full/release mode; full execution never bypasses broken impact metadata.
 
 Until `docs/testing/migration-plan.md` is complete, the current verifier may still use sibling unit selection, broad visual/E2E fallback, omit release-only checks from focused development runs, duplicate desktop/mobile execution, and use legacy mutation inference. Do not describe target behavior as already implemented.
 
@@ -71,7 +72,7 @@ When adding, moving, renaming, or removing a Playwright spec:
 
 When changing a release-only contract, maintain its repository mapping to the exact build, artifact, or release-smoke checks. Shared or unknown release impact uses full release fallback.
 
-A broken registry or release mapping must fail verification before tests run.
+A broken registry or release mapping must fail verification before tests run, including during `pnpm verify:release`.
 
 ## Mutation
 
@@ -83,7 +84,7 @@ pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 
 The durable target is automatic selection from persistent registered high-risk source/test pairs. Do not infer semantic applicability merely from sibling files, and do not make automatic selection depend on agent prose.
 
-Until the persistent registry replaces legacy inference, final task-scope verification may still execute broader mutation scope. Do not skip the mandatory final gate or present that incidental run as a deliberate task-specific audit.
+Until the persistent registry replaces legacy inference, ordinary branch-diff verification may still execute broader mutation scope. When `pnpm verify:release` is the final completion gate, run required mutation proof beforehand through the focused verify-managed command because mutation is intentionally outside release mode.
 
 ## Browser, visual, and project selection
 
@@ -99,7 +100,7 @@ If no faithful test target exists, report the proof gap and resolve it within sc
 
 The target focused planner automatically selects production-artifact proof for release-relevant changes. `pnpm verify:release` remains the unconditional full gate for `main`.
 
-Until the release resolver migration is implemented, a task changing build configuration, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies must explicitly run the affected release verification through the supported full release command. Do not treat a focused `pnpm verify` that skipped release checks as complete proof for that contract.
+Until the release resolver migration is implemented, a task changing build configuration, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies must use `pnpm verify:release` as its single final completion gate. It replaces, rather than supplements, the ordinary branch-diff completion gate.
 
 ## Performance evidence
 
@@ -109,7 +110,7 @@ For a one-off performance, memory, startup, main-thread, or bundle-size claim:
 2. use the recorded representative scenario/dataset and environment;
 3. report the baseline or budget and measured result;
 4. rerun after implementation when comparison is required;
-5. still run the single final task-scope verification.
+5. run the one applicable final completion gate.
 
 A durable product budget belongs in a repository-owned automated check with impact metadata. Do not create permanent benchmark infrastructure for one task.
 
@@ -123,9 +124,9 @@ pnpm verify --fix-only --base <parent-ref>
 
 Inspect generated changes. `pnpm verify --fix` remains available as a combined convenience run, but it is not the default agent workflow and never replaces the final read-only gate. Remove `--fix` or `--fix-only` from the final rerun.
 
-## Final and release gates
+## Final completion gate
 
-The top-level task owns exactly one final read-only verification after all implementation passes and focused proof are complete. Nested implementation and testing skills do not run separate final gates.
+The top-level task owns exactly one final read-only completion gate after all implementation and focused or mode-specific proof are complete. Nested implementation and testing skills do not run separate final gates.
 
 For ordinary feature-branch or PR work:
 
@@ -135,17 +136,19 @@ pnpm verify --base origin/develop
 
 For a stacked branch, replace `origin/develop` with the actual parent feature branch. Plain `pnpm verify` is sufficient only when the complete task is exactly the current uncommitted diff against `HEAD`, or exactly the single last commit selected by verify's documented fallback; never report it as proof of a multi-commit PR.
 
-Release verification:
+When the change requires full/release proof:
 
 ```bash
 pnpm verify:release
 ```
 
+This is the single final completion gate for that task. Do not also run `pnpm verify --base <parent-ref>` as a second final gate. Complete any required proof not owned by release mode, such as mutation, with focused verify-managed commands before the final release run.
+
 A broad green run does not replace missing proof, stale impact metadata, performance evidence, architecture review, operator visual acceptance, PR review, or merge readiness.
 
 ## Mode-specific changes
 
-When tooling, scripts, CI, Storybook, Playwright, build config, package scripts, resolver logic, or command output changes, verify every affected user-visible mode.
+When tooling, scripts, CI, Storybook, Playwright, build config, package scripts, resolver logic, or command output changes, verify every affected user-visible mode during focused development proof.
 
 Examples:
 
@@ -157,7 +160,7 @@ Examples:
 - release resolver: focused development planning and unconditional full release mode;
 - package/build config: affected type-check, build, artifact, or release mode.
 
-The final task-scope command does not replace a mode or measurement it does not exercise.
+Mode-specific focused proof is not another final gate. Select the final completion gate only after all affected modes are proven.
 
 ## Process ownership
 
@@ -175,13 +178,13 @@ When a required check, registry validation, or measurement fails:
 2. determine whether the current change caused it;
 3. fix in-scope failures or stale repository impact metadata;
 4. rerun the narrow failed proof through `pnpm verify --only <label>` while preserving applicable `--base`, `--full`, `--profile`, and `--files` arguments;
-5. after all fixes, rerun the original final task-scope command without `--fix` or `--fix-only`;
+5. after all fixes, rerun the original final completion-gate command without `--fix` or `--fix-only`;
 6. report unrelated or unresolved failures exactly;
 7. never claim completion while required verification or evidence is missing or failing.
 
 Do not follow a failure summary that drops the original base, full, profile, file, or label scope, and do not substitute a printed raw child command for the verify-managed rerun.
 
-If verification is active, use `pnpm verify:status`, inspect `.verify/logs`, and use `pnpm verify:resume` only when instructed by status. Do not start duplicate expensive runs. After resume, rerun the exact original task-scope command printed by `pnpm verify:resume` when structured metadata is available; plain `pnpm verify` is not an acceptable fallback when the original invocation had scope arguments.
+If verification is active, use `pnpm verify:status`, inspect `.verify/logs`, and use `pnpm verify:resume` only when instructed by status. Do not start duplicate expensive runs. After resume, rerun the exact original completion-gate command printed by `pnpm verify:resume` when structured metadata is available; plain `pnpm verify` is not an acceptable fallback when the original invocation had scope arguments.
 
 ## Warnings
 
@@ -195,9 +198,9 @@ status: complete | partial | blocked
 remaining: none | <remaining required work, verification, or blocker>
 
 VERIFY RESULT
-command: <exact final task-scope command>
+command: <exact final completion-gate command>
 status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
 
-`complete` requires assigned scope, acceptance criteria, required proof and measurements, consistent repository impact metadata, and the single final task-scope verification to pass.
+`complete` requires assigned scope, acceptance criteria, required proof and measurements, consistent repository impact metadata, and the one applicable final completion gate to pass.
