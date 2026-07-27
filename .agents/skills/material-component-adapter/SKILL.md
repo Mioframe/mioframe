@@ -13,6 +13,7 @@ Implement one explicitly selected official Material component end to end through
 - `src/shared/ui/material/docs/architecture.md`;
 - `src/shared/ui/material/docs/component-adapter.md`;
 - `src/shared/ui/material/docs/component-tokens.md`;
+- `src/shared/ui/material/docs/m3e-defects.md`;
 - `src/shared/ui/material/docs/roadmap.md`;
 - the selected family README;
 - applicable parent `AGENTS.md` files.
@@ -92,6 +93,8 @@ Implementation decisions:
 
 For each dependency row record its canonical adapter, root export, status, public API used by the parent, state/slot/token/accessibility handoff, and exact proof required before the parent may complete.
 
+For every confirmed incorrect m3e implementation or documentation mismatch, the matrix row must use `divergent` and reference the applicable stable `M3E-*` ID from `docs/m3e-defects.md`.
+
 No production mapping or composition may exist without a matrix row.
 
 ## 5. Resolve official dependencies
@@ -117,6 +120,21 @@ For each owning adapter inspect the exact lockfile-resolved stable entry point:
 
 Do not use prerelease behavior, another version, private shadow DOM, copied internals, or private methods.
 
+Classify the result precisely:
+
+```text
+Material capability absent from m3e
+  → matrix `missing`
+
+m3e public contract or implementation observably incorrect
+  → matrix `divergent` + stable `M3E-*`
+  → complete or update `docs/m3e-defects.md`
+```
+
+Do not create an `M3E-*` entry for deferred optional surface, Material `source-conflict`, Mioframe-specific behavior, equivalent internal implementation, or an unverified suspicion.
+
+For each confirmed defect, assign the next stable ID or reuse the existing entry, then record affected and last-revalidated versions, upstream and Mioframe statuses, exact evidence, affected family matrices, current mitigation or blocker, correct upstream result, removal trigger, and version revalidation history.
+
 ## 7. Assign ownership
 
 ### Parent Vue adapter
@@ -139,15 +157,18 @@ A temporary exact-version renderer workaround is allowed only when all condition
 
 1. a selected current Material scenario requires the behavior;
 2. documented m3e API is missing, broken, or observably divergent;
-3. exact lockfile-resolved implementation source confirms an effective host-level property, attribute, or CSS custom property;
+3. exact lockfile-resolved implementation source confirms an effective host-level property, attribute, CSS custom property, or host dimension;
 4. the workaround is implemented only inside the canonical owning `MD*` adapter;
 5. it does not access private DOM/methods, copy internals, recreate interaction/accessibility/state/motion systems, or build a parallel renderer;
 6. it is absent from public Vue API, parents, and consumers;
-7. the matrix records `divergent`, `temporary-renderer-workaround`, future owner `m3e-fix`, exact version, risk, and removal trigger;
-8. focused tests prove the required observable result;
-9. every m3e version update revalidates or removes it.
+7. the matrix records `divergent`, `temporary-renderer-workaround`, future owner `m3e-fix`, exact version, risk, removal trigger, and applicable stable `M3E-*` ID;
+8. the linked `m3e-defects.md` record contains current upstream and Mioframe statuses, exact evidence, mitigation, correct upstream result, and revalidation history;
+9. focused tests prove the required observable result;
+10. every m3e version update revalidates all non-resolved entries for affected renderer families and removes or updates the workaround when evidence changes.
 
 A gated workaround is technical debt but not a blocker. An undocumented renderer input without this complete record is not accepted.
+
+An upstream fix remains `awaiting-upgrade` until Mioframe consumes the fixed version, removes the workaround or blocked path, and passes owned verification.
 
 ## 9. Define and implement the public Vue API
 
@@ -187,6 +208,7 @@ For the selected adapter and each dependency adapter require:
 - meaningful independent stories for selected presentation states;
 - executable visual-regression proof through the repository visual runner when the adapter owns stable visible geometry or presentation;
 - exact-version divergence and reduced-motion assessment;
+- complete linked `M3E-*` records for confirmed renderer defects;
 - operator visual/motion review where applicable.
 
 A Storybook story, a `visual` tag, or a behavior/accessibility test is not visual-regression proof. Accepted automated visual proof requires a visual-runner test that captures the owned surface (currently Playwright `toHaveScreenshot`) and a committed baseline for every claimed stable case.
@@ -216,13 +238,14 @@ A target may be `migrated` only when:
 - accessibility is proven through actual browser semantics where required;
 - required visual-regression specs and baselines exist for every claimed stable visual surface;
 - divergences and temporary workarounds are fully recorded with removal triggers;
+- every confirmed incorrect m3e implementation has a linked complete `M3E-*` record with current lifecycle statuses;
 - consumers use canonical APIs and obsolete ownership is removed;
 - final verification passes;
 - operator accepts required visual and motion behavior.
 
-README and roadmap claims must map to exact existing code, tests, stories, baselines, or review evidence. Do not claim a scenario is covered through adjacent evidence. Green CI alone is not architecture approval.
+README and roadmap claims must map to exact existing code, tests, stories, baselines, defect records, or review evidence. Do not claim a scenario is covered through adjacent evidence. Green CI alone is not architecture approval.
 
-Keep the target `migrating` while required verification, visual baselines, operator review, source conflict, dependency work, root export, or accepted workaround documentation remains incomplete.
+Keep the target `migrating` while required verification, visual baselines, operator review, source conflict, dependency work, root export, accepted workaround documentation, or confirmed-defect registry work remains incomplete.
 
 ## Report
 
@@ -239,6 +262,7 @@ Matrix status:
 m3e direct coverage:
 Wrapper corrections:
 Temporary exact-version renderer workarounds and removal triggers:
+Confirmed m3e defects and lifecycle statuses:
 Future m3e fixes:
 Confirmed divergences and source conflicts:
 Consumers migrated:
