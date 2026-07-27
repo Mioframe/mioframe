@@ -382,7 +382,7 @@ export function isResolvedVerifyInvocation(value) {
   }
 }
 
-export function quoteShellArg(value) {
+function quoteShellArg(value) {
   if (/^[A-Za-z0-9_./:-]+$/.test(value)) {
     return value;
   }
@@ -390,6 +390,12 @@ export function quoteShellArg(value) {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
+/**
+ * Format a command and its arguments as one shell-safe display string.
+ * @param command Executable or command name.
+ * @param [args] Command arguments.
+ * @returns Shell-safe command text for logs and retry instructions.
+ */
 export function formatShellCommand(command, args = []) {
   return [command, ...args].map(quoteShellArg).join(' ');
 }

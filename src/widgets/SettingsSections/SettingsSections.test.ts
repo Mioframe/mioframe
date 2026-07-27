@@ -201,7 +201,6 @@ vi.mock('@shared/ui/Switch', () => ({
         default: undefined,
       },
     },
-    emits: ['update:selected'],
     setup(props) {
       return () =>
         h('div', {
