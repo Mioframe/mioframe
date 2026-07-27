@@ -160,6 +160,8 @@ A gated workaround is technical debt but not a blocker. An undocumented renderer
 - Put ARIA/native state/focus/interaction semantics on the actual owner.
 - Do not introduce Lit directly, inspect shadow DOM, copy renderer internals, or create a generic adapter framework.
 
+A parent action label is not automatically an adequate accessible purpose label for a composed progress component. The matrix must explicitly justify that semantic handoff for the selected scenario, or the parent must expose the smallest demand-scoped separate loading-purpose API and migrate current consumers.
+
 ## 10. Tokens and composed presentation
 
 - Public tokens follow verified official Material paths.
@@ -182,9 +184,12 @@ For the selected adapter and each dependency adapter require:
 - colocated contract tests for public API and adapter-owned mappings;
 - browser tests for current native and accessibility scenarios;
 - browser role/name proof for custom-element accessibility; attribute presence alone is insufficient;
-- independent stories and visual proof when the adapter owns visible geometry or presentation;
+- meaningful independent stories for selected presentation states;
+- executable visual-regression proof through the repository visual runner when the adapter owns stable visible geometry or presentation;
 - exact-version divergence and reduced-motion assessment;
 - operator visual/motion review where applicable.
+
+A Storybook story, a `visual` tag, or a behavior/accessibility test is not visual-regression proof. Accepted automated visual proof requires a visual-runner test that captures the owned surface (currently Playwright `toHaveScreenshot`) and a committed baseline for every claimed stable case.
 
 For each composition prove:
 
@@ -195,7 +200,7 @@ For each composition prove:
 - native event bubbling;
 - final `pnpm verify`.
 
-A parent screenshot does not replace independent visual evidence for a dependency that owns visible geometry or presentation.
+A parent screenshot does not replace independent visual-regression proof for a dependency that owns visible geometry or presentation.
 
 Do not duplicate m3e or Lit internals in tests.
 
@@ -209,14 +214,15 @@ A target may be `migrated` only when:
 - every required dependency has an accepted canonical adapter and root export;
 - package-derived glue is real, not handwritten generic HTMLElement typing;
 - accessibility is proven through actual browser semantics where required;
+- required visual-regression specs and baselines exist for every claimed stable visual surface;
 - divergences and temporary workarounds are fully recorded with removal triggers;
 - consumers use canonical APIs and obsolete ownership is removed;
 - final verification passes;
 - operator accepts required visual and motion behavior.
 
-README and roadmap claims must map to exact existing code, tests, stories, or review evidence. Do not claim a scenario is covered through adjacent evidence. Green CI alone is not architecture approval.
+README and roadmap claims must map to exact existing code, tests, stories, baselines, or review evidence. Do not claim a scenario is covered through adjacent evidence. Green CI alone is not architecture approval.
 
-Keep the target `migrating` while required verification, operator review, source conflict, dependency work, root export, or accepted workaround documentation remains incomplete.
+Keep the target `migrating` while required verification, visual baselines, operator review, source conflict, dependency work, root export, or accepted workaround documentation remains incomplete.
 
 ## Report
 
