@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getEffectiveVerifyArgs, getVerifyRerunCommand } from './verify.mjs';
+import { getEffectiveVerifyArgs, getVerifyLockMetadata } from './verify.mjs';
 import { getRetryInstruction, resumeVerification } from './verifyResume.mjs';
 
 const tempDirs = [];
@@ -160,9 +160,9 @@ describe('effective retry metadata integration', () => {
       GITHUB_ACTIONS: 'true',
       GITHUB_BASE_REF: 'develop',
     });
-    const command = getVerifyRerunCommand(effectiveArgs);
+    const metadata = getVerifyLockMetadata(effectiveArgs);
 
-    expect(getRetryInstruction({ command })).toBe(
+    expect(getRetryInstruction(metadata)).toBe(
       '  Run `pnpm verify --only e2e --base origin/develop --profile github-actions` again.',
     );
   });

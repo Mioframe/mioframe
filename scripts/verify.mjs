@@ -1994,6 +1994,19 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
 }
 
 /**
+ * Build the persisted metadata for the top-level verify lock.
+ * @param argv Effective verify CLI arguments.
+ * @returns Lock metadata with a shell-safe, scope-complete display command.
+ */
+export function getVerifyLockMetadata(argv) {
+  return {
+    command: formatCommand('pnpm', ['verify', ...argv]),
+    label: 'verify',
+    logPath: VERIFY_LOG_DIR,
+  };
+}
+
+/**
  * Run the verify CLI when the module is executed directly.
  * @param [deps] Test seams for top-level verify execution.
  * @param [deps.runMain] Override for the main verify implementation.
@@ -2012,13 +2025,8 @@ export async function runVerifyCli(deps = {}) {
     throw new Error('Repository root is required to run verify.');
   }
 
-  await withVerifyLock(
-    {
-      command: formatCommand('pnpm', ['verify', ...cliArgs]),
-      label: 'verify',
-      logPath: VERIFY_LOG_DIR,
-    },
-    (verifyLockEnv, verifyLockController) => runMain(verifyLockEnv, verifyLockController),
+  await withVerifyLock(getVerifyLockMetadata(cliArgs), (verifyLockEnv, verifyLockController) =>
+    runMain(verifyLockEnv, verifyLockController),
   );
   return process.exitCode ?? 0;
 }
