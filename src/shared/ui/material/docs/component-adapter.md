@@ -118,6 +118,8 @@ Forbidden by default:
 
 If the API permits states simultaneously, their precedence and restoration behavior must be defined and verified. “Current consumers do not combine them” is not an invalid-combination contract.
 
+A parent action label is not automatically an adequate accessible purpose label for a composed progress component. The matrix must explicitly justify that semantic handoff for the selected scenario, or the parent must expose the smallest demand-scoped separate loading-purpose API and migrate current consumers.
+
 ## Gap ownership
 
 ### Parent adapter
@@ -187,9 +189,12 @@ For each parent and dependency adapter require:
 - package-derived type-check;
 - colocated contract tests for selected API and adapter-owned mappings;
 - browser tests for current native and accessibility scenarios;
-- independent stories and visual proof when the adapter owns visible geometry or presentation;
+- meaningful independent stories for selected presentation states;
+- executable visual-regression proof through the repository visual runner when the adapter owns stable visible geometry or presentation;
 - exact-version divergence and reduced-motion assessment;
 - operator visual and motion review where applicable.
+
+A Storybook story, a `visual` tag, or a behavior/accessibility test is not visual-regression proof. Accepted automated visual proof requires a visual-runner test that captures the owned surface (currently Playwright `toHaveScreenshot`) and a committed baseline for every claimed stable case.
 
 For each composition require:
 
@@ -200,7 +205,7 @@ For each composition require:
 - normal event bubbling;
 - final `pnpm verify`.
 
-A parent screenshot does not substitute for dependency-owned visual evidence. Do not duplicate m3e or Lit internal tests.
+A parent screenshot does not substitute for dependency-owned visual-regression proof. Do not duplicate m3e or Lit internal tests.
 
 ## Completion gate
 
@@ -212,10 +217,11 @@ A target completes only when:
 - every required dependency has an accepted canonical adapter and root public export;
 - renderer glue is genuinely package-derived;
 - browser accessibility semantics are proven where required;
+- required visual-regression specs and baselines exist for every claimed stable visual surface;
 - selected gaps have the correct owner;
 - divergences and temporary workarounds have exact versions, risks, tests, and removal triggers;
 - consumers use canonical APIs and obsolete ownership is removed;
 - final verification passes;
 - operator accepts required visual and motion behavior.
 
-README and roadmap statements must map to exact existing implementation and proof. Green CI alone is not architecture approval. Do not mark a target `migrated`, remove blockers, or claim “no further implementation work” while required verification, operator review, source conflict, dependency work, root export, or workaround documentation remains incomplete.
+README and roadmap statements must map to exact existing implementation, tests, stories, baselines, or review evidence. Green CI alone is not architecture approval. Do not mark a target `migrated`, remove blockers, or claim “no further implementation work” while required verification, visual baselines, operator review, source conflict, dependency work, root export, or workaround documentation remains incomplete.
