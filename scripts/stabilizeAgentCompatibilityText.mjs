@@ -21,7 +21,9 @@ for (const filePath of files) {
     );
 
   if (next === source) {
-    throw new Error(`[agent-compat-stabilize] expected compatibility text not found in ${filePath}`);
+    throw new Error(
+      `[agent-compat-stabilize] expected compatibility text not found in ${filePath}`,
+    );
   }
 
   fs.writeFileSync(filePath, next, 'utf8');
