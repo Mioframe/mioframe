@@ -4,7 +4,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 
 ## Required workflow
 
-- Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, `docs/roadmap.md`, and the selected family README.
+- Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, `docs/m3e-defects.md`, `docs/roadmap.md`, and the selected family README.
 - Use `material-component-adapter` for one explicitly selected official Material component.
 - Use `architect-handoff` when a requirement changes cross-family ownership or renderer strategy, or cannot be assigned safely.
 - If the selected component requires another official Material component, implement or complete that dependency as its own canonical `MD*` adapter before composing it.
@@ -16,6 +16,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 2. Current Mioframe consumers determine which subset is required now.
 3. The exact lockfile-resolved `@m3e/web` contract determines what can be delegated to the private renderer.
 4. The accepted family matrix records the selected Material subset, public Vue API, exact renderer mapping, dependencies, gaps, ownership, proof, and deferred surface.
+5. `docs/m3e-defects.md` owns stable identities and lifecycle state for confirmed incorrect m3e implementations and documentation mismatches.
 
 m3e and legacy Mioframe components are implementation evidence, not public API authorities.
 
@@ -28,6 +29,8 @@ Inspect overview, specs, guidelines, and accessibility pages. Follow related-com
 - Negative or restrictive decisions require positive official evidence.
 - When official sources conflict, record `source-conflict`; do not invent a restriction.
 - A composition mapping must distinguish the parent component's tokens from the dependency component's own constraints. Do not present a parent icon token as an official Loading indicator size or similar cross-family equivalence unless an official source establishes it.
+- Keep m3e absence and m3e defects distinct: unsupported capability is `missing` in the family matrix; confirmed incorrect documented or implemented behavior is `divergent`, references a stable `M3E-*` ID, and is recorded in `docs/m3e-defects.md`.
+- Do not create an `M3E-*` record for deferred optional surface, Material source conflict, Mioframe extension, observably equivalent internal implementation, or unverified suspicion.
 
 ## Material-first public API
 
@@ -60,13 +63,16 @@ A temporary exact-version renderer workaround is allowed only inside the canonic
 - a selected current Material scenario requires the behavior;
 - the documented m3e API is missing, broken, or observably divergent;
 - the effective host-level input is confirmed from the exact lockfile-resolved implementation source;
-- the workaround uses only a host property, attribute, or CSS custom property and does not access private DOM or methods;
+- the workaround uses only a host property, attribute, CSS custom property, or host dimension and does not access private DOM or methods;
 - it remains private to the owning adapter and does not leak into its public Vue API, parents, or consumers;
-- the matrix records renderer status `divergent`, decision `temporary-renderer-workaround`, long-term owner `m3e-fix`, exact version, risk, and removal trigger;
+- the family matrix records renderer status `divergent`, decision `temporary-renderer-workaround`, long-term owner `m3e-fix`, exact version, risk, removal trigger, and applicable stable `M3E-*` ID;
+- the linked `docs/m3e-defects.md` entry records exact evidence, affected and last-revalidated versions, upstream and Mioframe statuses, mitigation, correct upstream result, removal trigger, and revalidation history;
 - focused tests prove the required observable result;
-- every m3e version update revalidates or removes the workaround.
+- every m3e version update revalidates all non-resolved defect entries for affected renderer families and removes or updates the workaround when evidence changes.
 
 Such a workaround is technical debt, but not a blocker when the gate above is satisfied. It must not be used to replace renderer-owned interaction, accessibility, state, or motion systems.
+
+An upstream fix remains `awaiting-upgrade` for Mioframe until the fixed m3e version is consumed, the workaround or blocker is removed, and owned verification passes.
 
 ## Renderer typing
 
@@ -91,6 +97,7 @@ Each selected adapter and required dependency must have proof matching its owned
 - browser tests for current native and accessibility scenarios;
 - stories and visual evidence for independently owned stable presentation and geometry;
 - exact-version divergence and reduced-motion assessment;
+- complete linked `M3E-*` records for confirmed renderer defects;
 - parent-to-dependency handoff tests;
 - final `pnpm verify`;
 - operator visual/motion acceptance where applicable.
@@ -105,8 +112,8 @@ A component remains `migrating` until its selected contract and dependencies are
 
 - Green CI is not architecture approval.
 - A README or roadmap may say a scenario is covered only when an existing test or story asserts that exact scenario.
-- Do not claim package-derived typing, accessibility-tree proof, root export, visual proof, or combination coverage from adjacent or indirect evidence.
-- Do not mark a component `migrated`, a blocker resolved, or “no further implementation required” while required verification, operator review, source conflict, dependency work, or accepted temporary-workaround documentation remains incomplete.
+- Do not claim package-derived typing, accessibility-tree proof, root export, visual proof, combination coverage, or confirmed-defect tracking from adjacent or indirect evidence.
+- Do not mark a component `migrated`, a blocker resolved, or “no further implementation required” while required verification, operator review, source conflict, dependency work, accepted temporary-workaround documentation, or linked `M3E-*` registry work remains incomplete.
 
 ## Boundary
 
