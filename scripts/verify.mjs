@@ -11,11 +11,13 @@ import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
+import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
-  getChangedFileProjection,
-  getVerifyBaseRef,
-  resolveChangedPathsScope,
-} from './lib/changedPaths.mjs';
+  formatVerifyInvocationCommand,
+  getCliFilesOverride,
+  resolveVerifyInvocation,
+  VERIFY_LABELS,
+} from './lib/verifyInvocation.mjs';
 import {
   comparePlaywrightContainerProfiles,
   resolvePlaywrightContainerProfile,
@@ -26,31 +28,14 @@ applyProjectEnv();
 
 const rawCliArgs = process.argv.slice(2);
 const isHelpMode = process.argv.includes('--help') || rawCliArgs.includes('help');
-const cliArgs = isHelpMode ? rawCliArgs : getEffectiveVerifyArgs(rawCliArgs);
-const isFixMode = cliArgs.includes('--fix');
-const isFixOnlyMode = cliArgs.includes('--fix-only');
-const isVerboseMode = cliArgs.includes('--verbose');
-const isFullMode = cliArgs.includes('--full');
+const currentVerifyInvocation = isHelpMode
+  ? null
+  : resolveVerifyInvocation(rawCliArgs, process.env);
+const isFixMode = currentVerifyInvocation?.fixMode === 'fix';
+const isFixOnlyMode = currentVerifyInvocation?.fixMode === 'fix-only';
+const isVerboseMode = currentVerifyInvocation?.verbose ?? false;
+const isFullMode = currentVerifyInvocation?.full ?? false;
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
-const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
-const VERIFY_LABELS = [
-  'agent-environment',
-  'format',
-  'oxlint',
-  'eslint',
-  'type-check',
-  'unit-tests',
-  'e2e-install',
-  'e2e',
-  'storybook-behavior',
-  'visual',
-  'mutation',
-  'release-version',
-  'release-config',
-  'build',
-  'artifact',
-  'release-smoke',
-];
 // Release-only labels only run in full/release mode (pnpm verify --full).
 // Focused `pnpm verify` never builds these into its command list.
 const FULL_ONLY_LABELS = new Set([
@@ -110,9 +95,8 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
-const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
-const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);
-const cliProfile = isHelpMode ? null : getCliProfile(cliArgs);
+const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
+const cliProfile = currentVerifyInvocation?.profile ?? null;
 
 if (cliOnlyLabel !== null && FULL_ONLY_LABELS.has(cliOnlyLabel) && !isFullMode) {
   throw new Error(
@@ -165,227 +149,7 @@ function directoryExists(directoryPath) {
   return fs.existsSync(directoryPath) && fs.statSync(directoryPath).isDirectory();
 }
 
-function getCliBaseRef(argv) {
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--base') {
-      const value = argv[index + 1];
-
-      if (!value || value.startsWith('--')) {
-        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
-      }
-
-      return value;
-    }
-
-    if (argument.startsWith('--base=')) {
-      const value = argument.slice('--base='.length);
-
-      if (value.length === 0) {
-        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
-      }
-
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function getCliOnlyLabel(argv) {
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--only') {
-      const value = argv[index + 1];
-
-      if (!value || value.startsWith('--')) {
-        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
-      }
-
-      validateOnlyLabel(value);
-      return value;
-    }
-
-    if (argument.startsWith('--only=')) {
-      const value = argument.slice('--only='.length);
-
-      if (value.length === 0) {
-        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
-      }
-
-      validateOnlyLabel(value);
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function getCliProfile(argv) {
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--profile') {
-      const value = argv[index + 1];
-
-      if (!value || value.startsWith('--')) {
-        throw new Error('Missing value for --profile. Accepted profiles: local, github-actions');
-      }
-
-      validateProfile(value);
-      return value;
-    }
-
-    if (argument.startsWith('--profile=')) {
-      const value = argument.slice('--profile='.length);
-
-      if (value.length === 0) {
-        throw new Error('Missing value for --profile. Accepted profiles: local, github-actions');
-      }
-
-      validateProfile(value);
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function validateProfile(profile) {
-  if (profile === 'local' || profile === 'github-actions') {
-    return;
-  }
-
-  throw new Error(
-    [`Invalid value for --profile: ${profile}`, 'Accepted profiles: local, github-actions'].join(
-      '\n',
-    ),
-  );
-}
-
-function removeCliOption(argv, flag) {
-  const args = [];
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === flag) {
-      index += 1;
-      continue;
-    }
-
-    if (argument.startsWith(`${flag}=`)) {
-      continue;
-    }
-
-    args.push(argument);
-  }
-
-  return args;
-}
-
-/**
- * Normalize the verify CLI to the effective repository scope used by the runner.
- * Environment-derived base/profile values become explicit so summaries, lock metadata,
- * and copied retry commands preserve the same behavior outside the original process.
- * @param argv Raw verify CLI arguments.
- * @param [processEnv] Environment used to resolve GitHub/base/profile defaults.
- * @returns Effective verify arguments with explicit base and profile values.
- */
-export function getEffectiveVerifyArgs(argv, processEnv = process.env) {
-  const explicitBaseRef = getCliBaseRef(argv);
-  const githubBaseRef = processEnv.GITHUB_BASE_REF ? `origin/${processEnv.GITHUB_BASE_REF}` : null;
-  const effectiveBaseRef = githubBaseRef ?? explicitBaseRef ?? getVerifyBaseRef(processEnv);
-  const explicitProfile = getCliProfile(argv);
-  const effectiveProfile = resolvePlaywrightContainerProfile(
-    getVerifyProcessEnv(processEnv, explicitProfile),
-  ).name;
-  const argsWithoutResolvedOptions = removeCliOption(removeCliOption(argv, '--base'), '--profile');
-
-  if (effectiveBaseRef !== null) {
-    argsWithoutResolvedOptions.push('--base', effectiveBaseRef);
-  }
-
-  argsWithoutResolvedOptions.push('--profile', effectiveProfile);
-  return argsWithoutResolvedOptions;
-}
-
-/**
- * Parse explicit file overrides from the verify CLI.
- * @param argv Raw CLI arguments after the script name.
- * @returns Explicit file list, or null when `--files` was not provided.
- */
-export function getCliFilesOverride(argv) {
-  const explicitFiles = [];
-  let hasExplicitFilesFlag = false;
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--files') {
-      hasExplicitFilesFlag = true;
-      let cursor = index + 1;
-
-      if (cursor >= argv.length || argv[cursor].startsWith('--')) {
-        throw new Error(
-          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
-        );
-      }
-
-      while (cursor < argv.length && !argv[cursor].startsWith('--')) {
-        explicitFiles.push(argv[cursor]);
-        cursor += 1;
-      }
-
-      index = cursor - 1;
-      continue;
-    }
-
-    if (argument.startsWith('--files=')) {
-      hasExplicitFilesFlag = true;
-      const value = argument.slice('--files='.length);
-
-      if (value.length === 0) {
-        throw new Error(
-          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
-        );
-      }
-
-      explicitFiles.push(
-        ...value
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-      );
-    }
-  }
-
-  if (hasExplicitFilesFlag && explicitFiles.length === 0) {
-    throw new Error(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
-    );
-  }
-
-  if (explicitFiles.length === 0) {
-    return null;
-  }
-
-  return uniqSorted(explicitFiles.map(toPosixPath));
-}
-
-function validateOnlyLabel(label) {
-  if (VERIFY_LABELS.includes(label)) {
-    return;
-  }
-
-  throw new Error(
-    [`Invalid value for --only: ${label}`, `Accepted labels: ${VERIFY_LABELS.join(', ')}`].join(
-      '\n',
-    ),
-  );
-}
+export { getCliFilesOverride };
 
 function isTypeCheckTarget(filePath) {
   const baseName = path.posix.basename(filePath);
@@ -1592,67 +1356,17 @@ function selectOnlyCommands(commands) {
   throw new Error(`Verify command list is missing required label: ${cliOnlyLabel}`);
 }
 
-function stripVerifyArg(argv, index, flag) {
-  const argument = argv[index];
-
-  if (argument === flag) {
-    return 2;
-  }
-
-  return argument.startsWith(`${flag}=`) ? 1 : 0;
-}
-
 /**
- * Build a supported read-only verify command while preserving the invocation scope.
- * Fix flags are removed. Optional profile and label overrides replace the corresponding
- * original arguments without dropping base, full, files, or verbose arguments.
- * @param argv Original verify CLI arguments.
- * @param [overrides] Optional rerun overrides.
- * @param [overrides.profile] Replacement runtime profile.
- * @param [overrides.onlyLabel] Replacement focused verify label.
- * @returns Formatted `pnpm verify` command.
+ * Build a supported read-only verify command from the resolved invocation.
+ * @param invocation Resolved verify invocation.
+ * @param [overrides] Optional profile and label overrides.
+ * @returns Canonical shell-safe pnpm verify command.
  */
-export function getVerifyRerunCommand(argv, overrides = {}) {
-  const { profile = null, onlyLabel = null } = overrides;
-  const args = [];
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--fix' || argument === '--fix-only') {
-      continue;
-    }
-
-    if (profile !== null) {
-      const consumed = stripVerifyArg(argv, index, '--profile');
-
-      if (consumed > 0) {
-        index += consumed - 1;
-        continue;
-      }
-    }
-
-    if (onlyLabel !== null) {
-      const consumed = stripVerifyArg(argv, index, '--only');
-
-      if (consumed > 0) {
-        index += consumed - 1;
-        continue;
-      }
-    }
-
-    args.push(argument);
-  }
-
-  if (profile !== null) {
-    args.push('--profile', profile);
-  }
-
-  if (onlyLabel !== null) {
-    args.push('--only', onlyLabel);
-  }
-
-  return formatCommand('pnpm', ['verify', ...args]);
+export function getVerifyRerunCommand(invocation, overrides = {}) {
+  return formatVerifyInvocationCommand(invocation, {
+    ...overrides,
+    readOnly: true,
+  });
 }
 
 /**
@@ -1660,11 +1374,11 @@ export function getVerifyRerunCommand(argv, overrides = {}) {
  * @param results Collected command results in run order.
  * @param [options] Summary options.
  * @param [options.ciProfileRisk] Pending GitHub Actions profile risk details.
- * @param [options.verifyArgs] Original verify CLI arguments.
+ * @param [options.invocation] Resolved verify invocation.
  * @returns Action lines; `['None.']` when nothing failed or warned.
  */
 export function getActionRequired(results, options = {}) {
-  const { ciProfileRisk = null, verifyArgs = [] } = options;
+  const { ciProfileRisk = null, invocation = currentVerifyInvocation } = options;
   const actions = [];
   const failedResults = results.filter((result) => result.status === 'failed');
   const warningResults = results.filter(
@@ -1673,7 +1387,7 @@ export function getActionRequired(results, options = {}) {
 
   for (const result of failedResults) {
     actions.push(
-      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(verifyArgs, { onlyLabel: result.label })}`,
+      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
     );
 
     if (result.blockingLogIssue) {
@@ -1688,13 +1402,13 @@ export function getActionRequired(results, options = {}) {
 
   if (failedResults.length > 0) {
     actions.push(
-      `After fixes, rerun the original read-only scope: ${getVerifyRerunCommand(verifyArgs)}`,
+      `After fixes, rerun the original read-only scope: ${getVerifyRerunCommand(invocation)}`,
     );
   }
 
   for (const result of warningResults) {
     actions.push(
-      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(verifyArgs, { onlyLabel: result.label })}`,
+      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
     );
     actions.push(`Reason: ${result.warningSummary}`);
   }
@@ -1702,7 +1416,7 @@ export function getActionRequired(results, options = {}) {
   if (ciProfileRisk !== null) {
     const rerunChecks = ciProfileRisk.affectedChecks
       .map((label) =>
-        getVerifyRerunCommand(verifyArgs, {
+        getVerifyRerunCommand(invocation, {
           onlyLabel: label,
           profile: 'github-actions',
         }),
@@ -1734,7 +1448,7 @@ export function getActionRequired(results, options = {}) {
  * @param [options.ciProfileRisk] Precomputed GitHub Actions profile risk details.
  * @param [options.profileSummary] Precomputed verify profile summary details.
  * @param [options.heavyCheckTriggers] Precomputed heavy-check trigger lines.
- * @param [options.verifyArgs] Original verify CLI arguments.
+ * @param [options.invocation] Resolved verify invocation.
  * @returns Overall run status derived from the results.
  */
 export function printSummary(changedFiles, scope, results, options = {}) {
@@ -1750,7 +1464,7 @@ export function printSummary(changedFiles, scope, results, options = {}) {
       : 'passed with CI-profile risk ⚠️';
   const actionRequired = getActionRequired(results, {
     ciProfileRisk,
-    verifyArgs: options.verifyArgs ?? cliArgs,
+    invocation: options.invocation ?? currentVerifyInvocation,
   });
   const mode = isFixOnlyMode ? 'fix-only' : isFixMode ? 'fix' : 'check';
   const heavyCheckTriggers = options.heavyCheckTriggers ?? getHeavyCheckTriggerLines(results);
@@ -1876,15 +1590,9 @@ export function buildCommandEnv(entry, priorResults, options = {}) {
 }
 
 async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata: () => {} }) {
-  if (isFixMode && isFixOnlyMode) {
-    throw new Error('Use either --fix or --fix-only, not both.');
-  }
-
   const verifyProcessEnv = getVerifyProcessEnv(process.env);
   const { input, scope, baseRef, packageJsonOldRef } = resolveChangedPathsScope({
-    cliFilesOverride,
-    cliBaseRef,
-    processEnv: process.env,
+    invocationScope: currentVerifyInvocation.scope,
   });
   const changedFiles = getChangedFileProjection(input);
   const commands = selectOnlyCommands(buildCommands(changedFiles, { packageJsonOldRef }));
@@ -1988,19 +1696,21 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
   const summary = printSummary(changedFiles, scope, results, {
     baseRef,
     processEnv: verifyProcessEnv,
-    verifyArgs: cliArgs,
+    invocation: currentVerifyInvocation,
   });
   process.exitCode = summary.hasFailed ? 1 : 0;
 }
 
 /**
- * Build the persisted metadata for the top-level verify lock.
- * @param argv Effective verify CLI arguments.
- * @returns Lock metadata with a shell-safe, scope-complete display command.
+ * Build persisted metadata for the top-level verify lock.
+ * The structured invocation is the retry source of truth; command is display-only.
+ * @param invocation Resolved verify invocation.
+ * @returns Lock metadata with structured scope and a shell-safe display command.
  */
-export function getVerifyLockMetadata(argv) {
+export function getVerifyLockMetadata(invocation) {
   return {
-    command: formatCommand('pnpm', ['verify', ...argv]),
+    command: formatVerifyInvocationCommand(invocation),
+    verifyInvocation: invocation,
     label: 'verify',
     logPath: VERIFY_LOG_DIR,
   };
@@ -2014,7 +1724,11 @@ export function getVerifyLockMetadata(argv) {
  * @returns Process exit code that should be reported to the shell.
  */
 export async function runVerifyCli(deps = {}) {
-  const { runMain = main, withVerifyLock = withVerifyCommandLock } = deps;
+  const {
+    invocation = currentVerifyInvocation,
+    runMain = main,
+    withVerifyLock = withVerifyCommandLock,
+  } = deps;
 
   if (isHelpMode) {
     printHelp();
@@ -2025,7 +1739,7 @@ export async function runVerifyCli(deps = {}) {
     throw new Error('Repository root is required to run verify.');
   }
 
-  await withVerifyLock(getVerifyLockMetadata(cliArgs), (verifyLockEnv, verifyLockController) =>
+  await withVerifyLock(getVerifyLockMetadata(invocation), (verifyLockEnv, verifyLockController) =>
     runMain(verifyLockEnv, verifyLockController),
   );
   return process.exitCode ?? 0;

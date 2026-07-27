@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   filterIgnoredChangedPaths,
   getChangedFileProjection,
-  getVerifyBaseRef,
   parseGitDiffStatusOutput,
   parseUntrackedFilesOutput,
   resolveChangedPathsScope,
@@ -237,19 +236,9 @@ describe('getChangedFileProjection', () => {
   });
 });
 
-describe('getVerifyBaseRef', () => {
-  it('reads VERIFY_BASE from process env', () => {
-    expect(getVerifyBaseRef({ VERIFY_BASE: 'origin/develop' })).toBe('origin/develop');
-  });
-
-  it('returns null when VERIFY_BASE is unset', () => {
-    expect(getVerifyBaseRef({})).toBeNull();
-  });
-});
-
 describe('resolveChangedPathsScope explicit-files mode', () => {
   it('bypasses Git entirely and does not invent statuses', () => {
-    const scope = resolveChangedPathsScope({ cliFilesOverride: ['b.ts', 'a.ts'] });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'explicit-files', files: ['b.ts', 'a.ts'] } });
 
     expect(scope).toEqual({
       input: { kind: 'explicit-files', files: ['a.ts', 'b.ts'] },
@@ -267,7 +256,7 @@ describe('resolveChangedPathsScope local mode', () => {
     commitAll(dir, 'init');
     writeFile(dir, 'src/a.ts', 'changed\n');
 
-    const scope = resolveChangedPathsScope({ cwd: dir, processEnv: {} });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local' }, cwd: dir });
 
     expect(scope.scope).toBe('local-changes');
     expect(scope.baseRef).toBeNull();
@@ -287,7 +276,7 @@ describe('resolveChangedPathsScope local mode', () => {
     git(dir, ['add', 'x.ts']);
     writeFile(dir, 'y.ts', 'unstaged change\n');
 
-    const scope = resolveChangedPathsScope({ cwd: dir, processEnv: {} });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local' }, cwd: dir });
 
     expect(scope.input.changedPaths).toEqual([
       { status: 'modified', path: 'x.ts' },
@@ -301,7 +290,7 @@ describe('resolveChangedPathsScope local mode', () => {
     commitAll(dir, 'init');
     writeFile(dir, 'untracked.ts');
 
-    const scope = resolveChangedPathsScope({ cwd: dir, processEnv: {} });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local' }, cwd: dir });
 
     expect(scope.input.changedPaths).toEqual([{ status: 'added', path: 'untracked.ts' }]);
   });
@@ -312,7 +301,7 @@ describe('resolveChangedPathsScope local mode', () => {
     commitAll(dir, 'init');
     fs.rmSync(path.join(dir, 'gone.ts'));
 
-    const scope = resolveChangedPathsScope({ cwd: dir, processEnv: {} });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local' }, cwd: dir });
 
     expect(scope.input.changedPaths).toEqual([{ status: 'deleted', path: 'gone.ts' }]);
   });
@@ -323,7 +312,7 @@ describe('resolveChangedPathsScope local mode', () => {
     commitAll(dir, 'init');
     git(dir, ['mv', 'old.ts', 'renamed.ts']);
 
-    const scope = resolveChangedPathsScope({ cwd: dir, processEnv: {} });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local' }, cwd: dir });
 
     expect(scope.input.changedPaths).toEqual([
       { status: 'renamed', oldPath: 'old.ts', newPath: 'renamed.ts' },
@@ -337,7 +326,7 @@ describe('resolveChangedPathsScope local mode', () => {
     writeFile(dir, 'b.ts');
     commitAll(dir, 'second');
 
-    const scope = resolveChangedPathsScope({ cwd: dir, processEnv: {} });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local' }, cwd: dir });
 
     expect(scope.scope).toBe('local-last-commit');
     expect(scope.baseRef).toBeNull();
@@ -359,7 +348,7 @@ describe('resolveChangedPathsScope local-base mode', () => {
     commitAll(dir, 'feature commit');
     writeFile(dir, 'uncommitted.ts');
 
-    const scope = resolveChangedPathsScope({ cliBaseRef: 'main', cwd: dir, processEnv: {} });
+    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local-base', baseRef: 'main' }, cwd: dir });
 
     expect(scope.scope).toBe('local-base main');
     expect(scope.baseRef).toBe('main');
@@ -379,7 +368,7 @@ describe('resolveChangedPathsScope local-base mode', () => {
     commitAll(dir, 'init');
 
     expect(() =>
-      resolveChangedPathsScope({ cliBaseRef: 'origin/does-not-exist', cwd: dir, processEnv: {} }),
+      resolveChangedPathsScope({ invocationScope: { kind: 'local-base', baseRef: 'origin/does-not-exist' }, cwd: dir }),
     ).toThrow(/Base ref does not exist/);
   });
 });
@@ -395,7 +384,7 @@ describe('resolveChangedPathsScope GitHub Actions mode', () => {
     writeFile(dir, 'shared.ts', 'uncommitted working tree change\n');
 
     const scope = resolveChangedPathsScope({
-      processEnv: { GITHUB_BASE_REF: 'develop' },
+      invocationScope: { kind: 'github-base', baseRef: 'origin/develop' },
       cwd: dir,
     });
 

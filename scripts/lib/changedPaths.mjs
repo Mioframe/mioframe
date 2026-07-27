@@ -29,15 +29,6 @@ function uniqSortedStrings(values) {
   return [...new Set(values)].sort((left, right) => left.localeCompare(right));
 }
 
-/**
- * Read the verify base ref from the current process environment.
- * @param [processEnv] Environment object to read from.
- * @returns Base ref value, or `null` when `VERIFY_BASE` is unset.
- */
-export function getVerifyBaseRef(processEnv = process.env) {
-  return processEnv.VERIFY_BASE ?? null;
-}
-
 function runGit(args, { cwd = process.cwd(), allowFailure = false } = {}) {
   const result = spawnSync('git', args, {
     cwd,
@@ -305,28 +296,24 @@ function toGitDiffScope(changes, scope, baseRef, packageJsonOldRef) {
 }
 
 /**
- * Resolve the current verify changed-path scope: which Git comparison to
- * use, and the resulting status-aware changed paths.
- * @param [options] Scope resolution inputs.
- * @param [options.cliFilesOverride] Explicit `--files` override; bypasses
- * Git diff planning entirely when non-null.
- * @param [options.cliBaseRef] Explicit `--base` override.
- * @param [options.processEnv] Process environment read for `VERIFY_BASE` and `GITHUB_BASE_REF`.
- * @param [options.cwd] Repository working directory; defaults to `process.cwd()`, overridable for tests.
- * @returns Scope with an explicit `git-diff` or `explicit-files` input, a
- * human-readable scope label, resolved base ref, and `packageJsonOldRef`.
+ * Execute changed-path planning from the already resolved verify invocation scope.
+ * Base/environment precedence is owned by verifyInvocation.mjs and is not repeated here.
+ * @param [options] Scope execution inputs.
+ * @param [options.invocationScope] Resolved invocation scope.
+ * @param [options.cwd] Repository working directory; defaults to process.cwd().
+ * @returns Scope with an explicit git-diff or explicit-files input, a human-readable
+ * scope label, resolved base ref, and packageJsonOldRef.
  */
-export function resolveChangedPathsScope({
-  cliFilesOverride = null,
-  cliBaseRef = null,
-  processEnv = process.env,
-  cwd = process.cwd(),
-} = {}) {
-  if (cliFilesOverride !== null) {
+export function resolveChangedPathsScope({ invocationScope, cwd = process.cwd() } = {}) {
+  if (!invocationScope || typeof invocationScope !== 'object') {
+    throw new Error('Resolved verify invocation scope is required.');
+  }
+
+  if (invocationScope.kind === 'explicit-files') {
     return {
       input: {
         kind: 'explicit-files',
-        files: uniqSortedStrings(cliFilesOverride.map(toPosixPath)),
+        files: uniqSortedStrings(invocationScope.files.map(toPosixPath)),
       },
       scope: 'explicit-files',
       baseRef: null,
@@ -334,24 +321,25 @@ export function resolveChangedPathsScope({
     };
   }
 
-  const githubBaseRef = processEnv.GITHUB_BASE_REF;
-  const envBaseRef = getVerifyBaseRef(processEnv);
-
-  if (githubBaseRef) {
-    const baseRef = `origin/${githubBaseRef}`;
+  if (invocationScope.kind === 'github-base') {
+    const { baseRef } = invocationScope;
     const mergeBase = getMergeBase('HEAD', baseRef, cwd);
     const changes = diffNameStatus([mergeBase, 'HEAD'], cwd);
 
     return toGitDiffScope(changes, `github-base ${baseRef}`, baseRef, mergeBase);
   }
 
-  if (cliBaseRef || envBaseRef) {
-    const baseRef = cliBaseRef ?? envBaseRef;
+  if (invocationScope.kind === 'local-base') {
+    const { baseRef } = invocationScope;
     ensureBaseRefExists(baseRef, cwd);
     const forkPoint = getForkPoint(baseRef, cwd);
     const changes = [...diffNameStatus([forkPoint], cwd), ...listUntrackedFiles(cwd)];
 
     return toGitDiffScope(changes, `local-base ${baseRef}`, baseRef, forkPoint);
+  }
+
+  if (invocationScope.kind !== 'local') {
+    throw new Error(`Unsupported resolved verify invocation scope: ${JSON.stringify(invocationScope)}`);
   }
 
   const rawChanges = [...diffNameStatus(['HEAD'], cwd), ...listUntrackedFiles(cwd)];

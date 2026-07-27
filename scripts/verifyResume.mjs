@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { getMachineLockStatus, releaseOwnedLock } from './lib/commandLock.mjs';
+import {
+  formatVerifyInvocationCommand,
+  isResolvedVerifyInvocation,
+} from './lib/verifyInvocation.mjs';
 
 /**
  * Build the retry instruction for a released verification state.
@@ -10,10 +14,14 @@ import { getMachineLockStatus, releaseOwnedLock } from './lib/commandLock.mjs';
  * reports that its scope must be reconstructed.
  */
 export function getRetryInstruction(metadata) {
-  const command = metadata?.command;
+  if (isResolvedVerifyInvocation(metadata?.verifyInvocation)) {
+    return `  Run \`${formatVerifyInvocationCommand(metadata.verifyInvocation)}\` again.`;
+  }
 
-  if (typeof command === 'string' && command.trim().length > 0) {
-    return `  Run \`${command.trim()}\` again.`;
+  const legacyCommand = metadata?.command;
+
+  if (typeof legacyCommand === 'string' && legacyCommand.trim().length > 0) {
+    return `  Run \`${legacyCommand.trim()}\` again.`;
   }
 
   return '  Re-run the original task-scope verify command; do not default to plain `pnpm verify`.';

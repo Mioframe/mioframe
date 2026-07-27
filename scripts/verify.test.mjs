@@ -17,10 +17,8 @@ import {
   getCiProfileRisk,
   getActionRequired,
   getBlockingLogIssue,
-  getEffectiveVerifyArgs,
   getCliFilesOverride,
   getVerifyProcessEnv,
-  getVerifyRerunCommand,
   getAllSiblingTestFiles,
   getExtraEnvForEntry,
   PLAYWRIGHT_COMMAND_OVERHEAD_MS,
@@ -833,100 +831,5 @@ describe('runVerifyCli', () => {
     ).rejects.toThrow('Another local pnpm verify is already running.');
 
     expect(runMain).not.toHaveBeenCalled();
-  });
-});
-
-describe('effective verify retry scope', () => {
-  it('makes the GitHub Actions base and profile explicit in failure recommendations', () => {
-    const effectiveArgs = getEffectiveVerifyArgs(['--only', 'unit-tests'], {
-      GITHUB_ACTIONS: 'true',
-      GITHUB_BASE_REF: 'develop',
-    });
-    const actions = getActionRequired(
-      [
-        {
-          label: 'unit-tests',
-          command: 'pnpm exec vitest run src/foo.test.ts',
-          status: 'failed',
-          exitCode: 1,
-          hasWarnings: false,
-          warningSummary: '',
-          blockingLogIssue: null,
-        },
-      ],
-      { verifyArgs: effectiveArgs },
-    );
-
-    expect(actions).toContain(
-      'Fix failed unit-tests errors. Rerun through verify: pnpm verify --base origin/develop --profile github-actions --only unit-tests',
-    );
-    expect(actions).toContain(
-      'After fixes, rerun the original read-only scope: pnpm verify --only unit-tests --base origin/develop --profile github-actions',
-    );
-    expect(actions.join('\n')).not.toContain('pnpm exec vitest');
-  });
-
-  it('uses VERIFY_BASE when no CLI or GitHub base is present', () => {
-    expect(
-      getEffectiveVerifyArgs([], {
-        GITHUB_ACTIONS: 'false',
-        VERIFY_BASE: 'origin/parent-feature',
-      }),
-    ).toEqual(['--base', 'origin/parent-feature', '--profile', 'local']);
-  });
-
-  it('uses the actual GitHub base even when a different CLI base was supplied', () => {
-    expect(
-      getEffectiveVerifyArgs(['--base', 'origin/wrong'], {
-        GITHUB_ACTIONS: 'true',
-        GITHUB_BASE_REF: 'develop',
-      }),
-    ).toEqual(['--base', 'origin/develop', '--profile', 'github-actions']);
-  });
-
-  it('preserves full and file scope while replacing label and profile', () => {
-    expect(
-      getVerifyRerunCommand(
-        [
-          '--fix-only',
-          '--verbose',
-          '--full',
-          '--only=visual',
-          '--profile=local',
-          '--files',
-          'tests/e2e/visual/path with space.spec.ts',
-        ],
-        { onlyLabel: 'artifact', profile: 'github-actions' },
-      ),
-    ).toBe(
-      "pnpm verify --verbose --full --files 'tests/e2e/visual/path with space.spec.ts' --profile github-actions --only artifact",
-    );
-  });
-
-  it('removes fix mode from the original read-only rerun without dropping scope', () => {
-    expect(
-      getVerifyRerunCommand([
-        '--fix',
-        '--base',
-        'origin/develop',
-        '--profile',
-        'local',
-        '--only',
-        'unit-tests',
-      ]),
-    ).toBe('pnpm verify --base origin/develop --profile local --only unit-tests');
-  });
-
-  it('shell-quotes spaces, substitutions, backticks, and single quotes in file paths', () => {
-    const backtick = String.fromCharCode(96);
-    const unsafePath =
-      'src/path with $(touch unsafe) ' + backtick + 'echo unsafe' + backtick + " and 'quote.ts";
-    const command = getVerifyRerunCommand(['--files', unsafePath]);
-
-    expect(command.startsWith("pnpm verify --files '")).toBe(true);
-    expect(command.endsWith("'")).toBe(true);
-    expect(command).toContain('$(touch unsafe)');
-    expect(command).toContain(backtick);
-    expect(command).toContain("'\\''");
   });
 });

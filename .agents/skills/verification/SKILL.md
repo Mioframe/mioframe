@@ -172,7 +172,7 @@ When a required check, registry validation, or measurement fails:
 
 Do not follow a failure summary that drops the original base, full, profile, file, or label scope, and do not substitute a printed raw child command for the verify-managed rerun.
 
-If verification is active, use `pnpm verify:status`, inspect `.verify/logs`, and use `pnpm verify:resume` only when instructed by status. Do not start duplicate expensive runs. After resume, rerun the exact original task-scope command recorded by status/metadata; plain `pnpm verify` is not an acceptable fallback when the original invocation had scope arguments.
+If verification is active, use `pnpm verify:status`, inspect `.verify/logs`, and use `pnpm verify:resume` only when instructed by status. Do not start duplicate expensive runs. After resume, rerun the exact original task-scope command printed by `pnpm verify:resume` when structured metadata is available; plain `pnpm verify` is not an acceptable fallback when the original invocation had scope arguments.
 
 ## Warnings
 

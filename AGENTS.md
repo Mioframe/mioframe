@@ -108,7 +108,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, final task-scope verification may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
 - Preserve the current app E2E desktop/mobile matrix until a dedicated audited migration demonstrates safe project filtering.
 - A minimum check named in a nested `AGENTS.md` describes required proof, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
-- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active. After `pnpm verify:resume`, rerun the same task-scope command recorded by `verify:status`; do not silently replace it with plain `pnpm verify`.
+- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active. After `pnpm verify:resume`, rerun the exact task-scope command printed by the resume command; do not silently replace it with plain `pnpm verify`.
 - If final verification fails, repository impact metadata is invalid, or required proof is missing, do not claim the task is complete. Report the exact failure and remaining work.
 
 Final response after edits must include:

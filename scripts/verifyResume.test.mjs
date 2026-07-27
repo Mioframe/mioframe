@@ -4,7 +4,8 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getEffectiveVerifyArgs, getVerifyLockMetadata } from './verify.mjs';
+import { resolveVerifyInvocation } from './lib/verifyInvocation.mjs';
+import { getVerifyLockMetadata, runVerifyCli } from './verify.mjs';
 import { getRetryInstruction, resumeVerification } from './verifyResume.mjs';
 
 const tempDirs = [];
@@ -42,12 +43,21 @@ afterEach(() => {
 });
 
 describe('getRetryInstruction', () => {
-  it('preserves the exact recorded verify invocation', () => {
-    expect(
-      getRetryInstruction({
-        command: 'pnpm verify --base origin/develop --profile github-actions --only e2e',
-      }),
-    ).toBe('  Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.');
+  it('renders the structured recorded verify invocation', () => {
+    const invocation = resolveVerifyInvocation(['--base', 'origin/develop', '--only', 'e2e'], {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_BASE_REF: 'develop',
+    });
+
+    expect(getRetryInstruction(getVerifyLockMetadata(invocation))).toBe(
+      '  Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.',
+    );
+  });
+
+  it('keeps compatibility with legacy string-only lock metadata', () => {
+    expect(getRetryInstruction({ command: 'pnpm verify --base origin/develop' })).toBe(
+      '  Run `pnpm verify --base origin/develop` again.',
+    );
   });
 
   it('does not invent a plain verify fallback when scope metadata is unavailable', () => {
@@ -155,15 +165,27 @@ describe('resumeVerification', () => {
 });
 
 describe('effective retry metadata integration', () => {
-  it('round-trips the effective CI scope through retry metadata', () => {
-    const effectiveArgs = getEffectiveVerifyArgs(['--only', 'e2e'], {
+  it('round-trips the metadata emitted by runVerifyCli through resume guidance', async () => {
+    const invocation = resolveVerifyInvocation(['--only', 'e2e'], {
       GITHUB_ACTIONS: 'true',
       GITHUB_BASE_REF: 'develop',
     });
-    const metadata = getVerifyLockMetadata(effectiveArgs);
+    const runMain = vi.fn();
+    let lockMetadata = null;
 
-    expect(getRetryInstruction(metadata)).toBe(
-      '  Run `pnpm verify --only e2e --base origin/develop --profile github-actions` again.',
+    await runVerifyCli({
+      invocation,
+      runMain,
+      withVerifyLock: vi.fn(async (metadata, run) => {
+        lockMetadata = metadata;
+        await run({}, { updateMetadata: vi.fn() });
+      }),
+    });
+
+    expect(runMain).toHaveBeenCalledOnce();
+    expect(lockMetadata?.verifyInvocation).toEqual(invocation);
+    expect(getRetryInstruction(lockMetadata)).toBe(
+      '  Run `pnpm verify --base origin/develop --profile github-actions --only e2e` again.',
     );
   });
 });
