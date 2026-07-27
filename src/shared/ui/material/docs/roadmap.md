@@ -16,9 +16,9 @@ Blockers:
 
 1. Material reference, system, theme, private, application, and component declarations are still mixed in `src/shared/lib/md/tokens.css`, outside the canonical Material owner. The public token catalogue is not populated from the retained runtime surface.
 2. `@m3e/web` is resolved to `2.6.3`, but operator verification still finds no visible Button ripple with `--md-sys-state-pressed-state-layer-opacity: 0.1`; changing the same value to `10%` restores the effect. The selected state-opacity consumers and their CSS grammars have not yet been fully audited.
-3. `M3E-003` was advanced from upstream source comparison without proof from the installed artifact and observable runtime result. Its final inclusion and ownership classification remain under revalidation.
+3. The former `M3E-003` classification was withdrawn because current evidence identifies a Mioframe foundation/integration compatibility issue, not a confirmed m3e defect. The retired ID must remain unreferenced unless new installed-artifact and documented-contract evidence independently confirms an upstream defect, in which case a new ID is assigned.
 
-Next action: perform one controlled correction in two passes. First migrate token ownership without intentional visual changes: create Material foundation/theme owners, move selected component tokens to families, move `--app-*` outside Material, co-locate private bridges, populate `token-api.md`, switch the global import, and remove the legacy file. Then audit state-opacity consumers, choose the compatible foundation representation or narrowest owner-local mapping, correct `M3E-003`, prove visible hover/focus/pointer/Space feedback, revalidate `M3E-001` and `M3E-002` against installed m3e `2.6.3`, run final `pnpm verify`, and obtain operator acceptance.
+Next action: perform one controlled correction in two passes. First migrate token ownership without intentional visual changes: create Material foundation/theme owners, move selected component tokens to families, move `--app-*` outside Material, co-locate private bridges, populate `token-api.md`, switch the global import, and remove the legacy file. Then audit state-opacity consumers, choose the compatible foundation representation or narrowest owner-local mapping, keep the Button issue under the correct foundation/integration owner, prove visible hover/focus/pointer/Space feedback, revalidate `M3E-001` and `M3E-002` against installed m3e `2.6.3`, run final `pnpm verify`, and obtain operator acceptance.
 
 Implementation ownership: `migrating`.
 
@@ -109,7 +109,7 @@ Current correction:
 - audit installed m3e ripple/state-layer artifacts and all selected state-opacity consumers;
 - determine whether one percentage foundation representation preserves all selected current contracts;
 - otherwise use the narrowest owner-local renderer mapping;
-- correct or remove `M3E-003` according to the registry inclusion boundary;
+- keep the current interaction issue under Mioframe foundation/integration ownership unless new evidence confirms a separate m3e defect;
 - prove visible pointer hover, keyboard focus, pointer ripple, and Space-key ripple without private renderer DOM inspection;
 - update only affected proof and baselines;
 - complete final verification and operator review.
