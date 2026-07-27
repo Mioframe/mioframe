@@ -157,7 +157,7 @@ Completed:
 - disabled plus loading (`MDButton.test.ts`; `md-button-family.spec.ts` "Disabled loading action": disabled blocks activation while `aria-busy` and the nested progressbar remain present) and the full toggle/selected/`selected-icon`/loading combination (`md-button-family.spec.ts` "Toggle loading action": nested progressbar present, `selected-icon` absent from the DOM while loading);
 - real-browser accessibility proof, not attribute presence alone: `md-button-family.spec.ts` resolves the nested Loading indicator as a named `progressbar` via `getByRole` for the loading, disabled-plus-loading, and toggle-plus-loading scenarios, while the Button itself remains discoverable as a `button`;
 - current consumers (`RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue`) unaffected — no public API change to `loading`, and the renamed `selected-label` slot has no external consumer;
-- stable visual stories.
+- stable executable visual-regression proof for Button itself (`tests/e2e/visual/shared-ui/md-button.spec.ts`, including the `md-button-loading.png` baseline); the composed `MDLoadingIndicator` dependency additionally owns its own standalone executable visual-regression proof (`tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts`, see `../loading-indicator/README.md`) rather than relying on this Button screenshot as its only visual evidence.
 
 Pending:
 

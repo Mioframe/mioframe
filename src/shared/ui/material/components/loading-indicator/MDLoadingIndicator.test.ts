@@ -46,6 +46,39 @@ describe('MDLoadingIndicator adapter', () => {
     warnSpy.mockRestore();
   });
 
+  it('normalizes a NaN size to the default 48 and warns in development', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const wrapper = mount(MDLoadingIndicator, { props: { label: 'Loading', size: NaN } });
+    const indicator = wrapper.get('m3e-loading-indicator');
+
+    expect(indicator.attributes('style')).toBe('--m3e-loading-indicator-size: 48px;');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('must be a finite number'));
+
+    warnSpy.mockRestore();
+  });
+
+  it('normalizes an infinite size to the default 48 and warns in development', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const wrapper = mount(MDLoadingIndicator, { props: { label: 'Loading', size: Infinity } });
+    const indicator = wrapper.get('m3e-loading-indicator');
+
+    expect(indicator.attributes('style')).toBe('--m3e-loading-indicator-size: 48px;');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('must be a finite number'));
+
+    warnSpy.mockRestore();
+  });
+
+  it('normalizes a negative-infinite size to the default 48 and warns in development', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const wrapper = mount(MDLoadingIndicator, { props: { label: 'Loading', size: -Infinity } });
+    const indicator = wrapper.get('m3e-loading-indicator');
+
+    expect(indicator.attributes('style')).toBe('--m3e-loading-indicator-size: 48px;');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('must be a finite number'));
+
+    warnSpy.mockRestore();
+  });
+
   it('maps the normalized size to the confirmed effective m3e 2.6.2 CSS input, not the documented one', () => {
     // m3e 2.6.2 documents `--m3e-loading-indicator-active-indicator-size` but its
     // implementation reads `--m3e-loading-indicator-size`; this is the accepted

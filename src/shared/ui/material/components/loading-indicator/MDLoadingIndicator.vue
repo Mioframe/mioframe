@@ -33,7 +33,11 @@ const normalizedSize = computed(() =>
 if (import.meta.env.DEV) {
   onMounted(() => {
     watchEffect(() => {
-      if (Number.isFinite(props.size) && props.size !== normalizedSize.value) {
+      if (!Number.isFinite(props.size)) {
+        warn(
+          `MDLoadingIndicator: \`size\` must be a finite number; received ${props.size}. Normalized to ${DEFAULT_SIZE}.`,
+        );
+      } else if (props.size !== normalizedSize.value) {
         warn(
           `MDLoadingIndicator: \`size\` must be between ${MIN_SIZE} and ${MAX_SIZE}; received ${props.size}. Clamped to ${normalizedSize.value}.`,
         );
