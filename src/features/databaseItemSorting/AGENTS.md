@@ -20,4 +20,4 @@ Inherits the rules from `src/features/AGENTS.md`. Applies to `src/features/datab
 ## Constraints
 
 - Changes here affect both the sort controls and the row order users see in a view.
-- Minimum verification: run `pnpm verify --only type-check`, then change sort direction or sort order in a view, confirm the row order updates, and refresh or reopen the same view to confirm the sorting persisted. Use focused verify-managed coverage where available. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then change sort direction or sort order in a view, confirm the row order updates, and refresh or reopen the same view to confirm the sorting persisted. Use focused verify-managed coverage where available.

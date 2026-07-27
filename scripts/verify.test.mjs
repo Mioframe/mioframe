@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/packageJsonImpact.mjs', () => ({
@@ -10,6 +11,7 @@ import {
   isPackageJsonRuntimeRelevantChange,
   isVisualRelevantPackageJsonChange,
 } from './lib/packageJsonImpact.mjs';
+import { resolveVerifyInvocation } from './lib/verifyInvocation.mjs';
 import {
   buildCommandEnv,
   buildCommands,
@@ -25,6 +27,7 @@ import {
   printSummary,
   resolveCommandStatus,
   resolvePlaywrightCommandTimeoutMs,
+  resolveVerifyChangedPathContext,
   runVerifyCli,
 } from './verify.mjs';
 import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from './playwrightContainer.mjs';
@@ -691,6 +694,9 @@ describe('getActionRequired', () => {
           affectedChecks: ['e2e'],
           activeProfile: { name: 'local' },
         },
+        invocation: resolveVerifyInvocation(['--base', 'origin/develop'], {
+          GITHUB_ACTIONS: 'false',
+        }),
       },
     );
 
@@ -700,7 +706,9 @@ describe('getActionRequired', () => {
       ),
     );
     expect(actions).toContainEqual(
-      expect.stringContaining('pnpm verify --profile github-actions --only e2e'),
+      expect.stringContaining(
+        'pnpm verify --base origin/develop --profile github-actions --only e2e',
+      ),
     );
   });
 
@@ -817,6 +825,26 @@ describe('getCiProfileRisk', () => {
   });
 });
 
+describe('verify help output', () => {
+  it('distinguishes ignored environment bases from rejected explicit full-mode scope', () => {
+    const result = spawnSync(process.execPath, ['scripts/verify.mjs', '--help'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GITHUB_BASE_REF: 'develop',
+        VERIFY_BASE: 'origin/other',
+      },
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toContain(
+      'Full mode ignores GITHUB_BASE_REF and VERIFY_BASE; explicit --base/--files are rejected.',
+    );
+  });
+});
+
 describe('runVerifyCli', () => {
   it('fails before running checks when verify lock acquisition is blocked', async () => {
     const runMain = vi.fn();
@@ -831,5 +859,28 @@ describe('runVerifyCli', () => {
     ).rejects.toThrow('Another local pnpm verify is already running.');
 
     expect(runMain).not.toHaveBeenCalled();
+  });
+});
+
+describe('resolveVerifyChangedPathContext', () => {
+  it('does not resolve Git changed paths for full-project scope', () => {
+    const resolveScope = vi.fn();
+    const projectChangedFiles = vi.fn();
+    const invocation = resolveVerifyInvocation(['--full'], {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_BASE_REF: 'develop',
+      VERIFY_BASE: 'origin/other',
+    });
+
+    expect(
+      resolveVerifyChangedPathContext(invocation, { resolveScope, projectChangedFiles }),
+    ).toEqual({
+      changedFiles: [],
+      scope: 'full-project',
+      baseRef: null,
+      packageJsonOldRef: null,
+    });
+    expect(resolveScope).not.toHaveBeenCalled();
+    expect(projectChangedFiles).not.toHaveBeenCalled();
   });
 });

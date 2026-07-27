@@ -25,4 +25,4 @@ Inherits the rules from `src/shared/AGENTS.md`. Applies to `src/shared/lib` and 
 ## Constraints
 
 - Changes in `shared/lib` often have a broad blast radius.
-- Minimum verification: run `pnpm verify --only type-check`, plus focused verify-managed unit tests or reproducible checks for the touched helper semantics. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, plus focused verify-managed unit tests or reproducible checks for the touched helper semantics.
