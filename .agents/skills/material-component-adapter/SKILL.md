@@ -116,7 +116,9 @@ For each owning adapter inspect the exact lockfile-resolved stable entry point:
 - package range and resolved version;
 - exports, registration entry, element class, aliases, and tag map;
 - documented properties, attributes, events, slots, native behavior, accessibility, and CSS inputs;
-- implementation source where geometry, accessibility, motion, or a confirmed divergence must be assessed.
+- the installed package artifact actually consumed by the build, including relevant exported JavaScript and CSS, where geometry, accessibility, motion, or a confirmed divergence must be assessed.
+
+The installed lockfile-resolved package artifact and its observable browser behavior are the runtime source of truth. Upstream repository source, tags, demos, changelogs, and unreleased fixes are supporting evidence only. When they disagree, classify the consumed behavior from the installed artifact and browser proof.
 
 Do not use prerelease behavior, another version, private shadow DOM, copied internals, or private methods.
 
@@ -157,18 +159,18 @@ A temporary exact-version renderer workaround is allowed only when all condition
 
 1. a selected current Material scenario requires the behavior;
 2. documented m3e API is missing, broken, or observably divergent;
-3. exact lockfile-resolved implementation source confirms an effective host-level property, attribute, CSS custom property, or host dimension;
+3. the installed lockfile-resolved implementation confirms an effective host-level property, attribute, CSS custom property, or host dimension;
 4. the workaround is implemented only inside the canonical owning `MD*` adapter;
 5. it does not access private DOM/methods, copy internals, recreate interaction/accessibility/state/motion systems, or build a parallel renderer;
 6. it is absent from public Vue API, parents, and consumers;
 7. the matrix records `divergent`, `temporary-renderer-workaround`, future owner `m3e-fix`, exact version, risk, removal trigger, and applicable stable `M3E-*` ID;
 8. the linked `m3e-defects.md` record contains current upstream and Mioframe statuses, exact evidence, mitigation, correct upstream result, and revalidation history;
 9. focused tests prove the required observable result;
-10. every m3e version update revalidates all non-resolved entries for affected renderer families and removes or updates the workaround when evidence changes.
+10. every m3e version update revalidates all non-resolved entries against the newly consumed package and removes or updates the workaround only when owned proof changes.
 
 A gated workaround is technical debt but not a blocker. An undocumented renderer input without this complete record is not accepted.
 
-An upstream fix remains `awaiting-upgrade` until Mioframe consumes the fixed version, removes the workaround or blocked path, and passes owned verification.
+An upstream fix remains `awaiting-upgrade` until Mioframe consumes the fixed version, removes the workaround or blocked path, and passes owned verification. Upstream source or changelog evidence alone must not advance the Mioframe lifecycle status.
 
 ## 9. Define and implement the public Vue API
 
@@ -205,6 +207,7 @@ For the selected adapter and each dependency adapter require:
 - colocated contract tests for public API and adapter-owned mappings;
 - browser tests for current native and accessibility scenarios;
 - browser role/name proof for custom-element accessibility; attribute presence alone is insufficient;
+- observable browser or visual proof for selected renderer-owned interaction feedback such as hover, focus, pressed state, ripple, and motion; host `:active`, event receipt, token presence, or source inspection alone is insufficient;
 - meaningful independent stories for selected presentation states;
 - executable visual-regression proof through the repository visual runner when the adapter owns stable visible geometry or presentation;
 - exact-version divergence and reduced-motion assessment;
