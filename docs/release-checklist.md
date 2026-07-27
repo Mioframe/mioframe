@@ -61,8 +61,8 @@ this checklist enforces.
 
 ## Hotfix-specific steps
 
-- [ ] Branch from `main` as `fix/<name>` or `hotfix/<name>`.
+- [ ] Branch from `main` as `hotfix/<name>`.
 - [ ] Bump the version (PATCH unless the fix requires more).
 - [ ] Follow the same PR-into-`main` and after-merge steps above.
-- [ ] After the hotfix ships, merge it back into `develop` in the same PR
-      cycle so `develop` does not silently regress.
+- [ ] After the hotfix ships, open the documented `main` -> `develop` sync-back
+      PR in the same release cycle and merge it with a merge commit.

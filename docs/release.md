@@ -17,18 +17,18 @@ this file, not in `AGENTS.md`.
 ## Flows
 
 ```
-feature/* -> develop -> main
-fix/*, hotfix/* -> main -> develop
+feature/*, feat/*, fix/*, refactor/*, docs/*, chore/*, agent/* -> develop -> main
+hotfix/* -> main -> develop
 ```
 
-- **Feature flow**: branch from `develop` as `feature/<name>`, open a PR into
-  `develop`. When `develop` is ready to ship, open a promotion PR from
-  `develop` into `main`.
-- **Hotfix flow**: for a defect that must be fixed directly on the stable
-  branch, branch from `main` as `fix/<name>` or `hotfix/<name>`, open a PR
-  into `main`. After the hotfix ships, merge the same change back into
-  `develop` (a release sync-back PR, see below) so the two branches do not
-  diverge.
+- **Development flow**: branch from `develop` with a descriptive prefix, open a PR
+  into `develop`, and squash merge after current-head review and verification. When
+  `develop` is ready to ship, open a promotion PR from `develop` into `main`.
+- **Hotfix flow**: for a defect that must be fixed directly on the stable branch,
+  branch from `main` as `hotfix/<name>`, open a PR into `main`, and squash merge
+  after the release gate. After the hotfix ships, open the documented release
+  sync-back PR into `develop` and merge it with a merge commit so the branches do
+  not diverge.
 - Stable publish only ever happens from `main`. `develop` never deploys the
   stable build; it may still build/deploy PR previews for review.
 
@@ -131,7 +131,7 @@ A release sync-back PR:
 
 - must not create a new release or tag;
 - must be merged with a merge commit, not squash or rebase (see
-  `Merge strategy for develop <-> main synchronization` above), to preserve
+  `Merge strategy` above), to preserve
   shared ancestry with `main`;
 - does not get a PR preview deployment — `deploy-preview` in
   `.github/workflows/verify.yml` is skipped for branches matching
