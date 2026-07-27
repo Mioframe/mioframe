@@ -21,6 +21,14 @@ export const VERIFY_LABELS = [
   'release-smoke',
 ];
 
+export const FULL_ONLY_LABELS = new Set([
+  'release-version',
+  'release-config',
+  'build',
+  'artifact',
+  'release-smoke',
+]);
+
 const VERIFY_PROFILES = new Set(['local', 'github-actions']);
 const FIX_MODES = new Set(['none', 'fix', 'fix-only']);
 
@@ -179,9 +187,16 @@ export function resolveVerifyInvocation(argv, processEnv = process.env) {
   const explicitProfile = getCliProfile(argv);
   const hasFix = argv.includes('--fix');
   const hasFixOnly = argv.includes('--fix-only');
+  const full = argv.includes('--full');
 
   if (hasFix && hasFixOnly) {
     throw new Error('Use either --fix or --fix-only, not both.');
+  }
+
+  if (onlyLabel !== null && FULL_ONLY_LABELS.has(onlyLabel) && !full) {
+    throw new Error(
+      `--only ${onlyLabel} requires --full. Run: pnpm verify --full --only ${onlyLabel}`,
+    );
   }
 
   const profileEnv =
@@ -211,7 +226,7 @@ export function resolveVerifyInvocation(argv, processEnv = process.env) {
     scope,
     profile,
     onlyLabel,
-    full: argv.includes('--full'),
+    full,
     verbose: argv.includes('--verbose'),
     fixMode: hasFix ? 'fix' : hasFixOnly ? 'fix-only' : 'none',
   };
@@ -252,6 +267,7 @@ export function isResolvedVerifyInvocation(value) {
     VERIFY_PROFILES.has(value.profile) &&
     (value.onlyLabel === null || VERIFY_LABELS.includes(value.onlyLabel)) &&
     typeof value.full === 'boolean' &&
+    (value.onlyLabel === null || !FULL_ONLY_LABELS.has(value.onlyLabel) || value.full) &&
     typeof value.verbose === 'boolean' &&
     FIX_MODES.has(value.fixMode)
   );
@@ -285,6 +301,10 @@ export function formatVerifyInvocationCommand(invocation, options = {}) {
 
   if (onlyLabel !== null && !VERIFY_LABELS.includes(onlyLabel)) {
     throw new Error(`Invalid value for --only: ${onlyLabel}`);
+  }
+
+  if (onlyLabel !== null && FULL_ONLY_LABELS.has(onlyLabel) && !invocation.full) {
+    throw new Error(`--only ${onlyLabel} requires --full.`);
   }
 
   if (!VERIFY_PROFILES.has(profile)) {

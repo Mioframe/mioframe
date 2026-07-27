@@ -45,6 +45,18 @@ describe('resolveVerifyInvocation', () => {
     );
   });
 
+  it('rejects a release-only label without full mode', () => {
+    expect(() => resolveVerifyInvocation(['--only', 'artifact'], {})).toThrow(
+      '--only artifact requires --full',
+    );
+  });
+
+  it('accepts a release-only label in full mode', () => {
+    expect(resolveVerifyInvocation(['--full', '--only', 'artifact'], {}).onlyLabel).toBe(
+      'artifact',
+    );
+  });
+
   it('rejects mutually exclusive fix modes', () => {
     expect(() => resolveVerifyInvocation(['--fix', '--fix-only'], {})).toThrow(
       'Use either --fix or --fix-only, not both.',
@@ -96,5 +108,19 @@ describe('formatVerifyInvocationCommand', () => {
 describe('isResolvedVerifyInvocation', () => {
   it('rejects corrupted persisted metadata', () => {
     expect(isResolvedVerifyInvocation({ version: 1, scope: { kind: 'local' } })).toBe(false);
+  });
+
+  it('rejects a persisted release-only label without full mode', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 1,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: 'artifact',
+        full: false,
+        verbose: false,
+        fixMode: 'none',
+      }),
+    ).toBe(false);
   });
 });

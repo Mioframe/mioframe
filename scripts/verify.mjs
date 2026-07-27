@@ -14,6 +14,7 @@ import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
   formatVerifyInvocationCommand,
+  FULL_ONLY_LABELS,
   getCliFilesOverride,
   resolveVerifyInvocation,
   VERIFY_LABELS,
@@ -36,15 +37,6 @@ const isFixOnlyMode = currentVerifyInvocation?.fixMode === 'fix-only';
 const isVerboseMode = currentVerifyInvocation?.verbose ?? false;
 const isFullMode = currentVerifyInvocation?.full ?? false;
 const shouldApplyFixers = isFixMode || isFixOnlyMode;
-// Release-only labels only run in full/release mode (pnpm verify --full).
-// Focused `pnpm verify` never builds these into its command list.
-const FULL_ONLY_LABELS = new Set([
-  'release-version',
-  'release-config',
-  'build',
-  'artifact',
-  'release-smoke',
-]);
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
@@ -97,12 +89,6 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
 };
 const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
-
-if (cliOnlyLabel !== null && FULL_ONLY_LABELS.has(cliOnlyLabel) && !isFullMode) {
-  throw new Error(
-    `--only ${cliOnlyLabel} requires --full. Run: pnpm verify --full --only ${cliOnlyLabel}`,
-  );
-}
 
 const EXPENSIVE_SKIP_REASON =
   'previous check failed; skipped expensive verification to save CI minutes';
