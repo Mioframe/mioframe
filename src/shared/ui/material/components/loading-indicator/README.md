@@ -8,13 +8,9 @@ Implementation ownership: `migrating`
 
 Canonical implementation: `src/shared/ui/material/components/loading-indicator/MDLoadingIndicator.vue`
 
-## Why this adapter exists
+## Ownership
 
-Loading indicator is a separate official Material 3 Expressive component with its own overview, specs, guidelines, accessibility, tokens, geometry, and motion contract.
-
-`MDButton` previously rendered `m3e-loading-indicator` directly. That bypassed the canonical Material Vue boundary and incorrectly made Button own Loading indicator renderer typing, accessibility, sizing, private CSS inputs, divergences, and motion.
-
-Required ownership, now implemented:
+Loading indicator is a separate official Material component with its own API, accessibility, tokens, geometry, motion, tests, stories, and renderer integration.
 
 ```text
 MDButton.loading
@@ -22,7 +18,7 @@ MDButton.loading
       → @m3e/web/loading-indicator
 ```
 
-`MDButton` owns the documented loading composition state and placement. `MDLoadingIndicator` owns the Loading indicator component contract and private renderer integration.
+`MDButton` owns composition state and placement. `MDLoadingIndicator` owns the dependency contract and private renderer integration.
 
 ## Official sources
 
@@ -31,89 +27,65 @@ MDButton.loading
 - `/components/loading-indicator/guidelines`;
 - `/components/loading-indicator/accessibility`.
 
-Related composition source:
-
-- Button placement guidance in `/components/loading-indicator/guidelines` ("Loading indicators can be placed within other components, such as buttons");
-- Loading indicator contrast-in-composition guidance from `/components/loading-indicator/accessibility` ("When integrated into another component, such as a button, make sure that the active indicator provides a visual contrast of at least 3:1 against the other component").
-
-Button icon-size tokens (`/components/buttons/specs`, `md.comp.button.<size>.icon.size`) are a Button-owned contract, not a Loading indicator size authority. The Button composition mapping in this document is a Mioframe-defined mapping, not a restatement of those tokens.
+Related Button placement and contrast guidance is also selected for the current composition.
 
 Renderer package:
 
-- `@m3e/web@^2.6.2`, resolved `2.6.2`;
+- declared `@m3e/web@^2.6.3`, resolved `2.6.3`;
 - entry point `@m3e/web/loading-indicator`;
-- `M3eLoadingIndicatorElement` is the package-derived renderer type source, used directly as the base of the Vue custom-element glue in `src/shared/ui/material/m3eLoadingIndicator.d.ts` (no demand-scoped public prop currently maps to a typed element property, so no property is `Pick`ed from it — see "Renderer typing" below).
+- installed package artifacts and observable browser behavior are runtime evidence;
+- `M3eLoadingIndicatorElement` is the package-derived type source.
 
-## Confirmed official Material facts
+## Selected Material contract
 
-- Loading indicator represents an ongoing process and is never decorative.
-- It is intended for short indeterminate loading, generally 200ms–5s ("Loading indicator Guidelines").
-- It must not be used for a process that transitions from indeterminate to determinate.
-- It has default/uncontained and contained configurations; uncontained is the renderer default.
-- It "can scale in size", with a documented flexible range of 24dp–240dp and a default of 38dp active-indicator size / 48dp container size (`loading-indicator/specs` token table and "Responsive layout" guidance).
-- The active indicator needs at least 3:1 contrast against its background or containing component (`loading-indicator/accessibility`).
-- It uses the `progressbar` ARIA role and needs an accessible label describing what is loading, e.g. "loading news article" or "refreshing page" (`loading-indicator/accessibility`, "Labeling elements").
-- It may be placed inside a Button (`loading-indicator/guidelines`, "Placement").
+Current demand is the Button composition:
 
-## Current demand
+- indeterminate short loading;
+- uncontained presentation;
+- required accessible purpose;
+- numeric scalable overall size;
+- inherited active-indicator color;
+- compatibility with disabled and selected Button states.
 
-Current direct product demand is only the Button composition:
+Contained presentation remains deferred.
 
-- indeterminate boolean loading state;
-- uncontained presentation in the Button leading-icon position;
-- accessible purpose supplied by the parent action (Button hands off its own `label`);
-- size normalized through an explicit Button-to-Loading-indicator composition mapping (not the Button icon-size tokens);
-- active indicator color inherited from the rendered Button label/icon color;
-- loading presentation compatible with disabled and selected Button states, including selected plus a `selected-icon` slot.
-
-No standalone product consumer currently requires contained presentation. Contained configuration remains deferred.
-
-## Public size API
-
-`MDLoadingIndicator` exposes:
+## Public Vue API
 
 ```ts
 size?: number;
+label: string;
 ```
 
-Contract:
+`size` contract:
 
-- the number represents the **overall** Loading indicator component size in Material dp, mapped 1:1 to CSS px — not the active-indicator size and not a renderer token;
-- default is `48`;
-- the accepted range is `24` through `240`, inclusive (Loading indicator overview/specs: "can scale in size" 24dp-240dp);
-- a value outside `24..240` is clamped to the nearest bound, with a development-mode warning naming the received value and the clamped result;
-- a non-finite value (`NaN`, `Infinity`, `-Infinity`) is never forwarded to the renderer: it normalizes to the default `48` and emits a separate development-mode warning naming the received value, distinct from the finite-range clamp warning;
-- both warning paths are deterministic (one `watchEffect` per reactive change), not a silent forward;
-- arbitrary CSS strings, percentages, `calc()`, and m3e variable names are not public API.
+- represents overall component size in Material dp mapped to CSS px;
+- default `48`;
+- accepted range `24..240`, clamped with a development warning;
+- non-finite values normalize to `48` with a distinct warning;
+- arbitrary CSS strings and renderer token names are not public API.
 
-### Geometry: overall size, active-indicator size, and renderer shape scale
+## Geometry contract
 
-Official Material separates three levels of Loading indicator geometry (`loading-indicator/specs`): a default 48dp overall/container size, a default 38dp active-indicator size within it, and (m3e-owned, not an official Material concept) a `0.842` internal scale the exact-version renderer applies inside the active-indicator area to keep its animated rotating shapes clear of the indicator's edge.
-
-`MDLoadingIndicator` preserves the official `38/48` ratio when resizing:
+Material distinguishes overall/container size from active-indicator size. The selected default is 48dp overall and 38dp active indicator.
 
 ```text
-public overall size           = normalized size (clamped 24..240, non-finite → 48)
-private m3e active-size input = normalized size × 38 / 48
-m3e internal 0.842 shape scale = unchanged, renderer-owned, never compensated
+public overall size            = normalized size
+private active-size mapping    = normalized size × 38 / 48
+m3e internal shape scale       = unchanged and renderer-owned
 ```
 
-The adapter sets the rendered custom element's host `width`/`height` directly to the normalized overall size, and separately sets the private `--m3e-loading-indicator-size` variable (see "Exact-version m3e workaround" below) to `normalizedSize × 38/48`. It does not divide by, multiply against, or otherwise try to force m3e's internal `0.842` shape scale to land on any particular pixel bounding box: that scale is exact-version renderer implementation detail for the animated polygon shapes, and the public contract does not guarantee the pixel bounds of every animated shape at every frame.
+The adapter sets host width/height from public overall size and maps the effective private active-size input separately. It never compensates m3e internal animated-shape scaling.
 
 Examples:
 
-| public `size`  | host width/height | private active-size input |
-| -------------- | ----------------- | ------------------------- |
-| `24`           | `24px`            | `19px`                    |
-| `32`           | `32px`            | `25.333333…px`            |
-| `40`           | `40px`            | `31.666667…px`            |
-| `48` (default) | `48px`            | `38px`                    |
-
-Normalization, clamping, non-finite fallback, host geometry, and the private active-size mapping are implemented and tested locally in `MDLoadingIndicator.vue` / `MDLoadingIndicator.test.ts` (`NaN`, `Infinity`, and `-Infinity` each normalize to overall `48`, emit the finite-number warning, and produce host `48×48` plus a private active-size input of `38px`). Actual rendered custom-element host bounding boxes for `24`/`32`/`40`/default `48` are proven in the browser in `tests/e2e/storybook/md-loading-indicator.spec.ts` (public host bounding box only; shadow DOM is not inspected).
+| Public size | Host size | Active-size input |
+| --- | --- | --- |
+| `24` | `24px` | `19px` |
+| `32` | `32px` | `25.333333…px` |
+| `40` | `40px` | `31.666667…px` |
+| `48` | `48px` | `38px` |
 
 ## Button composition mapping
-
-`MDButton` maps its own `size` to a Loading indicator composition size as follows:
 
 ```text
 Button extra-small → Loading indicator 24
@@ -123,112 +95,96 @@ Button large       → Loading indicator 32
 Button extra-large → Loading indicator 40
 ```
 
-This is a Mioframe Button-to-Loading-indicator composition mapping, not a restatement of the official Button icon-size tokens and not the complete official Loading indicator size API (which accepts the full `24..240` range).
+This is a Mioframe composition mapping, not a restatement of Button icon tokens and not the complete Loading indicator size API.
 
-## Exact-version m3e workaround
+## Confirmed renderer defects
 
-For `@m3e/web` 2.6.2, the documented Loading indicator size variable and the effective implementation input diverge, and the effective input is also incorrectly used by m3e as the uncontained host's own width:
+The last proven installed version for these defects is `2.6.2`:
 
-```text
-renderer status: divergent
-confirmed defects: M3E-001, M3E-002
-current decision: temporary-renderer-workaround
-long-term owner: m3e-fix
-exact version: @m3e/web 2.6.2
-Mioframe status: workaround-active
-upstream status: unreported
-```
+- [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented) — documented active-size input differs from the implemented input;
+- [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size) — uncontained host size is coupled to active size.
 
-Canonical defect records:
+Current decision: `temporary-renderer-workaround`.
 
-- [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented) — m3e documents `--m3e-loading-indicator-active-indicator-size`, but `2.6.2` reads the differently named `--m3e-loading-indicator-size`;
-- [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size) — m3e derives the uncontained host width from the active-indicator token, collapsing the official overall/active distinction.
+Current mitigation:
 
-Removal triggers are owned independently by those registry entries:
+- explicit host width/height from public overall size;
+- private effective active-size input at `overallSize × 38 / 48`;
+- no private DOM or method access;
+- no renderer vocabulary in public API or parent adapters.
 
-- `M3E-001`: the documented active-indicator size input is the effective implementation input and Mioframe no longer needs an undocumented variable mapping;
-- `M3E-002`: m3e provides independent Material-correct uncontained overall/container and active-indicator sizing, allowing Mioframe to remove the host-size and ratio workaround.
-
-`MDLoadingIndicator` privately restores the official distinction using only host-level CSS: it sets explicit `width`/`height` on the rendered custom element equal to the public overall size (overriding m3e's internal uncontained-width rule via normal inline-style precedence), and separately sets `--m3e-loading-indicator-size` (the confirmed effective host-level CSS input, not the documented one) to `overallSize × 38/48`. Both are host-level style/CSS-custom-property inputs; neither accesses private DOM or methods, and both remain private to this adapter — not exposed on the public Vue API, in `MDButton`, or in any consumer. `MDLoadingIndicator.test.ts` proves the exact mapping and `tests/e2e/storybook/md-loading-indicator.spec.ts` proves the actual rendered host bounding box; both defect entries and the workaround must be revalidated or removed on every `@m3e/web` version update.
+Both defects must be revalidated against installed m3e `2.6.3`. The workaround remains only if the newly consumed artifact and browser proof still require it.
 
 ## Material–m3e–Vue matrix
 
-| Material contract and exact source                                                                | Required now and evidence                                      | Public Vue representation                                                                                                            | m3e 2.6.2 support                                                                                                                                | Owner                | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Verification                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Loading indicator component identity (`loading-indicator/overview`)                               | yes — required by Button composition                           | `MDLoadingIndicator` canonical component, root-exported from `src/shared/ui/material/index.ts`                                       | `m3e-loading-indicator`, `direct`                                                                                                                | `MDLoadingIndicator` | `implement-now`                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | `MDLoadingIndicator.test.ts`; `MDLoadingIndicator.stories.ts` (Storybook presentation, not executable visual proof by itself); `tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts` (executable `toHaveScreenshot` proof)                                                                                                                                                                                                                                                                                                                                                        |
-| Default/uncontained configuration (`loading-indicator/specs`)                                     | yes — Button composition                                       | no `variant` prop; renderer default (`uncontained`) used as-is                                                                       | renderer default `"uncontained"`, `direct`                                                                                                       | `MDLoadingIndicator` | `implement-now`                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | `MDLoadingIndicator.stories.ts` (`Default`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Contained configuration (`loading-indicator/specs`)                                               | no current consumer                                            | none                                                                                                                                 | renderer `"contained"` variant, `direct` (unused)                                                                                                | `MDLoadingIndicator` | `defer`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | none                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Ongoing short indeterminate process (`loading-indicator/overview`)                                | yes                                                            | component exists only while `MDButton.loading` is true; no determinate API                                                           | renderer is indeterminate (no `aria-valuenow` set), `direct`                                                                                     | `MDLoadingIndicator` | `implement-now`                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | `MDLoadingIndicator.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Accessible purpose label and progressbar semantics (`loading-indicator/accessibility`)            | yes                                                            | required `label: string` prop mapped to the native `aria-label` attribute                                                            | renderer sets `role="progressbar"` and `ariaValueMin`/`ariaValueMax` defaults via the platform ARIAMixin; supplies no accessible name, `partial` | `MDLoadingIndicator` | `wrapper-correction` — `label` is required so every usage supplies a purpose string. When composed inside `MDButton`, the Button label names the action and the Loading indicator represents the ongoing execution of that same action, so `MDButton` hands its own `label` to `MDLoadingIndicator` as the progress-purpose accessible name for this selected composition (a demand-scoped composition decision, not a universal rule for all future parents; see `../button/README.md`) | `MDLoadingIndicator.test.ts` (`aria-label`); `tests/e2e/storybook/md-loading-indicator.spec.ts` (real browser `progressbar` role + name)                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Active-indicator contrast in another component (`loading-indicator/accessibility`)                | yes — Button composition                                       | no public prop; `MDLoadingIndicator` inherits `currentColor` in scoped style                                                         | `--m3e-loading-indicator-active-indicator-color` documented and implemented identically, `direct`                                                | `MDLoadingIndicator` | `implement-now` via inherited-color mapping; parent never sets this variable                                                                                                                                                                                                                                                                                                                                                                                                             | `MDLoadingIndicator.stories.ts` (`InheritedColorOnColoredSurfaces`, presentation only); `tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts` (`md-loading-indicator-inherited-color.png` baseline, inspected: correct purple-on-transparent and white-on-purple rendering); operator visual review pending                                                                                                                                                                                                                                                                       |
-| Scalable overall/active-indicator size (`loading-indicator/overview`, specs, "Responsive layout") | yes — required as public numeric `size` API and Button mapping | `size?: number`, dp mapped to px, default `48`, clamped to `24..240`, non-finite normalized to `48`, sets host width/height directly | `divergent`: documented size input is not implemented (`M3E-001`); uncontained host width is coupled to active size (`M3E-002`)                  | `MDLoadingIndicator` | `temporary-renderer-workaround` — set explicit host width/height from the public overall size and map the private active-size input to `overallSize × 38/48`, preserving the official ratio; m3e's internal `0.842` shape scale is untouched; lifecycle and removal triggers are owned by `../../docs/m3e-defects.md`                                                                                                                                                                    | `MDLoadingIndicator.test.ts` (default, explicit, lower-bound clamp, upper-bound clamp, `NaN`/`Infinity`/`-Infinity` fallback, host geometry, exact private active-size mapping); `tests/e2e/storybook/md-loading-indicator.spec.ts` (real browser host bounding box for `24`/`32`/`40`/default `48`); `tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts` (`md-loading-indicator-sizes.png` baseline covering `24`/`32`/`40`/default `48`, inspected: distinct, correctly ordered, unclipped, centered, active shapes proportionally smaller within the same overall footprint) |
-| Official component tokens (`loading-indicator/specs`)                                             | selected subset required for Button color/size handoff         | no public `--md-comp-*` alias yet; parent hands off state through the `size`/`label` props and inherited color instead               | renderer has `--m3e-loading-indicator-*` inputs, `direct`/`divergent` (see size row and `M3E-001`)                                               | `MDLoadingIndicator` | `defer` — current demand is satisfied by props/inherited color; introduce a public `--md-comp-loading-indicator-*` token only if a future consumer needs CSS-level customization                                                                                                                                                                                                                                                                                                         | none                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Renderer motion and reduced-motion behavior                                                       | yes — visible ongoing animation while mounted                  | no public animation controls (none required by Material sources found)                                                               | 2.6.2 uses an infinite shape-morph/rotation animation (4666ms cycle); source inspection found no `prefers-reduced-motion` handling               | m3e (renderer-owned) | no confirmed defect entry: no official Material source was found requiring reduced-motion suppression for this component; retain as an assessed evidence gap for operator review and possible future `m3e-fix`, not as `divergent`                                                                                                                                                                                                                                                       | exact-version source inspection above; operator motion review pending                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Forced colors                                                                                     | yes — renderer already handles it                              | none needed                                                                                                                          | `@media (forced-colors: active) { .active-indicator { background-color: CanvasText !important; } }`, `direct`                                    | m3e (renderer-owned) | `implement-now` (no wrapper action needed)                                                                                                                                                                                                                                                                                                                                                                                                                                               | operator visual review pending                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Material contract | Required now | Public Vue/token API | Installed m3e mapping | Owner and decision | Verification |
+| --- | --- | --- | --- | --- | --- |
+| Component identity | yes | canonical exported `MDLoadingIndicator` | `m3e-loading-indicator` | `implement-now` | unit, story, visual proof |
+| Uncontained presentation | yes | no variant prop | renderer default | `implement-now` | story/browser |
+| Contained presentation | no | none | renderer supports it | `defer` | none |
+| Indeterminate process | yes | mounted while parent loading is true | renderer indeterminate | `implement-now` | unit/browser |
+| Accessible purpose and progressbar | yes | required `label` | wrapper supplies accessible name; renderer supplies role | `wrapper-correction` | real browser role/name |
+| Inherited active color | yes | inherited `currentColor` | documented active color input | `implement-now` | visual proof |
+| Overall and active geometry | yes | numeric overall `size` | `M3E-001`/`M3E-002` workaround pending 2.6.3 revalidation | `temporary-renderer-workaround` | unit, host-box, visual |
+| Official component tokens | demand-driven | future supported `--md-comp-loading-indicator-*` entries in family `tokens.css` and `token-api.md` | family-local documented mappings | currently `defer`; props/inherited color satisfy demand | none until selected |
+| Renderer motion | yes | no public motion controls selected | renderer-owned | assess installed 2.6.3 and operator review | pending |
+| Forced colors | yes | none needed | renderer-owned | accept if verified | operator/browser as applicable |
+
+## Token ownership
+
+Loading Indicator owns only selected supported official `--md-comp-loading-indicator-*` tokens in:
+
+```text
+src/shared/ui/material/components/loading-indicator/tokens.css
+```
+
+Shared reference/system roles belong to Material foundation. A parent must use dependency props, inherited color, or supported public component tokens and must not set private renderer variables.
+
+Every supported component token must be listed in `../../docs/token-api.md`. Official but unsupported tokens remain `deferred` in the matrix. Do not mirror all `--m3e-loading-indicator-*` variables.
 
 ## Public boundary
 
 `MDLoadingIndicator`:
 
-- is a canonical exported Vue component under `src/shared/ui/material/components/loading-indicator`, re-exported from its local `index.ts` and from the root `src/shared/ui/material/index.ts`;
-- exposes only `label` (required) and `size` (optional number, `24..240`, default `48`);
-- keeps `M3eLoadingIndicatorElement`, raw `m3e-loading-indicator` vocabulary, and the private `--m3e-loading-indicator-*` inputs internal;
-- owns geometry normalization (numeric `size` → clamped overall px → host width/height, and → private active-size variable at `overallSize × 38/48`) and the mitigations for `M3E-001` and `M3E-002`;
-- owns its stories, tests, and motion assessment.
+- exposes only required `label` and optional numeric `size`;
+- keeps renderer type, tag vocabulary, and private inputs internal;
+- owns geometry normalization and current controlled workarounds;
+- owns its tests, stories, visual proof, and motion assessment.
 
-## Renderer typing
-
-`src/shared/ui/material/m3eLoadingIndicator.d.ts` declares the Vue custom-element glue for `<m3e-loading-indicator>` directly against the package-exported `M3eLoadingIndicatorElement` (`@m3e/web/loading-indicator`) instead of a generic `HTMLElement`. No demand-scoped public prop currently maps to a typed element property (`variant` remains deferred; `label` maps to the native `aria-label` attribute and `size` maps to a private CSS custom property), so no property is `Pick`ed onto the template `$props` surface, but the underlying host type is the real package class, matching the `m3eButton.d.ts` pattern. If a future prop maps to `variant` or another typed element property, extend the `$props` surface with a `Pick<M3eLoadingIndicatorElement, ...>` at that time.
-
-## MDButton composition contract
-
-`MDButton` (see `../button/README.md`):
+`MDButton`:
 
 - renders `MDLoadingIndicator`, not raw m3e;
-- hands off its own `label` as the dependency's accessible loading purpose;
-- hands off size through the Button composition mapping above via the numeric `size` prop;
-- relies on inherited color (no explicit color prop needed) for the rendered label/icon color handoff;
-- gives loading precedence over **both** the normal icon route and the selected-icon route: while loading, the `selected-icon` slot is not rendered into the light DOM at all (not merely hidden), so m3e's `with-selected-icon` state is unset and the default icon slot position (containing `MDLoadingIndicator`) is used regardless of `selected`; the appropriate icon (normal or selected) is restored once loading ends;
-- preserves Button label and normal native event behavior;
-- covers disabled plus loading and the full toggle/selected/selected-icon/loading combination via `MDButton.test.ts` and `tests/e2e/storybook/md-button-family.spec.ts`.
+- hands off accessible purpose and numeric overall size;
+- relies on inherited color;
+- gives loading precedence over normal and selected icon routes;
+- does not own dependency defects or private mappings.
 
 ## Verification
 
-Completed:
+Completed on the previously consumed renderer version:
 
-- package-derived type-check (`pnpm type-check`), with `m3eLoadingIndicator.d.ts` typed against `M3eLoadingIndicatorElement`;
-- colocated component-contract tests (`MDLoadingIndicator.test.ts`) for the accessible label, default size, explicit valid size, lower-bound clamp, upper-bound clamp, non-finite (`NaN`/`Infinity`/`-Infinity`) fallback to `48` with a development warning, host width/height geometry, and the exact private active-size mapping (`48→38px`, `24→19px`, `32→~25.333333px`, `40→~31.666667px`), proven independently of each other;
-- colocated stories (`MDLoadingIndicator.stories.ts`) for default presentation, an independent size matrix (`24`/`32`/`40`/default `48`), and inherited color on colored surfaces — these are Storybook presentation fixtures, not executable visual-regression proof by themselves;
-- real-browser host bounding-box proof (`tests/e2e/storybook/md-loading-indicator.spec.ts`): the actual rendered custom-element host resolves to `24×24`/`32×32`/`40×40`/default `48×48`, proving the explicit host width/height overrides m3e's incorrect uncontained-width derivation; only the public host box is inspected, not shadow DOM;
-- executable standalone visual-regression proof (`tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts`, Playwright `toHaveScreenshot`) with regenerated committed baselines `md-loading-indicator-sizes.png` and `md-loading-indicator-inherited-color.png`, captured from the dependency's own stories (not a substitute `MDButton` screenshot). Both baselines were visually inspected, not accepted mechanically;
-- real-browser accessibility proof (`tests/e2e/storybook/md-loading-indicator.spec.ts`): the standalone indicator resolves as `progressbar` with its supplied accessible name via actual accessibility-tree role/name resolution, not attribute presence alone;
-- `MDButton` behavior-contract story and `tests/e2e/storybook/md-button-family.spec.ts` prove the dependency composition, accessible label handoff, nested progressbar, `aria-busy`, disabled plus loading, and toggle/selected/selected-icon/loading precedence;
-- regenerated and visually inspected composed baseline (`tests/e2e/visual/shared-ui/md-button.spec.ts-snapshots/md-button-loading-linux.png`);
-- confirmed upstream defects `M3E-001` and `M3E-002` are recorded in `../../docs/m3e-defects.md` and linked from the matrix.
+- package-derived type-check;
+- component-contract tests for label, normalization, host geometry, and active-size mapping;
+- standalone stories for size and inherited color;
+- browser host bounding-box proof without shadow-DOM inspection;
+- standalone visual-regression baselines;
+- browser accessibility role/name proof;
+- Button composition and state-combination proof.
 
 Pending:
 
-- operator visual and motion review (renderer-owned shape-morph animation; no reduced-motion path found in m3e 2.6.2, recorded above) — required, not yet accepted;
-- final `pnpm verify`.
+- revalidate `M3E-001` and `M3E-002` against installed m3e `2.6.3`;
+- update or remove workarounds only from installed-artifact and browser evidence;
+- reassess renderer motion and reduced-motion behavior on `2.6.3`;
+- run affected focused proof and final `pnpm verify`;
+- obtain operator visual/motion acceptance.
 
 ## Completion gate
 
-`MDLoadingIndicator` remains `migrating` until:
+`MDLoadingIndicator` remains `migrating` and `correction` until:
 
-- the source-backed matrix above is accepted;
-- `M3E-001` and `M3E-002` remain current for the exact consumed m3e version or are revalidated and updated;
-- operator visual and motion acceptance is given (renderer-owned shape-morph animation with no reduced-motion path found).
-
-No further implementation-code corrections are currently known; the remaining gates are verification and operator review below.
-
-Already satisfied:
-
-- the demand-scoped Material Vue API (`label`, numeric `size`) is implemented and validated, including deterministic non-finite fallback with a development warning;
-- accessibility labeling and progress semantics are correct and browser-proven;
-- size/color handoff for the Button integration is correct, source-backed, and covers the full selected/loading combination;
-- overall size and active-indicator size are correctly distinguished, preserving the official `38/48` ratio; m3e's internal `0.842` shape scale is not compensated;
-- the m3e 2.6.2 size-variable-naming and uncontained-host-width defects are recorded as `M3E-001` and `M3E-002` with independent lifecycle and removal triggers;
-- package-derived typing is used for the Vue custom-element declaration (no generic `HTMLElement` glue);
-- component-contract tests, browser host-geometry proof, presentation stories, executable visual-regression proof with inspected regenerated committed baselines, and focused type-check pass.
-
-Remaining before full sign-off: final `pnpm verify` and operator motion/visual acceptance (tracked in `../../docs/roadmap.md`).
+- token ownership migration establishes canonical foundation/family owners and catalogue entries for any supported tokens;
+- both confirmed defects are revalidated against the consumed version;
+- focused tests and affected baselines remain correct;
+- final verification passes;
+- operator visual and motion acceptance is given.
