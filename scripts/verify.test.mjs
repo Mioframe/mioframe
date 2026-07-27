@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/packageJsonImpact.mjs', () => ({
@@ -821,6 +822,26 @@ describe('getCiProfileRisk', () => {
         },
       ),
     ).toBeNull();
+  });
+});
+
+describe('verify help output', () => {
+  it('distinguishes ignored environment bases from rejected explicit full-mode scope', () => {
+    const result = spawnSync(process.execPath, ['scripts/verify.mjs', '--help'], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GITHUB_BASE_REF: 'develop',
+        VERIFY_BASE: 'origin/other',
+      },
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+    expect(result.stdout).toContain(
+      'Full mode ignores GITHUB_BASE_REF and VERIFY_BASE; explicit --base/--files are rejected.',
+    );
   });
 });
 

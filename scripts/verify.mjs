@@ -616,7 +616,9 @@ function printHelp() {
   console.log('');
   console.log('Notes:');
   console.log('  - In GitHub Actions, focused verify scope is based on GITHUB_BASE_REF.');
-  console.log('  - Full mode ignores GITHUB_BASE_REF, VERIFY_BASE, --base, and --files.');
+  console.log(
+    '  - Full mode ignores GITHUB_BASE_REF and VERIFY_BASE; explicit --base/--files are rejected.',
+  );
   console.log('  - Focused --only runs preserve logs from other focused steps.');
   console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
   console.log('  - Expensive checks have internal heartbeat/timeouts:');
