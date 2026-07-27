@@ -207,10 +207,7 @@ source = source.replace(
   `  ensureLogsDirectory(cliOnlyLabel === null ? null : commands.map((entry) => entry.label));`,
   `  ensureLogsDirectory(onlyLabel === null ? null : commands.map((entry) => entry.label));`,
 );
-source = source.replace(
-  `    if (cliOnlyLabel === null) {`,
-  `    if (onlyLabel === null) {`,
-);
+source = source.replace(`    if (cliOnlyLabel === null) {`, `    if (onlyLabel === null) {`);
 source = source.replaceAll(
   `            }),
           ),`,
@@ -231,10 +228,7 @@ source = source.replace(
         invocation.verbose,
       );`,
 );
-source = source.replace(
-  `    invocation: currentVerifyInvocation,`,
-  `    invocation,`,
-);
+source = source.replace(`    invocation: currentVerifyInvocation,`, `    invocation,`);
 
 replaceOnce(
   'runMain invocation forwarding',
