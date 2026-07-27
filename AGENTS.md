@@ -9,7 +9,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
-- `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, `component-tokens.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material library architecture, adapter contract, upstream-defect registry, and migration records.
+- `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, `component-tokens.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material library architecture, adapter contract, token contract, upstream-defect registry, and migration records.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
@@ -50,7 +50,7 @@ Dependency rules:
 Use the applicable skill instead of duplicating its rules in the task:
 
 - `vue-component-implementation`: `.vue` components and UI composables;
-- `shared-ui-implementation`: project-specific or generic shared UI primitives;
+- `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
 - `material-component-adapter`: one official Material component or proven inseparable family implemented or migrated end to end as a stable Mioframe Vue API backed privately by the documented public `@m3e/web` contract when viable;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
 - `unit-testing`: deterministic pure/domain/service/storage/CRDT and module-boundary proof in the `unit-tests` lane;
@@ -86,21 +86,30 @@ Use the applicable skill instead of duplicating its rules in the task:
 - `use*` exposes reactive or lifecycle-managed capabilities; `setup*` wires dependencies and cleanup; `define*` is side-effect-light; `create*` returns a fresh owned instance; `get*` derives or looks up; `is*` is boolean; `zod*` exports schemas; `*Service` is background infrastructure; `on*` names handlers; `$` suffix is reserved for raw RxJS observables.
 - Add a child `AGENTS.md` only for stable local invariants that the parent cannot express cleanly. Child files refine rather than repeat parent rules.
 
+## Pull request workflow
+
+- Local coding agents own repository files and local commands. The operator or architect owns PR title and body, draft/ready state, review threads, complete resulting-PR review, merge readiness, and merge execution.
+- Keep a PR in draft while implementation, required proof, current-head verification, or review blockers remain. Mark it ready only after the current head has complete required checks, the full resulting diff has been reviewed, PR metadata is accurate, and no unresolved review threads remain.
+- Green CI proves only that automated checks passed. It is not architecture approval or merge readiness. Re-review the current head after every pushed commit, including CI autofix commits.
+- Branch prefixes are descriptive rather than an allow-list. Use a clear prefix such as `feature/`, `feat/`, `fix/`, `hotfix/`, `release-repair/`, `refactor/`, `docs/`, `chore/`, or `agent/` that reflects the work.
+
 ## Mandatory verification
 
 - Use `implementation-preflight` to resolve task-specific `TEST IMPACT` before non-trivial edits and `verification` to inspect and execute repository verification.
 - `TEST IMPACT` is a reviewable design record; `verify` never parses it. Automatic scope comes from status-aware Git diff, tests/imports, snapshots, and persistent repository impact metadata.
 - Inferred verify scope is an optimization. A skipped or empty lane is not proof that it is unnecessary. Unknown relevant impact must use full owning-lane fallback.
 - A new, moved, renamed, or removed Playwright spec must update its owning mapping or justified standalone entry in the same change. Source mappings contain production, story, fixture, or owned support paths; do not put spec paths in source prefixes to group tests.
-- Release-only contracts must have repository-owned impact mapping to build, artifact, or release-smoke proof. Until the focused release resolver is implemented, explicitly run `pnpm verify:release` for changes to build/release config, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies.
-- Use `pnpm verify --fix` only when safe automatic formatting, lint fixes, or instruction compatibility generation are useful.
-- Before reporting completion after edits, run final read-only `pnpm verify`. Focused checks do not replace it, and the final command must not use `--fix`.
-- Use `pnpm verify --only <label> --files ...` for focused feedback when supported. `--files` is not status-aware deletion/rename planning. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks.
-- Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, final `pnpm verify` may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
+- Use `pnpm verify --fix-only` when only safe automatic formatting, lint fixes, or instruction compatibility generation is needed. Inspect generated changes before verification. `pnpm verify --fix` is a combined convenience mode, not the default agent workflow and never the final gate.
+- Use `pnpm verify --only <label> --files ...` for focused development feedback when supported. `--files` is not status-aware deletion/rename planning. Do not substitute raw underlying test, lint, visual, mutation, or E2E commands for verify-managed checks, including raw commands printed as diagnostics by a failed verify step.
+- The top-level task owns exactly one final read-only completion gate after all implementation and focused or mode-specific proof are complete. Nested implementation/testing skills do not own separate final gates.
+- For ordinary feature-branch or PR work, use `pnpm verify --base <parent-ref>`; use `origin/develop` for an ordinary branch and the actual parent feature branch for stacked work. Plain `pnpm verify` is sufficient only when the complete task is exactly the current uncommitted diff against `HEAD`, or exactly the single last commit selected by its documented fallback; it must not be reported as PR-wide proof otherwise.
+- Until the focused release resolver is implemented, a change to build/release config, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts, artifact assembly, or production-output dependencies requires `pnpm verify:release` as the single final completion gate. It replaces the ordinary `pnpm verify --base <parent-ref>` completion gate; never run both as final gates. Run any required mutation or other mode-specific proof before it through focused verify-managed commands.
+- Preserve the invocation scope when retrying verification. Keep applicable `--base`, `--full`, `--profile`, `--files`, and `--only` arguments; remove `--fix` or `--fix-only` for the final read-only rerun. Do not follow a suggestion that silently falls back to plain `pnpm verify` or to a raw underlying command.
+- Mutation should ultimately be selected from validated persistent high-risk targets. Until migration is complete, ordinary branch-diff verification may still execute broader legacy mutation inference; do not skip it or claim the target registry already exists.
 - Preserve the current app E2E desktop/mobile matrix until a dedicated audited migration demonstrates safe project filtering.
 - A minimum check named in a nested `AGENTS.md` describes required proof, not a separate command boundary. Run its verify-managed equivalent whenever a matching label exists.
-- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active.
-- If final verification fails, repository impact metadata is invalid, or required proof is missing, do not claim the task is complete. Report the exact failure and remaining work.
+- Do not start duplicate expensive checks in parallel. Use `pnpm verify:status` and `.verify/logs` when verification is already active. After `pnpm verify:resume`, rerun the exact completion-gate command printed when validated structured metadata is available; otherwise reconstruct the original scope explicitly. Never silently replace it with plain `pnpm verify`.
+- If the final completion gate fails, repository impact metadata is invalid, or required proof is missing, do not claim the task is complete. Report the exact failure and remaining work.
 
 Final response after edits must include:
 
@@ -110,7 +119,7 @@ status: complete | partial | blocked
 remaining: none | <remaining required work, verification, or blocker>
 
 VERIFY RESULT
-command: pnpm verify
+command: <exact final completion-gate command>
 status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
@@ -119,11 +128,12 @@ reason if not run:
 
 - `develop` is the active development branch; `main` is the stable public branch.
 - Every PR into `develop` or `main` must increase `package.json` version, except the documented pre-tag repair and `main` to `develop` release-sync cases.
-- `develop`/`main` synchronization PRs use merge commits, never squash or rebase.
+- Ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`, plus direct hotfix and pre-tag repair PRs into `main`, use squash merge.
+- `develop` to `main` promotion PRs and `main` to `develop` release sync-back PRs use merge commits. Rebase merge is forbidden for all repository flows.
 - `pnpm verify` is the focused development gate. Its target architecture includes automatic focused release proof for release-relevant changes. `pnpm verify:release` remains the unconditional full release gate required for `main`.
 - Follow `docs/release.md` and `docs/release-checklist.md` for the complete release policy.
 
 ## Agent environment compatibility
 
 - `AGENTS.md` and `.agents/skills/*/SKILL.md` are canonical. Do not edit generated `CLAUDE.md` or `.claude/skills` directly.
-- After changing the instruction tree, run `pnpm verify --fix` to regenerate compatibility files, then final `pnpm verify`.
+- After changing the instruction tree, run `pnpm verify --fix-only --base <parent-ref>` to regenerate compatibility files and inspect the generated diff. Then run the one applicable final completion gate: ordinary branch-diff verify, or `pnpm verify:release` when full/release proof is required.
