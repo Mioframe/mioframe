@@ -52,13 +52,13 @@ Complete M0 without intentionally changing presentation:
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | m3e-backed architecture reset and token foundation | `correction` | none | canonical foundation/theme and family token owners; complete public token catalogue; legacy mixed-owner token file removed; final verification |
-| M1a | `MDLoadingIndicator` dependency adapter | `verification` | M0 | accepted matrix and public API; package-derived typing; accessibility and geometry proof; `M3E-001`/`M3E-002` current for consumed m3e; operator review |
-| M1 | `MDButton` adapter pilot | `verification` | M1a | accepted matrix and API; canonical Loading indicator composition; visible interaction proof; migrated consumers; final verification and operator acceptance |
-| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; controlled state and event order; renderer-gap ownership; verification and operator acceptance |
-| M3 | sequential component migration | `planned` | M2 | one official Material component at a time; dependencies first; demand-driven API and tokens; explicit renderer mapping and gap ownership |
+| ID  | Milestone                                          | Status         | Depends on | Exit gate                                                                                                                                                   |
+| --- | -------------------------------------------------- | -------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset and token foundation | `correction`   | none       | canonical foundation/theme and family token owners; complete public token catalogue; legacy mixed-owner token file removed; final verification              |
+| M1a | `MDLoadingIndicator` dependency adapter            | `verification` | M0         | accepted matrix and public API; package-derived typing; accessibility and geometry proof; `M3E-001`/`M3E-002` current for consumed m3e; operator review     |
+| M1  | `MDButton` adapter pilot                           | `verification` | M1a        | accepted matrix and API; canonical Loading indicator composition; visible interaction proof; migrated consumers; final verification and operator acceptance |
+| M2  | `MDSwitch` stateful adapter pilot                  | `planned`      | M1         | source-backed matrix; controlled state and event order; renderer-gap ownership; verification and operator acceptance                                        |
+| M3  | sequential component migration                     | `planned`      | M2         | one official Material component at a time; dependencies first; demand-driven API and tokens; explicit renderer mapping and gap ownership                    |
 
 The overall roadmap remains `correction` while M0 is open, even though M1a and M1 implementation evidence is ready for verification. A dependent milestone cannot complete before its architectural dependency.
 

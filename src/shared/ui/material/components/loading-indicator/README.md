@@ -77,11 +77,11 @@ m3e internal shape scale    = unchanged and renderer-owned
 The adapter sets host width and height from the public overall size and maps the effective private active-size input separately. It does not compensate m3e internal animated-shape scaling.
 
 | Public size | Host size | Active-size input |
-| --- | --- | --- |
-| `24` | `24px` | `19px` |
-| `32` | `32px` | `25.333333…px` |
-| `40` | `40px` | `31.666667…px` |
-| `48` | `48px` | `38px` |
+| ----------- | --------- | ----------------- |
+| `24`        | `24px`    | `19px`            |
+| `32`        | `32px`    | `25.333333…px`    |
+| `40`        | `40px`    | `31.666667…px`    |
+| `48`        | `48px`    | `38px`            |
 
 ## Button composition mapping
 
@@ -123,18 +123,18 @@ The workaround remains controlled by `../../docs/m3e-defects.md` and must be rev
 
 ## Material–m3e–Vue matrix
 
-| Material contract | Required now | Public Vue representation | m3e support | Owner and decision | Verification |
-| --- | --- | --- | --- | --- | --- |
-| Component identity | yes | canonical root-exported `MDLoadingIndicator` | direct `m3e-loading-indicator` mapping | dependency adapter — `implement-now` | unit, browser, and visual proof |
-| Default uncontained configuration | yes | no public variant prop | direct renderer default | `implement-now` | default story and visual proof |
-| Contained configuration | no | none | renderer supports it | `defer` | none |
-| Short indeterminate process | yes | component exists while parent loading state is true | direct indeterminate renderer behavior | `implement-now` | contract tests |
-| Accessible purpose and progressbar semantics | yes | required `label` mapped to `aria-label` | renderer supplies progressbar role but not purpose | wrapper correction owned by dependency | unit and real-browser role/name proof |
-| Active-indicator contrast inside Button | yes | inherited `currentColor` | documented renderer color input | dependency — `implement-now` | independent inherited-color visual proof |
-| Overall and active-indicator size | yes | numeric overall `size`, default `48`, range `24..240` | divergent: `M3E-001`, `M3E-002` | dependency — controlled workaround | normalization, geometry, browser bounds, and visual proof |
-| Official component tokens | no CSS-level consumer now | none | renderer has private inputs | `defer`; props and inherited color satisfy current demand | none |
-| Motion and reduced-motion assessment | yes | no public control selected | installed 2.6.3 retains the renderer-owned 4666ms infinite morph/rotation and no discovered reduced-motion branch | no confirmed defect without positive official requirement | installed-artifact inspection; operator motion review pending |
-| Forced colors | yes | none | renderer uses `CanvasText` | direct renderer ownership | operator review pending |
+| Material contract                            | Required now              | Public Vue representation                             | m3e support                                                                                                       | Owner and decision                                        | Verification                                                  |
+| -------------------------------------------- | ------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------- |
+| Component identity                           | yes                       | canonical root-exported `MDLoadingIndicator`          | direct `m3e-loading-indicator` mapping                                                                            | dependency adapter — `implement-now`                      | unit, browser, and visual proof                               |
+| Default uncontained configuration            | yes                       | no public variant prop                                | direct renderer default                                                                                           | `implement-now`                                           | default story and visual proof                                |
+| Contained configuration                      | no                        | none                                                  | renderer supports it                                                                                              | `defer`                                                   | none                                                          |
+| Short indeterminate process                  | yes                       | component exists while parent loading state is true   | direct indeterminate renderer behavior                                                                            | `implement-now`                                           | contract tests                                                |
+| Accessible purpose and progressbar semantics | yes                       | required `label` mapped to `aria-label`               | renderer supplies progressbar role but not purpose                                                                | wrapper correction owned by dependency                    | unit and real-browser role/name proof                         |
+| Active-indicator contrast inside Button      | yes                       | inherited `currentColor`                              | documented renderer color input                                                                                   | dependency — `implement-now`                              | independent inherited-color visual proof                      |
+| Overall and active-indicator size            | yes                       | numeric overall `size`, default `48`, range `24..240` | divergent: `M3E-001`, `M3E-002`                                                                                   | dependency — controlled workaround                        | normalization, geometry, browser bounds, and visual proof     |
+| Official component tokens                    | no CSS-level consumer now | none                                                  | renderer has private inputs                                                                                       | `defer`; props and inherited color satisfy current demand | none                                                          |
+| Motion and reduced-motion assessment         | yes                       | no public control selected                            | installed 2.6.3 retains the renderer-owned 4666ms infinite morph/rotation and no discovered reduced-motion branch | no confirmed defect without positive official requirement | installed-artifact inspection; operator motion review pending |
+| Forced colors                                | yes                       | none                                                  | renderer uses `CanvasText`                                                                                        | direct renderer ownership                                 | operator review pending                                       |
 
 ## Token ownership
 

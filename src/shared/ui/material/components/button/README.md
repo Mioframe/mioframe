@@ -80,20 +80,20 @@ Deferred because there is no current consumer:
 
 ## Material–m3e–Vue matrix
 
-| Material contract | Required now | Public Vue representation | Renderer/dependency mapping | Owner and decision |
-| --- | --- | --- | --- | --- |
-| Default and toggle variants | yes | `variant: 'default' \| 'toggle'`, controlled `selected`, `update:selected` | typed m3e Button toggle and selection mapping | Button — `implement-now` |
-| Five color configurations including text | selected current surface | `color` prop | typed m3e Button variant mapping | Button — `implement-now`; text toggle supported |
-| Five sizes and round/square shapes | yes | `size` and `shape` props | typed m3e Button mapping | Button — `implement-now` |
-| Leading icon and selected-state content | yes | `icon`, `selected-label`, `selected-icon` slots | private mapping to renderer slots | Button — `implement-now` |
-| Disabled, focus, hover, pressed feedback, and target behavior | yes | `disabled`; no renderer-specific ripple API | m3e state layer and ripple consume shared Material state roles | Button plus Material foundation — `implement-now`; no local ripple or opacity conversion |
-| Native action type | yes | `nativeType: 'button' \| 'submit' \| 'reset'` | renderer `type` | Button — `implement-now` |
-| Link/form identity surface | no | none | renderer surface remains private and unused | `defer` |
-| Loading inside Button | yes | `loading?: boolean` parent composition state | `MDButton` → `MDLoadingIndicator` | Button owns composition; dependency owns indicator contract |
-| Loading accessible purpose | yes | Button hands its action `label` to the dependency `label` prop | dependency owns `progressbar` semantics | `implement-now` for this selected composition |
-| Loading size and color | yes | overall-size mapping `24/24/24/32/40`; inherited color | dependency owns private active-size and color mapping | `implement-now`; `M3E-001`/`M3E-002` remain dependency-owned |
-| Loading plus selected plus selected icon | yes | loading content wins while mounted and selected content is restored afterward | slot-routing wrapper correction | Button — `implement-now` |
-| Native click propagation | yes | normal bubbling plus Vue click emit | `@click`, no `.stop` | Button — `implement-now` |
+| Material contract                                             | Required now             | Public Vue representation                                                     | Renderer/dependency mapping                                    | Owner and decision                                                                       |
+| ------------------------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Default and toggle variants                                   | yes                      | `variant: 'default' \| 'toggle'`, controlled `selected`, `update:selected`    | typed m3e Button toggle and selection mapping                  | Button — `implement-now`                                                                 |
+| Five color configurations including text                      | selected current surface | `color` prop                                                                  | typed m3e Button variant mapping                               | Button — `implement-now`; text toggle supported                                          |
+| Five sizes and round/square shapes                            | yes                      | `size` and `shape` props                                                      | typed m3e Button mapping                                       | Button — `implement-now`                                                                 |
+| Leading icon and selected-state content                       | yes                      | `icon`, `selected-label`, `selected-icon` slots                               | private mapping to renderer slots                              | Button — `implement-now`                                                                 |
+| Disabled, focus, hover, pressed feedback, and target behavior | yes                      | `disabled`; no renderer-specific ripple API                                   | m3e state layer and ripple consume shared Material state roles | Button plus Material foundation — `implement-now`; no local ripple or opacity conversion |
+| Native action type                                            | yes                      | `nativeType: 'button' \| 'submit' \| 'reset'`                                 | renderer `type`                                                | Button — `implement-now`                                                                 |
+| Link/form identity surface                                    | no                       | none                                                                          | renderer surface remains private and unused                    | `defer`                                                                                  |
+| Loading inside Button                                         | yes                      | `loading?: boolean` parent composition state                                  | `MDButton` → `MDLoadingIndicator`                              | Button owns composition; dependency owns indicator contract                              |
+| Loading accessible purpose                                    | yes                      | Button hands its action `label` to the dependency `label` prop                | dependency owns `progressbar` semantics                        | `implement-now` for this selected composition                                            |
+| Loading size and color                                        | yes                      | overall-size mapping `24/24/24/32/40`; inherited color                        | dependency owns private active-size and color mapping          | `implement-now`; `M3E-001`/`M3E-002` remain dependency-owned                             |
+| Loading plus selected plus selected icon                      | yes                      | loading content wins while mounted and selected content is restored afterward | slot-routing wrapper correction                                | Button — `implement-now`                                                                 |
+| Native click propagation                                      | yes                      | normal bubbling plus Vue click emit                                           | `@click`, no `.stop`                                           | Button — `implement-now`                                                                 |
 
 ## Token ownership
 
