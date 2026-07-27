@@ -52,9 +52,10 @@ Do not require legacy comparison for newly exposed m3e capability that had no pr
 5. Wait for fonts, icons, and fixture readiness.
 6. Capture the smallest readable surface.
 7. Update source-to-spec metadata when ownership changes.
-8. Inspect intentional baseline changes.
-9. Run focused visual verification and final verification.
-10. Prepare operator evidence when the first canonical component or meaningful visible change requires review.
+8. Confirm added, moved, renamed, or removed specs and baselines preserve deterministic ownership or use the documented full-lane fallback.
+9. Inspect every intentional baseline change.
+10. Run focused visual verification and return to the top-level task. This skill does not run a separate final gate.
+11. Prepare operator evidence when the first canonical component or meaningful visible change requires review.
 
 ## Motion boundary
 
@@ -79,11 +80,14 @@ Do not reproduce token tables through large computed-style assertions.
 ## Impact metadata
 
 - map component, story, theme, font, icon, fixture, and rendering sources to owning specs;
+- do not put visual spec paths into source prefixes to group tests;
 - a changed spec selects itself;
 - a changed baseline follows repository snapshot conventions;
-- unresolved baseline changes require the documented fallback;
-- shared visual configuration requires broad fallback unless consumers are explicit;
+- unresolved added, modified, deleted, or renamed baseline changes require the documented full visual fallback;
+- shared visual configuration requires broad fallback unless consumers are explicit and validated;
 - every visual spec is mapped or has a justified standalone reason.
+
+Until the visual resolver migration is implemented, current `verify` may still run a broader visual lane. Do not claim focused baseline ownership behavior already exists.
 
 ## Operator Material review
 
@@ -122,6 +126,8 @@ pnpm test:visual:update
 pnpm verify --only visual --files <source-story-or-spec-paths...>
 ```
 
+Preserve applicable `--base`, `--profile`, and `--files` scope when rerunning visual verification. The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
+
 ## Forbidden
 
 - behavior assertions in visual specs;
@@ -132,4 +138,5 @@ pnpm verify --only visual --files <source-story-or-spec-paths...>
 - equivalent combinations that create snapshot bloat;
 - forced states presented as motion proof;
 - ceremonial matrices for simple components;
+- stale or semantically overloaded visual impact mappings;
 - exhaustive coverage of unchanged third-party renderer surface.
