@@ -18,28 +18,29 @@ this file, not in `AGENTS.md`.
 
 ```
 feature/*, feat/*, fix/*, refactor/*, docs/*, chore/*, agent/* -> develop -> main
-hotfix/* -> main -> develop
+hotfix/*, release-repair/* -> main -> develop when the change is main-only
 ```
 
 - **Development flow**: branch from `develop` with a descriptive prefix, open a PR
   into `develop`, and squash merge after current-head review and verification. When
   `develop` is ready to ship, open a promotion PR from `develop` into `main`.
-- **Hotfix flow**: for a defect that must be fixed directly on the stable branch,
-  branch from `main` as `hotfix/<name>`, open a PR into `main`, and squash merge
-  after the release gate. After the hotfix ships, open the documented release
-  sync-back PR into `develop` and merge it with a merge commit so the branches do
-  not diverge.
+- **Direct main repair flow**: for a defect in an already-published stable version,
+  branch from `main` as `hotfix/<name>`. For an unpublished current-main release
+  candidate, branch as `release-repair/<name>`. Open the PR into `main` and squash
+  merge after the release gate. When the resulting commit is not already in
+  `develop`, open the documented release sync-back PR into `develop` and merge it
+  with a merge commit so the branches do not diverge.
 - Stable publish only ever happens from `main`. `develop` never deploys the
   stable build; it may still build/deploy PR previews for review.
 
-Branch prefixes are descriptive, not an allow-list. Use a prefix that communicates ownership and intent, including `feature/`, `feat/`, `fix/`, `hotfix/`, `refactor/`, `docs/`, `chore/`, or `agent/`. The target branch and release flow determine policy; the prefix alone does not grant an exception.
+Branch prefixes are descriptive, not an allow-list. Use a prefix that communicates ownership and intent, including `feature/`, `feat/`, `fix/`, `hotfix/`, `release-repair/`, `refactor/`, `docs/`, `chore/`, or `agent/`. The target branch and release flow determine policy; the prefix alone does not grant an exception.
 
 ### Merge strategy
 
 Use these merge methods explicitly:
 
 - ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`: **squash merge**;
-- direct hotfix PRs into `main`: **squash merge**;
+- direct hotfix and pre-tag repair PRs into `main`: **squash merge**;
 - `develop` -> `main` promotion PRs and `main` -> `develop` release sync-back PRs: **merge commit**.
 
 Rebase merge is forbidden. Synchronization PRs preserve shared ancestry; ordinary PRs collapse implementation-history noise into one reviewed change.

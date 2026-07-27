@@ -135,7 +135,7 @@ reason if not run:
 
 - `develop` is the active development branch; `main` is the stable public branch.
 - Every PR into `develop` or `main` must increase `package.json` version, except the documented pre-tag repair and `main` to `develop` release-sync cases.
-- Ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`, plus direct hotfix PRs into `main`, use squash merge.
+- Ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`, plus direct hotfix and pre-tag repair PRs into `main`, use squash merge.
 - `develop` to `main` promotion PRs and `main` to `develop` release sync-back PRs use merge commits. Rebase merge is forbidden for all repository flows.
 - `pnpm verify` is the focused development gate. Its target architecture includes automatic focused release proof for release-relevant changes. `pnpm verify:release` remains the unconditional full release gate required for `main`.
 - Follow `docs/release.md` and `docs/release-checklist.md` for the complete release policy.
