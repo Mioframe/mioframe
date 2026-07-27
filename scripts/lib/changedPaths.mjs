@@ -339,7 +339,9 @@ export function resolveChangedPathsScope({ invocationScope, cwd = process.cwd() 
   }
 
   if (invocationScope.kind !== 'local') {
-    throw new Error(`Unsupported resolved verify invocation scope: ${JSON.stringify(invocationScope)}`);
+    throw new Error(
+      `Unsupported resolved verify invocation scope: ${JSON.stringify(invocationScope)}`,
+    );
   }
 
   const rawChanges = [...diffNameStatus(['HEAD'], cwd), ...listUntrackedFiles(cwd)];

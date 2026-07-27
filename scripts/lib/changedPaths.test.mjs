@@ -238,7 +238,9 @@ describe('getChangedFileProjection', () => {
 
 describe('resolveChangedPathsScope explicit-files mode', () => {
   it('bypasses Git entirely and does not invent statuses', () => {
-    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'explicit-files', files: ['b.ts', 'a.ts'] } });
+    const scope = resolveChangedPathsScope({
+      invocationScope: { kind: 'explicit-files', files: ['b.ts', 'a.ts'] },
+    });
 
     expect(scope).toEqual({
       input: { kind: 'explicit-files', files: ['a.ts', 'b.ts'] },
@@ -348,7 +350,10 @@ describe('resolveChangedPathsScope local-base mode', () => {
     commitAll(dir, 'feature commit');
     writeFile(dir, 'uncommitted.ts');
 
-    const scope = resolveChangedPathsScope({ invocationScope: { kind: 'local-base', baseRef: 'main' }, cwd: dir });
+    const scope = resolveChangedPathsScope({
+      invocationScope: { kind: 'local-base', baseRef: 'main' },
+      cwd: dir,
+    });
 
     expect(scope.scope).toBe('local-base main');
     expect(scope.baseRef).toBe('main');
@@ -368,7 +373,10 @@ describe('resolveChangedPathsScope local-base mode', () => {
     commitAll(dir, 'init');
 
     expect(() =>
-      resolveChangedPathsScope({ invocationScope: { kind: 'local-base', baseRef: 'origin/does-not-exist' }, cwd: dir }),
+      resolveChangedPathsScope({
+        invocationScope: { kind: 'local-base', baseRef: 'origin/does-not-exist' },
+        cwd: dir,
+      }),
     ).toThrow(/Base ref does not exist/);
   });
 });

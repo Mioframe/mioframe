@@ -1,9 +1,6 @@
 import path from 'node:path';
 
-import {
-  resolvePlaywrightContainerProfile,
-  VERIFY_PROFILE_ENV,
-} from '../playwrightContainer.mjs';
+import { resolvePlaywrightContainerProfile, VERIFY_PROFILE_ENV } from '../playwrightContainer.mjs';
 
 export const VERIFY_LABELS = [
   'agent-environment',
