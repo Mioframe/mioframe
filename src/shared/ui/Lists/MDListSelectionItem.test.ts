@@ -154,8 +154,8 @@ describe('MDListSelectionItem', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const wrapper = mountSelectionItem({ value: 'opt' }, { selectionMode: 'single', tag: 'ul' });
 
-    expect(wrapper.get('.md-list-selection-item').element.tagName.toLowerCase()).toBe('div');    warnSpy.mockRestore();
-
+    expect(wrapper.get('.md-list-selection-item').element.tagName.toLowerCase()).toBe('div');
+    warnSpy.mockRestore();
   });
 
   it('adds _selected modifier class when the item is selected', () => {
