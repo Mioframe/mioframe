@@ -887,7 +887,7 @@ describe('effective verify retry scope', () => {
   it('shell-quotes spaces, substitutions, backticks, and single quotes in file paths', () => {
     const backtick = String.fromCharCode(96);
     const unsafePath =
-      "src/path with $(touch unsafe) " + backtick + "echo unsafe" + backtick + " and 'quote.ts";
+      'src/path with $(touch unsafe) ' + backtick + 'echo unsafe' + backtick + " and 'quote.ts";
     const command = getVerifyRerunCommand(['--files', unsafePath]);
 
     expect(command.startsWith("pnpm verify --files '")).toBe(true);
