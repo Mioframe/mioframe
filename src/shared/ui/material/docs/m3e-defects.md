@@ -61,7 +61,7 @@ Mioframe status:
 | --------- | ----------------- | ----------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
 | `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`          | `workaround-active` | `unreported`    |
 | `M3E-002` | Loading indicator | Uncontained host size is incorrectly coupled to active-indicator size   | `2.6.2`          | `workaround-active` | `unreported`    |
-| `M3E-003` | Button / ripple   | Unitless pressed opacity makes the 2.6.2 ripple color invalid            | `2.6.2`          | `awaiting-upgrade`  | `fixed`         |
+| `M3E-003` | Button / ripple   | Unitless pressed opacity makes the 2.6.2 ripple color invalid           | `2.6.2`          | `awaiting-upgrade`  | `fixed`         |
 
 ## M3E-001 — Loading indicator documented size input is not implemented
 
@@ -258,10 +258,10 @@ Mioframe resolves `@m3e/web` to `2.6.3` or later, revalidates all non-resolved B
 
 ### Revalidation history
 
-| m3e version | Date       | Result                          | Evidence                                      |
-| ----------- | ---------- | ------------------------------- | --------------------------------------------- |
-| `2.6.2`     | 2026-07-27 | confirmed                       | source inspection and operator reproduction  |
-| `2.6.3`     | 2026-07-27 | fixed upstream, not yet consumed | exact source comparison against `v2.6.2`      |
+| m3e version | Date       | Result                           | Evidence                                    |
+| ----------- | ---------- | -------------------------------- | ------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed                        | source inspection and operator reproduction |
+| `2.6.3`     | 2026-07-27 | fixed upstream, not yet consumed | exact source comparison against `v2.6.2`    |
 
 ## Update protocol
 
