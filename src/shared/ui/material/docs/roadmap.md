@@ -4,45 +4,71 @@ This file owns only the current sequence, milestone state, blocker, and next act
 
 ## Current state
 
-Last updated: 2026-07-26
+Last updated: 2026-07-27
 
 Current milestone: `M1 — MDButton adapter pilot`
 
-Status: `verification`
+Status: `correction`
 
 Owner: current architecture-reset branch
 
-Blocker: none. The correction pass fixed both source-interpretation errors: text toggle is enabled (no prohibition existed — only incomplete token coverage, which is not evidence), and indeterminate loading is implemented as a Button-owned Material composition backed by `m3e-loading-indicator`, with `aria-busy` on the interactive owner and color inherited via `currentColor`. The separate `LoadingButton` is removed; its 3 consumers (`RepositoryExplorerWidget.vue`, `VfsActivityStatusChip.vue`, `DialogForm.vue`) use `MDButton` directly. Unused link/form surface (`href`, `download`, `target`, `rel`, `name`, `value`) was also removed since no current consumer used it. Determinate progress-in-button remains deferred: no current consumer passes a real fractional value to a Button.
+Blocker: `MDButton` directly imports and renders `m3e-loading-indicator`. Loading indicator is a separate official Material component with its own overview, specs, guidelines, accessibility, tokens, geometry, and motion contract, so it requires a canonical `MDLoadingIndicator` adapter before Button may compose it. The current implementation also still suppresses native bubbling with `@click.stop`, exposes renderer-shaped selected-label slot naming, does not normalize Loading indicator sizing to Button icon geometry, leaves the indicator accessibility-label contract unresolved, uses handwritten ambient typing instead of the exported renderer element type, and does not record the exact m3e reduced-motion and size-token divergences.
 
-Next action: run focused and final `pnpm verify`, then request operator visual/motion review of the corrected `MDButton.stories.ts` (text toggle, `LoadingIndicatorPresentation`). Move status to `complete` only after both pass.
+Next action: implement `MDLoadingIndicator` first through the full `material-component-adapter` workflow, then correct `MDButton` to compose `MDLoadingIndicator` through its public Vue API. Remove raw `@m3e/web/loading-indicator`, `m3e-loading-indicator`, its ambient renderer declaration, and private `--m3e-loading-indicator-*` mapping from `MDButton`. Resolve normal click bubbling, selected-label naming, loading precedence, accessibility, sizing, disabled/selected combinations, renderer divergences, focused proof, and final verification before operator review.
 
-Implementation ownership remains `migrating` until verification and operator acceptance land; see `components/button/README.md` for the accepted matrix.
+Implementation ownership remains `migrating`.
+
+The current CI run is green, but it proves only the current implementation. It does not approve the unresolved component ownership and public-contract blockers.
 
 ## Milestones
 
-| ID  | Milestone                         | Status         | Depends on | Exit gate                                                                                                                                                                                                                                                                 |
-| --- | --------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset     | `verification` | none       | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; package-derived typing; final verification                                                                                                                        |
-| M1  | `MDButton` adapter pilot          | `verification` | M0         | accepted source-backed Material–m3e–Vue matrix; text toggle supported; loading/progress Button composition resolved in Material ownership; demand-driven official Vue API; correct owner for every selected gap; migrated consumers; verification and operator acceptance |
-| M2  | `MDSwitch` stateful adapter pilot | `planned`      | M1         | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance                                                                                                                           |
-| M3  | sequential component migration    | `planned`      | M2         | one official Material component at a time; demand-driven Material API; explicit m3e mapping and gap ownership; no accidental extensions or renderer leakage                                                                                                               |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset | `verification` | none | Material-first public boundary; private m3e renderer boundary; evidence-gated contract-matrix workflow; canonical adapters for official Material dependencies; package-derived typing; final verification |
+| M1a | `MDLoadingIndicator` dependency adapter | `required` | M0 | accepted Loading indicator Material–m3e–Vue matrix; demand-scoped public Vue API; official accessibility and token contract; exact renderer typing; geometry and divergence ownership; stories, tests, visual/motion review |
+| M1 | `MDButton` adapter pilot | `correction` | M1a | accepted Button matrix; text toggle supported; loading composition delegates to `MDLoadingIndicator`; no raw dependency m3e usage; normalized Vue API; migrated consumers; verification and operator acceptance |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed Material matrix; selected Material API; controlled state and event order; m3e gap ownership; verification and operator acceptance |
+| M3 | sequential component migration | `planned` | M2 | one official Material component at a time; dependency adapters implemented first; demand-driven Material API; explicit m3e mapping and gap ownership; no renderer leakage |
+
+## M1a — MDLoadingIndicator prerequisite
+
+Required result:
+
+- canonical component path and public export for `MDLoadingIndicator`;
+- its own README with overview/specs/guidelines/accessibility sources and Material–m3e–Vue matrix;
+- a demand-scoped API covering the current uncontained short-loading scenario and required accessible purpose labeling;
+- selected official `--md-comp-loading-indicator-*` token boundary needed by current consumers and Button composition;
+- private exact-version `@m3e/web/loading-indicator` import, package-derived element typing, and typed public mappings inside `MDLoadingIndicator` only;
+- explicit assessment of m3e 2.6.2 geometry, documented-versus-implemented size CSS input mismatch, progressbar semantics, contrast, animation, and missing or present reduced-motion behavior;
+- colocated contract tests, browser accessibility behavior, stories, visual baseline, and operator motion review.
+
+Do not implement the complete Loading indicator catalog. Contained presentation and standalone scenarios may remain deferred unless required for a coherent selected API.
 
 ## M1 — MDButton pilot
 
-Implementation evidence:
+Reusable evidence:
 
-- `@m3e/web@^2.6.2` resolves to `2.6.2`; Button and Loading indicator entry points are used directly;
-- application, Storybook, and tests recognize `m3e-button` and `m3e-loading-indicator`;
-- the m3e-backed `MDButton` owner and public export exist; renderer typing derives from package exports;
-- text toggle is supported (no normalization/warning);
-- indeterminate loading is a Button-owned composition (`loading` prop, internal `m3e-loading-indicator`, `aria-busy` on the interactive owner, `currentColor` inheritance); determinate progress-in-button is deferred (no current numeric consumer);
-- unused `href`, `target`, `rel`, `download`, `name`, and `value` surface is removed;
-- the separate `LoadingButton` is removed; all 3 former consumers use `MDButton` directly;
-- native click bubbling is preserved; focused component-contract tests and visual stories cover the corrected contract.
+- the m3e-backed Button owner and public export exist;
+- text toggle is enabled;
+- unused link/form surface is removed;
+- current loading consumers have been identified;
+- the separate non-Material `LoadingButton` is removed;
+- current tests and visual stories provide reusable fixtures.
 
-Remaining before `complete`: final `pnpm verify` and operator visual/motion acceptance of `MDButton.stories.ts` (see `components/button/README.md`).
+Required correction after M1a:
 
-M1 must not restore the legacy renderer, infer prohibitions from missing tokens, search only the selected component page, copy the m3e API into Vue, preserve unused public surface for completeness, access private shadow DOM, or build a parallel renderer.
+1. import and render `MDLoadingIndicator`, not `m3e-loading-indicator`;
+2. keep `loading` on `MDButton` only as documented parent composition state;
+3. hand off accessible loading purpose, size, inherited color/public token, and placement through the `MDLoadingIndicator` public contract;
+4. define loading precedence over both normal and selected icon routes;
+5. preserve normal native click bubbling;
+6. rename the public selected label slot to explicit Material/Vue terminology and map it privately to m3e;
+7. cover disabled plus loading, selected plus loading, icon restoration, accessibility tree, Button-size geometry, and parent bubbling;
+8. remove dependency renderer types, raw tags, private CSS variables, and ambient declarations from Button ownership;
+9. update both dependency and parent matrices accurately;
+10. run focused checks, final `pnpm verify`, then operator visual/motion review.
+
+M1 must not restore the legacy renderer, embed raw official dependency elements, infer prohibitions from missing tokens, copy m3e APIs into Vue, preserve unused public surface for completeness, access private shadow DOM, or build parallel renderers.
 
 ## Later milestones
 
@@ -50,13 +76,14 @@ For every later component:
 
 1. inspect official overview, specs, guidelines, and accessibility;
 2. follow related-component placement and composition references;
-3. require positive evidence for restrictions and `not-material` decisions;
-4. select the current required subset;
-5. create the Material–m3e–Vue matrix;
-6. define the public Vue API from Material terminology;
-7. use m3e directly where conformant;
-8. assign gaps to wrapper or m3e according to ownership;
-9. migrate consumers and verify.
+3. identify required official Material dependency adapters;
+4. implement or complete dependencies first using the same full workflow;
+5. require positive evidence for restrictions and `not-material` decisions;
+6. select the current required subset;
+7. create each owning family's Material–m3e–Vue matrix;
+8. define public Vue APIs from Material terminology;
+9. use m3e only inside the corresponding canonical adapter;
+10. migrate consumers and verify.
 
 Only after M1 and M2 may repeated concrete adapter code be considered for extraction.
 
