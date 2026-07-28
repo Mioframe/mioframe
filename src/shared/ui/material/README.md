@@ -121,8 +121,8 @@ Every m3e version update revalidates affected non-resolved `M3E-*` records again
 
 | Area                                    | Current state                                                 |
 | --------------------------------------- | ------------------------------------------------------------- |
-| `MDButton`                              | m3e-backed pilot in correction                                |
-| `MDLoadingIndicator`                    | canonical dependency adapter in correction                    |
+| `MDButton`                              | m3e-backed pilot in verification                              |
+| `MDLoadingIndicator`                    | canonical dependency adapter in verification                  |
 | Other public `MD*` components           | legacy-owned until focused migration                          |
 | Shared m3e integration                  | established                                                   |
 | Confirmed m3e defect registry           | established                                                   |
@@ -132,4 +132,4 @@ Every m3e version update revalidates affected non-resolved `M3E-*` records again
 
 ## Current work
 
-PR #162 owns the architecture reset, token-ownership migration, and correction of the `MDButton` pilot. The canonical token owners now replace `src/shared/lib/md/tokens.css` (removed) and `token-api.md` matches the retained runtime surface. M0/M1 remain `verification`, not complete, until final `pnpm verify` passes on the resulting head and operator visual/motion acceptance is recorded.
+PR #162 owns the architecture reset, token-ownership migration, and correction of the `MDButton` pilot. The canonical token owners now replace `src/shared/lib/md/tokens.css` (removed) and `token-api.md` matches the retained runtime surface. M0/M1a/M1 remain `verification`, not complete, until final `pnpm verify` passes on the resulting head and operator visual/motion acceptance is recorded.
