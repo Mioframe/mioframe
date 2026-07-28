@@ -65,7 +65,7 @@ components/<family>/tokens.css
 
 Every migrating or migrated component owns a Material–m3e–Vue matrix in its family README using the format and acceptance criteria from `docs/component-adapter.md`.
 
-The matrix distinguishes selected and deferred Material surface, dependency ownership, renderer coverage, wrapper corrections, exact-version divergences, non-Material requirements, and proof.
+The matrix records demand evidence, selected and deferred Material surface, explicit renderer status/mapping, ownership/decision, exact-version divergences, dependencies, and proof.
 
 A confirmed incorrect m3e contract is `divergent`, references a stable `M3E-*` record, and follows the controlled workaround/fix lifecycle. A capability absent from m3e remains `missing` in the family matrix.
 
@@ -100,15 +100,15 @@ Final verification uses the exact branch/task scope required by root policy. Ope
 
 ## Current inventory
 
-| Area                            | Current state                                |
-| ------------------------------- | -------------------------------------------- |
-| `MDButton`                      | m3e-backed pilot in verification             |
-| `MDLoadingIndicator`            | canonical dependency adapter in verification |
-| Other public `MD*` components   | legacy-owned until focused migration         |
-| Shared m3e integration          | established                                  |
-| Confirmed m3e defect registry   | established                                  |
-| Public component entry point    | established                                  |
-| Foundation/theme runtime owners | established                                  |
-| Public token catalogue          | established and populated                    |
+| Area | Current state |
+| --- | --- |
+| `MDButton` | m3e-backed pilot in correction pending consumer loading alignment |
+| `MDLoadingIndicator` | canonical dependency adapter in verification |
+| Other public `MD*` components | legacy-owned until focused migration |
+| Shared m3e integration | established; automated external boundary guard pending |
+| Confirmed m3e defect registry | established |
+| Public component entry point | established |
+| Foundation/theme runtime owners | established |
+| Public token catalogue | established and populated |
 
-See `docs/roadmap.md` for final verification state and the next component.
+See `docs/roadmap.md` for the exact correction scope and next action.
