@@ -28,6 +28,7 @@ Upstream source, tags, demos, and changelogs are supporting evidence only. Legac
 - Define precedence and restoration for public states that may coexist.
 - A composed official Material component remains independently owned and is used through its canonical `MD*` API.
 - The parent owns composition meaning and state handoff; the dependency owns its renderer mapping, accessibility, geometry, tokens, defects, tests, and visual proof.
+- Visual loading/busy presentation and activation blocking are independent. Loading must not imply disabled state or suppress activation unless the accepted family contract explicitly assigns both to the component.
 
 ## Token ownership
 
@@ -44,6 +45,8 @@ Upstream source, tags, demos, and changelogs are supporting evidence only. Legac
 Prefer documented m3e APIs. Keep renderer imports, tags, types, events, and private CSS inputs inside the canonical owning adapter.
 
 A temporary exact-version workaround is allowed only when the complete gate in `docs/component-adapter.md` is satisfied and the linked family matrix and `docs/m3e-defects.md` record remain current. It must use only public host-level inputs, remain owner-local and removable, and must not recreate renderer-owned interaction, accessibility, geometry, state, or motion systems.
+
+Do not override renderer-owned interaction timing or transient geometry with host pseudo-classes such as `:active`, `:not(:active)`, `:hover`, or `:focus-visible`, or by switching renderer CSS inputs around those pseudo-classes. If observable renderer behavior is unacceptable, classify it as `divergent`, `m3e-fix`, or `blocked`; do not compensate with a parallel wrapper state or timing path.
 
 Vue custom-element glue must derive from package-exported element classes or `HTMLElementTagNameMap`. Handwritten `new () => HTMLElement` declarations are not package-derived.
 
