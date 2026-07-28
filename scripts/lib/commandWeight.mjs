@@ -30,6 +30,7 @@ export function classifyCommandWeight({ label, fileCount = 0, isFullRepo = false
     case 'playwright-container':
     case 'artifact':
     case 'release-smoke':
+    case 'managed-updates':
       return 'expensive';
     case 'release-version':
     case 'release-config':

@@ -1,17 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UpdateControllerState } from './contracts';
+import type { PreparationCoordinator } from './preparationCoordinator';
 
 const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
-const matchAllMock = vi.fn(
-  (): Promise<{ postMessage: (message: unknown) => void }[]> => Promise.resolve([]),
-);
+type MockWindowClient = { type: 'window'; url: string; postMessage: (message: unknown) => void };
+const matchAllMock = vi.fn((): Promise<MockWindowClient[]> => Promise.resolve([]));
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
   writeControllerState: (...args: unknown[]) => writeControllerStateMock(...args),
 }));
 vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
+vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() });
 
 const baseState: UpdateControllerState = {
   schemaVersion: 1,
@@ -21,6 +22,12 @@ const baseState: UpdateControllerState = {
 };
 
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();
+
+function createFakeCoordinator(
+  overrides: Partial<PreparationCoordinator> = {},
+): PreparationCoordinator {
+  return { prepare: vi.fn().mockResolvedValue(undefined), ...overrides };
+}
 
 describe('handleWorkerMessage', () => {
   beforeEach(() => {
@@ -35,13 +42,25 @@ describe('handleWorkerMessage', () => {
     const { handleWorkerMessage } = await import('./workerMessages');
 
     await expect(
-      handleWorkerMessage('stable', '/', { type: 'GET_SNAPSHOT' }, enqueue),
+      handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'GET_SNAPSHOT' },
+        enqueue,
+        createFakeCoordinator(),
+      ),
     ).rejects.toThrow('Controller state is unavailable');
   });
 
   it('GET_SNAPSHOT returns the current state as a snapshot without writing', async () => {
     const { handleWorkerMessage } = await import('./workerMessages');
-    const result = await handleWorkerMessage('stable', '/', { type: 'GET_SNAPSHOT' }, enqueue);
+    const result = await handleWorkerMessage(
+      'stable',
+      '/',
+      { type: 'GET_SNAPSHOT' },
+      enqueue,
+      createFakeCoordinator(),
+    );
 
     expect(result).toEqual({ snapshot: expect.objectContaining({ mode: 'manual' }) });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
@@ -59,6 +78,7 @@ describe('handleWorkerMessage', () => {
       '/',
       { type: 'CANCEL_SCHEDULED_UPDATE' },
       enqueue,
+      createFakeCoordinator(),
     );
 
     expect(result).toEqual({ snapshot: expect.objectContaining({ scheduledRelease: undefined }) });
@@ -70,83 +90,351 @@ describe('handleWorkerMessage', () => {
     expect(writtenState).not.toHaveProperty('approvedRelease');
   });
 
-  it('BOOT_OK commits the matching activation target', async () => {
-    readControllerStateMock.mockResolvedValue({
-      status: 'valid',
-      state: {
-        ...baseState,
-        approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        activation: {
-          targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          previousRelease: baseState.activeRelease,
-          startedAt: '2026-07-24T00:00:00.000Z',
-          deadlineAt: '2026-07-24T00:00:30.000Z',
+  describe('SET_MODE', () => {
+    it('to manual clears an unstarted approval and persists it', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          mode: 'automatic',
+          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
         },
-      },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'SET_MODE', mode: 'manual' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ mode: 'manual', scheduledRelease: undefined }),
+      });
     });
-    const { handleWorkerMessage } = await import('./workerMessages');
 
-    const result = await handleWorkerMessage(
-      'stable',
-      '/',
-      { type: 'BOOT_OK', releaseId: 'release-b' },
-      enqueue,
-    );
+    it('to automatic with nothing newer than active does not prepare anything', async () => {
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
 
-    expect(result).toEqual({
-      snapshot: expect.objectContaining({
-        activeRelease: { releaseId: 'release-b', releaseSequence: 2 },
-      }),
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'SET_MODE', mode: 'automatic' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(result).toEqual({ snapshot: expect.objectContaining({ mode: 'automatic' }) });
+      expect(coordinator.prepare).not.toHaveBeenCalled();
+    });
+
+    it('to automatic prepares and approves a newer known release', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'SET_MODE', mode: 'automatic' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', {
+        releaseId: 'release-b',
+        releaseSequence: 2,
+      });
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({
+          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        }),
+      });
+    });
+
+    it('to automatic reports install-failed when preparation fails, without approving', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+      });
+      const coordinator = createFakeCoordinator({
+        prepare: vi.fn().mockRejectedValue(new Error('offline')),
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'SET_MODE', mode: 'automatic' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
+      });
     });
   });
 
-  it('BOOT_FAILED rolls back and broadcasts to same-channel windows', async () => {
-    const activation = {
-      targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-      previousRelease: baseState.activeRelease,
-      startedAt: '2026-07-24T00:00:00.000Z',
-      deadlineAt: '2026-07-24T00:00:30.000Z',
-    };
-    readControllerStateMock.mockResolvedValue({
-      status: 'valid',
-      state: {
-        ...baseState,
-        approvedRelease: activation.targetRelease,
-        activation,
-      },
-    });
-    const postMessage = vi.fn();
-    matchAllMock.mockResolvedValue([{ postMessage }]);
-    const { handleWorkerMessage } = await import('./workerMessages');
+  describe('INSTALL_ON_NEXT_LAUNCH', () => {
+    it('reports unavailable when there is no known latest release', async () => {
+      const { handleWorkerMessage } = await import('./workerMessages');
 
-    const result = await handleWorkerMessage(
-      'stable',
-      '/',
-      { type: 'BOOT_FAILED', releaseId: 'release-b' },
-      enqueue,
-    );
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        createFakeCoordinator(),
+      );
 
-    expect(result).toEqual({
-      snapshot: expect.objectContaining({ activeRelease: baseState.activeRelease }),
+      expect(result).toEqual({ snapshot: expect.objectContaining({ error: 'unavailable' }) });
     });
-    expect(postMessage).toHaveBeenCalledWith({
-      type: 'APP_UPDATE_ROLLBACK',
-      releaseId: 'release-b',
+
+    it('prepares and approves the latest known release', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', {
+        releaseId: 'release-b',
+        releaseSequence: 2,
+      });
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({
+          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        }),
+      });
+    });
+
+    it('reports install-failed when preparation fails', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+      });
+      const coordinator = createFakeCoordinator({
+        prepare: vi.fn().mockRejectedValue(new Error('offline')),
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
+      });
+    });
+
+    it('does not approve a release superseded by a newer discovery while preparing', async () => {
+      readControllerStateMock
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+        })
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: { ...baseState, latestRelease: { releaseId: 'release-c', releaseSequence: 3 } },
+        });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
+      });
     });
   });
 
-  it('BOOT_FAILED for a non-matching release id is ignored and does not broadcast', async () => {
-    const { handleWorkerMessage } = await import('./workerMessages');
+  describe('BOOT_OK', () => {
+    it('commits the matching activation target and acknowledges committed', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          activation: {
+            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+            previousRelease: baseState.activeRelease,
+            startedAt: '2026-07-24T00:00:00.000Z',
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
 
-    await handleWorkerMessage(
-      'stable',
-      '/',
-      { type: 'BOOT_FAILED', releaseId: 'unknown' },
-      enqueue,
-    );
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'BOOT_OK', releaseId: 'release-b' },
+        enqueue,
+        createFakeCoordinator(),
+      );
 
-    expect(matchAllMock).not.toHaveBeenCalled();
-    expect(writeControllerStateMock).toHaveBeenCalledWith('stable', baseState);
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({
+          activeRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        }),
+        ack: 'committed',
+      });
+    });
+
+    it('acknowledges ignored for a non-matching release id, without writing', async () => {
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'BOOT_OK', releaseId: 'unknown' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result).toEqual({ snapshot: expect.anything(), ack: 'ignored' });
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+    });
+
+    it('acknowledges error, without throwing, when persistence fails', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          activation: {
+            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+            previousRelease: baseState.activeRelease,
+            startedAt: '2026-07-24T00:00:00.000Z',
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      writeControllerStateMock.mockRejectedValue(new Error('IndexedDB is unavailable'));
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'BOOT_OK', releaseId: 'release-b' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result).toEqual({ snapshot: expect.anything(), ack: 'error' });
+    });
+  });
+
+  describe('BOOT_FAILED', () => {
+    it('rolls back, broadcasts to same-channel windows, and acknowledges rolled-back', async () => {
+      const activation = {
+        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        previousRelease: baseState.activeRelease,
+        startedAt: '2026-07-24T00:00:00.000Z',
+        deadlineAt: '2026-07-24T00:00:30.000Z',
+      };
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, approvedRelease: activation.targetRelease, activation },
+      });
+      const postMessage = vi.fn();
+      const foreignPostMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: 'https://mioframe.example/settings', postMessage },
+        {
+          type: 'window',
+          url: 'https://mioframe.example/branch/develop/',
+          postMessage: foreignPostMessage,
+        },
+      ]);
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'BOOT_FAILED', releaseId: 'release-b' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ activeRelease: baseState.activeRelease }),
+        ack: 'rolled-back',
+      });
+      expect(postMessage).toHaveBeenCalledWith({
+        type: 'APP_UPDATE_ROLLBACK',
+        releaseId: 'release-b',
+      });
+      expect(foreignPostMessage).not.toHaveBeenCalled();
+    });
+
+    it('acknowledges ignored for a non-matching release id, without writing or broadcasting', async () => {
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'BOOT_FAILED', releaseId: 'unknown' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result).toEqual({ snapshot: expect.anything(), ack: 'ignored' });
+      expect(matchAllMock).not.toHaveBeenCalled();
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+    });
+
+    it('acknowledges error and does not broadcast when rollback persistence fails', async () => {
+      const activation = {
+        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        previousRelease: baseState.activeRelease,
+        startedAt: '2026-07-24T00:00:00.000Z',
+        deadlineAt: '2026-07-24T00:00:30.000Z',
+      };
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, approvedRelease: activation.targetRelease, activation },
+      });
+      writeControllerStateMock.mockRejectedValue(new Error('IndexedDB is unavailable'));
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        { type: 'BOOT_FAILED', releaseId: 'release-b' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result).toEqual({ snapshot: expect.anything(), ack: 'error' });
+      expect(matchAllMock).not.toHaveBeenCalled();
+    });
   });
 
   describe('GET_ACTIVATION_STATUS', () => {
@@ -168,6 +456,7 @@ describe('handleWorkerMessage', () => {
         '/',
         { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-b' },
         enqueue,
+        createFakeCoordinator(),
       );
 
       expect(result).toEqual({ isActivationTarget: true, deadlineAt: '2026-07-24T00:00:30.000Z' });
@@ -181,6 +470,7 @@ describe('handleWorkerMessage', () => {
         '/',
         { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-a' },
         enqueue,
+        createFakeCoordinator(),
       );
 
       expect(result).toEqual({ isActivationTarget: false });
@@ -194,6 +484,7 @@ describe('handleWorkerMessage', () => {
         '/',
         { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-b' },
         enqueue,
+        createFakeCoordinator(),
       );
 
       expect(result).toEqual({ isActivationTarget: false });

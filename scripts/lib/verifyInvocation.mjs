@@ -21,6 +21,7 @@ export const VERIFY_LABELS = [
   'build',
   'artifact',
   'release-smoke',
+  'managed-updates',
 ];
 
 export const FULL_ONLY_LABELS = new Set([
@@ -29,6 +30,7 @@ export const FULL_ONLY_LABELS = new Set([
   'build',
   'artifact',
   'release-smoke',
+  'managed-updates',
 ]);
 
 export const FIX_ONLY_LABELS = new Set(['agent-environment', 'format', 'oxlint', 'eslint']);

@@ -5,6 +5,7 @@ import {
   type ReleaseDescriptor,
   type ReleaseRef,
 } from './contracts';
+import { readControllerState } from './controllerState';
 
 /**
  * Builds this channel's Cache Storage name prefix.
@@ -75,6 +76,24 @@ export function isReleaseAvailable(
   return descriptor.files.every((file) => presentPaths.has(file.path));
 }
 
+/**
+ * Returns `true` when `relativePath` (a request's URL pathname, relative to
+ * the channel base path) is one of `descriptor`'s own listed release files.
+ *
+ * Used to decide whether a same-origin, same-channel request is this
+ * worker's concern at all: a request for a path that is not part of the
+ * currently selected release (a manifest, PWA icon, API route, or any other
+ * same-origin resource outside the release) must never be served — or
+ * synthetically 404'd — from the release cache; the caller falls through to
+ * an ordinary network fetch instead.
+ * @param descriptor - The currently selected release's descriptor.
+ * @param relativePath - The request's channel-root-relative path.
+ * @returns Whether `relativePath` belongs to this release.
+ */
+export function isReleaseFilePath(descriptor: ReleaseDescriptor, relativePath: string): boolean {
+  return descriptor.files.some((file) => file.path === relativePath);
+}
+
 /** Inputs to {@link computeProtectedReleaseIds}: every release currently owned by persisted state. */
 export type ProtectedReleaseInputs = {
   /** The currently active release. */
@@ -131,6 +150,38 @@ export function computeCacheNamesToDelete(
     const releaseId = releaseIdFromFinalCacheName(namespace, name);
     return releaseId !== undefined && !protectedReleaseIds.has(releaseId);
   });
+}
+
+/**
+ * Deletes every Cache Storage entry this channel no longer needs: leftover
+ * staging caches and any final release cache not currently protected by
+ * persisted state.
+ *
+ * A best-effort side effect run after a lifecycle transition that can
+ * release cache ownership (commit, rollback, cancellation, a mode change
+ * that clears an approval, an Automatic approved-target replacement, or
+ * controller activation) — never awaited as part of that transition's own
+ * response, so a cleanup failure can never make an already-persisted
+ * transition appear to have failed. A no-op when persisted state is not
+ * currently valid.
+ * @param channel - Managed channel to clean up.
+ */
+export async function runReleaseCacheCleanup(channel: ManagedChannel): Promise<void> {
+  const read = await readControllerState(channel);
+  if (read.status !== 'valid') return;
+
+  const protectedReleaseIds = computeProtectedReleaseIds({
+    activeRelease: read.state.activeRelease,
+    approvedRelease: read.state.approvedRelease,
+    activation: read.state.activation,
+  });
+  const existingCacheNames = await caches.keys();
+  const staleCacheNames = computeCacheNamesToDelete(
+    existingCacheNames,
+    channel,
+    protectedReleaseIds,
+  );
+  await Promise.all(staleCacheNames.map((name) => caches.delete(name)));
 }
 
 /** Synthetic request URL the release descriptor commit marker is stored under within a final cache. */

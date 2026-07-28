@@ -9,3 +9,14 @@
  * sides agree on one value.
  */
 export const BOOT_CONFIRMATION_TIMEOUT_MS = 30_000;
+
+/**
+ * How long the publisher-injected boot watchdog waits for the controller
+ * worker's durable `BOOT_OK`/`BOOT_FAILED` acknowledgement before treating
+ * the acknowledgement itself as failed (distinct from
+ * {@link BOOT_CONFIRMATION_TIMEOUT_MS}, which bounds the whole application
+ * boot). Kept in parity with the literal copy in
+ * `scripts/pages/lib/watchdogInject.mjs` — see
+ * `watchdogProtocolParity.test.ts`.
+ */
+export const BOOT_ACK_TIMEOUT_MS = 5_000;

@@ -117,9 +117,15 @@ describe('readRetainedReleaseDescriptors', () => {
     expect(readRetainedReleaseDescriptors(releasesDir)).toEqual([]);
   });
 
+  function writeRetainedRelease(descriptor) {
+    writeFileSync(join(releasesDir, `${descriptor.releaseId}.json`), JSON.stringify(descriptor));
+    mkdirSync(join(releasesDir, descriptor.releaseId), { recursive: true });
+    writeFileSync(join(releasesDir, descriptor.releaseId, 'index.html'), '<html></html>');
+  }
+
   it('reads and validates every retained descriptor', () => {
     mkdirSync(releasesDir, { recursive: true });
-    writeFileSync(join(releasesDir, 'r1.json'), JSON.stringify(validReleaseDescriptor));
+    writeRetainedRelease(validReleaseDescriptor);
 
     expect(readRetainedReleaseDescriptors(releasesDir)).toEqual([validReleaseDescriptor]);
   });
@@ -139,6 +145,43 @@ describe('readRetainedReleaseDescriptors', () => {
     writeFileSync(join(releasesDir, 'bad.json'), '{not json');
 
     expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('not valid JSON');
+  });
+
+  it('fails closed when the descriptor filename does not match its releaseId', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeFileSync(join(releasesDir, 'r1.json'), JSON.stringify(validReleaseDescriptor));
+    mkdirSync(join(releasesDir, validReleaseDescriptor.releaseId), { recursive: true });
+    writeFileSync(
+      join(releasesDir, validReleaseDescriptor.releaseId, 'index.html'),
+      '<html></html>',
+    );
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow(
+      'does not match its releaseId',
+    );
+  });
+
+  it('fails closed when the archived index directory is missing', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeFileSync(
+      join(releasesDir, `${String(validReleaseDescriptor.releaseId)}.json`),
+      JSON.stringify(validReleaseDescriptor),
+    );
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow(
+      'missing its archived index directory',
+    );
+  });
+
+  it('fails closed when two descriptors share a releaseSequence with different releaseIds', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeRetainedRelease(validReleaseDescriptor);
+    writeRetainedRelease({
+      ...validReleaseDescriptor,
+      releaseId: '018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e70',
+    });
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('is used by both');
   });
 });
 

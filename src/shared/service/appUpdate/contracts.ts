@@ -23,10 +23,16 @@ export const zodReleaseRef = z.object({
 /** A {@link zodReleaseRef}-validated release identity. */
 export type ReleaseRef = z.infer<typeof zodReleaseRef>;
 
+/** Channel-root-relative path prefix reserved for controller metadata (`latest.json`, descriptors, archived indexes) — never a valid ordinary release file. */
+const RESERVED_UPDATES_PREFIX = 'updates/';
+
 /**
  * Returns `true` when `path` is a canonical channel-root-relative release
  * file path: no leading slash, no `..` traversal segment, no query/hash
- * suffix, and no percent-encoded path separator.
+ * suffix, no percent-encoded path separator, and not under the reserved
+ * `updates/` metadata prefix (which also excludes every release's own
+ * archived index, always published under `updates/releases/<id>/`, from
+ * ever being listed as one of its own ordinary release files).
  * @param path - Candidate release file path.
  * @returns Whether `path` is canonical.
  */
@@ -34,8 +40,12 @@ export const isCanonicalReleasePath = (path: string): boolean => {
   if (path.length === 0 || path.startsWith('/')) return false;
   if (path.includes('?') || path.includes('#')) return false;
   if (/%2e|%2f/i.test(path)) return false;
+  if (path === 'updates' || path.startsWith(RESERVED_UPDATES_PREFIX)) return false;
   return !path.split('/').includes('..');
 };
+
+/** Matches a lowercase hex SHA-256 digest exactly; mirrors the Node publisher's `SHA256_HEX_PATTERN`. */
+const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
 /**
  * One immutable, content-addressed file belonging to a release, as recorded
@@ -44,7 +54,8 @@ export const isCanonicalReleasePath = (path: string): boolean => {
 export const zodReleaseFile = z.object({
   /** Canonical channel-root-relative path, e.g. `assets/app-3f2a1c.js`. */
   path: z.string().check(z.minLength(1), z.refine(isCanonicalReleasePath)),
-  sha256: z.hash('sha256'),
+  /** Lowercase hex SHA-256 digest only — an uppercase or mixed-case digest is rejected, not normalized. */
+  sha256: z.string().check(z.refine((value) => SHA256_HEX_PATTERN.test(value))),
   byteSize: z.number().check(z.int(), z.nonnegative()),
 });
 /** A {@link zodReleaseFile}-validated release file record. */
@@ -67,6 +78,31 @@ export const zodReleaseDescriptor = z.object({
 });
 /** A {@link zodReleaseDescriptor}-validated release descriptor. */
 export type ReleaseDescriptor = z.infer<typeof zodReleaseDescriptor>;
+
+/**
+ * Builds the exact `indexUrl` a valid descriptor for `releaseId` must carry
+ * within `channelBasePath`. A descriptor is only usable within the channel
+ * that published it — this is what makes a channel-root-relative
+ * `indexUrl` from a different channel (or a hand-crafted absolute URL
+ * pointing elsewhere) rejected rather than silently followed.
+ * @param channelBasePath - The worker's own channel base path, e.g. `/` or `/branch/develop/`.
+ * @param releaseId - The release's immutable identifier.
+ * @returns The exact expected `indexUrl`.
+ */
+export const buildExpectedIndexUrl = (channelBasePath: string, releaseId: string): string =>
+  `${channelBasePath}updates/releases/${releaseId}/index.html`;
+
+/**
+ * Returns `true` when `descriptor.indexUrl` is exactly the archived index
+ * this channel and release id must resolve to.
+ * @param descriptor - A structurally validated release descriptor.
+ * @param channelBasePath - The worker's own channel base path.
+ * @returns Whether `descriptor.indexUrl` is valid for this channel and release.
+ */
+export const isValidDescriptorIndexUrl = (
+  descriptor: Pick<ReleaseDescriptor, 'indexUrl' | 'releaseId'>,
+  channelBasePath: string,
+): boolean => descriptor.indexUrl === buildExpectedIndexUrl(channelBasePath, descriptor.releaseId);
 
 /**
  * The `latest.json` pointer published last during release publication.

@@ -75,7 +75,13 @@ describe('resolvePlaywrightCommandTimeoutMs', () => {
 });
 
 describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
-  const playwrightBackedLabels = ['e2e', 'storybook-behavior', 'visual', 'release-smoke'];
+  const playwrightBackedLabels = [
+    'e2e',
+    'storybook-behavior',
+    'visual',
+    'release-smoke',
+    'managed-updates',
+  ];
   const unrelatedLabelsWithFixedLimits = {
     'e2e-install': 10 * 60 * 1000,
     mutation: 20 * 60 * 1000,
@@ -229,6 +235,15 @@ describe('buildCommands full mode', () => {
       'release-smoke',
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     ]);
+    expect(byLabel['managed-updates'].args).toEqual([
+      'e2e:release',
+      '--label',
+      'managed-updates',
+      'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
+      'tests/e2e/release/managedUpdatesDevelop.spec.ts',
+      'tests/e2e/release/managedUpdatesMigration.spec.ts',
+      'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
+    ]);
   });
 
   it('does not add release-only checks outside full mode', () => {
@@ -240,6 +255,7 @@ describe('buildCommands full mode', () => {
     expect(labels).not.toContain('build');
     expect(labels).not.toContain('artifact');
     expect(labels).not.toContain('release-smoke');
+    expect(labels).not.toContain('managed-updates');
   });
 });
 

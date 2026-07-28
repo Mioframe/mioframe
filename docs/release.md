@@ -496,6 +496,129 @@ retention are left untouched.
 - PR previews build with `VITE_DISABLE_PWA=1` and register no service
   worker at all.
 
+## Managed pinned application updates
+
+Stable and develop each run a version-independent controller worker
+(`src/sw.ts`, `src/shared/service/appUpdate/**`) instead of a generated
+Workbox worker. Every other branch and every PR preview keep the ordinary
+generated `generateSW` worker (or no worker at all for PR previews).
+
+### Clean-launch semantics
+
+The worker persists one `activeRelease` per channel (IndexedDB), plus an
+optional `approvedRelease` (a fully prepared, not-yet-activated release) and
+an optional in-progress `activation`. A qualifying navigation (a genuinely
+new same-channel window, not a reload of an already-open one, with no other
+same-channel window currently live) starts an `activation`, serving the
+`approvedRelease` and arming a boot-confirmation deadline
+(`BOOT_CONFIRMATION_TIMEOUT_MS`, 30s). The publisher-injected boot watchdog
+reports `BOOT_OK`/`BOOT_FAILED` back to the worker over an acknowledged
+`MessageChannel` request; the worker only disarms the watchdog once it
+confirms a durable `committed` (`BOOT_OK`) or `rolled-back` (`BOOT_FAILED`)
+persistence — never merely because a message was sent. An already-open
+session is never force-reloaded: a Manual "Install on next launch" or an
+Automatic background approval only ever applies on the _next_ clean launch.
+
+### Legacy Workbox migration
+
+The very first managed worker for a channel must migrate from that
+channel's existing generated Workbox worker without ever racing it:
+
+- **Fresh installation** (no previous worker at all): the new worker
+  prepares the current published release during `install`, persists state
+  only once that succeeds, and only then calls `skipWaiting()`.
+- **Upgrade from an existing managed controller**: the worker confirms its
+  persisted `activeRelease` remains available (restoring it from the
+  immutable server archive if necessary) — a controller-code upgrade never
+  changes the selected release.
+- **Migration from the generated legacy worker**: detected when no managed
+  state exists yet but a previously-active worker is already controlling
+  the channel (`self.registration.active !== null` during `install`) — this
+  can only be the pre-migration legacy worker, since managed state is
+  always persisted before any managed worker instance reaches `active`. In
+  this case the new worker fetches and prepares nothing during `install`
+  and never calls `skipWaiting()`, so the still-active legacy worker's own
+  runtime-caching routes never intercept its install-time requests.
+  Ordinary browser worker lifecycle promotes the waiting worker once every
+  legacy-controlled window closes; the very first managed release is then
+  fetched, validated, and fully prepared during that `activate` event,
+  before any client is claimed.
+
+Proven end to end by `tests/e2e/release/managedUpdatesMigration.spec.ts`
+against the exact frozen pre-feature generated Workbox config, wired into
+the `managed-updates` release verification label (see below).
+
+### Request routing and non-release pass-through
+
+The worker's `fetch` handler only ever intercepts same-channel top-level
+navigations and requests whose path is one of the currently selected
+release's own listed files. Everything else — cross-origin requests
+(fonts, Google APIs), the manifest, PWA icons, API routes, and any other
+same-origin resource outside the release — falls through to an ordinary
+network `fetch()`, never a synthetic release-cache response. A release
+asset that is listed but locally missing is still served (or restored)
+from that exact release only; it never silently falls back to a different
+release or the current live deployment.
+
+### Boot-success boundary
+
+`BOOT_OK` is reported only once: the initial router navigation has resolved
+successfully (`router.isReady()`), the root Vue app has mounted, and the
+first render has completed (`nextTick()`). It never waits on a selected
+space, document loading, Google Drive, Sentry delivery, or other optional
+integrations. A failed initial navigation (e.g. a lazy-loaded route's
+dynamic import throwing) is never masked — `reportAppBootOk()` is simply
+never called, and the watchdog's own early-fatal-error detection reports
+`BOOT_FAILED`.
+
+### Rollback and reload
+
+A `BOOT_FAILED` report is only acted on once the worker durably persists
+the rollback; only then does it broadcast `APP_UPDATE_ROLLBACK` to every
+same-channel window (never a foreign channel, branch, or PR preview), which
+is what actually triggers each of those windows' own reload. If rollback
+_persistence_ itself fails, the watchdog never reloads — it shows a small,
+self-contained recovery message and leaves the page recoverable by a later
+launch, avoiding a reload loop.
+
+### Stable/develop isolation
+
+Stable (`/`) and develop (`/branch/develop/`) share one origin. Isolation
+comes entirely from this project's own namespacing, not browser storage
+partitioning: distinct IndexedDB database names
+(`mioframe-update-controller-stable` / `-branch-develop`), distinct Cache
+Storage name prefixes, and channel-scoped window filtering
+(`isSameChannelPath`) for clean-launch window counts, private-protocol
+message authorization, and rollback broadcasts. Proven in one shared
+`BrowserContext` (see `tests/e2e/release/managedUpdatesDevelop.spec.ts`) —
+two separate contexts would each get their own storage partition from the
+test tooling itself, which would validate nothing about this project's own
+logic.
+
+### Release retention and cleanup
+
+Cache Storage cleanup (deleting stale final release caches and any leftover
+staging cache) runs as a best-effort side effect after lifecycle
+transitions that can release cache ownership — commit, rollback,
+cancellation, a mode change that clears an approval, an Automatic
+approved-target replacement, and controller activation. It never blocks the
+transition's own response, and a cleanup failure never makes an
+already-persisted transition appear to have failed. Release downloads and
+hashing use a small bounded concurrency limit, not an unbounded fetch over
+every file.
+
+### Recovery limitations
+
+Once a service worker reaches its `activate` event, the platform has no
+"reject activation" mechanism: if the legacy-migration `activate` handler's
+release preparation fails, the browser has already committed to this
+worker as `active` regardless. It does not claim already-open clients or
+persist partial state in that case, and any _subsequent_ navigation this
+worker ends up controlling falls back to an ordinary network fetch (via the
+same invalid-state handling normal `fetch` requests already use) rather
+than a hard failure — but it is not a guaranteed automatic return to the
+previous legacy worker, since the platform does not support that.
+
 ## Production artifact validation
 
 Owned by `scripts/release/buildArtifact.mjs`, `scripts/release/artifactServer.mjs`,

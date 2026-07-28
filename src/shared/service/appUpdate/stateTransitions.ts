@@ -63,7 +63,11 @@ export function applyCheckForUpdates(
   if (isSameSequenceConflict(discovered, known)) {
     return { outcome: 'rejected-conflict', state: { ...state, lastSuccessfulCheckAt: checkedAt } };
   }
-  if (!isNewerSequence(discovered, known) && discovered.releaseSequence !== known.releaseSequence) {
+  // Anything not strictly newer is ignored — including the exact same
+  // release already known (e.g. the very first check ever, discovering
+  // only the release the worker already installed): that must never mark
+  // `latestRelease` as if something new had been found.
+  if (!isNewerSequence(discovered, known)) {
     return { outcome: 'ignored-stale', state: { ...state, lastSuccessfulCheckAt: checkedAt } };
   }
   return {

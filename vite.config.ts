@@ -11,7 +11,20 @@ import {
   getSentryPlugins,
   getSslPlugins,
 } from './config/plugins';
-import { getLegacyPwaPlugins } from './tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig';
+
+// Release-test-only escape hatch for the managed pinned application updates
+// migration proof (tests/e2e/release/managedUpdatesMigration.spec.ts): builds
+// the exact frozen pre-feature generateSW worker instead of the live managed
+// controller. No normal dev/build/deploy path ever sets this env var, so this
+// top-level dynamic import is never resolved outside that one release test —
+// normal Vite config carries no static dependency on the frozen test fixture
+// (see config/viteConfigFixtureImport.test.ts). Resolved once, at module
+// scope, rather than inside `defineConfig`'s callback, so the callback stays
+// a plain synchronous `UserConfigFnObject` for Vite's config type inference.
+const legacyPwaPluginsModule =
+  process.env.RELEASE_TEST_LEGACY_PWA_FIXTURE === '1'
+    ? await import('./tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig')
+    : undefined;
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
@@ -24,12 +37,7 @@ export default defineConfig(({ mode, isPreview }) => {
   const releaseChannel = env.VITE_RELEASE_CHANNEL === 'branch' ? 'branch' : 'stable';
   const releaseChannelId = env.VITE_RELEASE_CHANNEL_ID || undefined;
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
-  // Release-test-only escape hatch for the managed pinned application
-  // updates migration proof (tests/e2e/release/managedUpdatesMigration.spec.ts):
-  // builds the exact frozen pre-feature generateSW worker instead of the
-  // live managed controller. No normal dev/build/deploy path ever sets this.
-  const resolvePwaPlugins =
-    process.env.RELEASE_TEST_LEGACY_PWA_FIXTURE === '1' ? getLegacyPwaPlugins : getPwaPlugins;
+  const resolvePwaPlugins = legacyPwaPluginsModule?.getLegacyPwaPlugins ?? getPwaPlugins;
   const pwaPlugins = isStorybookBuild
     ? []
     : resolvePwaPlugins({

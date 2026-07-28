@@ -6,21 +6,30 @@
  * component.
  *
  * The watchdog never implements release selection or storage rules itself:
- * it only relays `BOOT_OK`/`BOOT_FAILED` to the controller worker, asks the
- * worker (via `GET_ACTIVATION_STATUS`) whether this exact release is
- * currently the activation target and, if so, for exactly how long it has
- * left before the worker's own boot-confirmation deadline, and reloads only
- * once it receives the worker's confirmed `APP_UPDATE_ROLLBACK` broadcast.
+ * it only relays `BOOT_OK`/`BOOT_FAILED` to the controller worker over an
+ * acknowledged `MessageChannel` request, asks the worker (via
+ * `GET_ACTIVATION_STATUS`) whether this exact release is currently the
+ * activation target and, if so, for exactly how long it has left before the
+ * worker's own boot-confirmation deadline, and reloads only once it
+ * receives the worker's confirmed `APP_UPDATE_ROLLBACK` broadcast. It never
+ * disables its own error handlers or deadline timer on a bare "message
+ * sent" — only on a worker-confirmed `committed` (`BOOT_OK`) acknowledgement,
+ * matching `stateTransitions.ts`/`workerMessages.ts`'s durable commit and
+ * rollback semantics.
  *
- * The private protocol message type strings below (`BOOT_OK`, `BOOT_FAILED`,
- * `GET_ACTIVATION_STATUS`, `APP_UPDATE_ROLLBACK`) must stay in sync with
- * `src/shared/service/appUpdate/protocol.ts`. This script runs as a Node
- * publisher tool with no TypeScript loader, so it cannot import that module
- * directly (see `releaseDescriptor.mjs`'s doc comment for the same
- * constraint).
+ * The private protocol message type strings and ack timeout below must stay
+ * in sync with `src/shared/service/appUpdate/protocol.ts` and
+ * `bootConfirmation.ts`'s `BOOT_ACK_TIMEOUT_MS`. This script runs as a Node
+ * publisher tool with no TypeScript loader, so it cannot import those
+ * modules directly (see `releaseDescriptor.mjs`'s doc comment for the same
+ * constraint); `watchdogProtocolParity.test.ts` proves the literal copies
+ * below stay in exact agreement.
  */
 
 const MAIN_MODULE_SCRIPT_MARKER = '<script type="module"';
+
+/** Must match `src/shared/service/appUpdate/bootConfirmation.ts`'s `BOOT_ACK_TIMEOUT_MS`. */
+export const WATCHDOG_ACK_TIMEOUT_MS = 5_000;
 
 /**
  * Builds the watchdog's self-contained inline script source for one
@@ -37,21 +46,64 @@ export function buildWatchdogScript(releaseId) {
   var BOOT_FAILED = 'BOOT_FAILED';
   var GET_ACTIVATION_STATUS = 'GET_ACTIVATION_STATUS';
   var ROLLBACK = 'APP_UPDATE_ROLLBACK';
+  var ACK_TIMEOUT_MS = ${WATCHDOG_ACK_TIMEOUT_MS};
 
   var settled = false;
+  var bootOkReported = false;
+  var bootFailedReported = false;
   var deadlineTimer = null;
 
-  function postToController(message) {
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage(message);
-    }
+  function sendToController(message) {
+    return new Promise(function (resolve) {
+      if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+        resolve(null);
+        return;
+      }
+      var channel = new MessageChannel();
+      var acked = false;
+      channel.port1.onmessage = function (event) {
+        acked = true;
+        resolve(event.data || null);
+      };
+      navigator.serviceWorker.controller.postMessage(message, [channel.port2]);
+      setTimeout(function () {
+        if (!acked) resolve(null);
+      }, ACK_TIMEOUT_MS);
+    });
+  }
+
+  function showRecoveryMessage() {
+    var el = document.createElement('div');
+    el.setAttribute('role', 'alert');
+    el.style.cssText =
+      'position:fixed;bottom:0;left:0;right:0;padding:12px 16px;' +
+      'background:#3a1212;color:#fff;font:14px/1.4 system-ui,sans-serif;' +
+      'z-index:2147483647;text-align:center;';
+    el.textContent =
+      'This update could not finish safely. Please close and reopen Mioframe to continue.';
+    (document.body || document.documentElement).appendChild(el);
   }
 
   function reportBootFailed() {
-    if (settled) return;
-    settled = true;
-    if (deadlineTimer !== null) clearTimeout(deadlineTimer);
-    postToController({ type: BOOT_FAILED, releaseId: RELEASE_ID });
+    if (settled || bootFailedReported) return;
+    bootFailedReported = true;
+    sendToController({ type: BOOT_FAILED, releaseId: RELEASE_ID }).then(function (response) {
+      var ack = response && response.ack;
+      if (ack === 'error') {
+        settled = true;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        showRecoveryMessage();
+        return;
+      }
+      if (ack !== 'rolled-back') {
+        // 'ignored', or no acknowledgement at all (timeout / no
+        // controller): allow a later genuine failure to be reported again
+        // instead of latching forever.
+        bootFailedReported = false;
+      }
+      // 'rolled-back': the matching APP_UPDATE_ROLLBACK broadcast below
+      // performs the actual reload once it arrives; nothing else to do here.
+    });
   }
 
   function onEarlyFatalError() {
@@ -62,12 +114,21 @@ export function buildWatchdogScript(releaseId) {
   window.addEventListener('unhandledrejection', onEarlyFatalError);
 
   window.mioframeAppUpdateBootOk = function () {
-    if (settled) return;
-    settled = true;
-    if (deadlineTimer !== null) clearTimeout(deadlineTimer);
-    window.removeEventListener('error', onEarlyFatalError);
-    window.removeEventListener('unhandledrejection', onEarlyFatalError);
-    postToController({ type: BOOT_OK, releaseId: RELEASE_ID });
+    if (settled || bootOkReported) return;
+    bootOkReported = true;
+    sendToController({ type: BOOT_OK, releaseId: RELEASE_ID }).then(function (response) {
+      if (response && response.ack === 'committed') {
+        settled = true;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        window.removeEventListener('error', onEarlyFatalError);
+        window.removeEventListener('unhandledrejection', onEarlyFatalError);
+        return;
+      }
+      // Not committed ('ignored', 'error', or no acknowledgement at all):
+      // the worker did not confirm a durable commit, so the watchdog stays
+      // armed rather than claiming success.
+      bootOkReported = false;
+    });
   };
 
   if (navigator.serviceWorker) {

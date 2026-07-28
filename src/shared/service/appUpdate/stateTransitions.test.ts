@@ -59,6 +59,13 @@ describe('applyCheckForUpdates', () => {
     expect(result.state.lastSuccessfulCheckAt).toBe('2026-07-24T00:00:00.000Z');
   });
 
+  it('ignores discovering the exact same release already known, without setting latestRelease', () => {
+    const result = applyCheckForUpdates(baseState, releaseA, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('ignored-stale');
+    expect(result.state.latestRelease).toBeUndefined();
+    expect(result.state.lastSuccessfulCheckAt).toBe('2026-07-24T00:00:00.000Z');
+  });
+
   it('rejects a same-sequence conflicting identity as invalid metadata', () => {
     const withLatest = { ...baseState, latestRelease: releaseB };
     const conflicting = { releaseId: 'release-b-imposter', releaseSequence: 2 };

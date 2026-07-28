@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { countSameChannelWindowClients, isSameChannelPath } from './cleanLaunch';
+import {
+  countSameChannelWindowClients,
+  isSameChannelPath,
+  isSameChannelWindowClient,
+} from './cleanLaunch';
 
 describe('isSameChannelPath (stable, base path "/")', () => {
   it('accepts an ordinary stable window', () => {
@@ -46,5 +50,37 @@ describe('countSameChannelWindowClients', () => {
 
   it('returns 0 when no windows are live', () => {
     expect(countSameChannelWindowClients([], '/')).toBe(0);
+  });
+});
+
+describe('isSameChannelWindowClient', () => {
+  it('accepts a same-channel window client', () => {
+    expect(
+      isSameChannelWindowClient({ type: 'window', url: 'https://mioframe.example/settings' }, '/'),
+    ).toBe(true);
+  });
+
+  it('rejects a foreign-channel window client', () => {
+    expect(
+      isSameChannelWindowClient(
+        { type: 'window', url: 'https://mioframe.example/branch/develop/' },
+        '/',
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects a non-window client (worker or shared worker)', () => {
+    expect(
+      isSameChannelWindowClient({ type: 'worker', url: 'https://mioframe.example/' }, '/'),
+    ).toBe(false);
+  });
+
+  it('rejects a ServiceWorker or MessagePort source (no "type" field)', () => {
+    const { port1 } = new MessageChannel();
+    expect(isSameChannelWindowClient(port1, '/')).toBe(false);
+  });
+
+  it('rejects a null source', () => {
+    expect(isSameChannelWindowClient(null, '/')).toBe(false);
   });
 });

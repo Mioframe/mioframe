@@ -22,11 +22,17 @@ export const MAX_RELEASE_ARTIFACT_BYTES = 200_000_000;
 
 const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
+/** Channel-root-relative path prefix reserved for controller metadata — never a valid ordinary release file. */
+const RESERVED_UPDATES_PREFIX = 'updates/';
+
 /**
  * Returns `true` when `path` is a canonical channel-root-relative release
  * file path: no leading slash, no `..` traversal segment, no query/hash
- * suffix, and no percent-encoded path separator. Mirrors
- * `isCanonicalReleasePath` in `src/shared/service/appUpdate/contracts.ts`.
+ * suffix, no percent-encoded path separator, and not under the reserved
+ * `updates/` metadata prefix (which also excludes a release's own archived
+ * index from ever being listed as one of its own ordinary release files).
+ * Mirrors `isCanonicalReleasePath` in
+ * `src/shared/service/appUpdate/contracts.ts`.
  * @param path Candidate release file path.
  * @returns Whether `path` is canonical.
  */
@@ -34,6 +40,7 @@ export function isCanonicalReleasePath(path) {
   if (typeof path !== 'string' || path.length === 0 || path.startsWith('/')) return false;
   if (path.includes('?') || path.includes('#')) return false;
   if (/%2e|%2f/i.test(path)) return false;
+  if (path === 'updates' || path.startsWith(RESERVED_UPDATES_PREFIX)) return false;
   return !path.split('/').includes('..');
 }
 
@@ -187,16 +194,20 @@ export function buildReleaseDescriptor({
 
 /**
  * Reads and validates every retained release descriptor for a channel.
- * Fails closed: any unreadable or structurally invalid descriptor aborts the
- * whole read rather than silently skipping it, since publishing on top of a
- * corrupt retained tree is unsafe.
+ * Fails closed: any unreadable, structurally invalid, misplaced, or
+ * conflicting descriptor aborts the whole read rather than silently
+ * skipping it, since publishing on top of a corrupt retained tree is
+ * unsafe. Validates that:
+ * - the descriptor filename (`<releaseId>.json`) matches its own `releaseId`;
+ * - the release's archived index directory (`<releaseId>/index.html`) exists;
+ * - no two retained descriptors share a `releaseSequence` with a different `releaseId`.
  * @param releasesDir Channel's `updates/releases` directory.
  * @returns Every retained `ReleaseDescriptor`, or `[]` when the directory does not exist yet.
  */
 export function readRetainedReleaseDescriptors(releasesDir) {
   if (!existsSync(releasesDir)) return [];
 
-  return readdirSync(releasesDir, { withFileTypes: true })
+  const descriptors = readdirSync(releasesDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
     .map((entry) => {
       const filePath = join(releasesDir, entry.name);
@@ -211,8 +222,32 @@ export function readRetainedReleaseDescriptors(releasesDir) {
       if (!isValidReleaseDescriptor(parsed)) {
         throw new Error(`Retained release descriptor is structurally invalid: ${entry.name}`);
       }
+      const expectedFilename = `${parsed.releaseId}.json`;
+      if (entry.name !== expectedFilename) {
+        throw new Error(
+          `Retained release descriptor filename "${entry.name}" does not match its releaseId (expected "${expectedFilename}")`,
+        );
+      }
+      if (!existsSync(join(releasesDir, parsed.releaseId, 'index.html'))) {
+        throw new Error(
+          `Retained release "${parsed.releaseId}" is missing its archived index directory`,
+        );
+      }
       return parsed;
     });
+
+  const releaseIdBySequence = new Map();
+  for (const descriptor of descriptors) {
+    const conflicting = releaseIdBySequence.get(descriptor.releaseSequence);
+    if (conflicting !== undefined && conflicting !== descriptor.releaseId) {
+      throw new Error(
+        `Retained releaseSequence ${descriptor.releaseSequence} is used by both "${conflicting}" and "${descriptor.releaseId}"`,
+      );
+    }
+    releaseIdBySequence.set(descriptor.releaseSequence, descriptor.releaseId);
+  }
+
+  return descriptors;
 }
 
 /**

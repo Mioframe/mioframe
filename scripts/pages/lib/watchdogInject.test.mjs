@@ -32,6 +32,39 @@ describe('buildWatchdogScript', () => {
     expect(script).toContain("window.addEventListener('unhandledrejection', onEarlyFatalError)");
   });
 
+  it('sends BOOT_OK and BOOT_FAILED through an acknowledged MessageChannel request, not a bare postMessage', () => {
+    const script = buildWatchdogScript('release-1');
+    expect(script).toContain('function sendToController(message)');
+    expect(script).toContain('new MessageChannel()');
+    expect(script).toContain('sendToController({ type: BOOT_OK, releaseId: RELEASE_ID })');
+    expect(script).toContain('sendToController({ type: BOOT_FAILED, releaseId: RELEASE_ID })');
+  });
+
+  it('only disarms on a BOOT_OK response acknowledging a committed outcome', () => {
+    const script = buildWatchdogScript('release-1');
+    const bootOkBody = script.slice(
+      script.indexOf('window.mioframeAppUpdateBootOk = function'),
+      script.indexOf('if (navigator.serviceWorker) {'),
+    );
+    expect(bootOkBody).toContain("response.ack === 'committed'");
+    // Disarming (clearing the deadline timer and removing the early-error
+    // listeners) must be conditioned on that check, not unconditional.
+    expect(bootOkBody.indexOf("response.ack === 'committed'")).toBeLessThan(
+      bootOkBody.indexOf('clearTimeout(deadlineTimer)'),
+    );
+  });
+
+  it('shows a recovery message and never reloads when rollback persistence itself fails', () => {
+    const script = buildWatchdogScript('release-1');
+    const reportBootFailedBody = script.slice(
+      script.indexOf('function reportBootFailed'),
+      script.indexOf('function onEarlyFatalError'),
+    );
+    expect(reportBootFailedBody).toContain("ack === 'error'");
+    expect(reportBootFailedBody).toContain('showRecoveryMessage()');
+    expect(reportBootFailedBody).not.toContain('location.reload');
+  });
+
   it('reloads only on the controller rollback broadcast, not immediately on failure', () => {
     const script = buildWatchdogScript('release-1');
     const reportBootFailedBody = script.slice(

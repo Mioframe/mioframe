@@ -17,23 +17,18 @@ const BASE_PATH = '/';
 // new controller initializes and pins a release for the next clean launch.
 // See the managed pinned application updates feature, "Worker migration".
 //
-// KNOWN GAP (see docs/release.md#managed pinned application updates): while
-// the legacy worker is still active, its Workbox runtime-caching routes
-// intercept the new controller's own install-time fetches (`updates/
-// latest.json`, release descriptors, and release asset files), breaking
-// `runInstallPrerequisites` and causing the new worker's install to be
-// discarded without ever activating. Proven via elimination: a trivial
-// install (bypassing `runInstallPrerequisites` entirely) does activate and
-// claim the still-open legacy page successfully in this exact scenario, so
-// worker replacement itself is not the problem — install-time asset
-// preparation racing another active worker's fetch interception is. Fixing
-// this requires an explicit architecture decision (most likely: deferring
-// release-file preparation to after activation, when this worker is the
-// sole active controller and no longer competing for interception) — not a
-// quick patch. This spec is intentionally NOT wired into `scripts/verify.mjs`
-// until that decision is made and implemented; see the remaining Pass 8 item.
-// Deliberately not `test.skip`/`.fixme`: this is a genuine, currently-failing
-// proof of an unresolved architectural gap, not a test to silently ignore.
+// The new worker defers all release-file preparation past `install`
+// (`decideInstallAction` returns `'defer-to-legacy-worker'` whenever no
+// managed state exists yet and a previously-active worker is already
+// controlling this channel — necessarily the legacy Workbox worker, since
+// this code always persists managed state before any of its own instances
+// reaches `active`). It does not call `skipWaiting()` either, so the still-
+// active legacy worker's runtime-caching routes never race this worker's
+// own install-time fetches. Preparation of the very first managed release
+// only runs in `activate`, once the browser has promoted this worker on its
+// own — which only happens after every legacy-controlled window closes.
+// Wired into the `managed-updates` release-only verify label; a failure
+// here fails `pnpm verify:release`.
 test('migrates from the frozen legacy generated Workbox worker to the managed controller worker', async ({
   browser,
 }, testInfo) => {
@@ -107,27 +102,48 @@ test('migrates from the frozen legacy generated Workbox worker to the managed co
         await registration?.update();
       });
 
-      // The new controller worker claims clients — including the still-open
-      // legacy page — only once its install prerequisites (fetch the new
-      // worker script, then fetch and hash-validate every file in the first
-      // managed release) succeed, a genuinely slower multi-step pipeline
-      // than a bare byte-diff update check.
-      await legacyPage.waitForFunction(
-        (previousScriptUrl) => navigator.serviceWorker.controller?.scriptURL !== previousScriptUrl,
-        legacyScriptUrl,
+      // The new controller worker must reach "waiting" — installed, but not
+      // yet claiming anything — without ever calling `skipWaiting()` while
+      // the legacy-controlled `legacyPage` is still open: the still-active
+      // legacy worker's own runtime-caching routes would otherwise race its
+      // install-time metadata/asset fetches.
+      await freshPage.waitForFunction(
+        () =>
+          navigator.serviceWorker
+            .getRegistration()
+            .then((registration) => registration?.waiting != null),
+        undefined,
         { timeout: 60_000 },
       );
-      await freshPage.waitForFunction(
+
+      // The still-open legacy session remains controlled by the legacy
+      // worker, completely undisturbed by the new worker reaching "waiting".
+      await expect(legacyPage.getByText(/^browser storage$/i)).toBeVisible();
+      const legacyControllerWhileWaiting = await legacyPage.evaluate(
+        () => navigator.serviceWorker.controller?.scriptURL,
+      );
+      expect(legacyControllerWhileWaiting).toBe(legacyScriptUrl);
+      expect(pageErrors).toEqual([]);
+
+      // Only once every legacy-controlled window closes does ordinary
+      // browser worker lifecycle promote the waiting managed worker; its
+      // `activate` handler then fetches, validates, and fully prepares the
+      // very first managed release before claiming any (now-new) clients.
+      await legacyPage.close();
+      await freshPage.close();
+
+      const verifyPage = await context.newPage();
+      await verifyPage.goto(server.url);
+      await verifyPage.waitForFunction(
         () => navigator.serviceWorker.controller !== null,
         undefined,
         {
           timeout: 30_000,
         },
       );
+      await expect(verifyPage.getByText(/^browser storage$/i)).toBeVisible();
 
-      expect(pageErrors).toEqual([]);
-
-      const controllerState = await freshPage.evaluate(
+      const controllerState = await verifyPage.evaluate(
         () =>
           new Promise<{ activeRelease?: { releaseId: string } } | undefined>((resolve) => {
             const request = indexedDB.open('mioframe-update-controller-stable');
@@ -144,7 +160,13 @@ test('migrates from the frozen legacy generated Workbox worker to the managed co
       );
       expect(controllerState?.activeRelease?.releaseId).toBe(published.releaseId);
 
-      await freshPage.close();
+      // The migrated managed release must also serve fully offline.
+      await context.setOffline(true);
+      await verifyPage.reload();
+      await expect(verifyPage.getByText(/^browser storage$/i)).toBeVisible();
+      await context.setOffline(false);
+
+      await verifyPage.close();
       await context.close();
     } finally {
       await server.close();

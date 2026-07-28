@@ -1,78 +1,153 @@
 /// <reference lib="webworker" />
 declare const self: ServiceWorkerGlobalScope;
 
-import type { ManagedChannel, ReleaseRef, UpdateControllerState } from './contracts';
-import { readControllerState, writeControllerState } from './controllerState';
+import { isSameChannelWindowClient } from './cleanLaunch';
+import type { ManagedChannel } from './contracts';
+import { writeControllerState } from './controllerState';
 import type { OperationQueue } from './operationQueue';
+import type { PreparationCoordinator } from './preparationCoordinator';
 import type {
   ActivationStatusResponse,
+  AppUpdateBootAckResponse,
+  AppUpdateErrorCode,
   AppUpdateRollbackBroadcast,
   AppUpdateWorkerRequest,
   AppUpdateWorkerResponse,
 } from './protocol';
-import {
-  fetchLatestReleasePointer,
-  fetchReleaseDescriptor,
-  prepareRelease,
-} from './releasePreparation';
+import { runReleaseCacheCleanup } from './releaseCache';
 import { buildAppUpdateSnapshot } from './snapshot';
+import { withState } from './stateLock';
 import {
-  approveAutomaticRelease,
   approveManualRelease,
-  applyCheckForUpdates,
   cancelScheduledUpdate,
   commitActivation,
   rollbackActivation,
   switchToAutomaticMode,
   switchToManualMode,
 } from './stateTransitions';
-
-async function persistAndRespond(
-  channel: ManagedChannel,
-  state: UpdateControllerState,
-  error?: Parameters<typeof buildAppUpdateSnapshot>[1],
-): Promise<AppUpdateWorkerResponse> {
-  await writeControllerState(channel, state);
-  return { snapshot: buildAppUpdateSnapshot(state, error) };
-}
-
-async function prepareAndApproveLatest(
-  channelBasePath: string,
-  channel: ManagedChannel,
-  state: UpdateControllerState,
-  approve: (state: UpdateControllerState, prepared: ReleaseRef) => UpdateControllerState,
-): Promise<UpdateControllerState> {
-  const target = state.latestRelease;
-  if (!target || target.releaseId === state.activeRelease.releaseId) return state;
-  const descriptor = await fetchReleaseDescriptor(channelBasePath, target);
-  await prepareRelease(channelBasePath, channel, descriptor);
-  return approve(state, target);
-}
+import { runUpdateCheck } from './updateDiscovery';
 
 /**
  * Broadcasts a rollback instruction to every same-channel window, so every
  * window currently in the failed activation reloads back into the restored
  * previous release. Only called after the rollback has already been
- * persisted.
+ * persisted. Never reaches a foreign-channel window (another branch, PR
+ * preview, or a different managed channel sharing this origin).
+ * @param channelBasePath - This worker's channel base path.
  * @param failedReleaseId - The release id that failed to boot.
  */
-async function broadcastRollback(failedReleaseId: string): Promise<void> {
+async function broadcastRollback(channelBasePath: string, failedReleaseId: string): Promise<void> {
   const message: AppUpdateRollbackBroadcast = {
     type: 'APP_UPDATE_ROLLBACK',
     releaseId: failedReleaseId,
   };
   const clients = await self.clients.matchAll({ type: 'window' });
-  for (const client of clients) client.postMessage(message);
+  for (const client of clients) {
+    if (isSameChannelWindowClient(client, channelBasePath)) client.postMessage(message);
+  }
 }
 
 /**
- * Handles one private worker protocol request, serialized through this
- * channel's operation queue so concurrent commands (discovery, approval,
- * mode changes, boot confirmation) never interleave.
+ * Switches to Automatic mode, preparing and approving the latest known
+ * release first when needed. The short state lock only covers the initial
+ * decision and the final persist; preparation runs unlocked through
+ * `coordinator`, and the target is re-validated against current state
+ * before being approved, exactly like {@link runUpdateCheck}.
+ * @param channel - Managed channel.
+ * @param channelBasePath - This worker's channel base path.
+ * @param enqueue - The channel's serialized operation queue.
+ * @param coordinator - The channel's preparation coordinator.
+ * @returns The resulting response.
+ */
+async function switchToAutomaticModeWithPrepare(
+  channel: ManagedChannel,
+  channelBasePath: string,
+  enqueue: OperationQueue,
+  coordinator: PreparationCoordinator,
+): Promise<AppUpdateWorkerResponse> {
+  const decision = await withState(channel, enqueue, async (state) => {
+    const target = state.latestRelease;
+    const needsPrepare = target && target.releaseId !== state.activeRelease.releaseId;
+    if (!needsPrepare) {
+      const next = switchToAutomaticMode(state);
+      await writeControllerState(channel, next);
+      return { done: true as const, response: { snapshot: buildAppUpdateSnapshot(next) } };
+    }
+    return { done: false as const, target };
+  });
+  if (decision.done) return decision.response;
+
+  const target = decision.target;
+  let error: AppUpdateErrorCode | undefined;
+  try {
+    await coordinator.prepare(channel, channelBasePath, target);
+  } catch {
+    error = 'install-failed';
+  }
+
+  return withState(channel, enqueue, async (state) => {
+    const stillValid = !error && state.latestRelease?.releaseId === target.releaseId;
+    const next = switchToAutomaticMode(state, stillValid ? target : undefined);
+    await writeControllerState(channel, next);
+    if (next !== state) void runReleaseCacheCleanup(channel).catch(() => {});
+    return { snapshot: buildAppUpdateSnapshot(next, error) };
+  });
+}
+
+/**
+ * Prepares and approves the current latest release for Manual
+ * `INSTALL_ON_NEXT_LAUNCH`. Preparation runs unlocked through `coordinator`;
+ * the target is re-validated against current state before being approved.
+ * @param channel - Managed channel.
+ * @param channelBasePath - This worker's channel base path.
+ * @param enqueue - The channel's serialized operation queue.
+ * @param coordinator - The channel's preparation coordinator.
+ * @returns The resulting response.
+ */
+async function installLatestOnNextLaunch(
+  channel: ManagedChannel,
+  channelBasePath: string,
+  enqueue: OperationQueue,
+  coordinator: PreparationCoordinator,
+): Promise<AppUpdateWorkerResponse> {
+  const initial = await withState(channel, enqueue, (state) => state);
+  const target = initial.latestRelease;
+  if (!target) return { snapshot: buildAppUpdateSnapshot(initial, 'unavailable') };
+
+  let error: AppUpdateErrorCode | undefined;
+  try {
+    await coordinator.prepare(channel, channelBasePath, target);
+  } catch {
+    error = 'install-failed';
+  }
+
+  return withState(channel, enqueue, async (state) => {
+    if (error) return { snapshot: buildAppUpdateSnapshot(state, error) };
+    if (state.latestRelease?.releaseId !== target.releaseId) {
+      // Superseded by a newer discovery while preparing: approving it now
+      // would silently schedule a release the user never saw offered.
+      return { snapshot: buildAppUpdateSnapshot(state, 'install-failed') };
+    }
+    const next = approveManualRelease(state, target);
+    await writeControllerState(channel, next);
+    void runReleaseCacheCleanup(channel).catch(() => {});
+    return { snapshot: buildAppUpdateSnapshot(next) };
+  });
+}
+
+/**
+ * Handles one private worker protocol request.
+ *
+ * Every case's persisted-state read/decide/persist runs through `enqueue`
+ * (the channel's short state lock, see `stateLock.ts`); release discovery
+ * and preparation (network fetch + hashing) always run outside it via
+ * `runUpdateCheck`/`coordinator`, so a long release download can never block
+ * navigation or another protocol request waiting on the same lock.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming protocol request.
  * @param enqueue - The channel's serialized operation queue.
+ * @param coordinator - The channel's preparation coordinator.
  * @returns The resulting response.
  * @throws When persisted state is absent or invalid; this should never happen once install prerequisites have succeeded.
  */
@@ -81,93 +156,102 @@ export async function handleWorkerMessage(
   channelBasePath: string,
   request: AppUpdateWorkerRequest,
   enqueue: OperationQueue,
-): Promise<AppUpdateWorkerResponse | ActivationStatusResponse> {
-  return enqueue(async () => {
-    const read = await readControllerState(channel);
-    if (read.status !== 'valid') {
-      throw new Error('Controller state is unavailable; cannot handle worker protocol request');
+  coordinator: PreparationCoordinator,
+): Promise<AppUpdateWorkerResponse | AppUpdateBootAckResponse | ActivationStatusResponse> {
+  switch (request.type) {
+    case 'GET_SNAPSHOT':
+      return withState(channel, enqueue, (state) => ({ snapshot: buildAppUpdateSnapshot(state) }));
+
+    case 'CHECK_FOR_UPDATES':
+      return runUpdateCheck(channel, channelBasePath, enqueue, coordinator);
+
+    case 'SET_MODE': {
+      if (request.mode === 'manual') {
+        return withState(channel, enqueue, async (state) => {
+          const next = switchToManualMode(state);
+          await writeControllerState(channel, next);
+          void runReleaseCacheCleanup(channel).catch(() => {});
+          return { snapshot: buildAppUpdateSnapshot(next) };
+        });
+      }
+      return switchToAutomaticModeWithPrepare(channel, channelBasePath, enqueue, coordinator);
     }
-    const state = read.state;
 
-    switch (request.type) {
-      case 'GET_SNAPSHOT':
-        return { snapshot: buildAppUpdateSnapshot(state) };
+    case 'INSTALL_ON_NEXT_LAUNCH':
+      return installLatestOnNextLaunch(channel, channelBasePath, enqueue, coordinator);
 
-      case 'CHECK_FOR_UPDATES': {
-        let discovered: ReleaseRef;
-        try {
-          discovered = await fetchLatestReleasePointer(channelBasePath);
-        } catch {
-          return { snapshot: buildAppUpdateSnapshot(state, 'check-failed') };
+    case 'CANCEL_SCHEDULED_UPDATE':
+      return withState(channel, enqueue, async (state) => {
+        const next = cancelScheduledUpdate(state);
+        if (next !== state) {
+          await writeControllerState(channel, next);
+          void runReleaseCacheCleanup(channel).catch(() => {});
         }
-        const checked = applyCheckForUpdates(state, discovered, new Date().toISOString());
-        let nextState = checked.state;
-        if (checked.outcome === 'updated' && nextState.mode === 'automatic') {
-          try {
-            nextState = await prepareAndApproveLatest(
-              channelBasePath,
-              channel,
-              nextState,
-              approveAutomaticRelease,
-            );
-          } catch {
-            // Background preparation failure never blocks reporting the discovery itself.
-          }
-        }
-        return persistAndRespond(channel, nextState);
-      }
+        return { snapshot: buildAppUpdateSnapshot(next) };
+      });
 
-      case 'SET_MODE': {
-        if (request.mode === 'manual') {
-          return persistAndRespond(channel, switchToManualMode(state));
-        }
-        const target = state.latestRelease;
-        const needsPrepare = target && target.releaseId !== state.activeRelease.releaseId;
-        if (!needsPrepare) {
-          return persistAndRespond(channel, switchToAutomaticMode(state));
+    case 'BOOT_OK': {
+      const result = await withState(channel, enqueue, async (state) => {
+        const committed = commitActivation(state, request.releaseId);
+        if (committed === state) {
+          return {
+            response: { snapshot: buildAppUpdateSnapshot(state), ack: 'ignored' as const },
+            didCommit: false,
+          };
         }
         try {
-          const descriptor = await fetchReleaseDescriptor(channelBasePath, target);
-          await prepareRelease(channelBasePath, channel, descriptor);
+          await writeControllerState(channel, committed);
         } catch {
-          return persistAndRespond(channel, switchToAutomaticMode(state), 'install-failed');
+          return {
+            response: { snapshot: buildAppUpdateSnapshot(state), ack: 'error' as const },
+            didCommit: false,
+          };
         }
-        return persistAndRespond(channel, switchToAutomaticMode(state, target));
-      }
+        return {
+          response: { snapshot: buildAppUpdateSnapshot(committed), ack: 'committed' as const },
+          didCommit: true,
+        };
+      });
+      if (result.didCommit) void runReleaseCacheCleanup(channel).catch(() => {});
+      return result.response;
+    }
 
-      case 'INSTALL_ON_NEXT_LAUNCH': {
-        if (!state.latestRelease) {
-          return { snapshot: buildAppUpdateSnapshot(state, 'unavailable') };
-        }
-        try {
-          const descriptor = await fetchReleaseDescriptor(channelBasePath, state.latestRelease);
-          await prepareRelease(channelBasePath, channel, descriptor);
-        } catch {
-          return { snapshot: buildAppUpdateSnapshot(state, 'install-failed') };
-        }
-        return persistAndRespond(channel, approveManualRelease(state, state.latestRelease));
-      }
-
-      case 'CANCEL_SCHEDULED_UPDATE':
-        return persistAndRespond(channel, cancelScheduledUpdate(state));
-
-      case 'BOOT_OK':
-        return persistAndRespond(channel, commitActivation(state, request.releaseId));
-
-      case 'BOOT_FAILED': {
+    case 'BOOT_FAILED': {
+      const result = await withState(channel, enqueue, async (state) => {
         const rolledBack = rollbackActivation(state, request.releaseId);
-        const response = await persistAndRespond(channel, rolledBack);
-        if (rolledBack !== state) await broadcastRollback(request.releaseId);
-        return response;
+        if (rolledBack === state) {
+          return {
+            response: { snapshot: buildAppUpdateSnapshot(state), ack: 'ignored' as const },
+            didRollback: false,
+          };
+        }
+        try {
+          await writeControllerState(channel, rolledBack);
+        } catch {
+          return {
+            response: { snapshot: buildAppUpdateSnapshot(state), ack: 'error' as const },
+            didRollback: false,
+          };
+        }
+        return {
+          response: { snapshot: buildAppUpdateSnapshot(rolledBack), ack: 'rolled-back' as const },
+          didRollback: true,
+        };
+      });
+      if (result.didRollback) {
+        await broadcastRollback(channelBasePath, request.releaseId);
+        void runReleaseCacheCleanup(channel).catch(() => {});
       }
+      return result.response;
+    }
 
-      case 'GET_ACTIVATION_STATUS': {
+    case 'GET_ACTIVATION_STATUS':
+      return withState(channel, enqueue, (state) => {
         const { activation } = state;
         if (activation && activation.targetRelease.releaseId === request.releaseId) {
           return { isActivationTarget: true, deadlineAt: activation.deadlineAt };
         }
         return { isActivationTarget: false };
-      }
-    }
-  });
+      });
+  }
 }

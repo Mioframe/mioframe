@@ -83,4 +83,30 @@ export const invalidReleaseDescriptors = [
       files: [{ path: 'assets/app.js?x=1', sha256: SHA256_OF_EMPTY_STRING, byteSize: 1 }],
     },
   },
+  {
+    name: 'file path under the reserved updates/ prefix',
+    descriptor: {
+      ...validReleaseDescriptor,
+      files: [
+        {
+          path: 'updates/releases/018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f/index.html',
+          sha256: SHA256_OF_EMPTY_STRING,
+          byteSize: 1,
+        },
+      ],
+    },
+  },
+  {
+    name: 'uppercase sha256 (must be lowercase, not merely valid hex)',
+    descriptor: {
+      ...validReleaseDescriptor,
+      files: [
+        {
+          path: 'assets/app.js',
+          sha256: SHA256_OF_EMPTY_STRING.toUpperCase(),
+          byteSize: 1,
+        },
+      ],
+    },
+  },
 ];

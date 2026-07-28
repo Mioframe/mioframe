@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseDescriptor } from './contracts';
 import {
   buildManagedCacheNamespace,
@@ -7,9 +7,20 @@ import {
   computeCacheNamesToDelete,
   computeProtectedReleaseIds,
   isReleaseAvailable,
+  isReleaseFilePath,
   readReleaseDescriptorMarker,
+  runReleaseCacheCleanup,
   writeReleaseDescriptorMarker,
 } from './releaseCache';
+
+const readControllerStateMock = vi.fn();
+vi.mock('./controllerState', () => ({
+  readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
+}));
+
+const cachesKeysMock = vi.fn();
+const cachesDeleteMock = vi.fn();
+vi.stubGlobal('caches', { keys: cachesKeysMock, delete: cachesDeleteMock });
 
 const descriptor: ReleaseDescriptor = {
   schemaVersion: 1,
@@ -69,6 +80,17 @@ describe('isReleaseAvailable', () => {
     expect(
       isReleaseAvailable(descriptor, { releaseId: 'release-a', releaseSequence: 2 }, present),
     ).toBe(false);
+  });
+});
+
+describe('isReleaseFilePath', () => {
+  it('is true for a listed release file path', () => {
+    expect(isReleaseFilePath(descriptor, 'assets/app.js')).toBe(true);
+  });
+
+  it('is false for a path not listed in the descriptor', () => {
+    expect(isReleaseFilePath(descriptor, 'manifest.webmanifest')).toBe(false);
+    expect(isReleaseFilePath(descriptor, 'api/whoami')).toBe(false);
   });
 });
 
@@ -200,5 +222,47 @@ describe('checkReleaseAvailability', () => {
       '/__release-descriptor-marker__',
     ]);
     expect(await checkReleaseAvailability(cache, expectedRelease, channelBasePath)).toBe(true);
+  });
+});
+
+describe('runReleaseCacheCleanup', () => {
+  beforeEach(() => {
+    readControllerStateMock.mockReset();
+    cachesKeysMock.mockReset();
+    cachesDeleteMock.mockReset();
+  });
+
+  it('is a no-op when persisted state is not valid', async () => {
+    readControllerStateMock.mockResolvedValue({ status: 'absent' });
+
+    await runReleaseCacheCleanup('stable');
+
+    expect(cachesKeysMock).not.toHaveBeenCalled();
+    expect(cachesDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it('deletes staging and unprotected final caches, keeping protected ones', async () => {
+    readControllerStateMock.mockResolvedValue({
+      status: 'valid',
+      state: {
+        schemaVersion: 1,
+        mode: 'manual',
+        activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+        failedReleaseIds: [],
+      },
+    });
+    cachesKeysMock.mockResolvedValue([
+      'stable-release-final-release-a',
+      'stable-release-final-release-old',
+      'stable-release-staging-release-b',
+      'branch-develop-release-final-release-a',
+    ]);
+
+    await runReleaseCacheCleanup('stable');
+
+    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-final-release-old');
+    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-staging-release-b');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-final-release-a');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('branch-develop-release-final-release-a');
   });
 });

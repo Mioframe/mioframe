@@ -1,4 +1,5 @@
 import {
+  isValidDescriptorIndexUrl,
   zodLatestReleasePointer,
   zodReleaseDescriptor,
   type ManagedChannel,
@@ -7,9 +8,48 @@ import {
 } from './contracts';
 import {
   buildReleaseCacheNames,
+  checkReleaseAvailability,
   writeReleaseDescriptorMarker,
   writeReleaseIndexMarker,
 } from './releaseCache';
+
+/**
+ * Small, fixed concurrency cap for release file downloads and hashing,
+ * appropriate for low-end mobile devices. An unbounded `Promise.all` over
+ * every release asset would otherwise fire potentially dozens of concurrent
+ * fetches and hash computations at once.
+ */
+const DOWNLOAD_CONCURRENCY_LIMIT = 4;
+
+/**
+ * Runs `fn` over every item in `items`, at most `limit` calls in flight at
+ * once, preserving each result's original index.
+ * @param items - Items to process.
+ * @param limit - Maximum concurrent calls to `fn`.
+ * @param fn - Async work to run for each item.
+ * @returns Results in the same order as `items`.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      const item = items[index];
+      if (item === undefined) return;
+      results[index] = await fn(item);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
 
 /**
  * Computes the lowercase hex SHA-256 digest of a downloaded file's bytes,
@@ -63,6 +103,9 @@ export async function fetchReleaseDescriptor(
   ) {
     throw new Error('Release descriptor identity does not match the expected release');
   }
+  if (!isValidDescriptorIndexUrl(parsed.data, channelBasePath)) {
+    throw new Error('Release descriptor indexUrl does not match this channel and release');
+  }
   return parsed.data;
 }
 
@@ -70,9 +113,22 @@ export async function fetchReleaseDescriptor(
  * Downloads, validates, and commits every file in `descriptor` for one
  * release: each file is staged, verified against its declared byte size and
  * SHA-256, then copied into the final cache; the validated descriptor is
- * written as the final cache's commit marker last. Interrupted or failed
- * preparation never touches the final cache — only the discarded staging
- * cache is affected.
+ * written as the final cache's commit marker last.
+ *
+ * A no-op when `descriptor`'s release is already fully committed and
+ * available — safe to call repeatedly (e.g. a slower stale preparation
+ * resolving after a faster one already committed the same release) without
+ * re-downloading or disturbing an already-served release.
+ *
+ * Otherwise transactional: the final cache is deleted and rebuilt from
+ * scratch only once every file has already been downloaded and validated
+ * into staging, so a failed attempt (download, hash, index fetch, or
+ * promotion failure) never leaves an already-committed final cache damaged
+ * — it is never touched until the new attempt is known-good. Interrupted or
+ * failed preparation otherwise only affects the discarded staging cache.
+ * Downloads and hashing run with bounded concurrency
+ * ({@link DOWNLOAD_CONCURRENCY_LIMIT}), not an unbounded `Promise.all` over
+ * every file.
  * @param channelBasePath - This worker's channel base path.
  * @param channel - Managed channel.
  * @param descriptor - The validated release descriptor to prepare.
@@ -84,28 +140,33 @@ export async function prepareRelease(
   descriptor: ReleaseDescriptor,
 ): Promise<void> {
   const { staging, final } = buildReleaseCacheNames(channel, descriptor.releaseId);
+  const release = { releaseId: descriptor.releaseId, releaseSequence: descriptor.releaseSequence };
+
+  const existingFinalCache = await caches.open(final);
+  if (await checkReleaseAvailability(existingFinalCache, release, channelBasePath)) {
+    return;
+  }
+
   const stagingCache = await caches.open(staging);
 
   try {
-    await Promise.all(
-      descriptor.files.map(async (file) => {
-        const response = await fetch(`${channelBasePath}${file.path}`, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Failed to download release file: ${file.path}`);
+    await mapWithConcurrency(descriptor.files, DOWNLOAD_CONCURRENCY_LIMIT, async (file) => {
+      const response = await fetch(`${channelBasePath}${file.path}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Failed to download release file: ${file.path}`);
 
-        const bytes = await response.arrayBuffer();
-        if (bytes.byteLength !== file.byteSize) {
-          throw new Error(`Byte size mismatch for release file: ${file.path}`);
-        }
-        if ((await sha256Hex(bytes)) !== file.sha256) {
-          throw new Error(`SHA-256 mismatch for release file: ${file.path}`);
-        }
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength !== file.byteSize) {
+        throw new Error(`Byte size mismatch for release file: ${file.path}`);
+      }
+      if ((await sha256Hex(bytes)) !== file.sha256) {
+        throw new Error(`SHA-256 mismatch for release file: ${file.path}`);
+      }
 
-        await stagingCache.put(
-          `${channelBasePath}${file.path}`,
-          new Response(bytes, { headers: response.headers }),
-        );
-      }),
-    );
+      await stagingCache.put(
+        `${channelBasePath}${file.path}`,
+        new Response(bytes, { headers: response.headers }),
+      );
+    });
 
     const indexResponse = await fetch(descriptor.indexUrl, { cache: 'no-store' });
     if (!indexResponse.ok) {
@@ -113,14 +174,17 @@ export async function prepareRelease(
     }
     const indexHtml = await indexResponse.text();
 
+    // Every file is downloaded and validated in staging at this point.
+    // Only now — known-good — is the (possibly stale/partial) final cache
+    // ever deleted, so a failure above this line never touches it.
+    await caches.delete(final);
     const finalCache = await caches.open(final);
-    await Promise.all(
-      descriptor.files.map(async (file) => {
-        const staged = await stagingCache.match(`${channelBasePath}${file.path}`);
-        if (!staged) throw new Error(`Staged release file missing before promotion: ${file.path}`);
-        await finalCache.put(`${channelBasePath}${file.path}`, staged.clone());
-      }),
-    );
+
+    await mapWithConcurrency(descriptor.files, DOWNLOAD_CONCURRENCY_LIMIT, async (file) => {
+      const staged = await stagingCache.match(`${channelBasePath}${file.path}`);
+      if (!staged) throw new Error(`Staged release file missing before promotion: ${file.path}`);
+      await finalCache.put(`${channelBasePath}${file.path}`, staged.clone());
+    });
     await writeReleaseIndexMarker(finalCache, indexHtml);
 
     // Written last: this marker's presence and validity is what makes the

@@ -85,6 +85,7 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'managed-updates': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
@@ -573,7 +574,9 @@ function printHelp() {
     '  --full              Unconditional full-project release scope: do not resolve changed paths,',
   );
   console.log('                      run full proof plus release-version/release-config/build/');
-  console.log('                      artifact/release-smoke. Equivalent to `pnpm verify:release`.');
+  console.log(
+    '                      artifact/release-smoke/managed-updates. Equivalent to `pnpm verify:release`.',
+  );
   console.log('');
   console.log('Labels for --only:');
 
@@ -1040,6 +1043,22 @@ function addReleaseOnlyCommands(commands) {
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     ],
     weight: classifyCommandWeight({ label: 'release-smoke' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'managed-updates',
+    command: 'pnpm',
+    args: [
+      'e2e:release',
+      '--label',
+      'managed-updates',
+      'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
+      'tests/e2e/release/managedUpdatesDevelop.spec.ts',
+      'tests/e2e/release/managedUpdatesMigration.spec.ts',
+      'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
+    ],
+    weight: classifyCommandWeight({ label: 'managed-updates' }),
   });
 }
 
