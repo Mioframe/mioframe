@@ -42,13 +42,13 @@ No exact dependency pin, renderer-version registry, Lit application dependency, 
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | m3e-backed architecture reset and token foundation | `correction` | none | canonical token owners/catalogue; automated import/template renderer boundary; final branch-scope verification |
-| M1a | `MDLoadingIndicator` dependency adapter | `verification` | M0 | accepted matrix; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
-| M1 | `MDButton` adapter pilot | `correction` | M1a | canonical Button contract; boolean loading through migrated consumers; visible interaction proof; final verification |
-| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; controlled state/event order; renderer-gap ownership; verification |
-| M3 | sequential component migration | `planned` | M2 | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership |
+| ID  | Milestone                                          | Status         | Depends on | Exit gate                                                                                                                                       |
+| --- | -------------------------------------------------- | -------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset and token foundation | `correction`   | none       | canonical token owners/catalogue; automated import/template renderer boundary; final branch-scope verification                                  |
+| M1a | `MDLoadingIndicator` dependency adapter            | `verification` | M0         | accepted matrix; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
+| M1  | `MDButton` adapter pilot                           | `correction`   | M1a        | canonical Button contract; boolean loading through migrated consumers; visible interaction proof; final verification                            |
+| M2  | `MDSwitch` stateful adapter pilot                  | `planned`      | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                        |
+| M3  | sequential component migration                     | `planned`      | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                          |
 
 ## Accepted foundation structure
 

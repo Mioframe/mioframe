@@ -22,7 +22,7 @@ Do not derive public API from legacy Mioframe or m3e vocabulary.
 Before production edits, the parent and every required dependency README contain:
 
 | Material contract | Demand and evidence | Public Vue representation | Renderer status and mapping | Owner and decision | Verification |
-| --- | --- | --- | --- | --- | --- |
+| ----------------- | ------------------- | ------------------------- | --------------------------- | ------------------ | ------------ |
 
 The family-level `Official sources` section records the exact official pages used for the component. A matrix row must include an exact source reference when it records a restrictive or disputed conclusion, including `defer`, `source-conflict`, `divergent`, a temporary renderer workaround, or another negative decision whose evidence is not obvious from the family-level source list.
 
@@ -87,12 +87,12 @@ The parent owns composition meaning, placement, and state handoff. It must not r
 
 Follow `component-tokens.md` and `token-api.md`.
 
-| Token layer | Owner |
-| --- | --- |
-| supported reference/system foundations | `foundation/tokens.css` |
-| default palette and light/dark system-color assignments | `foundation/theme.css` |
-| selected component tokens and private mappings | `components/<family>/tokens.css` |
-| application extensions | outside `src/shared/ui/material` |
+| Token layer                                             | Owner                            |
+| ------------------------------------------------------- | -------------------------------- |
+| supported reference/system foundations                  | `foundation/tokens.css`          |
+| default palette and light/dark system-color assignments | `foundation/theme.css`           |
+| selected component tokens and private mappings          | `components/<family>/tokens.css` |
+| application extensions                                  | outside `src/shared/ui/material` |
 
 Every supported public token has one semantic owner and one catalogue entry. Official but unsupported tokens remain `deferred` in the family matrix. Private renderer and owner-local variables do not appear in public API.
 
