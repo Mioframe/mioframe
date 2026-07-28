@@ -22,7 +22,7 @@ Do not derive public API from legacy Mioframe or m3e vocabulary.
 Before production edits, the parent and every required dependency README contain:
 
 | Material contract and exact source | Required now and evidence | Public Vue representation | m3e exact-version support | Owner | Decision | Verification |
-| --- | --- | --- | --- | --- | --- | --- |
+| ---------------------------------- | ------------------------- | ------------------------- | ------------------------- | ----- | -------- | ------------ |
 
 The matrix covers every selected public prop, value, default, slot, emit, controlled state, native mapping, accessibility behavior, token, relevant state combination, dependency, renderer gap, and proof claim.
 
@@ -85,12 +85,12 @@ The parent owns composition meaning, placement, and state handoff. It must not r
 
 Follow `component-tokens.md` and `token-api.md`.
 
-| Token layer | Owner |
-| --- | --- |
-| supported reference/system foundations | `foundation/tokens.css` |
-| default palette and light/dark system-color assignments | `foundation/theme.css` |
-| selected component tokens and private mappings | `components/<family>/tokens.css` |
-| application extensions | outside `src/shared/ui/material` |
+| Token layer                                             | Owner                            |
+| ------------------------------------------------------- | -------------------------------- |
+| supported reference/system foundations                  | `foundation/tokens.css`          |
+| default palette and light/dark system-color assignments | `foundation/theme.css`           |
+| selected component tokens and private mappings          | `components/<family>/tokens.css` |
+| application extensions                                  | outside `src/shared/ui/material` |
 
 Every supported public token has one semantic owner and one catalogue entry. Official but unsupported tokens remain `deferred` in the family matrix. Private renderer and owner-local variables do not appear in public API.
 

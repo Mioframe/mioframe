@@ -100,15 +100,15 @@ Final verification uses the exact branch/task scope required by root policy. Ope
 
 ## Current inventory
 
-| Area | Current state |
-| --- | --- |
-| `MDButton` | m3e-backed pilot in correction |
-| `MDLoadingIndicator` | canonical dependency adapter in correction |
-| Other public `MD*` components | legacy-owned until focused migration |
-| Shared m3e integration | established |
-| Confirmed m3e defect registry | established |
-| Public component entry point | established |
-| Foundation/theme runtime owners | established |
-| Public token catalogue | established and populated |
+| Area                            | Current state                              |
+| ------------------------------- | ------------------------------------------ |
+| `MDButton`                      | m3e-backed pilot in correction             |
+| `MDLoadingIndicator`            | canonical dependency adapter in correction |
+| Other public `MD*` components   | legacy-owned until focused migration       |
+| Shared m3e integration          | established                                |
+| Confirmed m3e defect registry   | established                                |
+| Public component entry point    | established                                |
+| Foundation/theme runtime owners | established                                |
+| Public token catalogue          | established and populated                  |
 
 See `docs/roadmap.md` for the exact remaining work in PR #162.

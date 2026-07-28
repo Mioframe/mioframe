@@ -72,11 +72,11 @@ renderer shape scale      = unchanged and renderer-owned
 The adapter sets host width/height from public overall size and maps the active-size renderer input separately. It does not inspect or compensate internal animated-shape geometry.
 
 | Public size | Host size | Active-size input |
-| --- | --- | --- |
-| `24` | `24px` | `19px` |
-| `32` | `32px` | `25.333333…px` |
-| `40` | `40px` | `31.666667…px` |
-| `48` | `48px` | `38px` |
+| ----------- | --------- | ----------------- |
+| `24`        | `24px`    | `19px`            |
+| `32`        | `32px`    | `25.333333…px`    |
+| `40`        | `40px`    | `31.666667…px`    |
+| `48`        | `48px`    | `38px`            |
 
 ## Button composition mapping
 
@@ -118,18 +118,18 @@ Production comments should reference the defect IDs or consumed affected range r
 
 ## Material–m3e–Vue matrix
 
-| Material contract | Required now | Public Vue representation | m3e support | Owner and decision | Verification |
-| --- | --- | --- | --- | --- | --- |
-| Component identity | yes | root-exported `MDLoadingIndicator` | direct renderer element | dependency — `implement-now` | unit + browser + visual |
-| Uncontained presentation | yes | no public variant prop | renderer default | `implement-now` | story + visual |
-| Contained presentation | no | none | available but unselected | `defer` | none |
-| Short indeterminate process | yes | mounted while parent is loading | direct | `implement-now` | contract |
-| Accessible purpose/role | yes | required `label` → `aria-label` | renderer supplies role | dependency `wrapper-correction` | browser role/name |
-| Inherited active color | yes | `currentColor` | documented renderer color input | dependency — `implement-now` | independent visual |
-| Overall/active size | yes | numeric overall `size` | divergent `M3E-001`/`M3E-002` | controlled workaround | unit + browser geometry + visual |
-| Public component tokens | no current CSS consumer | none | renderer inputs private | `defer` | none |
-| Motion/reduced motion | review only | no public control | renderer-owned animation; no selected wrapper correction | renderer ownership | installed-artifact assessment + operator reporting |
-| Forced colors | selected environment | none | renderer uses `CanvasText` | direct | operator reporting |
+| Material contract           | Required now            | Public Vue representation          | m3e support                                              | Owner and decision              | Verification                                       |
+| --------------------------- | ----------------------- | ---------------------------------- | -------------------------------------------------------- | ------------------------------- | -------------------------------------------------- |
+| Component identity          | yes                     | root-exported `MDLoadingIndicator` | direct renderer element                                  | dependency — `implement-now`    | unit + browser + visual                            |
+| Uncontained presentation    | yes                     | no public variant prop             | renderer default                                         | `implement-now`                 | story + visual                                     |
+| Contained presentation      | no                      | none                               | available but unselected                                 | `defer`                         | none                                               |
+| Short indeterminate process | yes                     | mounted while parent is loading    | direct                                                   | `implement-now`                 | contract                                           |
+| Accessible purpose/role     | yes                     | required `label` → `aria-label`    | renderer supplies role                                   | dependency `wrapper-correction` | browser role/name                                  |
+| Inherited active color      | yes                     | `currentColor`                     | documented renderer color input                          | dependency — `implement-now`    | independent visual                                 |
+| Overall/active size         | yes                     | numeric overall `size`             | divergent `M3E-001`/`M3E-002`                            | controlled workaround           | unit + browser geometry + visual                   |
+| Public component tokens     | no current CSS consumer | none                               | renderer inputs private                                  | `defer`                         | none                                               |
+| Motion/reduced motion       | review only             | no public control                  | renderer-owned animation; no selected wrapper correction | renderer ownership              | installed-artifact assessment + operator reporting |
+| Forced colors               | selected environment    | none                               | renderer uses `CanvasText`                               | direct                          | operator reporting                                 |
 
 ## Token and parent boundary
 
