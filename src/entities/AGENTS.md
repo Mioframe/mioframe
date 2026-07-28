@@ -27,4 +27,4 @@ Inherits the rules from `src/AGENTS.md`. Applies to `src/entities` and its desce
 ## Constraints
 
 - Entity API changes usually affect features and widgets above this layer.
-- Minimum verification: run `pnpm verify --only type-check`, then exercise the touched entity through at least one consuming feature or widget and confirm loading, display, and emitted intents still match the contract. Use focused verify-managed tests for changed derivation or wiring. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then exercise the touched entity through at least one consuming feature or widget and confirm loading, display, and emitted intents still match the contract. Use focused verify-managed tests for changed derivation or wiring.

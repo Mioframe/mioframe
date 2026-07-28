@@ -29,7 +29,7 @@ Do not describe service/storage/CRDT boundary tests as pure behavior when they d
 5. Mock only external or nondeterministic boundaries such as time, network, browser capability, provider client, process environment, or storage adapter.
 6. Keep fixtures local and minimal.
 7. Add imports that truthfully connect the test to the owned source; do not add artificial imports only for resolver selection.
-8. Run focused `unit-tests`, then final verification.
+8. Run focused `unit-tests` and return to the top-level task. This skill does not run a separate final gate.
 9. Use `mutation-testing` only for registered or explicitly audited high-risk logic.
 
 ## Assertions
@@ -68,12 +68,12 @@ Prefer focused deterministic tests plus one faithful product scenario when both 
 ## Commands
 
 ```bash
-pnpm verify --only unit-tests --files <source-or-test-paths...>
+pnpm verify --only unit-tests --files <exact-owning-test-paths...>
 ```
 
-The target automatic resolver runs changed tests directly, resolves snapshots to owning tests, uses Vitest static-import related selection, and falls back to the full unit lane for unsafe relations.
+Until the unit resolver migration is implemented, prefer exact owning test files. A production source path is valid only when the current sibling relation is confirmed; current `verify` may miss non-sibling importing tests. Do not assume the target related-test resolver already exists.
 
-Until the corresponding migration is implemented, current `verify` may still rely mainly on colocated sibling tests. For required focused feedback, pass the exact source or test paths rather than assuming target related-selection behavior already exists.
+The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
 
 ## Forbidden
 

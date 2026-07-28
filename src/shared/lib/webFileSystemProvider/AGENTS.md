@@ -33,4 +33,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to the browser File 
 ## Constraints
 
 - Changes here can affect every local file-system backed space.
-- Minimum verification: run `pnpm verify --only type-check`, then focused verify-managed `WebFileSystemProvider` tests for touched operations and access-required behavior. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then focused verify-managed `WebFileSystemProvider` tests for touched operations and access-required behavior.

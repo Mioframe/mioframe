@@ -17,27 +17,33 @@ this file, not in `AGENTS.md`.
 ## Flows
 
 ```
-feature/* -> develop -> main
-fix/*, hotfix/* -> main -> develop
+feature/*, feat/*, fix/*, refactor/*, docs/*, chore/*, agent/* -> develop -> main
+hotfix/*, release-repair/* -> main -> develop when the change is main-only
 ```
 
-- **Feature flow**: branch from `develop` as `feature/<name>`, open a PR into
-  `develop`. When `develop` is ready to ship, open a promotion PR from
-  `develop` into `main`.
-- **Hotfix flow**: for a defect that must be fixed directly on the stable
-  branch, branch from `main` as `fix/<name>` or `hotfix/<name>`, open a PR
-  into `main`. After the hotfix ships, merge the same change back into
-  `develop` (a release sync-back PR, see below) so the two branches do not
-  diverge.
+- **Development flow**: branch from `develop` with a descriptive prefix, open a PR
+  into `develop`, and squash merge after current-head review and verification. When
+  `develop` is ready to ship, open a promotion PR from `develop` into `main`.
+- **Direct main repair flow**: for a defect in an already-published stable version,
+  branch from `main` as `hotfix/<name>`. For an unpublished current-main release
+  candidate, branch as `release-repair/<name>`. Open the PR into `main` and squash
+  merge after the release gate. When the resulting commit is not already in
+  `develop`, open the documented release sync-back PR into `develop` and merge it
+  with a merge commit so the branches do not diverge.
 - Stable publish only ever happens from `main`. `develop` never deploys the
   stable build; it may still build/deploy PR previews for review.
 
-### Merge strategy for `develop` <-> `main` synchronization
+Branch prefixes are descriptive, not an allow-list. Use a prefix that communicates ownership and intent, including `feature/`, `feat/`, `fix/`, `hotfix/`, `release-repair/`, `refactor/`, `docs/`, `chore/`, or `agent/`. The target branch and release flow determine policy; the prefix alone does not grant an exception.
 
-`develop` -> `main` promotion PRs and `main` -> `develop` release sync-back
-PRs **must be merged with a merge commit, not squash or rebase**. Ordinary
-feature/fix PRs into `develop` may keep the repository's normal merge policy
-unless another rule says otherwise.
+### Merge strategy
+
+Use these merge methods explicitly:
+
+- ordinary feature, fix, refactor, docs, tooling, and agent PRs into `develop`: **squash merge**;
+- direct hotfix and pre-tag repair PRs into `main`: **squash merge**;
+- `develop` -> `main` promotion PRs and `main` -> `develop` release sync-back PRs: **merge commit**.
+
+Rebase merge is forbidden. Synchronization PRs preserve shared ancestry; ordinary PRs collapse implementation-history noise into one reviewed change.
 
 - **Why**: `develop` and `main` are both long-lived branches. Squashing or
   rebasing a promotion/sync-back merge rewrites history and breaks shared
@@ -126,7 +132,7 @@ A release sync-back PR:
 
 - must not create a new release or tag;
 - must be merged with a merge commit, not squash or rebase (see
-  `Merge strategy for develop <-> main synchronization` above), to preserve
+  `Merge strategy` above), to preserve
   shared ancestry with `main`;
 - does not get a PR preview deployment — `deploy-preview` in
   `.github/workflows/verify.yml` is skipped for branches matching
@@ -216,9 +222,6 @@ gate. It ignores changed-file scope and always runs, for the whole project:
 - full approved visual regression coverage;
 - production build and artifact validation (`docs/release.md#production-artifact-validation`);
 - release smoke coverage (`docs/release.md#release-smoke-coverage`);
-- managed pinned application updates lifecycle coverage
-  (`docs/release.md#managed-pinned-application-updates-stable-and-develop`,
-  verify label `managed-updates`);
 - release/version metadata validation (`scripts/release/validateVersion.mjs`);
 - release config validation (`scripts/release/validateReleaseConfig.mjs`, see
   `docs/release.md#release-config-validation`).
@@ -492,49 +495,6 @@ retention are left untouched.
   branch name it was derived from);
 - PR previews build with `VITE_DISABLE_PWA=1` and register no service
   worker at all.
-
-### Managed pinned application updates (stable and develop)
-
-Stable and the `develop` branch channel (only) use a custom `injectManifest`
-controller worker (`src/sw.ts`) instead of the generated (`generateSW`)
-worker every other channel keeps. See `config/plugins/pwa.ts`'s
-`isManagedChannel`. The controller worker is independent of any particular
-application release: it owns persisted update state, release discovery,
-immutable release preparation, clean-launch activation, boot commit,
-rollback, and local cache cleanup, entirely under `src/shared/service/appUpdate/`.
-
-Publication for these two channels (`scripts/pages/lib/releasePublish.mjs`,
-invoked from `publishStable.mjs` and `publishBranch.mjs --slug develop`)
-retains an immutable release archive alongside the ordinary deployment
-files:
-
-```text
-<channel-root>/updates/releases/<releaseId>.json
-<channel-root>/updates/releases/<releaseId>/index.html   (watchdog-injected)
-<channel-root>/assets/<content-hashed files>              (accumulates, never wiped)
-<channel-root>/updates/latest.json                        (written last)
-```
-
-`applyManagedStablePublish`/`applyManagedBranchPublish` in
-`scripts/pages/lib/pagesFs.mjs` preserve `assets/` and `updates/` across
-publishes instead of wiping them, so a previously pinned release stays
-fetchable from the immutable archive indefinitely (no server-side pruning).
-
-A publisher-injected boot watchdog (`scripts/pages/lib/watchdogInject.mjs`)
-is inlined into every archived release's `index.html` before the main
-module entry, independent of the main application bundle, so it can detect
-an early fatal boot failure even when the main bundle itself is the failing
-component.
-
-Full lifecycle proof (first install, Manual/Automatic activation, rollback,
-crash recovery, migration from the previous generated Workbox worker, and
-develop/stable isolation) lives in `tests/e2e/release/managedUpdates*.spec.ts`
-and runs under the `managed-updates` verify label
-(`pnpm verify --full --only managed-updates`), part of `pnpm verify:release`.
-The migration proof builds the frozen pre-feature `generateSW` configuration
-from `tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig.ts` — a
-release-test-only fixture never reachable from a normal build (see
-`productionArtifactSmoke.spec.ts`'s chunk scan).
 
 ## Production artifact validation
 

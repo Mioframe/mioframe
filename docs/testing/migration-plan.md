@@ -17,7 +17,7 @@
 
 ### Diff planning (resolved)
 
-`scripts/lib/changedPaths.mjs` now owns a repository-wide, status-aware changed-path model (see Phase 1, step 1, below). Local, local-base, and GitHub Actions planning all use NUL-delimited `git diff --name-status` output, preserve deleted paths, and expose both sides of a rename. `--files` remains an explicit existing-path override handled separately from Git diff planning.
+`scripts/lib/verifyInvocation.mjs` owns effective invocation precedence and resolves full, explicit-files, GitHub-base, local-base, and local scopes. For non-full scopes, `scripts/lib/changedPaths.mjs` owns the repository-wide, status-aware Git changed-path model (see Phase 1, step 1, below). Git-backed planning uses NUL-delimited `git diff --name-status` output, preserves deleted paths, and exposes both sides of a rename. `--files` remains an explicit existing-path override handled separately from Git diff planning.
 
 Resolvers still consume filenames, not status-aware records: `scripts/verify.mjs` and its command planners read the transitional `getChangedFileProjection()` string-path projection rather than the underlying `ChangedPath[]` records. This PR does not migrate their resolver-specific contracts. It includes the compatibility adaptations required by the broader projection: missing mutation targets are excluded, and deleted or renamed-away app E2E and Storybook behavior specs select their full owning lane instead of becoming invalid focused command arguments. Format/lint, unit, type-check, visual, and package-impact behavior remains compatible with the existing planners. Full status-aware behavior inside each lane is tracked separately in Phase 2 ("Static check planning") and later phases.
 
@@ -78,7 +78,7 @@ Resolvers still consume filenames, not status-aware records: `scripts/verify.mjs
 - deleted path;
 - renamed path with old and new names.
 
-It uses NUL-delimited, status-aware Git output (`git diff --name-status -z --find-renames --diff-filter=ADMRT`) for local, local-base (fork-point), and GitHub Actions (merge-base) planning, and preserves `packageJsonOldRef` package comparison support for every scope. `scripts/verify.mjs` calls `resolveChangedPathsScope()` for scope resolution and `getChangedFileProjection()` to obtain the transitional string-path list its current command planners still consume (see "Diff planning" above).
+It uses NUL-delimited, status-aware Git output (`git diff --name-status -z --find-renames --diff-filter=ADMRT`) for local, local-base (fork-point), and GitHub Actions (merge-base) planning, and preserves `packageJsonOldRef` package comparison support for every Git-backed scope. `scripts/verify.mjs` consumes the invocation resolved by `verifyInvocation`, calls `resolveChangedPathsScope()` only for non-full changed-path execution, and uses `getChangedFileProjection()` to obtain the transitional string-path list its current command planners still consume (see "Diff planning" above).
 
 Acceptance (met):
 

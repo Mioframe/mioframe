@@ -22,4 +22,4 @@ Inherits the rules from `src/shared/lib/AGENTS.md`. Applies to `src/shared/lib/t
 ## Constraints
 
 - Guard changes affect both runtime behavior and compile-time inference.
-- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed runtime and narrowing checks for the touched guard. Final completion still requires `pnpm verify`.
+- Minimum verification: run `pnpm verify --only type-check`, then run focused verify-managed runtime and narrowing checks for the touched guard.

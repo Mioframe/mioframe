@@ -13,6 +13,15 @@ import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
+  FIX_ONLY_LABELS,
+  formatShellCommand,
+  formatVerifyInvocationCommand,
+  FULL_ONLY_LABELS,
+  getCliFilesOverride,
+  resolveVerifyInvocation,
+  VERIFY_LABELS,
+} from './lib/verifyInvocation.mjs';
+import {
   comparePlaywrightContainerProfiles,
   resolvePlaywrightContainerProfile,
   VERIFY_PROFILE_ENV,
@@ -20,43 +29,13 @@ import {
 
 applyProjectEnv();
 
-const cliArgs = process.argv.slice(2);
-const isHelpMode = process.argv.includes('--help') || cliArgs.includes('help');
-const isFixMode = process.argv.includes('--fix');
-const isFixOnlyMode = process.argv.includes('--fix-only');
-const isVerboseMode = process.argv.includes('--verbose');
-const isFullMode = process.argv.includes('--full');
-const shouldApplyFixers = isFixMode || isFixOnlyMode;
-const cliFilesOverride = isHelpMode ? null : getCliFilesOverride(cliArgs);
-const VERIFY_LABELS = [
-  'agent-environment',
-  'format',
-  'oxlint',
-  'eslint',
-  'type-check',
-  'unit-tests',
-  'e2e-install',
-  'e2e',
-  'storybook-behavior',
-  'visual',
-  'mutation',
-  'release-version',
-  'release-config',
-  'build',
-  'artifact',
-  'release-smoke',
-  'managed-updates',
-];
-// Release-only labels only run in full/release mode (pnpm verify --full).
-// Focused `pnpm verify` never builds these into its command list.
-const FULL_ONLY_LABELS = new Set([
-  'release-version',
-  'release-config',
-  'build',
-  'artifact',
-  'release-smoke',
-  'managed-updates',
-]);
+const rawCliArgs = process.argv.slice(2);
+const isHelpMode = process.argv.includes('--help') || rawCliArgs.includes('help');
+const currentVerifyInvocation = isHelpMode
+  ? null
+  : resolveVerifyInvocation(rawCliArgs, process.env);
+const isVerboseMode = currentVerifyInvocation?.verbose ?? false;
+const isFullMode = currentVerifyInvocation?.scope.kind === 'full';
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
 const MAX_RELEVANT_LINES = 20;
@@ -106,17 +85,9 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
-  'managed-updates': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
-const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
-const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);
-const cliProfile = isHelpMode ? null : getCliProfile(cliArgs);
-
-if (cliOnlyLabel !== null && FULL_ONLY_LABELS.has(cliOnlyLabel) && !isFullMode) {
-  throw new Error(
-    `--only ${cliOnlyLabel} requires --full. Run: pnpm verify --full --only ${cliOnlyLabel}`,
-  );
-}
+const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
+const cliProfile = currentVerifyInvocation?.profile ?? null;
 
 const EXPENSIVE_SKIP_REASON =
   'previous check failed; skipped expensive verification to save CI minutes';
@@ -141,10 +112,6 @@ const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx
 const SOURCE_EXTENSIONS = ['.ts', '.vue'];
 const FORMAT_LINT_IGNORED_PREFIXES = ['.github/'];
 
-function toPosixPath(filePath) {
-  return filePath.split(path.sep).join(path.posix.sep);
-}
-
 function isFormatLintIgnored(filePath) {
   return FORMAT_LINT_IGNORED_PREFIXES.some(
     (prefix) => filePath === prefix.slice(0, -1) || filePath.startsWith(prefix),
@@ -163,180 +130,7 @@ function directoryExists(directoryPath) {
   return fs.existsSync(directoryPath) && fs.statSync(directoryPath).isDirectory();
 }
 
-function getCliBaseRef(argv) {
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--base') {
-      const value = argv[index + 1];
-
-      if (!value || value.startsWith('--')) {
-        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
-      }
-
-      return value;
-    }
-
-    if (argument.startsWith('--base=')) {
-      const value = argument.slice('--base='.length);
-
-      if (value.length === 0) {
-        throw new Error('Missing value for --base. Example: pnpm verify --base origin/develop');
-      }
-
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function getCliOnlyLabel(argv) {
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--only') {
-      const value = argv[index + 1];
-
-      if (!value || value.startsWith('--')) {
-        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
-      }
-
-      validateOnlyLabel(value);
-      return value;
-    }
-
-    if (argument.startsWith('--only=')) {
-      const value = argument.slice('--only='.length);
-
-      if (value.length === 0) {
-        throw new Error(`Missing value for --only. Accepted labels: ${VERIFY_LABELS.join(', ')}`);
-      }
-
-      validateOnlyLabel(value);
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function getCliProfile(argv) {
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--profile') {
-      const value = argv[index + 1];
-
-      if (!value || value.startsWith('--')) {
-        throw new Error('Missing value for --profile. Accepted profiles: local, github-actions');
-      }
-
-      validateProfile(value);
-      return value;
-    }
-
-    if (argument.startsWith('--profile=')) {
-      const value = argument.slice('--profile='.length);
-
-      if (value.length === 0) {
-        throw new Error('Missing value for --profile. Accepted profiles: local, github-actions');
-      }
-
-      validateProfile(value);
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function validateProfile(profile) {
-  if (profile === 'local' || profile === 'github-actions') {
-    return;
-  }
-
-  throw new Error(
-    [`Invalid value for --profile: ${profile}`, 'Accepted profiles: local, github-actions'].join(
-      '\n',
-    ),
-  );
-}
-
-/**
- * Parse explicit file overrides from the verify CLI.
- * @param argv Raw CLI arguments after the script name.
- * @returns Explicit file list, or null when `--files` was not provided.
- */
-export function getCliFilesOverride(argv) {
-  const explicitFiles = [];
-  let hasExplicitFilesFlag = false;
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-
-    if (argument === '--files') {
-      hasExplicitFilesFlag = true;
-      let cursor = index + 1;
-
-      if (cursor >= argv.length || argv[cursor].startsWith('--')) {
-        throw new Error(
-          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
-        );
-      }
-
-      while (cursor < argv.length && !argv[cursor].startsWith('--')) {
-        explicitFiles.push(argv[cursor]);
-        cursor += 1;
-      }
-
-      index = cursor - 1;
-      continue;
-    }
-
-    if (argument.startsWith('--files=')) {
-      hasExplicitFilesFlag = true;
-      const value = argument.slice('--files='.length);
-
-      if (value.length === 0) {
-        throw new Error(
-          'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
-        );
-      }
-
-      explicitFiles.push(
-        ...value
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean),
-      );
-    }
-  }
-
-  if (hasExplicitFilesFlag && explicitFiles.length === 0) {
-    throw new Error(
-      'Missing value for --files. Example: pnpm verify --only eslint --files src/foo.ts',
-    );
-  }
-
-  if (explicitFiles.length === 0) {
-    return null;
-  }
-
-  return uniqSorted(explicitFiles.map(toPosixPath));
-}
-
-function validateOnlyLabel(label) {
-  if (VERIFY_LABELS.includes(label)) {
-    return;
-  }
-
-  throw new Error(
-    [`Invalid value for --only: ${label}`, `Accepted labels: ${VERIFY_LABELS.join(', ')}`].join(
-      '\n',
-    ),
-  );
-}
+export { getCliFilesOverride };
 
 function isTypeCheckTarget(filePath) {
   const baseName = path.posix.basename(filePath);
@@ -561,12 +355,8 @@ function getMutationScope(changedFiles) {
   return uniqSorted(scope);
 }
 
-function quoteArg(value) {
-  return /^[A-Za-z0-9_./:-]+$/.test(value) ? value : JSON.stringify(value);
-}
-
 function formatCommand(command, args) {
-  return [command, ...args].map(quoteArg).join(' ');
+  return formatShellCommand(command, args);
 }
 
 function getLogPath(label) {
@@ -768,24 +558,32 @@ function printHelp() {
   console.log('  --verbose           Stream command output to stdout/stderr.');
   console.log('  --fix               Apply supported format/lint fixes, then run verification.');
   console.log('  --fix-only          Apply supported format/lint fixes only.');
+  console.log(
+    `                      With either fix mode and --only, accepted labels: ${[...FIX_ONLY_LABELS].join(', ')}.`,
+  );
   console.log('  --base <ref>        Verify changes against a local base ref.');
   console.log('                      Local-only default: set VERIFY_BASE in .env.local.');
+  console.log('                      Cannot be combined with --full.');
   console.log('  --profile <name>    Override the verify runtime profile.');
   console.log(`                      Env alternative: ${VERIFY_PROFILE_ENV}=local|github-actions.`);
   console.log('  --only <label>      Run one focused verification check.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
+  console.log('                      Cannot be combined with --full.');
   console.log(
-    '  --full              Full-project release mode: ignore changed-file scope, run every',
+    '  --full              Unconditional full-project release scope: do not resolve changed paths,',
   );
-  console.log(
-    '                      check unconditionally, plus release-version/release-config/build/',
-  );
+  console.log('                      run full proof plus release-version/release-config/build/');
   console.log('                      artifact/release-smoke. Equivalent to `pnpm verify:release`.');
   console.log('');
   console.log('Labels for --only:');
 
   for (const label of VERIFY_LABELS) {
-    console.log(`  ${label}${FULL_ONLY_LABELS.has(label) ? ' (requires --full)' : ''}`);
+    const modeNote = FULL_ONLY_LABELS.has(label)
+      ? ' (requires --full)'
+      : label === 'mutation'
+        ? ' (not available with --full)'
+        : '';
+    console.log(`  ${label}${modeNote}`);
   }
 
   console.log('');
@@ -805,7 +603,10 @@ function printHelp() {
   console.log('  pnpm verify:release');
   console.log('');
   console.log('Notes:');
-  console.log('  - In GitHub Actions, verify scope is based on GITHUB_BASE_REF.');
+  console.log('  - In GitHub Actions, focused verify scope is based on GITHUB_BASE_REF.');
+  console.log(
+    '  - Full mode ignores GITHUB_BASE_REF and VERIFY_BASE; explicit --base/--files are rejected.',
+  );
   console.log('  - Focused --only runs preserve logs from other focused steps.');
   console.log(`  - Logs are written to ${VERIFY_LOG_DIR}/.`);
   console.log('  - Expensive checks have internal heartbeat/timeouts:');
@@ -896,7 +697,7 @@ export function getCiProfileRisk(results, processEnv = process.env) {
   };
 }
 
-async function runCommand(label, command, args, extraEnv = {}) {
+async function runCommand(label, command, args, extraEnv = {}, verboseMode = isVerboseMode) {
   const formattedCommand = formatCommand(command, args);
   const displayCommand = summarizeCommandForDisplay(command, args);
   const logPath = getLogPath(label);
@@ -996,7 +797,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
       lastOutputLine = latestLine;
     }
 
-    if (isVerboseMode) {
+    if (verboseMode) {
       process.stdout.write(chunk);
     }
   };
@@ -1015,7 +816,7 @@ async function runCommand(label, command, args, extraEnv = {}) {
       lastOutputLine = latestLine;
     }
 
-    if (isVerboseMode) {
+    if (verboseMode) {
       process.stderr.write(chunk);
     }
   };
@@ -1240,24 +1041,6 @@ function addReleaseOnlyCommands(commands) {
     ],
     weight: classifyCommandWeight({ label: 'release-smoke' }),
   });
-
-  commands.push({
-    kind: 'run',
-    label: 'managed-updates',
-    command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'managed-updates',
-      'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
-      'tests/e2e/release/managedUpdatesDevelop.spec.ts',
-      // managedUpdatesMigration.spec.ts is intentionally NOT wired in yet —
-      // see its own doc comment for the known, unresolved architectural gap
-      // (the legacy worker's runtime-caching routes intercept the new
-      // controller's install-time fetches while it is still active).
-    ],
-    weight: classifyCommandWeight({ label: 'managed-updates' }),
-  });
 }
 
 /**
@@ -1273,8 +1056,16 @@ function addReleaseOnlyCommands(commands) {
  */
 export function buildCommands(
   changedFiles,
-  { fullMode = isFullMode, packageJsonOldRef = null } = {},
+  {
+    fullMode = isFullMode,
+    packageJsonOldRef = null,
+    fixMode = currentVerifyInvocation?.fixMode ?? 'none',
+    appE2EPlan: appE2EPlanOverride = null,
+    storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
+  } = {},
 ) {
+  const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
+  const fixOnlyMode = fixMode === 'fix-only';
   const existingChangedFiles = changedFiles.filter(fileExists);
   const formatLintFiles = existingChangedFiles.filter((filePath) => !isFormatLintIgnored(filePath));
   const formattableFiles = formatLintFiles.filter((filePath) =>
@@ -1294,8 +1085,10 @@ export function buildCommands(
     isVisualRelevantPackageJsonChange({ oldRef: packageJsonOldRef });
   const hasVisualRelevantChanges =
     changedFiles.some(isVisualRelevantFile) || isPackageJsonVisualRelevant;
-  const appE2EPlan = resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
-  const storybookBehaviorPlan = resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
+  const appE2EPlan = appE2EPlanOverride ?? resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
+  const storybookBehaviorPlan =
+    storybookBehaviorPlanOverride ??
+    resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
   const mutationScope = getMutationScope(existingChangedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
@@ -1304,7 +1097,7 @@ export function buildCommands(
     kind: 'run',
     label: 'agent-environment',
     command: 'node',
-    args: ['scripts/agentEnvironment.mjs', shouldApplyFixers ? '--fix' : '--check'],
+    args: ['scripts/agentEnvironment.mjs', applyFixers ? '--fix' : '--check'],
   });
 
   if (fullMode) {
@@ -1312,20 +1105,20 @@ export function buildCommands(
       kind: 'run',
       label: 'format',
       command: 'pnpm',
-      args: ['exec', 'oxfmt', ...(shouldApplyFixers ? [] : ['--check']), '.'],
+      args: ['exec', 'oxfmt', ...(applyFixers ? [] : ['--check']), '.'],
     });
   } else if (formattableFiles.length > 0) {
     commands.push({
       kind: 'run',
       label: 'format',
       command: 'pnpm',
-      args: ['exec', 'oxfmt', ...(shouldApplyFixers ? [] : ['--check']), ...formattableFiles],
+      args: ['exec', 'oxfmt', ...(applyFixers ? [] : ['--check']), ...formattableFiles],
     });
   } else {
     commands.push({
       kind: 'skipped',
       label: 'format',
-      command: `pnpm exec oxfmt${shouldApplyFixers ? '' : ' --check'}`,
+      command: `pnpm exec oxfmt${applyFixers ? '' : ' --check'}`,
       reason: 'no changed formattable existing files',
     });
   }
@@ -1335,7 +1128,7 @@ export function buildCommands(
       kind: 'run',
       label: 'oxlint',
       command: 'pnpm',
-      args: ['exec', 'oxlint', ...(shouldApplyFixers ? ['--fix'] : []), '.'],
+      args: ['exec', 'oxlint', ...(applyFixers ? ['--fix'] : []), '.'],
       weight: classifyCommandWeight({ label: 'oxlint', isFullRepo: true }),
     });
     commands.push({
@@ -1346,7 +1139,7 @@ export function buildCommands(
         'exec',
         'eslint',
         '--cache',
-        ...(shouldApplyFixers ? ['--fix'] : []),
+        ...(applyFixers ? ['--fix'] : []),
         `--concurrency=${eslintConcurrency}`,
         '.',
       ],
@@ -1357,7 +1150,7 @@ export function buildCommands(
       kind: 'run',
       label: 'oxlint',
       command: 'pnpm',
-      args: ['exec', 'oxlint', ...(shouldApplyFixers ? ['--fix'] : []), ...lintableFiles],
+      args: ['exec', 'oxlint', ...(applyFixers ? ['--fix'] : []), ...lintableFiles],
       weight: classifyCommandWeight({ label: 'oxlint', fileCount: lintableFiles.length }),
     });
     commands.push({
@@ -1368,7 +1161,7 @@ export function buildCommands(
         'exec',
         'eslint',
         '--cache',
-        ...(shouldApplyFixers ? ['--fix'] : []),
+        ...(applyFixers ? ['--fix'] : []),
         `--concurrency=${eslintConcurrency}`,
         ...lintableFiles,
       ],
@@ -1378,18 +1171,18 @@ export function buildCommands(
     commands.push({
       kind: 'skipped',
       label: 'oxlint',
-      command: `pnpm exec oxlint${shouldApplyFixers ? ' --fix' : ''}`,
+      command: `pnpm exec oxlint${applyFixers ? ' --fix' : ''}`,
       reason: 'no changed lintable existing files',
     });
     commands.push({
       kind: 'skipped',
       label: 'eslint',
-      command: `pnpm exec eslint --cache${shouldApplyFixers ? ' --fix' : ''} --concurrency=${eslintConcurrency}`,
+      command: `pnpm exec eslint --cache${applyFixers ? ' --fix' : ''} --concurrency=${eslintConcurrency}`,
       reason: 'no changed lintable existing files',
     });
   }
 
-  if (isFixOnlyMode) {
+  if (fixOnlyMode) {
     return commands;
   }
 
@@ -1435,9 +1228,7 @@ export function buildCommands(
     });
   }
 
-  if (fullMode) {
-    addE2ECommands(commands, createE2ECommand([], 'full-project release verification'));
-  } else if (appE2EPlan.mode === 'invalid') {
+  if (appE2EPlan.mode === 'invalid') {
     commands.push(createE2EInstallCommand('app e2e scope is invalid; e2e check fails closed'));
     commands.push({
       kind: 'failed',
@@ -1445,6 +1236,8 @@ export function buildCommands(
       command: 'pnpm e2e:container',
       reason: `invalid app e2e scenario registry state: ${appE2EPlan.reasons.join('; ')}`,
     });
+  } else if (fullMode) {
+    addE2ECommands(commands, createE2ECommand([], 'full-project release verification'));
   } else if (appE2EPlan.mode === 'full') {
     addE2ECommands(commands, createE2ECommand([], appE2EPlan.reasons.join('; ')));
   } else if (appE2EPlan.mode === 'focused') {
@@ -1459,15 +1252,15 @@ export function buildCommands(
     });
   }
 
-  if (fullMode) {
-    commands.push(createStorybookBehaviorCommand([], 'full-project release verification'));
-  } else if (storybookBehaviorPlan.mode === 'invalid') {
+  if (storybookBehaviorPlan.mode === 'invalid') {
     commands.push({
       kind: 'failed',
       label: 'storybook-behavior',
       command: 'pnpm test:storybook-behavior',
       reason: `invalid Storybook behavior scenario registry state: ${storybookBehaviorPlan.reasons.join('; ')}`,
     });
+  } else if (fullMode) {
+    commands.push(createStorybookBehaviorCommand([], 'full-project release verification'));
   } else if (storybookBehaviorPlan.mode === 'full') {
     commands.push(createStorybookBehaviorCommand([], storybookBehaviorPlan.reasons.join('; ')));
   } else if (storybookBehaviorPlan.mode === 'focused') {
@@ -1537,22 +1330,35 @@ export function buildCommands(
   return commands;
 }
 
-function selectOnlyCommands(commands) {
-  if (cliOnlyLabel === null) {
+function selectOnlyCommands(commands, onlyLabel = cliOnlyLabel) {
+  if (onlyLabel === null) {
     return commands;
   }
 
-  const selectedCommands = commands.filter((entry) => entry.label === cliOnlyLabel);
+  const selectedCommands = commands.filter((entry) => entry.label === onlyLabel);
 
   if (selectedCommands.length > 0) {
     return selectedCommands;
   }
 
-  if (cliOnlyLabel === 'e2e-install') {
+  if (onlyLabel === 'e2e-install') {
     return [createE2EInstallCommand('empty e2e scope')];
   }
 
-  throw new Error(`Verify command list is missing required label: ${cliOnlyLabel}`);
+  throw new Error(`Verify command list is missing required label: ${onlyLabel}`);
+}
+
+/**
+ * Build a supported read-only verify command from the resolved invocation.
+ * @param invocation Resolved verify invocation.
+ * @param [overrides] Optional profile and label overrides.
+ * @returns Canonical shell-safe pnpm verify command.
+ */
+export function getVerifyRerunCommand(invocation, overrides = {}) {
+  return formatVerifyInvocationCommand(invocation, {
+    ...overrides,
+    readOnly: true,
+  });
 }
 
 /**
@@ -1560,10 +1366,11 @@ function selectOnlyCommands(commands) {
  * @param results Collected command results in run order.
  * @param [options] Summary options.
  * @param [options.ciProfileRisk] Pending GitHub Actions profile risk details.
+ * @param [options.invocation] Resolved verify invocation.
  * @returns Action lines; `['None.']` when nothing failed or warned.
  */
 export function getActionRequired(results, options = {}) {
-  const { ciProfileRisk = null } = options;
+  const { ciProfileRisk = null, invocation = currentVerifyInvocation } = options;
   const actions = [];
   const failedResults = results.filter((result) => result.status === 'failed');
   const warningResults = results.filter(
@@ -1571,7 +1378,9 @@ export function getActionRequired(results, options = {}) {
   );
 
   for (const result of failedResults) {
-    actions.push(`Fix failed ${result.label} errors. Run: ${result.command}`);
+    actions.push(
+      `Fix failed ${result.label} errors. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
+    );
 
     if (result.blockingLogIssue) {
       actions.push(
@@ -1584,17 +1393,26 @@ export function getActionRequired(results, options = {}) {
   }
 
   if (failedResults.length > 0) {
-    actions.push(`After fixes, run: pnpm verify${isFixMode ? ' --fix' : ''}`);
+    actions.push(
+      `After fixes, rerun the original read-only scope: ${getVerifyRerunCommand(invocation)}`,
+    );
   }
 
   for (const result of warningResults) {
-    actions.push(`Fix ${result.label} warnings. Run: ${result.command}`);
+    actions.push(
+      `Fix ${result.label} warnings. Rerun through verify: ${getVerifyRerunCommand(invocation, { onlyLabel: result.label })}`,
+    );
     actions.push(`Reason: ${result.warningSummary}`);
   }
 
   if (ciProfileRisk !== null) {
     const rerunChecks = ciProfileRisk.affectedChecks
-      .map((label) => `pnpm verify --profile github-actions --only ${label}`)
+      .map((label) =>
+        getVerifyRerunCommand(invocation, {
+          onlyLabel: label,
+          profile: 'github-actions',
+        }),
+      )
       .join(' ; ');
     actions.push(
       `CI-profile risk remains for ${ciProfileRisk.affectedChecks.join(', ')} because local Playwright used profile ${ciProfileRisk.activeProfile.name}.`,
@@ -1622,11 +1440,13 @@ export function getActionRequired(results, options = {}) {
  * @param [options.ciProfileRisk] Precomputed GitHub Actions profile risk details.
  * @param [options.profileSummary] Precomputed verify profile summary details.
  * @param [options.heavyCheckTriggers] Precomputed heavy-check trigger lines.
+ * @param [options.invocation] Resolved verify invocation.
  * @returns Overall run status derived from the results.
  */
 export function printSummary(changedFiles, scope, results, options = {}) {
+  const invocation = options.invocation ?? currentVerifyInvocation;
   const hasFailed = results.some((result) => result.status === 'failed');
-  const processEnv = options.processEnv ?? getVerifyProcessEnv(process.env);
+  const processEnv = options.processEnv ?? getVerifyProcessEnv(process.env, invocation.profile);
   const ciProfileRisk = options.ciProfileRisk ?? getCiProfileRisk(results, processEnv);
   const { environment, profile } = options.profileSummary ?? getProfileSummary(processEnv);
   const status = hasFailed ? 'failed' : 'passed';
@@ -1635,8 +1455,9 @@ export function printSummary(changedFiles, scope, results, options = {}) {
     : ciProfileRisk === null
       ? 'passed ✅'
       : 'passed with CI-profile risk ⚠️';
-  const actionRequired = getActionRequired(results, { ciProfileRisk });
-  const mode = isFixOnlyMode ? 'fix-only' : isFixMode ? 'fix' : 'check';
+  const actionRequired = getActionRequired(results, { ciProfileRisk, invocation });
+  const fullMode = invocation.scope.kind === 'full';
+  const mode = invocation.fixMode === 'none' ? 'check' : invocation.fixMode;
   const heavyCheckTriggers = options.heavyCheckTriggers ?? getHeavyCheckTriggerLines(results);
   const baseRef = options.baseRef ?? null;
   const runnableResults = results.filter((result) => result.status !== 'skipped');
@@ -1646,10 +1467,10 @@ export function printSummary(changedFiles, scope, results, options = {}) {
   console.log(`mode: ${mode}`);
   console.log(`environment: ${environment}`);
   console.log(`profile: ${profile.name} (source: ${profile.source})`);
-  console.log(`release: ${isFullMode ? 'full-project (pnpm verify --full)' : 'off'}`);
-  console.log(`verbose: ${isVerboseMode ? 'on' : 'off'}`);
-  console.log(`only: ${cliOnlyLabel ?? 'all'}`);
-  console.log(`scope: ${isFullMode ? 'full-project (changed-file scope ignored)' : scope}`);
+  console.log(`release: ${fullMode ? 'full-project (pnpm verify --full)' : 'off'}`);
+  console.log(`verbose: ${invocation.verbose ? 'on' : 'off'}`);
+  console.log(`only: ${invocation.onlyLabel ?? 'all'}`);
+  console.log(`scope: ${fullMode ? 'full-project (changed-file scope ignored)' : scope}`);
   console.log(`base ref: ${baseRef ?? 'n/a'}`);
   console.log(`changed files: ${changedFiles.length}`);
   console.log(`status: ${displayStatus}`);
@@ -1759,25 +1580,62 @@ export function buildCommandEnv(entry, priorResults, options = {}) {
       };
 }
 
-async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata: () => {} }) {
-  if (isFixMode && isFixOnlyMode) {
-    throw new Error('Use either --fix or --fix-only, not both.');
+/**
+ * Resolve changed-path context only for focused invocations. Full mode is an
+ * unconditional scope and must not depend on Git refs, a working tree, or file projection.
+ * @param invocation Resolved verify invocation.
+ * @param [deps] Test seams for changed-path execution.
+ * @param [deps.resolveScope] Changed-path scope resolver.
+ * @param [deps.projectChangedFiles] Changed-file projection.
+ * @returns Execution context used by command planning and summary output.
+ */
+export function resolveVerifyChangedPathContext(invocation, deps = {}) {
+  if (invocation.scope.kind === 'full') {
+    return {
+      changedFiles: [],
+      scope: 'full-project',
+      baseRef: null,
+      packageJsonOldRef: null,
+    };
   }
 
-  const verifyProcessEnv = getVerifyProcessEnv(process.env);
-  const { input, scope, baseRef, packageJsonOldRef } = resolveChangedPathsScope({
-    cliFilesOverride,
-    cliBaseRef,
-    processEnv: process.env,
+  const resolveScope = deps.resolveScope ?? resolveChangedPathsScope;
+  const projectChangedFiles = deps.projectChangedFiles ?? getChangedFileProjection;
+  const { input, scope, baseRef, packageJsonOldRef } = resolveScope({
+    invocationScope: invocation.scope,
   });
-  const changedFiles = getChangedFileProjection(input);
-  const commands = selectOnlyCommands(buildCommands(changedFiles, { packageJsonOldRef }));
+
+  return {
+    changedFiles: projectChangedFiles(input),
+    scope,
+    baseRef,
+    packageJsonOldRef,
+  };
+}
+
+async function main(
+  verifyLockEnv = {},
+  verifyLockController = { updateMetadata: () => {} },
+  invocation = currentVerifyInvocation,
+) {
+  const onlyLabel = invocation.onlyLabel;
+  const verifyProcessEnv = getVerifyProcessEnv(process.env, invocation.profile);
+  const { changedFiles, scope, baseRef, packageJsonOldRef } =
+    resolveVerifyChangedPathContext(invocation);
+  const commands = selectOnlyCommands(
+    buildCommands(changedFiles, {
+      fullMode: invocation.scope.kind === 'full',
+      packageJsonOldRef,
+      fixMode: invocation.fixMode,
+    }),
+    onlyLabel,
+  );
   const results = [];
   let hasFailed = false;
   const runnableCommands = commands.filter((entry) => entry.kind === 'run');
   const totalRunnableChecks = runnableCommands.length;
   let completedRunnableChecks = 0;
-  ensureLogsDirectory(cliOnlyLabel === null ? null : commands.map((entry) => entry.label));
+  ensureLogsDirectory(onlyLabel === null ? null : commands.map((entry) => entry.label));
 
   for (const entry of commands) {
     if (entry.kind === 'skipped') {
@@ -1796,7 +1654,7 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
       continue;
     }
 
-    if (cliOnlyLabel === null) {
+    if (onlyLabel === null) {
       console.log(
         `[verify] check ${completedRunnableChecks + 1}/${totalRunnableChecks}: ${entry.label}`,
       );
@@ -1831,6 +1689,7 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
               verifyLockEnv,
               verifyProcessEnv,
             }),
+            invocation.verbose,
           ),
       );
 
@@ -1850,6 +1709,7 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
           verifyLockEnv,
           verifyProcessEnv,
         }),
+        invocation.verbose,
       );
 
       if (result.terminatedBySignal) {
@@ -1872,8 +1732,24 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
   const summary = printSummary(changedFiles, scope, results, {
     baseRef,
     processEnv: verifyProcessEnv,
+    invocation,
   });
   process.exitCode = summary.hasFailed ? 1 : 0;
+}
+
+/**
+ * Build persisted metadata for the top-level verify lock.
+ * The structured invocation is the retry source of truth; command is display-only.
+ * @param invocation Resolved verify invocation.
+ * @returns Lock metadata with structured scope and a shell-safe display command.
+ */
+export function getVerifyLockMetadata(invocation) {
+  return {
+    command: formatVerifyInvocationCommand(invocation),
+    verifyInvocation: invocation,
+    label: 'verify',
+    logPath: VERIFY_LOG_DIR,
+  };
 }
 
 /**
@@ -1884,7 +1760,11 @@ async function main(verifyLockEnv = {}, verifyLockController = { updateMetadata:
  * @returns Process exit code that should be reported to the shell.
  */
 export async function runVerifyCli(deps = {}) {
-  const { runMain = main, withVerifyLock = withVerifyCommandLock } = deps;
+  const {
+    invocation = currentVerifyInvocation,
+    runMain = main,
+    withVerifyLock = withVerifyCommandLock,
+  } = deps;
 
   if (isHelpMode) {
     printHelp();
@@ -1895,13 +1775,8 @@ export async function runVerifyCli(deps = {}) {
     throw new Error('Repository root is required to run verify.');
   }
 
-  await withVerifyLock(
-    {
-      command: ['pnpm', 'verify', ...cliArgs].join(' ').trim(),
-      label: 'verify',
-      logPath: VERIFY_LOG_DIR,
-    },
-    (verifyLockEnv, verifyLockController) => runMain(verifyLockEnv, verifyLockController),
+  await withVerifyLock(getVerifyLockMetadata(invocation), (verifyLockEnv, verifyLockController) =>
+    runMain(verifyLockEnv, verifyLockController, invocation),
   );
   return process.exitCode ?? 0;
 }

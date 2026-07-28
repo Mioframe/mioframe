@@ -18,7 +18,7 @@ const MANAGED_ROOT_CLAUDE = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or .agents/skills/\\*/SKILL.md instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or skill files under .agents/skills instead.
 `;
 
 const MANAGED_NESTED_CLAUDE = `<!-- managed:agent-compat -->
