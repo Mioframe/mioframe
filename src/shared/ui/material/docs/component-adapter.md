@@ -21,12 +21,14 @@ Do not derive public API from legacy Mioframe or m3e vocabulary.
 
 Before production edits, the parent and every required dependency README contain:
 
-| Material contract and exact source | Required now and evidence | Public Vue representation | m3e exact-version support | Owner | Decision | Verification |
-| ---------------------------------- | ------------------------- | ------------------------- | ------------------------- | ----- | -------- | ------------ |
+| Material contract | Demand and evidence | Public Vue representation | Renderer status and mapping | Owner and decision | Verification |
+| --- | --- | --- | --- | --- | --- |
 
-The matrix covers every selected public prop, value, default, slot, emit, controlled state, native mapping, accessibility behavior, token, relevant state combination, dependency, renderer gap, and proof claim.
+The family-level `Official sources` section records the exact official pages used for the component. A matrix row must include an exact source reference when it records a restrictive or disputed conclusion, including `defer`, `source-conflict`, `divergent`, a temporary renderer workaround, or another negative decision whose evidence is not obvious from the family-level source list.
 
-Renderer status:
+`Demand and evidence` identifies the current consumer, scenario, dependency, accessibility requirement, or other concrete reason for selecting or deferring the contract. Do not use a bare `yes` or `no` when the reason materially affects implementation.
+
+`Renderer status and mapping` begins with exactly one status:
 
 - `direct` — documented renderer API implements the selected contract;
 - `partial` — renderer supplies a base completed by another correct owner;
@@ -34,7 +36,7 @@ Renderer status:
 - `divergent` — documented or consumed behavior is incorrect;
 - `not-applicable` — no renderer mapping is required.
 
-Decision:
+`Owner and decision` records the semantic owner and one decision:
 
 - `implement-now`;
 - `defer`;
@@ -44,7 +46,7 @@ Decision:
 - `blocked`;
 - `source-conflict`.
 
-No production mapping, supported token, composition, or completion claim exists without a matrix row.
+The matrix covers every selected public prop, value, default, slot, emit, controlled state, native mapping, accessibility behavior, token, relevant state combination, dependency, renderer gap, and proof claim. No production mapping, supported token, composition, or completion claim exists without a matrix row.
 
 ## Public Vue API
 
@@ -85,12 +87,12 @@ The parent owns composition meaning, placement, and state handoff. It must not r
 
 Follow `component-tokens.md` and `token-api.md`.
 
-| Token layer                                             | Owner                            |
-| ------------------------------------------------------- | -------------------------------- |
-| supported reference/system foundations                  | `foundation/tokens.css`          |
-| default palette and light/dark system-color assignments | `foundation/theme.css`           |
-| selected component tokens and private mappings          | `components/<family>/tokens.css` |
-| application extensions                                  | outside `src/shared/ui/material` |
+| Token layer | Owner |
+| --- | --- |
+| supported reference/system foundations | `foundation/tokens.css` |
+| default palette and light/dark system-color assignments | `foundation/theme.css` |
+| selected component tokens and private mappings | `components/<family>/tokens.css` |
+| application extensions | outside `src/shared/ui/material` |
 
 Every supported public token has one semantic owner and one catalogue entry. Official but unsupported tokens remain `deferred` in the family matrix. Private renderer and owner-local variables do not appear in public API.
 
