@@ -167,7 +167,7 @@ Every supported component token must be listed in `../../docs/token-api.md`. No 
 
 ## Verification
 
-Completed against the installed `@m3e/web` `2.6.3` artifact before the remaining M0 ownership migration:
+Completed against the installed `@m3e/web` `2.6.3` artifact, including the M0 token-ownership migration:
 
 - package-derived type-check;
 - component-contract tests for label, normalization, host geometry, and active-size mapping;
@@ -181,15 +181,14 @@ Completed against the installed `@m3e/web` `2.6.3` artifact before the remaining
 
 Pending:
 
-- M0 physical token-ownership migration and public catalogue population;
-- focused verification and final `pnpm verify` on the head produced by that migration;
+- focused verification and final `pnpm verify` on the head produced by the token-ownership migration;
 - operator Loading indicator visual and motion acceptance.
 
 ## Completion gate
 
 `MDLoadingIndicator` remains `migrating` and cannot be accepted until:
 
-- M0 establishes canonical foundation/theme and family token owners, removes the legacy mixed-owner file, and populates the public token catalogue;
+- final `pnpm verify` passes on the head that established canonical foundation/theme and family token owners, removed the legacy mixed-owner file, and populated the public token catalogue;
 - `M3E-001` and `M3E-002` remain accurately recorded for the consumed version and their workarounds remain owner-local;
 - focused tests and affected baselines stay correct after M0;
 - final verification passes on the resulting head;

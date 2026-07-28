@@ -20,7 +20,7 @@ The interaction-feedback correction is implemented and proven against the instal
 - real-browser visual proof covers pointer hover, keyboard focus, pointer press, and Space-key press;
 - the provisional `M3E-003` record was removed as a pre-merge misclassification and its ID retired.
 
-The percentage values currently remain in the legacy mixed-owner migration source `src/shared/lib/md/tokens.css`. They must move unchanged to the canonical Material foundation owner during M0. Button remains `migrating` because token ownership, final verification of the resulting head, and operator visual/motion acceptance are still open.
+The percentage values now live unchanged in the canonical Material foundation owner `src/shared/ui/material/foundation/tokens.css`. Button remains `migrating` because final verification of the resulting head and operator visual/motion acceptance are still open.
 
 See `../loading-indicator/README.md` for the dependency contract. `MDLoadingIndicator` owns confirmed renderer defects [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented) and [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size).
 
@@ -125,7 +125,7 @@ MDButton loading state
 
 ## Verification
 
-Completed on the current implementation before the remaining M0 ownership migration:
+Completed on the current implementation, including the M0 token-ownership migration:
 
 - public defaults and exact package-derived renderer mappings;
 - text toggle and selected/unselected content routing;
@@ -145,16 +145,14 @@ Host `:active` and event receipt remain useful activation evidence, but they are
 
 Pending:
 
-- physical token-ownership migration from `src/shared/lib/md/tokens.css` to canonical Material foundation/theme and family owners;
-- population of `../../docs/token-api.md` from the retained supported runtime surface;
-- final `pnpm verify` on the head produced by that migration;
+- final `pnpm verify` on the head produced by the token-ownership migration;
 - operator Button and dependency visual/motion acceptance, including the new interaction-feedback baselines.
 
 ## Completion gate
 
 M1 remains `migrating` and cannot be accepted until:
 
-- M0 establishes canonical token owners, removes the legacy mixed-owner file, and populates the public catalogue;
+- final `pnpm verify` passes on the head that established canonical token owners, removed the legacy mixed-owner file, and populated the public catalogue;
 - the percentage state-opacity representation is preserved under the new foundation owner;
 - `MDLoadingIndicator` remains the canonical dependency adapter and its defect records stay current;
 - Button has no raw dependency renderer access, dependency-private token use, local ripple, or local state-opacity conversion;

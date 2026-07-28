@@ -47,21 +47,17 @@ Installed lockfile-resolved artifacts and observable browser behavior define con
 
 ## Token ownership migration
 
-The current mixed-owner file:
+The former mixed-owner file `src/shared/lib/md/tokens.css` no longer exists. PR #162 completed the migration:
 
-```text
-src/shared/lib/md/tokens.css
-```
+1. retained Material reference/system declarations moved to `material/foundation`;
+2. no selected component token existed to move to a family (Button and Loading indicator require none);
+3. `--app-*` was removed from Material rather than relocated, since no non-Material consumer required it;
+4. private bridges were co-located with their actual owner;
+5. the global import was updated;
+6. `token-api.md` was populated;
+7. the legacy file was removed without a compatibility alias or duplicate owner.
 
-is temporary. PR #162 must:
-
-1. move retained Material reference/system declarations to `material/foundation`;
-2. move selected component tokens to their families;
-3. move `--app-*` outside Material;
-4. co-locate private bridges with their actual owner;
-5. update the global import;
-6. populate `token-api.md`;
-7. remove the legacy file without a compatibility alias or duplicate owner.
+Final `pnpm verify` and operator visual/motion acceptance remain open before M0 closes; see `roadmap.md`.
 
 ## Workflow
 

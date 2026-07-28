@@ -147,7 +147,7 @@ Rules:
 - CSS value representation must be accepted by every selected current consumer grammar;
 - rendered browser proof is required when grammar or mapping changes visible behavior.
 
-`src/shared/lib/md/tokens.css` is a legacy mixed-owner file. A migration that touches it must inventory and split retained declarations, move `--app-*` outside Material, update the global import, populate `token-api.md`, remove the legacy file, and leave no duplicate declaration owner.
+`src/shared/lib/md/tokens.css` no longer exists; its retained declarations were migrated to the canonical owners above and `token-api.md` was populated. Any future migration that would otherwise mix Material and non-Material declarations in one file must instead inventory and split retained declarations by owner, move `--app-*` outside Material, update the global import, populate `token-api.md`, and leave no duplicate declaration owner.
 
 Do not create a TypeScript token registry, token DSL, global component-token file, or public aliases for all m3e variables.
 

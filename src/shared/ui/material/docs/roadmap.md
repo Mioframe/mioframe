@@ -4,17 +4,17 @@ This file owns only the current sequence, milestone state, blockers, and next ac
 
 ## Current state
 
-Last updated: 2026-07-27
+Last updated: 2026-07-28
 
 Current milestone: `M0/M1 — token ownership and MDButton pilot correction`
 
-Status: `correction`
+Status: `verification`
 
 Owner: current architecture-reset branch
 
 Implementation ownership: `migrating`
 
-### Completed correction work
+### Completed work
 
 - `MDButton` and `MDLoadingIndicator` implement the selected demand-scoped Material contracts through private installed `@m3e/web` `2.6.3` renderers.
 - Button composes the canonical Loading indicator adapter and does not own dependency renderer details.
@@ -22,45 +22,27 @@ Implementation ownership: `migrating`
 - Real-browser visual proof covers pointer hover, keyboard focus, pointer-press ripple, and Space-key ripple without private renderer DOM access.
 - The provisional `M3E-003` record was removed as a pre-merge misclassification and its ID retired.
 - `M3E-001` and `M3E-002` were revalidated against the installed `2.6.3` artifact and remain active dependency-owned workarounds.
+- The physical token-ownership migration is implemented: every retained declaration from the legacy mixed-owner file was classified and moved to `src/shared/ui/material/foundation/tokens.css` (renderer-independent reference/system foundations) or `foundation/theme.css` (reference palette and light/dark system color roles), the global import chain was updated, and `src/shared/lib/md/tokens.css` was deleted with no compatibility alias.
+- `--app-debug-unknown-color` was removed (no consumer outside the legacy file); the deprecated, unused `--md-sys-color-surface-tint-color` alias was removed; the global `--md-comp-progress-indicator-active-indicator-color` declaration was removed, preserving `MDCircularProgressIndicator`'s existing local `--md-sys-color-primary` fallback unchanged.
+- `src/shared/ui/material/docs/token-api.md` is populated with every retained supported public token.
 
-### Current blocker
+### Remaining before M0 closes
 
-The physical token-ownership migration is not implemented.
-
-Material reference, system, theme, private, application, and component declarations remain mixed in:
-
-```text
-src/shared/lib/md/tokens.css
-```
-
-This file is a migration source only and contradicts the accepted final ownership model. `src/shared/ui/material/docs/token-api.md` remains `migration-required` and is not yet populated from the retained supported runtime surface.
-
-### Next action
-
-Complete M0 without intentionally changing presentation:
-
-1. inventory every declaration and import in `src/shared/lib/md/tokens.css`;
-2. create canonical Material foundation and theme owners;
-3. move selected component tokens and private renderer mappings to their owning families;
-4. move `--app-*` outside Material;
-5. preserve the validated state-opacity values `8%`/`10%`/`10%`/`16%`;
-6. update the single global import;
-7. populate `token-api.md` with every retained supported public token;
-8. remove the legacy file without a compatibility alias or duplicate owner;
-9. run focused verification and final `pnpm verify` on the resulting head;
-10. obtain operator visual/motion acceptance and perform the final full-PR architecture review.
+- final `pnpm verify` on the resulting head;
+- operator visual/motion acceptance, including the interaction-feedback baselines;
+- final full-PR architecture review.
 
 ## Milestones
 
 | ID  | Milestone                                          | Status         | Depends on | Exit gate                                                                                                                                                   |
 | --- | -------------------------------------------------- | -------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset and token foundation | `correction`   | none       | canonical foundation/theme and family token owners; complete public token catalogue; legacy mixed-owner token file removed; final verification              |
+| M0  | m3e-backed architecture reset and token foundation | `verification` | none       | canonical foundation/theme and family token owners; complete public token catalogue; legacy mixed-owner token file removed; final verification              |
 | M1a | `MDLoadingIndicator` dependency adapter            | `verification` | M0         | accepted matrix and public API; package-derived typing; accessibility and geometry proof; `M3E-001`/`M3E-002` current for consumed m3e; operator review     |
 | M1  | `MDButton` adapter pilot                           | `verification` | M1a        | accepted matrix and API; canonical Loading indicator composition; visible interaction proof; migrated consumers; final verification and operator acceptance |
 | M2  | `MDSwitch` stateful adapter pilot                  | `planned`      | M1         | source-backed matrix; controlled state and event order; renderer-gap ownership; verification and operator acceptance                                        |
 | M3  | sequential component migration                     | `planned`      | M2         | one official Material component at a time; dependencies first; demand-driven API and tokens; explicit renderer mapping and gap ownership                    |
 
-The overall roadmap remains `correction` while M0 is open, even though M1a and M1 implementation evidence is ready for verification. A dependent milestone cannot complete before its architectural dependency.
+The overall roadmap moves to `verification` now that M0's physical token-ownership migration is implemented and its focused contract tests pass. Final `pnpm verify` and operator visual/motion acceptance remain open for M0, M1a, and M1 alike; none of the three is `complete`, and no component is `migrated`.
 
 ## M0 — token foundation correction
 
@@ -81,16 +63,16 @@ material/docs/token-api.md
   → complete supported consumer catalogue
 ```
 
-Required correction:
+Implemented:
 
-- classify every retained legacy declaration by semantic owner;
-- move only intentionally supported public declarations;
-- remove invalid, obsolete, duplicate, unused, or incorrectly owned declarations;
-- keep `--app-*` outside Material;
-- co-locate retained `--md-private-*` bridges with their actual owner;
-- preserve behavior during the ownership pass;
-- leave one runtime declaration owner for each token;
-- do not copy the complete Material component-token catalogue or m3e defaults.
+- classified every retained legacy declaration by semantic owner;
+- moved only intentionally supported public declarations;
+- removed invalid, deprecated, unused, or incorrectly owned declarations (`--app-debug-unknown-color`, `--md-sys-color-surface-tint-color`, `--md-comp-progress-indicator-active-indicator-color`);
+- kept `--app-*` outside Material (none remains in foundation);
+- co-located the retained `--md-private-*` bridges with their actual owner in `foundation/tokens.css`;
+- preserved runtime behavior during the ownership pass, including the state-opacity percentage grammar;
+- left one runtime declaration owner for each public token, with the single sanctioned exception of the dark-mode elevation-level1/level2 override (documented in `token-api.md`);
+- did not copy the complete Material component-token catalogue or m3e defaults.
 
 ## M1a — MDLoadingIndicator prerequisite
 
@@ -109,8 +91,7 @@ Completed implementation and proof:
 
 Remaining:
 
-- M0 completion;
-- verification on the resulting head;
+- final `pnpm verify` on the resulting head;
 - operator visual/motion acceptance.
 
 Contained presentation remains deferred.
@@ -139,8 +120,7 @@ Completed correction evidence:
 
 Remaining:
 
-- M0 completion;
-- verification on the resulting head;
+- final `pnpm verify` on the resulting head;
 - operator visual/motion acceptance.
 
 ## Later milestones

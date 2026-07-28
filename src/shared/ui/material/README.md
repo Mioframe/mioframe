@@ -119,17 +119,17 @@ Every m3e version update revalidates affected non-resolved `M3E-*` records again
 
 ## Migration map
 
-| Area                                    | Current state                                     |
-| --------------------------------------- | ------------------------------------------------- |
-| `MDButton`                              | m3e-backed pilot in correction                    |
-| `MDLoadingIndicator`                    | canonical dependency adapter in correction        |
-| Other public `MD*` components           | legacy-owned until focused migration              |
-| Shared m3e integration                  | established                                       |
-| Confirmed m3e defect registry           | established                                       |
-| Public component entry point            | established                                       |
-| Material foundation/theme runtime owner | migration required                                |
-| Public token catalogue                  | established, population required during migration |
+| Area                                    | Current state                                                 |
+| --------------------------------------- | ------------------------------------------------------------- |
+| `MDButton`                              | m3e-backed pilot in correction                                |
+| `MDLoadingIndicator`                    | canonical dependency adapter in correction                    |
+| Other public `MD*` components           | legacy-owned until focused migration                          |
+| Shared m3e integration                  | established                                                   |
+| Confirmed m3e defect registry           | established                                                   |
+| Public component entry point            | established                                                   |
+| Material foundation/theme runtime owner | established (`foundation/tokens.css`, `foundation/theme.css`) |
+| Public token catalogue                  | established and populated                                     |
 
 ## Current work
 
-PR #162 owns the architecture reset, token-ownership migration, and correction of the `MDButton` pilot. M0/M1 are not complete until canonical token owners replace `src/shared/lib/md/tokens.css`, `token-api.md` matches the retained runtime surface, interaction feedback is proven, final verification passes, and operator review is accepted.
+PR #162 owns the architecture reset, token-ownership migration, and correction of the `MDButton` pilot. The canonical token owners now replace `src/shared/lib/md/tokens.css` (removed) and `token-api.md` matches the retained runtime surface. M0/M1 remain `verification`, not complete, until final `pnpm verify` passes on the resulting head and operator visual/motion acceptance is recorded.

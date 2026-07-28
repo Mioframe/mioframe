@@ -163,7 +163,7 @@ Using m3e removes the need to reproduce every Material component token and rende
 
 Do not create a TypeScript token registry, generic token DSL, global component-token owner, or public aliases for every m3e variable.
 
-`src/shared/lib/md/tokens.css` is a temporary mixed-owner legacy source. The architecture-reset PR must split retained declarations into Material foundation, component families, and non-Material application ownership, update the global import, populate `token-api.md`, and remove the legacy file. It must not remain a compatibility alias or second source of truth.
+`src/shared/lib/md/tokens.css` no longer exists. The architecture-reset PR split its retained declarations into Material foundation (`foundation/tokens.css`), theme (`foundation/theme.css`), and non-Material application ownership, updated the global import, and populated `token-api.md`. No compatibility alias or second source of truth remains.
 
 ## Non-Material requirements
 
@@ -268,4 +268,4 @@ A component migration is complete when:
 - type-check, focused tests, visual verification, and repository verification pass;
 - operator accepts the final visual and motion behavior.
 
-The architecture-reset milestone is not complete while the legacy mixed-owner token file remains the runtime source of truth.
+The architecture-reset milestone's physical token-ownership migration is implemented; final `pnpm verify` and operator visual/motion acceptance remain open before M0 is complete.

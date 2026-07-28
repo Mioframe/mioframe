@@ -155,22 +155,20 @@ After the ownership migration, absence from `token-api.md` means the token is no
 
 Do not create a TypeScript token enum, token DSL, or duplicate runtime registry. CSS custom properties are the executable API.
 
-## Legacy migration
+## Completed token-ownership migration
 
-`src/shared/lib/md/tokens.css` is a legacy mixed-owner file, not the accepted final source of truth.
+`src/shared/lib/md/tokens.css` no longer exists. Its retained declarations were classified and moved:
 
-During the migration:
+1. every retained declaration and current import was inventoried;
+2. Material reference/system foundations moved to `material/foundation/tokens.css`;
+3. the reference palette and light/dark system color roles moved to `material/foundation/theme.css`;
+4. `--app-*` tokens (`--app-debug-unknown-color`, unused) were removed rather than relocated, since no non-Material consumer required them;
+5. each retained `--md-private-*` bridge was co-located with its actual owner in `foundation/tokens.css`;
+6. the single global import path was updated to load the canonical foundation entry before legacy shared MD styles;
+7. `token-api.md` was populated for every retained public token;
+8. `src/shared/lib/md/tokens.css` was removed with no compatibility alias or second declaration owner.
 
-1. inventory every retained declaration and current import;
-2. move Material reference/system foundations to `material/foundation`;
-3. move selected component tokens to their owning families;
-4. move `--app-*` tokens to an application/shared owner outside Material;
-5. co-locate each retained `--md-private-*` bridge with its actual owner;
-6. update the single global import path;
-7. populate `token-api.md` for every retained public token;
-8. remove `src/shared/lib/md/tokens.css` after all consumers have migrated.
-
-Do not add new public tokens to the legacy file. Do not retain it as a compatibility alias or second declaration owner after migration.
+Do not add new public tokens to a legacy file; none remains. Do not reintroduce a second declaration owner for a public token outside the single sanctioned dark-mode elevation override recorded in `token-api.md`.
 
 ## Verification
 
