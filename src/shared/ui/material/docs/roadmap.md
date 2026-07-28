@@ -8,7 +8,7 @@ Last updated: 2026-07-28
 
 Current milestone: `M0/M1 — m3e architecture reset, token ownership, and MDButton pilot`
 
-Status: `verification`
+Status: `correction`
 
 Owner: PR #162 / `refactor/material-docs-ownership`
 
@@ -25,25 +25,30 @@ Implementation ownership: `migrating`
 - The provisional `M3E-003` was withdrawn as a pre-merge misclassification and its ID retired.
 - Retained Material reference/system declarations moved to canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was deleted without an alias.
 - `token-api.md` is populated for the retained supported public surface.
-- Current consumers use the canonical `MDButton` export.
-- The intentional dependency refresh, including `@m3e/web`, is part of this PR and remains in scope.
-- The CI autofix package entry now uses the fixed-point `scripts/ciAutofix.mjs` implementation and is protected by a focused integration test.
+- Current direct Button consumers use the canonical `MDButton` export.
+- The intentional dependency refresh, including the compatible `@m3e/web` range and lockfile-resolved renderer version, is part of this PR and remains in scope.
+- The CI autofix package entry uses the fixed-point `scripts/ciAutofix.mjs` implementation and is protected by a focused integration test.
+- The canonical family matrix is a six-column contract with explicit renderer status, demand evidence, ownership, decision, and verification.
 - Operator visual/motion review is performed manually during development. No unresolved operator-reported visual or motion issue is currently recorded; a reported issue reopens the affected milestone.
 
-### Remaining verification
+### Remaining correction work
 
-1. Pass current-head branch/task-scope repository verification.
-2. Complete final full-PR architecture and merge-readiness review.
+1. Add an ESLint boundary guard that rejects `@m3e/web` imports and raw `<m3e-*>` template elements outside `src/shared/ui/material/**`, while preserving the shared compiler custom-element predicate.
+2. Narrow `MDDialog` and `DialogForm` loading contracts from `boolean | number` to `boolean`, remove numeric coercion, inventory consumers, and migrate any numeric use to a separately owned progress indicator.
+3. Run focused checks and the exact final branch/task-scope repository verification on the resulting head.
+4. Complete final full-PR architecture and merge-readiness review.
+
+No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, CSS regex scanner, or new reduced-motion contract is required by this milestone.
 
 ## Milestones
 
-| ID  | Milestone                                          | Status         | Depends on | Exit gate                                                                                                                                         |
-| --- | -------------------------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset and token foundation | `verification` | none       | canonical token owners/catalogue; tooling integration; final branch-scope verification                                                            |
-| M1a | `MDLoadingIndicator` dependency adapter            | `verification` | M0         | accepted contract; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
-| M1  | `MDButton` adapter pilot                           | `verification` | M1a        | package-derived renderer glue; canonical dependency composition; visible interaction proof; migrated consumers; final verification                |
-| M2  | `MDSwitch` stateful adapter pilot                  | `planned`      | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                          |
-| M3  | sequential component migration                     | `planned`      | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                            |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset and token foundation | `correction` | none | canonical token owners/catalogue; automated import/template renderer boundary; final branch-scope verification |
+| M1a | `MDLoadingIndicator` dependency adapter | `verification` | M0 | accepted matrix; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
+| M1 | `MDButton` adapter pilot | `correction` | M1a | canonical Button contract; boolean loading through migrated consumers; visible interaction proof; final verification |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; controlled state/event order; renderer-gap ownership; verification |
+| M3 | sequential component migration | `planned` | M2 | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership |
 
 ## Accepted foundation structure
 
@@ -85,10 +90,10 @@ Selected implementation:
 - five color configurations, five sizes, and round/square shapes;
 - leading and selected content roles;
 - native button/submit/reset behavior and normal event bubbling;
-- disabled and loading combinations;
+- disabled and boolean loading combinations;
 - canonical Loading indicator composition with `24/24/24/32/40` overall-size handoff;
 - renderer-owned state layer, ripple, focus, and pressed presentation;
-- current consumer migration.
+- consumer migration without a numeric loading compatibility surface.
 
 ## Next component process
 
