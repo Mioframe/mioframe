@@ -69,6 +69,8 @@ Forbidden by default:
 
 If public states may coexist, define and verify precedence and restoration.
 
+Visual loading/busy presentation and activation blocking are independent public contracts. A loading state must not imply disabled state, click suppression, or event interception unless the selected family matrix explicitly assigns that responsibility. Otherwise activation blocking remains with `disabled` and the consumer that owns the operation.
+
 ## Dependency contract
 
 An official Material dependency remains independently owned even when used only inside a parent.
@@ -110,11 +112,11 @@ Owns Material-to-Vue naming, composition state and placement, controlled parent 
 
 ### Canonical owning adapter
 
-Owns renderer import and typed mapping, public semantics/accessibility, family tokens, host-level geometry normalization, wrapper-owned corrections, defects, tests, stories, visual proof, and root export.
+Owns renderer import and typed mapping, public semantics/accessibility, family tokens, static host-level geometry normalization, wrapper-owned corrections, defects, tests, stories, visual proof, and root export.
 
 ### m3e
 
-Owns private DOM, internal rendering/layout, private defaults, state layer, ripple, focus, elevation, motion, and private accessibility implementation.
+Owns private DOM, internal rendering/layout, private defaults, transient interaction geometry, state layer, ripple, focus, elevation, motion, and private accessibility implementation.
 
 ## Exact-version renderer workaround
 
@@ -130,6 +132,8 @@ Documented renderer APIs remain preferred. A `temporary-renderer-workaround` is 
 8. `m3e-defects.md` records evidence, lifecycle status, mitigation, correct upstream result, and history;
 9. focused proof covers the required observable result;
 10. every consumed m3e update revalidates or removes it.
+
+Host pseudo-class overrides of renderer-owned transient interaction state, timing, or geometry do not pass this gate. Do not use `:active`, `:not(:active)`, `:hover`, `:focus-visible`, or renderer CSS-input switching around those pseudo-classes to compensate for renderer behavior. Classify the behavior as `divergent` and route it to `m3e-fix` or `blocked` instead of creating a parallel wrapper state path.
 
 A workaround satisfying this gate is tracked technical debt, not an automatic blocker.
 
