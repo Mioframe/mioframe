@@ -1,140 +1,108 @@
 # Mioframe Material migration roadmap
 
-This file owns only the current sequence, milestone state, blockers, and next action. Durable rules live in `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, and `m3e-defects.md`.
+This file is the only owner of the current sequence, milestone state, blockers, and next action. Durable rules live in `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, and `m3e-defects.md`.
 
 ## Current state
 
 Last updated: 2026-07-28
 
-Current milestone: `M0/M1 — token ownership and MDButton pilot correction`
+Current milestone: `M0/M1 — m3e architecture reset, token ownership, and MDButton pilot`
 
-Status: `verification`
+Status: `correction`
 
-Owner: current architecture-reset branch
+Owner: PR #162 / `refactor/material-docs-ownership`
 
 Implementation ownership: `migrating`
 
-### Completed work
+### Implemented and verified on head `3d09f420`
 
-- `MDButton` and `MDLoadingIndicator` implement the selected demand-scoped Material contracts through private installed `@m3e/web` `2.6.3` renderers.
+- `MDButton` and `MDLoadingIndicator` implement the selected demand-scoped contracts through private installed `@m3e/web` `2.6.3` renderers.
 - Button composes the canonical Loading indicator adapter and does not own dependency renderer details.
-- The four shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, preserving their Material opacity magnitude while remaining valid for every selected current CSS consumer grammar.
-- Real-browser visual proof covers pointer hover, keyboard focus, pointer-press ripple, and Space-key ripple without private renderer DOM access.
-- The provisional `M3E-003` record was removed as a pre-merge misclassification and its ID retired.
-- `M3E-001` and `M3E-002` were revalidated against the installed `2.6.3` artifact and remain active dependency-owned workarounds.
-- The physical token-ownership migration is implemented: every retained declaration from the legacy mixed-owner file was classified and moved to `src/shared/ui/material/foundation/tokens.css` (renderer-independent reference/system foundations) or `foundation/theme.css` (reference palette and light/dark system color roles), the global import chain was updated, and `src/shared/lib/md/tokens.css` was deleted with no compatibility alias.
-- `--app-debug-unknown-color` was removed (no consumer outside the legacy file); the deprecated, unused `--md-sys-color-surface-tint-color` alias was removed; the global `--md-comp-progress-indicator-active-indicator-color` declaration was removed, preserving `MDCircularProgressIndicator`'s existing local `--md-sys-color-primary` fallback unchanged.
-- `src/shared/ui/material/docs/token-api.md` is populated with every retained supported public token.
+- The four shared state-opacity roles use `8%`/`10%`/`10%`/`16%` and work across selected current CSS grammars.
+- Browser and visual proof covers native form behavior, controlled toggle state, accessibility, expanded target, pointer hover, keyboard focus, pointer ripple, Space ripple, Loading indicator geometry, and independent presentation.
+- `M3E-001` and `M3E-002` remain controlled dependency-owned workarounds revalidated against installed `2.6.3`.
+- The provisional `M3E-003` was withdrawn as a pre-merge misclassification and its ID retired.
+- Retained Material reference/system declarations moved to canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was deleted without an alias.
+- `token-api.md` is populated for the retained supported public surface.
+- Current consumers use the canonical `MDButton` export.
+- The intentional dependency refresh, including `@m3e/web`, is part of this PR and remains in scope.
+- CI run 2860 passed format, oxlint, eslint, type-check, unit, E2E, Storybook behavior, visual, mutation, version, and preview build on head `3d09f420`.
+- Operator visual/motion review is performed manually during development. No unresolved operator-reported visual or motion issue is currently recorded; a reported issue reopens the affected milestone.
 
-### Remaining before M0 closes
+### Remaining correction work
 
-- final `pnpm verify` on the resulting head;
-- operator visual/motion acceptance, including the interaction-feedback baselines;
-- final full-PR architecture review.
+1. Make Button Vue custom-element glue derive from `M3eButtonElement`, not `HTMLElement`.
+2. Connect the new fixed-point `scripts/ciAutofix.mjs` implementation to the `ci:autofix` package script and verify the workflow integration.
+3. Remove no-op dark elevation overrides and the matching duplicate-owner test exception.
+4. Remove stale `2.6.2` wording from Loading indicator production comments; reference current defect IDs/consumed range instead.
+5. Run focused checks and the exact final branch-scope verification required by root policy on the resulting head.
+6. Perform the final full-PR architecture and merge-readiness review.
 
 ## Milestones
 
-| ID  | Milestone                                          | Status         | Depends on | Exit gate                                                                                                                                                   |
-| --- | -------------------------------------------------- | -------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset and token foundation | `verification` | none       | canonical foundation/theme and family token owners; complete public token catalogue; legacy mixed-owner token file removed; final verification              |
-| M1a | `MDLoadingIndicator` dependency adapter            | `verification` | M0         | accepted matrix and public API; package-derived typing; accessibility and geometry proof; `M3E-001`/`M3E-002` current for consumed m3e; operator review     |
-| M1  | `MDButton` adapter pilot                           | `verification` | M1a        | accepted matrix and API; canonical Loading indicator composition; visible interaction proof; migrated consumers; final verification and operator acceptance |
-| M2  | `MDSwitch` stateful adapter pilot                  | `planned`      | M1         | source-backed matrix; controlled state and event order; renderer-gap ownership; verification and operator acceptance                                        |
-| M3  | sequential component migration                     | `planned`      | M2         | one official Material component at a time; dependencies first; demand-driven API and tokens; explicit renderer mapping and gap ownership                    |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset and token foundation | `correction` | none | canonical owners/catalogue; no duplicate/no-op owner exceptions; tooling integration complete; final branch-scope verification |
+| M1a | `MDLoadingIndicator` dependency adapter | `correction` | M0 | accepted contract; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
+| M1 | `MDButton` adapter pilot | `correction` | M1a | package-derived renderer glue; canonical dependency composition; visible interaction proof; migrated consumers; final verification |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; controlled state/event order; renderer-gap ownership; verification |
+| M3 | sequential component migration | `planned` | M2 | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership |
 
-The overall roadmap moves to `verification` now that M0's physical token-ownership migration is implemented and its focused contract tests pass. Final `pnpm verify` and operator visual/motion acceptance remain open for M0, M1a, and M1 alike; none of the three is `complete`, and no component is `migrated`.
-
-## M0 — token foundation correction
-
-Accepted architecture:
+## Accepted foundation structure
 
 ```text
 material/foundation/tokens.css
   → supported renderer-independent reference/system foundations
 
 material/foundation/theme.css
-  → default palette and light/dark system color roles
+  → default palette and light/dark system-color assignments
 
 material/components/<family>/tokens.css
   → selected supported official component tokens
-  → private family-local m3e mappings
+  → private family-local renderer mappings
 
 material/docs/token-api.md
   → complete supported consumer catalogue
 ```
 
-Implemented:
+One public token has one semantic declaration owner. Theme may override theme-owned roles inside `theme.css`; no-op duplicates of foundation-owned roles are not accepted.
 
-- classified every retained legacy declaration by semantic owner;
-- moved only intentionally supported public declarations;
-- removed invalid, deprecated, unused, or incorrectly owned declarations (`--app-debug-unknown-color`, `--md-sys-color-surface-tint-color`, `--md-comp-progress-indicator-active-indicator-color`);
-- kept `--app-*` outside Material (none remains in foundation);
-- co-located the retained `--md-private-*` bridges with their actual owner in `foundation/tokens.css`;
-- preserved runtime behavior during the ownership pass, including the state-opacity percentage grammar;
-- left one runtime declaration owner for each public token, with the single sanctioned exception of the dark-mode elevation-level1/level2 override (documented in `token-api.md`);
-- did not copy the complete Material component-token catalogue or m3e defaults.
+## M1a — Loading indicator
 
-## M1a — MDLoadingIndicator prerequisite
+Selected implementation:
 
-Completed implementation and proof:
-
-- canonical root-exported component;
-- selected `label` and numeric overall `size` API;
+- required `label` and optional numeric overall `size` API;
+- independent root export and package-derived renderer source type;
+- browser role/name and host-geometry proof;
+- independent size and inherited-color visual baselines;
 - Button composition through the public Vue boundary;
-- package-derived renderer typing;
-- real-browser accessibility and host-geometry proof;
-- independent visual baselines;
-- accepted overall/active-size mapping;
-- owner-local controlled workarounds for `M3E-001` and `M3E-002`;
-- revalidation of both defects against installed m3e `2.6.3`;
-- installed-renderer motion reassessment.
-
-Remaining:
-
-- final `pnpm verify` on the resulting head;
-- operator visual/motion acceptance.
+- owner-local `M3E-001`/`M3E-002` workarounds.
 
 Contained presentation remains deferred.
 
-## M1 — MDButton pilot
+## M1 — Button
 
-Accepted implementation:
+Selected implementation:
 
-1. `MDButton` imports and renders `MDLoadingIndicator`, not raw Loading indicator m3e.
-2. Loading takes precedence over normal and selected-icon routes and restores the correct route.
-3. Native click bubbling is preserved.
-4. Text toggle is supported.
-5. Button hands off accessible purpose and selected overall Loading indicator size.
-6. Button uses the accepted overall-size mapping `24/24/24/32/40`.
-7. Button references dependency defects only through the Loading indicator contract.
-8. Shared Material foundation owns state-opacity representation; Button owns neither a local conversion nor a ripple.
+- default and controlled toggle actions;
+- five color configurations, five sizes, and round/square shapes;
+- leading and selected content roles;
+- native button/submit/reset behavior and normal event bubbling;
+- disabled and loading combinations;
+- canonical Loading indicator composition with `24/24/24/32/40` overall-size handoff;
+- renderer-owned state layer, ripple, focus, and pressed presentation;
+- current consumer migration.
 
-Completed correction evidence:
-
-- state-opacity values normalized to the compatible percentage grammar;
-- selected current consumers audited;
-- pointer hover, keyboard focus, pointer ripple, and Space ripple proven through public-surface screenshots;
-- no private renderer DOM inspection;
-- current consumers migrated;
-- focused Button and dependency evidence updated.
-
-Remaining:
-
-- final `pnpm verify` on the resulting head;
-- operator visual/motion acceptance.
-
-## Later milestones
+## Next component process
 
 For each later component:
 
-1. inspect official overview, specs, guidelines, accessibility, and token sources;
-2. identify and complete official dependency adapters first;
-3. select only current component and token demand;
-4. create the Material–m3e–Vue matrix;
-5. add supported family tokens to their canonical owner and `token-api.md`;
-6. keep unsupported official tokens `deferred`;
-7. classify renderer absence as `missing` and confirmed incorrect behavior as `divergent` with a stable `M3E-*` record;
-8. keep m3e private to the canonical adapter;
-9. migrate consumers and verify.
+1. inspect official overview/specs/guidelines/accessibility and related components;
+2. select current demand and complete official dependencies first;
+3. create the accepted Material–m3e–Vue matrix;
+4. implement the minimum canonical adapter and selected token surface;
+5. keep m3e private and route gaps to the correct owner;
+6. migrate consumers and remove replaced target ownership;
+7. verify through the faithful proof owners and exact branch/task scope.
 
-Only after M1 and M2 may repeated concrete adapter code be considered for extraction.
+Consider shared adapter extraction only after M1 and M2 demonstrate repeated concrete code, not merely repeated documentation structure.
