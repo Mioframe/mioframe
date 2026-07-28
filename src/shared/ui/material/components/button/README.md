@@ -101,7 +101,7 @@ MDButton loading state
       → private @m3e/web/loading-indicator mapping
 ```
 
-Button does not import raw dependency m3e, set dependency-private variables, own Loading indicator defects/geometry/motion, implement a ripple, or expose renderer token vocabulary.
+Button does not import the raw Loading Indicator renderer, set dependency-private variables, own Loading indicator defects/geometry/motion, implement a ripple, or expose renderer token vocabulary.
 
 ## Implemented proof
 
