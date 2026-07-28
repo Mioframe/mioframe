@@ -8,16 +8,17 @@ Last updated: 2026-07-28
 
 Current milestone: `M0/M1 — m3e architecture reset, token ownership, and MDButton pilot`
 
-Status: `correction`
+Status: `verification`
 
 Owner: PR #162 / `refactor/material-docs-ownership`
 
 Implementation ownership: `migrating`
 
-### Implemented and verified on head `3d09f420`
+### Implemented
 
 - `MDButton` and `MDLoadingIndicator` implement the selected demand-scoped contracts through private installed `@m3e/web` `2.6.3` renderers.
 - Button composes the canonical Loading indicator adapter and does not own dependency renderer details.
+- Button Vue custom-element glue derives from package-exported `M3eButtonElement`.
 - The four shared state-opacity roles use `8%`/`10%`/`10%`/`16%` and work across selected current CSS grammars.
 - Browser and visual proof covers native form behavior, controlled toggle state, accessibility, expanded target, pointer hover, keyboard focus, pointer ripple, Space ripple, Loading indicator geometry, and independent presentation.
 - `M3E-001` and `M3E-002` remain controlled dependency-owned workarounds revalidated against installed `2.6.3`.
@@ -26,26 +27,23 @@ Implementation ownership: `migrating`
 - `token-api.md` is populated for the retained supported public surface.
 - Current consumers use the canonical `MDButton` export.
 - The intentional dependency refresh, including `@m3e/web`, is part of this PR and remains in scope.
-- CI run 2860 passed format, oxlint, eslint, type-check, unit, E2E, Storybook behavior, visual, mutation, version, and preview build on head `3d09f420`.
+- The CI autofix package entry now uses the fixed-point `scripts/ciAutofix.mjs` implementation and is protected by a focused integration test.
 - Operator visual/motion review is performed manually during development. No unresolved operator-reported visual or motion issue is currently recorded; a reported issue reopens the affected milestone.
 
-### Remaining correction work
+### Remaining verification
 
-1. Make Button Vue custom-element glue derive from `M3eButtonElement`, not `HTMLElement`.
-2. Connect the fixed-point `scripts/ciAutofix.mjs` implementation to the `ci:autofix` package script and verify the workflow entry point.
-3. Remove stale `2.6.2` wording from Loading indicator production comments; reference current defect IDs or the consumed affected range instead.
-4. Run focused checks and the exact final branch-scope verification required by root policy on the resulting head.
-5. Perform the final full-PR architecture and merge-readiness review.
+1. Pass current-head branch/task-scope repository verification.
+2. Complete final full-PR architecture and merge-readiness review.
 
 ## Milestones
 
-| ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                         |
-| --- | -------------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset and token foundation | `correction` | none       | canonical token owners/catalogue; tooling integration complete; final branch-scope verification                                                   |
-| M1a | `MDLoadingIndicator` dependency adapter            | `correction` | M0         | accepted contract; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
-| M1  | `MDButton` adapter pilot                           | `correction` | M1a        | package-derived renderer glue; canonical dependency composition; visible interaction proof; migrated consumers; final verification                |
-| M2  | `MDSwitch` stateful adapter pilot                  | `planned`    | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                          |
-| M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                            |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset and token foundation | `verification` | none | canonical token owners/catalogue; tooling integration; final branch-scope verification |
+| M1a | `MDLoadingIndicator` dependency adapter | `verification` | M0 | accepted contract; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
+| M1 | `MDButton` adapter pilot | `verification` | M1a | package-derived renderer glue; canonical dependency composition; visible interaction proof; migrated consumers; final verification |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; controlled state/event order; renderer-gap ownership; verification |
+| M3 | sequential component migration | `planned` | M2 | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership |
 
 ## Accepted foundation structure
 
