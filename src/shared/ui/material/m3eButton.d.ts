@@ -14,7 +14,7 @@ type M3eButtonProps = HTMLAttributes &
     onClick?: (event: MouseEvent) => void;
   };
 
-type M3eButtonVueElement = new () => HTMLElement & {
+type M3eButtonVueElement = new () => M3eButtonElement & {
   /** Template-only property surface for the private renderer integration. */
   $props: M3eButtonProps;
 };

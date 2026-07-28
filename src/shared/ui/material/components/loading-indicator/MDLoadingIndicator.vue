@@ -59,11 +59,13 @@ if (import.meta.env.DEV) {
 }
 
 /**
- * Explicit host width/height carry the public overall Material size; the exact
- * m3e 2.6.2 renderer otherwise derives the uncontained host width from the same
- * private active-size input, which would collapse the overall/active distinction.
- * The private input keeps the confirmed effective (documented-name-divergent) m3e
- * 2.6.2 CSS variable, scaled to the official active-indicator ratio.
+ * Explicit host width/height carry the public overall Material size (M3E-002:
+ * the m3e uncontained host would otherwise derive its width from the same
+ * private active-size input, collapsing the overall/active distinction). The
+ * private input keeps the confirmed effective (documented-name-divergent,
+ * M3E-001) m3e CSS variable, scaled to the official active-indicator ratio.
+ * Both defects remain confirmed in the consumed 2.6.3 artifact (affected
+ * range 2.6.2-2.6.3); see docs/m3e-defects.md.
  */
 const style = computed(() => ({
   width: `${normalizedSize.value}px`,

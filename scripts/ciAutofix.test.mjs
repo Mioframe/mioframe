@@ -1,10 +1,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { runAutofixIdempotencyCheck, snapshotWorkingTree } from './ciAutofix.mjs';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function runGit(root, args) {
   const result = spawnSync('git', args, {
@@ -50,6 +53,14 @@ describe('snapshotWorkingTree', () => {
 
     expect(tracked).not.toBe(clean);
     expect(untracked).not.toBe(tracked);
+  });
+});
+
+describe('package.json ci:autofix entry point', () => {
+  it('invokes the fixed-point implementation, not the raw verify fixer', () => {
+    const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+
+    expect(packageJson.scripts['ci:autofix']).toBe('node scripts/ciAutofix.mjs');
   });
 });
 
