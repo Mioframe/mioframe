@@ -13,14 +13,14 @@ application theme selection and overrides
 
 The physical declaration owner must match the semantic owner.
 
-| Contract                                                | Canonical runtime owner          | Public status                                      |
-| ------------------------------------------------------- | -------------------------------- | -------------------------------------------------- |
-| Material reference/system foundations                   | `foundation/tokens.css`          | public when declared and catalogued                |
-| Default palette and light/dark system-color assignments | `foundation/theme.css`           | public theme contract when declared and catalogued |
-| Selected official component tokens                      | `components/<family>/tokens.css` | public for that family                             |
-| Owner-local renderer mappings and bridges               | owning foundation/family         | private                                            |
-| Approved application tokens (`--app-*`)                 | outside `src/shared/ui/material` | application API, not Material API                  |
-| Public token catalogue                                  | `docs/token-api.md`              | consumer-facing documentation                      |
+| Contract | Canonical runtime owner | Public status |
+| --- | --- | --- |
+| Material reference/system foundations | `foundation/tokens.css` | public when declared and catalogued |
+| Default palette and light/dark system-color assignments | `foundation/theme.css` | public theme contract when declared and catalogued |
+| Selected official component tokens | `components/<family>/tokens.css` | public for that family |
+| Owner-local renderer mappings and bridges | owning foundation/family | private |
+| Approved application tokens (`--app-*`) | outside `src/shared/ui/material` | application API, not Material API |
+| Public token catalogue | `docs/token-api.md` | consumer-facing documentation |
 
 `--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace belongs in the public catalogue.
 
@@ -43,9 +43,10 @@ Existence in Material documentation or m3e does not make a token part of Miofram
 
 - reference palette values used by that theme;
 - default light system-color assignments;
-- dark system-color assignments.
+- dark system-color assignments;
+- explicitly selected theme overrides of foundation roles when the public catalogue records both the canonical base owner and the theme override.
 
-A public token has one semantic declaration owner. Theme-specific values may override a theme-owned role inside `theme.css`; do not duplicate a foundation-owned role in theme merely to reorder equivalent CSS or preserve a no-op legacy declaration.
+A public token has one canonical base owner. A theme override is allowed only inside `theme.css`, must be explicit in `token-api.md`, and must be covered by the same runtime/visual contract. This does not permit an independent second default or an undocumented duplicate declaration.
 
 Application theme selection, persistence, and product-specific tokens remain outside Material.
 
@@ -113,7 +114,7 @@ supported official Material token
 For every selected token:
 
 - preserve official family/variant/state/part/property semantics;
-- keep one canonical declaration owner;
+- keep one canonical base declaration owner;
 - prefer direct system-role consumption when m3e already uses the correct role;
 - keep component mappings inside the owning family;
 - prefer documented renderer inputs;
@@ -132,7 +133,8 @@ Semantic equality is not sufficient when consumers accept different CSS grammars
 - scope and owner;
 - official Material source;
 - renderer mapping when applicable;
-- representative verification.
+- representative verification;
+- any selected theme override of a foundation-owned role.
 
 Executable CSS remains the runtime source. Catalogue and declaration change together. Absence from `token-api.md` means the token is not a supported Mioframe public API.
 
@@ -140,19 +142,19 @@ Do not create a TypeScript token enum, token DSL, or duplicate runtime registry.
 
 ## Legacy migration invariant
 
-The former mixed-owner token file must not be recreated. Any legacy migration must inventory declarations and consumers, move retained tokens to semantic owners, remove invalid/unused/application-owned entries from Material, update the single global import, populate `token-api.md`, delete the legacy source without an alias, and leave no duplicate public declaration owner.
+The former mixed-owner token file must not be recreated. Any legacy migration must inventory declarations and consumers, move retained tokens to semantic owners, remove invalid/unused/application-owned entries from Material, update the single global import, populate `token-api.md`, delete the legacy source without an alias, and leave no undocumented duplicate public declaration owner.
 
 ## Verification
 
 Verify only the selected supported public surface:
 
 - official source and semantic path are recorded;
-- canonical declaration exists;
-- `token-api.md` matches runtime declarations;
+- canonical base declaration exists;
+- `token-api.md` matches runtime declarations and selected theme overrides;
 - CSS grammar works for every selected consumer;
 - family mappings use documented semantic inputs or a fully gated workaround;
 - representative overrides affect the intended rendered result where observable;
 - no `--m3e-*` leaks outside the Material boundary;
-- no duplicate public owner or no-op exception remains.
+- no undocumented duplicate public owner remains.
 
 Do not require one test per renderer variable, copy complete third-party catalogues, or create infrastructure solely to enumerate renderer internals.
