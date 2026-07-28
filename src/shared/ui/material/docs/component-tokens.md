@@ -13,14 +13,14 @@ application theme selection and overrides
 
 The physical declaration owner must match the semantic owner.
 
-| Contract | Canonical runtime owner | Public status |
-| --- | --- | --- |
-| Material reference/system foundations | `foundation/tokens.css` | public when declared and catalogued |
-| Default palette and light/dark system-color assignments | `foundation/theme.css` | public theme contract when declared and catalogued |
-| Selected official component tokens | `components/<family>/tokens.css` | public for that family |
-| Owner-local renderer mappings and bridges | owning foundation/family | private |
-| Approved application tokens (`--app-*`) | outside `src/shared/ui/material` | application API, not Material API |
-| Public token catalogue | `docs/token-api.md` | consumer-facing documentation |
+| Contract                                                | Canonical runtime owner          | Public status                                      |
+| ------------------------------------------------------- | -------------------------------- | -------------------------------------------------- |
+| Material reference/system foundations                   | `foundation/tokens.css`          | public when declared and catalogued                |
+| Default palette and light/dark system-color assignments | `foundation/theme.css`           | public theme contract when declared and catalogued |
+| Selected official component tokens                      | `components/<family>/tokens.css` | public for that family                             |
+| Owner-local renderer mappings and bridges               | owning foundation/family         | private                                            |
+| Approved application tokens (`--app-*`)                 | outside `src/shared/ui/material` | application API, not Material API                  |
+| Public token catalogue                                  | `docs/token-api.md`              | consumer-facing documentation                      |
 
 `--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace belongs in the public catalogue.
 
