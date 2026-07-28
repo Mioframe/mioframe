@@ -1,198 +1,89 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
 import MDButton from './MDButton.vue';
 
 const mountButton = (props: Record<string, unknown> = {}) =>
-  mount(MDButton, {
-    props: {
-      label: 'Save',
-      ...props,
-    },
-  });
+  mount(MDButton, { props: { label: 'Save', ...props } });
 
 const getElementProperty = (element: Element, property: string): unknown =>
   Reflect.get(element, property);
 
 describe('MDButton adapter', () => {
-  it('maps the stable defaults and explicit shape vocabulary to m3e-button', () => {
+  it('maps the demand-scoped defaults and retained values', () => {
     const defaultButton = mountButton().get('m3e-button');
-
     expect(getElementProperty(defaultButton.element, 'variant')).toBe('filled');
     expect(getElementProperty(defaultButton.element, 'size')).toBe('small');
     expect(getElementProperty(defaultButton.element, 'shape')).toBe('rounded');
     expect(getElementProperty(defaultButton.element, 'type')).toBe('button');
     expect(getElementProperty(defaultButton.element, 'toggle')).toBe(false);
-    expect(getElementProperty(defaultButton.element, 'selected')).toBe(false);
 
-    const squareButton = mountButton({ shape: 'square', color: 'outlined' }).get('m3e-button');
-    expect(getElementProperty(squareButton.element, 'shape')).toBe('square');
-    expect(getElementProperty(squareButton.element, 'variant')).toBe('outlined');
+    const explicitButton = mountButton({ color: 'outlined', size: 'extra-small' }).get(
+      'm3e-button',
+    );
+    expect(getElementProperty(explicitButton.element, 'variant')).toBe('outlined');
+    expect(getElementProperty(explicitButton.element, 'size')).toBe('extra-small');
   });
 
-  it('renders the accessible label and optional leading icon through public slots', () => {
+  it('renders the action label and optional leading icon', () => {
     const wrapper = mount(MDButton, {
       props: { label: 'Create' },
       slots: { icon: '<span data-icon>+</span>' },
     });
     const button = wrapper.get('m3e-button');
-
     expect(button.text()).toContain('Create');
     expect(button.get('.md-button__icon').attributes('slot')).toBe('icon');
   });
 
-  it('maps explicit disabled and native type', () => {
+  it('maps explicit disabled and submit type', () => {
     const button = mountButton({ disabled: true, nativeType: 'submit' }).get('m3e-button');
-
     expect(getElementProperty(button.element, 'disabled')).toBe(true);
     expect(getElementProperty(button.element, 'type')).toBe('submit');
   });
 
-  it('routes selected label and selected icons through documented renderer slots', () => {
+  it('uses a decorative loading indicator, marks the button busy, and restores its icon', async () => {
     const wrapper = mount(MDButton, {
-      props: { label: 'Start', selected: true, variant: 'toggle' },
-      slots: {
-        'selected-label': 'Stop',
-        'selected-icon': '<span data-selected-icon />',
-      },
-    });
-
-    expect(wrapper.get('[slot="selected"]').text()).toBe('Stop');
-    expect(wrapper.get('[slot="selected-icon"]').get('[data-selected-icon]')).toBeDefined();
-  });
-
-  it('cancels renderer toggle mutation and emits controlled selection intent', () => {
-    const wrapper = mountButton({ variant: 'toggle', selected: false });
-    const button = wrapper.get('m3e-button');
-    const beforeInput = new InputEvent('beforeinput', { bubbles: true, cancelable: true });
-
-    expect(getElementProperty(button.element, 'toggle')).toBe(true);
-    expect(getElementProperty(button.element, 'selected')).toBe(false);
-
-    button.element.dispatchEvent(beforeInput);
-
-    expect(beforeInput.defaultPrevented).toBe(true);
-    expect(wrapper.emitted('update:selected')).toEqual([[true]]);
-    expect(getElementProperty(button.element, 'selected')).toBe(false);
-  });
-
-  it('supports toggle with the text color configuration', () => {
-    const textToggle = mountButton({ color: 'text', variant: 'toggle', selected: true }).get(
-      'm3e-button',
-    );
-
-    expect(getElementProperty(textToggle.element, 'toggle')).toBe(true);
-    expect(getElementProperty(textToggle.element, 'selected')).toBe(true);
-  });
-
-  it('ignores selected for default actions and warns in development', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const defaultSelected = mountButton({ selected: true }).get('m3e-button');
-
-    expect(getElementProperty(defaultSelected.element, 'toggle')).toBe(false);
-    expect(getElementProperty(defaultSelected.element, 'selected')).toBe(false);
-
-    warnSpy.mockRestore();
-  });
-
-  it('composes the canonical MDLoadingIndicator in place of the leading icon, handing off label and size, and marks the interactive owner busy', () => {
-    const wrapper = mount(MDButton, {
-      props: { label: 'Save', loading: true, size: 'medium' },
+      props: { label: 'Save', loading: true },
       slots: { icon: '<span data-icon>+</span>' },
     });
     const button = wrapper.get('m3e-button');
     const indicator = button.get('m3e-loading-indicator');
-
     expect(button.attributes('aria-busy')).toBe('true');
-    expect(indicator.attributes('aria-label')).toBe('Save');
+    expect(indicator.attributes('aria-hidden')).toBe('true');
     expect(indicator.attributes('style')).toContain('width: 24px');
-    expect(indicator.attributes('style')).toContain('height: 24px');
     expect(button.find('[data-icon]').exists()).toBe(false);
-  });
 
-  it.each([
-    ['extra-small', 24],
-    ['small', 24],
-    ['medium', 24],
-    ['large', 32],
-    ['extra-large', 40],
-  ] as const)(
-    'maps Button size %s to the Loading indicator composition overall size %ipx',
-    (size, expectedSize) => {
-      const button = mount(MDButton, { props: { label: 'Save', loading: true, size } }).get(
-        'm3e-button',
-      );
-      const indicator = button.get('m3e-loading-indicator');
-
-      // MDButton hands off the composition's overall size only; MDLoadingIndicator
-      // owns the private overall-to-active-size mapping (see its own test suite).
-      expect(indicator.attributes('style')).toContain(`width: ${expectedSize}px`);
-      expect(indicator.attributes('style')).toContain(`height: ${expectedSize}px`);
-    },
-  );
-
-  it('restores the leading icon and clears aria-busy once loading ends', () => {
-    const wrapper = mount(MDButton, {
-      props: { label: 'Save', loading: false },
-      slots: { icon: '<span data-icon>+</span>' },
-    });
-    const button = wrapper.get('m3e-button');
-
+    await wrapper.setProps({ loading: false });
     expect(button.attributes('aria-busy')).toBeUndefined();
     expect(button.find('m3e-loading-indicator').exists()).toBe(false);
     expect(button.find('[data-icon]').exists()).toBe(true);
   });
 
-  it('replaces the selected icon route with the Loading indicator when toggle, selected, selected-icon, and loading are combined', () => {
-    const wrapper = mount(MDButton, {
-      props: { label: 'Start', variant: 'toggle', selected: true, loading: true },
-      slots: {
-        'selected-icon': '<span data-selected-icon />',
-        icon: '<span data-icon />',
-      },
-    });
-    const button = wrapper.get('m3e-button');
-
-    expect(button.find('m3e-loading-indicator').exists()).toBe(true);
-    expect(button.find('[data-selected-icon]').exists()).toBe(false);
-    expect(button.find('[slot="selected-icon"]').exists()).toBe(false);
-    expect(button.find('[data-icon]').exists()).toBe(false);
-  });
-
-  it('restores the selected icon after loading ends while still selected', async () => {
-    const wrapper = mount(MDButton, {
-      props: { label: 'Start', variant: 'toggle', selected: true, loading: true },
-      slots: { 'selected-icon': '<span data-selected-icon />' },
-    });
-
-    expect(wrapper.get('m3e-button').find('[data-selected-icon]').exists()).toBe(false);
-
-    await wrapper.setProps({ loading: false });
-    const button = wrapper.get('m3e-button');
-
-    expect(button.find('m3e-loading-indicator').exists()).toBe(false);
-    expect(button.find('[data-selected-icon]').exists()).toBe(true);
-  });
-
-  it('restores the normal icon after loading ends when no longer selected', async () => {
-    const wrapper = mount(MDButton, {
-      props: { label: 'Start', variant: 'toggle', selected: false, loading: true },
-      slots: { icon: '<span data-icon />' },
-    });
-
-    expect(wrapper.get('m3e-button').find('[data-icon]').exists()).toBe(false);
-
-    await wrapper.setProps({ loading: false });
-    const button = wrapper.get('m3e-button');
-
-    expect(button.find('m3e-loading-indicator').exists()).toBe(false);
-    expect(button.find('[data-icon]').exists()).toBe(true);
-  });
-
-  it('keeps loading, aria-busy, and the disabled renderer contract together when disabled and loading are combined', () => {
+  it('keeps explicit disabled ownership while loading', () => {
     const button = mountButton({ disabled: true, loading: true }).get('m3e-button');
-
     expect(getElementProperty(button.element, 'disabled')).toBe(true);
     expect(button.attributes('aria-busy')).toBe('true');
-    expect(button.find('m3e-loading-indicator').exists()).toBe(true);
   });
+});
+
+describe('MDButton released pressed-shape mapping', () => {
+  const source = fs.readFileSync(
+    path.join(process.cwd(), 'src/shared/ui/material/components/button/MDButton.vue'),
+    'utf8',
+  );
+  const releasedRule = source.match(/\.md-button:not\(:active\) \{(?<body>[\s\S]*?)\n\}/)?.groups
+    ?.body;
+
+  it('leaves the renderer pressed-shape inputs in control while physically active', () => {
+    expect(source).not.toMatch(/\.md-button:active\s*\{[^}]*shape-pressed-morph/s);
+  });
+
+  it.each(['extra-small', 'small'])(
+    'maps released %s round geometry to its documented resting-shape input',
+    (size) => {
+      expect(releasedRule).toContain(`--m3e-button-${size}-shape-pressed-morph`);
+      expect(releasedRule).toContain(`--m3e-button-${size}-shape-round`);
+    },
+  );
 });

@@ -108,22 +108,18 @@ test('MDButton expanded target activates clicks outside the visible button box',
   await expect(count).toHaveText('1');
 });
 
-test('Button adapters preserve form, controlled toggle, loading, disabled, and public press contracts', async ({
+test('MDButton preserves form, loading accessibility, disabled, and public press contracts', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--behavior-contracts');
 
   const submit = page.getByRole('button', { name: 'Submit action', exact: true });
-  const reset = page.getByRole('button', { name: 'Reset action', exact: true });
-  const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
   const loading = page.getByRole('button', { name: 'Loading action', exact: true });
   const disabled = page.getByRole('button', { name: 'Disabled action', exact: true });
   const disabledLoading = page.getByRole('button', {
     name: 'Disabled loading action',
     exact: true,
   });
-  const toggleLoading = page.getByRole('button', { name: 'Toggle loading action', exact: true });
-  const pressTarget = page.getByRole('button', { name: 'Press action', exact: true });
 
   await submit.focus();
   await page.keyboard.press('Enter');
@@ -133,35 +129,10 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
   await page.keyboard.press('Space');
   await expect(page.locator('#md-button-submit-count')).toHaveText('2');
 
-  const resetValue = page.getByRole('textbox', { name: 'Reset value' });
-  await resetValue.fill('changed');
-  await reset.click();
-  await expect(resetValue).toHaveValue('initial');
-  await expect(page.locator('#md-button-reset-count')).toHaveText('1');
-
-  await toggle.focus();
-  await page.keyboard.press('Space');
-  await expect(page.locator('#md-button-selected')).toHaveText('true');
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#md-button-selection-intent-count')).toHaveText('1');
-
-  await toggle.click();
-  await expect(page.locator('#md-button-selected')).toHaveText('false');
-  await page.locator('#md-button-programmatic-select').click();
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#md-button-selection-intent-count')).toHaveText('2');
-
   await expect(loading).toHaveAttribute('aria-busy', 'true');
   await expect(loading).toBeEnabled();
-  const loadingIndicator = loading.locator('m3e-loading-indicator');
-  await expect(loadingIndicator).toBeVisible();
-  // MDButton hands off its own label to the canonical MDLoadingIndicator as the
-  // dependency's accessible purpose, instead of leaving the progressbar unlabeled.
-  await expect(loadingIndicator).toHaveAttribute('aria-label', 'Loading action');
-  // Real browser accessibility-tree resolution (not attribute presence alone): the
-  // nested Loading indicator resolves as a named progressbar within the Button,
-  // which itself remains discoverable as a button.
-  await expect(loading.getByRole('progressbar', { name: 'Loading action' })).toBeVisible();
+  await expect(loading.getByRole('progressbar')).toHaveCount(0);
+  await expect(page.getByRole('progressbar')).toHaveCount(0);
   await loading.click();
   await expect(page.locator('#md-button-loading-count')).toHaveText('1');
 
@@ -174,13 +145,10 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
   );
   await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
 
-  // Disabled plus loading: the disabled renderer contract (blocked activation) and
-  // the loading composition (aria-busy, nested progressbar) both hold together.
+  // Disabled plus loading keeps explicit activation blocking and decorative feedback together.
   await expect(disabledLoading).toBeDisabled();
   await expect(disabledLoading).toHaveAttribute('aria-busy', 'true');
-  await expect(
-    disabledLoading.getByRole('progressbar', { name: 'Disabled loading action' }),
-  ).toBeVisible();
+  await expect(disabledLoading.getByRole('progressbar')).toHaveCount(0);
   const disabledLoadingBox = await disabledLoading.boundingBox();
   if (!disabledLoadingBox) throw new Error('Missing disabled+loading MDButton geometry.');
   await page.mouse.click(
@@ -188,43 +156,12 @@ test('Button adapters preserve form, controlled toggle, loading, disabled, and p
     disabledLoadingBox.y + disabledLoadingBox.height / 2,
   );
   await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
-
-  // Loading takes precedence over the selected-icon route even when toggle,
-  // selected, and a selected-icon slot are all active together.
-  await expect(toggleLoading).toHaveAttribute('aria-busy', 'true');
-  await expect(
-    toggleLoading.getByRole('progressbar', { name: 'Toggle loading action' }),
-  ).toBeVisible();
-  await expect(toggleLoading.locator('[data-selected-icon]')).toHaveCount(0);
-
-  const pressTargetBox = await pressTarget.boundingBox();
-  if (!pressTargetBox) throw new Error('Missing MDButton press host geometry.');
-  const pressPoint = {
-    x: pressTargetBox.x + pressTargetBox.width / 2,
-    y: pressTargetBox.y + pressTargetBox.height / 2,
-  };
-
-  await page.mouse.move(pressPoint.x, pressPoint.y);
-  await page.mouse.down();
-  expect(await pressTarget.evaluate((element) => element.matches(':active'))).toBe(true);
-  await page.mouse.up();
-  await expect
-    .poll(() => pressTarget.evaluate((element) => element.matches(':active')))
-    .toBe(false);
-
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.mouse.down();
-  expect(await pressTarget.evaluate((element) => element.matches(':active'))).toBe(true);
-  await page.mouse.up();
-  await expect
-    .poll(() => pressTarget.evaluate((element) => element.matches(':active')))
-    .toBe(false);
 });
 
 test('MDButton preserves normal native click bubbling to ancestor listeners', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--behavior-contracts');
 
-  const toggle = page.getByRole('button', { name: 'Toggle action', exact: true });
+  const button = page.getByRole('button', { name: 'Loading action', exact: true });
   const bubbledToDocument = page.evaluate(
     () =>
       new Promise<boolean>((resolve) => {
@@ -238,7 +175,7 @@ test('MDButton preserves normal native click bubbling to ancestor listeners', as
       }),
   );
 
-  await toggle.click();
+  await button.click();
 
   expect(await bubbledToDocument).toBe(true);
 });

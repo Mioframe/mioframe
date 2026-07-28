@@ -12,7 +12,7 @@ const lint = async (code: string, filePath: string) => {
 
 // The first call pays the cost of building the type-aware TS project
 // service; later calls reuse it and are fast.
-const typeAwareLintTimeout = 30_000;
+const typeAwareLintTimeout = 60_000;
 
 const ruleIds = (result: ESLint.LintResult) => result.messages.map((message) => message.ruleId);
 
@@ -29,11 +29,22 @@ const inlineArrowHandlerTemplate =
 // src/shared/ui/material boundary, so type-aware linting has a real
 // TS project to resolve without adding fixture files for this test.
 const outsideMaterialTsFile = 'src/shared/lib/objectEntries.ts';
+const outsideMaterialConfigFile = 'config/vueCustomElements.ts';
 const insideMaterialTsFile = 'src/shared/ui/material/index.ts';
 const outsideMaterialVueFile = 'src/shared/ui/Dialog/DialogForm.vue';
 const insideMaterialVueFile = 'src/shared/ui/material/components/button/MDButton.vue';
 
 describe('eslint.config.mjs m3e renderer boundary', () => {
+  it(
+    'rejects a @m3e/web import from repository configuration',
+    async () => {
+      const result = await lint(m3eImportSource, outsideMaterialConfigFile);
+
+      expect(ruleIds(result)).toContain('no-restricted-imports');
+    },
+    typeAwareLintTimeout,
+  );
+
   it(
     'rejects a @m3e/web subpath import outside Material',
     async () => {

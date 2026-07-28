@@ -1,63 +1,47 @@
 <script setup lang="ts">
 import '@m3e/web/button';
 import type {
-  ButtonShape as RendererButtonShape,
   ButtonSize as RendererButtonSize,
   ButtonVariant as RendererButtonVariant,
   M3eButtonElement,
 } from '@m3e/web/button';
-import { computed, defineComponent, h, onMounted, warn, watchEffect } from 'vue';
+import { computed, defineComponent, h } from 'vue';
 import { MDLoadingIndicator } from '../loading-indicator';
 
 const props = withDefaults(
   defineProps<{
     /** Native button type. Defaults to `button` to avoid accidental form submission. */
-    nativeType?: 'button' | 'submit' | 'reset' | undefined;
+    nativeType?: 'button' | 'submit' | undefined;
     /** Material Button appearance. */
-    color?: 'elevated' | 'filled' | 'tonal' | 'outlined' | 'text' | undefined;
+    color?: 'filled' | 'outlined' | 'text' | undefined;
     /** Visible label and accessible name. */
     label: string;
     /** Blocks focus and activation through the renderer's documented disabled contract. */
     disabled?: boolean | undefined;
-    /** Stateless action or consumer-controlled toggle intent. */
-    variant?: 'default' | 'toggle' | undefined;
     /** Material Button size. */
-    size?: 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' | undefined;
-    /** Round or square container shape. */
-    shape?: 'round' | 'square' | undefined;
-    /** Consumer-controlled toggle selection. Ignored for default actions. */
-    selected?: boolean | undefined;
+    size?: 'extra-small' | 'small' | undefined;
     /**
      * Shows a Material Loading indicator in place of the leading icon for a short
      * async action (Loading indicator placement guidance). Takes precedence over
-     * both the normal and selected-state icon routes; the appropriate icon is
-     * restored once loading ends.
+     * the leading icon, which is restored once loading ends.
      */
     loading?: boolean | undefined;
   }>(),
   {
     color: 'filled',
     nativeType: 'button',
-    variant: 'default',
     size: 'small',
-    shape: 'round',
   },
 );
 
 const emit = defineEmits<{
   /** Stable action event normalized from the renderer host click. */
   click: [event: MouseEvent];
-  /** Controlled toggle intent; the parent remains the selected-state owner. */
-  'update:selected': [selected: boolean];
 }>();
 
 const slots = defineSlots<{
   /** Leading icon content. */
   icon(): unknown;
-  /** Label content rendered while a toggle Button is selected. */
-  'selected-label'(): unknown;
-  /** Leading icon rendered while a toggle Button is selected. */
-  'selected-icon'(): unknown;
 }>();
 
 const MDButtonSlottedContent = defineComponent({
@@ -73,51 +57,25 @@ const MDButtonSlottedContent = defineComponent({
   },
 });
 
-const isToggle = computed(() => props.variant === 'toggle');
-const appliedSelected = computed(() => isToggle.value && !!props.selected);
 const isLoading = computed(() => !!props.loading);
 const rendererVariant = computed<RendererButtonVariant>(() => props.color);
 const rendererSize = computed<RendererButtonSize>(() => props.size);
-const rendererShape = computed<RendererButtonShape>(() =>
-  props.shape === 'round' ? 'rounded' : 'square',
-);
 const rendererType = computed<M3eButtonElement['type']>(() => props.nativeType);
 /**
  * Mioframe Button-to-Loading-indicator composition mapping (not the official Loading
- * indicator size API, and not the Button icon-size tokens): extra-small/small/medium
- * map to 24, large to 32, extra-large to 40.
+ * indicator size API, and not the Button icon-size tokens): both retained sizes map to 24.
  */
 const loadingIndicatorSize = computed<number>(
   () =>
     ({
       'extra-small': 24,
       small: 24,
-      medium: 24,
-      large: 32,
-      'extra-large': 40,
     })[props.size],
 );
-
-const onBeforeInput = (event: InputEvent) => {
-  if (!isToggle.value) return;
-
-  event.preventDefault();
-  emit('update:selected', !appliedSelected.value);
-};
 
 const onClick = (event: MouseEvent) => {
   emit('click', event);
 };
-
-if (import.meta.env.DEV) {
-  onMounted(() => {
-    watchEffect(() => {
-      if (props.selected && !isToggle.value) {
-        warn('MDButton: `selected` has no effect unless `variant` is "toggle".');
-      }
-    });
-  });
-}
 </script>
 
 <template>
@@ -126,13 +84,11 @@ if (import.meta.env.DEV) {
     class="md-button"
     :aria-busy="isLoading ? 'true' : undefined"
     :disabled="props.disabled"
-    :selected="appliedSelected"
-    :shape="rendererShape"
+    shape="rounded"
     :size="rendererSize"
-    :toggle="isToggle"
+    :toggle="false"
     :type="rendererType"
     :variant="rendererVariant"
-    @beforeinput="onBeforeInput"
     @click="onClick"
   >
     <MDButtonSlottedContent
@@ -140,24 +96,15 @@ if (import.meta.env.DEV) {
       class="md-button__icon"
       slot-name="icon"
     >
-      <MDLoadingIndicator v-if="isLoading" :label="props.label" :size="loadingIndicatorSize" />
+      <MDLoadingIndicator
+        v-if="isLoading"
+        aria-hidden="true"
+        :label="props.label"
+        :size="loadingIndicatorSize"
+      />
       <slot v-else name="icon" />
     </MDButtonSlottedContent>
-    <MDButtonSlottedContent
-      v-if="!isLoading && !!slots['selected-icon']"
-      class="md-button__icon"
-      slot-name="selected-icon"
-    >
-      <slot name="selected-icon" />
-    </MDButtonSlottedContent>
     <span class="md-button__label-text">{{ props.label }}</span>
-    <MDButtonSlottedContent
-      v-if="!!slots['selected-label']"
-      class="md-button__label-text"
-      slot-name="selected"
-    >
-      <slot name="selected-label" />
-    </MDButtonSlottedContent>
   </m3e-button>
   <!-- eslint-enable vue/attribute-hyphenation -->
 </template>
@@ -172,6 +119,20 @@ if (import.meta.env.DEV) {
 
 .md-button[disabled] {
   cursor: default;
+}
+
+/* m3e keeps its internal pressed feedback after release. While the host is physically active,
+ * its documented pressed-shape input remains renderer-owned. Once :active clears, map that
+ * input back to the selected resting round shape so only geometry releases immediately. */
+.md-button:not(:active) {
+  --m3e-button-extra-small-shape-pressed-morph: var(
+    --m3e-button-extra-small-shape-round,
+    var(--m3e-button-shape-round, 9999px)
+  );
+  --m3e-button-small-shape-pressed-morph: var(
+    --m3e-button-small-shape-round,
+    var(--m3e-button-shape-round, 9999px)
+  );
 }
 
 .md-button__icon {

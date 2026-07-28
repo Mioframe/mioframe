@@ -3,10 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { isM3eCustomElement } from './vueCustomElements.ts';
 
 describe('isM3eCustomElement', () => {
-  it('matches tags in the m3e- namespace', () => {
+  it('matches only selected renderer elements', () => {
     expect(isM3eCustomElement('m3e-button')).toBe(true);
-    expect(isM3eCustomElement('m3e-icon-button')).toBe(true);
-    expect(isM3eCustomElement('m3e-')).toBe(true);
+    expect(isM3eCustomElement('m3e-loading-indicator')).toBe(true);
   });
 
   it('does not match unrelated tags', () => {
@@ -14,6 +13,9 @@ describe('isM3eCustomElement', () => {
     expect(isM3eCustomElement('button')).toBe(false);
     expect(isM3eCustomElement('MDButton')).toBe(false);
     expect(isM3eCustomElement('m3-button')).toBe(false);
+    expect(isM3eCustomElement('m3e-')).toBe(false);
+    expect(isM3eCustomElement('m3e-icon-button')).toBe(false);
+    expect(isM3eCustomElement('m3e-buton')).toBe(false);
     expect(isM3eCustomElement('')).toBe(false);
   });
 });

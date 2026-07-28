@@ -12,7 +12,7 @@ vi.mock('@shared/ui/Dialog', () => ({
       headline: { type: String, required: true },
       supportingText: { type: String, required: true },
       applyLabel: { type: String, required: true },
-      loading: { type: [Boolean, Number], default: false },
+      loading: { type: Boolean, default: false },
     },
     emits: ['apply'],
     setup(props, { slots, emit }) {

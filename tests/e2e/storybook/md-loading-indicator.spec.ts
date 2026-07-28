@@ -20,9 +20,7 @@ test('MDLoadingIndicator public overall size sets the actual custom-element host
 }) => {
   await openStory(page, 'material-3-components-loading-indicator-mdloadingindicator--size-matrix');
 
-  const indicators = page
-    .getByTestId('visual-md-loading-indicator-sizes')
-    .locator('m3e-loading-indicator');
+  const indicators = page.getByTestId('visual-md-loading-indicator-sizes').getByRole('progressbar');
   // Rendered in story order: 24, 32, 40, default 48. Only the public host bounding
   // box is asserted here; shadow DOM internals are not inspected.
   const expectedSizes = [24, 32, 40, 48];

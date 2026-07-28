@@ -14,7 +14,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Mioframe Material Button adapter backed privately by @m3e/web. Supports default and controlled toggle variants (including text), five color configurations and sizes, round/square shapes, disabled state, native form types, leading icon content, and an indeterminate Loading indicator composition.',
+          'Mioframe Material action Button adapter backed privately by @m3e/web. Supports the production-selected filled, outlined, and text colors, small and extra-small sizes, disabled state, native button/submit behavior, leading icon content, and short indeterminate loading.',
       },
     },
   },
@@ -37,8 +37,7 @@ export const VisualStates: Story = {
           <MDButton label="Text" color="text"><template #icon>+</template></MDButton>
         </div>
         <div class="visual-row">
-          <MDButton label="Tonal" color="tonal"><template #icon>+</template></MDButton>
-          <MDButton label="Elevated" color="elevated"><template #icon>+</template></MDButton>
+          <MDButton label="Extra small outlined" color="outlined" size="extra-small"><template #icon>+</template></MDButton>
         </div>
         <div class="visual-row">
           <MDButton label="Disabled filled" disabled><template #icon>+</template></MDButton>
@@ -50,7 +49,7 @@ export const VisualStates: Story = {
   }),
 };
 
-export const SizeGeometryMatrix: Story = {
+export const SizeGeometry: Story = {
   render: () => ({
     components: { MDButton },
     template: `
@@ -58,50 +57,6 @@ export const SizeGeometryMatrix: Story = {
         <div class="visual-row">
           <MDButton label="Extra small" size="extra-small"><template #icon>+</template></MDButton>
           <MDButton label="Small" size="small"><template #icon>+</template></MDButton>
-          <MDButton label="Medium" size="medium"><template #icon>+</template></MDButton>
-        </div>
-        <div class="visual-row">
-          <MDButton label="Large" size="large"><template #icon>+</template></MDButton>
-          <MDButton label="Extra large" size="extra-large"><template #icon>+</template></MDButton>
-        </div>
-      </div>
-    `,
-  }),
-};
-
-export const ToggleShapes: Story = {
-  tags: ['visual'],
-  render: () => ({
-    components: { MDButton },
-    template: `
-      <div data-testid="visual-md-button-toggle-shapes" class="visual-checker-backdrop">
-        <div class="visual-row">
-          <MDButton label="Round selected" variant="toggle" selected color="tonal" />
-          <MDButton label="Round unselected" variant="toggle" color="tonal" />
-        </div>
-        <div class="visual-row">
-          <MDButton label="Square selected" variant="toggle" selected shape="square" color="tonal" />
-          <MDButton label="Square unselected" variant="toggle" shape="square" color="tonal" />
-        </div>
-        <div class="visual-row">
-          <MDButton label="Text selected" variant="toggle" selected color="text" />
-          <MDButton label="Text unselected" variant="toggle" color="text" />
-        </div>
-      </div>
-    `,
-  }),
-};
-
-export const DisabledSelectedOutlinedAndText: Story = {
-  tags: ['visual'],
-  render: () => ({
-    components: { MDButton },
-    template: `
-      <div data-testid="visual-md-button-disabled-selected-outlined-text" class="visual-checker-backdrop">
-        <div class="visual-row">
-          <MDButton label="Outlined unselected" variant="toggle" disabled color="outlined" />
-          <MDButton label="Outlined selected" variant="toggle" selected disabled color="outlined" />
-          <MDButton label="Text disabled" disabled color="text" />
         </div>
       </div>
     `,
@@ -135,18 +90,11 @@ export const BehaviorContracts: Story = {
   render: () => ({
     components: { MDButton },
     setup() {
-      const selected = ref(false);
-      const selectionIntentCount = ref(0);
       const submitCount = ref(0);
-      const resetCount = ref(0);
       const loadingClickCount = ref(0);
       const disabledClickCount = ref(0);
       const onSubmit = () => {
         submitCount.value += 1;
-      };
-      const onUpdateSelected = (nextSelected: boolean) => {
-        selectionIntentCount.value += 1;
-        selected.value = nextSelected;
       };
       const onLoadingClick = () => {
         loadingClickCount.value += 1;
@@ -160,35 +108,20 @@ export const BehaviorContracts: Story = {
         onDisabledClick,
         onLoadingClick,
         onSubmit,
-        onUpdateSelected,
-        resetCount,
-        selected,
-        selectionIntentCount,
         submitCount,
       };
     },
     template: `
       <div data-testid="md-button-behavior-contracts">
-        <form aria-label="Button form" @submit.prevent="onSubmit" @reset="resetCount += 1">
-          <input aria-label="Reset value" value="initial" />
+        <form aria-label="Button form" @submit.prevent="onSubmit">
           <MDButton label="Submit action" native-type="submit" />
-          <MDButton label="Reset action" native-type="reset" />
         </form>
         <output id="md-button-submit-count">{{ submitCount }}</output>
-        <output id="md-button-reset-count">{{ resetCount }}</output>
-        <MDButton label="Toggle action" variant="toggle" :selected="selected" @update:selected="onUpdateSelected" />
-        <output id="md-button-selected">{{ selected }}</output>
-        <output id="md-button-selection-intent-count">{{ selectionIntentCount }}</output>
-        <button id="md-button-programmatic-select" type="button" @click="selected = true">Select programmatically</button>
         <MDButton label="Loading action" loading @click="onLoadingClick" />
         <output id="md-button-loading-count">{{ loadingClickCount }}</output>
         <MDButton label="Disabled action" disabled @click="onDisabledClick" />
         <output id="md-button-disabled-count">{{ disabledClickCount }}</output>
         <MDButton label="Disabled loading action" disabled loading @click="onDisabledClick" />
-        <MDButton label="Toggle loading action" variant="toggle" selected loading>
-          <template #selected-icon><span data-selected-icon>&#9733;</span></template>
-        </MDButton>
-        <MDButton label="Press action" size="medium" />
       </div>
     `,
   }),
@@ -218,7 +151,6 @@ export const LoadingIndicatorPresentation: Story = {
           <MDButton label="Sending" color="text" loading />
         </div>
         <div class="visual-row">
-          <MDButton label="Saving" color="tonal" loading />
           <MDButton label="Disabled saving" color="filled" disabled loading />
         </div>
       </div>

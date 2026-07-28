@@ -104,16 +104,12 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/ui/material/components/button/',
       'src/shared/ui/State/useFocusIndicator.ts',
       'src/shared/ui/State/md-focus-indicator.css',
-      'tests/e2e/storybook/md-button-family.spec.ts',
     ],
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
   },
   {
     name: 'loading indicator standalone accessibility',
-    sourcePrefixes: [
-      'src/shared/ui/material/components/loading-indicator/',
-      'tests/e2e/storybook/md-loading-indicator.spec.ts',
-    ],
+    sourcePrefixes: ['src/shared/ui/material/components/loading-indicator/'],
     specs: ['tests/e2e/storybook/md-loading-indicator.spec.ts'],
   },
   {

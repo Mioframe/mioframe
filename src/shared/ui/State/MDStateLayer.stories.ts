@@ -148,12 +148,11 @@ export const VisualHostIntegration: Story = {
         <div class="visual-row">
           <MDButton label="Filled button" color="filled" />
           <MDButton label="Outlined button" color="outlined" />
-          <MDButton label="Disabled button" color="tonal" disabled />
+          <MDButton label="Disabled button" color="filled" disabled />
         </div>
         <div class="visual-row">
           <MDButton label="Text button" color="text" />
-          <MDButton label="Selected toggle" color="filled" variant="toggle" selected />
-          <MDButton label="Elevated button" color="elevated" />
+          <MDButton label="Extra-small button" color="outlined" size="extra-small" />
         </div>
       </div>
     `,

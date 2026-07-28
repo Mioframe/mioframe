@@ -231,9 +231,9 @@ export default defineConfigWithVueTs(
   },
 
   {
-    files: ['src/**/*.{ts,mts,tsx}'],
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts,tsx,vue}'],
     ignores: [materialLibraryFiles],
-    name: 'app/m3e-renderer-boundary-scripts',
+    name: 'app/m3e-renderer-boundary-imports',
     rules: {
       'no-restricted-imports': ['error', { patterns: [m3eImportRestrictionPattern] }],
     },
@@ -242,21 +242,12 @@ export default defineConfigWithVueTs(
   {
     files: ['src/**/*.vue'],
     ignores: [materialLibraryFiles, '**/*.test.vue', '**/*.stories.vue'],
-    name: 'app/m3e-renderer-boundary-vue-imports',
+    name: 'app/vue-import-boundaries',
     rules: {
       'no-restricted-imports': [
         'error',
         { paths: [noAttrsImportPath], patterns: [m3eImportRestrictionPattern] },
       ],
-    },
-  },
-
-  {
-    files: ['src/**/*.test.vue', 'src/**/*.stories.vue'],
-    ignores: [materialLibraryFiles],
-    name: 'app/m3e-renderer-boundary-vue-test-story-imports',
-    rules: {
-      'no-restricted-imports': ['error', { patterns: [m3eImportRestrictionPattern] }],
     },
   },
 

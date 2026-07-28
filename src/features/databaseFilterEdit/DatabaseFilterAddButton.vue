@@ -107,7 +107,6 @@ const label = computed(() => {
     ref="addButton"
     :label="label"
     size="extra-small"
-    shape="round"
     color="outlined"
     @click="onClickAdd"
   >

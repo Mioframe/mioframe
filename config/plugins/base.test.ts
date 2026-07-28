@@ -7,12 +7,13 @@ import { getBaseVitePlugins, getVuePlugin } from './base.ts';
 //   as its base config instead of registering its own @vitejs/plugin-vue;
 // - vitest.config.ts (component tests), which imports getVuePlugin() directly.
 describe('getVuePlugin', () => {
-  it('recognizes m3e-* tags as custom elements', () => {
+  it('recognizes only selected m3e renderer tags as custom elements', () => {
     const isCustomElement = getVuePlugin().api?.options.template?.compilerOptions?.isCustomElement;
 
     expect(isCustomElement).toBeTypeOf('function');
     expect(isCustomElement?.('m3e-button')).toBe(true);
-    expect(isCustomElement?.('m3e-icon-button')).toBe(true);
+    expect(isCustomElement?.('m3e-loading-indicator')).toBe(true);
+    expect(isCustomElement?.('m3e-icon-button')).toBe(false);
   });
 
   it('leaves ordinary elements and Vue components unaffected', () => {

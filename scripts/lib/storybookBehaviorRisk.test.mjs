@@ -279,6 +279,11 @@ describe('validateStorybookBehaviorScenarioRegistry deterministic spec injection
 });
 
 describe('resolveStorybookBehaviorPlan', () => {
+  it('never uses behavior spec paths as scenario source prefixes', () => {
+    for (const scenario of STORYBOOK_BEHAVIOR_SCENARIO_SCOPES) {
+      expect(scenario.sourcePrefixes.some((prefix) => prefix.endsWith('.spec.ts'))).toBe(false);
+    }
+  });
   it('runs the full lane for the behavior Playwright config', () => {
     const plan = resolveStorybookBehaviorPlan(['playwright.storybook.config.ts']);
 
