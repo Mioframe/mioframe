@@ -72,20 +72,20 @@ Deferred because there is no current consumer:
 
 ## Material–m3e–Vue matrix
 
-| Material contract | Required now | Public Vue representation | Renderer/dependency mapping | Owner and decision | Verification |
-| --- | --- | --- | --- | --- | --- |
-| Default and toggle variants | yes | `variant`, controlled `selected`, `update:selected` | typed m3e toggle/selection mapping | Button — `implement-now` | unit + browser |
-| Five color configurations | yes | `color` | m3e Button variant | Button — `implement-now` | unit + visual |
-| Five sizes and two shapes | yes | `size`, `shape` | m3e size/shape mapping | Button — `implement-now` | unit + visual |
-| Leading/selected content | yes | `icon`, `selected-label`, `selected-icon` slots | documented renderer slots | Button — `implement-now` | unit + browser |
-| Disabled/focus/hover/pressed/target | yes | `disabled`; no renderer ripple API | m3e state layer/ripple + shared state roles | Button/foundation — `implement-now` | browser + visual |
-| Native action type | yes | `nativeType` | renderer `type` | Button — `implement-now` | unit + browser |
-| Link/form identity surface | no | none | renderer surface private | `defer` | none |
-| Loading | yes | `loading?: boolean` | `MDButton` → `MDLoadingIndicator` | parent composition | unit + browser + visual |
-| Loading purpose | yes | Button `label` handed to dependency `label` | named progressbar inside Button | parent handoff/dependency semantics | browser accessibility tree |
-| Loading size/color | yes | `24/24/24/32/40`, inherited color | dependency public API | dependency-owned; `M3E-001`/`M3E-002` | unit + independent visual |
-| Loading + selected content | yes | loading wins and selected route restores | wrapper slot routing | Button — `wrapper-correction` | unit + browser |
-| Native click propagation | yes | `click` emit and normal bubbling | renderer host click | Button — `implement-now` | browser |
+| Material contract                   | Required now | Public Vue representation                           | Renderer/dependency mapping                 | Owner and decision                    | Verification               |
+| ----------------------------------- | ------------ | --------------------------------------------------- | ------------------------------------------- | ------------------------------------- | -------------------------- |
+| Default and toggle variants         | yes          | `variant`, controlled `selected`, `update:selected` | typed m3e toggle/selection mapping          | Button — `implement-now`              | unit + browser             |
+| Five color configurations           | yes          | `color`                                             | m3e Button variant                          | Button — `implement-now`              | unit + visual              |
+| Five sizes and two shapes           | yes          | `size`, `shape`                                     | m3e size/shape mapping                      | Button — `implement-now`              | unit + visual              |
+| Leading/selected content            | yes          | `icon`, `selected-label`, `selected-icon` slots     | documented renderer slots                   | Button — `implement-now`              | unit + browser             |
+| Disabled/focus/hover/pressed/target | yes          | `disabled`; no renderer ripple API                  | m3e state layer/ripple + shared state roles | Button/foundation — `implement-now`   | browser + visual           |
+| Native action type                  | yes          | `nativeType`                                        | renderer `type`                             | Button — `implement-now`              | unit + browser             |
+| Link/form identity surface          | no           | none                                                | renderer surface private                    | `defer`                               | none                       |
+| Loading                             | yes          | `loading?: boolean`                                 | `MDButton` → `MDLoadingIndicator`           | parent composition                    | unit + browser + visual    |
+| Loading purpose                     | yes          | Button `label` handed to dependency `label`         | named progressbar inside Button             | parent handoff/dependency semantics   | browser accessibility tree |
+| Loading size/color                  | yes          | `24/24/24/32/40`, inherited color                   | dependency public API                       | dependency-owned; `M3E-001`/`M3E-002` | unit + independent visual  |
+| Loading + selected content          | yes          | loading wins and selected route restores            | wrapper slot routing                        | Button — `wrapper-correction`         | unit + browser             |
+| Native click propagation            | yes          | `click` emit and normal bubbling                    | renderer host click                         | Button — `implement-now`              | browser                    |
 
 ## Token ownership
 
