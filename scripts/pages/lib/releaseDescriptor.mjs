@@ -22,6 +22,12 @@ export const MAX_RELEASE_ARTIFACT_BYTES = 200_000_000;
 
 const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
+/**
+ * Matches the canonical lowercase-hyphenated UUID shape produced by
+ * `crypto.randomUUID()`. Mirrors `contracts.ts`'s `CANONICAL_UUID_PATTERN`.
+ */
+const CANONICAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 /** Channel-root-relative path prefix reserved for controller metadata — never a valid ordinary release file. */
 const RESERVED_UPDATES_PREFIX = 'updates/';
 
@@ -63,6 +69,15 @@ export function isValidReleaseFile(candidate) {
 }
 
 /**
+ * Returns `true` when no two files in `files` share the same `path`.
+ * @param files Candidate release file list.
+ * @returns Whether every file path is unique.
+ */
+function hasUniqueFilePaths(files) {
+  return new Set(files.map((file) => file.path)).size === files.length;
+}
+
+/**
  * Structurally validates one `ReleaseDescriptor` record.
  * @param candidate Value to validate.
  * @returns Whether `candidate` is a valid `ReleaseDescriptor`.
@@ -82,7 +97,7 @@ export function isValidReleaseDescriptor(candidate) {
   return (
     schemaVersion === RELEASE_DESCRIPTOR_SCHEMA_VERSION &&
     typeof releaseId === 'string' &&
-    releaseId.length > 0 &&
+    CANONICAL_UUID_PATTERN.test(releaseId) &&
     typeof releaseSequence === 'number' &&
     Number.isInteger(releaseSequence) &&
     releaseSequence > 0 &&
@@ -97,7 +112,8 @@ export function isValidReleaseDescriptor(candidate) {
     indexUrl.length > 0 &&
     Array.isArray(files) &&
     files.length > 0 &&
-    files.every(isValidReleaseFile)
+    files.every(isValidReleaseFile) &&
+    hasUniqueFilePaths(files)
   );
 }
 

@@ -503,61 +503,108 @@ Stable and develop each run a version-independent controller worker
 Workbox worker. Every other branch and every PR preview keep the ordinary
 generated `generateSW` worker (or no worker at all for PR previews).
 
+Two lifecycles are deliberately kept separate and owned by different
+parties:
+
+```
+Browser Service Worker lifecycle:
+install controller code
+→ wait while old controlled windows exist
+→ activate after they close
+
+Managed application release controller:
+active release
+→ approved release
+→ clean-launch activation
+→ boot commit or rollback
+```
+
+The browser controls versions of `sw.js`. The managed controller controls
+versions of the Mioframe application. The two are independent: a
+controller-code (worker script) update never reads, discovers, or changes
+the pinned application release, and a Manual application pin survives a
+controller-code replacement untouched.
+
+### Native browser lifecycle for controller-code updates
+
+The managed worker never calls `self.skipWaiting()` or `self.clients.claim()`
+and contains no code path that distinguishes a legacy Workbox worker from an
+older managed one — `install`/`waiting`/`activate` for this worker's own code
+is entirely the browser's ordinary Service Worker lifecycle:
+
+- **`install`**: reads persisted state. Invalid state rejects installation
+  outright (the browser keeps any previous worker active). Absent state
+  fetches `latest.json`, fetches and validates the exact descriptor,
+  prepares the release completely, and persists it as the initial
+  `activeRelease` — this always runs, including while an older worker (a
+  legacy Workbox worker or an older managed one) still controls the page
+  that triggered registration, since `fetch()` calls the installing
+  worker's own script makes are never routed through a _different_
+  worker's `fetch` handler. Valid state is preserved completely unchanged:
+  no discovery, no active-release change, no approval, and no cache
+  restoration — a controller-code upgrade must never change, or need to
+  re-verify, the selected application release. Missing local cache for an
+  already-valid installation is the ordinary selected-release fetch
+  responsibility (see "Request routing" below), not an install-time one.
+- **Waiting**: a successful installation enters the browser's ordinary
+  waiting state whenever another worker still controls open clients. The
+  page that first registers a fresh worker may remain uncontrolled until
+  its next navigation — standard first-install behavior, not an error.
+- **`activate`**: runs only best-effort managed-cache housekeeping
+  (`runReleaseCacheCleanup`); it never selects, initializes, or verifies an
+  application release. A cleanup failure never fails activation.
+
+Proven end to end by `tests/e2e/release/managedUpdatesMigration.spec.ts`
+(migration from the exact frozen pre-feature generated Workbox config,
+including an install-time-failure case that leaves the legacy worker
+active) and `tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts` (a
+byte-different controller update preserving an already-pinned release and
+an unapproved newer one), both wired into the `managed-updates` release
+verification label (see below).
+
 ### Clean-launch semantics
 
 The worker persists one `activeRelease` per channel (IndexedDB), plus an
 optional `approvedRelease` (a fully prepared, not-yet-activated release) and
-an optional in-progress `activation`. A qualifying navigation (a genuinely
-new same-channel window, not a reload of an already-open one, with no other
-same-channel window currently live) starts an `activation`, serving the
-`approvedRelease` and arming a boot-confirmation deadline
-(`BOOT_CONFIRMATION_TIMEOUT_MS`, 30s). The publisher-injected boot watchdog
-reports `BOOT_OK`/`BOOT_FAILED` back to the worker over an acknowledged
-`MessageChannel` request; the worker only disarms the watchdog once it
-confirms a durable `committed` (`BOOT_OK`) or `rolled-back` (`BOOT_FAILED`)
-persistence — never merely because a message was sent. An already-open
-session is never force-reloaded: a Manual "Install on next launch" or an
-Automatic background approval only ever applies on the _next_ clean launch.
+an optional in-progress `activation` (`{ targetRelease, deadlineAt }`).
+Starting an activation never changes `activeRelease` — only a later
+`BOOT_OK` commit does. A qualifying navigation (a genuinely new same-channel
+window, not a reload of an already-open one, with no other same-channel
+window currently live) starts an `activation`, serving the `approvedRelease`
+and arming a boot-confirmation deadline (`BOOT_CONFIRMATION_TIMEOUT_MS`,
+30s). The publisher-injected boot watchdog reports `BOOT_OK`/`BOOT_FAILED`
+back to the worker over an acknowledged `MessageChannel` request; the worker
+only disarms the watchdog once it confirms a durable `committed` (`BOOT_OK`)
+or `rolled-back` (`BOOT_FAILED`) persistence — never merely because a
+message was sent. An already-open session is never force-reloaded: a Manual
+"Install on next launch" or an Automatic background approval only ever
+applies on the _next_ clean launch.
 
-### Legacy Workbox migration
-
-The very first managed worker for a channel must migrate from that
-channel's existing generated Workbox worker without ever racing it:
-
-- **Fresh installation** (no previous worker at all): the new worker
-  prepares the current published release during `install`, persists state
-  only once that succeeds, and only then calls `skipWaiting()`.
-- **Upgrade from an existing managed controller**: the worker confirms its
-  persisted `activeRelease` remains available (restoring it from the
-  immutable server archive if necessary) — a controller-code upgrade never
-  changes the selected release.
-- **Migration from the generated legacy worker**: detected when no managed
-  state exists yet but a previously-active worker is already controlling
-  the channel (`self.registration.active !== null` during `install`) — this
-  can only be the pre-migration legacy worker, since managed state is
-  always persisted before any managed worker instance reaches `active`. In
-  this case the new worker fetches and prepares nothing during `install`
-  and never calls `skipWaiting()`, so the still-active legacy worker's own
-  runtime-caching routes never intercept its install-time requests.
-  Ordinary browser worker lifecycle promotes the waiting worker once every
-  legacy-controlled window closes; the very first managed release is then
-  fetched, validated, and fully prepared during that `activate` event,
-  before any client is claimed.
-
-Proven end to end by `tests/e2e/release/managedUpdatesMigration.spec.ts`
-against the exact frozen pre-feature generated Workbox config, wired into
-the `managed-updates` release verification label (see below).
+A rollback never copies or restores a previous release, because
+`activeRelease` never changed during activation; it only clears the
+activation and records the failed target as the single
+`failedActivationRelease`. Automatic mode never re-approves the exact
+failed release again; an explicit Manual action may retry it, and a
+successful retry clears the failure. A strictly newer discovery also clears
+an obsolete failure once it can no longer affect approval or UI state. The
+failure remains visible in the UI-facing snapshot (`failedRelease`) after
+the rollback reload, not only as an ephemeral response error.
 
 ### Request routing and non-release pass-through
 
 The worker's `fetch` handler only ever intercepts same-channel top-level
 navigations and requests whose path is one of the currently selected
-release's own listed files. Everything else — cross-origin requests
-(fonts, Google APIs), the manifest, PWA icons, API routes, and any other
-same-origin resource outside the release — falls through to an ordinary
-network `fetch()`, never a synthetic release-cache response. A release
-asset that is listed but locally missing is still served (or restored)
-from that exact release only; it never silently falls back to a different
+release's own listed files, and only when the request's origin matches this
+worker's own registration-scope origin — a fetch event can fire for a
+cross-origin request a controlled page makes (a font, an external API), and
+scope alone only limits which pages the worker controls, not which of their
+requests reach its `fetch` handler. Everything else — cross-origin
+requests, the manifest, PWA icons, API routes, and any other same-origin
+resource outside the release — falls through to an ordinary network
+`fetch()`, never a synthetic release-cache response. A release asset that
+is listed but locally missing is still served (or restored) from that exact
+release only, deduplicated through the same `PreparationCoordinator` every
+other preparation path uses; it never silently falls back to a different
 release or the current live deployment.
 
 ### Boot-success boundary
@@ -588,36 +635,54 @@ comes entirely from this project's own namespacing, not browser storage
 partitioning: distinct IndexedDB database names
 (`mioframe-update-controller-stable` / `-branch-develop`), distinct Cache
 Storage name prefixes, and channel-scoped window filtering
-(`isSameChannelPath`) for clean-launch window counts, private-protocol
-message authorization, and rollback broadcasts. Proven in one shared
-`BrowserContext` (see `tests/e2e/release/managedUpdatesDevelop.spec.ts`) —
-two separate contexts would each get their own storage partition from the
-test tooling itself, which would validate nothing about this project's own
-logic.
+(`isSameChannelPath`, which checks origin before pathname) for clean-launch
+window counts, private-protocol message authorization, and rollback
+broadcasts. Proven in one shared `BrowserContext` (see
+`tests/e2e/release/managedUpdatesDevelop.spec.ts`) — two separate contexts
+would each get their own storage partition from the test tooling itself,
+which would validate nothing about this project's own logic.
+
+### One immutable cache per release
+
+Each release owns exactly one Cache Storage cache
+(`<channel-namespace>-release-<releaseId>`) — there is no separate
+staging/final pair. Preparation only ever mutates a release's cache once it
+has already confirmed that cache is not yet valid (missing descriptor
+marker, missing archived-index marker, or a missing listed file); an
+already-valid committed cache is never rebuilt or deleted. An incomplete or
+failed attempt deletes the cache it was populating before rethrowing, so a
+repeated failure never leaves stale partial content behind. The descriptor
+marker is always written last — its presence and validity is what makes a
+release "available" — and availability checks independently confirm the
+archived-index marker is present too, rather than relying only on write
+ordering, since Cache Storage entries may be evicted individually under
+storage pressure.
 
 ### Release retention and cleanup
 
-Cache Storage cleanup (deleting stale final release caches and any leftover
-staging cache) runs as a best-effort side effect after lifecycle
-transitions that can release cache ownership — commit, rollback,
-cancellation, a mode change that clears an approval, an Automatic
-approved-target replacement, and controller activation. It never blocks the
-transition's own response, and a cleanup failure never makes an
-already-persisted transition appear to have failed. Release downloads and
-hashing use a small bounded concurrency limit, not an unbounded fetch over
-every file.
+Cache Storage cleanup (deleting stale release caches) runs as a best-effort
+side effect after lifecycle transitions that can release cache ownership —
+commit, rollback, cancellation, a mode change that clears an approval, an
+Automatic approved-target replacement, and controller activation. It
+protects the active release, an approved-but-not-yet-activated release, an
+in-progress activation's target, and every release id currently being
+prepared by the `PreparationCoordinator` (read through its narrow
+`getInFlightReleaseIds()` accessor), so a concurrent cleanup can never
+delete a cache still being populated. It never blocks the transition's own
+response, and a cleanup failure never makes an already-persisted transition
+appear to have failed. Release downloads and hashing use a small bounded
+concurrency limit, not an unbounded fetch over every file.
 
-### Recovery limitations
+### Automatic check event lifetime
 
-Once a service worker reaches its `activate` event, the platform has no
-"reject activation" mechanism: if the legacy-migration `activate` handler's
-release preparation fails, the browser has already committed to this
-worker as `active` regardless. It does not claim already-open clients or
-persist partial state in that case, and any _subsequent_ navigation this
-worker ends up controlling falls back to an ordinary network fetch (via the
-same invalid-state handling normal `fetch` requests already use) rather
-than a hard failure — but it is not a guaranteed automatic return to the
-previous legacy worker, since the platform does not support that.
+The Automatic-mode background check is triggered by ordinary navigation and
+deduplicated once per worker instance lifetime (`AutomaticCheckScheduler`),
+but its promise is attached to the triggering `fetch` event via
+`event.waitUntil` — a Service Worker may otherwise be terminated once its
+event handler returns, killing an untracked background check mid-flight.
+The navigation's own response is never awaited on it: `event.respondWith`
+resolves independently, so update discovery and preparation can never delay
+a navigation.
 
 ## Production artifact validation
 

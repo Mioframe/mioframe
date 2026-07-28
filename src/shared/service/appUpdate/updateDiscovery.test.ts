@@ -16,13 +16,15 @@ vi.mock('./releasePreparation', () => ({
 vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() });
 
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();
-const coordinator = { prepare: (...args: unknown[]) => prepareMock(...args) };
+const coordinator = {
+  prepare: (...args: unknown[]) => prepareMock(...args),
+  getInFlightReleaseIds: () => [],
+};
 
 const baseState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'automatic',
   activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-  failedReleaseIds: [],
 };
 
 function mockState(state: UpdateControllerState): void {

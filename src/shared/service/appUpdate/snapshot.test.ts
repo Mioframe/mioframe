@@ -8,7 +8,7 @@ const state: UpdateControllerState = {
   activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
   latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
   approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-  failedReleaseIds: [],
+  failedActivationRelease: { releaseId: 'release-c', releaseSequence: 0 },
   lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
 };
 
@@ -24,6 +24,11 @@ describe('buildAppUpdateSnapshot', () => {
     expect(snapshot.activeRelease).toEqual(state.activeRelease);
     expect(snapshot.latestRelease).toEqual(state.latestRelease);
     expect(snapshot.lastSuccessfulCheckAt).toBe(state.lastSuccessfulCheckAt);
+  });
+
+  it('maps failedActivationRelease to failedRelease', () => {
+    const snapshot = buildAppUpdateSnapshot(state);
+    expect(snapshot.failedRelease).toEqual(state.failedActivationRelease);
   });
 
   it('omits scheduledRelease when nothing is approved', () => {

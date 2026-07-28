@@ -38,12 +38,12 @@ describe('allocateReleaseSequence', () => {
 describe('buildReleaseDescriptor', () => {
   it('builds a valid descriptor from its parts', () => {
     const descriptor = buildReleaseDescriptor({
-      releaseId: 'release-1',
+      releaseId: '018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f',
       releaseSequence: 1,
       appVersion: '1.0.0',
       buildId: 'abc123',
       buildDate: '2026-07-24T00:00:00.000Z',
-      indexUrl: '/updates/releases/release-1/index.html',
+      indexUrl: '/updates/releases/018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f/index.html',
       files: [{ path: 'assets/a.js', sha256: '0'.repeat(64), byteSize: 10 }],
     });
 

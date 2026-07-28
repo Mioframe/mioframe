@@ -11,6 +11,7 @@ export type AppUpdateStatus =
   | 'not-checked'
   | 'up-to-date'
   | 'update-available'
+  | 'rolled-back'
   | 'ready'
   | 'install-failed'
   | 'check-failed';
@@ -28,6 +29,13 @@ function deriveAppUpdateStatus(
     snapshot.latestRelease &&
     snapshot.latestRelease.releaseId !== snapshot.activeRelease.releaseId
   ) {
+    // A previously rolled-back release stays visible as its own status only
+    // while it is still the latest known release; a strictly newer
+    // discovery already clears `failedRelease` worker-side and is shown as
+    // an ordinary update instead.
+    if (snapshot.failedRelease?.releaseId === snapshot.latestRelease.releaseId) {
+      return 'rolled-back';
+    }
     return 'update-available';
   }
   if (!snapshot.lastSuccessfulCheckAt) return 'not-checked';
@@ -86,6 +94,7 @@ const setupAppUpdate = () => {
     activeRelease: computed(() => snapshot.value?.activeRelease),
     latestRelease: computed(() => snapshot.value?.latestRelease),
     scheduledRelease: computed(() => snapshot.value?.scheduledRelease),
+    failedRelease: computed(() => snapshot.value?.failedRelease),
     lastSuccessfulCheckAt: computed(() => snapshot.value?.lastSuccessfulCheckAt),
     error: computed(() => snapshot.value?.error),
     refresh,

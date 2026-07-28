@@ -21,45 +21,30 @@ import { readControllerState } from './controllerState';
 export const buildManagedCacheNamespace = (channel: ManagedChannel): string =>
   channel === 'stable' ? 'stable' : 'branch-develop';
 
-/** The staging and final Cache Storage names for one release. */
-export type ReleaseCacheNames = {
-  /** Transient cache used only while downloading and validating a release's files. */
-  staging: string;
-  /** Cache a release is served from once fully validated and committed. */
-  final: string;
-};
-
 /**
- * Builds the staging and final Cache Storage names for one release.
+ * Builds the one immutable Cache Storage name for a release.
  * @param channel - Managed channel.
  * @param releaseId - The release's immutable identifier.
- * @returns The release's `{ staging, final }` cache names.
+ * @returns The release's Cache Storage name.
  */
-export function buildReleaseCacheNames(
-  channel: ManagedChannel,
-  releaseId: string,
-): ReleaseCacheNames {
-  const namespace = buildManagedCacheNamespace(channel);
-  return {
-    staging: `${namespace}-release-staging-${releaseId}`,
-    final: `${namespace}-release-final-${releaseId}`,
-  };
+export function buildReleaseCacheName(channel: ManagedChannel, releaseId: string): string {
+  return `${buildManagedCacheNamespace(channel)}-release-${releaseId}`;
 }
 
-const releaseIdFromFinalCacheName = (namespace: string, cacheName: string): string | undefined => {
-  const prefix = `${namespace}-release-final-`;
+const releaseIdFromCacheName = (namespace: string, cacheName: string): string | undefined => {
+  const prefix = `${namespace}-release-`;
   return cacheName.startsWith(prefix) ? cacheName.slice(prefix.length) : undefined;
 };
 
 /**
  * Returns `true` when `descriptor` proves `expectedRelease` is fully
  * available: its `ReleaseRef` matches exactly and every listed file is
- * present. Callers only reach this once a final cache's descriptor marker
+ * present. Callers only reach this once a release cache's descriptor marker
  * has already been read and parsed; an unparsable or missing marker means
  * "not available" without calling this function at all.
- * @param descriptor - The final cache's parsed descriptor marker.
+ * @param descriptor - The release cache's parsed descriptor marker.
  * @param expectedRelease - The release the caller expects to be available.
- * @param presentPaths - Every file path currently present in the final cache.
+ * @param presentPaths - Every file path currently present in the release cache.
  * @returns Whether `expectedRelease` is completely and correctly available.
  */
 export function isReleaseAvailable(
@@ -94,7 +79,7 @@ export function isReleaseFilePath(descriptor: ReleaseDescriptor, relativePath: s
   return descriptor.files.some((file) => file.path === relativePath);
 }
 
-/** Inputs to {@link computeProtectedReleaseIds}: every release currently owned by persisted state. */
+/** Inputs to {@link computeProtectedReleaseIds}: every release currently owned by persisted state or in-flight preparation. */
 export type ProtectedReleaseInputs = {
   /** The currently active release. */
   activeRelease: ReleaseRef;
@@ -102,35 +87,29 @@ export type ProtectedReleaseInputs = {
   approvedRelease?: ReleaseRef | undefined;
   /** The in-progress clean-launch activation, if any. */
   activation?: Activation | undefined;
-  /** The latest release fully prepared for explicit Manual approval, if any. */
-  manualCandidateReleaseId?: string | undefined;
+  /** Every release id currently being prepared by the {@link PreparationCoordinator}. */
+  inFlightReleaseIds?: readonly string[] | undefined;
 };
 
 /**
  * Computes every release id that cleanup must never remove: the active
  * release, an approved-but-not-yet-activated release, an in-progress
- * activation's target and previous release, and the latest release prepared
- * for explicit Manual approval.
- * @param inputs - Every release currently owned by persisted state.
+ * activation's target, and every release currently being prepared.
+ * @param inputs - Every release currently owned by persisted state or in-flight preparation.
  * @returns The set of protected release ids.
  */
 export function computeProtectedReleaseIds(inputs: ProtectedReleaseInputs): Set<string> {
   const protectedIds = new Set<string>([inputs.activeRelease.releaseId]);
   if (inputs.approvedRelease) protectedIds.add(inputs.approvedRelease.releaseId);
-  if (inputs.activation) {
-    protectedIds.add(inputs.activation.targetRelease.releaseId);
-    protectedIds.add(inputs.activation.previousRelease.releaseId);
-  }
-  if (inputs.manualCandidateReleaseId) protectedIds.add(inputs.manualCandidateReleaseId);
+  if (inputs.activation) protectedIds.add(inputs.activation.targetRelease.releaseId);
+  for (const releaseId of inputs.inFlightReleaseIds ?? []) protectedIds.add(releaseId);
   return protectedIds;
 }
 
 /**
  * Computes which of this channel's existing Cache Storage names cleanup
- * should delete: every staging cache (always transient — cleanup only runs
- * serialized with preparation, so a leftover staging cache is always from an
- * interrupted prior attempt) and every final cache whose release id is not
- * in `protectedReleaseIds`. Cache names outside this channel's managed
+ * should delete: every release cache whose release id is not in
+ * `protectedReleaseIds`. Cache names outside this channel's managed
  * namespace are never touched.
  * @param existingCacheNames - Every Cache Storage name currently present (any namespace).
  * @param channel - Managed channel to clean up.
@@ -143,19 +122,17 @@ export function computeCacheNamesToDelete(
   protectedReleaseIds: ReadonlySet<string>,
 ): string[] {
   const namespace = buildManagedCacheNamespace(channel);
-  const stagingPrefix = `${namespace}-release-staging-`;
 
   return existingCacheNames.filter((name) => {
-    if (name.startsWith(stagingPrefix)) return true;
-    const releaseId = releaseIdFromFinalCacheName(namespace, name);
+    const releaseId = releaseIdFromCacheName(namespace, name);
     return releaseId !== undefined && !protectedReleaseIds.has(releaseId);
   });
 }
 
 /**
- * Deletes every Cache Storage entry this channel no longer needs: leftover
- * staging caches and any final release cache not currently protected by
- * persisted state.
+ * Deletes every release cache this channel no longer needs: any release
+ * cache not currently protected by persisted state or in-flight
+ * preparation.
  *
  * A best-effort side effect run after a lifecycle transition that can
  * release cache ownership (commit, rollback, cancellation, a mode change
@@ -165,8 +142,12 @@ export function computeCacheNamesToDelete(
  * transition appear to have failed. A no-op when persisted state is not
  * currently valid.
  * @param channel - Managed channel to clean up.
+ * @param inFlightReleaseIds - Every release id currently being prepared by the {@link PreparationCoordinator}, so a concurrent cleanup never deletes a cache still being populated.
  */
-export async function runReleaseCacheCleanup(channel: ManagedChannel): Promise<void> {
+export async function runReleaseCacheCleanup(
+  channel: ManagedChannel,
+  inFlightReleaseIds: readonly string[] = [],
+): Promise<void> {
   const read = await readControllerState(channel);
   if (read.status !== 'valid') return;
 
@@ -174,6 +155,7 @@ export async function runReleaseCacheCleanup(channel: ManagedChannel): Promise<v
     activeRelease: read.state.activeRelease,
     approvedRelease: read.state.approvedRelease,
     activation: read.state.activation,
+    inFlightReleaseIds,
   });
   const existingCacheNames = await caches.keys();
   const staleCacheNames = computeCacheNamesToDelete(
@@ -184,11 +166,11 @@ export async function runReleaseCacheCleanup(channel: ManagedChannel): Promise<v
   await Promise.all(staleCacheNames.map((name) => caches.delete(name)));
 }
 
-/** Synthetic request URL the release descriptor commit marker is stored under within a final cache. */
+/** Synthetic request URL the release descriptor commit marker is stored under within a release cache. */
 export const RELEASE_DESCRIPTOR_MARKER_URL =
   'https://mioframe.internal/__release-descriptor-marker__';
 
-/** Synthetic request URL the release's archived index document is stored under within a final cache. */
+/** Synthetic request URL the release's archived index document is stored under within a release cache. */
 export const RELEASE_INDEX_HTML_URL = 'https://mioframe.internal/__release-index-html__';
 
 /**
@@ -196,7 +178,7 @@ export const RELEASE_INDEX_HTML_URL = 'https://mioframe.internal/__release-index
  * `index.html` served for every same-channel navigation to this release).
  * Must be written before the descriptor marker: the descriptor marker's
  * presence is what signals the release is fully available.
- * @param cache - The release's final Cache Storage cache.
+ * @param cache - The release's Cache Storage cache.
  * @param indexHtml - The archived index document's HTML body.
  */
 export async function writeReleaseIndexMarker(
@@ -211,7 +193,7 @@ export async function writeReleaseIndexMarker(
 
 /**
  * Reads the release's archived index document.
- * @param cache - The release's final Cache Storage cache.
+ * @param cache - The release's Cache Storage cache.
  * @returns The archived index response, or `undefined` when not present.
  */
 export async function readReleaseIndexMarker(
@@ -221,10 +203,10 @@ export async function readReleaseIndexMarker(
 }
 
 /**
- * Writes the validated release descriptor as this final cache's commit
- * marker. Must be the last write into a final cache during preparation: its
- * presence and validity is what makes a release "available".
- * @param cache - The release's final Cache Storage cache.
+ * Writes the validated release descriptor as this release cache's commit
+ * marker. Must be the last write during preparation: its presence and
+ * validity is what makes a release "available".
+ * @param cache - The release's Cache Storage cache.
  * @param descriptor - The validated release descriptor to commit.
  */
 export async function writeReleaseDescriptorMarker(
@@ -235,8 +217,8 @@ export async function writeReleaseDescriptorMarker(
 }
 
 /**
- * Reads and validates a final cache's commit marker.
- * @param cache - The release's final Cache Storage cache.
+ * Reads and validates a release cache's commit marker.
+ * @param cache - The release's Cache Storage cache.
  * @returns The validated descriptor, or `undefined` when no marker is present or it is invalid.
  */
 export async function readReleaseDescriptorMarker(
@@ -249,10 +231,17 @@ export async function readReleaseDescriptorMarker(
 }
 
 /**
- * Reads a final cache's commit marker and confirms `expectedRelease` is
- * completely available in it (see {@link isReleaseAvailable}). No response
- * may be served from a final cache before this check succeeds.
- * @param cache - The release's final Cache Storage cache.
+ * Reads a release cache's commit marker and confirms `expectedRelease` is
+ * completely available in it (see {@link isReleaseAvailable}): the
+ * descriptor marker parses and matches, the archived index marker is
+ * present, and every listed file is present. No response may be served from
+ * a release cache before this check succeeds.
+ *
+ * Independently re-checks the index marker rather than relying only on
+ * preparation's write ordering, since Cache Storage entries may be evicted
+ * individually under storage pressure — the descriptor marker surviving
+ * does not guarantee every other entry did too.
+ * @param cache - The release's Cache Storage cache.
  * @param expectedRelease - The release the caller expects to be available.
  * @param channelBasePath - This worker's channel base path, used to recover each cached request's relative file path.
  * @returns Whether `expectedRelease` is completely and correctly available in `cache`.
@@ -264,6 +253,9 @@ export async function checkReleaseAvailability(
 ): Promise<boolean> {
   const descriptor = await readReleaseDescriptorMarker(cache);
   if (!descriptor) return false;
+
+  const indexMarker = await readReleaseIndexMarker(cache);
+  if (!indexMarker) return false;
 
   const cachedRequests = await cache.keys();
   const presentPaths = new Set(

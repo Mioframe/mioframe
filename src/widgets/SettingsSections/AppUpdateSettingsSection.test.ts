@@ -184,6 +184,34 @@ describe('AppUpdateSettingsSection', () => {
     unmount();
   });
 
+  it('rolled-back (manual): shows the failure message with a retry install action', async () => {
+    status.value = 'rolled-back';
+    mode.value = 'manual';
+    const { root, unmount } = await mountSection();
+
+    expect(root.textContent).toContain(
+      'The last update attempt failed to start and was rolled back. You can try again.',
+    );
+    getButtonByText(root, 'Install on next launch')?.click();
+    await nextTick();
+
+    expect(installOnNextLaunchMock).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it('rolled-back (automatic): is informational only, no action', async () => {
+    status.value = 'rolled-back';
+    mode.value = 'automatic';
+    const { root, unmount } = await mountSection();
+
+    expect(root.textContent).toContain(
+      'The last update attempt failed to start and was rolled back.',
+    );
+    const button = getButtonByText(root, 'Update failed');
+    expect(button?.getAttribute('disabled')).toBe('');
+    unmount();
+  });
+
   it('downloading: shows a loading indicator and disables the action while checking', async () => {
     isChecking.value = true;
     const { root, unmount } = await mountSection();

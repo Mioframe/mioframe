@@ -35,10 +35,9 @@ type ControllerStateReadResult =
         approvedRelease?: { releaseId: string; releaseSequence: number };
         activation?: {
           targetRelease: { releaseId: string; releaseSequence: number };
-          previousRelease: { releaseId: string; releaseSequence: number };
           deadlineAt: string;
         };
-        failedReleaseIds: string[];
+        failedActivationRelease?: { releaseId: string; releaseSequence: number };
       };
     }
   | { status: 'invalid' };
@@ -205,7 +204,7 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     if (committed.status === 'valid') {
       expect(committed.state.activation).toBeUndefined();
       expect(committed.state.approvedRelease).toBeUndefined();
-      expect(committed.state.failedReleaseIds).not.toContain(
+      expect(committed.state.failedActivationRelease?.releaseId).not.toBe(
         committed.state.activeRelease.releaseId,
       );
     }
@@ -260,7 +259,7 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     expect(rolledBack.status).toBe('valid');
     if (rolledBack.status === 'valid') {
       expect(rolledBack.state.activation).toBeUndefined();
-      expect(rolledBack.state.failedReleaseIds).toContain(scheduledReleaseId);
+      expect(rolledBack.state.failedActivationRelease?.releaseId).toBe(scheduledReleaseId);
     }
 
     await page.close();
@@ -320,12 +319,12 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
                 mode: 'manual',
                 activeRelease: active,
                 activation: {
-                  targetRelease: { releaseId: 'crash-target', releaseSequence: 999 },
-                  previousRelease: active,
-                  startedAt: '2000-01-01T00:00:00.000Z',
+                  targetRelease: {
+                    releaseId: '99999999-9999-4999-8999-999999999999',
+                    releaseSequence: 999,
+                  },
                   deadlineAt: '2000-01-01T00:00:30.000Z',
                 },
-                failedReleaseIds: [],
               },
               'controllerState',
             );

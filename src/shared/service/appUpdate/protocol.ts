@@ -42,6 +42,8 @@ export type AppUpdateSnapshot = {
   latestRelease?: ReleaseRef | undefined;
   /** An approved release waiting for the next clean launch, if any. */
   scheduledRelease?: ReleaseRef | undefined;
+  /** The single most recent release that failed clean-launch activation and was rolled back, if any. Remains visible until cleared by a successful retry or superseded by a newer discovery. */
+  failedRelease?: ReleaseRef | undefined;
   /** ISO timestamp of the last successful discovery check, if any. */
   lastSuccessfulCheckAt?: string | undefined;
   /** An error to report for this response, if any. */

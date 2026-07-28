@@ -5,13 +5,15 @@ declare const self: ServiceWorkerGlobalScope;
  * Managed pinned-update controller worker for the stable and develop
  * channels (see the managed pinned application updates feature).
  *
- * This worker is a permanent release controller, independent of any
- * particular application release: it owns persisted update state, release
- * discovery, immutable release preparation, selected-release navigation,
- * clean-launch activation, boot commit, rollback, and local release-cache
- * cleanup. It must never identify itself as, or embed, a particular
- * application release — only its own channel (derived at runtime from its
- * registration scope, not build-embedded).
+ * This worker owns application-release pinning only: persisted update
+ * state, release discovery, immutable release preparation, selected-release
+ * navigation, clean-launch activation, boot commit, rollback, and local
+ * release-cache cleanup. It never manages its own code's lifecycle —
+ * install/waiting/activate for this worker script itself is the browser's
+ * ordinary Service Worker lifecycle, untouched here (no `skipWaiting()`, no
+ * `clients.claim()`). It must never identify itself as, or embed, a
+ * particular application release — only its own channel (derived at runtime
+ * from its registration scope, not build-embedded).
  */
 
 import { createAutomaticCheckScheduler } from './shared/service/appUpdate/automaticCheckScheduler';
@@ -19,7 +21,6 @@ import {
   isSameChannelPath,
   isSameChannelWindowClient,
 } from './shared/service/appUpdate/cleanLaunch';
-import { readControllerState } from './shared/service/appUpdate/controllerState';
 import { createOperationQueue } from './shared/service/appUpdate/operationQueue';
 import { createPreparationCoordinator } from './shared/service/appUpdate/preparationCoordinator';
 import type { AppUpdateWorkerRequest } from './shared/service/appUpdate/protocol';
@@ -28,80 +29,29 @@ import { runAutomaticCheckIfEnabled } from './shared/service/appUpdate/updateDis
 import {
   buildManagedChannelBasePath,
   deriveManagedChannel,
+  deriveManagedChannelOrigin,
 } from './shared/service/appUpdate/workerChannel';
 import { handleAssetFetch, handleNavigationFetch } from './shared/service/appUpdate/workerFetch';
-import {
-  confirmExistingManagedInstall,
-  decideInstallAction,
-  prepareInitialManagedRelease,
-} from './shared/service/appUpdate/workerInstall';
+import { runInstall } from './shared/service/appUpdate/workerInstall';
 import { handleWorkerMessage } from './shared/service/appUpdate/workerMessages';
 
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
+const channelOrigin = deriveManagedChannelOrigin(self.registration.scope);
 const enqueue = createOperationQueue();
 const preparationCoordinator = createPreparationCoordinator();
 const automaticCheckScheduler = createAutomaticCheckScheduler();
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    (async () => {
-      const hasPreviousActiveController = self.registration.active !== null;
-      const action = await enqueue(() => decideInstallAction(channel, hasPreviousActiveController));
-
-      if (action === 'defer-to-legacy-worker') {
-        // No managed state exists, and a previously-active (necessarily
-        // legacy, pre-migration) worker still controls this channel: do
-        // not fetch or prepare anything here — the still-active legacy
-        // Workbox worker's own runtime-caching routes would otherwise
-        // intercept these install-time requests — and do not call
-        // `skipWaiting()`. This worker simply waits; ordinary browser
-        // worker lifecycle promotes it once every legacy-controlled window
-        // closes, and migration completes in the `activate` handler below.
-        return;
-      }
-
-      // Only claim the controller identity once prerequisites succeed: a
-      // failed first install must never replace a working previous worker,
-      // and an existing installation's active release must never change
-      // just because the controller code itself was upgraded.
-      await enqueue(() =>
-        action === 'prepare-fresh-install'
-          ? prepareInitialManagedRelease(channel, channelBasePath)
-          : confirmExistingManagedInstall(channel, channelBasePath),
-      );
-      await self.skipWaiting();
-    })(),
-  );
+  event.waitUntil(enqueue(() => runInstall(channel, channelBasePath)));
 });
 
 self.addEventListener('activate', (event) => {
+  // Best-effort managed-cache housekeeping only: never selects, initializes,
+  // or verifies an application release. A cleanup failure must not fail
+  // this worker's activation.
   event.waitUntil(
-    (async () => {
-      const read = await enqueue(() => readControllerState(channel));
-      if (read.status === 'absent') {
-        // Completing a legacy-Workbox migration: this worker deferred all
-        // preparation during `install`, and the browser has now promoted
-        // it on its own once every legacy-controlled window closed. Only
-        // claim already-open (legacy) clients once the initial managed
-        // release is fully prepared and persisted — a failure here must
-        // not claim clients or create partial state (see the managed
-        // pinned application updates feature, "Worker migration"). The
-        // browser has already committed to this worker as `active`
-        // regardless (the platform has no "reject activation" mechanism),
-        // so a failure here is a best-effort non-claim: any subsequent
-        // navigation this worker does end up controlling still falls back
-        // to an ordinary network fetch via `handleNavigationFetch`'s own
-        // invalid-state handling, rather than a hard failure.
-        try {
-          await enqueue(() => prepareInitialManagedRelease(channel, channelBasePath));
-        } catch {
-          return;
-        }
-      }
-      await self.clients.claim();
-      await runReleaseCacheCleanup(channel);
-    })(),
+    runReleaseCacheCleanup(channel, preparationCoordinator.getInFlightReleaseIds()).catch(() => {}),
   );
 });
 
@@ -132,8 +82,11 @@ self.addEventListener('fetch', (event) => {
   // `/pr/**` — this worker's own scope is wide enough to otherwise
   // intercept those foreign deployments' requests (including a develop
   // controller's own install-time fetches), which must stay this worker's
-  // non-concern exactly like the legacy Workbox config's denylist.
-  if (!isSameChannelPath(event.request.url, channelBasePath)) return;
+  // non-concern exactly like the legacy Workbox config's denylist. The
+  // origin check additionally rejects any cross-origin request the browser
+  // still dispatches to this handler (scope only limits which pages this
+  // worker controls, not which of their requests reach `fetch`).
+  if (!isSameChannelPath(event.request.url, channelBasePath, channelOrigin)) return;
 
   // `updates/**` (the `latest.json` pointer, release descriptors, and
   // archived indexes) is metadata this worker fetches for its own
@@ -152,22 +105,30 @@ self.addEventListener('fetch', (event) => {
       handleNavigationFetch(
         channel,
         channelBasePath,
+        channelOrigin,
         event.request,
         isReplacementNavigation(event),
         enqueue,
+        preparationCoordinator,
       ),
     );
-    // Fire-and-forget, deduplicated once per worker lifetime: never awaited
-    // as part of the navigation response, so an Automatic-mode background
-    // check (and any release download/hashing it triggers) can never delay
-    // this or any other navigation.
-    automaticCheckScheduler.scheduleOnce(() =>
-      runAutomaticCheckIfEnabled(channel, channelBasePath, enqueue, preparationCoordinator),
+    // Deduplicated once per worker lifetime, and attached to this event's
+    // lifetime via `waitUntil` — never awaited as part of the navigation
+    // response, so an Automatic-mode background check (and any release
+    // download/hashing it triggers) can never delay this or any other
+    // navigation, but the worker is also not eligible for termination while
+    // it is still running.
+    event.waitUntil(
+      automaticCheckScheduler.scheduleOnce(() =>
+        runAutomaticCheckIfEnabled(channel, channelBasePath, enqueue, preparationCoordinator),
+      ),
     );
     return;
   }
 
-  event.respondWith(handleAssetFetch(channel, channelBasePath, event.request));
+  event.respondWith(
+    handleAssetFetch(channel, channelBasePath, event.request, preparationCoordinator),
+  );
 });
 
 self.addEventListener('message', (event) => {
@@ -178,18 +139,22 @@ self.addEventListener('message', (event) => {
   // controller state, and must never learn anything about it — including
   // through an error response, which is why this case is silently ignored
   // rather than answered.
-  if (!isSameChannelWindowClient(event.source, channelBasePath)) return;
+  if (!isSameChannelWindowClient(event.source, channelBasePath, channelOrigin)) return;
 
   const request: AppUpdateWorkerRequest = event.data;
   const respond = (result: unknown) => {
     if (event.ports[0]) event.ports[0].postMessage(result);
   };
   event.waitUntil(
-    handleWorkerMessage(channel, channelBasePath, request, enqueue, preparationCoordinator).then(
-      respond,
-      (error: unknown) => {
-        respond({ error: error instanceof Error ? error.message : 'unavailable' });
-      },
-    ),
+    handleWorkerMessage(
+      channel,
+      channelBasePath,
+      channelOrigin,
+      request,
+      enqueue,
+      preparationCoordinator,
+    ).then(respond, (error: unknown) => {
+      respond({ error: error instanceof Error ? error.message : 'unavailable' });
+    }),
   );
 });

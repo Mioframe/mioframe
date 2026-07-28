@@ -6,15 +6,15 @@ import { readControllerState, writeControllerState } from './controllerState';
 import { BOOT_CONFIRMATION_TIMEOUT_MS } from './bootConfirmation';
 import { countSameChannelWindowClients } from './cleanLaunch';
 import type { OperationQueue } from './operationQueue';
+import type { PreparationCoordinator } from './preparationCoordinator';
 import {
-  buildReleaseCacheNames,
+  buildReleaseCacheName,
   checkReleaseAvailability,
   isReleaseFilePath,
   readReleaseDescriptorMarker,
   readReleaseIndexMarker,
   runReleaseCacheCleanup,
 } from './releaseCache';
-import { fetchReleaseDescriptor, prepareRelease } from './releasePreparation';
 import {
   isActivationExpired,
   rollbackActivation,
@@ -30,21 +30,24 @@ async function getAllWindowClientUrls(): Promise<string[]> {
 }
 
 /**
- * Attempts to restore a release from its immutable server archive by
- * re-fetching and re-preparing it. Never substitutes a different release.
- * @param channelBasePath - This worker's channel base path.
+ * Attempts to restore a release from its immutable server archive, through
+ * the shared {@link PreparationCoordinator} so this never duplicates a
+ * concurrent Automatic or Manual preparation of the same release id. Never
+ * substitutes a different release.
  * @param channel - Managed channel.
+ * @param channelBasePath - This worker's channel base path.
  * @param release - The exact release to restore.
+ * @param coordinator - The channel's preparation coordinator.
  * @returns Whether restoration succeeded.
  */
 async function restoreRelease(
-  channelBasePath: string,
   channel: ManagedChannel,
+  channelBasePath: string,
   release: ReleaseRef,
+  coordinator: PreparationCoordinator,
 ): Promise<boolean> {
   try {
-    const descriptor = await fetchReleaseDescriptor(channelBasePath, release);
-    await prepareRelease(channelBasePath, channel, descriptor);
+    await coordinator.prepare(channel, channelBasePath, release);
     return true;
   } catch {
     return false;
@@ -52,10 +55,9 @@ async function restoreRelease(
 }
 
 /**
- * Serves `request` from `release`'s final cache, restoring it from the
- * immutable server archive first if its local cache is missing or
- * incomplete. Never falls through to a different release or to the current
- * root deployment.
+ * Serves `request` from `release`'s cache, restoring it from the immutable
+ * server archive first if its local cache is missing or incomplete. Never
+ * falls through to a different release or to the current root deployment.
  *
  * For a non-navigation request whose path is not one of `release`'s own
  * listed files (a manifest, PWA icon, API route, or any other same-origin
@@ -67,6 +69,7 @@ async function restoreRelease(
  * @param release - The release to serve.
  * @param request - The incoming request.
  * @param isNavigation - Whether this is a top-level navigation request.
+ * @param coordinator - The channel's preparation coordinator.
  * @returns The response to serve, or `undefined` when `request` is not owned by this release.
  */
 export async function serveRelease(
@@ -75,23 +78,26 @@ export async function serveRelease(
   release: ReleaseRef,
   request: Request,
   isNavigation: boolean,
+  coordinator: PreparationCoordinator,
 ): Promise<Response | undefined> {
-  const { final } = buildReleaseCacheNames(channel, release.releaseId);
-  let finalCache = await caches.open(final);
-  let descriptor = await readReleaseDescriptorMarker(finalCache);
+  const cacheName = buildReleaseCacheName(channel, release.releaseId);
+  let cache = await caches.open(cacheName);
+  let descriptor = await readReleaseDescriptorMarker(cache);
 
   if (!isNavigation && descriptor) {
     const relativePath = new URL(request.url).pathname.slice(channelBasePath.length);
     if (!isReleaseFilePath(descriptor, relativePath)) return undefined;
   }
 
-  let available = await checkReleaseAvailability(finalCache, release, channelBasePath);
+  let available = await checkReleaseAvailability(cache, release, channelBasePath);
 
   if (!available) {
-    if (!(await restoreRelease(channelBasePath, channel, release))) return UNAVAILABLE_RESPONSE();
-    finalCache = await caches.open(final);
-    descriptor = await readReleaseDescriptorMarker(finalCache);
-    available = await checkReleaseAvailability(finalCache, release, channelBasePath);
+    if (!(await restoreRelease(channel, channelBasePath, release, coordinator))) {
+      return UNAVAILABLE_RESPONSE();
+    }
+    cache = await caches.open(cacheName);
+    descriptor = await readReleaseDescriptorMarker(cache);
+    available = await checkReleaseAvailability(cache, release, channelBasePath);
     if (!available) return UNAVAILABLE_RESPONSE();
     if (!isNavigation && descriptor) {
       const relativePath = new URL(request.url).pathname.slice(channelBasePath.length);
@@ -100,11 +106,11 @@ export async function serveRelease(
   }
 
   if (isNavigation) {
-    const indexResponse = await readReleaseIndexMarker(finalCache);
+    const indexResponse = await readReleaseIndexMarker(cache);
     return indexResponse ?? UNAVAILABLE_RESPONSE();
   }
 
-  const cached = await finalCache.match(request);
+  const cached = await cache.match(request);
   return cached ?? new Response('Not found', { status: 404 });
 }
 
@@ -117,17 +123,19 @@ export async function serveRelease(
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming request.
+ * @param coordinator - The channel's preparation coordinator.
  * @returns The response to serve.
  */
 export async function handleAssetFetch(
   channel: ManagedChannel,
   channelBasePath: string,
   request: Request,
+  coordinator: PreparationCoordinator,
 ): Promise<Response> {
   const read = await readControllerState(channel);
   if (read.status !== 'valid') return fetch(request);
   const target = read.state.activation?.targetRelease ?? read.state.activeRelease;
-  const served = await serveRelease(channel, channelBasePath, target, request, false);
+  const served = await serveRelease(channel, channelBasePath, target, request, false, coordinator);
   return served ?? fetch(request);
 }
 
@@ -141,17 +149,21 @@ export async function handleAssetFetch(
  * serve.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
  * @param request - The incoming navigation request.
  * @param isReloadOfControlledClient - Whether this navigation reloads an existing controlled client.
  * @param enqueue - The channel's serialized operation queue.
+ * @param coordinator - The channel's preparation coordinator.
  * @returns The response to serve.
  */
 export async function handleNavigationFetch(
   channel: ManagedChannel,
   channelBasePath: string,
+  channelOrigin: string,
   request: Request,
   isReloadOfControlledClient: boolean,
   enqueue: OperationQueue,
+  coordinator: PreparationCoordinator,
 ): Promise<Response> {
   const { target, didRollback } = await enqueue(
     async (): Promise<{ target: ReleaseRef | undefined; didRollback: boolean }> => {
@@ -165,6 +177,7 @@ export async function handleNavigationFetch(
         const otherLiveClientCount = countSameChannelWindowClients(
           await getAllWindowClientUrls(),
           channelBasePath,
+          channelOrigin,
         );
         if (otherLiveClientCount === 0) {
           state = rollbackActivation(state, state.activation.targetRelease.releaseId);
@@ -177,10 +190,11 @@ export async function handleNavigationFetch(
         const otherLiveClientCount = countSameChannelWindowClients(
           await getAllWindowClientUrls(),
           channelBasePath,
+          channelOrigin,
         );
         if (shouldStartActivation(state, { isReloadOfControlledClient, otherLiveClientCount })) {
           const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
-          state = startActivation(state, state.approvedRelease, now, deadlineAt);
+          state = startActivation(state, state.approvedRelease, deadlineAt);
           await writeControllerState(channel, state);
         }
       }
@@ -195,19 +209,20 @@ export async function handleNavigationFetch(
   // Fire-and-forget: a crash-recovery rollback releases cache ownership of
   // the failed target, but cleanup (a full cache-storage scan) must never
   // delay this or any other navigation.
-  if (didRollback) void runReleaseCacheCleanup(channel).catch(() => {});
+  if (didRollback) {
+    void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+  }
 
-  // No managed state at all (e.g. a legacy-migration activation that has
-  // not finished, or failed, preparing the first managed release): there is
-  // no release identity to protect yet, so fall back to an ordinary network
-  // fetch instead of a hard failure — this is the one case where that is
-  // safe, since no pinning guarantee is being bypassed. Once a release
-  // identity is known (`target` resolved), every other unavailable path
-  // below still fails closed rather than silently substituting a different
-  // release.
+  // No managed state at all (e.g. an install that has not finished, or
+  // failed, preparing the first managed release): there is no release
+  // identity to protect yet, so fall back to an ordinary network fetch
+  // instead of a hard failure — this is the one case where that is safe,
+  // since no pinning guarantee is being bypassed. Once a release identity
+  // is known (`target` resolved), every other unavailable path below still
+  // fails closed rather than silently substituting a different release.
   if (!target) return fetch(request);
   // Navigation always resolves to a Response: `serveRelease` only ever
   // returns `undefined` for a non-owned, non-navigation asset path.
-  const served = await serveRelease(channel, channelBasePath, target, request, true);
+  const served = await serveRelease(channel, channelBasePath, target, request, true, coordinator);
   return served ?? UNAVAILABLE_RESPONSE();
 }

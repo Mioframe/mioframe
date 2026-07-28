@@ -10,7 +10,7 @@
  * `tests/e2e/release/managedUpdates*.spec.ts`.
  */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -149,6 +149,51 @@ export async function buildAndApplyLegacyStableDeploy({ workDir }) {
   } finally {
     rmSync(distDir, { recursive: true, force: true });
   }
+}
+
+/**
+ * @param workDir Pages staging working directory root.
+ * @param channel Managed channel: `'stable'` or `'develop'`.
+ * @returns The channel's base directory, matching `releasePublish.mjs`'s own resolution.
+ */
+function resolveChannelBase(workDir, channel) {
+  return channel === 'stable' ? workDir : join(workDir, 'branch', 'develop');
+}
+
+/**
+ * Corrupts one already-published release file's on-disk bytes in place,
+ * without touching its retained descriptor — the descriptor's declared
+ * SHA-256 no longer matches the file's actual server content. Used only to
+ * make release *preparation* (fetch + hash validation) genuinely fail, as
+ * opposed to {@link buildAndPublishBrokenManagedRelease}, which publishes an
+ * internally consistent release that fails only once running in the
+ * browser (a boot-time failure, not an install/preparation-time one).
+ * @param workDir Pages staging working directory root.
+ * @param channel Managed channel: `'stable'` or `'develop'`.
+ * @param filePath One of the published release's own file paths, e.g. `descriptor.files[0].path`.
+ */
+export function corruptPublishedReleaseFile(workDir, channel, filePath) {
+  writeFileSync(
+    join(resolveChannelBase(workDir, channel), filePath),
+    'throw new Error("corrupted for install-failure test");',
+  );
+}
+
+/**
+ * Appends a harmless trailing comment to an already-published channel's
+ * deployed `sw.js`, changing its bytes without altering any application
+ * release asset, descriptor, or persisted controller state. Used only to
+ * prove a controller-code (worker script) update is independent of the
+ * managed application release it controls — never used to build the real
+ * production artifact, only this test-only republish step.
+ * @param workDir Pages staging working directory root.
+ * @param channel Managed channel: `'stable'` or `'develop'`.
+ */
+export function mutateControllerWorkerBytes(workDir, channel) {
+  appendFileSync(
+    join(resolveChannelBase(workDir, channel), 'sw.js'),
+    `\n// test-only controller-code byte change ${Date.now()}\n`,
+  );
 }
 
 /**

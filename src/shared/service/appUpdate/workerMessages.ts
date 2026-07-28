@@ -29,21 +29,28 @@ import { runUpdateCheck } from './updateDiscovery';
 
 /**
  * Broadcasts a rollback instruction to every same-channel window, so every
- * window currently in the failed activation reloads back into the restored
- * previous release. Only called after the rollback has already been
+ * window currently in the failed activation reloads back to the unchanged
+ * active release. Only called after the rollback has already been
  * persisted. Never reaches a foreign-channel window (another branch, PR
  * preview, or a different managed channel sharing this origin).
  * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
  * @param failedReleaseId - The release id that failed to boot.
  */
-async function broadcastRollback(channelBasePath: string, failedReleaseId: string): Promise<void> {
+async function broadcastRollback(
+  channelBasePath: string,
+  channelOrigin: string,
+  failedReleaseId: string,
+): Promise<void> {
   const message: AppUpdateRollbackBroadcast = {
     type: 'APP_UPDATE_ROLLBACK',
     releaseId: failedReleaseId,
   };
   const clients = await self.clients.matchAll({ type: 'window' });
   for (const client of clients) {
-    if (isSameChannelWindowClient(client, channelBasePath)) client.postMessage(message);
+    if (isSameChannelWindowClient(client, channelBasePath, channelOrigin)) {
+      client.postMessage(message);
+    }
   }
 }
 
@@ -89,7 +96,9 @@ async function switchToAutomaticModeWithPrepare(
     const stillValid = !error && state.latestRelease?.releaseId === target.releaseId;
     const next = switchToAutomaticMode(state, stillValid ? target : undefined);
     await writeControllerState(channel, next);
-    if (next !== state) void runReleaseCacheCleanup(channel).catch(() => {});
+    if (next !== state) {
+      void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+    }
     return { snapshot: buildAppUpdateSnapshot(next, error) };
   });
 }
@@ -130,7 +139,7 @@ async function installLatestOnNextLaunch(
     }
     const next = approveManualRelease(state, target);
     await writeControllerState(channel, next);
-    void runReleaseCacheCleanup(channel).catch(() => {});
+    void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
     return { snapshot: buildAppUpdateSnapshot(next) };
   });
 }
@@ -145,6 +154,7 @@ async function installLatestOnNextLaunch(
  * navigation or another protocol request waiting on the same lock.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
  * @param request - The incoming protocol request.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
@@ -154,6 +164,7 @@ async function installLatestOnNextLaunch(
 export async function handleWorkerMessage(
   channel: ManagedChannel,
   channelBasePath: string,
+  channelOrigin: string,
   request: AppUpdateWorkerRequest,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
@@ -170,7 +181,7 @@ export async function handleWorkerMessage(
         return withState(channel, enqueue, async (state) => {
           const next = switchToManualMode(state);
           await writeControllerState(channel, next);
-          void runReleaseCacheCleanup(channel).catch(() => {});
+          void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
           return { snapshot: buildAppUpdateSnapshot(next) };
         });
       }
@@ -185,7 +196,7 @@ export async function handleWorkerMessage(
         const next = cancelScheduledUpdate(state);
         if (next !== state) {
           await writeControllerState(channel, next);
-          void runReleaseCacheCleanup(channel).catch(() => {});
+          void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
         }
         return { snapshot: buildAppUpdateSnapshot(next) };
       });
@@ -212,7 +223,9 @@ export async function handleWorkerMessage(
           didCommit: true,
         };
       });
-      if (result.didCommit) void runReleaseCacheCleanup(channel).catch(() => {});
+      if (result.didCommit) {
+        void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+      }
       return result.response;
     }
 
@@ -239,8 +252,8 @@ export async function handleWorkerMessage(
         };
       });
       if (result.didRollback) {
-        await broadcastRollback(channelBasePath, request.releaseId);
-        void runReleaseCacheCleanup(channel).catch(() => {});
+        await broadcastRollback(channelBasePath, channelOrigin, request.releaseId);
+        void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
       }
       return result.response;
     }

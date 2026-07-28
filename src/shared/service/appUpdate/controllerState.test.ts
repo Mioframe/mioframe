@@ -14,8 +14,7 @@ vi.mock('idb-keyval', () => ({
 const validState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
-  activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-  failedReleaseIds: [],
+  activeRelease: { releaseId: '11111111-1111-4111-8111-111111111111', releaseSequence: 1 },
 };
 
 describe('parseControllerState', () => {

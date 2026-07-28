@@ -10,6 +10,18 @@ export type ManagedChannel = 'stable' | 'develop';
 export const RELEASE_DESCRIPTOR_SCHEMA_VERSION = 1;
 
 /**
+ * Matches the canonical lowercase-hyphenated UUID shape produced by
+ * `crypto.randomUUID()` (the Node publisher's only source of `releaseId`).
+ * Shared by every schema that carries a release identity, so a malformed
+ * `latest.json` pointer or descriptor is rejected at the same boundary
+ * rather than only at whichever consumer happens to compare strings later.
+ */
+const CANONICAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** A release identifier in the exact canonical UUID format the publisher produces. */
+const zodReleaseId = z.string().check(z.refine((value) => CANONICAL_UUID_PATTERN.test(value)));
+
+/**
  * Forward-ordering identity for one immutable application release.
  *
  * `releaseId` is the immutable release identifier; `releaseSequence` is used
@@ -17,7 +29,7 @@ export const RELEASE_DESCRIPTOR_SCHEMA_VERSION = 1;
  * releases.
  */
 export const zodReleaseRef = z.object({
-  releaseId: z.string().check(z.minLength(1)),
+  releaseId: zodReleaseId,
   releaseSequence: z.number().check(z.int(), z.positive()),
 });
 /** A {@link zodReleaseRef}-validated release identity. */
@@ -61,6 +73,10 @@ export const zodReleaseFile = z.object({
 /** A {@link zodReleaseFile}-validated release file record. */
 export type ReleaseFile = z.infer<typeof zodReleaseFile>;
 
+/** Returns `true` when no two files in `files` share the same `path`. */
+const hasUniqueFilePaths = (files: readonly ReleaseFile[]): boolean =>
+  new Set(files.map((file) => file.path)).size === files.length;
+
 /**
  * Published descriptor for one immutable application release: identity,
  * display/diagnostics metadata, and the exact file set required to serve it
@@ -68,13 +84,13 @@ export type ReleaseFile = z.infer<typeof zodReleaseFile>;
  */
 export const zodReleaseDescriptor = z.object({
   schemaVersion: z.literal(RELEASE_DESCRIPTOR_SCHEMA_VERSION),
-  releaseId: z.string().check(z.minLength(1)),
+  releaseId: zodReleaseId,
   releaseSequence: z.number().check(z.int(), z.positive()),
   appVersion: z.string().check(z.minLength(1)),
   buildId: z.string().check(z.minLength(1)),
   buildDate: z.iso.datetime(),
   indexUrl: z.string().check(z.minLength(1)),
-  files: z.array(zodReleaseFile).check(z.minLength(1)),
+  files: z.array(zodReleaseFile).check(z.minLength(1), z.refine(hasUniqueFilePaths)),
 });
 /** A {@link zodReleaseDescriptor}-validated release descriptor. */
 export type ReleaseDescriptor = z.infer<typeof zodReleaseDescriptor>;
@@ -139,13 +155,13 @@ export type UpdateMode = z.infer<typeof zodUpdateMode>;
 
 /**
  * An in-progress clean-launch activation: `targetRelease` is being served to
- * every same-channel window since `startedAt`, pending `BOOT_OK`/`BOOT_FAILED`
- * or the `deadlineAt` boot-confirmation timeout.
+ * every same-channel window, pending `BOOT_OK`/`BOOT_FAILED` or the
+ * `deadlineAt` boot-confirmation timeout. `activeRelease` is never changed by
+ * starting an activation, so there is nothing to record here to reconstruct
+ * a rollback target — that identity always remains `activeRelease` itself.
  */
 export const zodActivation = z.object({
   targetRelease: zodReleaseRef,
-  previousRelease: zodReleaseRef,
-  startedAt: z.iso.datetime(),
   deadlineAt: z.iso.datetime(),
 });
 /** A {@link zodActivation}-validated in-progress activation. */
@@ -165,7 +181,8 @@ export const zodUpdateControllerState = z.object({
   latestRelease: z.optional(zodReleaseRef),
   approvedRelease: z.optional(zodReleaseRef),
   activation: z.optional(zodActivation),
-  failedReleaseIds: z.array(z.string().check(z.minLength(1))),
+  /** The single most recent release that failed clean-launch activation, if any. Only ever one record — not an unbounded history. */
+  failedActivationRelease: z.optional(zodReleaseRef),
   lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
 });
 /** A {@link zodUpdateControllerState}-validated persisted controller state. */

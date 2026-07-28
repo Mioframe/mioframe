@@ -25,11 +25,14 @@ describe('toReleaseRef', () => {
   });
 });
 
+const RELEASE_A = '11111111-1111-4111-8111-111111111111';
+const RELEASE_B = '22222222-2222-4222-8222-222222222222';
+const RELEASE_C = '33333333-3333-4333-8333-333333333333';
+
 const validControllerState = {
   schemaVersion: 1,
   mode: 'manual',
-  activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-  failedReleaseIds: [],
+  activeRelease: { releaseId: RELEASE_A, releaseSequence: 1 },
 };
 
 describe('zodUpdateControllerState', () => {
@@ -41,15 +44,13 @@ describe('zodUpdateControllerState', () => {
     const full = {
       ...validControllerState,
       mode: 'automatic',
-      latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-      approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      latestRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+      approvedRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
       activation: {
-        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        previousRelease: { releaseId: 'release-a', releaseSequence: 1 },
-        startedAt: '2026-07-24T00:00:00.000Z',
+        targetRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
         deadlineAt: '2026-07-24T00:00:30.000Z',
       },
-      failedReleaseIds: ['release-c'],
+      failedActivationRelease: { releaseId: RELEASE_C, releaseSequence: 3 },
       lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
     };
     expect(zodUpdateControllerState.safeParse(full).success).toBe(true);
@@ -76,10 +77,12 @@ describe('zodUpdateControllerState', () => {
     ).toBe(false);
   });
 
-  it('rejects a non-string entry in failedReleaseIds', () => {
+  it('rejects a releaseId not in canonical UUID format', () => {
     expect(
-      zodUpdateControllerState.safeParse({ ...validControllerState, failedReleaseIds: [1] })
-        .success,
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+      }).success,
     ).toBe(false);
   });
 });

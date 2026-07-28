@@ -33,6 +33,17 @@ export declare function buildAndPublishBrokenManagedRelease(options: {
   extraEnv?: Record<string, string>;
 }): Promise<ManagedReleaseDescriptor>;
 
+export declare function corruptPublishedReleaseFile(
+  workDir: string,
+  channel: ManagedReleaseChannel,
+  filePath: string,
+): void;
+
+export declare function mutateControllerWorkerBytes(
+  workDir: string,
+  channel: ManagedReleaseChannel,
+): void;
+
 export type ManagedArtifactServerHandle = {
   url: string;
   close: () => Promise<void>;

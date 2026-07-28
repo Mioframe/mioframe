@@ -63,6 +63,36 @@ describe('useAppUpdate', () => {
     expect(status.value).toBe('update-available');
   });
 
+  it('reports rolled-back when the latest known release is the one that just failed', async () => {
+    getAppUpdateSnapshotMock.mockResolvedValue({
+      mode: 'manual',
+      activeRelease,
+      latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      failedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
+    });
+    const { useAppUpdate } = await import('./useAppUpdate');
+    const { status, refresh } = useAppUpdate();
+    await refresh();
+
+    expect(status.value).toBe('rolled-back');
+  });
+
+  it('reports update-available, not rolled-back, once a newer release supersedes the failed one', async () => {
+    getAppUpdateSnapshotMock.mockResolvedValue({
+      mode: 'manual',
+      activeRelease,
+      latestRelease: { releaseId: 'release-c', releaseSequence: 3 },
+      failedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
+    });
+    const { useAppUpdate } = await import('./useAppUpdate');
+    const { status, refresh } = useAppUpdate();
+    await refresh();
+
+    expect(status.value).toBe('update-available');
+  });
+
   it('reports ready when a release is scheduled', async () => {
     getAppUpdateSnapshotMock.mockResolvedValue({
       mode: 'manual',

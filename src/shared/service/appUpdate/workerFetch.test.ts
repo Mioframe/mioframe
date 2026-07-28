@@ -1,23 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseDescriptor, ReleaseRef } from './contracts';
 import { createFakeCacheStorage } from './fakeCacheStorage.testUtils';
+import type { PreparationCoordinator } from './preparationCoordinator';
 import {
-  buildReleaseCacheNames,
+  buildReleaseCacheName,
   writeReleaseDescriptorMarker,
   writeReleaseIndexMarker,
 } from './releaseCache';
 
 const readControllerStateMock = vi.fn();
-const fetchReleaseDescriptorMock = vi.fn();
-const prepareReleaseMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
   writeControllerState: vi.fn(),
-}));
-vi.mock('./releasePreparation', () => ({
-  fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
-  prepareRelease: (...args: unknown[]) => prepareReleaseMock(...args),
 }));
 
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
@@ -29,7 +24,11 @@ vi.stubGlobal('self', { clients: { matchAll: () => Promise.resolve([]) } });
 
 const BASE_PATH = '/';
 const CHANNEL = 'stable';
-const release: ReleaseRef = { releaseId: 'release-a', releaseSequence: 1 };
+const CHANNEL_ORIGIN = 'https://mioframe.example';
+const release: ReleaseRef = {
+  releaseId: '11111111-1111-4111-8111-111111111111',
+  releaseSequence: 1,
+};
 const descriptor: ReleaseDescriptor = {
   schemaVersion: 1,
   releaseId: release.releaseId,
@@ -37,22 +36,32 @@ const descriptor: ReleaseDescriptor = {
   appVersion: '1.0.0',
   buildId: 'build-1',
   buildDate: '2026-07-24T00:00:00.000Z',
-  indexUrl: '/updates/releases/release-a/index.html',
+  indexUrl: `/updates/releases/${release.releaseId}/index.html`,
   files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
 };
 
 async function seedAvailableRelease(includeAssetFile = true): Promise<void> {
-  const { final } = buildReleaseCacheNames(CHANNEL, release.releaseId);
-  const finalCache = await caches.open(final);
+  const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+  const cache = await caches.open(cacheName);
   if (includeAssetFile) {
-    await finalCache.put(`${BASE_PATH}assets/app.js`, new Response('console.log(1)'));
+    await cache.put(`${BASE_PATH}assets/app.js`, new Response('console.log(1)'));
   }
-  await writeReleaseIndexMarker(finalCache, '<html>archived</html>');
+  await writeReleaseIndexMarker(cache, '<html>archived</html>');
   // Written last, matching production ordering: presence is what "available" means.
-  await writeReleaseDescriptorMarker(finalCache, descriptor);
+  await writeReleaseDescriptorMarker(cache, descriptor);
 }
 
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();
+
+function createFakeCoordinator(
+  overrides: Partial<PreparationCoordinator> = {},
+): PreparationCoordinator {
+  return {
+    prepare: vi.fn().mockRejectedValue(new Error('not prepared in this test')),
+    getInFlightReleaseIds: () => [],
+    ...overrides,
+  };
+}
 
 describe('workerFetch', () => {
   beforeEach(() => {
@@ -64,8 +73,6 @@ describe('workerFetch', () => {
       status: 'valid',
       state: { activeRelease: release },
     });
-    fetchReleaseDescriptorMock.mockReset();
-    prepareReleaseMock.mockReset();
   });
 
   describe('handleNavigationFetch', () => {
@@ -76,28 +83,57 @@ describe('workerFetch', () => {
       const response = await handleNavigationFetch(
         CHANNEL,
         BASE_PATH,
+        CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
         false,
         enqueue,
+        createFakeCoordinator(),
       );
 
       expect(await response.text()).toBe('<html>archived</html>');
     });
 
-    it('passes navigation through to the network when there is no managed state yet (e.g. mid-migration)', async () => {
+    it('passes navigation through to the network when there is no managed state yet', async () => {
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
       const { handleNavigationFetch } = await import('./workerFetch');
 
       const response = await handleNavigationFetch(
         CHANNEL,
         BASE_PATH,
+        CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
         false,
         enqueue,
+        createFakeCoordinator(),
       );
 
       expect(await response.text()).toBe('network response');
       expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('restores a missing release through the shared preparation coordinator', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { activeRelease: release },
+      });
+      const prepare = vi.fn().mockImplementation(async () => {
+        await seedAvailableRelease();
+        return descriptor;
+      });
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      const response = await handleNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        CHANNEL_ORIGIN,
+        new Request('https://mioframe.example/'),
+        false,
+        enqueue,
+        createFakeCoordinator({ prepare }),
+      );
+
+      expect(prepare).toHaveBeenCalledWith(CHANNEL, BASE_PATH, release);
+      expect(await response.text()).toBe('<html>archived</html>');
     });
   });
 
@@ -110,6 +146,7 @@ describe('workerFetch', () => {
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
       );
 
       expect(await response.text()).toBe('console.log(1)');
@@ -118,13 +155,13 @@ describe('workerFetch', () => {
 
     it('reports a controlled unavailable response when the release cannot be restored, never falling through to the current live deployment', async () => {
       await seedAvailableRelease(false);
-      fetchReleaseDescriptorMock.mockRejectedValue(new Error('offline'));
       const { handleAssetFetch } = await import('./workerFetch');
 
       const response = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
       );
 
       expect(response.status).toBe(503);
@@ -139,6 +176,7 @@ describe('workerFetch', () => {
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/manifest.webmanifest'),
+        createFakeCoordinator(),
       );
 
       expect(await response.text()).toBe('network response');
@@ -153,6 +191,7 @@ describe('workerFetch', () => {
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/api/whoami'),
+        createFakeCoordinator(),
       );
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -166,6 +205,7 @@ describe('workerFetch', () => {
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
       );
 
       expect(fetchMock).toHaveBeenCalledTimes(1);

@@ -25,3 +25,14 @@ export function deriveManagedChannel(scope: string): ManagedChannel {
 export function buildManagedChannelBasePath(channel: ManagedChannel): string {
   return channel === 'stable' ? '/' : '/branch/develop/';
 }
+
+/**
+ * Derives this worker instance's own origin from its registration scope, for
+ * channel classification that must reject a cross-origin URL before ever
+ * comparing pathnames (see `cleanLaunch.ts`'s `isSameChannelPath`).
+ * @param scope - This worker's `self.registration.scope`.
+ * @returns The worker's own origin.
+ */
+export function deriveManagedChannelOrigin(scope: string): string {
+  return new URL(scope).origin;
+}

@@ -23,17 +23,15 @@ const baseState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
   activeRelease: releaseA,
-  failedReleaseIds: [],
 };
 
 describe('buildInitialControllerState', () => {
-  it('defaults to automatic mode with an empty failedReleaseIds list', () => {
+  it('defaults to automatic mode with no recorded failure', () => {
     const state = buildInitialControllerState(releaseA);
     expect(state).toEqual({
       schemaVersion: 1,
       mode: 'automatic',
       activeRelease: releaseA,
-      failedReleaseIds: [],
     });
   });
 
@@ -78,6 +76,23 @@ describe('applyCheckForUpdates', () => {
     const result = applyCheckForUpdates(baseState, releaseB, '2026-07-24T00:00:00.000Z');
     expect(result.state.activeRelease).toEqual(baseState.activeRelease);
   });
+
+  it('clears an obsolete recorded failure once a strictly newer release is discovered', () => {
+    const withFailure = { ...baseState, failedActivationRelease: releaseB };
+    const result = applyCheckForUpdates(withFailure, releaseC, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('updated');
+    expect(result.state.failedActivationRelease).toBeUndefined();
+  });
+
+  it('keeps a recorded failure when the discovery does not supersede it', () => {
+    // The discovery is newer than what was previously known (activeRelease),
+    // but not newer than the failed release itself, so the failure record
+    // still describes the latest known state and must not be discarded.
+    const withFailure = { ...baseState, failedActivationRelease: releaseC };
+    const result = applyCheckForUpdates(withFailure, releaseB, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('updated');
+    expect(result.state.failedActivationRelease).toEqual(releaseC);
+  });
 });
 
 describe('approveManualRelease', () => {
@@ -89,6 +104,12 @@ describe('approveManualRelease', () => {
   it('does not require or consult latestRelease', () => {
     const withDifferentLatest = { ...baseState, latestRelease: releaseC };
     const state = approveManualRelease(withDifferentLatest, releaseB);
+    expect(state.approvedRelease).toEqual(releaseB);
+  });
+
+  it('may approve the exact release recorded as previously failed (explicit Manual retry)', () => {
+    const withFailure = { ...baseState, failedActivationRelease: releaseB };
+    const state = approveManualRelease(withFailure, releaseB);
     expect(state.approvedRelease).toEqual(releaseB);
   });
 });
@@ -111,10 +132,16 @@ describe('approveAutomaticRelease', () => {
     expect(state.approvedRelease).toEqual(releaseC);
   });
 
-  it('never approves a release already recorded as failed', () => {
-    const withFailure = { ...baseState, failedReleaseIds: [releaseB.releaseId] };
+  it('never approves the exact release currently recorded as failed', () => {
+    const withFailure = { ...baseState, failedActivationRelease: releaseB };
     const state = approveAutomaticRelease(withFailure, releaseB);
     expect(state.approvedRelease).toBeUndefined();
+  });
+
+  it('approves a newer distinct release even when a different one is recorded as failed', () => {
+    const withFailure = { ...baseState, failedActivationRelease: releaseB };
+    const state = approveAutomaticRelease(withFailure, releaseC);
+    expect(state.approvedRelease).toEqual(releaseC);
   });
 });
 
@@ -129,12 +156,7 @@ describe('cancelScheduledUpdate', () => {
     const withActivation: UpdateControllerState = {
       ...baseState,
       approvedRelease: releaseB,
-      activation: {
-        targetRelease: releaseB,
-        previousRelease: releaseA,
-        startedAt: '2026-07-24T00:00:00.000Z',
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      },
+      activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
     };
     const state = cancelScheduledUpdate(withActivation);
     expect(state).toEqual(withActivation);
@@ -162,12 +184,7 @@ describe('switchToManualMode', () => {
       ...baseState,
       mode: 'automatic',
       approvedRelease: releaseB,
-      activation: {
-        targetRelease: releaseB,
-        previousRelease: releaseA,
-        startedAt: '2026-07-24T00:00:00.000Z',
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      },
+      activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
     };
     const state = switchToManualMode(withActivation);
     expect(state.mode).toBe('manual');
@@ -232,12 +249,7 @@ describe('shouldStartActivation', () => {
   it('does not start again once an activation already exists', () => {
     const withActivation: UpdateControllerState = {
       ...withApproved,
-      activation: {
-        targetRelease: releaseB,
-        previousRelease: releaseA,
-        startedAt: '2026-07-24T00:00:00.000Z',
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      },
+      activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
     };
     expect(
       shouldStartActivation(withActivation, {
@@ -249,35 +261,18 @@ describe('shouldStartActivation', () => {
 });
 
 describe('startActivation', () => {
-  it('persists activation before the target would be served', () => {
-    const state = startActivation(
-      baseState,
-      releaseB,
-      '2026-07-24T00:00:00.000Z',
-      '2026-07-24T00:00:30.000Z',
-    );
+  it('persists activation before the target would be served, leaving activeRelease unchanged', () => {
+    const state = startActivation(baseState, releaseB, '2026-07-24T00:00:30.000Z');
     expect(state.activation).toEqual({
       targetRelease: releaseB,
-      previousRelease: releaseA,
-      startedAt: '2026-07-24T00:00:00.000Z',
       deadlineAt: '2026-07-24T00:00:30.000Z',
     });
     expect(state.activeRelease).toEqual(releaseA);
   });
 
   it('is a no-op when an activation already exists, so concurrent launches never conflict', () => {
-    const withActivation = startActivation(
-      baseState,
-      releaseB,
-      '2026-07-24T00:00:00.000Z',
-      '2026-07-24T00:00:30.000Z',
-    );
-    const again = startActivation(
-      withActivation,
-      releaseC,
-      '2026-07-24T00:05:00.000Z',
-      '2026-07-24T00:05:30.000Z',
-    );
+    const withActivation = startActivation(baseState, releaseB, '2026-07-24T00:00:30.000Z');
+    const again = startActivation(withActivation, releaseC, '2026-07-24T00:05:30.000Z');
     expect(again).toEqual(withActivation);
   });
 });
@@ -285,12 +280,7 @@ describe('startActivation', () => {
 const activatingState: UpdateControllerState = {
   ...baseState,
   approvedRelease: releaseB,
-  activation: {
-    targetRelease: releaseB,
-    previousRelease: releaseA,
-    startedAt: '2026-07-24T00:00:00.000Z',
-    deadlineAt: '2026-07-24T00:00:30.000Z',
-  },
+  activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
 };
 
 describe('commitActivation', () => {
@@ -301,10 +291,16 @@ describe('commitActivation', () => {
     expect(state.approvedRelease).toBeUndefined();
   });
 
-  it('removes the confirmed release from failedReleaseIds if present', () => {
-    const withPriorFailure = { ...activatingState, failedReleaseIds: [releaseB.releaseId] };
+  it('clears a matching recorded failure (a successful retry clears it)', () => {
+    const withPriorFailure = { ...activatingState, failedActivationRelease: releaseB };
     const state = commitActivation(withPriorFailure, releaseB.releaseId);
-    expect(state.failedReleaseIds).toEqual([]);
+    expect(state.failedActivationRelease).toBeUndefined();
+  });
+
+  it('keeps an unrelated recorded failure untouched', () => {
+    const withUnrelatedFailure = { ...activatingState, failedActivationRelease: releaseC };
+    const state = commitActivation(withUnrelatedFailure, releaseB.releaseId);
+    expect(state.failedActivationRelease).toEqual(releaseC);
   });
 
   it('ignores a BOOT_OK for a different release id', () => {
@@ -325,12 +321,18 @@ describe('commitActivation', () => {
 });
 
 describe('rollbackActivation', () => {
-  it('restores the previous release and records the target as failed', () => {
+  it('leaves activeRelease unchanged and records the target as the single failed release', () => {
     const state = rollbackActivation(activatingState, releaseB.releaseId);
     expect(state.activeRelease).toEqual(releaseA);
     expect(state.activation).toBeUndefined();
     expect(state.approvedRelease).toBeUndefined();
-    expect(state.failedReleaseIds).toEqual([releaseB.releaseId]);
+    expect(state.failedActivationRelease).toEqual(releaseB);
+  });
+
+  it('replaces a previously recorded failure with only the new one', () => {
+    const withPriorFailure = { ...activatingState, failedActivationRelease: releaseC };
+    const state = rollbackActivation(withPriorFailure, releaseB.releaseId);
+    expect(state.failedActivationRelease).toEqual(releaseB);
   });
 
   it('ignores a failure report for a different release id', () => {

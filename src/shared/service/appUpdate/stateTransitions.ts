@@ -22,7 +22,6 @@ export function buildInitialControllerState(
     schemaVersion: CONTROLLER_STATE_SCHEMA_VERSION,
     mode,
     activeRelease,
-    failedReleaseIds: [],
   };
 }
 
@@ -48,6 +47,9 @@ export type CheckForUpdatesResult = {
  *
  * Never changes `activeRelease`. Never prepares or approves anything: that
  * remains an orchestration decision made from the resulting `latestRelease`.
+ * A strictly newer discovery than a previously recorded failed release also
+ * clears that failure record, since it can no longer affect Automatic
+ * approval or the UI (an obsolete failure the user has already moved past).
  * @param state - Current controller state.
  * @param discovered - The release identity from the fetched and validated `latest.json`.
  * @param checkedAt - ISO timestamp of this successful check.
@@ -70,16 +72,29 @@ export function applyCheckForUpdates(
   if (!isNewerSequence(discovered, known)) {
     return { outcome: 'ignored-stale', state: { ...state, lastSuccessfulCheckAt: checkedAt } };
   }
+
+  const clearsObsoleteFailure =
+    state.failedActivationRelease !== undefined &&
+    isNewerSequence(discovered, state.failedActivationRelease);
+  const { failedActivationRelease: _failedActivationRelease, ...withoutObsoleteFailure } = state;
+
   return {
     outcome: 'updated',
-    state: { ...state, latestRelease: discovered, lastSuccessfulCheckAt: checkedAt },
+    state: {
+      ...(clearsObsoleteFailure ? withoutObsoleteFailure : state),
+      latestRelease: discovered,
+      lastSuccessfulCheckAt: checkedAt,
+    },
   };
 }
 
 /**
  * Records a Manual `INSTALL_ON_NEXT_LAUNCH` approval for one exact,
  * already-fully-prepared release. Always refers to the exact release the
- * caller resolved and prepared; never re-derived from a newer discovery.
+ * caller resolved and prepared; never re-derived from a newer discovery. An
+ * explicit Manual action may approve the exact release recorded as
+ * previously failed — unlike the Automatic path, this is a deliberate user
+ * retry.
  * @param state - Current controller state.
  * @param prepared - The exact release the user approved and that was fully prepared.
  * @returns The resulting state.
@@ -94,7 +109,7 @@ export function approveManualRelease(
 /**
  * Records an Automatic-mode approval once `prepared` has been fully
  * committed locally. Only ever moves `approvedRelease` forward, and never
- * approves a release already known to have failed its boot.
+ * approves the exact release currently recorded as having failed its boot.
  * @param state - Current controller state.
  * @param prepared - The release that finished background preparation.
  * @returns The resulting state, unchanged if `prepared` is not a forward improvement.
@@ -103,7 +118,7 @@ export function approveAutomaticRelease(
   state: UpdateControllerState,
   prepared: ReleaseRef,
 ): UpdateControllerState {
-  if (state.failedReleaseIds.includes(prepared.releaseId)) return state;
+  if (state.failedActivationRelease?.releaseId === prepared.releaseId) return state;
   if (state.approvedRelease && prepared.releaseSequence <= state.approvedRelease.releaseSequence) {
     return state;
   }
@@ -155,30 +170,24 @@ export function switchToAutomaticMode(
 }
 
 /**
- * Starts a clean-launch activation of `state.approvedRelease`. A no-op when
- * an activation already exists, so concurrent qualifying navigations can
- * call this without creating conflicting activations.
+ * Starts a clean-launch activation of `state.approvedRelease`. `activeRelease`
+ * is left unchanged — it only ever changes on a later `BOOT_OK` commit. A
+ * no-op when an activation already exists, so concurrent qualifying
+ * navigations can call this without creating conflicting activations.
  * @param state - Current controller state.
  * @param target - The release to activate; must equal `state.approvedRelease`.
- * @param startedAt - ISO timestamp activation started.
  * @param deadlineAt - ISO timestamp of the boot-confirmation deadline.
  * @returns The resulting state.
  */
 export function startActivation(
   state: UpdateControllerState,
   target: ReleaseRef,
-  startedAt: string,
   deadlineAt: string,
 ): UpdateControllerState {
   if (state.activation) return state;
   return {
     ...state,
-    activation: {
-      targetRelease: target,
-      previousRelease: state.activeRelease,
-      startedAt,
-      deadlineAt,
-    },
+    activation: { targetRelease: target, deadlineAt },
   };
 }
 
@@ -186,7 +195,8 @@ export function startActivation(
  * Commits a successful `BOOT_OK` for the current activation's target.
  * Ignored (no-op) when there is no matching in-progress activation for
  * `confirmedReleaseId`, so a wrong-release or late confirmation cannot
- * corrupt an already-resolved state.
+ * corrupt an already-resolved state. Clears a matching recorded failure — a
+ * successful retry clears the failure it retried.
  * @param state - Current controller state.
  * @param confirmedReleaseId - The release id reported as successfully booted.
  * @returns The resulting state.
@@ -198,21 +208,27 @@ export function commitActivation(
   const { activation } = state;
   if (!activation || activation.targetRelease.releaseId !== confirmedReleaseId) return state;
 
-  const { activation: _activation, approvedRelease: _approvedRelease, ...rest } = state;
+  const {
+    activation: _activation,
+    approvedRelease: _approvedRelease,
+    failedActivationRelease,
+    ...rest
+  } = state;
+  const clearsFailure = failedActivationRelease?.releaseId === activation.targetRelease.releaseId;
+
   return {
     ...rest,
     activeRelease: activation.targetRelease,
-    failedReleaseIds: state.failedReleaseIds.filter(
-      (id) => id !== activation.targetRelease.releaseId,
-    ),
+    ...(clearsFailure ? {} : { failedActivationRelease }),
   };
 }
 
 /**
- * Rolls back the current activation to its previous release and records the
- * target as failed. Ignored (no-op) when there is no matching in-progress
- * activation for `failedReleaseId`, so a wrong-release or late failure
- * report cannot corrupt an already-resolved state.
+ * Rolls back the current activation, leaving `activeRelease` unchanged (it
+ * was never changed by starting the activation), and records the target as
+ * the single failed release. Ignored (no-op) when there is no matching
+ * in-progress activation for `failedReleaseId`, so a wrong-release or late
+ * failure report cannot corrupt an already-resolved state.
  * @param state - Current controller state.
  * @param failedReleaseId - The release id whose activation failed to boot.
  * @returns The resulting state.
@@ -227,8 +243,7 @@ export function rollbackActivation(
   const { activation: _activation, approvedRelease: _approvedRelease, ...rest } = state;
   return {
     ...rest,
-    activeRelease: activation.previousRelease,
-    failedReleaseIds: [...state.failedReleaseIds, activation.targetRelease.releaseId],
+    failedActivationRelease: activation.targetRelease,
   };
 }
 

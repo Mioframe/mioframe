@@ -10,7 +10,6 @@ const baseState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
   activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-  failedReleaseIds: [],
 };
 
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseDescriptor, ReleaseRef } from './contracts';
 import { createFakeCacheStorage } from './fakeCacheStorage.testUtils';
-import { buildReleaseCacheNames, readReleaseDescriptorMarker } from './releaseCache';
+import { buildReleaseCacheName, readReleaseDescriptorMarker } from './releaseCache';
 
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
 const fetchMock = vi.fn();
@@ -13,7 +13,10 @@ vi.stubGlobal('crypto', { subtle: { digest: digestMock } });
 
 const BASE_PATH = '/';
 const CHANNEL = 'stable';
-const release: ReleaseRef = { releaseId: 'release-a', releaseSequence: 1 };
+const release: ReleaseRef = {
+  releaseId: '11111111-1111-4111-8111-111111111111',
+  releaseSequence: 1,
+};
 const FILE_SHA256 = '0'.repeat(64);
 
 const descriptor: ReleaseDescriptor = {
@@ -55,7 +58,9 @@ describe('fetchReleaseDescriptor', () => {
 
   it('rejects a descriptor whose identity does not match the expected release', async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ ...descriptor, releaseId: 'release-other' })),
+      new Response(
+        JSON.stringify({ ...descriptor, releaseId: '22222222-2222-4222-8222-222222222222' }),
+      ),
     );
     const { fetchReleaseDescriptor } = await import('./releasePreparation');
 
@@ -69,7 +74,7 @@ describe('fetchReleaseDescriptor', () => {
       new Response(
         JSON.stringify({
           ...descriptor,
-          indexUrl: '/branch/develop/updates/releases/release-a/index.html',
+          indexUrl: `/branch/develop/updates/releases/${release.releaseId}/index.html`,
         }),
       ),
     );
@@ -105,22 +110,21 @@ describe('prepareRelease', () => {
     mockDigestMatchesFileHash();
   });
 
-  it('downloads, validates, and commits every file, writing the descriptor marker last', async () => {
+  it('downloads, validates, and commits every file into one release cache, writing the descriptor marker last', async () => {
     mockSuccessfulDownloads();
     const { prepareRelease } = await import('./releasePreparation');
 
     await prepareRelease(BASE_PATH, CHANNEL, descriptor);
 
-    const { final, staging } = buildReleaseCacheNames(CHANNEL, release.releaseId);
-    expect(cachesByName.has(staging)).toBe(false);
-    const finalCache = await fakeCaches.open(final);
-    const marker = await readReleaseDescriptorMarker(finalCache);
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    const cache = await fakeCaches.open(cacheName);
+    const marker = await readReleaseDescriptorMarker(cache);
     expect(marker).toEqual(descriptor);
-    const asset = await finalCache.match(`${BASE_PATH}assets/app.js`);
+    const asset = await cache.match(`${BASE_PATH}assets/app.js`);
     expect(await asset?.text()).toBe('AAA');
   });
 
-  it('is a no-op when the release is already fully committed and available', async () => {
+  it('is a no-op when the release is already fully committed and available — never rebuilds a valid cache', async () => {
     mockSuccessfulDownloads();
     const { prepareRelease } = await import('./releasePreparation');
     await prepareRelease(BASE_PATH, CHANNEL, descriptor);
@@ -131,40 +135,17 @@ describe('prepareRelease', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('never touches an already-committed final cache when a later download fails', async () => {
-    mockSuccessfulDownloads();
-    const { prepareRelease } = await import('./releasePreparation');
-    await prepareRelease(BASE_PATH, CHANNEL, descriptor);
-    const { final } = buildReleaseCacheNames(CHANNEL, release.releaseId);
-    const committedMarker = await readReleaseDescriptorMarker(await fakeCaches.open(final));
-
-    // Force a retry by clearing the descriptor marker (simulating a
-    // corrupted/incomplete local check), then make the download fail.
-    await fakeCaches.delete(final);
-    fetchMock.mockRejectedValue(new Error('offline'));
-
-    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow('offline');
-    // The final cache was already deleted above to force the retry path;
-    // the point under test is that a failed retry does not throw beyond
-    // the download error and does not partially write into a fresh final
-    // cache either.
-    const afterFailure = await fakeCaches.open(final);
-    const markerAfterFailure = await readReleaseDescriptorMarker(afterFailure);
-    expect(markerAfterFailure).toBeUndefined();
-    expect(committedMarker).toEqual(descriptor);
-  });
-
-  it('discards the staging cache even when download fails', async () => {
+  it('deletes the release cache on any failure, leaving no partial content behind', async () => {
     fetchMock.mockRejectedValue(new Error('network down'));
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow('network down');
 
-    const { staging } = buildReleaseCacheNames(CHANNEL, release.releaseId);
-    expect(cachesByName.has(staging)).toBe(false);
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    expect(cachesByName.has(cacheName)).toBe(false);
   });
 
-  it('rejects a byte-size mismatch without writing anything to the final cache', async () => {
+  it('rejects a byte-size mismatch and deletes the cache, without leaving anything committed', async () => {
     fetchMock.mockResolvedValue(new Response('too-long-a-body'));
     const { prepareRelease } = await import('./releasePreparation');
 
@@ -172,11 +153,11 @@ describe('prepareRelease', () => {
       'Byte size mismatch',
     );
 
-    const { final } = buildReleaseCacheNames(CHANNEL, release.releaseId);
-    expect(await readReleaseDescriptorMarker(await fakeCaches.open(final))).toBeUndefined();
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    expect(cachesByName.has(cacheName)).toBe(false);
   });
 
-  it('rejects a SHA-256 mismatch without writing anything to the final cache', async () => {
+  it('rejects a SHA-256 mismatch and deletes the cache, without leaving anything committed', async () => {
     fetchMock.mockResolvedValue(new Response('AAA'));
     digestMock.mockResolvedValue(new Uint8Array(32).fill(1).buffer);
     const { prepareRelease } = await import('./releasePreparation');
@@ -185,11 +166,11 @@ describe('prepareRelease', () => {
       'SHA-256 mismatch',
     );
 
-    const { final } = buildReleaseCacheNames(CHANNEL, release.releaseId);
-    expect(await readReleaseDescriptorMarker(await fakeCaches.open(final))).toBeUndefined();
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    expect(cachesByName.has(cacheName)).toBe(false);
   });
 
-  it('rejects when the archived index cannot be downloaded', async () => {
+  it('rejects when the archived index cannot be downloaded, and deletes the cache', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url.endsWith('index.html')) return new Response('nope', { status: 500 });
       return new Response('AAA');
@@ -200,7 +181,24 @@ describe('prepareRelease', () => {
       'Failed to download archived index',
     );
 
-    const { final } = buildReleaseCacheNames(CHANNEL, release.releaseId);
-    expect(await readReleaseDescriptorMarker(await fakeCaches.open(final))).toBeUndefined();
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    expect(cachesByName.has(cacheName)).toBe(false);
+  });
+
+  it('retries a previously incomplete cache from scratch without touching an unrelated already-valid cache of the same release id under a different channel', async () => {
+    mockSuccessfulDownloads();
+    const { prepareRelease } = await import('./releasePreparation');
+    await prepareRelease(BASE_PATH, CHANNEL, descriptor);
+    const committedMarker = await readReleaseDescriptorMarker(
+      await fakeCaches.open(buildReleaseCacheName(CHANNEL, release.releaseId)),
+    );
+
+    // Force a retry by deleting the cache (simulating an incomplete/evicted
+    // local state), then make the download fail.
+    await fakeCaches.delete(buildReleaseCacheName(CHANNEL, release.releaseId));
+    fetchMock.mockRejectedValue(new Error('offline'));
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow('offline');
+    expect(committedMarker).toEqual(descriptor);
   });
 });

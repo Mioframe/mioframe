@@ -36,6 +36,7 @@ const primaryAction = computed<PrimaryAction>(() => {
     case 'install-failed':
       return 'check';
     case 'update-available':
+    case 'rolled-back':
       return mode.value === 'manual' ? 'install' : undefined;
     case 'ready':
       return 'cancel';
@@ -60,6 +61,8 @@ const statusHeadline = computed(() => {
       return 'Updates unavailable';
     case 'update-available':
       return 'Update available';
+    case 'rolled-back':
+      return 'Update failed';
     case 'downloading':
       return 'Downloading update';
     default:
@@ -79,6 +82,10 @@ const statusSupportingText = computed(() => {
       return mode.value === 'manual'
         ? 'A newer release is available.'
         : 'A newer release is being downloaded automatically.';
+    case 'rolled-back':
+      return mode.value === 'manual'
+        ? 'The last update attempt failed to start and was rolled back. You can try again.'
+        : 'The last update attempt failed to start and was rolled back.';
     case 'downloading':
       return 'Preparing the new release.';
     case 'ready':

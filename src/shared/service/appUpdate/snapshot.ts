@@ -17,6 +17,7 @@ export function buildAppUpdateSnapshot(
     activeRelease: state.activeRelease,
     latestRelease: state.latestRelease,
     scheduledRelease: state.approvedRelease,
+    failedRelease: state.failedActivationRelease,
     lastSuccessfulCheckAt: state.lastSuccessfulCheckAt,
     error,
   };

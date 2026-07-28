@@ -7,14 +7,22 @@
  * timer, background-sync registration, or any persisted "check is due"
  * state: the browser's own worker lifecycle already gives this "once per
  * revival" scope for free.
+ *
+ * Returns the scheduled attempt's promise so the caller can attach it to the
+ * triggering event's `waitUntil` — a service worker may otherwise be
+ * terminated once its event handler returns, killing an untracked
+ * background check mid-flight.
  */
 export type AutomaticCheckScheduler = {
   /**
-   * Runs `run` the first time this is called; every later call is a no-op.
-   * Never awaited by the caller — `run`'s own promise settles independently.
+   * Runs `run` the first time this is called and returns its promise; every
+   * later call is a no-op that resolves immediately. Concurrent navigations
+   * dispatched to the same worker instance all receive the same in-flight
+   * promise rather than starting their own attempt.
    * @param run - The action to run at most once.
+   * @returns The scheduled attempt's promise, for `event.waitUntil`.
    */
-  scheduleOnce(run: () => Promise<void>): void;
+  scheduleOnce(run: () => Promise<void>): Promise<void>;
 };
 
 /**
@@ -22,13 +30,12 @@ export type AutomaticCheckScheduler = {
  * @returns A scheduler scoped to one worker lifetime.
  */
 export function createAutomaticCheckScheduler(): AutomaticCheckScheduler {
-  let started = false;
+  let attempt: Promise<void> | undefined;
 
   return {
     scheduleOnce(run) {
-      if (started) return;
-      started = true;
-      void run().catch(() => {});
+      attempt ??= run().catch(() => {});
+      return attempt;
     },
   };
 }

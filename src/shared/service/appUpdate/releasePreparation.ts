@@ -7,7 +7,7 @@ import {
   type ReleaseRef,
 } from './contracts';
 import {
-  buildReleaseCacheNames,
+  buildReleaseCacheName,
   checkReleaseAvailability,
   writeReleaseDescriptorMarker,
   writeReleaseIndexMarker,
@@ -110,23 +110,23 @@ export async function fetchReleaseDescriptor(
 }
 
 /**
- * Downloads, validates, and commits every file in `descriptor` for one
- * release: each file is staged, verified against its declared byte size and
- * SHA-256, then copied into the final cache; the validated descriptor is
- * written as the final cache's commit marker last.
+ * Downloads, validates, and commits every file in `descriptor` into one
+ * immutable release cache; the validated descriptor is written as its
+ * commit marker last.
  *
  * A no-op when `descriptor`'s release is already fully committed and
  * available — safe to call repeatedly (e.g. a slower stale preparation
  * resolving after a faster one already committed the same release) without
- * re-downloading or disturbing an already-served release.
+ * re-downloading or disturbing an already-served release; an already-valid
+ * committed cache is never rebuilt or deleted.
  *
- * Otherwise transactional: the final cache is deleted and rebuilt from
- * scratch only once every file has already been downloaded and validated
- * into staging, so a failed attempt (download, hash, index fetch, or
- * promotion failure) never leaves an already-committed final cache damaged
- * — it is never touched until the new attempt is known-good. Interrupted or
- * failed preparation otherwise only affects the discarded staging cache.
- * Downloads and hashing run with bounded concurrency
+ * Otherwise, since the cache is already known incomplete or absent at this
+ * point, it is deleted and recreated fresh before any file is written: a
+ * failed attempt (download, hash, index fetch, or write failure) deletes
+ * the incomplete cache again in its `catch`, so a repeated failure never
+ * leaves stale partial content behind, and an already-good cache is never
+ * at risk since this path is only reached once it has already been proven
+ * not good. Downloads and hashing run with bounded concurrency
  * ({@link DOWNLOAD_CONCURRENCY_LIMIT}), not an unbounded `Promise.all` over
  * every file.
  * @param channelBasePath - This worker's channel base path.
@@ -139,15 +139,16 @@ export async function prepareRelease(
   channel: ManagedChannel,
   descriptor: ReleaseDescriptor,
 ): Promise<void> {
-  const { staging, final } = buildReleaseCacheNames(channel, descriptor.releaseId);
+  const cacheName = buildReleaseCacheName(channel, descriptor.releaseId);
   const release = { releaseId: descriptor.releaseId, releaseSequence: descriptor.releaseSequence };
 
-  const existingFinalCache = await caches.open(final);
-  if (await checkReleaseAvailability(existingFinalCache, release, channelBasePath)) {
+  const existingCache = await caches.open(cacheName);
+  if (await checkReleaseAvailability(existingCache, release, channelBasePath)) {
     return;
   }
 
-  const stagingCache = await caches.open(staging);
+  await caches.delete(cacheName);
+  const cache = await caches.open(cacheName);
 
   try {
     await mapWithConcurrency(descriptor.files, DOWNLOAD_CONCURRENCY_LIMIT, async (file) => {
@@ -162,7 +163,7 @@ export async function prepareRelease(
         throw new Error(`SHA-256 mismatch for release file: ${file.path}`);
       }
 
-      await stagingCache.put(
+      await cache.put(
         `${channelBasePath}${file.path}`,
         new Response(bytes, { headers: response.headers }),
       );
@@ -173,24 +174,13 @@ export async function prepareRelease(
       throw new Error(`Failed to download archived index: ${descriptor.indexUrl}`);
     }
     const indexHtml = await indexResponse.text();
-
-    // Every file is downloaded and validated in staging at this point.
-    // Only now — known-good — is the (possibly stale/partial) final cache
-    // ever deleted, so a failure above this line never touches it.
-    await caches.delete(final);
-    const finalCache = await caches.open(final);
-
-    await mapWithConcurrency(descriptor.files, DOWNLOAD_CONCURRENCY_LIMIT, async (file) => {
-      const staged = await stagingCache.match(`${channelBasePath}${file.path}`);
-      if (!staged) throw new Error(`Staged release file missing before promotion: ${file.path}`);
-      await finalCache.put(`${channelBasePath}${file.path}`, staged.clone());
-    });
-    await writeReleaseIndexMarker(finalCache, indexHtml);
+    await writeReleaseIndexMarker(cache, indexHtml);
 
     // Written last: this marker's presence and validity is what makes the
     // release "available" (see releaseCache.ts).
-    await writeReleaseDescriptorMarker(finalCache, descriptor);
-  } finally {
-    await caches.delete(staging);
+    await writeReleaseDescriptorMarker(cache, descriptor);
+  } catch (error) {
+    await caches.delete(cacheName);
+    throw error;
   }
 }

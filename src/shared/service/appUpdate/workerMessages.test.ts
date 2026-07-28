@@ -18,15 +18,20 @@ const baseState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
   activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-  failedReleaseIds: [],
 };
+
+const CHANNEL_ORIGIN = 'https://mioframe.example';
 
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();
 
 function createFakeCoordinator(
   overrides: Partial<PreparationCoordinator> = {},
 ): PreparationCoordinator {
-  return { prepare: vi.fn().mockResolvedValue(undefined), ...overrides };
+  return {
+    prepare: vi.fn().mockResolvedValue(undefined),
+    getInFlightReleaseIds: () => [],
+    ...overrides,
+  };
 }
 
 describe('handleWorkerMessage', () => {
@@ -45,6 +50,7 @@ describe('handleWorkerMessage', () => {
       handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'GET_SNAPSHOT' },
         enqueue,
         createFakeCoordinator(),
@@ -57,6 +63,7 @@ describe('handleWorkerMessage', () => {
     const result = await handleWorkerMessage(
       'stable',
       '/',
+      CHANNEL_ORIGIN,
       { type: 'GET_SNAPSHOT' },
       enqueue,
       createFakeCoordinator(),
@@ -76,6 +83,7 @@ describe('handleWorkerMessage', () => {
     const result = await handleWorkerMessage(
       'stable',
       '/',
+      CHANNEL_ORIGIN,
       { type: 'CANCEL_SCHEDULED_UPDATE' },
       enqueue,
       createFakeCoordinator(),
@@ -105,6 +113,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'SET_MODE', mode: 'manual' },
         enqueue,
         createFakeCoordinator(),
@@ -122,6 +131,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
@@ -142,6 +152,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
@@ -171,6 +182,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
@@ -189,6 +201,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         createFakeCoordinator(),
@@ -208,6 +221,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
@@ -237,6 +251,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
@@ -263,6 +278,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
@@ -283,8 +299,6 @@ describe('handleWorkerMessage', () => {
           approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
           activation: {
             targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-            previousRelease: baseState.activeRelease,
-            startedAt: '2026-07-24T00:00:00.000Z',
             deadlineAt: '2026-07-24T00:00:30.000Z',
           },
         },
@@ -294,6 +308,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'BOOT_OK', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
@@ -307,12 +322,43 @@ describe('handleWorkerMessage', () => {
       });
     });
 
+    it('clears a matching recorded failure on a successful retry', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          activation: {
+            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+          failedActivationRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'BOOT_OK', releaseId: 'release-b' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      const call = writeControllerStateMock.mock.calls[0];
+      if (!call) throw new Error('Expected writeControllerState to have been called');
+      const [, writtenState] = call;
+      expect(writtenState).not.toHaveProperty('failedActivationRelease');
+    });
+
     it('acknowledges ignored for a non-matching release id, without writing', async () => {
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'BOOT_OK', releaseId: 'unknown' },
         enqueue,
         createFakeCoordinator(),
@@ -330,8 +376,6 @@ describe('handleWorkerMessage', () => {
           approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
           activation: {
             targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-            previousRelease: baseState.activeRelease,
-            startedAt: '2026-07-24T00:00:00.000Z',
             deadlineAt: '2026-07-24T00:00:30.000Z',
           },
         },
@@ -342,6 +386,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'BOOT_OK', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
@@ -355,8 +400,6 @@ describe('handleWorkerMessage', () => {
     it('rolls back, broadcasts to same-channel windows, and acknowledges rolled-back', async () => {
       const activation = {
         targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        previousRelease: baseState.activeRelease,
-        startedAt: '2026-07-24T00:00:00.000Z',
         deadlineAt: '2026-07-24T00:00:30.000Z',
       };
       readControllerStateMock.mockResolvedValue({
@@ -378,6 +421,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'BOOT_FAILED', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
@@ -394,12 +438,42 @@ describe('handleWorkerMessage', () => {
       expect(foreignPostMessage).not.toHaveBeenCalled();
     });
 
+    it('persists the failed release as the single failedActivationRelease record', async () => {
+      const activation = {
+        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        deadlineAt: '2026-07-24T00:00:30.000Z',
+      };
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, approvedRelease: activation.targetRelease, activation },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'BOOT_FAILED', releaseId: 'release-b' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      const call = writeControllerStateMock.mock.calls[0];
+      if (!call) throw new Error('Expected writeControllerState to have been called');
+      const [, writtenState] = call;
+      expect(writtenState).toMatchObject({
+        activeRelease: baseState.activeRelease,
+        failedActivationRelease: activation.targetRelease,
+      });
+    });
+
     it('acknowledges ignored for a non-matching release id, without writing or broadcasting', async () => {
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'BOOT_FAILED', releaseId: 'unknown' },
         enqueue,
         createFakeCoordinator(),
@@ -413,8 +487,6 @@ describe('handleWorkerMessage', () => {
     it('acknowledges error and does not broadcast when rollback persistence fails', async () => {
       const activation = {
         targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        previousRelease: baseState.activeRelease,
-        startedAt: '2026-07-24T00:00:00.000Z',
         deadlineAt: '2026-07-24T00:00:30.000Z',
       };
       readControllerStateMock.mockResolvedValue({
@@ -427,6 +499,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'BOOT_FAILED', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
@@ -441,8 +514,6 @@ describe('handleWorkerMessage', () => {
     it('reports the target and deadline when this release is the activation target', async () => {
       const activation = {
         targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        previousRelease: baseState.activeRelease,
-        startedAt: '2026-07-24T00:00:00.000Z',
         deadlineAt: '2026-07-24T00:00:30.000Z',
       };
       readControllerStateMock.mockResolvedValue({
@@ -454,6 +525,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
@@ -468,6 +540,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-a' },
         enqueue,
         createFakeCoordinator(),
@@ -482,6 +555,7 @@ describe('handleWorkerMessage', () => {
       const result = await handleWorkerMessage(
         'stable',
         '/',
+        CHANNEL_ORIGIN,
         { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),

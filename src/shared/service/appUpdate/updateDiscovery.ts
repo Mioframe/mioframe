@@ -72,7 +72,7 @@ export async function runUpdateCheck(
     const next = approveAutomaticRelease(state, discovered);
     if (next !== state) {
       await writeControllerState(channel, next);
-      void runReleaseCacheCleanup(channel).catch(() => {});
+      void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
     }
     return next;
   });

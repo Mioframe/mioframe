@@ -109,4 +109,25 @@ export const invalidReleaseDescriptors = [
       ],
     },
   },
+  {
+    name: 'releaseId not in canonical UUID format',
+    descriptor: { ...validReleaseDescriptor, releaseId: 'release-a' },
+  },
+  {
+    name: 'uppercase releaseId (must be lowercase, not merely valid hex)',
+    descriptor: {
+      ...validReleaseDescriptor,
+      releaseId: validReleaseDescriptor.releaseId.toUpperCase(),
+    },
+  },
+  {
+    name: 'duplicate file paths (even with identical content)',
+    descriptor: {
+      ...validReleaseDescriptor,
+      files: [
+        { path: 'assets/app-3f2a1c.js', sha256: SHA256_OF_EMPTY_STRING, byteSize: 1024 },
+        { path: 'assets/app-3f2a1c.js', sha256: SHA256_OF_EMPTY_STRING, byteSize: 1024 },
+      ],
+    },
+  },
 ];

@@ -27,6 +27,13 @@ export type PreparationCoordinator = {
     channelBasePath: string,
     target: ReleaseRef,
   ) => Promise<ReleaseDescriptor>;
+
+  /**
+   * Returns the release ids currently being prepared, so cache cleanup can
+   * protect their caches from concurrent deletion.
+   * @returns Every release id with an in-flight preparation right now.
+   */
+  getInFlightReleaseIds: () => readonly string[];
 };
 
 /**
@@ -54,6 +61,10 @@ export function createPreparationCoordinator(): PreparationCoordinator {
           if (inFlight.get(target.releaseId) === attempt) inFlight.delete(target.releaseId);
         });
       return attempt;
+    },
+
+    getInFlightReleaseIds() {
+      return [...inFlight.keys()];
     },
   };
 }

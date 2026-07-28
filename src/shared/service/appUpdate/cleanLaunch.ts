@@ -1,12 +1,20 @@
 /// <reference lib="webworker" />
 
 /**
- * Returns `true` when `url` belongs to this worker's own managed channel —
- * i.e. under `channelBasePath` and, for the stable channel (where
- * `channelBasePath` is `/`), not under a foreign `/branch/**` or `/pr/**`
- * deployment. Mirrors `isForeignChannelPath` in `config/plugins/pwa.ts`,
- * reimplemented here because this runs inside the browser worker bundle,
- * which cannot depend on Node-only Vite config.
+ * Returns `true` when `url` belongs to this worker's own managed channel:
+ * same origin as `channelOrigin`, under `channelBasePath`, and — for the
+ * stable channel (where `channelBasePath` is `/`) — not under a foreign
+ * `/branch/**` or `/pr/**` deployment. Mirrors `isForeignChannelPath` in
+ * `config/plugins/pwa.ts`, reimplemented here because this runs inside the
+ * browser worker bundle, which cannot depend on Node-only Vite config.
+ *
+ * The origin check runs first: a service worker's `fetch` event fires for
+ * every request a controlled page makes, including cross-origin ones (a
+ * font, an API on another domain) — scope only limits which pages the
+ * worker controls, not which of their requests reach its `fetch` handler —
+ * so a pathname-only check could otherwise misclassify a cross-origin
+ * request whose pathname happens to match this channel's shape (trivially
+ * true for the stable channel, whose `channelBasePath` is `/`).
  *
  * Used both to filter window client URLs and, in `sw.ts`'s top-level
  * `fetch` handler, to keep the stable worker's otherwise site-wide scope
@@ -14,29 +22,37 @@
  * channel's controller worker fetching its own install-time resources.
  * @param url - A window client's URL, or a fetch request's URL.
  * @param channelBasePath - This worker's channel base path, e.g. `/` or `/branch/develop/`.
+ * @param channelOrigin - This worker's own origin, from `self.registration.scope`.
  * @returns Whether `url` belongs to this worker's own channel.
  */
-export function isSameChannelPath(url: string, channelBasePath: string): boolean {
-  const { pathname } = new URL(url);
-  if (!pathname.startsWith(channelBasePath)) return false;
+export function isSameChannelPath(
+  url: string,
+  channelBasePath: string,
+  channelOrigin: string,
+): boolean {
+  const parsed = new URL(url);
+  if (parsed.origin !== channelOrigin) return false;
+  if (!parsed.pathname.startsWith(channelBasePath)) return false;
   if (channelBasePath !== '/') return true;
-  const rest = pathname.slice(channelBasePath.length);
+  const rest = parsed.pathname.slice(channelBasePath.length);
   return !/^(?:branch|pr)\//.test(rest);
 }
 
 /**
  * Counts how many of `clientUrls` are live same-channel window clients.
- * Branch, PR preview, other-channel, and foreign-channel windows are never
+ * Branch, PR preview, other-channel, and foreign-origin windows are never
  * counted, per {@link isSameChannelPath}.
  * @param clientUrls - Every currently live window client URL (any channel), from `clients.matchAll`.
  * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
  * @returns The count of same-channel window clients.
  */
 export function countSameChannelWindowClients(
   clientUrls: readonly string[],
   channelBasePath: string,
+  channelOrigin: string,
 ): number {
-  return clientUrls.filter((url) => isSameChannelPath(url, channelBasePath)).length;
+  return clientUrls.filter((url) => isSameChannelPath(url, channelBasePath, channelOrigin)).length;
 }
 
 /**
@@ -60,12 +76,14 @@ type ChannelClientLike = Pick<Client, 'type' | 'url'>;
  * protocol requests or receive a rollback meant for a different deployment.
  * @param source - The message event's source, or a live window client.
  * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
  * @returns Whether `source` is a same-channel window client.
  */
 export function isSameChannelWindowClient(
   source: ChannelClientLike | ServiceWorker | MessagePort | null,
   channelBasePath: string,
+  channelOrigin: string,
 ): boolean {
   if (!source || !('type' in source) || source.type !== 'window') return false;
-  return isSameChannelPath(source.url, channelBasePath);
+  return isSameChannelPath(source.url, channelBasePath, channelOrigin);
 }
