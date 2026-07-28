@@ -57,6 +57,8 @@ Identify every official Material component participating in the selected scenari
 
 Record parent/dependency ownership and exact public handoff. A parent must not render a dependency’s raw `m3e-*`, set its private renderer variables, or own its accessibility, geometry, defects, motion, or token mapping.
 
+Visual loading/busy presentation and activation blocking are separate contracts. Do not make a loading state disable, suppress, or intercept activation unless the selected family matrix explicitly assigns that responsibility. Otherwise `disabled` and any consumer guard remain independent and consumer-owned.
+
 ### 3. Complete the family matrix
 
 Before production edits, update the selected family README and dependency family READMEs using the canonical matrix format from `docs/component-adapter.md`.
@@ -77,6 +79,8 @@ Use upstream source, demos, tags, and changelogs only as supporting evidence. Do
 Classify renderer support as `direct`, `partial`, `missing`, `divergent`, or `not-applicable`.
 
 A confirmed incorrect renderer contract uses `divergent`, references a stable `M3E-*` record, and follows the exact-version workaround gate in `docs/component-adapter.md`. Missing or deferred capability is not an upstream defect.
+
+Do not compensate for unacceptable renderer-owned interaction timing, transient geometry, state layer, ripple, focus, or motion with host pseudo-classes such as `:active`, `:not(:active)`, `:hover`, or `:focus-visible`, or by switching renderer CSS inputs around those pseudo-classes. Classify the renderer behavior as `divergent`, `m3e-fix`, or `blocked`; do not create a parallel wrapper state or timing path.
 
 ### 5. Implement the minimum complete adapter
 
@@ -139,6 +143,8 @@ Keep the component `migrating` while any selected implementation, dependency, ro
 - Raw dependency renderer access from a parent.
 - Private shadow DOM or method access.
 - Parallel state-layer, ripple, focus, accessibility, geometry-engine, or motion implementation in the wrapper.
+- Host pseudo-class or renderer-CSS overrides that change renderer-owned interaction timing or transient geometry.
+- Coupling loading presentation to disabled state or activation suppression without an explicit selected family contract.
 - Handwritten `new () => HTMLElement` renderer glue.
 - Duplicate token owners, token DSLs, TypeScript token registries, or exhaustive copies of Material/m3e defaults.
 - Completion claims based only on green CI, source inspection, stories without visual-runner proof, or unscoped verification.
