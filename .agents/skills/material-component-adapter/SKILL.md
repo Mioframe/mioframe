@@ -88,6 +88,9 @@ Do not compensate for unacceptable renderer-owned interaction timing, transient 
 - Keep public types independent from m3e.
 - Constrain private mappings with package-exported types.
 - Derive Vue custom-element glue from the exported element class or `HTMLElementTagNameMap`.
+- Treat `config/vueCustomElements.ts` as the exact raw-tag allow-list.
+- Do not represent that allow-list with `vue/no-undef-components.ignorePatterns`; the rule matches regular expressions against normalized names and cannot enforce exact raw tags.
+- Use a described local lint exception only on an actual selected raw renderer tag when required; unselected, misspelled, prefixed/suffixed, and differently cased tags must remain errors.
 - Put native, ARIA, focus, state, and interaction semantics on the actual owner.
 - Preserve normal native event propagation unless the accepted contract requires interception.
 - Use Mioframe-owned light DOM only where it completes the selected Material contract without recreating renderer internals.
@@ -145,6 +148,7 @@ Keep the component `migrating` while any selected implementation, dependency, ro
 - Parallel state-layer, ripple, focus, accessibility, geometry-engine, or motion implementation in the wrapper.
 - Host pseudo-class or renderer-CSS overrides that change renderer-owned interaction timing or transient geometry.
 - Coupling loading presentation to disabled state or activation suppression without an explicit selected family contract.
+- Regex or normalized-name lint ignores presented as an exact renderer raw-tag allow-list.
 - Handwritten `new () => HTMLElement` renderer glue.
 - Duplicate token owners, token DSLs, TypeScript token registries, or exhaustive copies of Material/m3e defaults.
 - Completion claims based only on green CI, source inspection, stories without visual-runner proof, or unscoped verification.
