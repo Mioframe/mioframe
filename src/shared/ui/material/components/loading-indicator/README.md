@@ -20,7 +20,7 @@ MDButton.loading
 
 Button owns composition state, placement, accessible-purpose handoff, and selected overall size. Loading Indicator owns its public API, renderer integration, accessibility, geometry, private mappings, defects, tests, stories, and visual proof.
 
-The selected implementation and proof are complete. The family remains in `correction` only until stale version-specific wording in production comments is removed and the resulting branch passes final task-scope verification.
+The selected implementation, current defect wording, and proof are complete. The family is in `verification` pending final current-head repository verification and merge-readiness review.
 
 No unresolved operator-reported Loading indicator visual or motion issue is currently recorded. Operator review is manual during development; a reported issue reopens this family.
 
@@ -72,11 +72,11 @@ renderer shape scale      = unchanged and renderer-owned
 The adapter sets host width/height from public overall size and maps the active-size renderer input separately. It does not inspect or compensate internal animated-shape geometry.
 
 | Public size | Host size | Active-size input |
-| ----------- | --------- | ----------------- |
-| `24`        | `24px`    | `19px`            |
-| `32`        | `32px`    | `25.333333…px`    |
-| `40`        | `40px`    | `31.666667…px`    |
-| `48`        | `48px`    | `38px`            |
+| --- | --- | --- |
+| `24` | `24px` | `19px` |
+| `32` | `32px` | `25.333333…px` |
+| `40` | `40px` | `31.666667…px` |
+| `48` | `48px` | `38px` |
 
 ## Button composition mapping
 
@@ -114,22 +114,22 @@ Current mitigation:
 - no private DOM/method access;
 - no renderer vocabulary in public API or parent adapters.
 
-Production comments should reference the defect IDs or consumed affected range rather than describe the workaround as specific only to 2.6.2.
+Production comments now reference `M3E-001`, `M3E-002`, and the consumed affected range instead of presenting the workaround as 2.6.2-only.
 
 ## Material–m3e–Vue matrix
 
-| Material contract           | Required now            | Public Vue representation          | m3e support                                              | Owner and decision              | Verification                                       |
-| --------------------------- | ----------------------- | ---------------------------------- | -------------------------------------------------------- | ------------------------------- | -------------------------------------------------- |
-| Component identity          | yes                     | root-exported `MDLoadingIndicator` | direct renderer element                                  | dependency — `implement-now`    | unit + browser + visual                            |
-| Uncontained presentation    | yes                     | no public variant prop             | renderer default                                         | `implement-now`                 | story + visual                                     |
-| Contained presentation      | no                      | none                               | available but unselected                                 | `defer`                         | none                                               |
-| Short indeterminate process | yes                     | mounted while parent is loading    | direct                                                   | `implement-now`                 | contract                                           |
-| Accessible purpose/role     | yes                     | required `label` → `aria-label`    | renderer supplies role                                   | dependency `wrapper-correction` | browser role/name                                  |
-| Inherited active color      | yes                     | `currentColor`                     | documented renderer color input                          | dependency — `implement-now`    | independent visual                                 |
-| Overall/active size         | yes                     | numeric overall `size`             | divergent `M3E-001`/`M3E-002`                            | controlled workaround           | unit + browser geometry + visual                   |
-| Public component tokens     | no current CSS consumer | none                               | renderer inputs private                                  | `defer`                         | none                                               |
-| Motion/reduced motion       | review only             | no public control                  | renderer-owned animation; no selected wrapper correction | renderer ownership              | installed-artifact assessment + operator reporting |
-| Forced colors               | selected environment    | none                               | renderer uses `CanvasText`                               | direct                          | operator reporting                                 |
+| Material contract | Required now | Public Vue representation | m3e support | Owner and decision | Verification |
+| --- | --- | --- | --- | --- | --- |
+| Component identity | yes | root-exported `MDLoadingIndicator` | direct renderer element | dependency — `implement-now` | unit + browser + visual |
+| Uncontained presentation | yes | no public variant prop | renderer default | `implement-now` | story + visual |
+| Contained presentation | no | none | available but unselected | `defer` | none |
+| Short indeterminate process | yes | mounted while parent is loading | direct | `implement-now` | contract |
+| Accessible purpose/role | yes | required `label` → `aria-label` | renderer supplies role | dependency `wrapper-correction` | browser role/name |
+| Inherited active color | yes | `currentColor` | documented renderer color input | dependency — `implement-now` | independent visual |
+| Overall/active size | yes | numeric overall `size` | divergent `M3E-001`/`M3E-002` | controlled workaround | unit + browser geometry + visual |
+| Public component tokens | no current CSS consumer | none | renderer inputs private | `defer` | none |
+| Motion/reduced motion | review only | no public control | renderer-owned animation; no selected wrapper correction | renderer ownership | installed-artifact assessment + operator reporting |
+| Forced colors | selected environment | none | renderer uses `CanvasText` | direct | operator reporting |
 
 ## Token and parent boundary
 
@@ -148,9 +148,7 @@ Button renders `MDLoadingIndicator`, hands off label and overall size, relies on
 - revalidation of `M3E-001` and `M3E-002` against installed `2.6.3`;
 - renderer motion assessment without inventing an unsupported defect.
 
-## Remaining
+## Verification remainder
 
-- replace stale 2.6.2-only production comments with current defect/range wording;
-- pass focused unit/type/browser checks affected by the edit;
-- pass the exact final branch/task-scope verification required by root policy on the resulting head;
+- pass final current-head branch/task-scope repository verification;
 - complete final full-PR review with no unresolved operator-reported issue.
