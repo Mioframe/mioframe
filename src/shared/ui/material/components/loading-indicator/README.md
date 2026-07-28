@@ -10,19 +10,24 @@ Canonical implementation: `src/shared/ui/material/components/loading-indicator/M
 
 ## Status and ownership
 
-Loading indicator is an independently owned official Material component:
+Loading Indicator is an independently owned official Material component:
 
 ```text
+standalone MDLoadingIndicator
+  → @m3e/web/loading-indicator
+
 MDButton.loading
-  → MDLoadingIndicator
+  → decorative MDLoadingIndicator
       → @m3e/web/loading-indicator
 ```
 
-Button owns composition state, placement, accessible-purpose handoff, and selected overall size. Loading Indicator owns its public API, renderer integration, accessibility, geometry, private mappings, defects, tests, stories, and visual proof.
+Loading Indicator owns its public API, renderer integration, standalone accessibility, geometry, private mappings, defects, tests, stories, and visual proof.
 
-The selected implementation, current defect wording, family matrix, and proof are complete. The family remains in `verification` pending final current-head repository verification and merge-readiness review.
+Button owns composition state, placement, `aria-busy`, decorative accessibility suppression, inherited color context, and selected overall size. Button does not own renderer inputs, geometry, defects, or motion.
 
-No unresolved operator-reported Loading indicator visual or motion issue is currently recorded. Operator review is manual during development; a reported issue reopens this family.
+The selected implementation and automated proof are complete. The family remains in `verification` pending operator visual review, the PR-level final completion gate, and final full-PR review.
+
+No unresolved operator-reported Loading Indicator visual or motion issue is currently recorded. Operator review is manual during development; a reported issue reopens this family.
 
 ## Official sources
 
@@ -47,7 +52,7 @@ label: string;
 size?: number;
 ```
 
-`label` describes the purpose of the ongoing process and is required for the progressbar accessible name.
+`label` describes the purpose of the ongoing process and is required for standalone progressbar accessibility.
 
 `size`:
 
@@ -56,6 +61,8 @@ size?: number;
 - accepts finite values clamped to `24..240`;
 - normalizes non-finite values to `48`;
 - does not expose arbitrary CSS strings or renderer vocabulary.
+
+Standard Vue/native attributes may be applied explicitly by a correct parent composition. `MDButton` uses `aria-hidden="true"` to make its nested indicator decorative; this does not change the standalone default contract.
 
 Contained presentation remains deferred.
 
@@ -81,14 +88,19 @@ The adapter sets host width/height from public overall size and maps the active-
 ## Button composition mapping
 
 ```text
-Button extra-small → Loading indicator 24
-Button small       → Loading indicator 24
-Button medium      → Loading indicator 24
-Button large       → Loading indicator 32
-Button extra-large → Loading indicator 40
+Button extra-small → Loading Indicator 24
+Button small       → Loading Indicator 24
 ```
 
-This is a Mioframe parent/dependency composition mapping, not the complete Loading indicator API and not a copy of Button icon tokens.
+This is a Mioframe parent/dependency composition mapping, not the complete Loading Indicator API and not a copy of Button icon tokens.
+
+Inside Button:
+
+- the indicator replaces the leading icon while loading;
+- the indicator inherits the Button content color;
+- the indicator is hidden from the accessibility tree;
+- the Button remains the semantic owner and exposes `aria-busy`;
+- the leading icon is restored after loading ends.
 
 ## Confirmed renderer defects
 
@@ -114,41 +126,41 @@ Current mitigation:
 - no private DOM/method access;
 - no renderer vocabulary in public API or parent adapters.
 
-Production comments now reference `M3E-001`, `M3E-002`, and the consumed affected range instead of presenting the workaround as 2.6.2-only.
-
 ## Material–m3e–Vue matrix
 
-| Material contract           | Demand and evidence                                                | Public Vue representation          | Renderer status and mapping                                                   | Owner and decision                                  | Verification                                       |
-| --------------------------- | ------------------------------------------------------------------ | ---------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------- |
-| Component identity          | Button loading requires an independently owned official dependency | root-exported `MDLoadingIndicator` | `direct` — renderer custom element                                            | Loading Indicator — `implement-now`                 | unit + browser + visual                            |
-| Uncontained presentation    | selected current Button composition                                | no public variant prop             | `direct` — renderer default                                                   | Loading Indicator — `implement-now`                 | story + visual                                     |
-| Contained presentation      | no current consumer; official Loading indicator sources above      | none                               | `direct` — renderer supports it but it is not selected                        | Loading Indicator — `defer`                         | none                                               |
-| Short indeterminate process | Button uses the indicator for boolean short loading                | mounted while parent is loading    | `direct` — renderer indeterminate behavior                                    | Loading Indicator — `implement-now`                 | contract                                           |
-| Accessible purpose and role | nested progress must expose a process name                         | required `label` → `aria-label`    | `partial` — renderer supplies role; wrapper supplies required name            | Loading Indicator — `wrapper-correction`            | browser role/name                                  |
-| Inherited active color      | Button loading must follow Button content color                    | `currentColor`                     | `direct` — documented renderer color input                                    | Loading Indicator — `implement-now`                 | independent visual                                 |
-| Overall and active size     | selected Button-size composition and official 48/38 geometry       | numeric overall `size`             | `divergent` — `M3E-001`/`M3E-002`; host size plus private active-size mapping | Loading Indicator — `temporary-renderer-workaround` | unit + browser geometry + visual                   |
-| Public component tokens     | no current CSS consumer; official token surface remains unselected | none                               | `not-applicable` — renderer inputs remain private                             | Loading Indicator — `defer`                         | none                                               |
-| Motion and reduced motion   | renderer motion is selected; no wrapper control is required        | no public control                  | `direct` — renderer-owned animation; no selected wrapper correction           | m3e — `implement-now`                               | installed-artifact assessment + operator reporting |
-| Forced colors               | selected environment must remain legible                           | none                               | `direct` — renderer uses `CanvasText`                                         | m3e — `implement-now`                               | operator reporting                                 |
+| Material contract | Demand and evidence | Public Vue representation | Renderer status and mapping | Owner and decision | Verification |
+| --- | --- | --- | --- | --- | --- |
+| Component identity | Button loading requires an independently owned official dependency | root-exported `MDLoadingIndicator` | `direct` — renderer custom element | Loading Indicator — `implement-now` | unit + browser + visual |
+| Uncontained presentation | current Button composition and standalone proof surface | no public variant prop | `direct` — renderer default | Loading Indicator — `implement-now` | story + visual |
+| Contained presentation | no current consumer; official Loading Indicator sources above | none | `direct` — renderer supports the deferred surface | Loading Indicator — `defer` | none |
+| Short indeterminate process | current Button action feedback | mounted while parent is loading | `direct` — renderer indeterminate behavior | Loading Indicator — `implement-now` | contract + visual |
+| Standalone accessible purpose and role | standalone indicator must communicate process purpose | required `label` → accessible name | `partial` — renderer supplies progressbar role; wrapper requires the name | Loading Indicator — `wrapper-correction` | browser role/name |
+| Decorative parent composition | nested Button indicator must not create a second semantic owner | explicit parent `aria-hidden`; no additional public mode | `not-applicable` — native accessibility attribute applied by Button | Button — `wrapper-correction` | unit + browser accessibility tree |
+| Inherited active color | Button loading must follow Button content color | `currentColor` | `direct` — documented renderer color input | Loading Indicator — `implement-now` | independent visual |
+| Overall and active size | selected Button composition and official 48/38 geometry | numeric overall `size` | `divergent` — `M3E-001`/`M3E-002`; host size plus private active-size mapping | Loading Indicator — `temporary-renderer-workaround` | unit + browser geometry + visual |
+| Public component tokens | no current CSS consumer | none | `not-applicable` — renderer inputs remain private | Loading Indicator — `defer` | none |
+| Motion and reduced motion | renderer motion is selected; no wrapper control is required | no public control | `direct` — renderer-owned animation | m3e — `implement-now` | installed-artifact assessment + operator reporting |
+| Forced colors | selected environment must remain legible | none | `direct` — renderer uses `CanvasText` | m3e — `implement-now` | operator reporting |
 
 ## Token and parent boundary
 
-No public Loading indicator component token is currently required, so no placeholder declarations are added. Shared reference/system roles belong to foundation. Parent components use public props, inherited color, or a selected official public token; they do not set dependency-private renderer inputs.
+No public Loading Indicator component token is currently required, so no placeholder declarations are added. Shared reference/system roles belong to foundation. Parent components use public props, inherited color, or standard native accessibility attributes; they do not set dependency-private renderer inputs.
 
-Button renders `MDLoadingIndicator`, hands off label and overall size, relies on inherited color, and gives loading precedence over icon routes. It does not own renderer mapping, geometry, defects, or motion.
+Button renders `MDLoadingIndicator`, hands off the supported overall size, relies on inherited color, makes the nested instance decorative, and gives loading precedence over its icon route. It does not own renderer mapping, geometry, defects, or motion.
 
 ## Implemented proof
 
-- package-derived Loading indicator source type;
+- package-derived Loading Indicator source type;
 - contract tests for label, normalization, host geometry, and active-size mapping;
 - standalone size and inherited-color stories/baselines;
 - browser host bounding-box proof without shadow-DOM access;
-- browser progressbar role/name proof;
-- Button composition and selected state combinations;
+- standalone browser progressbar role/name proof;
+- Button composition proof for decorative accessibility, inherited presentation, size handoff, and icon restoration;
 - revalidation of `M3E-001` and `M3E-002` against installed `2.6.3`;
 - renderer motion assessment without inventing an unsupported defect.
 
 ## Verification remainder
 
-- pass final current-head branch/task-scope repository verification;
+- complete operator visual review of standalone and Button-composed presentation;
+- pass the PR-level final `pnpm verify:release` completion gate on the final head;
 - complete final full-PR review with no unresolved operator-reported issue.
