@@ -17,6 +17,7 @@ export default defineConfig({
       'scripts/**/*.test.ts',
       'scripts/**/*.test.mjs',
       'playwright.*.test.ts',
+      'eslint.config.test.ts',
     ],
     exclude: ['tests/e2e/**', 'node_modules/**', '.*/**'],
     coverage: {

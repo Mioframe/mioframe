@@ -20,7 +20,7 @@ const props = withDefaults(
     cancelLabel?: string | undefined;
     applyLabel: string;
     hasCancelAction?: boolean | undefined;
-    loading?: boolean | number | undefined;
+    loading?: boolean | undefined;
     class?: unknown;
   }>(),
   { cancelLabel: 'Cancel', type: 'basic' },
@@ -128,7 +128,7 @@ useOnEscapeKeyStacked(() => {
       <div class="md-dialog__actions">
         <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
 
-        <MDButton :label="applyLabel" :loading="!!loading" color="text" native-type="submit" />
+        <MDButton :label="applyLabel" :loading="loading" color="text" native-type="submit" />
       </div>
     </form>
   </dialog>
