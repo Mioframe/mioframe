@@ -102,15 +102,15 @@ Final verification uses the exact branch/task scope required by root policy. Bec
 
 ## Current inventory
 
-| Area                            | Current state                                                                 |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| `MDButton`                      | demand-scoped m3e-backed action adapter in verification                       |
-| `MDLoadingIndicator`            | canonical standalone/dependency adapter in verification                       |
-| Other public `MD*` components   | legacy-owned until focused migration                                          |
-| Shared m3e integration          | established with automated external boundary and selected-element allow-list  |
-| Confirmed m3e defect registry   | established; `M3E-001` and `M3E-002` workarounds active                       |
+| Area                            | Current state                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| `MDButton`                      | demand-scoped m3e-backed action adapter in verification                      |
+| `MDLoadingIndicator`            | canonical standalone/dependency adapter in verification                      |
+| Other public `MD*` components   | legacy-owned until focused migration                                         |
+| Shared m3e integration          | established with automated external boundary and selected-element allow-list |
+| Confirmed m3e defect registry   | established; `M3E-001` and `M3E-002` workarounds active                      |
 | Public component entry point    | established                                                                  |
 | Foundation/theme runtime owners | established                                                                  |
-| Public token catalogue          | established and populated                                                     |
+| Public token catalogue          | established and populated                                                    |
 
 See `docs/roadmap.md` for the exact verification remainder and next action.
