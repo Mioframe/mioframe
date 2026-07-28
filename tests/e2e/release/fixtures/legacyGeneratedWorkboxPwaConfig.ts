@@ -36,7 +36,11 @@ type GetPwaPluginsParams = {
 
 const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
 
-/** Frozen legacy copy of `buildChannelCacheNamespace`. */
+/**
+ * Frozen legacy copy of `buildChannelCacheNamespace`.
+ * @param channel
+ * @param channelId
+ */
 export function buildLegacyChannelCacheNamespace(
   channel: ReleaseChannel,
   channelId?: string,
@@ -50,20 +54,32 @@ export function buildLegacyChannelCacheNamespace(
   return 'stable';
 }
 
-/** Frozen legacy copy of `isForeignChannelPath`. */
+/**
+ * Frozen legacy copy of `isForeignChannelPath`.
+ * @param pathname
+ * @param base
+ */
 export function isLegacyForeignChannelPath(pathname: string, base: string): boolean {
   if (!pathname.startsWith(base)) return false;
   const rest = pathname.slice(base.length);
   return /^(?:branch|pr)\/.*$/.test(rest);
 }
 
-/** Frozen legacy copy of `buildForeignChannelDenylistPattern`. */
+/**
+ * Frozen legacy copy of `buildForeignChannelDenylistPattern`.
+ * @param base
+ */
 export function buildLegacyForeignChannelDenylistPattern(base: string): RegExp {
   const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(`^${escapedBase}(?:branch|pr)\\/`);
 }
 
-/** Frozen legacy copy of `buildSameOriginMatcher`. */
+/**
+ * Frozen legacy copy of `buildSameOriginMatcher`.
+ * @param pattern
+ * @param base
+ * @param channel
+ */
 export function buildLegacySameOriginMatcher(
   pattern: RegExp,
   base: string,
@@ -84,7 +100,10 @@ function buildLegacyManifestIdentity(channel: ReleaseChannel, channelId?: string
   return { name: 'Mioframe', short_name: 'Mioframe' };
 }
 
-/** Frozen legacy copy of `buildWorkboxOptions`. */
+/**
+ * Frozen legacy copy of `buildWorkboxOptions`.
+ * @param root0
+ */
 export function buildLegacyWorkboxOptions({
   base,
   channel,
@@ -184,7 +203,10 @@ export function buildLegacyWorkboxOptions({
   };
 }
 
-/** Frozen legacy copy of `getPwaPlugins` (always `generateSW`, no managed controller). */
+/**
+ * Frozen legacy copy of `getPwaPlugins` (always `generateSW`, no managed controller).
+ * @param root0
+ */
 export const getLegacyPwaPlugins = ({
   base,
   isPreview,
