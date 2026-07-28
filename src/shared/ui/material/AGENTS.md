@@ -50,6 +50,8 @@ Do not override renderer-owned interaction timing or transient geometry with hos
 
 Vue custom-element glue must derive from package-exported element classes or `HTMLElementTagNameMap`. Handwritten `new () => HTMLElement` declarations are not package-derived.
 
+`config/vueCustomElements.ts` is the exact raw-tag allow-list. Do not mirror it with `vue/no-undef-components.ignorePatterns`: those entries are regular expressions matched against normalized component names and are broader than an exact tag list. Keep unselected, misspelled, and differently cased renderer tags as lint errors; use a described local lint exception only on an actual selected raw tag when the generic undefined-component rule cannot consume the compiler predicate.
+
 ## Verification and completion
 
 Use the proof model defined by `docs/component-adapter.md` and repository testing policy. Observable renderer-owned appearance requires browser or visual proof; host state, token presence, event receipt, or source inspection alone is insufficient.
