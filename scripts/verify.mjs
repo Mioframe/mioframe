@@ -45,6 +45,7 @@ const VERIFY_LABELS = [
   'build',
   'artifact',
   'release-smoke',
+  'managed-updates',
 ];
 // Release-only labels only run in full/release mode (pnpm verify --full).
 // Focused `pnpm verify` never builds these into its command list.
@@ -54,6 +55,7 @@ const FULL_ONLY_LABELS = new Set([
   'build',
   'artifact',
   'release-smoke',
+  'managed-updates',
 ]);
 const VERIFY_DIR = '.verify';
 const VERIFY_LOG_DIR = path.posix.join(VERIFY_DIR, 'logs');
@@ -104,6 +106,7 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'managed-updates': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliBaseRef = isHelpMode ? null : getCliBaseRef(cliArgs);
 const cliOnlyLabel = isHelpMode ? null : getCliOnlyLabel(cliArgs);
@@ -1236,6 +1239,24 @@ function addReleaseOnlyCommands(commands) {
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     ],
     weight: classifyCommandWeight({ label: 'release-smoke' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'managed-updates',
+    command: 'pnpm',
+    args: [
+      'e2e:release',
+      '--label',
+      'managed-updates',
+      'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
+      'tests/e2e/release/managedUpdatesDevelop.spec.ts',
+      // managedUpdatesMigration.spec.ts is intentionally NOT wired in yet —
+      // see its own doc comment for the known, unresolved architectural gap
+      // (the legacy worker's runtime-caching routes intercept the new
+      // controller's install-time fetches while it is still active).
+    ],
+    weight: classifyCommandWeight({ label: 'managed-updates' }),
   });
 }
 

@@ -1,4 +1,5 @@
 import { restoreGhPagesSpaFallbackPath } from './app/ghPagesSpaFallback';
+import { reportAppBootOk } from './shared/serviceClient/appUpdate/bootReport';
 
 console.info('Application build date', new Date(__BUILD_DATE__).toLocaleString());
 
@@ -17,4 +18,5 @@ if (rootMountElement) {
   const { setupApp } = await import('./app/setupApp');
   const app = await setupApp();
   app.mount(rootMountElement);
+  reportAppBootOk();
 }

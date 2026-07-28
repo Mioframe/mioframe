@@ -3,6 +3,7 @@ import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings'
 import { PwaInstallSettingsListItem, usePwaInstallAction } from '@feature/pwaInstall';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import { MDList, MDListItem } from '@shared/ui/Lists';
+import AppUpdateSettingsSection from './AppUpdateSettingsSection.vue';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 import SettingsSwitchListItem from './SettingsSwitchListItem.vue';
@@ -61,6 +62,8 @@ const onClickAboutMioframe = () => {
         <PwaInstallSettingsListItem />
       </MDList>
     </SettingsSection>
+
+    <AppUpdateSettingsSection />
 
     <SettingsSection title="Privacy & diagnostics">
       <MDList tag="div">

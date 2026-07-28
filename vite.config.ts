@@ -11,6 +11,7 @@ import {
   getSentryPlugins,
   getSslPlugins,
 } from './config/plugins';
+import { getLegacyPwaPlugins } from './tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
@@ -23,9 +24,15 @@ export default defineConfig(({ mode, isPreview }) => {
   const releaseChannel = env.VITE_RELEASE_CHANNEL === 'branch' ? 'branch' : 'stable';
   const releaseChannelId = env.VITE_RELEASE_CHANNEL_ID || undefined;
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
+  // Release-test-only escape hatch for the managed pinned application
+  // updates migration proof (tests/e2e/release/managedUpdatesMigration.spec.ts):
+  // builds the exact frozen pre-feature generateSW worker instead of the
+  // live managed controller. No normal dev/build/deploy path ever sets this.
+  const resolvePwaPlugins =
+    process.env.RELEASE_TEST_LEGACY_PWA_FIXTURE === '1' ? getLegacyPwaPlugins : getPwaPlugins;
   const pwaPlugins = isStorybookBuild
     ? []
-    : getPwaPlugins({
+    : resolvePwaPlugins({
         base: env.BASE_URL,
         mode,
         isPreview: isPreviewBuild,

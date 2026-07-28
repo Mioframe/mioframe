@@ -216,6 +216,9 @@ gate. It ignores changed-file scope and always runs, for the whole project:
 - full approved visual regression coverage;
 - production build and artifact validation (`docs/release.md#production-artifact-validation`);
 - release smoke coverage (`docs/release.md#release-smoke-coverage`);
+- managed pinned application updates lifecycle coverage
+  (`docs/release.md#managed-pinned-application-updates-stable-and-develop`,
+  verify label `managed-updates`);
 - release/version metadata validation (`scripts/release/validateVersion.mjs`);
 - release config validation (`scripts/release/validateReleaseConfig.mjs`, see
   `docs/release.md#release-config-validation`).
@@ -489,6 +492,49 @@ retention are left untouched.
   branch name it was derived from);
 - PR previews build with `VITE_DISABLE_PWA=1` and register no service
   worker at all.
+
+### Managed pinned application updates (stable and develop)
+
+Stable and the `develop` branch channel (only) use a custom `injectManifest`
+controller worker (`src/sw.ts`) instead of the generated (`generateSW`)
+worker every other channel keeps. See `config/plugins/pwa.ts`'s
+`isManagedChannel`. The controller worker is independent of any particular
+application release: it owns persisted update state, release discovery,
+immutable release preparation, clean-launch activation, boot commit,
+rollback, and local cache cleanup, entirely under `src/shared/service/appUpdate/`.
+
+Publication for these two channels (`scripts/pages/lib/releasePublish.mjs`,
+invoked from `publishStable.mjs` and `publishBranch.mjs --slug develop`)
+retains an immutable release archive alongside the ordinary deployment
+files:
+
+```text
+<channel-root>/updates/releases/<releaseId>.json
+<channel-root>/updates/releases/<releaseId>/index.html   (watchdog-injected)
+<channel-root>/assets/<content-hashed files>              (accumulates, never wiped)
+<channel-root>/updates/latest.json                        (written last)
+```
+
+`applyManagedStablePublish`/`applyManagedBranchPublish` in
+`scripts/pages/lib/pagesFs.mjs` preserve `assets/` and `updates/` across
+publishes instead of wiping them, so a previously pinned release stays
+fetchable from the immutable archive indefinitely (no server-side pruning).
+
+A publisher-injected boot watchdog (`scripts/pages/lib/watchdogInject.mjs`)
+is inlined into every archived release's `index.html` before the main
+module entry, independent of the main application bundle, so it can detect
+an early fatal boot failure even when the main bundle itself is the failing
+component.
+
+Full lifecycle proof (first install, Manual/Automatic activation, rollback,
+crash recovery, migration from the previous generated Workbox worker, and
+develop/stable isolation) lives in `tests/e2e/release/managedUpdates*.spec.ts`
+and runs under the `managed-updates` verify label
+(`pnpm verify --full --only managed-updates`), part of `pnpm verify:release`.
+The migration proof builds the frozen pre-feature `generateSW` configuration
+from `tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig.ts` — a
+release-test-only fixture never reachable from a normal build (see
+`productionArtifactSmoke.spec.ts`'s chunk scan).
 
 ## Production artifact validation
 

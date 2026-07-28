@@ -7,6 +7,7 @@ import {
   buildWorkboxOptions,
   getPwaPlugins,
   isForeignChannelPath,
+  isManagedChannel,
 } from './pwa.ts';
 
 describe('buildChannelCacheNamespace', () => {
@@ -152,6 +153,21 @@ describe('buildWorkboxOptions', () => {
   });
 });
 
+describe('isManagedChannel', () => {
+  it('is true for the stable channel', () => {
+    expect(isManagedChannel('stable')).toBe(true);
+  });
+
+  it('is true for the develop branch channel', () => {
+    expect(isManagedChannel('branch', 'develop')).toBe(true);
+  });
+
+  it('is false for any other branch channel', () => {
+    expect(isManagedChannel('branch', 'feature-x')).toBe(false);
+    expect(isManagedChannel('branch')).toBe(false);
+  });
+});
+
 describe('getPwaPlugins', () => {
   it('returns empty array when disablePwa is true (PR preview builds)', () => {
     const plugins = getPwaPlugins({
@@ -172,13 +188,24 @@ describe('getPwaPlugins', () => {
     expect(plugins.length).toBeGreaterThan(0);
   });
 
-  it('returns plugins for the branch channel when a channelId is provided', () => {
+  it('returns plugins for the develop branch channel (managed, injectManifest)', () => {
     const plugins = getPwaPlugins({
       base: '/branch/develop/',
       isPreview: false,
       mode: 'production',
       channel: 'branch',
       channelId: 'develop',
+    });
+    expect(plugins.length).toBeGreaterThan(0);
+  });
+
+  it('returns plugins for an ordinary branch channel (unmanaged, generateSW)', () => {
+    const plugins = getPwaPlugins({
+      base: '/branch/feature-x/',
+      isPreview: false,
+      mode: 'production',
+      channel: 'branch',
+      channelId: 'feature-x',
     });
     expect(plugins.length).toBeGreaterThan(0);
   });

@@ -6,11 +6,19 @@
  * shared root `404.html` SPA fallback invariant. Used both by the develop
  * push deployment and the manual branch-dispatch deployment.
  *
+ * The `develop` slug is the one managed channel among branch deploys (see
+ * the managed pinned application updates feature): it publishes a new
+ * immutable release into its retained `updates/`/`assets/` archive and
+ * requires `--app-version` and `--build-id`. Every other branch slug keeps
+ * publishing as an ordinary, unmanaged branch slot.
+ *
  * When --output-dir is provided, the final staging content is also copied
  * there so the caller can upload it as a GitHub Pages artifact.
  *
  * Usage:
- *   node scripts/pages/publishBranch.mjs --dist ./dist --slug develop [--output-dir ./pages-staging]
+ *   node scripts/pages/publishBranch.mjs --dist ./dist --slug develop \
+ *     --app-version 1.2.3 --build-id <sha> [--output-dir ./pages-staging]
+ *   node scripts/pages/publishBranch.mjs --dist ./dist --slug my-branch [--output-dir ./pages-staging]
  *
  * Required env:
  *   GITHUB_TOKEN      - token with contents:write on the target Pages repository
@@ -23,31 +31,47 @@ import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
 import { applyBranchPublish } from './lib/pagesFs.mjs';
+import { publishManagedRelease } from './lib/releasePublish.mjs';
 import { validateBranchSlug } from './lib/slug.mjs';
+
+const MANAGED_BRANCH_SLUG = 'develop';
+
+function readFlag(argv, flag) {
+  const index = argv.indexOf(flag);
+  return index !== -1 ? argv[index + 1] : undefined;
+}
 
 /**
  * @param argv Process arguments (process.argv.slice(2)).
  * @param env Process environment.
  */
 export async function publishBranch(argv = process.argv.slice(2), env = process.env) {
-  const distIndex = argv.indexOf('--dist');
-  const slugIndex = argv.indexOf('--slug');
+  const distDir = readFlag(argv, '--dist');
+  const rawSlug = readFlag(argv, '--slug');
 
-  if (distIndex === -1 || !argv[distIndex + 1]) {
+  if (!distDir) {
     throw new Error('Usage: publishBranch.mjs --dist <dist-dir> --slug <branch-slug>');
   }
-  if (slugIndex === -1 || !argv[slugIndex + 1]) {
+  if (!rawSlug) {
     throw new Error('Usage: publishBranch.mjs --dist <dist-dir> --slug <branch-slug>');
   }
 
-  const distDir = argv[distIndex + 1];
+  const slug = validateBranchSlug(rawSlug);
+  const isManaged = slug === MANAGED_BRANCH_SLUG;
+
+  const appVersion = readFlag(argv, '--app-version');
+  const buildId = readFlag(argv, '--build-id');
+  if (isManaged && (!appVersion || !buildId)) {
+    throw new Error(
+      'Usage: publishBranch.mjs --dist <dist-dir> --slug develop --app-version <version> --build-id <id>',
+    );
+  }
+
   if (!existsSync(distDir)) {
     throw new Error(`dist directory does not exist: ${distDir}`);
   }
-  const slug = validateBranchSlug(argv[slugIndex + 1]);
 
-  const outputIndex = argv.indexOf('--output-dir');
-  const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;
+  const outputDir = readFlag(argv, '--output-dir');
 
   const { GITHUB_TOKEN, PAGES_REPOSITORY } = env;
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required');
@@ -59,7 +83,18 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
     commitMessage: `chore(pages): deploy branch ${slug}`,
     outputDir,
     fn(workDir) {
-      applyBranchPublish(workDir, distDir, slug);
+      if (isManaged) {
+        publishManagedRelease({
+          workDir,
+          distDir,
+          channel: 'develop',
+          basePath: `/branch/${slug}/`,
+          appVersion,
+          buildId,
+        });
+      } else {
+        applyBranchPublish(workDir, distDir, slug);
+      }
     },
   });
 

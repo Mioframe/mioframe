@@ -129,4 +129,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
           PAGES_REPOSITORY: Mioframe/mioframe.github.io
-        run: node scripts/pages/publishStable.mjs --dist dist
+        run: >-
+          node scripts/pages/publishStable.mjs --dist dist
+          --app-version "$(node -p "require('./package.json').version")"
+          --build-id ${{ github.sha }}

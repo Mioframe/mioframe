@@ -2,7 +2,7 @@
 // This test exercises a real Node HTTP server; the default happy-dom
 // environment's fetch() enforces same-origin/CORS semantics that do not
 // apply to plain Node-to-Node requests.
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, sep } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -17,6 +17,12 @@ describe('resolveArtifactFilePath', () => {
   it('maps a nested asset path under the base', () => {
     expect(resolveArtifactFilePath('dist', '/', '/assets/app.js')).toBe(
       resolve('dist', 'assets', 'app.js'),
+    );
+  });
+
+  it("maps a nested directory-style path to that directory's index.html", () => {
+    expect(resolveArtifactFilePath('dist', '/', '/branch/develop/')).toBe(
+      resolve('dist', 'branch', 'develop', 'index.html'),
     );
   });
 
@@ -64,6 +70,22 @@ describe('createArtifactServer', () => {
     const response = await fetch(server.url);
     expect(response.status).toBe(200);
     expect(await response.text()).toContain('<title>app</title>');
+  });
+
+  it("serves a nested slot's own index.html when the server's own base path is root", async () => {
+    // Matches serving one work directory containing both a root-level
+    // deployment and a `branch/<slug>/` slot from a single server, e.g. the
+    // managed pinned application updates develop-channel e2e spec.
+    server = await createArtifactServer({ distDir, basePath: '/' });
+    mkdirSync(join(distDir, 'branch', 'develop'), { recursive: true });
+    writeFileSync(
+      join(distDir, 'branch', 'develop', 'index.html'),
+      '<!doctype html><title>develop</title>',
+    );
+
+    const response = await fetch(`${server.url}branch/develop/`);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('<title>develop</title>');
   });
 
   it('returns the site-wide SPA fallback with a 404 status for an unmatched deep route', async () => {
