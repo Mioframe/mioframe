@@ -121,20 +121,6 @@ const onClick = (event: MouseEvent) => {
   cursor: default;
 }
 
-/* m3e keeps its internal pressed feedback after release. While the host is physically active,
- * its documented pressed-shape input remains renderer-owned. Once :active clears, map that
- * input back to the selected resting round shape so only geometry releases immediately. */
-.md-button:not(:active) {
-  --m3e-button-extra-small-shape-pressed-morph: var(
-    --m3e-button-extra-small-shape-round,
-    var(--m3e-button-shape-round, 9999px)
-  );
-  --m3e-button-small-shape-pressed-morph: var(
-    --m3e-button-small-shape-round,
-    var(--m3e-button-shape-round, 9999px)
-  );
-}
-
 .md-button__icon {
   display: inline-flex;
   color: inherit;

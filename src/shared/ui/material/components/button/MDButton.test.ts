@@ -1,6 +1,4 @@
 import { mount } from '@vue/test-utils';
-import fs from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import MDButton from './MDButton.vue';
 
@@ -65,25 +63,4 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(button.element, 'disabled')).toBe(true);
     expect(button.attributes('aria-busy')).toBe('true');
   });
-});
-
-describe('MDButton released pressed-shape mapping', () => {
-  const source = fs.readFileSync(
-    path.join(process.cwd(), 'src/shared/ui/material/components/button/MDButton.vue'),
-    'utf8',
-  );
-  const releasedRule = source.match(/\.md-button:not\(:active\) \{(?<body>[\s\S]*?)\n\}/)?.groups
-    ?.body;
-
-  it('leaves the renderer pressed-shape inputs in control while physically active', () => {
-    expect(source).not.toMatch(/\.md-button:active\s*\{[^}]*shape-pressed-morph/s);
-  });
-
-  it.each(['extra-small', 'small'])(
-    'maps released %s round geometry to its documented resting-shape input',
-    (size) => {
-      expect(releasedRule).toContain(`--m3e-button-${size}-shape-pressed-morph`);
-      expect(releasedRule).toContain(`--m3e-button-${size}-shape-round`);
-    },
-  );
 });

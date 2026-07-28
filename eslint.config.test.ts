@@ -20,6 +20,8 @@ const m3eImportSource = "import { M3eButtonElement } from '@m3e/web/button';\n";
 const m3eRootImportSource = "import '@m3e/web';\n";
 const m3eTemplate =
   '<script setup lang="ts"></script>\n<template>\n  <m3e-button></m3e-button>\n</template>\n';
+const m3eElementTemplate = (tag: string) =>
+  `<script setup lang="ts"></script>\n<template>\n  <${tag}></${tag}>\n</template>\n`;
 const useAttrsTemplate =
   '<script setup lang="ts">\nimport { useAttrs } from \'vue\';\nuseAttrs();\n</script>\n<template>\n  <div />\n</template>\n';
 const inlineArrowHandlerTemplate =
@@ -91,6 +93,26 @@ describe('eslint.config.mjs m3e renderer boundary', () => {
       const result = await lint(m3eTemplate, insideMaterialVueFile);
 
       expect(ruleIds(result)).not.toContain('vue/no-restricted-syntax');
+    },
+    typeAwareLintTimeout,
+  );
+
+  it.each(['m3e-button', 'm3e-loading-indicator'])(
+    'accepts the selected <%s> renderer element in Material',
+    async (tag) => {
+      const result = await lint(m3eElementTemplate(tag), insideMaterialVueFile);
+
+      expect(ruleIds(result)).not.toContain('vue/no-undef-components');
+    },
+    typeAwareLintTimeout,
+  );
+
+  it.each(['m3e-buton', 'm3e-icon-button', 'm3e-arbitrary-element'])(
+    'rejects the unselected <%s> renderer element in Material',
+    async (tag) => {
+      const result = await lint(m3eElementTemplate(tag), insideMaterialVueFile);
+
+      expect(ruleIds(result)).toContain('vue/no-undef-components');
     },
     typeAwareLintTimeout,
   );
