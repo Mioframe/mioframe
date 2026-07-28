@@ -8,9 +8,9 @@ Implementation ownership: `migrating`
 
 Canonical implementation: `src/shared/ui/material/components/loading-indicator/MDLoadingIndicator.vue`
 
-## Ownership
+## Status and ownership
 
-Loading indicator is a separate official Material component with its own API, accessibility, geometry, tokens, motion, tests, stories, renderer integration, and defect ownership.
+Loading indicator is an independently owned official Material component:
 
 ```text
 MDButton.loading
@@ -18,7 +18,11 @@ MDButton.loading
       → @m3e/web/loading-indicator
 ```
 
-`MDButton` owns composition state, placement, accessible-purpose handoff, and overall-size selection. `MDLoadingIndicator` owns the dependency contract and private renderer integration.
+Button owns composition state, placement, accessible-purpose handoff, and selected overall size. Loading Indicator owns its public API, renderer integration, accessibility, geometry, private mappings, defects, tests, stories, and visual proof.
+
+The selected implementation and proof are complete. The family remains in `correction` only until stale version-specific wording in production comments is removed and the resulting branch passes final task-scope verification.
+
+No unresolved operator-reported Loading indicator visual or motion issue is currently recorded. Operator review is manual during development; a reported issue reopens this family.
 
 ## Official sources
 
@@ -27,61 +31,52 @@ MDButton.loading
 - `/components/loading-indicator/guidelines`;
 - `/components/loading-indicator/accessibility`.
 
-Related Button placement and contrast guidance is also selected for the current composition.
+Related Button placement and contrast guidance is selected for the current composition.
 
-Renderer package:
+Renderer:
 
 - declared `@m3e/web@^2.6.3`, resolved `2.6.3`;
 - entry point `@m3e/web/loading-indicator`;
-- installed package artifacts and observable browser behavior are runtime evidence;
+- installed artifacts and browser behavior are runtime evidence;
 - `M3eLoadingIndicatorElement` is the package-derived type source.
 
-## Selected Material contract
-
-Current demand is the Button composition:
-
-- indeterminate short loading;
-- uncontained presentation;
-- required accessible purpose;
-- numeric scalable overall size;
-- inherited active-indicator color;
-- compatibility with disabled and selected Button states.
-
-Contained presentation remains deferred.
-
-## Public Vue API
+## Selected public API
 
 ```ts
-size?: number;
 label: string;
+size?: number;
 ```
+
+`label` describes the purpose of the ongoing process and is required for the progressbar accessible name.
 
 `size`:
 
 - represents overall component size in Material dp mapped to CSS px;
 - defaults to `48`;
-- is clamped to `24..240`, with a development warning;
-- normalizes non-finite values to `48`, with a distinct warning;
-- does not expose arbitrary CSS strings or renderer token names.
+- accepts finite values clamped to `24..240`;
+- normalizes non-finite values to `48`;
+- does not expose arbitrary CSS strings or renderer vocabulary.
+
+Contained presentation remains deferred.
 
 ## Geometry contract
 
 Material distinguishes overall/container size from active-indicator size. The selected default is 48dp overall and 38dp active indicator.
 
 ```text
-public overall size         = normalized size
-private active-size input   = normalized size × 38 / 48
-m3e internal shape scale    = unchanged and renderer-owned
+public overall size       = normalized size
+private active-size input = normalized size × 38 / 48
+renderer shape scale      = unchanged and renderer-owned
 ```
 
-The adapter sets host width and height from the public overall size and maps the effective private active-size input separately. It does not compensate m3e internal animated-shape scaling.
+The adapter sets host width/height from public overall size and maps the active-size renderer input separately. It does not inspect or compensate internal animated-shape geometry.
 
 | Public size | Host size | Active-size input |
-| ----------- | --------- | ----------------- |
-| `24`        | `24px`    | `19px`            |
-| `32`        | `32px`    | `25.333333…px`    |
-| `40`        | `40px`    | `31.666667…px`    |
-| `48`        | `48px`    | `38px`            |
+| --- | --- | --- |
+| `24` | `24px` | `19px` |
+| `32` | `32px` | `25.333333…px` |
+| `40` | `40px` | `31.666667…px` |
+| `48` | `48px` | `38px` |
 
 ## Button composition mapping
 
@@ -93,18 +88,17 @@ Button large       → Loading indicator 32
 Button extra-large → Loading indicator 40
 ```
 
-This is a Mioframe composition mapping, not a restatement of Button icon tokens and not the complete Loading indicator size API.
+This is a Mioframe parent/dependency composition mapping, not the complete Loading indicator API and not a copy of Button icon tokens.
 
 ## Confirmed renderer defects
 
-`M3E-001` and `M3E-002` were revalidated against the exact installed `@m3e/web` `2.6.3` artifact and remain unchanged from `2.6.2`:
+`M3E-001` and `M3E-002` were revalidated against installed `@m3e/web` `2.6.3` and remain active for the consumed `2.6.2–2.6.3` range:
 
-- [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented): the documented active-indicator size input is not the effective implementation input;
-- [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size): the effective active-size input also controls the uncontained host width.
+- [`M3E-001`](../../docs/m3e-defects.md#m3e-001--loading-indicator-documented-size-input-is-not-implemented) — documented active-indicator size input is not the implemented input;
+- [`M3E-002`](../../docs/m3e-defects.md#m3e-002--uncontained-host-size-is-coupled-to-active-indicator-size) — uncontained host width is coupled to active-indicator size.
 
 ```text
 renderer status: divergent
-confirmed defects: M3E-001, M3E-002
 current decision: temporary-renderer-workaround
 long-term owner: m3e-fix
 last revalidated version: @m3e/web 2.6.3
@@ -114,82 +108,49 @@ upstream status: unreported
 
 Current mitigation:
 
-- explicit host width and height from public overall size;
-- private effective active-size input at `overallSize × 38 / 48`;
-- no private DOM or method access;
+- explicit host width/height from public overall size;
+- private effective active-size input at `overall × 38 / 48`;
+- inherited active color through `currentColor`;
+- no private DOM/method access;
 - no renderer vocabulary in public API or parent adapters.
 
-The workaround remains controlled by `../../docs/m3e-defects.md` and must be revalidated again on the next consumed m3e version. No additional 2.6.3 revalidation task remains open.
+Production comments should reference the defect IDs or consumed affected range rather than describe the workaround as specific only to 2.6.2.
 
 ## Material–m3e–Vue matrix
 
-| Material contract                            | Required now              | Public Vue representation                             | m3e support                                                                                                       | Owner and decision                                        | Verification                                                  |
-| -------------------------------------------- | ------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------- |
-| Component identity                           | yes                       | canonical root-exported `MDLoadingIndicator`          | direct `m3e-loading-indicator` mapping                                                                            | dependency adapter — `implement-now`                      | unit, browser, and visual proof                               |
-| Default uncontained configuration            | yes                       | no public variant prop                                | direct renderer default                                                                                           | `implement-now`                                           | default story and visual proof                                |
-| Contained configuration                      | no                        | none                                                  | renderer supports it                                                                                              | `defer`                                                   | none                                                          |
-| Short indeterminate process                  | yes                       | component exists while parent loading state is true   | direct indeterminate renderer behavior                                                                            | `implement-now`                                           | contract tests                                                |
-| Accessible purpose and progressbar semantics | yes                       | required `label` mapped to `aria-label`               | renderer supplies progressbar role but not purpose                                                                | wrapper correction owned by dependency                    | unit and real-browser role/name proof                         |
-| Active-indicator contrast inside Button      | yes                       | inherited `currentColor`                              | documented renderer color input                                                                                   | dependency — `implement-now`                              | independent inherited-color visual proof                      |
-| Overall and active-indicator size            | yes                       | numeric overall `size`, default `48`, range `24..240` | divergent: `M3E-001`, `M3E-002`                                                                                   | dependency — controlled workaround                        | normalization, geometry, browser bounds, and visual proof     |
-| Official component tokens                    | no CSS-level consumer now | none                                                  | renderer has private inputs                                                                                       | `defer`; props and inherited color satisfy current demand | none                                                          |
-| Motion and reduced-motion assessment         | yes                       | no public control selected                            | installed 2.6.3 retains the renderer-owned 4666ms infinite morph/rotation and no discovered reduced-motion branch | no confirmed defect without positive official requirement | installed-artifact inspection; operator motion review pending |
-| Forced colors                                | yes                       | none                                                  | renderer uses `CanvasText`                                                                                        | direct renderer ownership                                 | operator review pending                                       |
+| Material contract | Required now | Public Vue representation | m3e support | Owner and decision | Verification |
+| --- | --- | --- | --- | --- | --- |
+| Component identity | yes | root-exported `MDLoadingIndicator` | direct renderer element | dependency — `implement-now` | unit + browser + visual |
+| Uncontained presentation | yes | no public variant prop | renderer default | `implement-now` | story + visual |
+| Contained presentation | no | none | available but unselected | `defer` | none |
+| Short indeterminate process | yes | mounted while parent is loading | direct | `implement-now` | contract |
+| Accessible purpose/role | yes | required `label` → `aria-label` | renderer supplies role | dependency `wrapper-correction` | browser role/name |
+| Inherited active color | yes | `currentColor` | documented renderer color input | dependency — `implement-now` | independent visual |
+| Overall/active size | yes | numeric overall `size` | divergent `M3E-001`/`M3E-002` | controlled workaround | unit + browser geometry + visual |
+| Public component tokens | no current CSS consumer | none | renderer inputs private | `defer` | none |
+| Motion/reduced motion | review only | no public control | renderer-owned animation; no selected wrapper correction | renderer ownership | installed-artifact assessment + operator reporting |
+| Forced colors | selected environment | none | renderer uses `CanvasText` | direct | operator reporting |
 
-## Token ownership
+## Token and parent boundary
 
-Loading indicator may own only intentionally supported official `--md-comp-loading-indicator-*` tokens and their private family-local renderer mappings in:
+No public Loading indicator component token is currently required, so no placeholder declarations are added. Shared reference/system roles belong to foundation. Parent components use public props, inherited color, or a selected official public token; they do not set dependency-private renderer inputs.
 
-```text
-src/shared/ui/material/components/loading-indicator/tokens.css
-```
+Button renders `MDLoadingIndicator`, hands off label and overall size, relies on inherited color, and gives loading precedence over icon routes. It does not own renderer mapping, geometry, defects, or motion.
 
-Shared reference and system roles belong to Material foundation. Parents must use dependency props, inherited color, or supported public component tokens and must not set dependency-private renderer variables.
+## Implemented proof
 
-Every supported component token must be listed in `../../docs/token-api.md`. No public Loading indicator component token is currently required, so no placeholder declarations are added. Official but unsupported tokens remain `deferred` in the matrix.
+- package-derived Loading indicator source type;
+- contract tests for label, normalization, host geometry, and active-size mapping;
+- standalone size and inherited-color stories/baselines;
+- browser host bounding-box proof without shadow-DOM access;
+- browser progressbar role/name proof;
+- Button composition and selected state combinations;
+- revalidation of `M3E-001` and `M3E-002` against installed `2.6.3`;
+- renderer motion assessment without inventing an unsupported defect.
 
-## Public boundary
+## Remaining
 
-`MDLoadingIndicator`:
-
-- exposes only required `label` and optional numeric `size`;
-- keeps renderer type, tag vocabulary, and private inputs internal;
-- owns geometry normalization and the two controlled workarounds;
-- owns independent accessibility, browser, visual, and motion evidence.
-
-`MDButton`:
-
-- renders `MDLoadingIndicator`, not raw m3e;
-- hands off accessible purpose and numeric overall size;
-- relies on inherited color;
-- gives loading precedence over normal and selected icon routes;
-- does not own dependency defects or private mappings.
-
-## Verification
-
-Completed against the installed `@m3e/web` `2.6.3` artifact, including the M0 token-ownership migration:
-
-- package-derived type-check;
-- component-contract tests for label, normalization, host geometry, and active-size mapping;
-- standalone stories for size and inherited color;
-- browser host bounding-box proof without shadow-DOM inspection;
-- standalone visual-regression baselines;
-- browser accessibility role/name proof;
-- Button composition and state-combination proof;
-- revalidation of `M3E-001` and `M3E-002`, retained unchanged;
-- reassessment of installed renderer motion, retained as an operator-review item rather than an unproven defect.
-
-Pending:
-
-- focused verification and final `pnpm verify` on the head produced by the token-ownership migration;
-- operator Loading indicator visual and motion acceptance.
-
-## Completion gate
-
-`MDLoadingIndicator` remains `migrating` and cannot be accepted until:
-
-- final `pnpm verify` passes on the head that established canonical foundation/theme and family token owners, removed the legacy mixed-owner file, and populated the public token catalogue;
-- `M3E-001` and `M3E-002` remain accurately recorded for the consumed version and their workarounds remain owner-local;
-- focused tests and affected baselines stay correct after M0;
-- final verification passes on the resulting head;
-- operator visual and motion acceptance is recorded.
+- replace stale 2.6.2-only production comments with current defect/range wording;
+- pass focused unit/type/browser checks affected by the edit;
+- pass the exact final branch/task-scope verification required by root policy on the resulting head;
+- complete final full-PR review with no unresolved operator-reported issue.
