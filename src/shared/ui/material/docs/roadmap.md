@@ -32,21 +32,20 @@ Implementation ownership: `migrating`
 ### Remaining correction work
 
 1. Make Button Vue custom-element glue derive from `M3eButtonElement`, not `HTMLElement`.
-2. Connect the new fixed-point `scripts/ciAutofix.mjs` implementation to the `ci:autofix` package script and verify the workflow integration.
-3. Remove no-op dark elevation overrides and the matching duplicate-owner test exception.
-4. Remove stale `2.6.2` wording from Loading indicator production comments; reference current defect IDs/consumed range instead.
-5. Run focused checks and the exact final branch-scope verification required by root policy on the resulting head.
-6. Perform the final full-PR architecture and merge-readiness review.
+2. Connect the fixed-point `scripts/ciAutofix.mjs` implementation to the `ci:autofix` package script and verify the workflow entry point.
+3. Remove stale `2.6.2` wording from Loading indicator production comments; reference current defect IDs or the consumed affected range instead.
+4. Run focused checks and the exact final branch-scope verification required by root policy on the resulting head.
+5. Perform the final full-PR architecture and merge-readiness review.
 
 ## Milestones
 
-| ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                         |
-| --- | -------------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset and token foundation | `correction` | none       | canonical owners/catalogue; no duplicate/no-op owner exceptions; tooling integration complete; final branch-scope verification                    |
-| M1a | `MDLoadingIndicator` dependency adapter            | `correction` | M0         | accepted contract; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
-| M1  | `MDButton` adapter pilot                           | `correction` | M1a        | package-derived renderer glue; canonical dependency composition; visible interaction proof; migrated consumers; final verification                |
-| M2  | `MDSwitch` stateful adapter pilot                  | `planned`    | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                          |
-| M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                            |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset and token foundation | `correction` | none | canonical token owners/catalogue; tooling integration complete; final branch-scope verification |
+| M1a | `MDLoadingIndicator` dependency adapter | `correction` | M0 | accepted contract; package-derived typing; accessibility/geometry proof; current controlled defect records; no unresolved reported operator issue |
+| M1 | `MDButton` adapter pilot | `correction` | M1a | package-derived renderer glue; canonical dependency composition; visible interaction proof; migrated consumers; final verification |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; controlled state/event order; renderer-gap ownership; verification |
+| M3 | sequential component migration | `planned` | M2 | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership |
 
 ## Accepted foundation structure
 
@@ -55,7 +54,7 @@ material/foundation/tokens.css
   → supported renderer-independent reference/system foundations
 
 material/foundation/theme.css
-  → default palette and light/dark system-color assignments
+  → default palette, light/dark system-color assignments, and catalogued theme overrides
 
 material/components/<family>/tokens.css
   → selected supported official component tokens
@@ -65,7 +64,7 @@ material/docs/token-api.md
   → complete supported consumer catalogue
 ```
 
-One public token has one semantic declaration owner. Theme may override theme-owned roles inside `theme.css`; no-op duplicates of foundation-owned roles are not accepted.
+One public token has one canonical base owner. A selected theme override must remain inside `theme.css`, be explicit in `token-api.md`, and be covered by the same runtime/visual contract.
 
 ## M1a — Loading indicator
 
