@@ -180,6 +180,40 @@ test('MDButton preserves normal native click bubbling to ancestor listeners', as
   expect(await bubbledToDocument).toBe(true);
 });
 
+test('MDButton variants and content keep component color inside a legacy Material surface', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--legacy-surface-color-ownership');
+
+  await expect(page.getByTestId('legacy-surface-text')).toHaveCSS('color', 'rgb(179, 38, 30)');
+  await expect(
+    page.getByRole('button', { name: 'Surface filled' }).locator('.md-button__label-text'),
+  ).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(
+    page.getByRole('button', { name: 'Surface outlined' }).locator('.md-button__label-text'),
+  ).toHaveCSS('color', 'rgb(73, 69, 79)');
+  await expect(
+    page.getByRole('button', { name: 'Surface text' }).locator('.md-button__label-text'),
+  ).toHaveCSS('color', 'rgb(103, 80, 164)');
+
+  const iconButton = page.getByRole('button', { name: 'Surface icon' });
+  await expect(iconButton.locator('.md-button__label-text')).toHaveCSS('color', 'rgb(73, 69, 79)');
+  await expect(page.getByTestId('legacy-surface-button-icon')).toHaveCSS(
+    'color',
+    'rgb(73, 69, 79)',
+  );
+
+  const loadingButton = page.getByRole('button', { name: 'Surface loading' });
+  await expect(loadingButton.locator('.md-button__label-text')).toHaveCSS(
+    'color',
+    'rgb(103, 80, 164)',
+  );
+  await expect(loadingButton.locator('.md-loading-indicator')).toHaveCSS(
+    'color',
+    'rgb(103, 80, 164)',
+  );
+});
+
 test('MDIconButton expanded target activates clicks outside the visible button box', async ({
   page,
 }) => {
@@ -349,6 +383,11 @@ test('MDIconButton selected pressed shape wins over selected shape under a real 
 }) => {
   await openStory(page, 'material-3-components-buttons-mdiconbutton--geometry');
 
+  /**
+   * Read the rendered public host radius for the named geometry fixture.
+   * @param testId - Geometry fixture test identifier.
+   * @returns Rendered border radius in CSS pixels.
+   */
   const readRadius = (testId: string) =>
     page.getByTestId(testId).evaluate((el) => parseFloat(getComputedStyle(el).borderRadius));
 

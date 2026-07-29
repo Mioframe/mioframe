@@ -59,3 +59,16 @@ test('MDLoadingIndicator exposes the official primary default and accepts its pu
     '#006e1c',
   );
 });
+
+test('MDLoadingIndicator keeps its standalone primary presentation inside a legacy Material surface', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--legacy-surface-color-ownership');
+
+  const indicator = page.getByRole('progressbar', { name: 'Surface standalone loading' });
+  await expect(indicator).toHaveCSS(
+    '--md-comp-loading-indicator-active-indicator-color',
+    '#6750a4',
+  );
+  await expect(page.getByTestId('legacy-surface-text')).toHaveCSS('color', 'rgb(179, 38, 30)');
+});

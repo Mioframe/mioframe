@@ -19,3 +19,12 @@ test('MDLoadingIndicator default and public color override match the canonical b
 
   await expect(surface).toHaveScreenshot('md-loading-indicator-colors.png');
 });
+
+test('MDLoadingIndicator keeps its standalone primary color inside a legacy Material surface', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--legacy-surface-color-ownership');
+  const indicator = page.getByRole('progressbar', { name: 'Surface standalone loading' });
+
+  await expect(indicator).toHaveScreenshot('md-loading-indicator-legacy-surface.png');
+});

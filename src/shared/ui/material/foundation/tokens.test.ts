@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
 
 const LEGACY_TOKENS_PATH = './src/shared/lib/md/tokens.css';
@@ -43,6 +44,37 @@ const extractCatalogueTableTokens = (doc: string): Set<string> => {
     }
   }
   return names;
+};
+
+const SELECTED_SYSTEM_COLOR_MAPPINGS = {
+  '--md-sys-color-inverse-surface': '--md-ref-palette-neutral20',
+  '--md-sys-color-inverse-on-surface': '--md-ref-palette-neutral95',
+  '--md-sys-color-inverse-primary': '--md-ref-palette-primary80',
+  '--md-sys-color-outline': '--md-ref-palette-neutral-variant50',
+  '--md-sys-color-outline-variant': '--md-ref-palette-neutral-variant80',
+} as const;
+
+const extractSelectedMappings = (css: string, dark: boolean): Record<string, string> => {
+  const root = postcss.parse(css, { from: FOUNDATION_THEME_PATH });
+  const darkMedia = root.nodes.find(
+    (node): node is postcss.AtRule =>
+      node.type === 'atrule' &&
+      node.name === 'media' &&
+      node.params === '(prefers-color-scheme: dark)',
+  );
+  const nodes = dark ? darkMedia?.nodes : root.nodes;
+  const rootRule = nodes?.find(
+    (node): node is postcss.Rule => node.type === 'rule' && node.selector === ':root',
+  );
+  const mappings: Record<string, string> = {};
+
+  rootRule?.each((node) => {
+    if (node.type !== 'decl' || !(node.prop in SELECTED_SYSTEM_COLOR_MAPPINGS)) return;
+    const match = node.value.match(/^var\((--md-ref-palette-[\w-]+)\)$/);
+    if (match?.[1]) mappings[node.prop] = match[1];
+  });
+
+  return mappings;
 };
 
 describe('Material foundation token ownership', () => {
@@ -92,6 +124,17 @@ describe('Material foundation token ownership', () => {
     expect(foundationTokens).toContain('--md-sys-state-focus-state-layer-opacity: 10%;');
     expect(foundationTokens).toContain('--md-sys-state-pressed-state-layer-opacity: 10%;');
     expect(foundationTokens).toContain('--md-sys-state-dragged-state-layer-opacity: 16%;');
+  });
+
+  it('maps the selected inverse and outline roles to their exact light and dark references', () => {
+    expect(extractSelectedMappings(foundationTheme, false)).toEqual(SELECTED_SYSTEM_COLOR_MAPPINGS);
+    expect(extractSelectedMappings(foundationTheme, true)).toEqual({
+      '--md-sys-color-inverse-surface': '--md-ref-palette-neutral90',
+      '--md-sys-color-inverse-on-surface': '--md-ref-palette-neutral20',
+      '--md-sys-color-inverse-primary': '--md-ref-palette-primary40',
+      '--md-sys-color-outline': '--md-ref-palette-neutral-variant60',
+      '--md-sys-color-outline-variant': '--md-ref-palette-neutral-variant30',
+    });
   });
 
   describe('public catalogue agreement', () => {

@@ -91,6 +91,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - Local coding agents own repository files and local commands. The operator or architect owns PR title and body, draft/ready state, review threads, complete resulting-PR review, merge readiness, and merge execution.
 - Keep a PR in draft while implementation, required proof, current-head verification, or review blockers remain. Mark it ready only after the current head has complete required checks, the full resulting diff has been reviewed, PR metadata is accurate, and no unresolved review threads remain.
 - Green CI proves only that automated checks passed. It is not architecture approval or merge readiness. Re-review the current head after every pushed commit, including CI autofix commits.
+- CI autofix stages the complete working tree before commit detection; the cached diff is the single source of truth so tracked changes, untracked files and symlinks, and deletions are handled together.
 - Branch prefixes are descriptive rather than an allow-list. Use a clear prefix such as `feature/`, `feat/`, `fix/`, `hotfix/`, `release-repair/`, `refactor/`, `docs/`, `chore/`, or `agent/` that reflects the work.
 
 ## Mandatory verification

@@ -83,6 +83,14 @@ src/shared/ui/material/foundation/theme.css
 ```
 
 Application theme selection, persistence, and approved `--app-*` extensions remain outside Material.
+Selected light/dark system-color roles are verified as exact semantic reference-token assignments,
+not only as declared or catalogued token names.
+
+Legacy `.md` surfaces own their own background, inherited base content color, and root transition.
+They rely on native inheritance for ordinary descendant text and must not impose color or motion on
+arbitrary component descendants through universal selectors. Canonical Material adapters remain
+independent of the selected private renderer; renderer-specific exceptions do not belong in legacy
+shared styles.
 
 ### Component family
 
@@ -141,6 +149,8 @@ The default is composition or a separate non-Material owner. Compatibility migra
 ## Renderer and typing boundary
 
 Outside `src/shared/ui/material`, it is forbidden to import `@m3e/web`, render `m3e-*`, use renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
+Repository contract tests enforce the private CSS namespace across runtime CSS, Vue, and TypeScript
+source while the existing compiler and ESLint guards independently enforce imports and raw elements.
 
 Inside the canonical adapter:
 

@@ -24,6 +24,15 @@ test('MDButton keeps its label visible with a leading Loading indicator', async 
   await expect(surface).toHaveScreenshot('md-button-loading.png');
 });
 
+test('MDButton variants keep their Material colors inside a legacy Material surface', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--legacy-surface-color-ownership');
+  const surface = page.getByTestId('visual-md-button-legacy-surface');
+
+  await expect(surface).toHaveScreenshot('md-button-legacy-surface.png');
+});
+
 // The following four tests prove the renderer-owned Material state-layer and ripple are
 // actually visible after normalizing the Mioframe state-opacity foundation tokens to a
 // percentage representation compatible with m3e's `color-mix()`-based state layer. Each test
