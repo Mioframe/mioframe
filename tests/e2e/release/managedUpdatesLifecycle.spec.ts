@@ -144,6 +144,16 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     const page = await context.newPage();
     await page.goto(server.url);
     await expect(page.getByText(/^browser storage$/i)).toBeVisible();
+
+    // The managed worker never calls `clients.claim()` (see the managed
+    // pinned application updates feature): a page whose own registration
+    // call triggers a genuinely fresh install remains uncontrolled by that
+    // worker until its next navigation, even once the worker reaches
+    // "active" — standard first-install behavior, not an error. Reload
+    // once, exactly like a real user's first visit followed by a second
+    // one, to observe this same page become controlled.
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
     await waitForControlledPage(page);
 
     const result = await waitForControllerState(page, (r) => r.status === 'valid');

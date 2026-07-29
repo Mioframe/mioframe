@@ -12,6 +12,62 @@ import {
 const BASE_PATH = '/';
 const CONTROLLER_STATE_DB_NAME = 'mioframe-update-controller-stable';
 
+async function readActiveReleaseId(
+  page: import('@playwright/test').Page,
+): Promise<string | undefined> {
+  return page.evaluate(
+    (dbName) =>
+      new Promise<string | undefined>((resolve) => {
+        const request = indexedDB.open(dbName);
+        request.onsuccess = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('controllerState')) {
+            db.close();
+            resolve(undefined);
+            return;
+          }
+          const tx = db.transaction('controllerState', 'readonly');
+          const getRequest = tx.objectStore('controllerState').get('controllerState');
+          getRequest.onsuccess = () => {
+            db.close();
+            resolve(getRequest.result?.activeRelease?.releaseId);
+          };
+        };
+      }),
+    CONTROLLER_STATE_DB_NAME,
+  );
+}
+
+/**
+ * Polls {@link readActiveReleaseId} until it resolves `expectedReleaseId`,
+ * bounded by `timeoutMs`. A page becoming "controlled" only guarantees the
+ * worker exists — persisting its own `activeRelease` into IndexedDB from
+ * the worker's own execution context can very briefly lag behind that from
+ * a different page's read, so a one-shot read right after observing
+ * `controller !== null` is not reliable (see the same documented race in
+ * `managedUpdatesDevelop.spec.ts`).
+ * @param page - The page to read persisted controller state from.
+ * @param expectedReleaseId - The release id to wait for `activeRelease` to become.
+ * @param timeoutMs - Maximum time to poll before throwing.
+ */
+async function waitForActiveReleaseId(
+  page: import('@playwright/test').Page,
+  expectedReleaseId: string,
+  timeoutMs = 15_000,
+): Promise<void> {
+  const start = Date.now();
+  for (;;) {
+    const releaseId = await readActiveReleaseId(page);
+    if (releaseId === expectedReleaseId) return;
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(
+        `Timed out waiting for activeRelease to become "${expectedReleaseId}". Last: ${releaseId}`,
+      );
+    }
+    await page.waitForTimeout(200);
+  }
+}
+
 // Migration proof: a browser that already installed the exact previous
 // generated (`generateSW`) Workbox worker must upgrade to the new managed
 // `injectManifest` controller worker without unregistering or clearing
@@ -168,22 +224,7 @@ test('migrates from the frozen legacy generated Workbox worker to the managed co
       );
       await expect(verifyPage.getByText(/^browser storage$/i)).toBeVisible();
 
-      const controllerState = await verifyPage.evaluate(
-        () =>
-          new Promise<{ activeRelease?: { releaseId: string } } | undefined>((resolve) => {
-            const request = indexedDB.open('mioframe-update-controller-stable');
-            request.onsuccess = () => {
-              const db = request.result;
-              const tx = db.transaction('controllerState', 'readonly');
-              const getRequest = tx.objectStore('controllerState').get('controllerState');
-              getRequest.onsuccess = () => {
-                db.close();
-                resolve(getRequest.result);
-              };
-            };
-          }),
-      );
-      expect(controllerState?.activeRelease?.releaseId).toBe(published.releaseId);
+      await waitForActiveReleaseId(verifyPage, published.releaseId);
 
       // The migrated managed release must also serve fully offline.
       await context.setOffline(true);
@@ -241,9 +282,7 @@ test('a failed first managed install leaves the legacy worker active and operati
       // install-time preparation's own hash validation genuinely fails —
       // exactly like storage corruption between publish and this browser's
       // fetch, not a fabricated protocol-level rejection.
-      const firstFile = broken.files[0];
-      if (!firstFile) throw new Error('Expected the built release to have at least one file');
-      corruptPublishedReleaseFile(workDir, 'stable', firstFile.path);
+      corruptPublishedReleaseFile(workDir, 'stable', broken.files[0].path);
 
       const freshPage = await context.newPage();
       await freshPage.goto(server.url);
@@ -312,23 +351,7 @@ test('a failed first managed install leaves the legacy worker active and operati
         undefined,
         { timeout: 30_000 },
       );
-      const controllerState = await verifyPage.evaluate(
-        (dbName) =>
-          new Promise<{ activeRelease?: { releaseId: string } } | undefined>((resolve) => {
-            const request = indexedDB.open(dbName);
-            request.onsuccess = () => {
-              const db = request.result;
-              const tx = db.transaction('controllerState', 'readonly');
-              const getRequest = tx.objectStore('controllerState').get('controllerState');
-              getRequest.onsuccess = () => {
-                db.close();
-                resolve(getRequest.result);
-              };
-            };
-          }),
-        CONTROLLER_STATE_DB_NAME,
-      );
-      expect(controllerState?.activeRelease?.releaseId).toBe(valid.releaseId);
+      await waitForActiveReleaseId(verifyPage, valid.releaseId);
 
       await verifyPage.close();
       await context.close();

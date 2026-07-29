@@ -73,7 +73,10 @@ export const zodReleaseFile = z.object({
 /** A {@link zodReleaseFile}-validated release file record. */
 export type ReleaseFile = z.infer<typeof zodReleaseFile>;
 
-/** Returns `true` when no two files in `files` share the same `path`. */
+/**
+ * Returns `true` when no two files in `files` share the same `path`.
+ * @param files
+ */
 const hasUniqueFilePaths = (files: readonly ReleaseFile[]): boolean =>
   new Set(files.map((file) => file.path)).size === files.length;
 

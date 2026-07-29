@@ -81,6 +81,14 @@ test('a controller-code update leaves the pinned application release, and an una
       const context = await browser.newContext({ baseURL: server.url });
       const pageA = await context.newPage();
       await pageA.goto(server.url);
+      // This is release A's genuinely fresh install: the managed worker
+      // never calls `clients.claim()`, so this same page — whose own
+      // registration call triggered install — remains uncontrolled until
+      // its next navigation. Reload once, exactly like a real user's first
+      // visit followed by a second one, before proceeding to the actual
+      // controller-upgrade scenario this test exercises.
+      await pageA.evaluate(() => navigator.serviceWorker.ready);
+      await pageA.reload();
       await pageA.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
         timeout: 30_000,
       });

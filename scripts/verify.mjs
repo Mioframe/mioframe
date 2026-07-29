@@ -209,7 +209,7 @@ export function getAllSiblingTestFiles(filePath) {
     return uniqSorted(testCandidates);
   }
 
-  if (filePath.startsWith('scripts/')) {
+  if (filePath.startsWith('scripts/') || filePath.startsWith('tests/e2e/')) {
     if (filePath.endsWith('.test.mjs') || filePath.endsWith('.spec.mjs')) {
       return fileExists(filePath) ? [filePath] : [];
     }
@@ -243,8 +243,10 @@ function getVitestScope(changedFiles) {
   const scope = [];
 
   for (const filePath of changedFiles) {
-    if (filePath.startsWith('tests/e2e/')) {
-      // vitest.config.ts excludes tests/e2e/** entirely; Playwright specs there are not vitest scope.
+    if (filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')) {
+      // vitest.config.ts excludes Playwright specs under tests/e2e/**; a
+      // colocated `.test.mjs` fixture-logic test there is valid vitest
+      // scope and falls through to the checks below like any other file.
       continue;
     }
 

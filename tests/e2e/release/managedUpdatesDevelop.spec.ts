@@ -158,12 +158,21 @@ test.describe('managed pinned application updates: develop channel isolation', (
   });
 
   test('stable and develop each install their own controller with independent persisted state, in the same browser context', async () => {
+    // Each channel's very first visit triggers that channel's genuinely
+    // fresh install. The managed worker never calls `clients.claim()`, so
+    // the page whose own registration call triggered install remains
+    // uncontrolled until its next navigation — reload once, exactly like a
+    // real user's first visit followed by a second one.
     const stablePage = await context.newPage();
     await stablePage.goto(server.url);
+    await stablePage.evaluate(() => navigator.serviceWorker.ready);
+    await stablePage.reload();
     await waitForControlledPage(stablePage);
 
     const developPage = await context.newPage();
     await developPage.goto(`${server.url}branch/develop/`);
+    await developPage.evaluate(() => navigator.serviceWorker.ready);
+    await developPage.reload();
     await waitForControlledPage(developPage);
     await expect(developPage.getByText(/^browser storage$/i)).toBeVisible();
 

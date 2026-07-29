@@ -74,11 +74,18 @@ test('Automatic mode discovers and schedules a newer release from ordinary navig
       const context = await browser.newContext({ baseURL: server.url });
 
       // First launch: a genuinely fresh install defaults to Automatic mode.
+      // Only `navigator.serviceWorker.ready` (the worker reaching "active")
+      // is awaited here, not `.controller`: the managed worker never calls
+      // `clients.claim()`, so this same page remains uncontrolled until its
+      // next navigation — but `readControllerState` reads IndexedDB
+      // directly and needs no control at all. Deliberately never reloads
+      // this page: a reload is itself a `navigate` fetch event, and the
+      // Automatic check is scheduled at most once per worker instance —
+      // reloading here would consume that one attempt before release B
+      // below even exists, starving the real assertion this test makes.
       const sessionA = await context.newPage();
       await sessionA.goto(server.url);
-      await sessionA.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
-        timeout: 30_000,
-      });
+      await sessionA.evaluate(() => navigator.serviceWorker.ready);
       const initial = await readControllerState(sessionA);
       expect(initial.status).toBe('valid');
       if (initial.status === 'valid') {
