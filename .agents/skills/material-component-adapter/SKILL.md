@@ -7,7 +7,17 @@ description: 'Use for implementing, migrating, or materially changing one offici
 
 Implement one explicitly selected official Material component end to end through the Material → Vue → m3e boundary.
 
-This is the single canonical implementation workflow for both newly selected families and existing families that require completion. `material-component-completion` is only a focused entrypoint for uncertain or partial existing artifacts; it must read and apply this complete workflow rather than define a second one.
+This is the single canonical implementation workflow for both newly selected families and existing families that require completion. `material-component` is the operator-facing name-only router. `material-component-completion` is a completion preflight for uncertain existing artifacts; neither defines a second implementation workflow.
+
+## Input contract
+
+The component artifact name is sufficient input.
+
+Accept official names, public `MD*` names, or existing family names, for example `Loading indicator`, `MDLoadingIndicator`, or `loading-indicator`.
+
+Resolve current scenarios, official contract, ownership, dependencies, renderer viability, tokens, proof, and verification scope from repository and official evidence. Do not require an implementation brief or ask the operator to restate available repository facts.
+
+Ask for clarification only when the supplied name genuinely maps to multiple distinct official Material components and repository evidence cannot resolve the intended artifact. Escalate to `architect-handoff` only for a real unresolved architecture decision, not for incomplete implementation.
 
 ## Read first
 
@@ -19,9 +29,7 @@ This is the single canonical implementation workflow for both newly selected fam
 - `src/shared/ui/material/docs/token-api.md`;
 - `src/shared/ui/material/docs/m3e-defects.md`;
 - `src/shared/ui/material/docs/roadmap.md`;
-- the selected family README.
-
-A component name is sufficient input only when these sources resolve the current scenarios, official contract, ownership, dependencies, renderer viability, and required proof. Escalate to `architect-handoff` when they do not.
+- the selected family README when it exists.
 
 ## Required result
 
@@ -64,8 +72,10 @@ When a required official dependency is discovered:
 1. add it to an explicit ordered dependency queue;
 2. record only the parent demand and intended public handoff before dependency work starts;
 3. make the dependency the current selected family and run this entire workflow for it independently;
-4. if dependency artifacts already exist but their completion is uncertain, use `material-component-completion` to reconstruct and close that family first;
+4. when dependency artifacts already exist but their completion is uncertain, apply `material-component-completion` first;
 5. resume parent composition only after the dependency family has an accepted matrix, public API, token ownership, renderer audit, defect decisions, independent proof, exports, and truthful status.
+
+Use the discovered dependency name as sufficient input. Do not request a separate implementation brief or operator prompt for it.
 
 A dependency must not be implemented incidentally inside the parent implementation, parent README, parent stories, or parent tests. Parent composition proof does not replace standalone dependency proof. A parent remains `migrating` while any required dependency remains `legacy`, `partial`, `blocked`, or otherwise incomplete.
 
@@ -156,10 +166,9 @@ Keep the component `migrating` while any selected implementation, dependency, ro
 
 ## Forbidden
 
+- Requiring an operator-authored implementation brief when the artifact name and repository evidence resolve the work.
 - Public API derived from legacy Mioframe or m3e vocabulary.
 - Raw dependency renderer access from a parent.
-- Incidental dependency implementation that skips the dependency’s independent family workflow.
-- Parent completion claims while a required dependency is incomplete.
 - Private shadow DOM or method access.
 - Parallel state-layer, ripple, focus, accessibility, geometry-engine, or motion implementation in the wrapper.
 - Host pseudo-class or renderer-CSS overrides that change renderer-owned interaction timing or transient geometry.
@@ -173,12 +182,12 @@ Keep the component `migrating` while any selected implementation, dependency, ro
 
 ```text
 MATERIAL ADAPTER RESULT
-Material component:
+Input artifact:
+Resolved Material component:
 Migration target:
 Official sources:
 Selected Material surface:
 Deferred or source-conflict surface:
-Dependency queue and closure statuses:
 Dependency adapters and statuses:
 Public Vue API:
 Supported public tokens and owners:
