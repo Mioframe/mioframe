@@ -1,11 +1,21 @@
 ---
 name: material-component-completion
-description: 'Use for auditing, normalizing, and completing an existing partial, incidental, dependency-created, or previously migrated Material MD* adapter through the canonical material-component-adapter workflow.'
+description: 'Use with only an existing Material artifact name to audit, normalize, and complete a partial, incidental, dependency-created, or previously migrated MD* adapter through the canonical material-component-adapter workflow.'
 ---
 
 # Material component completion
 
 Complete one existing official Material component whose implementation artifacts already exist but whose independent adapter flow, ownership, or completion status is uncertain.
+
+## Input contract
+
+The existing artifact name is sufficient input.
+
+Accept official names, public `MD*` names, or family names, for example `Loading indicator`, `MDLoadingIndicator`, or `loading-indicator`.
+
+Resolve the family, parents, consumers, official sources, current demand, renderer artifact, tokens, defects, proof, and verification scope from the repository. Do not require the operator to provide why the component is partial, where it was created, what is wrong, or how it should be fixed.
+
+Treat direct invocation with only `MDLoadingIndicator` as a complete instruction to reconstruct and close that family. Ask for clarification only when the artifact name genuinely maps to multiple distinct official Material components and repository evidence cannot resolve it.
 
 Use this skill when:
 
@@ -15,7 +25,7 @@ Use this skill when:
 - artifacts drift across implementation, matrix, token catalogue, defect registry, consumers, and proof;
 - a previously partial or blocked family must be resumed and closed.
 
-Use `material-component-adapter` directly for a genuinely new family with no existing implementation artifacts.
+Use `material-component-adapter` directly for a genuinely new family with no existing implementation artifacts. Normally let the `material-component` router select the mode automatically.
 
 ## Canonical workflow
 
@@ -92,6 +102,7 @@ Green CI alone is not completion.
 
 ## Forbidden
 
+- Requiring any input beyond the artifact name when repository and official evidence can resolve the work.
 - A second or simplified implementation workflow that diverges from `material-component-adapter`.
 - Treating parent composition proof as sufficient standalone dependency proof.
 - Preserving an existing API, token choice, workaround, or status because it is already implemented.
@@ -104,8 +115,10 @@ Green CI alone is not completion.
 
 ```text
 MATERIAL COMPONENT COMPLETION RESULT
-Material component:
-Why completion mode was required:
+Input artifact:
+Resolved Material component:
+Resolved Mioframe family:
+Why completion mode was selected:
 Parents and consumers inspected:
 Official contract reconstructed:
 Current demand reconstructed:
