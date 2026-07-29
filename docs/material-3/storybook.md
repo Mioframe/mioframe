@@ -1,5 +1,7 @@
 # Material 3 Storybook policy
 
+`docs/testing/storybook.md` defines project-wide Storybook ownership, colocation, proof boundaries, file naming, and verification impact. This document adds only Material-library rules.
+
 ## Principle
 
 Storybook is the isolated documentation, browser-fixture, and visual-evidence surface for the Material library. It documents the accepted Mioframe contract; official authority comes from `source-of-truth.md`.
@@ -9,10 +11,9 @@ Storybook is the isolated documentation, browser-fixture, and visual-evidence su
 ```text
 Material 3/Components/<Family>/<Component>/<Story>
 Material 3/Patterns/<Pattern>/<Story>
-Project UI/<Component>/<Story>
 ```
 
-Use official Material namespaces only for accepted official components and patterns. App-specific surfaces remain under `Project UI`.
+Use official Material namespaces only for accepted official components and patterns. Project-specific UI follows the FSD hierarchy defined in `docs/testing/storybook.md`.
 
 ## Component story set
 
@@ -21,7 +22,7 @@ A new or migrated public Material component normally exposes only applicable sto
 - `Overview`, `Default`, or another canonical representative story;
 - `Variants`, `Configurations`, or `Sizes` when supported axes need explanation;
 - `StateMatrix` when multiple distinct component-owned visual routes exist;
-- focused browser-behavior fixtures when Playwright requires a deterministic initial surface;
+- focused browser fixtures when Playwright requires a deterministic initial surface;
 - usage, accessibility, token, supported/unsupported, extension, and deviation notes as applicable.
 
 Do not create optional stories mechanically.
@@ -35,7 +36,7 @@ Use:
 - `StateMatrix` for multiple distinct component-owned visual routes;
 - a bounded `Overview`, `Default`, or equivalent story when one representative route is sufficient.
 
-Tag screenshot-ready stories with `visual` and keep accepted titles, export names, and bounded anchors stable.
+Tag screenshot-ready stories with `visual` and keep accepted titles, export names, and bounded anchors stable. The owning visual spec is colocated with the component according to `docs/testing/storybook.md`.
 
 ## `StateMatrix`
 
@@ -64,11 +65,11 @@ A simple component with one meaningful visual route must not receive a ceremonia
 - Keep verification-only adapters outside the public component contract.
 - Remove obsolete duplicate visual stories after the canonical reference covers their accepted purpose.
 
-## Browser-behavior fixtures
+## Browser fixtures
 
-Create a fixture only when a focused Playwright test needs deterministic initial data or layout for real browser interaction.
+Create a fixture only when a focused colocated browser spec needs deterministic initial data or layout for real browser interaction.
 
-The test acquires focus, hover, press, drag, open, or other behavior through real input. Forced visual state never proves acquisition, cancellation, cleanup, or browser behavior.
+The spec acquires focus, hover, press, drag, open, or other behavior through real input. Forced visual state never proves acquisition, cancellation, cleanup, or browser behavior.
 
 ## Additional visual stories
 
