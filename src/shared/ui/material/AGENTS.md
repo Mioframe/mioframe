@@ -5,9 +5,11 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 ## Required workflow
 
 - Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, `docs/token-api.md`, `docs/m3e-defects.md`, `docs/roadmap.md`, and the selected family README.
-- Use `material-component-adapter` for one explicitly selected official Material component.
+- Use `material-component-adapter` for one explicitly selected new, migrating, or materially changed official Material component.
+- Use `material-component-completion` when an existing component is partial, incidental, dependency-created, previously migrated, or otherwise has uncertain independent workflow coverage.
 - Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or another decision not already resolved by the canonical documents.
 - Complete required official Material dependency adapters before composing them from a parent.
+- When a dependency is discovered, process it as the next first-class family through the complete adapter workflow; do not implement it as incidental parent scope. Resume parent composition only after dependency closure.
 
 ## Authority
 
@@ -28,6 +30,7 @@ Upstream source, tags, demos, and changelogs are supporting evidence only. Legac
 - Define precedence and restoration for public states that may coexist.
 - A composed official Material component remains independently owned and is used through its canonical `MD*` API.
 - The parent owns composition meaning and state handoff; the dependency owns its renderer mapping, accessibility, geometry, tokens, defects, tests, and visual proof.
+- Parent composition proof does not replace standalone dependency proof.
 - Visual loading/busy presentation and activation blocking are independent. Loading must not imply disabled state or suppress activation unless the accepted family contract explicitly assigns both to the component.
 
 ## Token ownership
@@ -58,7 +61,7 @@ Use the proof model defined by `docs/component-adapter.md` and repository testin
 
 Final verification uses the exact task scope required by the root `AGENTS.md`; Material-specific documents must not replace it with an unscoped command.
 
-A component remains `migrating` until its selected contract, dependencies, public exports, token ownership, defect records, consumer migration, required proof, current-head verification, and reported operator issues are resolved. Green CI alone is not architecture approval.
+A component remains `migrating` until its selected contract, dependencies, public exports, token ownership, defect records, consumer migration, required standalone and composed proof, current-head verification, and reported operator issues are resolved. Green CI alone is not architecture approval.
 
 ## Boundary
 
