@@ -52,14 +52,14 @@ describe('useGoogleDriveRecovery', () => {
       );
       const { recovery, scope } = await mountRecovery();
 
-      const requestPromise = recovery.onRetryAuthorization();
+      const requestPromise = recovery.retryAuthorization();
 
-      expect(recovery.isRetryAuthorizationLoading.value).toBe(true);
-      expect(recovery.retryAuthorizationMessage.value).toBe(
+      expect(recovery.isRetryAuthorizationPending.value).toBe(true);
+      expect(recovery.retryAuthorizationPendingMessage.value).toBe(
         'Complete authorization in the provider window.',
       );
 
-      await recovery.onRetryAuthorization();
+      await recovery.retryAuthorization();
       expect(requestTokenMock).toHaveBeenCalledTimes(1);
 
       settleRequest?.();
@@ -70,8 +70,8 @@ describe('useGoogleDriveRecovery', () => {
         await expect(requestPromise).rejects.toThrow('provider rejected');
       }
 
-      expect(recovery.isRetryAuthorizationLoading.value).toBe(false);
-      expect(recovery.retryAuthorizationMessage.value).toBeUndefined();
+      expect(recovery.isRetryAuthorizationPending.value).toBe(false);
+      expect(recovery.retryAuthorizationPendingMessage.value).toBeUndefined();
 
       scope.stop();
     },

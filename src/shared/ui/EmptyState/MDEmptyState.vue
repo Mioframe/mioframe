@@ -2,6 +2,11 @@
 defineProps<{
   headline: string;
   supportingText: string;
+  /**
+   * Assigns `role="status"` and `aria-live="polite"` to the existing supporting-text element
+   * while its text represents a newly changed status. This does not imply disabled, busy, or
+   * loading state.
+   */
   supportingTextStatus?: boolean;
 }>();
 

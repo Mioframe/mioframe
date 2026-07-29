@@ -30,7 +30,7 @@ Implementation ownership: `migrating`
 - Current direct Button consumers use the canonical `@shared/ui/material` export and the replaced legacy `MDButton` implementation is removed.
 - `MDLoadingIndicator` owns renderer integration, public geometry, standalone accessibility, the primary-default public color token, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`.
 - Button composition overrides only the Loading Indicator-owned public color token to `currentColor`; standalone defaults and renderer inputs remain dependency-owned.
-- Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. Their misleading Loading Indicator bindings are replaced by feature-owned textual pending status while explicit disabled/re-entry guards remain.
+- Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. `loading` is not their state model: they use feature-owned pending state and textual status while explicit disabled/re-entry guards remain. No current production recovery operation uses `MDButton.loading`, which remains valid and non-deprecated for confirmed short indeterminate operations.
 - Shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, compatible with the selected renderer grammars.
 - Retained Material reference/system declarations live under canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was removed without an alias.
 - `token-api.md` is populated for the retained supported public surface.

@@ -98,11 +98,10 @@ describe('useLocalDirectoryRecoveryAction', () => {
     const requestPromise = action.grantFullAccess();
     await flushMicrotasks();
 
-    expect(action.isGrantFullAccessLoading.value).toBe(true);
-    expect(action.isGrantReadOnlyAccessLoading.value).toBe(false);
+    expect(action.isGrantLocalDirectoryAccessPending.value).toBe(true);
     expect(action.isGrantLocalDirectoryAccessDisabled.value).toBe(true);
     expect(action.localDirectoryRecoveryMessage.value).toBe(
-      'Waiting for browser permission. Mioframe will restore access after you respond.',
+      'Waiting for browser permission. If access is granted, Mioframe will restore this space.',
     );
 
     await expect(action.grantReadOnlyAccess()).resolves.toEqual({ status: 'error' });
@@ -111,8 +110,7 @@ describe('useLocalDirectoryRecoveryAction', () => {
     resolveRequest?.({ status: 'granted' });
     await requestPromise;
 
-    expect(action.isGrantFullAccessLoading.value).toBe(false);
-    expect(action.isGrantReadOnlyAccessLoading.value).toBe(false);
+    expect(action.isGrantLocalDirectoryAccessPending.value).toBe(false);
     expect(action.isGrantLocalDirectoryAccessDisabled.value).toBe(false);
     expect(action.localDirectoryRecoveryMessage.value).toBe(
       'Mioframe remembers "Work", but your browser requires permission before opening it.',

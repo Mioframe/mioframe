@@ -154,7 +154,7 @@ Loading Indicator owns:
 
 Dialog owns busy action availability. Feature code owns long-running status, determinate progress, operation-specific labels, and completion facts. Button does not own those states.
 
-Browser-permission and provider-authorization recovery use feature-owned textual pending status and explicit disabled actions because external UI can suspend them indefinitely. The absence of current production `loading` bindings does not remove or deprecate `MDButton.loading`; it remains the selected API for a consumer with a confirmed short indeterminate lifecycle.
+Browser-permission and provider-authorization recovery use feature-owned pending state, textual status, and explicit disabled actions because external UI can suspend them indefinitely. `loading` is not the state model for these operations, and no current production recovery operation uses `MDButton.loading`. This does not remove or deprecate `MDButton.loading`; it remains the selected API for a consumer with a confirmed short indeterminate lifecycle.
 
 ## Token ownership
 

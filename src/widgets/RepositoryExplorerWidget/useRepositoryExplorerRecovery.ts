@@ -46,9 +46,8 @@ export const useRepositoryExplorerRecovery = ({
   const {
     grantFullAccess,
     grantReadOnlyAccess,
-    isGrantFullAccessLoading,
     isGrantLocalDirectoryAccessDisabled,
-    isGrantReadOnlyAccessLoading,
+    isGrantLocalDirectoryAccessPending,
     localDirectoryRecoveryMessage,
   } = useLocalDirectoryRecoveryAction({
     recovery: localDirectoryRecovery,
@@ -60,9 +59,8 @@ export const useRepositoryExplorerRecovery = ({
     hasLocalDirectoryRecovery: computed(() => !!localDirectoryRecovery.value),
     googleDriveRecovery,
     hasGoogleDriveRecovery,
-    isGrantFullAccessLoading,
     isGrantLocalDirectoryAccessDisabled,
-    isGrantReadOnlyAccessLoading,
+    isGrantLocalDirectoryAccessPending,
     localDirectoryRecovery,
     localDirectoryRecoveryMessage,
     recoveryErrors,

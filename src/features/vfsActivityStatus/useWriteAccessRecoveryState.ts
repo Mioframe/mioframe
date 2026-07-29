@@ -12,7 +12,7 @@ import { computed, readonly, ref, watch } from 'vue';
  * - whether a storage failure occurred after a grant attempt;
  * - derived `hasWriteAccessRecovery` and `isStaleWriteAccessRequest` flags.
  *
- * Does not own UI state (showErrorDetails, loading) or snackbar actions.
+ * Does not own UI state (showErrorDetails, permission pending) or snackbar actions.
  * @param state - Reactive VFS activity state from `useVfsActivity`.
  * @returns Recovery state flags and actions for the write-access flow.
  */

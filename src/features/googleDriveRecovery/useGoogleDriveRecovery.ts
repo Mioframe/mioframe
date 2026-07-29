@@ -20,31 +20,31 @@ export const useGoogleDriveRecovery = ({ path }: GoogleDriveRecoveryOptions) => 
     google: { requestToken },
   } = useMainServiceClient();
 
-  const isRetryAuthorizationLoading = ref(false);
+  const isRetryAuthorizationPending = ref(false);
 
-  const onRetryAuthorization = async () => {
+  const retryAuthorization = async () => {
     const currentPath = toValue(path);
     const email = getGoogleDrivePathEmail(currentPath, { hasRootName: true });
     const scope = getGoogleDrivePathScope(currentPath, { hasRootName: true });
 
-    if (!email || isRetryAuthorizationLoading.value) {
+    if (!email || isRetryAuthorizationPending.value) {
       return;
     }
 
-    isRetryAuthorizationLoading.value = true;
+    isRetryAuthorizationPending.value = true;
 
     try {
       await requestToken([scope], email);
     } finally {
-      isRetryAuthorizationLoading.value = false;
+      isRetryAuthorizationPending.value = false;
     }
   };
 
   return {
-    isRetryAuthorizationLoading,
-    onRetryAuthorization,
-    retryAuthorizationMessage: computed(() =>
-      isRetryAuthorizationLoading.value
+    isRetryAuthorizationPending,
+    retryAuthorization,
+    retryAuthorizationPendingMessage: computed(() =>
+      isRetryAuthorizationPending.value
         ? 'Complete authorization in the provider window.'
         : undefined,
     ),

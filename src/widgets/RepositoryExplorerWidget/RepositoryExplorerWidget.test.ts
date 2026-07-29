@@ -25,9 +25,8 @@ const requestTokenMock = vi.fn();
 const importDocumentFromPathMock = vi.fn();
 const grantFullAccessMock = vi.fn();
 const grantReadOnlyAccessMock = vi.fn();
-const isGrantFullAccessLoadingRef = ref(false);
+const isGrantLocalDirectoryAccessPendingRef = ref(false);
 const isGrantLocalDirectoryAccessDisabledRef = ref(false);
-const isGrantReadOnlyAccessLoadingRef = ref(false);
 const localDirectoryRecoveryMessageRef = ref('');
 
 const createSerializedRecoveryError = ({
@@ -55,11 +54,10 @@ vi.mock('@feature/localDirectoryRecovery', () => ({
   useLocalDirectoryRecoveryAction: () => ({
     grantFullAccess: grantFullAccessMock,
     grantReadOnlyAccess: grantReadOnlyAccessMock,
-    isGrantFullAccessLoading: computed(() => isGrantFullAccessLoadingRef.value),
+    isGrantLocalDirectoryAccessPending: computed(() => isGrantLocalDirectoryAccessPendingRef.value),
     isGrantLocalDirectoryAccessDisabled: computed(
       () => isGrantLocalDirectoryAccessDisabledRef.value,
     ),
-    isGrantReadOnlyAccessLoading: computed(() => isGrantReadOnlyAccessLoadingRef.value),
     localDirectoryRecoveryMessage: computed(() => localDirectoryRecoveryMessageRef.value),
   }),
 }));
@@ -325,9 +323,8 @@ describe('RepositoryExplorerWidget', () => {
     importDocumentFromPathMock.mockReset();
     grantFullAccessMock.mockReset();
     grantReadOnlyAccessMock.mockReset();
-    isGrantFullAccessLoadingRef.value = false;
+    isGrantLocalDirectoryAccessPendingRef.value = false;
     isGrantLocalDirectoryAccessDisabledRef.value = false;
-    isGrantReadOnlyAccessLoadingRef.value = false;
     localDirectoryRecoveryMessageRef.value = '';
     document.body.innerHTML = '';
   });
@@ -469,9 +466,9 @@ describe('RepositoryExplorerWidget', () => {
       }),
     ];
     isGrantLocalDirectoryAccessDisabledRef.value = true;
-    isGrantFullAccessLoadingRef.value = true;
+    isGrantLocalDirectoryAccessPendingRef.value = true;
     localDirectoryRecoveryMessageRef.value =
-      'Waiting for browser permission. Mioframe will restore access after you respond.';
+      'Waiting for browser permission. If access is granted, Mioframe will restore this space.';
 
     const wrapper = await mountWidget();
     const pendingStatus = wrapper.get('[role="status"]');
@@ -485,8 +482,31 @@ describe('RepositoryExplorerWidget', () => {
     );
     expect(pendingStatus.attributes('aria-live')).toBe('polite');
     expect(pendingStatus.text()).toBe(
-      'Waiting for browser permission. Mioframe will restore access after you respond.',
+      'Waiting for browser permission. If access is granted, Mioframe will restore this space.',
     );
+  });
+
+  it('does not infer local-directory pending status from disabled action availability', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedRecoveryError({
+        spaceName: 'Work',
+        mode: 'read',
+      }),
+    ];
+    isGrantLocalDirectoryAccessDisabledRef.value = true;
+    isGrantLocalDirectoryAccessPendingRef.value = false;
+    localDirectoryRecoveryMessageRef.value =
+      'Mioframe remembers "Work", but your browser requires permission before opening it.';
+
+    const wrapper = await mountWidget();
+    const recoveryButtons = wrapper
+      .findAll('button')
+      .filter((button) => ['Read only', 'Grant full access'].includes(button.text()));
+
+    expect(recoveryButtons.every((button) => button.attributes('disabled') !== undefined)).toBe(
+      true,
+    );
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
   });
 
   it('disables Google reauthorization and announces provider-window pending copy', async () => {

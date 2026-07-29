@@ -20,7 +20,7 @@ const props = defineProps<{
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
-const isGrantWriteAccessLoading = ref(false);
+const isGrantWriteAccessPending = ref(false);
 const { addSnackbar } = useSnackbar();
 const {
   fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
@@ -97,7 +97,7 @@ const onClickCopyDetails = async () => {
 };
 
 const onClickGrantWriteAccess = async () => {
-  if (isGrantWriteAccessLoading.value) {
+  if (isGrantWriteAccessPending.value) {
     return;
   }
 
@@ -107,7 +107,7 @@ const onClickGrantWriteAccess = async () => {
     return;
   }
 
-  isGrantWriteAccessLoading.value = true;
+  isGrantWriteAccessPending.value = true;
 
   try {
     const result = await requestAccess({
@@ -152,7 +152,7 @@ const onClickGrantWriteAccess = async () => {
       text: 'Could not request browser write access. Try again from this action.',
     });
   } finally {
-    isGrantWriteAccessLoading.value = false;
+    isGrantWriteAccessPending.value = false;
   }
 };
 
@@ -183,8 +183,8 @@ const onInteractionOutside = () => {
   >
     <div
       class="vfs-activity-status-chip__tooltip"
-      :role="isGrantWriteAccessLoading ? 'status' : undefined"
-      :aria-live="isGrantWriteAccessLoading ? 'polite' : undefined"
+      :role="isGrantWriteAccessPending ? 'status' : undefined"
+      :aria-live="isGrantWriteAccessPending ? 'polite' : undefined"
     >
       <template v-if="isActive">
         <p>Changes are still being saved.</p>
@@ -192,7 +192,7 @@ const onInteractionOutside = () => {
       </template>
 
       <template v-else>
-        <template v-if="isGrantWriteAccessLoading">
+        <template v-if="isGrantWriteAccessPending">
           <p>
             Waiting for browser permission. Unsaved changes will be restored after access is
             granted.
@@ -232,7 +232,7 @@ const onInteractionOutside = () => {
       <MDButton
         v-if="hasWriteAccessRecovery"
         color="text"
-        :disabled="isGrantWriteAccessLoading"
+        :disabled="isGrantWriteAccessPending"
         label="Grant write access"
         @click="onClickGrantWriteAccess"
       />

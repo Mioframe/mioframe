@@ -574,7 +574,12 @@ describe('VfsActivityStatusChip', () => {
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Could not request browser write access. Try again from this action.',
     });
-    expect(wrapper.text()).toContain('Grant write access');
+    const grantButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Grant write access');
+
+    expect(grantButton?.attributes('disabled')).toBeUndefined();
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('raw broker failure');
     expect(wrapper.text()).not.toContain('Work');
   });
