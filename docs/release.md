@@ -564,21 +564,26 @@ verification label (see below).
 
 ### Clean-launch semantics
 
-The worker persists one `activeRelease` per channel (IndexedDB), plus an
-optional `approvedRelease` (a fully prepared, not-yet-activated release) and
-an optional in-progress `activation` (`{ targetRelease, deadlineAt }`).
-Starting an activation never changes `activeRelease` — only a later
-`BOOT_OK` commit does. A qualifying navigation (a genuinely new same-channel
-window, not a reload of an already-open one, with no other same-channel
-window currently live) starts an `activation`, serving the `approvedRelease`
-and arming a boot-confirmation deadline (`BOOT_CONFIRMATION_TIMEOUT_MS`,
-30s). The publisher-injected boot watchdog reports `BOOT_OK`/`BOOT_FAILED`
-back to the worker over an acknowledged `MessageChannel` request; the worker
-only disarms the watchdog once it confirms a durable `committed` (`BOOT_OK`)
-or `rolled-back` (`BOOT_FAILED`) persistence — never merely because a
-message was sent. An already-open session is never force-reloaded: a Manual
-"Install on next launch" or an Automatic background approval only ever
-applies on the _next_ clean launch.
+The worker persists one `activeRelease` per channel (IndexedDB), an optional
+`latestRelease` discovered from the channel pointer, mutually exclusive
+`approvedRelease` (fully prepared and waiting for a clean launch) or
+`activation` (`{ targetRelease, deadlineAt }`), and an optional single
+`failedActivationRelease`. Starting an activation removes `approvedRelease`
+and never changes `activeRelease` — only a later `BOOT_OK` commit does. While
+an activation is in progress, update checks may refresh `latestRelease` but
+must not prepare or approve another release.
+
+A qualifying navigation (a genuinely new same-channel window, not a reload
+of an already-open one, with no other controlled or uncontrolled
+same-channel window currently live) starts an `activation`, serving its
+target and arming a boot-confirmation deadline
+(`BOOT_CONFIRMATION_TIMEOUT_MS`, 30s). The publisher-injected boot watchdog
+reports `BOOT_OK`/`BOOT_FAILED` back to the worker over an acknowledged
+`MessageChannel` request; the worker only disarms the watchdog once it
+confirms a durable `committed` (`BOOT_OK`) or `rolled-back` (`BOOT_FAILED`)
+persistence — never merely because a message was sent. An already-open
+session is never force-reloaded: a Manual "Install on next launch" or an
+Automatic background approval only ever applies on the _next_ clean launch.
 
 A rollback never copies or restores a previous release, because
 `activeRelease` never changed during activation; it only clears the
@@ -664,14 +669,22 @@ Cache Storage cleanup (deleting stale release caches) runs as a best-effort
 side effect after lifecycle transitions that can release cache ownership —
 commit, rollback, cancellation, a mode change that clears an approval, an
 Automatic approved-target replacement, and controller activation. It
-protects the active release, an approved-but-not-yet-activated release, an
-in-progress activation's target, and every release id currently being
-prepared by the `PreparationCoordinator` (read through its narrow
-`getInFlightReleaseIds()` accessor), so a concurrent cleanup can never
-delete a cache still being populated. It never blocks the transition's own
-response, and a cleanup failure never makes an already-persisted transition
-appear to have failed. Release downloads and hashing use a small bounded
-concurrency limit, not an unbounded fetch over every file.
+protects the active release, the latest discovered release, an
+approved-but-not-yet-activated release, an in-progress activation's target,
+and every release currently registered as an in-flight preparation.
+Protecting `latestRelease` closes the short ownership gap after preparation
+finishes but before approval is persisted; once a newer discovery supersedes
+it, the old release becomes removable unless another owner still references
+it.
+
+`PreparationCoordinator` serializes cleanup callbacks so they never overlap.
+A new preparation waits for every cleanup already scheduled when it is
+registered; a cleanup scheduled after a preparation is registered captures
+that release ID when the cleanup actually starts and protects its cache.
+Cleanup never blocks the lifecycle transition's own response, and a cleanup
+failure never makes an already-persisted transition appear to have failed or
+poisons later cleanup/preparation work. Release downloads and hashing use a
+small bounded concurrency limit, not an unbounded fetch over every file.
 
 ### Automatic check event lifetime
 
