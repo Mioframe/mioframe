@@ -72,15 +72,27 @@ const onClickClose = () => {
 
   &__close-button {
     --md-container-color: var(--md-sys-color-inverse-surface);
-    --md-content-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-hovered-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-focused-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-pressed-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-hovered-state-layer-color: var(
+      --md-sys-color-inverse-on-surface
+    );
+    --md-comp-icon-button-standard-focused-state-layer-color: var(
+      --md-sys-color-inverse-on-surface
+    );
+    --md-comp-icon-button-standard-pressed-state-layer-color: var(
+      --md-sys-color-inverse-on-surface
+    );
   }
 
   &__action {
-    --md-content-color: var(--md-sys-color-inverse-primary);
-
-    &:hover {
-      --md-content-color: var(--md-sys-color-inverse-primary);
-    }
+    --md-comp-button-text-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-icon-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-hover-state-layer-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-focus-state-layer-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-pressed-state-layer-color: var(--md-sys-color-inverse-primary);
   }
 }
 </style>

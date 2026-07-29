@@ -188,11 +188,11 @@ useEventListener(window.visualViewport, 'resize', update);
   }
 
   &__subhead {
-    --md-content-color: var(--md-sys-color-on-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
   }
 
   &__supporting-text {
-    --md-content-color: var(--md-sys-color-on-surface-variant);
+    color: var(--md-sys-color-on-surface-variant);
     margin-top: 4px;
   }
 

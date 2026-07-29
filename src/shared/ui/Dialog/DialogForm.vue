@@ -185,7 +185,7 @@ useOnEscapeKeyStacked(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    --md-content-color: : var(--md-sys-color-secondary);
+    --md-content-color: var(--md-sys-color-secondary);
     margin: 0 auto;
   }
 
@@ -198,7 +198,7 @@ useOnEscapeKeyStacked(() => {
     font-weight: var(--md-sys-typescale-headline-small-weight);
     letter-spacing: var(--md-sys-typescale-headline-small-tracking);
 
-    --md-content-color: var(--md-sys-color-on-surface);
+    color: var(--md-sys-color-on-surface);
 
     .md-dialog_has-icon & {
       text-align: center;

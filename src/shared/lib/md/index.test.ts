@@ -13,9 +13,10 @@ describe('legacy Material surface ownership', () => {
 
     root.walkRules((rule) => {
       const isUniversalDescendant =
-        rule.selector.trim() === '*' &&
-        rule.parent?.type === 'rule' &&
-        rule.parent.selector.split(',').some((selector) => selector.trim() === '.md');
+        (rule.selector.trim() === '*' &&
+          rule.parent?.type === 'rule' &&
+          rule.parent.selector.split(',').some((selector) => selector.trim() === '.md')) ||
+        rule.selector.split(',').some((selector) => selector.trim() === '.md *');
       if (!isUniversalDescendant) return;
 
       rule.walkDecls((declaration) => {

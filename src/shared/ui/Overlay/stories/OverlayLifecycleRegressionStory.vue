@@ -177,6 +177,9 @@ const onRichTooltipInteractionOutside = () => {
         <template #text>
           <button type="button" @click="onRichTooltipAction">Rich tooltip action</button>
         </template>
+        <template #actions>
+          <MDButton color="text" label="Rich tooltip Material action" />
+        </template>
       </MDRichTooltip>
 
       <p>Rich tooltip action activated {{ richTooltipActionCount }} time(s)</p>

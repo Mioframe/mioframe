@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 import '../../../../lib/md/index.css';
 import { useFocusIndicator } from '../../../State/useFocusIndicator';
-import { MDLoadingIndicator } from '../loading-indicator';
+import { MDLoadingIndicator } from '../loadingIndicator';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
 
@@ -52,6 +52,7 @@ export const VisualStates: Story = {
 };
 
 export const SizeGeometry: Story = {
+  tags: ['visual'],
   render: () => ({
     components: { MDButton },
     template: `

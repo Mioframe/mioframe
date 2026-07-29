@@ -32,6 +32,15 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
   },
   {
+    name: 'shared color ownership',
+    sourcePrefixes: [
+      'src/shared/ui/Snackbar/MDSnackbar.vue',
+      'src/shared/ui/Snackbar/MDSnackbar.stories.ts',
+      'src/shared/ui/material/components/button/tokens.css',
+    ],
+    specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+  },
+  {
     name: 'shared overlay outside-interaction lifecycle',
     sourcePrefixes: [
       'src/shared/lib/onInteractionOutside.ts',
@@ -109,7 +118,7 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   },
   {
     name: 'loading indicator standalone accessibility',
-    sourcePrefixes: ['src/shared/ui/material/components/loading-indicator/'],
+    sourcePrefixes: ['src/shared/ui/material/components/loadingIndicator/'],
     specs: ['tests/e2e/storybook/md-loading-indicator.spec.ts'],
   },
   {

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import MDButton from './MDButton.vue';
@@ -9,6 +10,25 @@ const getElementProperty = (element: Element, property: string): unknown =>
   Reflect.get(element, property);
 
 describe('MDButton adapter', () => {
+  it('owns only the selected text Button color tokens and maps them privately', () => {
+    const css = readFileSync('./src/shared/ui/material/components/button/tokens.css', 'utf8');
+    const publicTokens = [
+      '--md-comp-button-text-label-text-color',
+      '--md-comp-button-text-icon-color',
+      '--md-comp-button-text-hover-state-layer-color',
+      '--md-comp-button-text-focus-state-layer-color',
+      '--md-comp-button-text-pressed-state-layer-color',
+    ];
+
+    for (const token of publicTokens) expect(css).toContain(`${token}:`);
+    expect(css).toContain('--m3e-text-button-label-text-color:');
+    expect(css).toContain('--m3e-text-button-icon-color:');
+    expect(css).toContain('--m3e-text-button-hover-state-layer-color:');
+    expect(css).toContain('--m3e-text-button-focus-state-layer-color:');
+    expect(css).toContain('--m3e-text-button-pressed-state-layer-color:');
+    expect(css).not.toContain('--md-content-color');
+  });
+
   it('maps the demand-scoped defaults and retained values', () => {
     const defaultButton = mountButton().get('m3e-button');
     expect(getElementProperty(defaultButton.element, 'variant')).toBe('filled');

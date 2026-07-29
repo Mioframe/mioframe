@@ -6,7 +6,8 @@ import type {
   M3eButtonElement,
 } from '@m3e/web/button';
 import { computed, defineComponent, h } from 'vue';
-import { MDLoadingIndicator } from '../loading-indicator';
+import { MDLoadingIndicator } from '../loadingIndicator';
+import './tokens.css';
 
 const props = withDefaults(
   defineProps<{

@@ -1,0 +1,13 @@
+.md-button {
+  --md-comp-button-text-label-text-color: var(--md-sys-color-primary);
+  --md-comp-button-text-icon-color: var(--md-sys-color-primary);
+  --md-comp-button-text-hover-state-layer-color: var(--md-sys-color-primary);
+  --md-comp-button-text-focus-state-layer-color: var(--md-sys-color-primary);
+  --md-comp-button-text-pressed-state-layer-color: var(--md-sys-color-primary);
+
+  --m3e-text-button-label-text-color: var(--md-comp-button-text-label-text-color);
+  --m3e-text-button-icon-color: var(--md-comp-button-text-icon-color);
+  --m3e-text-button-hover-state-layer-color: var(--md-comp-button-text-hover-state-layer-color);
+  --m3e-text-button-focus-state-layer-color: var(--md-comp-button-text-focus-state-layer-color);
+  --m3e-text-button-pressed-state-layer-color: var(--md-comp-button-text-pressed-state-layer-color);
+}
