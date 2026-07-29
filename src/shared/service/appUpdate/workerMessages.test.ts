@@ -29,7 +29,6 @@ function createFakeCoordinator(
 ): PreparationCoordinator {
   return {
     prepare: vi.fn().mockResolvedValue(undefined),
-    getInFlightReleaseIds: () => [],
     runCleanup: (cleanup) => cleanup([]),
     ...overrides,
   };

@@ -59,7 +59,6 @@ function createFakeCoordinator(
 ): PreparationCoordinator {
   return {
     prepare: vi.fn().mockRejectedValue(new Error('not prepared in this test')),
-    getInFlightReleaseIds: () => [],
     runCleanup: (cleanup) => cleanup([]),
     ...overrides,
   };

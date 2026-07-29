@@ -103,6 +103,16 @@ describe('createPreparationCoordinator', () => {
 });
 
 /**
+ * Drains the microtask queue repeatedly. Safe to over-flush: a promise
+ * chained off a still-pending deferred never resolves early just because
+ * unrelated microtasks were flushed, so this only guards against
+ * under-counting the hops in a `.then` chain.
+ */
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 10; i += 1) await Promise.resolve();
+}
+
+/**
  * A promise plus its externally callable resolve/reject, for deterministic sequencing.
  * @returns The deferred promise and its resolve/reject functions.
  */
@@ -174,7 +184,7 @@ describe('createPreparationCoordinator: runCleanup arbitration', () => {
     expect(result).toBe(descriptorA);
   });
 
-  it('releases the barrier and lets a waiting preparation proceed even when cleanup rejects', async () => {
+  it('releases waiting work and lets a waiting preparation proceed even when cleanup rejects', async () => {
     const cleanupGate = createDeferred();
     fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
     prepareReleaseMock.mockResolvedValue(undefined);
@@ -221,5 +231,95 @@ describe('createPreparationCoordinator: runCleanup arbitration', () => {
     expect(firstResult).toBe(descriptorA);
     expect(secondResult).toBe(descriptorA);
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('serializes two overlapping cleanup requests: the second never starts before the first resolves', async () => {
+    const cleanup1Gate = createDeferred();
+    const cleanup2Gate = createDeferred();
+    const cleanup1 = vi.fn().mockReturnValue(cleanup1Gate.promise);
+    const cleanup2 = vi.fn().mockReturnValue(cleanup2Gate.promise);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const run1 = coordinator.runCleanup(cleanup1);
+    const run2 = coordinator.runCleanup(cleanup2);
+
+    await flushMicrotasks();
+    expect(cleanup1).toHaveBeenCalledTimes(1);
+    expect(cleanup2).not.toHaveBeenCalled();
+
+    cleanup1Gate.resolve();
+    await run1;
+    await flushMicrotasks();
+    expect(cleanup2).toHaveBeenCalledTimes(1);
+
+    cleanup2Gate.resolve();
+    await run2;
+  });
+
+  it('waits for both cleanup 1 and cleanup 2 before a preparation requested in between touches the cache', async () => {
+    const cleanup1Gate = createDeferred();
+    const cleanup2Gate = createDeferred();
+    const cleanup1 = vi.fn().mockReturnValue(cleanup1Gate.promise);
+    const cleanup2 = vi.fn().mockReturnValue(cleanup2Gate.promise);
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorB);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const run1 = coordinator.runCleanup(cleanup1);
+    const run2 = coordinator.runCleanup(cleanup2);
+    const prepareAttempt = coordinator.prepare('stable', '/', releaseB);
+
+    cleanup1Gate.resolve();
+    await run1;
+    await flushMicrotasks();
+    expect(cleanup2).toHaveBeenCalledTimes(1);
+    expect(fetchReleaseDescriptorMock).not.toHaveBeenCalled();
+
+    cleanup2Gate.resolve();
+    await run2;
+    await expect(prepareAttempt).resolves.toBe(descriptorB);
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('protects a preparation registered before a later, already-scheduled cleanup', async () => {
+    const cleanup1Gate = createDeferred();
+    const fetchGate = createDeferred<ReleaseDescriptor>();
+    const cleanup1 = vi.fn().mockReturnValue(cleanup1Gate.promise);
+    const cleanup2 = vi.fn().mockResolvedValue(undefined);
+    fetchReleaseDescriptorMock.mockReturnValue(fetchGate.promise);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    void coordinator.runCleanup(cleanup1);
+    const prepareAttempt = coordinator.prepare('stable', '/', releaseA);
+    const run2 = coordinator.runCleanup(cleanup2);
+
+    cleanup1Gate.resolve();
+    await run2;
+
+    expect(cleanup2).toHaveBeenCalledWith([releaseA.releaseId]);
+    fetchGate.resolve(descriptorA);
+    await expect(prepareAttempt).resolves.toBe(descriptorA);
+  });
+
+  it('does not poison the cleanup chain when a cleanup rejects: later cleanup and preparation still proceed', async () => {
+    const cleanup1 = vi.fn().mockRejectedValue(new Error('cleanup 1 failed'));
+    const cleanup2 = vi.fn().mockResolvedValue(undefined);
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const run1 = coordinator.runCleanup(cleanup1);
+    const run2 = coordinator.runCleanup(cleanup2);
+    const prepareAttempt = coordinator.prepare('stable', '/', releaseA);
+
+    await expect(run1).rejects.toThrow('cleanup 1 failed');
+    await run2;
+    expect(cleanup2).toHaveBeenCalledTimes(1);
+    await expect(prepareAttempt).resolves.toBe(descriptorA);
   });
 });

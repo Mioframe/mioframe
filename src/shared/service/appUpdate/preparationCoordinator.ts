@@ -20,10 +20,12 @@ import { fetchReleaseDescriptor, prepareRelease } from './releasePreparation';
 export type PreparationCoordinator = {
   /**
    * Prepares `target`, or joins an already in-flight preparation for the
-   * same release id. While a cleanup started through {@link runCleanup} is
-   * still running, a genuinely new preparation defers its own network fetch
-   * and cache write until that cleanup settles, so the two can never touch
-   * the same release cache at once.
+   * same release id. A genuinely new preparation waits for every cleanup
+   * already scheduled through {@link runCleanup} at the moment it is
+   * registered — including one still queued behind an earlier cleanup —
+   * before touching the network or cache, so the two can never touch the
+   * same release cache at once. A cleanup scheduled after this call instead
+   * sees this preparation as in-flight and protects its release id.
    * @param channel - Managed channel.
    * @param channelBasePath - This worker's channel base path.
    * @param target - The release to prepare.
@@ -37,20 +39,18 @@ export type PreparationCoordinator = {
   ) => Promise<ReleaseDescriptor>;
 
   /**
-   * Returns the release ids currently being prepared, so cache cleanup can
-   * protect their caches from concurrent deletion.
-   * @returns Every release id with an in-flight preparation right now.
-   */
-  getInFlightReleaseIds: () => readonly string[];
-
-  /**
-   * Runs `cleanup` under this coordinator's arbitration: every release id
-   * already registered as in-flight at the moment this is called is passed
-   * to `cleanup` as protected, and — synchronously, before `cleanup` can
-   * yield — a worker-local barrier is raised that defers any genuinely new
-   * `prepare()` call's own cache-touching work until `cleanup` settles
-   * (success or failure). Never cancels an already in-flight preparation.
-   * @param cleanup - Runs the actual cache-cleanup policy against the current in-flight release ids.
+   * Runs `cleanup` under this coordinator's arbitration, serialized against
+   * every other cleanup run through this coordinator: cleanups never run
+   * concurrently with each other, and each one only starts once every
+   * earlier-scheduled cleanup has settled. The in-flight release id snapshot
+   * passed to `cleanup` is captured when the cleanup actually starts (not
+   * when it is scheduled), so it protects every preparation registered up to
+   * that point. A `prepare()` call registered before this call sees this
+   * cleanup — and any cleanup scheduled after it — defer that preparation's
+   * own cache-touching work until they settle, so preparation and cleanup
+   * can never touch the same release cache at once. Never cancels an
+   * already in-flight preparation.
+   * @param cleanup - Runs the actual cache-cleanup policy against the in-flight release ids at cleanup start.
    * @returns Resolves or rejects exactly as `cleanup` does, once it settles.
    */
   runCleanup: (cleanup: (inFlightReleaseIds: readonly string[]) => Promise<void>) => Promise<void>;
@@ -62,21 +62,24 @@ export type PreparationCoordinator = {
  */
 export function createPreparationCoordinator(): PreparationCoordinator {
   const inFlight = new Map<string, Promise<ReleaseDescriptor>>();
-  let cleanupBarrier: Promise<void> | undefined;
+  // Chains every runCleanup() call so cleanups never overlap. Always settled
+  // (never rejects), so a failed cleanup cannot block later cleanups or
+  // preparations waiting behind it.
+  let cleanupTail: Promise<void> = Promise.resolve();
 
   return {
     prepare(channel, channelBasePath, target) {
       const existing = inFlight.get(target.releaseId);
       if (existing) return existing;
 
-      const barrierToAwait = cleanupBarrier;
+      const tailToAwait = cleanupTail;
       const attempt = (async () => {
-        // A cleanup already running at the moment this preparation was
-        // requested read its protected-id snapshot before this attempt
+        // Every cleanup already scheduled at the moment this preparation was
+        // registered read its protected-id snapshot before this attempt
         // existed, so it may legitimately delete a stale cache under this
         // exact release id — this attempt must not touch that cache until
-        // cleanup has fully settled, win or lose.
-        if (barrierToAwait) await barrierToAwait;
+        // all of them have fully settled, win or lose.
+        await tailToAwait;
         const descriptor = await fetchReleaseDescriptor(channelBasePath, target);
         await prepareRelease(channelBasePath, channel, descriptor);
         return descriptor;
@@ -91,26 +94,16 @@ export function createPreparationCoordinator(): PreparationCoordinator {
       return attempt;
     },
 
-    getInFlightReleaseIds() {
-      return [...inFlight.keys()];
-    },
-
     runCleanup(cleanup) {
-      const inFlightSnapshot = [...inFlight.keys()];
-      let releaseBarrier: () => void = () => {};
-      const barrier = new Promise<void>((resolve) => {
-        releaseBarrier = resolve;
-      });
-      cleanupBarrier = barrier;
-
-      return (async () => {
-        try {
-          await cleanup(inFlightSnapshot);
-        } finally {
-          releaseBarrier();
-          if (cleanupBarrier === barrier) cleanupBarrier = undefined;
-        }
-      })();
+      const run = cleanupTail.then(
+        () => cleanup([...inFlight.keys()]),
+        () => cleanup([...inFlight.keys()]),
+      );
+      cleanupTail = run.then(
+        () => undefined,
+        () => undefined,
+      );
+      return run;
     },
   };
 }

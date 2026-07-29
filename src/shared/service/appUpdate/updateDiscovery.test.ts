@@ -18,7 +18,6 @@ vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() }
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();
 const coordinator = {
   prepare: (...args: unknown[]) => prepareMock(...args),
-  getInFlightReleaseIds: () => [],
   runCleanup: (cleanup: (inFlightReleaseIds: readonly string[]) => Promise<void>) => cleanup([]),
 };
 
