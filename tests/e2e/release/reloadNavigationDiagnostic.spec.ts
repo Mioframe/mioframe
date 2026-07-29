@@ -64,7 +64,12 @@ function startDiagServer(): Promise<{ url: string; close: () => Promise<void> }>
       const address = server.address() as AddressInfo;
       resolve({
         url: `http://127.0.0.1:${address.port}/`,
-        close: () => new Promise<void>((res) => server.close(() => { res(); })),
+        close: () =>
+          new Promise<void>((res) =>
+            server.close(() => {
+              res();
+            }),
+          ),
       });
     });
   });
