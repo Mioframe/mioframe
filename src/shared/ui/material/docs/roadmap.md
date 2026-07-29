@@ -58,13 +58,13 @@ No exact dependency pin, renderer-version registry, Lit application dependency, 
 
 ## Milestones
 
-| ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                                                               |
-| --- | -------------------------------------------------- | ------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | m3e-backed architecture reset and token foundation | `correction` | none       | canonical token owners/catalogue; automated renderer boundary; exact selected custom-element allow-list; final completion gate                                                          |
-| M1a | `MDLoadingIndicator` dependency adapter            | `correction` | M0         | operator-approved dependency contract; standalone/composed color ownership; lifecycle applicability; package-derived typing; independent proof; operator review; final verification     |
+| ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                                                                                  |
+| --- | -------------------------------------------------- | ------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset and token foundation | `correction` | none       | canonical token owners/catalogue; automated renderer boundary; exact selected custom-element allow-list; final completion gate                                                                             |
+| M1a | `MDLoadingIndicator` dependency adapter            | `correction` | M0         | operator-approved dependency contract; standalone/composed color ownership; lifecycle applicability; package-derived typing; independent proof; operator review; final verification                        |
 | M1  | `MDButton` action adapter pilot                    | `correction` | M1a        | demand-scoped action API; migrated consumers; contextual token ownership; explicit busy/loading ownership; valid Loading Indicator handoff; visible interaction proof; operator review; final verification |
-| M2  | `MDSwitch` stateful adapter pilot                  | `planned`    | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                                                                |
-| M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                                                                  |
+| M2  | `MDSwitch` stateful adapter pilot                  | `planned`    | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                                                                                   |
+| M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                                                                                     |
 
 ## Accepted foundation structure
 
