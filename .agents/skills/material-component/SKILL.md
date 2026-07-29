@@ -75,9 +75,23 @@ Use `architect-handoff` only when repository and official evidence leave a real 
 
 Do not escalate merely because artifacts are incomplete, inconsistent, or incorrect; completion mode owns those cases.
 
+## Reporting discipline
+
+The router report is only a routing summary. It must not replace or shorten the report required by the selected workflow.
+
+After the routing summary:
+
+- for `new`, include the complete `MATERIAL ADAPTER RESULT` required by `material-component-adapter`;
+- for `completion`, include the complete `MATERIAL COMPONENT COMPLETION RESULT` required by `material-component-completion`;
+- for every recursively processed dependency, include its selected workflow result before the parent result resumes.
+
+When completion mode returns a clean worktree, the final response must still include the independent expected-contract ledger, standalone-default versus parent-override comparison, production-consumer applicability comparison, complete closure inventory, and explicit no-change justification required by `material-component-completion`.
+
+A generic summary such as "official sources match the matrix", "tests are present", or "no correction required" is invalid without the required comparison evidence. Verification counts and green CI do not replace contract evidence.
+
 ## Report
 
-Report:
+First report the routing summary:
 
 ```text
 MATERIAL COMPONENT RESULT
@@ -93,3 +107,5 @@ Exact final verification command:
 Implementation ownership: migrating | migrated
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 ```
+
+Then include the complete report required by the selected adapter or completion workflow. Do not omit it.
