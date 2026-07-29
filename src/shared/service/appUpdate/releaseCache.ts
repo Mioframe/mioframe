@@ -83,6 +83,17 @@ export function isReleaseFilePath(descriptor: ReleaseDescriptor, relativePath: s
 export type ProtectedReleaseInputs = {
   /** The currently active release. */
   activeRelease: ReleaseRef;
+  /**
+   * The most recently discovered release, if any. Discovery persists this
+   * before preparation begins, and it stays the caller's only record of a
+   * release between the moment its preparation completes (leaving
+   * `inFlightReleaseIds`) and the moment the caller persists it as
+   * `approvedRelease`. Protecting it closes that ownership gap; a release
+   * that stays `latestRelease` (not yet superseded by a newer discovery)
+   * also remains available for an explicit Manual retry after a failed
+   * activation.
+   */
+  latestRelease?: ReleaseRef | undefined;
   /** An approved-but-not-yet-activated release, if any. */
   approvedRelease?: ReleaseRef | undefined;
   /** The in-progress clean-launch activation, if any. */
@@ -93,13 +104,15 @@ export type ProtectedReleaseInputs = {
 
 /**
  * Computes every release id that cleanup must never remove: the active
- * release, an approved-but-not-yet-activated release, an in-progress
- * activation's target, and every release currently being prepared.
+ * release, the most recently discovered release, an
+ * approved-but-not-yet-activated release, an in-progress activation's
+ * target, and every release currently being prepared.
  * @param inputs - Every release currently owned by persisted state or in-flight preparation.
  * @returns The set of protected release ids.
  */
 export function computeProtectedReleaseIds(inputs: ProtectedReleaseInputs): Set<string> {
   const protectedIds = new Set<string>([inputs.activeRelease.releaseId]);
+  if (inputs.latestRelease) protectedIds.add(inputs.latestRelease.releaseId);
   if (inputs.approvedRelease) protectedIds.add(inputs.approvedRelease.releaseId);
   if (inputs.activation) protectedIds.add(inputs.activation.targetRelease.releaseId);
   for (const releaseId of inputs.inFlightReleaseIds ?? []) protectedIds.add(releaseId);
@@ -132,7 +145,10 @@ export function computeCacheNamesToDelete(
 /**
  * Deletes every release cache this channel no longer needs: any release
  * cache not currently protected by persisted state or in-flight
- * preparation.
+ * preparation. Protected owners are the active release, the most recently
+ * discovered release, an approved-but-not-yet-activated release, an
+ * in-progress clean-launch activation's target, and every release currently
+ * being prepared (see {@link computeProtectedReleaseIds}).
  *
  * A best-effort side effect run after a lifecycle transition that can
  * release cache ownership (commit, rollback, cancellation, a mode change
@@ -153,6 +169,7 @@ export async function runReleaseCacheCleanup(
 
   const protectedReleaseIds = computeProtectedReleaseIds({
     activeRelease: read.state.activeRelease,
+    latestRelease: read.state.latestRelease,
     approvedRelease: read.state.approvedRelease,
     activation: read.state.activation,
     inFlightReleaseIds,

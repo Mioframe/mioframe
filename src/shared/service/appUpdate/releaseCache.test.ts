@@ -106,17 +106,18 @@ describe('computeProtectedReleaseIds', () => {
     expect(ids).toEqual(new Set(['a']));
   });
 
-  it('protects approved, activation target, and every in-flight preparation', () => {
+  it('protects latest, approved, activation target, and every in-flight preparation', () => {
     const ids = computeProtectedReleaseIds({
       activeRelease: { releaseId: 'a', releaseSequence: 1 },
-      approvedRelease: { releaseId: 'b', releaseSequence: 2 },
+      latestRelease: { releaseId: 'b', releaseSequence: 2 },
+      approvedRelease: { releaseId: 'c', releaseSequence: 3 },
       activation: {
-        targetRelease: { releaseId: 'c', releaseSequence: 3 },
+        targetRelease: { releaseId: 'd', releaseSequence: 4 },
         deadlineAt: '2026-07-24T00:00:30.000Z',
       },
-      inFlightReleaseIds: ['d', 'e'],
+      inFlightReleaseIds: ['e', 'f'],
     });
-    expect(ids).toEqual(new Set(['a', 'b', 'c', 'd', 'e']));
+    expect(ids).toEqual(new Set(['a', 'b', 'c', 'd', 'e', 'f']));
   });
 });
 
@@ -302,5 +303,56 @@ describe('runReleaseCacheCleanup', () => {
     await runReleaseCacheCleanup('stable', ['in-flight']);
 
     expect(cachesDeleteMock).not.toHaveBeenCalled();
+  });
+
+  it('protects a completed latest release that has left in-flight preparation but is not yet approved', async () => {
+    // B has finished preparation (no longer in inFlightReleaseIds) but the
+    // caller has not yet persisted approvedRelease B: latestRelease is B's
+    // only remaining owner until approval lands.
+    readControllerStateMock.mockResolvedValue({
+      status: 'valid',
+      state: {
+        schemaVersion: 1,
+        mode: 'manual',
+        activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+        latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      },
+    });
+    cachesKeysMock.mockResolvedValue([
+      'stable-release-release-a',
+      'stable-release-release-b',
+      'stable-release-release-x',
+    ]);
+
+    await runReleaseCacheCleanup('stable');
+
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-a');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-b');
+    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-release-x');
+  });
+
+  it('lets a superseded latest release become removable once a newer discovery replaces it', async () => {
+    // C has replaced B as latestRelease; B is no longer referenced by any
+    // owner, so protecting latestRelease does not retain release history.
+    readControllerStateMock.mockResolvedValue({
+      status: 'valid',
+      state: {
+        schemaVersion: 1,
+        mode: 'manual',
+        activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+        latestRelease: { releaseId: 'release-c', releaseSequence: 3 },
+      },
+    });
+    cachesKeysMock.mockResolvedValue([
+      'stable-release-release-a',
+      'stable-release-release-b',
+      'stable-release-release-c',
+    ]);
+
+    await runReleaseCacheCleanup('stable');
+
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-a');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-c');
+    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-release-b');
   });
 });
