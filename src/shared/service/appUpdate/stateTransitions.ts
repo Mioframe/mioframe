@@ -1,6 +1,7 @@
 import {
   CONTROLLER_STATE_SCHEMA_VERSION,
   type ReleaseRef,
+  type ReleaseSummary,
   type UpdateControllerState,
   type UpdateMode,
 } from './contracts';
@@ -51,13 +52,13 @@ export type CheckForUpdatesResult = {
  * clears that failure record, since it can no longer affect Automatic
  * approval or the UI (an obsolete failure the user has already moved past).
  * @param state - Current controller state.
- * @param discovered - The release identity from the fetched and validated `latest.json`.
+ * @param discovered - The validated release summary for the discovered release.
  * @param checkedAt - ISO timestamp of this successful check.
  * @returns The check outcome and resulting state.
  */
 export function applyCheckForUpdates(
   state: UpdateControllerState,
-  discovered: ReleaseRef,
+  discovered: ReleaseSummary,
   checkedAt: string,
 ): CheckForUpdatesResult {
   const known = state.latestRelease ?? state.activeRelease;
@@ -100,12 +101,12 @@ export function applyCheckForUpdates(
  * `activation` are mutually exclusive ownership states, and no release may
  * be approved until the current clean-launch attempt resolves.
  * @param state - Current controller state.
- * @param prepared - The exact release the user approved and that was fully prepared.
+ * @param prepared - The exact release summary the user approved and that was fully prepared.
  * @returns The resulting state.
  */
 export function approveManualRelease(
   state: UpdateControllerState,
-  prepared: ReleaseRef,
+  prepared: ReleaseSummary,
 ): UpdateControllerState {
   if (state.activation) return state;
   return { ...state, approvedRelease: prepared };
@@ -120,12 +121,12 @@ export function approveManualRelease(
  * `activation` are mutually exclusive ownership states, and no release may
  * be approved until the current clean-launch attempt resolves.
  * @param state - Current controller state.
- * @param prepared - The release that finished background preparation.
+ * @param prepared - The release summary that finished background preparation.
  * @returns The resulting state, unchanged if `prepared` is not a forward improvement.
  */
 export function approveAutomaticRelease(
   state: UpdateControllerState,
-  prepared: ReleaseRef,
+  prepared: ReleaseSummary,
 ): UpdateControllerState {
   if (state.activation) return state;
   if (state.failedActivationRelease?.releaseId === prepared.releaseId) return state;
@@ -168,12 +169,12 @@ export function switchToManualMode(state: UpdateControllerState): UpdateControll
  * switch), approves it through the same forward-only rule as
  * {@link approveAutomaticRelease}.
  * @param state - Current controller state.
- * @param preparedRelease - The latest known release, if already fully prepared.
+ * @param preparedRelease - The latest known release summary, if already fully prepared.
  * @returns The resulting state.
  */
 export function switchToAutomaticMode(
   state: UpdateControllerState,
-  preparedRelease?: ReleaseRef,
+  preparedRelease?: ReleaseSummary,
 ): UpdateControllerState {
   const withMode: UpdateControllerState = { ...state, mode: 'automatic' };
   return preparedRelease ? approveAutomaticRelease(withMode, preparedRelease) : withMode;
@@ -189,13 +190,13 @@ export function switchToAutomaticMode(
  * ownership states — once a release is selected for the current
  * clean-launch attempt, it is no longer merely "prepared and waiting".
  * @param state - Current controller state.
- * @param target - The release to activate; must equal `state.approvedRelease`.
+ * @param target - The release summary to activate; must equal `state.approvedRelease`.
  * @param deadlineAt - ISO timestamp of the boot-confirmation deadline.
  * @returns The resulting state.
  */
 export function startActivation(
   state: UpdateControllerState,
-  target: ReleaseRef,
+  target: ReleaseSummary,
   deadlineAt: string,
 ): UpdateControllerState {
   if (state.activation) return state;
@@ -275,9 +276,7 @@ export function isActivationExpired(state: UpdateControllerState, now: string): 
 
 /** Same-channel window-liveness facts a clean-launch decision needs. */
 export type CleanLaunchInputs = {
-  /** Whether this navigation reloads an existing client already controlled by this worker. */
-  isReloadOfControlledClient: boolean;
-  /** Count of other live same-channel window clients, excluding this navigation. */
+  /** Count of other live same-channel window clients, excluding this navigation itself. */
   otherLiveClientCount: number;
 };
 
@@ -287,11 +286,14 @@ export type CleanLaunchInputs = {
  *
  * `false` whenever an activation already exists (every qualifying
  * navigation is already served its target without starting another one),
- * there is nothing approved to activate, this navigation is an ordinary
- * reload of an existing session, or another same-channel window is still
- * live. Caller is responsible for scoping `otherLiveClientCount` to the
- * current channel only (excluding other channels, branches, and PR
- * previews).
+ * there is nothing approved to activate, or another same-channel window is
+ * still live. A reload of the only remaining same-channel window is treated
+ * as a safe application restart — indistinguishable in product terms from
+ * closing the final window and opening the application again — so it may
+ * activate exactly like any other qualifying navigation once no other
+ * window is live. Caller is responsible for scoping `otherLiveClientCount`
+ * to the current channel only (excluding other channels, branches, and PR
+ * previews) and for excluding this navigation's own client identities.
  * @param state - Current controller state.
  * @param inputs - Same-channel window-liveness facts for this navigation.
  * @returns Whether to start a new activation.
@@ -301,6 +303,5 @@ export function shouldStartActivation(
   inputs: CleanLaunchInputs,
 ): boolean {
   if (state.activation || !state.approvedRelease) return false;
-  if (inputs.isReloadOfControlledClient) return false;
   return inputs.otherLiveClientCount === 0;
 }

@@ -572,6 +572,41 @@ describe('handleWorkerMessage', () => {
     });
   });
 
+  describe('broadcastStateChanged', () => {
+    it('reaches same-channel windows but not a foreign-channel window sharing this origin', async () => {
+      const postMessage = vi.fn();
+      const foreignPostMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: 'https://mioframe.example/settings', postMessage },
+        {
+          type: 'window',
+          url: 'https://mioframe.example/branch/develop/',
+          postMessage: foreignPostMessage,
+        },
+      ]);
+      const { broadcastStateChanged } = await import('./workerMessages');
+
+      await broadcastStateChanged('/', CHANNEL_ORIGIN);
+
+      expect(postMessage).toHaveBeenCalledWith({ type: 'APP_UPDATE_STATE_CHANGED' });
+      expect(foreignPostMessage).not.toHaveBeenCalled();
+    });
+
+    it('never carries a snapshot, only the invalidation type', async () => {
+      const postMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: 'https://mioframe.example/', postMessage },
+      ]);
+      const { broadcastStateChanged } = await import('./workerMessages');
+
+      await broadcastStateChanged('/', CHANNEL_ORIGIN);
+
+      const call = postMessage.mock.calls[0];
+      if (!call) throw new Error('Expected postMessage to have been called');
+      expect(Object.keys(call[0])).toEqual(['type']);
+    });
+  });
+
   describe('GET_ACTIVATION_STATUS', () => {
     it('reports the target and deadline when this release is the activation target', async () => {
       const activation = {

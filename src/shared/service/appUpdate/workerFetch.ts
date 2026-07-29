@@ -158,7 +158,6 @@ export async function handleAssetFetch(
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
  * @param request - The incoming navigation request.
- * @param isReloadOfControlledClient - Whether this navigation reloads an existing controlled client.
  * @param excludedClientIds - This navigation's own client ids, never counted as another live window.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
@@ -169,7 +168,6 @@ export async function handleNavigationFetch(
   channelBasePath: string,
   channelOrigin: string,
   request: Request,
-  isReloadOfControlledClient: boolean,
   excludedClientIds: ReadonlySet<string>,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
@@ -203,7 +201,7 @@ export async function handleNavigationFetch(
           channelBasePath,
           channelOrigin,
         );
-        if (shouldStartActivation(state, { isReloadOfControlledClient, otherLiveClientCount })) {
+        if (shouldStartActivation(state, { otherLiveClientCount })) {
           const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
           state = startActivation(state, state.approvedRelease, deadlineAt);
           await writeControllerState(channel, state);

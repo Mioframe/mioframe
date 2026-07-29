@@ -1,5 +1,54 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildWatchdogScript, injectWatchdogScript } from './watchdogInject.mjs';
+
+/**
+ * Waits one macrotask turn: `MessageChannel`/`MessagePort` delivery is
+ * asynchronous beyond plain microtasks in this test environment, so a bare
+ * `await Promise.resolve()` chain is not enough to observe a port's
+ * `onmessage` firing.
+ * @returns A promise that resolves after one macrotask turn.
+ */
+function flushTasks() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Executes a built watchdog script against a stubbed `navigator.serviceWorker`
+ * that answers `GET_ACTIVATION_STATUS` with `response`, then returns every
+ * message the stubbed controller received via `postMessage` so a test can
+ * assert on real runtime behavior rather than only the script's source text.
+ * @param releaseId - The release id to build the watchdog script for.
+ * @param response - The `GET_ACTIVATION_STATUS` response to simulate.
+ * @returns The list of messages sent to the controller, live-updated as the script runs.
+ */
+async function runWatchdogWithActivationStatusResponse(releaseId, response) {
+  const postMessageCalls = [];
+  const controller = {
+    postMessage: (message, transfer) => {
+      postMessageCalls.push(message);
+      if (message.type === 'GET_ACTIVATION_STATUS') {
+        transfer[0].postMessage(response);
+      }
+    },
+  };
+  const addEventListener = vi.fn();
+  vi.stubGlobal('navigator', {
+    serviceWorker: {
+      ready: Promise.resolve(),
+      controller,
+      addEventListener,
+    },
+  });
+
+  new Function(buildWatchdogScript(releaseId))();
+
+  // Flushes the `ready.then(...)` microtask, then the MessageChannel round trip.
+  await Promise.resolve();
+  await flushTasks();
+  await flushTasks();
+
+  return postMessageCalls;
+}
 
 describe('buildWatchdogScript', () => {
   it('embeds the exact release id as a JSON string literal', () => {
@@ -65,6 +114,24 @@ describe('buildWatchdogScript', () => {
     expect(reportBootFailedBody).not.toContain('location.reload');
   });
 
+  it('disarms outside activation: isActivationTarget === false sets settled, clears the deadline timer, and removes the early-error listeners', () => {
+    const script = buildWatchdogScript('release-1');
+    const activationStatusBody = script.slice(
+      script.indexOf(
+        'channel.port1.onmessage = function (event) {\n        var data = event.data;\n        if (data && data.isActivationTarget === false) {',
+      ),
+      script.indexOf('if (!data || !data.isActivationTarget || !data.deadlineAt) return;'),
+    );
+    expect(activationStatusBody).toContain('settled = true;');
+    expect(activationStatusBody).toContain('clearTimeout(deadlineTimer)');
+    expect(activationStatusBody).toContain(
+      "window.removeEventListener('error', onEarlyFatalError)",
+    );
+    expect(activationStatusBody).toContain(
+      "window.removeEventListener('unhandledrejection', onEarlyFatalError)",
+    );
+  });
+
   it('reloads only on the controller rollback broadcast, not immediately on failure', () => {
     const script = buildWatchdogScript('release-1');
     const reportBootFailedBody = script.slice(
@@ -73,6 +140,37 @@ describe('buildWatchdogScript', () => {
     );
     expect(reportBootFailedBody).not.toContain('location.reload');
     expect(script).toContain('location.reload()');
+  });
+});
+
+describe('watchdog disarm outside activation', () => {
+  it('permanently disarms when isActivationTarget is false: a later runtime error never reports BOOT_FAILED', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      isActivationTarget: false,
+    });
+    expect(calls).toEqual([{ type: 'GET_ACTIVATION_STATUS', releaseId: 'release-1' }]);
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a true activation target remains armed: a later runtime error still reports BOOT_FAILED', async () => {
+    const deadlineAt = new Date(Date.now() + 60_000).toISOString();
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      isActivationTarget: true,
+      deadlineAt,
+    });
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
+
+    vi.unstubAllGlobals();
   });
 });
 

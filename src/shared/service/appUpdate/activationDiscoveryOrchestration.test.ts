@@ -11,6 +11,7 @@ import type { PreparationCoordinator } from './preparationCoordinator';
 const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
 const fetchLatestReleasePointerMock = vi.fn();
+const fetchReleaseDescriptorMock = vi.fn();
 const prepareMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
@@ -19,6 +20,7 @@ vi.mock('./controllerState', () => ({
 }));
 vi.mock('./releasePreparation', () => ({
   fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
+  fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
 }));
 vi.stubGlobal('self', { clients: { matchAll: vi.fn().mockResolvedValue([]) } });
 vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() });
@@ -31,8 +33,31 @@ const coordinator: PreparationCoordinator = {
 
 const CHANNEL_ORIGIN = 'https://mioframe.example';
 const releaseA = { releaseId: 'release-a', releaseSequence: 1 };
-const releaseB = { releaseId: 'release-b', releaseSequence: 2 };
+const releaseB = {
+  releaseId: 'release-b',
+  releaseSequence: 2,
+  appVersion: '1.1.0',
+  buildId: 'build-b',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
 const releaseC = { releaseId: 'release-c', releaseSequence: 3 };
+const descriptorC = {
+  schemaVersion: 1 as const,
+  releaseId: releaseC.releaseId,
+  releaseSequence: releaseC.releaseSequence,
+  appVersion: '1.2.0',
+  buildId: 'build-c',
+  buildDate: '2026-07-24T00:00:00.000Z',
+  indexUrl: `/updates/releases/${releaseC.releaseId}/index.html`,
+  files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
+};
+const summaryC = {
+  releaseId: descriptorC.releaseId,
+  releaseSequence: descriptorC.releaseSequence,
+  appVersion: descriptorC.appVersion,
+  buildId: descriptorC.buildId,
+  buildDate: descriptorC.buildDate,
+};
 
 /**
  * Wires the mocked read/write so a write actually becomes visible to the
@@ -62,7 +87,9 @@ describe('activation vs. discovery orchestration', () => {
     readControllerStateMock.mockReset();
     writeControllerStateMock.mockReset();
     fetchLatestReleasePointerMock.mockReset();
+    fetchReleaseDescriptorMock.mockReset();
     prepareMock.mockReset();
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorC);
   });
 
   it('activation B, discover C, BOOT_OK(B): C becomes latestRelease without ever being prepared or approved, and commit does not lose it', async () => {
@@ -72,7 +99,7 @@ describe('activation vs. discovery orchestration', () => {
     const { runUpdateCheck } = await import('./updateDiscovery');
     const discovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(discovered.snapshot.latestRelease).toEqual(releaseC);
+    expect(discovered.snapshot.latestRelease).toEqual(summaryC);
     expect(discovered.snapshot.scheduledRelease).toBeUndefined();
     expect(prepareMock).not.toHaveBeenCalled();
     expect(getCurrent().activation).toEqual(activatingB.activation);
@@ -92,7 +119,7 @@ describe('activation vs. discovery orchestration', () => {
     expect(final.activeRelease).toEqual(releaseB);
     expect(final.activation).toBeUndefined();
     expect(final.approvedRelease).toBeUndefined();
-    expect(final.latestRelease).toEqual(releaseC);
+    expect(final.latestRelease).toEqual(summaryC);
   });
 
   it('activation B, discover C, BOOT_FAILED(B): C remains latestRelease, B is recorded as the single failure, and rollback does not lose C', async () => {
@@ -102,7 +129,7 @@ describe('activation vs. discovery orchestration', () => {
     const { runUpdateCheck } = await import('./updateDiscovery');
     const discovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(discovered.snapshot.latestRelease).toEqual(releaseC);
+    expect(discovered.snapshot.latestRelease).toEqual(summaryC);
     expect(prepareMock).not.toHaveBeenCalled();
 
     const { handleWorkerMessage } = await import('./workerMessages');
@@ -121,6 +148,6 @@ describe('activation vs. discovery orchestration', () => {
     expect(final.activation).toBeUndefined();
     expect(final.approvedRelease).toBeUndefined();
     expect(final.failedActivationRelease).toEqual(releaseB);
-    expect(final.latestRelease).toEqual(releaseC);
+    expect(final.latestRelease).toEqual(summaryC);
   });
 });

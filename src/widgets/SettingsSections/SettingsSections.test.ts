@@ -1,6 +1,17 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, createApp, defineComponent, h, nextTick, ref } from 'vue';
+import type { AppUpdateStatus } from '@entity/appUpdate';
+
+const appUpdateStatus = ref<AppUpdateStatus>('not-checked');
+
+vi.mock('@entity/appUpdate', async () => {
+  const actual = await vi.importActual<typeof import('@entity/appUpdate')>('@entity/appUpdate');
+  return {
+    ...actual,
+    useAppUpdate: () => ({ status: appUpdateStatus }),
+  };
+});
 
 const settings = ref<{
   diagnosticsEnabled?: boolean;
@@ -216,10 +227,12 @@ const mountSettingsSections = async ({
   onSelectPrivacyPolicy,
   onSelectHelp,
   onSelectAboutMioframe,
+  onSelectAppUpdates,
 }: {
   onSelectPrivacyPolicy?: (() => void) | undefined;
   onSelectHelp?: (() => void) | undefined;
   onSelectAboutMioframe?: (() => void) | undefined;
+  onSelectAppUpdates?: (() => void) | undefined;
 } = {}) => {
   const { SettingsSections } = await import('./index');
   const root = document.createElement('div');
@@ -228,6 +241,7 @@ const mountSettingsSections = async ({
     onSelectPrivacyPolicy,
     onSelectHelp,
     onSelectAboutMioframe,
+    onSelectAppUpdates,
   });
 
   app.mount(root);
@@ -269,6 +283,7 @@ const getLoadingIndicator = (root: HTMLElement, label: string) =>
 describe('SettingsSections', () => {
   afterEach(() => {
     vi.resetModules();
+    appUpdateStatus.value = 'not-checked';
     googleDriveIntegrationAvailable = true;
     sentryDiagnosticsAvailable = true;
     settings.value = {};
@@ -284,10 +299,12 @@ describe('SettingsSections', () => {
     const onSelectPrivacyPolicy = vi.fn();
     const onSelectHelp = vi.fn();
     const onSelectAboutMioframe = vi.fn();
+    const onSelectAppUpdates = vi.fn();
     const { root, unmount } = await mountSettingsSections({
       onSelectPrivacyPolicy,
       onSelectHelp,
       onSelectAboutMioframe,
+      onSelectAppUpdates,
     });
 
     expect(root.textContent).toContain('Storage');
@@ -319,6 +336,24 @@ describe('SettingsSections', () => {
     await nextTick();
 
     expect(onSelectAboutMioframe).toHaveBeenCalledTimes(1);
+
+    getButtonByText(root, 'App updates')?.click();
+    await nextTick();
+
+    expect(onSelectAppUpdates).toHaveBeenCalledTimes(1);
+
+    unmount();
+  });
+
+  it('shows one App updates entry with a concise status, and no inline update controls', async () => {
+    appUpdateStatus.value = 'update-available';
+    const { root, unmount } = await mountSettingsSections();
+
+    expect(root.textContent).toContain('App updates');
+    expect(root.textContent).toContain('Update available');
+    // The old inline "Automatic updates" toggle and per-status action row no
+    // longer live directly in Settings — only the one concise entry above.
+    expect(getSwitchRow(root, 'Automatic updates')).toBeNull();
 
     unmount();
   });

@@ -245,6 +245,7 @@ describe('buildCommands full mode', () => {
       'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
       'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
       'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
+      'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
     ]);
   });
 

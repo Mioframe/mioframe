@@ -2,13 +2,27 @@ import { describe, expect, it } from 'vitest';
 import type { UpdateControllerState } from './contracts';
 import { buildAppUpdateSnapshot } from './snapshot';
 
+const releaseSummaryB = {
+  releaseId: 'release-b',
+  releaseSequence: 2,
+  appVersion: '1.1.0',
+  buildId: 'build-b',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+
 const state: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
   activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-  latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-  approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-  failedActivationRelease: { releaseId: 'release-c', releaseSequence: 0 },
+  latestRelease: releaseSummaryB,
+  approvedRelease: releaseSummaryB,
+  failedActivationRelease: {
+    releaseId: 'release-c',
+    releaseSequence: 1,
+    appVersion: '0.9.0',
+    buildId: 'build-c',
+    buildDate: '2026-07-23T00:00:00.000Z',
+  },
   lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
 };
 

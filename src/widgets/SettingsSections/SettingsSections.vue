@@ -1,9 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import {
+  deriveAppUpdatesDisplayStatus,
+  getAppUpdatesDisplayStatusText,
+  useAppUpdate,
+} from '@entity/appUpdate';
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
 import { PwaInstallSettingsListItem, usePwaInstallAction } from '@feature/pwaInstall';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
 import { MDList, MDListItem } from '@shared/ui/Lists';
-import AppUpdateSettingsSection from './AppUpdateSettingsSection.vue';
 import SettingsSection from './SettingsSection.vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 import SettingsSwitchListItem from './SettingsSwitchListItem.vue';
@@ -13,11 +18,28 @@ const emit = defineEmits<{
   selectPrivacyPolicy: [];
   selectHelp: [];
   selectAboutMioframe: [];
+  selectAppUpdates: [];
 }>();
 
 const { settings } = useLocalSettings();
 const { diagnosticsEnabled, setDiagnosticsEnabledByUser } = useDiagnosticsSettings();
 const { isSettingsEntryVisible } = usePwaInstallAction();
+
+// The Settings entry shows a concise status derived from the same update
+// view model the App updates pane uses — never the transient
+// checking/preparing states, which only apply while this screen's own
+// explicit actions are in flight (this list item triggers none).
+const { status: appUpdateStatus } = useAppUpdate();
+const appUpdatesStatusText = computed(() =>
+  getAppUpdatesDisplayStatusText(
+    deriveAppUpdatesDisplayStatus({
+      status: appUpdateStatus.value,
+      isChecking: false,
+      isPreparing: false,
+      isOnline: typeof navigator === 'undefined' ? true : navigator.onLine,
+    }),
+  ),
+);
 
 const onToggleStarterExamples = () => {
   settings.value.hideStarterWidget = settings.value.hideStarterWidget === true ? undefined : true;
@@ -51,6 +73,10 @@ const onClickHelp = () => {
 const onClickAboutMioframe = () => {
   emit('selectAboutMioframe');
 };
+
+const onClickAppUpdates = () => {
+  emit('selectAppUpdates');
+};
 </script>
 
 <template>
@@ -63,7 +89,16 @@ const onClickAboutMioframe = () => {
       </MDList>
     </SettingsSection>
 
-    <AppUpdateSettingsSection />
+    <SettingsSection title="Updates">
+      <MDList tag="div">
+        <MDListItem
+          mode="single-action"
+          label-text="App updates"
+          :supporting-text="appUpdatesStatusText"
+          @action="onClickAppUpdates"
+        />
+      </MDList>
+    </SettingsSection>
 
     <SettingsSection title="Privacy & diagnostics">
       <MDList tag="div">

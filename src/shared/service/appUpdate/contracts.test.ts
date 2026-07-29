@@ -3,7 +3,13 @@ import {
   invalidReleaseDescriptors,
   validReleaseDescriptor,
 } from '../../../../scripts/pages/lib/releaseDescriptorCorpus.mjs';
-import { toReleaseRef, zodReleaseDescriptor, zodUpdateControllerState } from './contracts';
+import {
+  toReleaseRef,
+  toReleaseSummary,
+  zodReleaseDescriptor,
+  zodReleaseSummary,
+  zodUpdateControllerState,
+} from './contracts';
 
 describe('zodReleaseDescriptor', () => {
   it('accepts the shared valid release descriptor fixture', () => {
@@ -25,6 +31,29 @@ describe('toReleaseRef', () => {
   });
 });
 
+describe('toReleaseSummary', () => {
+  it('extracts identity plus exact appVersion, buildId, and buildDate from a validated descriptor', () => {
+    const parsed = zodReleaseDescriptor.parse(validReleaseDescriptor);
+    const summary = toReleaseSummary(parsed);
+    expect(summary).toEqual({
+      releaseId: parsed.releaseId,
+      releaseSequence: parsed.releaseSequence,
+      appVersion: parsed.appVersion,
+      buildId: parsed.buildId,
+      buildDate: parsed.buildDate,
+    });
+    expect(zodReleaseSummary.safeParse(summary).success).toBe(true);
+  });
+
+  it.each(invalidReleaseDescriptors)(
+    'never produces a summary from an invalid descriptor: $name',
+    ({ descriptor }) => {
+      const parsed = zodReleaseDescriptor.safeParse(descriptor);
+      expect(parsed.success).toBe(false);
+    },
+  );
+});
+
 const RELEASE_A = '11111111-1111-4111-8111-111111111111';
 const RELEASE_B = '22222222-2222-4222-8222-222222222222';
 const RELEASE_C = '33333333-3333-4333-8333-333333333333';
@@ -33,6 +62,22 @@ const validControllerState = {
   schemaVersion: 1,
   mode: 'manual',
   activeRelease: { releaseId: RELEASE_A, releaseSequence: 1 },
+};
+
+const releaseSummaryB = {
+  releaseId: RELEASE_B,
+  releaseSequence: 2,
+  appVersion: '1.1.0',
+  buildId: 'build-b',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+
+const releaseSummaryC = {
+  releaseId: RELEASE_C,
+  releaseSequence: 3,
+  appVersion: '1.2.0',
+  buildId: 'build-c',
+  buildDate: '2026-07-24T00:00:00.000Z',
 };
 
 describe('zodUpdateControllerState', () => {
@@ -44,22 +89,31 @@ describe('zodUpdateControllerState', () => {
     const full = {
       ...validControllerState,
       mode: 'automatic',
-      latestRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+      latestRelease: releaseSummaryB,
       activation: {
-        targetRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+        targetRelease: releaseSummaryB,
         deadlineAt: '2026-07-24T00:00:30.000Z',
       },
-      failedActivationRelease: { releaseId: RELEASE_C, releaseSequence: 3 },
+      failedActivationRelease: releaseSummaryC,
       lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
     };
     expect(zodUpdateControllerState.safeParse(full).success).toBe(true);
+  });
+
+  it('rejects a latestRelease missing display metadata (bare identity is no longer a valid summary)', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        latestRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+      }).success,
+    ).toBe(false);
   });
 
   it('accepts approvedRelease alone, without an activation', () => {
     expect(
       zodUpdateControllerState.safeParse({
         ...validControllerState,
-        approvedRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+        approvedRelease: releaseSummaryB,
       }).success,
     ).toBe(true);
   });
@@ -68,9 +122,9 @@ describe('zodUpdateControllerState', () => {
     expect(
       zodUpdateControllerState.safeParse({
         ...validControllerState,
-        approvedRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+        approvedRelease: releaseSummaryB,
         activation: {
-          targetRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+          targetRelease: releaseSummaryB,
           deadlineAt: '2026-07-24T00:00:30.000Z',
         },
       }).success,

@@ -29,6 +29,11 @@ export type PreparationCoordinator = {
    * @param channel - Managed channel.
    * @param channelBasePath - This worker's channel base path.
    * @param target - The release to prepare.
+   * @param validatedDescriptor - An already fetched and validated descriptor
+   * for the exact same release, when the caller has one (e.g. discovery just
+   * fetched it), so preparation can skip a redundant descriptor fetch.
+   * Ignored, falling back to an ordinary fetch, when its identity does not
+   * exactly match `target`.
    * @returns The validated release descriptor once preparation succeeds.
    * @throws When fetching or preparing the release fails.
    */
@@ -36,6 +41,7 @@ export type PreparationCoordinator = {
     channel: ManagedChannel,
     channelBasePath: string,
     target: ReleaseRef,
+    validatedDescriptor?: ReleaseDescriptor,
   ) => Promise<ReleaseDescriptor>;
 
   /**
@@ -68,9 +74,16 @@ export function createPreparationCoordinator(): PreparationCoordinator {
   let cleanupTail: Promise<void> = Promise.resolve();
 
   return {
-    prepare(channel, channelBasePath, target) {
+    prepare(channel, channelBasePath, target, validatedDescriptor) {
       const existing = inFlight.get(target.releaseId);
       if (existing) return existing;
+
+      const reusableDescriptor =
+        validatedDescriptor &&
+        validatedDescriptor.releaseId === target.releaseId &&
+        validatedDescriptor.releaseSequence === target.releaseSequence
+          ? validatedDescriptor
+          : undefined;
 
       const tailToAwait = cleanupTail;
       const attempt = (async () => {
@@ -80,7 +93,8 @@ export function createPreparationCoordinator(): PreparationCoordinator {
         // exact release id — this attempt must not touch that cache until
         // all of them have fully settled, win or lose.
         await tailToAwait;
-        const descriptor = await fetchReleaseDescriptor(channelBasePath, target);
+        const descriptor =
+          reusableDescriptor ?? (await fetchReleaseDescriptor(channelBasePath, target));
         await prepareRelease(channelBasePath, channel, descriptor);
         return descriptor;
       })();

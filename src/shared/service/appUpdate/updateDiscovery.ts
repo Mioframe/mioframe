@@ -1,29 +1,31 @@
-import type { ManagedChannel, ReleaseRef } from './contracts';
+import { toReleaseSummary, type ManagedChannel, type ReleaseDescriptor } from './contracts';
 import { writeControllerState } from './controllerState';
 import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import type { AppUpdateWorkerResponse } from './protocol';
 import { runReleaseCacheCleanup } from './releaseCache';
-import { fetchLatestReleasePointer } from './releasePreparation';
+import { fetchLatestReleasePointer, fetchReleaseDescriptor } from './releasePreparation';
 import { buildAppUpdateSnapshot } from './snapshot';
 import { withState } from './stateLock';
 import { applyCheckForUpdates, approveAutomaticRelease } from './stateTransitions';
 
 /**
- * Runs one discovery check: fetches and validates `latest.json`, records
- * the result, and — only in Automatic mode, and only for a genuinely newer
- * release — prepares and approves it in the background.
+ * Runs one discovery check: fetches and validates `latest.json`, then
+ * fetches and validates the exact referenced descriptor, records the
+ * resulting release summary, and — only in Automatic mode, and only for a
+ * genuinely newer release — prepares and approves it in the background,
+ * reusing the descriptor already fetched here instead of fetching it again.
  *
  * Shared by the explicit `CHECK_FOR_UPDATES` protocol request and the
- * navigation-triggered automatic check ({@link runAutomaticCheckIfEnabled}).
+ * navigation-triggered scheduled discovery check ({@link runScheduledDiscoveryCheck}).
  * The short state lock (`enqueue`) only ever covers the read/decide/persist
- * steps; `latest.json` discovery and release preparation (network + hashing,
- * deduplicated per release id by `coordinator`) always run outside it, so
- * neither this call nor any concurrent navigation is ever blocked on the
- * other. Re-validates the candidate against current state after
- * preparation, before approving it, so a stale completion (mode switched to
- * Manual, or superseded by a newer discovery, while preparing) can never
- * silently approve the wrong release.
+ * steps; `latest.json`/descriptor discovery and release preparation
+ * (network + hashing, deduplicated per release id by `coordinator`) always
+ * run outside it, so neither this call nor any concurrent navigation is
+ * ever blocked on the other. Re-validates the candidate against current
+ * state after preparation, before approving it, so a stale completion (mode
+ * switched to Manual, or superseded by a newer discovery, while preparing)
+ * can never silently approve the wrong release.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
@@ -36,13 +38,15 @@ export async function runUpdateCheck(
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
 ): Promise<AppUpdateWorkerResponse> {
-  let discovered: ReleaseRef;
+  let descriptor: ReleaseDescriptor;
   try {
-    discovered = await fetchLatestReleasePointer(channelBasePath);
+    const pointer = await fetchLatestReleasePointer(channelBasePath);
+    descriptor = await fetchReleaseDescriptor(channelBasePath, pointer);
   } catch {
     const currentState = await withState(channel, enqueue, (state) => state);
     return { snapshot: buildAppUpdateSnapshot(currentState, 'check-failed') };
   }
+  const discovered = toReleaseSummary(descriptor);
 
   const checkedAt = new Date().toISOString();
   const afterDiscovery = await withState(channel, enqueue, async (state) => {
@@ -64,7 +68,7 @@ export async function runUpdateCheck(
   }
 
   try {
-    await coordinator.prepare(channel, channelBasePath, discovered);
+    await coordinator.prepare(channel, channelBasePath, discovered, descriptor);
   } catch {
     // Background preparation failure never blocks reporting the discovery itself.
     return { snapshot: buildAppUpdateSnapshot(afterDiscovery.state) };
@@ -91,23 +95,32 @@ export async function runUpdateCheck(
 }
 
 /**
- * Runs {@link runUpdateCheck} only when the current mode is Automatic —
- * never fetching `latest.json` at all for a Manual-mode installation.
- * Never throws: this is a background trigger with no requester waiting on
- * it, so a failure is silently swallowed and does not affect the current
- * session.
+ * Runs the scheduled once-per-worker-lifetime discovery check, regardless of
+ * update mode: fetches and validates `latest.json` and the exact
+ * descriptor, and records the resulting release summary. Preparing and
+ * approving a genuinely newer release remains an Automatic-only decision
+ * {@link runUpdateCheck} makes internally — Manual mode always stops after
+ * discovery, but still learns about, and reports, a newer release.
+ *
+ * This is a thin adapter over {@link runUpdateCheck} for the scheduler (see
+ * `scheduledDiscoveryCheckScheduler.ts`), which has no requester waiting on
+ * a response. Never throws: a failure is silently swallowed and does not
+ * affect the current session.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
+ * @returns `true` when the check actually changed snapshot-relevant state
+ * (a successful check always at least records a new `lastSuccessfulCheckAt`)
+ * and same-channel windows should be notified to refresh their own
+ * snapshot; `false` for a failed check, which changes nothing.
  */
-export async function runAutomaticCheckIfEnabled(
+export async function runScheduledDiscoveryCheck(
   channel: ManagedChannel,
   channelBasePath: string,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
-): Promise<void> {
-  const initial = await withState(channel, enqueue, (state) => state);
-  if (initial.mode !== 'automatic') return;
-  await runUpdateCheck(channel, channelBasePath, enqueue, coordinator);
+): Promise<boolean> {
+  const result = await runUpdateCheck(channel, channelBasePath, enqueue, coordinator);
+  return result.snapshot.error !== 'check-failed';
 }

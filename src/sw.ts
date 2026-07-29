@@ -16,7 +16,6 @@ declare const self: ServiceWorkerGlobalScope;
  * from its registration scope, not build-embedded).
  */
 
-import { createAutomaticCheckScheduler } from './shared/service/appUpdate/automaticCheckScheduler';
 import {
   isSameChannelPath,
   isSameChannelWindowClient,
@@ -25,7 +24,8 @@ import { createOperationQueue } from './shared/service/appUpdate/operationQueue'
 import { createPreparationCoordinator } from './shared/service/appUpdate/preparationCoordinator';
 import type { AppUpdateWorkerRequest } from './shared/service/appUpdate/protocol';
 import { runReleaseCacheCleanup } from './shared/service/appUpdate/releaseCache';
-import { runAutomaticCheckIfEnabled } from './shared/service/appUpdate/updateDiscovery';
+import { createScheduledDiscoveryCheckScheduler } from './shared/service/appUpdate/scheduledDiscoveryCheckScheduler';
+import { runScheduledDiscoveryCheck } from './shared/service/appUpdate/updateDiscovery';
 import {
   buildManagedChannelBasePath,
   deriveManagedChannel,
@@ -33,14 +33,17 @@ import {
 } from './shared/service/appUpdate/workerChannel';
 import { handleAssetFetch, handleNavigationFetch } from './shared/service/appUpdate/workerFetch';
 import { runInstall } from './shared/service/appUpdate/workerInstall';
-import { handleWorkerMessage } from './shared/service/appUpdate/workerMessages';
+import {
+  broadcastStateChanged,
+  handleWorkerMessage,
+} from './shared/service/appUpdate/workerMessages';
 
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
 const channelOrigin = deriveManagedChannelOrigin(self.registration.scope);
 const enqueue = createOperationQueue();
 const preparationCoordinator = createPreparationCoordinator();
-const automaticCheckScheduler = createAutomaticCheckScheduler();
+const scheduledDiscoveryCheckScheduler = createScheduledDiscoveryCheckScheduler();
 
 self.addEventListener('install', (event) => {
   event.waitUntil(enqueue(() => runInstall(channel, channelBasePath)));
@@ -74,29 +77,19 @@ function getReplacesClientId(event: FetchEvent): string | undefined {
 }
 
 /**
- * Returns `true` when this navigation replaces an existing document (an
- * ordinary reload), rather than opening a genuinely new window/tab.
- *
- * If a runtime ever omits `replacesClientId`, this conservatively reports
- * `false`; the caller's `otherLiveClientCount` check independently prevents
- * a wrongful activation start in that case too, since a reloading document's
- * own prior client is still live in `clients.matchAll()` at fetch time (and,
- * unlike before, no longer excluded from that count either).
- * @param event - The navigation `FetchEvent`.
- * @returns Whether this navigation replaces an existing document.
- */
-function isReplacementNavigation(event: FetchEvent): boolean {
-  return getReplacesClientId(event) !== undefined;
-}
-
-/**
  * Builds the set of client ids that belong to this navigation itself, so the
  * clean-launch window count never counts a navigation against its own
- * outcome: the client being replaced (`replacesClientId`, an ordinary
- * reload), the requesting client if any (`clientId`), and the id already
- * reserved for the resulting document (`resultingClientId`). Uses identity,
- * never URL, so a distinct window that happens to share this navigation's
- * URL is still counted.
+ * outcome: the client being replaced (`replacesClientId`, when this
+ * navigation reloads an existing document), the requesting client if any
+ * (`clientId`), and the id already reserved for the resulting document
+ * (`resultingClientId`). Uses identity, never URL, so a distinct window that
+ * happens to share this navigation's URL is still counted.
+ *
+ * A reload of the only remaining same-channel window is a safe application
+ * restart, not a case that must be prevented from activating — this
+ * exclusion exists only so this navigation's own prior and resulting
+ * documents are never mistaken for "another" live window, not to classify
+ * whether this navigation is a reload at all.
  * @param event - The navigation `FetchEvent`.
  * @returns The set of this navigation's own client ids.
  */
@@ -136,7 +129,6 @@ self.addEventListener('fetch', (event) => {
         channelBasePath,
         channelOrigin,
         event.request,
-        isReplacementNavigation(event),
         buildNavigationExclusionClientIds(event),
         enqueue,
         preparationCoordinator,
@@ -144,14 +136,24 @@ self.addEventListener('fetch', (event) => {
     );
     // Deduplicated once per worker lifetime, and attached to this event's
     // lifetime via `waitUntil` — never awaited as part of the navigation
-    // response, so an Automatic-mode background check (and any release
-    // download/hashing it triggers) can never delay this or any other
-    // navigation, but the worker is also not eligible for termination while
-    // it is still running.
+    // response, so a background discovery check (and, in Automatic mode,
+    // any release download/hashing it triggers) can never delay this or any
+    // other navigation, but the worker is also not eligible for termination
+    // while it is still running. Runs in both update modes; only Automatic
+    // mode goes on to prepare and approve a newer release. No foreground
+    // requester is waiting on this call, so a state change it causes is
+    // reported through one same-channel invalidation broadcast instead —
+    // an already-open window refreshes its own snapshot via `GET_SNAPSHOT`.
     event.waitUntil(
-      automaticCheckScheduler.scheduleOnce(() =>
-        runAutomaticCheckIfEnabled(channel, channelBasePath, enqueue, preparationCoordinator),
-      ),
+      scheduledDiscoveryCheckScheduler.scheduleOnce(async () => {
+        const changed = await runScheduledDiscoveryCheck(
+          channel,
+          channelBasePath,
+          enqueue,
+          preparationCoordinator,
+        );
+        if (changed) await broadcastStateChanged(channelBasePath, channelOrigin);
+      }),
     );
     return;
   }

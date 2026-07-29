@@ -112,7 +112,13 @@ describe('computeProtectedReleaseIds', () => {
       latestRelease: { releaseId: 'b', releaseSequence: 2 },
       approvedRelease: { releaseId: 'c', releaseSequence: 3 },
       activation: {
-        targetRelease: { releaseId: 'd', releaseSequence: 4 },
+        targetRelease: {
+          releaseId: 'd',
+          releaseSequence: 4,
+          appVersion: '1.0.0',
+          buildId: 'build-d',
+          buildDate: '2026-07-24T00:00:00.000Z',
+        },
         deadlineAt: '2026-07-24T00:00:30.000Z',
       },
       inFlightReleaseIds: ['e', 'f'],

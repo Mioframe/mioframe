@@ -144,6 +144,38 @@ export const toReleaseRef = (descriptor: ReleaseDescriptor): ReleaseRef => ({
 });
 
 /**
+ * Release identity plus the display metadata a UI needs to show a candidate
+ * release without reading worker cache internals: exact `appVersion`,
+ * `buildId`, and `buildDate` from a successfully validated
+ * {@link ReleaseDescriptor}. Never derived from a bare `latest.json` pointer
+ * or guessed — only from a descriptor that has already passed
+ * {@link zodReleaseDescriptor} and identity validation.
+ */
+export const zodReleaseSummary = z.object({
+  releaseId: zodReleaseId,
+  releaseSequence: z.number().check(z.int(), z.positive()),
+  appVersion: z.string().check(z.minLength(1)),
+  buildId: z.string().check(z.minLength(1)),
+  buildDate: z.iso.datetime(),
+});
+/** A {@link zodReleaseSummary}-validated release identity with display metadata. */
+export type ReleaseSummary = z.infer<typeof zodReleaseSummary>;
+
+/**
+ * Extracts the {@link ReleaseSummary} — identity plus display metadata —
+ * carried by a validated {@link ReleaseDescriptor}.
+ * @param descriptor - A validated release descriptor.
+ * @returns The release's identity and display metadata.
+ */
+export const toReleaseSummary = (descriptor: ReleaseDescriptor): ReleaseSummary => ({
+  releaseId: descriptor.releaseId,
+  releaseSequence: descriptor.releaseSequence,
+  appVersion: descriptor.appVersion,
+  buildId: descriptor.buildId,
+  buildDate: descriptor.buildDate,
+});
+
+/**
  * Persisted controller-state wire-format version. Bump when the persisted
  * shape changes incompatibly; an unreadable or unsupported version must fail
  * closed rather than silently reset to a default state (see
@@ -164,7 +196,7 @@ export type UpdateMode = z.infer<typeof zodUpdateMode>;
  * a rollback target — that identity always remains `activeRelease` itself.
  */
 export const zodActivation = z.object({
-  targetRelease: zodReleaseRef,
+  targetRelease: zodReleaseSummary,
   deadlineAt: z.iso.datetime(),
 });
 /** A {@link zodActivation}-validated in-progress activation. */
@@ -187,11 +219,11 @@ export const zodUpdateControllerState = z
     schemaVersion: z.literal(CONTROLLER_STATE_SCHEMA_VERSION),
     mode: zodUpdateMode,
     activeRelease: zodReleaseRef,
-    latestRelease: z.optional(zodReleaseRef),
-    approvedRelease: z.optional(zodReleaseRef),
+    latestRelease: z.optional(zodReleaseSummary),
+    approvedRelease: z.optional(zodReleaseSummary),
     activation: z.optional(zodActivation),
     /** The single most recent release that failed clean-launch activation, if any. Only ever one record — not an unbounded history. */
-    failedActivationRelease: z.optional(zodReleaseRef),
+    failedActivationRelease: z.optional(zodReleaseSummary),
     lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
   })
   .check(

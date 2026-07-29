@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 import { createGlobalState, tryOnScopeDispose } from '@vueuse/core';
 import {
   getAppUpdateSnapshot,
+  subscribeToAppUpdateStateChanged,
   type AppUpdateSnapshot,
 } from '@shared/serviceClient/appUpdate/client';
 
@@ -76,6 +77,11 @@ const setupAppUpdate = () => {
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', onVisibilityChange);
   }
+  // A background check (e.g. a scheduled Manual-mode discovery) can change
+  // worker state with no foreground request returning a fresh snapshot;
+  // this refreshes the existing snapshot through the ordinary GET_SNAPSHOT
+  // path instead of introducing a second state transport.
+  const unsubscribeStateChanged = subscribeToAppUpdateStateChanged(() => void refresh());
 
   tryOnScopeDispose(() => {
     if (typeof window !== 'undefined') {
@@ -84,6 +90,7 @@ const setupAppUpdate = () => {
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', onVisibilityChange);
     }
+    unsubscribeStateChanged();
   });
 
   const status = computed(() => deriveAppUpdateStatus(snapshot.value, isAvailable.value));

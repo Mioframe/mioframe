@@ -1,4 +1,4 @@
-import type { ReleaseRef, UpdateMode } from './contracts';
+import type { ReleaseRef, ReleaseSummary, UpdateMode } from './contracts';
 
 /** Stable public error codes the worker may report back to the UI. Defined next to this boundary. */
 export const APP_UPDATE_ERROR_CODES = ['check-failed', 'install-failed', 'unavailable'] as const;
@@ -21,6 +21,7 @@ export const APP_UPDATE_PROTOCOL_MESSAGE_TYPES = {
   BOOT_FAILED: 'BOOT_FAILED',
   GET_ACTIVATION_STATUS: 'GET_ACTIVATION_STATUS',
   ROLLBACK_BROADCAST: 'APP_UPDATE_ROLLBACK',
+  STATE_CHANGED_BROADCAST: 'APP_UPDATE_STATE_CHANGED',
 } as const;
 
 /** Every outcome the worker may report for a `BOOT_OK`/`BOOT_FAILED` acknowledgement. */
@@ -38,12 +39,12 @@ export type AppUpdateSnapshot = {
   mode: UpdateMode;
   /** The currently active release. */
   activeRelease: ReleaseRef;
-  /** The latest release discovered by a check, if any. */
-  latestRelease?: ReleaseRef | undefined;
-  /** An approved release waiting for the next clean launch, if any. */
-  scheduledRelease?: ReleaseRef | undefined;
-  /** The single most recent release that failed clean-launch activation and was rolled back, if any. Remains visible until cleared by a successful retry or superseded by a newer discovery. */
-  failedRelease?: ReleaseRef | undefined;
+  /** The latest release discovered by a check, with display metadata, if any. */
+  latestRelease?: ReleaseSummary | undefined;
+  /** An approved release waiting for the next clean launch, with display metadata, if any. */
+  scheduledRelease?: ReleaseSummary | undefined;
+  /** The single most recent release that failed clean-launch activation and was rolled back, with display metadata, if any. Remains visible until cleared by a successful retry or superseded by a newer discovery. */
+  failedRelease?: ReleaseSummary | undefined;
   /** ISO timestamp of the last successful discovery check, if any. */
   lastSuccessfulCheckAt?: string | undefined;
   /** An error to report for this response, if any. */
@@ -95,4 +96,15 @@ export type AppUpdateRollbackBroadcast = {
   type: typeof APP_UPDATE_PROTOCOL_MESSAGE_TYPES.ROLLBACK_BROADCAST;
   /** The release id that failed to boot and was rolled back. */
   releaseId: string;
+};
+
+/**
+ * Private invalidation-only broadcast the worker sends to every same-channel
+ * window after a background state change (a scheduled discovery check with
+ * no foreground requester waiting on a response). Never carries a duplicate
+ * snapshot — a receiving client must re-fetch through `GET_SNAPSHOT`.
+ */
+export type AppUpdateStateChangedBroadcast = {
+  /** Discriminant tag for this broadcast message. */
+  type: typeof APP_UPDATE_PROTOCOL_MESSAGE_TYPES.STATE_CHANGED_BROADCAST;
 };

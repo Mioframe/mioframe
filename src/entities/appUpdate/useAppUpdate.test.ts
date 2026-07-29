@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getAppUpdateSnapshotMock = vi.fn();
+const subscribeToAppUpdateStateChangedMock = vi.fn();
+const unsubscribeStateChangedMock = vi.fn();
 
 vi.mock('@shared/serviceClient/appUpdate/client', () => ({
   getAppUpdateSnapshot: () => getAppUpdateSnapshotMock(),
+  subscribeToAppUpdateStateChanged: (onStateChanged: () => void) =>
+    subscribeToAppUpdateStateChangedMock(onStateChanged),
 }));
 
 const activeRelease = { releaseId: 'release-a', releaseSequence: 1 };
@@ -12,6 +16,9 @@ describe('useAppUpdate', () => {
   beforeEach(() => {
     vi.resetModules();
     getAppUpdateSnapshotMock.mockReset();
+    subscribeToAppUpdateStateChangedMock.mockReset();
+    unsubscribeStateChangedMock.mockReset();
+    subscribeToAppUpdateStateChangedMock.mockReturnValue(unsubscribeStateChangedMock);
   });
 
   afterEach(() => {
@@ -117,6 +124,33 @@ describe('useAppUpdate', () => {
 
     applySnapshot({ mode: 'manual', activeRelease, error: 'install-failed' });
     expect(status.value).toBe('install-failed');
+  });
+
+  it('refreshes the snapshot through GET_SNAPSHOT when the worker reports a background state change', async () => {
+    getAppUpdateSnapshotMock.mockResolvedValue({ mode: 'manual', activeRelease });
+    const { useAppUpdate } = await import('./useAppUpdate');
+    useAppUpdate();
+    await Promise.resolve();
+    getAppUpdateSnapshotMock.mockClear();
+    const call = subscribeToAppUpdateStateChangedMock.mock.calls[0];
+    if (!call) throw new Error('Expected a state-changed subscription to be registered');
+    const onStateChanged = call[0];
+
+    onStateChanged();
+    await Promise.resolve();
+
+    expect(getAppUpdateSnapshotMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('subscribes to state-changed notifications exactly once for the shared singleton', async () => {
+    getAppUpdateSnapshotMock.mockResolvedValue({ mode: 'manual', activeRelease });
+    const { useAppUpdate } = await import('./useAppUpdate');
+
+    useAppUpdate();
+    useAppUpdate();
+    await Promise.resolve();
+
+    expect(subscribeToAppUpdateStateChangedMock).toHaveBeenCalledTimes(1);
   });
 
   it('applySnapshot(undefined) marks the capability unavailable without discarding the last known snapshot', async () => {

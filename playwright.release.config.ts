@@ -52,5 +52,18 @@ export default defineConfig({
         channel: 'chromium',
       },
     },
+    // Narrow cross-engine lifecycle smoke only: these two projects are
+    // scoped to a single spec so the complete managed-update corpus stays
+    // Chromium-only, per the managed pinned application updates feature.
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+      testMatch: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
+    },
   ],
 });

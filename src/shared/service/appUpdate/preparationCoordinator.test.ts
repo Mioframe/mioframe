@@ -100,6 +100,30 @@ describe('createPreparationCoordinator', () => {
     expect(retried).toBe(descriptorA);
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(2);
   });
+
+  it('reuses an already validated descriptor for the same release, skipping a redundant fetch', async () => {
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const result = await coordinator.prepare('stable', '/', releaseA, descriptorA);
+
+    expect(result).toBe(descriptorA);
+    expect(fetchReleaseDescriptorMock).not.toHaveBeenCalled();
+    expect(prepareReleaseMock).toHaveBeenCalledWith('/', 'stable', descriptorA);
+  });
+
+  it('falls back to an ordinary fetch when the given descriptor does not match the target identity', async () => {
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const result = await coordinator.prepare('stable', '/', releaseA, descriptorB);
+
+    expect(result).toBe(descriptorA);
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 /**

@@ -137,6 +137,17 @@ export function buildWatchdogScript(releaseId) {
       var channel = new MessageChannel();
       channel.port1.onmessage = function (event) {
         var data = event.data;
+        if (data && data.isActivationTarget === false) {
+          // Not this session's activation target: permanently disarm rather
+          // than merely skip arming the deadline timer, so an ordinary
+          // runtime error later in this session can never send a spurious
+          // BOOT_FAILED for a release that was never being activated.
+          settled = true;
+          if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+          window.removeEventListener('error', onEarlyFatalError);
+          window.removeEventListener('unhandledrejection', onEarlyFatalError);
+          return;
+        }
         if (!data || !data.isActivationTarget || !data.deadlineAt) return;
         var msRemaining = new Date(data.deadlineAt).getTime() - Date.now();
         if (msRemaining <= 0) {

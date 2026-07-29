@@ -15,9 +15,27 @@ import {
   switchToManualMode,
 } from './stateTransitions';
 
-const releaseA = { releaseId: 'release-a', releaseSequence: 1 };
-const releaseB = { releaseId: 'release-b', releaseSequence: 2 };
-const releaseC = { releaseId: 'release-c', releaseSequence: 3 };
+const releaseA = {
+  releaseId: 'release-a',
+  releaseSequence: 1,
+  appVersion: '1.0.0',
+  buildId: 'build-a',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+const releaseB = {
+  releaseId: 'release-b',
+  releaseSequence: 2,
+  appVersion: '1.1.0',
+  buildId: 'build-b',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+const releaseC = {
+  releaseId: 'release-c',
+  releaseSequence: 3,
+  appVersion: '1.2.0',
+  buildId: 'build-c',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
 
 const baseState: UpdateControllerState = {
   schemaVersion: 1,
@@ -66,7 +84,13 @@ describe('applyCheckForUpdates', () => {
 
   it('rejects a same-sequence conflicting identity as invalid metadata', () => {
     const withLatest = { ...baseState, latestRelease: releaseB };
-    const conflicting = { releaseId: 'release-b-imposter', releaseSequence: 2 };
+    const conflicting = {
+      releaseId: 'release-b-imposter',
+      releaseSequence: 2,
+      appVersion: '1.1.0',
+      buildId: 'build-b-imposter',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    };
     const result = applyCheckForUpdates(withLatest, conflicting, '2026-07-24T00:00:00.000Z');
     expect(result.outcome).toBe('rejected-conflict');
     expect(result.state.latestRelease).toEqual(releaseB);
@@ -228,40 +252,22 @@ describe('switchToAutomaticMode', () => {
 describe('shouldStartActivation', () => {
   const withApproved = { ...baseState, approvedRelease: releaseB };
 
-  it('starts on the first clean launch: no other windows, not a reload', () => {
-    expect(
-      shouldStartActivation(withApproved, {
-        isReloadOfControlledClient: false,
-        otherLiveClientCount: 0,
-      }),
-    ).toBe(true);
+  it('starts whenever no other same-channel window is live: a new window and a reload of the final window are indistinguishable here', () => {
+    // shouldStartActivation has no concept of "reload" — the caller
+    // (workerFetch.ts) already excludes this navigation's own prior and
+    // resulting client identities before computing otherLiveClientCount, so
+    // a reload of the sole remaining window produces the exact same input
+    // as opening a brand-new window and starts activation the same way: a
+    // safe application restart, not a case to special-case here.
+    expect(shouldStartActivation(withApproved, { otherLiveClientCount: 0 })).toBe(true);
   });
 
   it('does not start when nothing is approved', () => {
-    expect(
-      shouldStartActivation(baseState, {
-        isReloadOfControlledClient: false,
-        otherLiveClientCount: 0,
-      }),
-    ).toBe(false);
-  });
-
-  it('does not start for an ordinary reload of an existing session', () => {
-    expect(
-      shouldStartActivation(withApproved, {
-        isReloadOfControlledClient: true,
-        otherLiveClientCount: 0,
-      }),
-    ).toBe(false);
+    expect(shouldStartActivation(baseState, { otherLiveClientCount: 0 })).toBe(false);
   });
 
   it('does not start a new activation while another same-channel window is live', () => {
-    expect(
-      shouldStartActivation(withApproved, {
-        isReloadOfControlledClient: false,
-        otherLiveClientCount: 1,
-      }),
-    ).toBe(false);
+    expect(shouldStartActivation(withApproved, { otherLiveClientCount: 1 })).toBe(false);
   });
 
   it('does not start again once an activation already exists', () => {
@@ -269,12 +275,7 @@ describe('shouldStartActivation', () => {
       ...withApproved,
       activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
     };
-    expect(
-      shouldStartActivation(withActivation, {
-        isReloadOfControlledClient: false,
-        otherLiveClientCount: 0,
-      }),
-    ).toBe(false);
+    expect(shouldStartActivation(withActivation, { otherLiveClientCount: 0 })).toBe(false);
   });
 });
 

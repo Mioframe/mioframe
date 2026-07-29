@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAutomaticCheckScheduler } from './automaticCheckScheduler';
+import { createScheduledDiscoveryCheckScheduler } from './scheduledDiscoveryCheckScheduler';
 
-describe('createAutomaticCheckScheduler', () => {
+describe('createScheduledDiscoveryCheckScheduler', () => {
   it('runs the scheduled action on the first call', async () => {
     const run = vi.fn().mockResolvedValue(undefined);
-    const scheduler = createAutomaticCheckScheduler();
+    const scheduler = createScheduledDiscoveryCheckScheduler();
 
     await scheduler.scheduleOnce(run);
 
@@ -13,7 +13,7 @@ describe('createAutomaticCheckScheduler', () => {
 
   it('ignores every later call within the same lifetime, returning the same in-flight attempt', async () => {
     const run = vi.fn().mockResolvedValue(undefined);
-    const scheduler = createAutomaticCheckScheduler();
+    const scheduler = createScheduledDiscoveryCheckScheduler();
 
     const first = scheduler.scheduleOnce(run);
     const second = scheduler.scheduleOnce(run);
@@ -25,7 +25,7 @@ describe('createAutomaticCheckScheduler', () => {
 
   it('never throws or rejects when the scheduled action fails, so it is always safe for event.waitUntil', async () => {
     const run = vi.fn().mockRejectedValue(new Error('check failed'));
-    const scheduler = createAutomaticCheckScheduler();
+    const scheduler = createScheduledDiscoveryCheckScheduler();
 
     await expect(scheduler.scheduleOnce(run)).resolves.toBeUndefined();
   });

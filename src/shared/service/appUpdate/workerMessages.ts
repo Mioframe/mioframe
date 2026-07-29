@@ -11,6 +11,7 @@ import type {
   AppUpdateBootAckResponse,
   AppUpdateErrorCode,
   AppUpdateRollbackBroadcast,
+  AppUpdateStateChangedBroadcast,
   AppUpdateWorkerRequest,
   AppUpdateWorkerResponse,
 } from './protocol';
@@ -28,11 +29,31 @@ import {
 import { runUpdateCheck } from './updateDiscovery';
 
 /**
+ * Broadcasts `message` to every currently live same-channel window client.
+ * Never reaches a foreign-channel window (another branch, PR preview, or a
+ * different managed channel sharing this origin).
+ * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
+ * @param message - The broadcast message to send.
+ */
+async function broadcastToSameChannelWindows(
+  channelBasePath: string,
+  channelOrigin: string,
+  message: AppUpdateRollbackBroadcast | AppUpdateStateChangedBroadcast,
+): Promise<void> {
+  const clients = await self.clients.matchAll({ type: 'window' });
+  for (const client of clients) {
+    if (isSameChannelWindowClient(client, channelBasePath, channelOrigin)) {
+      client.postMessage(message);
+    }
+  }
+}
+
+/**
  * Broadcasts a rollback instruction to every same-channel window, so every
  * window currently in the failed activation reloads back to the unchanged
  * active release. Only called after the rollback has already been
- * persisted. Never reaches a foreign-channel window (another branch, PR
- * preview, or a different managed channel sharing this origin).
+ * persisted.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
  * @param failedReleaseId - The release id that failed to boot.
@@ -42,16 +63,30 @@ async function broadcastRollback(
   channelOrigin: string,
   failedReleaseId: string,
 ): Promise<void> {
-  const message: AppUpdateRollbackBroadcast = {
+  await broadcastToSameChannelWindows(channelBasePath, channelOrigin, {
     type: 'APP_UPDATE_ROLLBACK',
     releaseId: failedReleaseId,
-  };
-  const clients = await self.clients.matchAll({ type: 'window' });
-  for (const client of clients) {
-    if (isSameChannelWindowClient(client, channelBasePath, channelOrigin)) {
-      client.postMessage(message);
-    }
-  }
+  });
+}
+
+/**
+ * Broadcasts the private state-invalidation notification to every
+ * same-channel window, so an already-open window can refresh its own
+ * snapshot via `GET_SNAPSHOT` after a background state change. Only called
+ * after a background check (with no foreground requester waiting on its own
+ * response) has actually changed snapshot-relevant state — never for a
+ * failed or no-op check, and never for a foreground command response, which
+ * already returns its resulting snapshot directly.
+ * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
+ */
+export async function broadcastStateChanged(
+  channelBasePath: string,
+  channelOrigin: string,
+): Promise<void> {
+  await broadcastToSameChannelWindows(channelBasePath, channelOrigin, {
+    type: 'APP_UPDATE_STATE_CHANGED',
+  });
 }
 
 /**

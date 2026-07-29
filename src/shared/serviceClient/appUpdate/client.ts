@@ -1,7 +1,8 @@
-import type {
-  AppUpdateSnapshot,
-  AppUpdateWorkerRequest,
-  AppUpdateWorkerResponse,
+import {
+  APP_UPDATE_PROTOCOL_MESSAGE_TYPES,
+  type AppUpdateSnapshot,
+  type AppUpdateWorkerRequest,
+  type AppUpdateWorkerResponse,
 } from '@shared/service/appUpdate/protocol';
 import type { UpdateMode } from '@shared/service/appUpdate/contracts';
 
@@ -108,4 +109,41 @@ export function installAppUpdateOnNextLaunch(): Promise<AppUpdateSnapshot | unde
  */
 export function cancelScheduledAppUpdate(): Promise<AppUpdateSnapshot | undefined> {
   return sendAndUnwrap({ type: 'CANCEL_SCHEDULED_UPDATE' });
+}
+
+/**
+ * Returns `true` when `data` is the worker's private state-invalidation
+ * broadcast. Never carries a snapshot itself — a subscriber must re-fetch
+ * through {@link getAppUpdateSnapshot}.
+ * @param data - A `navigator.serviceWorker` `message` event's `data`.
+ * @returns Whether `data` is a state-invalidation broadcast.
+ */
+function isStateChangedBroadcast(data: unknown): boolean {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'type' in data &&
+    data.type === APP_UPDATE_PROTOCOL_MESSAGE_TYPES.STATE_CHANGED_BROADCAST
+  );
+}
+
+/**
+ * Subscribes to the worker's private same-channel state-invalidation
+ * broadcast, calling `onStateChanged` with no arguments every time one
+ * arrives so the caller can re-fetch the current snapshot. A no-op
+ * subscription (a no-op unsubscribe) in a browser without `serviceWorker`
+ * support.
+ * @param onStateChanged - Called whenever the worker reports a background state change.
+ * @returns An unsubscribe function that removes the underlying listener.
+ */
+export function subscribeToAppUpdateStateChanged(onStateChanged: () => void): () => void {
+  if (!('serviceWorker' in navigator)) return () => {};
+
+  const handler = (event: MessageEvent): void => {
+    if (isStateChangedBroadcast(event.data)) onStateChanged();
+  };
+  navigator.serviceWorker.addEventListener('message', handler);
+  return () => {
+    navigator.serviceWorker.removeEventListener('message', handler);
+  };
 }

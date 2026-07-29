@@ -5,6 +5,7 @@ import {
   getAppUpdateSnapshot,
   installAppUpdateOnNextLaunch,
   setAppUpdateMode,
+  subscribeToAppUpdateStateChanged,
 } from './client';
 
 const snapshot = {
@@ -76,6 +77,86 @@ describe('appUpdate client', () => {
     const postMessage = stubControlledServiceWorker();
     await cancelScheduledAppUpdate();
     expect(postMessage.mock.calls[0]?.[0]).toEqual({ type: 'CANCEL_SCHEDULED_UPDATE' });
+  });
+});
+
+describe('subscribeToAppUpdateStateChanged', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  type FakeMessageListener = (event: { data: unknown }) => void;
+
+  function stubServiceWorkerEventTarget() {
+    const listeners = new Set<FakeMessageListener>();
+    const addEventListener = vi.fn((_type: string, listener: FakeMessageListener) => {
+      listeners.add(listener);
+    });
+    const removeEventListener = vi.fn((_type: string, listener: FakeMessageListener) => {
+      listeners.delete(listener);
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { addEventListener, removeEventListener },
+    });
+    return {
+      addEventListener,
+      removeEventListener,
+      dispatch: (data: unknown) => {
+        for (const listener of listeners) listener({ data });
+      },
+    };
+  }
+
+  it('returns a no-op unsubscribe when serviceWorker is unsupported', () => {
+    vi.stubGlobal('navigator', {});
+    const onStateChanged = vi.fn();
+
+    expect(() => {
+      subscribeToAppUpdateStateChanged(onStateChanged)();
+    }).not.toThrow();
+    expect(onStateChanged).not.toHaveBeenCalled();
+  });
+
+  it('calls onStateChanged for a state-invalidation broadcast', () => {
+    const { dispatch } = stubServiceWorkerEventTarget();
+    const onStateChanged = vi.fn();
+
+    subscribeToAppUpdateStateChanged(onStateChanged);
+    dispatch({ type: 'APP_UPDATE_STATE_CHANGED' });
+
+    expect(onStateChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores an unrelated broadcast, such as a rollback', () => {
+    const { dispatch } = stubServiceWorkerEventTarget();
+    const onStateChanged = vi.fn();
+
+    subscribeToAppUpdateStateChanged(onStateChanged);
+    dispatch({ type: 'APP_UPDATE_ROLLBACK', releaseId: 'release-a' });
+
+    expect(onStateChanged).not.toHaveBeenCalled();
+  });
+
+  it('does not call onStateChanged again after unsubscribing', () => {
+    const { dispatch } = stubServiceWorkerEventTarget();
+    const onStateChanged = vi.fn();
+
+    const unsubscribe = subscribeToAppUpdateStateChanged(onStateChanged);
+    unsubscribe();
+    dispatch({ type: 'APP_UPDATE_STATE_CHANGED' });
+
+    expect(onStateChanged).not.toHaveBeenCalled();
+  });
+
+  it('adds exactly one listener per subscription and removes exactly that one on unsubscribe', () => {
+    const { addEventListener, removeEventListener } = stubServiceWorkerEventTarget();
+    const unsubscribe = subscribeToAppUpdateStateChanged(vi.fn());
+
+    expect(addEventListener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+
+    expect(removeEventListener).toHaveBeenCalledTimes(1);
+    expect(removeEventListener.mock.calls[0]?.[1]).toBe(addEventListener.mock.calls[0]?.[1]);
   });
 });
 

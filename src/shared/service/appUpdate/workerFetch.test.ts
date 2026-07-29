@@ -88,7 +88,6 @@ describe('workerFetch', () => {
         BASE_PATH,
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
-        false,
         new Set<string>(),
         enqueue,
         createFakeCoordinator(),
@@ -106,7 +105,6 @@ describe('workerFetch', () => {
         BASE_PATH,
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
-        false,
         new Set<string>(),
         enqueue,
         createFakeCoordinator(),
@@ -132,7 +130,6 @@ describe('workerFetch', () => {
         BASE_PATH,
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
-        false,
         new Set<string>(),
         enqueue,
         createFakeCoordinator({ prepare }),
@@ -159,7 +156,6 @@ describe('workerFetch', () => {
         BASE_PATH,
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
-        false,
         new Set<string>(),
         enqueue,
         createFakeCoordinator(),
@@ -168,7 +164,7 @@ describe('workerFetch', () => {
       expect(matchAllMock).toHaveBeenCalledWith({ type: 'window', includeUncontrolled: true });
     });
 
-    it('starts activation when the only other live window is this navigation itself, excluded by id', async () => {
+    it('starts activation on a reload of the only window: its own prior client is excluded by id, leaving otherLiveClientCount at 0', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: { activeRelease: release, approvedRelease },
@@ -181,7 +177,6 @@ describe('workerFetch', () => {
         BASE_PATH,
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
-        false,
         new Set(['this-navigation']),
         enqueue,
         createFakeCoordinator(),
@@ -204,7 +199,6 @@ describe('workerFetch', () => {
         BASE_PATH,
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
-        false,
         new Set<string>(),
         enqueue,
         createFakeCoordinator(),
