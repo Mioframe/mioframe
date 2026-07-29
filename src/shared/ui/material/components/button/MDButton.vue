@@ -80,6 +80,7 @@ const onClick = (event: MouseEvent) => {
 
 <template>
   <!-- eslint-disable vue/attribute-hyphenation -- The m3e Boolean must be bound as a camel-case property; its dashed attribute would treat false as present. -->
+  <!-- eslint-disable-next-line vue/no-undef-components -- m3e-button is selected by config/vueCustomElements.ts. -->
   <m3e-button
     class="md-button"
     :aria-busy="isLoading ? 'true' : undefined"

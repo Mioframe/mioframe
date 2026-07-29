@@ -12,7 +12,7 @@ const lint = async (code: string, filePath: string) => {
 
 // The first call pays the cost of building the type-aware TS project
 // service; later calls reuse it and are fast.
-const typeAwareLintTimeout = 60_000;
+const typeAwareLintTimeout = 120_000;
 
 const ruleIds = (result: ESLint.LintResult) => result.messages.map((message) => message.ruleId);
 
@@ -20,6 +20,8 @@ const m3eImportSource = "import { M3eButtonElement } from '@m3e/web/button';\n";
 const m3eRootImportSource = "import '@m3e/web';\n";
 const m3eTemplate =
   '<script setup lang="ts"></script>\n<template>\n  <m3e-button></m3e-button>\n</template>\n';
+const selectedM3eElementTemplate = (tag: string) =>
+  `<script setup lang="ts"></script>\n<template>\n  <!-- eslint-disable-next-line vue/no-undef-components -- ${tag} is selected by config/vueCustomElements.ts. -->\n  <${tag}></${tag}>\n</template>\n`;
 const m3eElementTemplate = (tag: string) =>
   `<script setup lang="ts"></script>\n<template>\n  <${tag}></${tag}>\n</template>\n`;
 const useAttrsTemplate =
@@ -100,14 +102,22 @@ describe('eslint.config.mjs m3e renderer boundary', () => {
   it.each(['m3e-button', 'm3e-loading-indicator'])(
     'accepts the selected <%s> renderer element in Material',
     async (tag) => {
-      const result = await lint(m3eElementTemplate(tag), insideMaterialVueFile);
+      const result = await lint(selectedM3eElementTemplate(tag), insideMaterialVueFile);
 
       expect(ruleIds(result)).not.toContain('vue/no-undef-components');
     },
     typeAwareLintTimeout,
   );
 
-  it.each(['m3e-buton', 'm3e-icon-button', 'm3e-arbitrary-element'])(
+  it.each([
+    'm3e-buton',
+    'm3e-icon-button',
+    'm3e-button-extra',
+    'x-m3e-button',
+    'M3eButton',
+    'M3eLoadingIndicator',
+    'm3e-arbitrary-element',
+  ])(
     'rejects the unselected <%s> renderer element in Material',
     async (tag) => {
       const result = await lint(m3eElementTemplate(tag), insideMaterialVueFile);

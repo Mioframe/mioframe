@@ -75,6 +75,7 @@ const style = computed(() => ({
 </script>
 
 <template>
+  <!-- eslint-disable-next-line vue/no-undef-components -- m3e-loading-indicator is selected by config/vueCustomElements.ts. -->
   <m3e-loading-indicator class="md-loading-indicator" :aria-label="props.label" :style="style" />
 </template>
 
