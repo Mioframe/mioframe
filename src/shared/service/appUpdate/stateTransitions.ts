@@ -95,6 +95,10 @@ export function applyCheckForUpdates(
  * explicit Manual action may approve the exact release recorded as
  * previously failed — unlike the Automatic path, this is a deliberate user
  * retry.
+ *
+ * A no-op while an activation is already in progress: `approvedRelease` and
+ * `activation` are mutually exclusive ownership states, and no release may
+ * be approved until the current clean-launch attempt resolves.
  * @param state - Current controller state.
  * @param prepared - The exact release the user approved and that was fully prepared.
  * @returns The resulting state.
@@ -103,6 +107,7 @@ export function approveManualRelease(
   state: UpdateControllerState,
   prepared: ReleaseRef,
 ): UpdateControllerState {
+  if (state.activation) return state;
   return { ...state, approvedRelease: prepared };
 }
 
@@ -110,6 +115,10 @@ export function approveManualRelease(
  * Records an Automatic-mode approval once `prepared` has been fully
  * committed locally. Only ever moves `approvedRelease` forward, and never
  * approves the exact release currently recorded as having failed its boot.
+ *
+ * A no-op while an activation is already in progress: `approvedRelease` and
+ * `activation` are mutually exclusive ownership states, and no release may
+ * be approved until the current clean-launch attempt resolves.
  * @param state - Current controller state.
  * @param prepared - The release that finished background preparation.
  * @returns The resulting state, unchanged if `prepared` is not a forward improvement.
@@ -118,6 +127,7 @@ export function approveAutomaticRelease(
   state: UpdateControllerState,
   prepared: ReleaseRef,
 ): UpdateControllerState {
+  if (state.activation) return state;
   if (state.failedActivationRelease?.releaseId === prepared.releaseId) return state;
   if (state.approvedRelease && prepared.releaseSequence <= state.approvedRelease.releaseSequence) {
     return state;
@@ -174,6 +184,10 @@ export function switchToAutomaticMode(
  * is left unchanged — it only ever changes on a later `BOOT_OK` commit. A
  * no-op when an activation already exists, so concurrent qualifying
  * navigations can call this without creating conflicting activations.
+ *
+ * Removes `approvedRelease`: it and `activation` are mutually exclusive
+ * ownership states — once a release is selected for the current
+ * clean-launch attempt, it is no longer merely "prepared and waiting".
  * @param state - Current controller state.
  * @param target - The release to activate; must equal `state.approvedRelease`.
  * @param deadlineAt - ISO timestamp of the boot-confirmation deadline.
@@ -185,8 +199,9 @@ export function startActivation(
   deadlineAt: string,
 ): UpdateControllerState {
   if (state.activation) return state;
+  const { approvedRelease: _approvedRelease, ...rest } = state;
   return {
-    ...state,
+    ...rest,
     activation: { targetRelease: target, deadlineAt },
   };
 }

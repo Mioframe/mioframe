@@ -1060,6 +1060,7 @@ function addReleaseOnlyCommands(commands) {
       'tests/e2e/release/managedUpdatesMigration.spec.ts',
       'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
       'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
+      'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
     ],
     weight: classifyCommandWeight({ label: 'managed-updates' }),
   });

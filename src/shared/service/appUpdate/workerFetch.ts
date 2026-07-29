@@ -4,7 +4,7 @@ declare const self: ServiceWorkerGlobalScope;
 import type { ManagedChannel, ReleaseRef } from './contracts';
 import { readControllerState, writeControllerState } from './controllerState';
 import { BOOT_CONFIRMATION_TIMEOUT_MS } from './bootConfirmation';
-import { countSameChannelWindowClients } from './cleanLaunch';
+import { countSameChannelWindowClients, type WindowClientIdentity } from './cleanLaunch';
 import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import {
@@ -24,9 +24,16 @@ import {
 
 const UNAVAILABLE_RESPONSE = () => new Response('Release unavailable', { status: 503 });
 
-async function getAllWindowClientUrls(): Promise<string[]> {
-  const clients = await self.clients.matchAll({ type: 'window' });
-  return clients.map((client) => client.url);
+/**
+ * Lists every live window client, including a same-channel window this
+ * worker does not yet control (no `clients.claim()` means a fresh
+ * registration's first page stays uncontrolled) — such a page must still be
+ * counted by the clean-launch decision.
+ * @returns Every live window client's identity.
+ */
+async function getAllWindowClients(): Promise<WindowClientIdentity[]> {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  return clients.map((client) => ({ id: client.id, url: client.url }));
 }
 
 /**
@@ -152,6 +159,7 @@ export async function handleAssetFetch(
  * @param channelOrigin - This worker's own origin.
  * @param request - The incoming navigation request.
  * @param isReloadOfControlledClient - Whether this navigation reloads an existing controlled client.
+ * @param excludedClientIds - This navigation's own client ids, never counted as another live window.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
  * @returns The response to serve.
@@ -162,6 +170,7 @@ export async function handleNavigationFetch(
   channelOrigin: string,
   request: Request,
   isReloadOfControlledClient: boolean,
+  excludedClientIds: ReadonlySet<string>,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
@@ -175,7 +184,8 @@ export async function handleNavigationFetch(
 
       if (state.activation && isActivationExpired(state, now)) {
         const otherLiveClientCount = countSameChannelWindowClients(
-          await getAllWindowClientUrls(),
+          await getAllWindowClients(),
+          excludedClientIds,
           channelBasePath,
           channelOrigin,
         );
@@ -188,7 +198,8 @@ export async function handleNavigationFetch(
 
       if (!state.activation && state.approvedRelease) {
         const otherLiveClientCount = countSameChannelWindowClients(
-          await getAllWindowClientUrls(),
+          await getAllWindowClients(),
+          excludedClientIds,
           channelBasePath,
           channelOrigin,
         );
@@ -210,7 +221,9 @@ export async function handleNavigationFetch(
   // the failed target, but cleanup (a full cache-storage scan) must never
   // delay this or any other navigation.
   if (didRollback) {
-    void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+    void coordinator
+      .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+      .catch(() => {});
   }
 
   // No managed state at all (e.g. an install that has not finished, or

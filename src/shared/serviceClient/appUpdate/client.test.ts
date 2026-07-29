@@ -12,13 +12,17 @@ const snapshot = {
   activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
 };
 
+/** A promise that never settles, standing in for a `ready` that never resolves. */
+const NEVER_SETTLES = new Promise<never>(() => {});
+
 function stubControlledServiceWorker() {
   const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
     ports[0]?.postMessage({ snapshot });
   });
   vi.stubGlobal('navigator', {
     serviceWorker: {
-      ready: Promise.resolve({ controller: { postMessage } }),
+      // Permanently pending: proves `sendToController` never awaits `ready`.
+      ready: NEVER_SETTLES,
       controller: { postMessage },
     },
   });
@@ -35,9 +39,9 @@ describe('appUpdate client', () => {
     expect(await getAppUpdateSnapshot()).toBeUndefined();
   });
 
-  it('getAppUpdateSnapshot returns undefined when there is no controller yet', async () => {
+  it('getAppUpdateSnapshot returns undefined immediately when there is no current controller, even when ready is permanently pending', async () => {
     vi.stubGlobal('navigator', {
-      serviceWorker: { ready: Promise.resolve({ controller: undefined }), controller: undefined },
+      serviceWorker: { ready: NEVER_SETTLES, controller: undefined },
     });
     expect(await getAppUpdateSnapshot()).toBeUndefined();
   });
@@ -89,7 +93,7 @@ describe('appUpdate client timeout', () => {
     const postMessage = vi.fn();
     vi.stubGlobal('navigator', {
       serviceWorker: {
-        ready: Promise.resolve({ controller: { postMessage } }),
+        ready: new Promise<never>(() => {}),
         controller: { postMessage },
       },
     });

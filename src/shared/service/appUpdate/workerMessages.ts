@@ -60,6 +60,11 @@ async function broadcastRollback(
  * decision and the final persist; preparation runs unlocked through
  * `coordinator`, and the target is re-validated against current state
  * before being approved, exactly like {@link runUpdateCheck}.
+ *
+ * While an activation is already in progress, the mode still switches, but
+ * never triggers preparation or approval of another release:
+ * `approvedRelease` and `activation` are mutually exclusive, and no release
+ * may be approved until the current clean-launch attempt resolves.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
@@ -74,7 +79,8 @@ async function switchToAutomaticModeWithPrepare(
 ): Promise<AppUpdateWorkerResponse> {
   const decision = await withState(channel, enqueue, async (state) => {
     const target = state.latestRelease;
-    const needsPrepare = target && target.releaseId !== state.activeRelease.releaseId;
+    const needsPrepare =
+      !state.activation && target && target.releaseId !== state.activeRelease.releaseId;
     if (!needsPrepare) {
       const next = switchToAutomaticMode(state);
       await writeControllerState(channel, next);
@@ -97,7 +103,9 @@ async function switchToAutomaticModeWithPrepare(
     const next = switchToAutomaticMode(state, stillValid ? target : undefined);
     await writeControllerState(channel, next);
     if (next !== state) {
-      void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+      void coordinator
+        .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+        .catch(() => {});
     }
     return { snapshot: buildAppUpdateSnapshot(next, error) };
   });
@@ -107,6 +115,11 @@ async function switchToAutomaticModeWithPrepare(
  * Prepares and approves the current latest release for Manual
  * `INSTALL_ON_NEXT_LAUNCH`. Preparation runs unlocked through `coordinator`;
  * the target is re-validated against current state before being approved.
+ *
+ * A no-op, performing no preparation or approval, while an activation is
+ * already in progress: `approvedRelease` and `activation` are mutually
+ * exclusive, and no release may be approved until the current clean-launch
+ * attempt resolves.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
@@ -120,6 +133,7 @@ async function installLatestOnNextLaunch(
   coordinator: PreparationCoordinator,
 ): Promise<AppUpdateWorkerResponse> {
   const initial = await withState(channel, enqueue, (state) => state);
+  if (initial.activation) return { snapshot: buildAppUpdateSnapshot(initial) };
   const target = initial.latestRelease;
   if (!target) return { snapshot: buildAppUpdateSnapshot(initial, 'unavailable') };
 
@@ -139,7 +153,9 @@ async function installLatestOnNextLaunch(
     }
     const next = approveManualRelease(state, target);
     await writeControllerState(channel, next);
-    void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+    void coordinator
+      .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+      .catch(() => {});
     return { snapshot: buildAppUpdateSnapshot(next) };
   });
 }
@@ -181,7 +197,9 @@ export async function handleWorkerMessage(
         return withState(channel, enqueue, async (state) => {
           const next = switchToManualMode(state);
           await writeControllerState(channel, next);
-          void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+          void coordinator
+            .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+            .catch(() => {});
           return { snapshot: buildAppUpdateSnapshot(next) };
         });
       }
@@ -196,7 +214,9 @@ export async function handleWorkerMessage(
         const next = cancelScheduledUpdate(state);
         if (next !== state) {
           await writeControllerState(channel, next);
-          void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+          void coordinator
+            .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+            .catch(() => {});
         }
         return { snapshot: buildAppUpdateSnapshot(next) };
       });
@@ -224,7 +244,9 @@ export async function handleWorkerMessage(
         };
       });
       if (result.didCommit) {
-        void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+        void coordinator
+          .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+          .catch(() => {});
       }
       return result.response;
     }
@@ -253,7 +275,9 @@ export async function handleWorkerMessage(
       });
       if (result.didRollback) {
         await broadcastRollback(channelBasePath, channelOrigin, request.releaseId);
-        void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+        void coordinator
+          .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+          .catch(() => {});
       }
       return result.response;
     }

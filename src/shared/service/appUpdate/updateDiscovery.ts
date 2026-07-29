@@ -51,7 +51,15 @@ export async function runUpdateCheck(
     return checked;
   });
 
-  if (afterDiscovery.outcome !== 'updated' || afterDiscovery.state.mode !== 'automatic') {
+  if (
+    afterDiscovery.outcome !== 'updated' ||
+    afterDiscovery.state.mode !== 'automatic' ||
+    afterDiscovery.state.activation
+  ) {
+    // An in-progress activation records discovery (`latestRelease`) above,
+    // but must never be superseded by preparing or approving another
+    // release: `approvedRelease` and `activation` are mutually exclusive,
+    // and only one clean-launch attempt may be in flight at a time.
     return { snapshot: buildAppUpdateSnapshot(afterDiscovery.state) };
   }
 
@@ -72,7 +80,9 @@ export async function runUpdateCheck(
     const next = approveAutomaticRelease(state, discovered);
     if (next !== state) {
       await writeControllerState(channel, next);
-      void runReleaseCacheCleanup(channel, coordinator.getInFlightReleaseIds()).catch(() => {});
+      void coordinator
+        .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+        .catch(() => {});
     }
     return next;
   });

@@ -101,3 +101,125 @@ describe('createPreparationCoordinator', () => {
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(2);
   });
 });
+
+/**
+ * A promise plus its externally callable resolve/reject, for deterministic sequencing.
+ * @returns The deferred promise and its resolve/reject functions.
+ */
+function createDeferred<T = void>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+describe('createPreparationCoordinator: runCleanup arbitration', () => {
+  beforeEach(() => {
+    fetchReleaseDescriptorMock.mockReset();
+    prepareReleaseMock.mockReset();
+  });
+
+  it('protects a preparation already in flight: cleanup receives its release id', async () => {
+    const fetchGate = createDeferred<ReleaseDescriptor>();
+    fetchReleaseDescriptorMock.mockReturnValue(fetchGate.promise);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const prepareAttempt = coordinator.prepare('stable', '/', releaseA);
+    const cleanup = vi.fn().mockResolvedValue(undefined);
+    await coordinator.runCleanup(cleanup);
+
+    expect(cleanup).toHaveBeenCalledWith([releaseA.releaseId]);
+
+    fetchGate.resolve(descriptorA);
+    await expect(prepareAttempt).resolves.toBe(descriptorA);
+  });
+
+  it('defers a preparation requested during cleanup until cleanup settles, so it never touches its cache concurrently', async () => {
+    const cleanupGate = createDeferred();
+    const cleanup = vi.fn().mockReturnValue(cleanupGate.promise);
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const cleanupDone = coordinator.runCleanup(cleanup);
+    const prepareAttempt = coordinator.prepare('stable', '/', releaseA);
+
+    // Give the microtask queue a chance to run: the preparation must not
+    // have touched the network or cache yet while cleanup is still pending.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(fetchReleaseDescriptorMock).not.toHaveBeenCalled();
+
+    cleanupGate.resolve();
+    await cleanupDone;
+    await expect(prepareAttempt).resolves.toBe(descriptorA);
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a preparation proceed immediately once cleanup succeeds', async () => {
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    await coordinator.runCleanup(() => Promise.resolve());
+    const result = await coordinator.prepare('stable', '/', releaseA);
+
+    expect(result).toBe(descriptorA);
+  });
+
+  it('releases the barrier and lets a waiting preparation proceed even when cleanup rejects', async () => {
+    const cleanupGate = createDeferred();
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const cleanupResult = coordinator.runCleanup(() => cleanupGate.promise);
+    const prepareAttempt = coordinator.prepare('stable', '/', releaseA);
+
+    cleanupGate.reject(new Error('cache cleanup failed'));
+    await expect(cleanupResult).rejects.toThrow('cache cleanup failed');
+    await expect(prepareAttempt).resolves.toBe(descriptorA);
+  });
+
+  it('never cancels a preparation already in flight when cleanup starts', async () => {
+    const fetchGate = createDeferred<ReleaseDescriptor>();
+    fetchReleaseDescriptorMock.mockReturnValue(fetchGate.promise);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const prepareAttempt = coordinator.prepare('stable', '/', releaseA);
+    await coordinator.runCleanup(() => Promise.resolve());
+
+    fetchGate.resolve(descriptorA);
+    await expect(prepareAttempt).resolves.toBe(descriptorA);
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('still deduplicates concurrent callers for the same release id requested during cleanup', async () => {
+    const cleanupGate = createDeferred();
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    void coordinator.runCleanup(() => cleanupGate.promise);
+    const first = coordinator.prepare('stable', '/', releaseA);
+    const second = coordinator.prepare('stable', '/', releaseA);
+
+    cleanupGate.resolve();
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+
+    expect(firstResult).toBe(descriptorA);
+    expect(secondResult).toBe(descriptorA);
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+  });
+});

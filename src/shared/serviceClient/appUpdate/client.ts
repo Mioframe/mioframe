@@ -17,8 +17,15 @@ const REQUEST_TIMEOUT_MS = 10_000;
  * Sends one private worker protocol request to this page's controlling
  * service worker and awaits its response over a dedicated `MessageChannel`.
  * Resolves `undefined` when no managed controller is available at all
- * (unsupported browser, no registration yet, or the request timed out) —
+ * (unsupported browser, no current controller, or the request timed out) —
  * callers treat that as the capability-unavailable state.
+ *
+ * Reads `navigator.serviceWorker.controller` directly rather than awaiting
+ * `navigator.serviceWorker.ready` first: this client is only a bridge to
+ * whichever worker already controls the current document, and `ready` can
+ * remain pending indefinitely when no registration ever becomes active for
+ * this page (e.g. an unmanaged channel) — an unbounded wait this function
+ * must never introduce.
  * @param request - The protocol request to send.
  * @returns The worker's response, or `undefined` when unavailable.
  */
@@ -27,8 +34,7 @@ async function sendToController(
 ): Promise<AppUpdateWorkerResponse | undefined> {
   if (!('serviceWorker' in navigator)) return undefined;
 
-  const registration = await navigator.serviceWorker.ready.catch(() => undefined);
-  const controller = registration ? navigator.serviceWorker.controller : undefined;
+  const controller = navigator.serviceWorker.controller;
   if (!controller) return undefined;
 
   return new Promise<AppUpdateWorkerResponse | undefined>((resolve) => {

@@ -57,18 +57,45 @@ describe('isSameChannelPath (develop, base path "/branch/develop/")', () => {
 
 describe('countSameChannelWindowClients', () => {
   it('counts only same-channel windows, excluding branch/pr/foreign', () => {
-    const urls = [
-      'https://mioframe.example/',
-      'https://mioframe.example/settings',
-      'https://mioframe.example/branch/develop/',
-      'https://mioframe.example/pr/1/',
-      'https://evil.example/',
+    const clients = [
+      { id: 'a', url: 'https://mioframe.example/' },
+      { id: 'b', url: 'https://mioframe.example/settings' },
+      { id: 'c', url: 'https://mioframe.example/branch/develop/' },
+      { id: 'd', url: 'https://mioframe.example/pr/1/' },
+      { id: 'e', url: 'https://evil.example/' },
     ];
-    expect(countSameChannelWindowClients(urls, '/', ORIGIN)).toBe(2);
+    expect(countSameChannelWindowClients(clients, new Set(), '/', ORIGIN)).toBe(2);
   });
 
   it('returns 0 when no windows are live', () => {
-    expect(countSameChannelWindowClients([], '/', ORIGIN)).toBe(0);
+    expect(countSameChannelWindowClients([], new Set(), '/', ORIGIN)).toBe(0);
+  });
+
+  it('counts an uncontrolled same-channel window exactly like a controlled one', () => {
+    // The function itself has no notion of "controlled": that distinction
+    // only matters to the caller's `clients.matchAll({ includeUncontrolled:
+    // true })` query. A fresh registration's still-uncontrolled first page
+    // must count here exactly like any other live same-channel window.
+    const uncontrolledFirstPage = { id: 'uncontrolled-a', url: 'https://mioframe.example/' };
+    expect(countSameChannelWindowClients([uncontrolledFirstPage], new Set(), '/', ORIGIN)).toBe(1);
+  });
+
+  it('excludes the current navigation client ids, by identity', () => {
+    const clients = [
+      { id: 'replaced', url: 'https://mioframe.example/' },
+      { id: 'other', url: 'https://mioframe.example/settings' },
+    ];
+    expect(countSameChannelWindowClients(clients, new Set(['replaced']), '/', ORIGIN)).toBe(1);
+  });
+
+  it('still counts another window with the exact same URL as the current navigation', () => {
+    const clients = [
+      { id: 'this-navigation', url: 'https://mioframe.example/' },
+      { id: 'another-window', url: 'https://mioframe.example/' },
+    ];
+    expect(countSameChannelWindowClients(clients, new Set(['this-navigation']), '/', ORIGIN)).toBe(
+      1,
+    );
   });
 });
 

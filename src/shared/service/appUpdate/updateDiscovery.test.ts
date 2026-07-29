@@ -19,6 +19,7 @@ const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();
 const coordinator = {
   prepare: (...args: unknown[]) => prepareMock(...args),
   getInFlightReleaseIds: () => [],
+  runCleanup: (cleanup: (inFlightReleaseIds: readonly string[]) => Promise<void>) => cleanup([]),
 };
 
 const baseState: UpdateControllerState = {
@@ -127,6 +128,22 @@ describe('runUpdateCheck', () => {
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
     expect(result.snapshot.scheduledRelease).toBeUndefined();
+  });
+
+  it('records discovery but does not prepare or approve while an activation is in progress', async () => {
+    const activation = {
+      targetRelease: { releaseId: 'release-c', releaseSequence: 3 },
+      deadlineAt: '2026-07-24T00:00:30.000Z',
+    };
+    mockPersistentState({ ...baseState, activation });
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseId: 'release-b', releaseSequence: 2 });
+    const { runUpdateCheck } = await import('./updateDiscovery');
+
+    const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
+
+    expect(result.snapshot.latestRelease).toEqual({ releaseId: 'release-b', releaseSequence: 2 });
+    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(prepareMock).not.toHaveBeenCalled();
   });
 
   it('reports the discovery without approval when background preparation fails', async () => {

@@ -38,21 +38,42 @@ export function isSameChannelPath(
   return !/^(?:branch|pr)\//.test(rest);
 }
 
+/** The minimal identity {@link countSameChannelWindowClients} needs from a live window client. */
+export type WindowClientIdentity = {
+  /** The client's stable id, from `Client.id`. */
+  readonly id: string;
+  /** The client's current URL. */
+  readonly url: string;
+};
+
 /**
- * Counts how many of `clientUrls` are live same-channel window clients.
- * Branch, PR preview, other-channel, and foreign-origin windows are never
- * counted, per {@link isSameChannelPath}.
- * @param clientUrls - Every currently live window client URL (any channel), from `clients.matchAll`.
+ * Counts how many of `clients` are live same-channel window clients, other
+ * than the client(s) belonging to the navigation currently being handled.
+ *
+ * Deliberately excludes by client identity (`excludedClientIds`), never by
+ * URL: a fresh registration leaves its first page uncontrolled (no
+ * `clients.claim()`), so that page must still count and block a newer
+ * release's activation even though it is not "controlled" — and a distinct
+ * window that merely happens to share the current navigation's URL must
+ * still be counted. Branch, PR preview, other-channel, and foreign-origin
+ * windows are never counted, per {@link isSameChannelPath}.
+ * @param clients - Every currently live window client (any channel, controlled or not), from `clients.matchAll`.
+ * @param excludedClientIds - The current navigation's own client ids (e.g. `clientId`, `resultingClientId`, `replacesClientId`), never counted.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
- * @returns The count of same-channel window clients.
+ * @returns The count of other same-channel window clients.
  */
 export function countSameChannelWindowClients(
-  clientUrls: readonly string[],
+  clients: readonly WindowClientIdentity[],
+  excludedClientIds: ReadonlySet<string>,
   channelBasePath: string,
   channelOrigin: string,
 ): number {
-  return clientUrls.filter((url) => isSameChannelPath(url, channelBasePath, channelOrigin)).length;
+  return clients.filter(
+    (client) =>
+      !excludedClientIds.has(client.id) &&
+      isSameChannelPath(client.url, channelBasePath, channelOrigin),
+  ).length;
 }
 
 /**

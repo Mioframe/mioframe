@@ -17,10 +17,11 @@ vi.mock('./controllerState', () => ({
 
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
 const fetchMock = vi.fn();
+const matchAllMock = vi.fn((): Promise<{ id: string; url: string }[]> => Promise.resolve([]));
 
 vi.stubGlobal('caches', fakeCaches);
 vi.stubGlobal('fetch', fetchMock);
-vi.stubGlobal('self', { clients: { matchAll: () => Promise.resolve([]) } });
+vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
 
 const BASE_PATH = '/';
 const CHANNEL = 'stable';
@@ -59,6 +60,7 @@ function createFakeCoordinator(
   return {
     prepare: vi.fn().mockRejectedValue(new Error('not prepared in this test')),
     getInFlightReleaseIds: () => [],
+    runCleanup: (cleanup) => cleanup([]),
     ...overrides,
   };
 }
@@ -68,6 +70,8 @@ describe('workerFetch', () => {
     cachesByName.clear();
     fetchMock.mockReset();
     fetchMock.mockResolvedValue(new Response('network response'));
+    matchAllMock.mockReset();
+    matchAllMock.mockResolvedValue([]);
     readControllerStateMock.mockReset();
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
@@ -86,6 +90,7 @@ describe('workerFetch', () => {
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
         false,
+        new Set<string>(),
         enqueue,
         createFakeCoordinator(),
       );
@@ -103,6 +108,7 @@ describe('workerFetch', () => {
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
         false,
+        new Set<string>(),
         enqueue,
         createFakeCoordinator(),
       );
@@ -128,11 +134,85 @@ describe('workerFetch', () => {
         CHANNEL_ORIGIN,
         new Request('https://mioframe.example/'),
         false,
+        new Set<string>(),
         enqueue,
         createFakeCoordinator({ prepare }),
       );
 
       expect(prepare).toHaveBeenCalledWith(CHANNEL, BASE_PATH, release);
+      expect(await response.text()).toBe('<html>archived</html>');
+    });
+
+    const approvedRelease = {
+      releaseId: '22222222-2222-4222-8222-222222222222',
+      releaseSequence: 2,
+    };
+
+    it('queries every live window, including uncontrolled ones, when deciding to activate', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { activeRelease: release, approvedRelease },
+      });
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      await handleNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        CHANNEL_ORIGIN,
+        new Request('https://mioframe.example/'),
+        false,
+        new Set<string>(),
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(matchAllMock).toHaveBeenCalledWith({ type: 'window', includeUncontrolled: true });
+    });
+
+    it('starts activation when the only other live window is this navigation itself, excluded by id', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { activeRelease: release, approvedRelease },
+      });
+      matchAllMock.mockResolvedValue([{ id: 'this-navigation', url: 'https://mioframe.example/' }]);
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      const response = await handleNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        CHANNEL_ORIGIN,
+        new Request('https://mioframe.example/'),
+        false,
+        new Set(['this-navigation']),
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(response.status).toBe(503);
+    });
+
+    it('does not start activation while an uncontrolled same-channel window not excluded is live', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { activeRelease: release, approvedRelease },
+      });
+      await seedAvailableRelease();
+      matchAllMock.mockResolvedValue([{ id: 'uncontrolled-a', url: 'https://mioframe.example/' }]);
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      const response = await handleNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        CHANNEL_ORIGIN,
+        new Request('https://mioframe.example/'),
+        false,
+        new Set<string>(),
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      // Activation must not start: the release is served from `activeRelease`
+      // (already seeded), not the unactivated `approvedRelease`.
       expect(await response.text()).toBe('<html>archived</html>');
     });
   });

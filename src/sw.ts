@@ -51,29 +51,58 @@ self.addEventListener('activate', (event) => {
   // or verifies an application release. A cleanup failure must not fail
   // this worker's activation.
   event.waitUntil(
-    runReleaseCacheCleanup(channel, preparationCoordinator.getInFlightReleaseIds()).catch(() => {}),
+    preparationCoordinator
+      .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+      .catch(() => {}),
   );
 });
+
+/**
+ * Reads the standard `FetchEvent.replacesClientId` property via `Reflect.get`
+ * (rather than a type assertion, which this project forbids), since
+ * TypeScript's `lib.webworker.d.ts` does not declare it — unlike the closely
+ * related, already-typed `clientId`/`resultingClientId` — even though it is
+ * implemented by current browsers.
+ * @param event - The navigation `FetchEvent`.
+ * @returns The non-empty id of the document this navigation replaces, or `undefined`.
+ */
+function getReplacesClientId(event: FetchEvent): string | undefined {
+  const replacesClientId: unknown = Reflect.get(event, 'replacesClientId');
+  return typeof replacesClientId === 'string' && replacesClientId !== ''
+    ? replacesClientId
+    : undefined;
+}
 
 /**
  * Returns `true` when this navigation replaces an existing document (an
  * ordinary reload), rather than opening a genuinely new window/tab.
  *
- * Reads the standard `FetchEvent.replacesClientId` property via `Reflect.get`
- * (rather than a type assertion, which this project forbids), since
- * TypeScript's `lib.webworker.d.ts` does not declare it — unlike the closely
- * related, already-typed `resultingClientId` — even though it is
- * implemented by current browsers. If a runtime ever omits it, this
- * conservatively reports `false`; the caller's `otherLiveClientCount` check
- * independently prevents a wrongful activation start in that case too,
- * since a reloading document's own prior client is still live in
- * `clients.matchAll()` at fetch time.
+ * If a runtime ever omits `replacesClientId`, this conservatively reports
+ * `false`; the caller's `otherLiveClientCount` check independently prevents
+ * a wrongful activation start in that case too, since a reloading document's
+ * own prior client is still live in `clients.matchAll()` at fetch time (and,
+ * unlike before, no longer excluded from that count either).
  * @param event - The navigation `FetchEvent`.
  * @returns Whether this navigation replaces an existing document.
  */
 function isReplacementNavigation(event: FetchEvent): boolean {
-  const replacesClientId: unknown = Reflect.get(event, 'replacesClientId');
-  return typeof replacesClientId === 'string' && replacesClientId !== '';
+  return getReplacesClientId(event) !== undefined;
+}
+
+/**
+ * Builds the set of client ids that belong to this navigation itself, so the
+ * clean-launch window count never counts a navigation against its own
+ * outcome: the client being replaced (`replacesClientId`, an ordinary
+ * reload), the requesting client if any (`clientId`), and the id already
+ * reserved for the resulting document (`resultingClientId`). Uses identity,
+ * never URL, so a distinct window that happens to share this navigation's
+ * URL is still counted.
+ * @param event - The navigation `FetchEvent`.
+ * @returns The set of this navigation's own client ids.
+ */
+function buildNavigationExclusionClientIds(event: FetchEvent): ReadonlySet<string> {
+  const ids = [event.clientId, event.resultingClientId, getReplacesClientId(event)];
+  return new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0));
 }
 
 self.addEventListener('fetch', (event) => {
@@ -108,6 +137,7 @@ self.addEventListener('fetch', (event) => {
         channelOrigin,
         event.request,
         isReplacementNavigation(event),
+        buildNavigationExclusionClientIds(event),
         enqueue,
         preparationCoordinator,
       ),

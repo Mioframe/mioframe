@@ -176,17 +176,29 @@ export type Activation = z.infer<typeof zodActivation>;
  * Deliberately excludes any client-specific, operation-token, or transient
  * check/preparation state (see the managed pinned application updates
  * feature's architecture decision).
+ *
+ * `approvedRelease` and `activation` are mutually exclusive ownership
+ * states — a release is either prepared and waiting for a clean launch
+ * (`approvedRelease`), or already selected for the current clean-launch
+ * attempt (`activation`), never both at once.
  */
-export const zodUpdateControllerState = z.object({
-  schemaVersion: z.literal(CONTROLLER_STATE_SCHEMA_VERSION),
-  mode: zodUpdateMode,
-  activeRelease: zodReleaseRef,
-  latestRelease: z.optional(zodReleaseRef),
-  approvedRelease: z.optional(zodReleaseRef),
-  activation: z.optional(zodActivation),
-  /** The single most recent release that failed clean-launch activation, if any. Only ever one record — not an unbounded history. */
-  failedActivationRelease: z.optional(zodReleaseRef),
-  lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
-});
+export const zodUpdateControllerState = z
+  .object({
+    schemaVersion: z.literal(CONTROLLER_STATE_SCHEMA_VERSION),
+    mode: zodUpdateMode,
+    activeRelease: zodReleaseRef,
+    latestRelease: z.optional(zodReleaseRef),
+    approvedRelease: z.optional(zodReleaseRef),
+    activation: z.optional(zodActivation),
+    /** The single most recent release that failed clean-launch activation, if any. Only ever one record — not an unbounded history. */
+    failedActivationRelease: z.optional(zodReleaseRef),
+    lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
+  })
+  .check(
+    z.refine(
+      (state) => !(state.approvedRelease && state.activation),
+      'approvedRelease and activation must not coexist',
+    ),
+  );
 /** A {@link zodUpdateControllerState}-validated persisted controller state. */
 export type UpdateControllerState = z.infer<typeof zodUpdateControllerState>;

@@ -30,6 +30,7 @@ function createFakeCoordinator(
   return {
     prepare: vi.fn().mockResolvedValue(undefined),
     getInFlightReleaseIds: () => [],
+    runCleanup: (cleanup) => cleanup([]),
     ...overrides,
   };
 }
@@ -169,6 +170,37 @@ describe('handleWorkerMessage', () => {
       });
     });
 
+    it('to automatic during an active activation switches mode without preparing or approving', async () => {
+      const activation = {
+        targetRelease: { releaseId: 'release-c', releaseSequence: 3 },
+        deadlineAt: '2026-07-24T00:00:30.000Z',
+      };
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          activation,
+        },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'SET_MODE', mode: 'automatic' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(coordinator.prepare).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ mode: 'automatic', scheduledRelease: undefined }),
+      });
+    });
+
     it('to automatic reports install-failed when preparation fails, without approving', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
@@ -259,6 +291,37 @@ describe('handleWorkerMessage', () => {
 
       expect(result).toEqual({
         snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
+      });
+    });
+
+    it('is a no-op, without preparing, while an activation is already in progress', async () => {
+      const activation = {
+        targetRelease: { releaseId: 'release-c', releaseSequence: 3 },
+        deadlineAt: '2026-07-24T00:00:30.000Z',
+      };
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          activation,
+        },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(coordinator.prepare).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ scheduledRelease: undefined }),
       });
     });
 

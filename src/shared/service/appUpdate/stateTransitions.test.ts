@@ -112,6 +112,15 @@ describe('approveManualRelease', () => {
     const state = approveManualRelease(withFailure, releaseB);
     expect(state.approvedRelease).toEqual(releaseB);
   });
+
+  it('is a no-op while an activation is already in progress', () => {
+    const withActivation: UpdateControllerState = {
+      ...baseState,
+      activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
+    };
+    const state = approveManualRelease(withActivation, releaseC);
+    expect(state).toEqual(withActivation);
+  });
 });
 
 describe('approveAutomaticRelease', () => {
@@ -142,6 +151,15 @@ describe('approveAutomaticRelease', () => {
     const withFailure = { ...baseState, failedActivationRelease: releaseB };
     const state = approveAutomaticRelease(withFailure, releaseC);
     expect(state.approvedRelease).toEqual(releaseC);
+  });
+
+  it('is a no-op while an activation is already in progress', () => {
+    const withActivation: UpdateControllerState = {
+      ...baseState,
+      activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
+    };
+    const state = approveAutomaticRelease(withActivation, releaseC);
+    expect(state).toEqual(withActivation);
   });
 });
 
@@ -268,6 +286,16 @@ describe('startActivation', () => {
       deadlineAt: '2026-07-24T00:00:30.000Z',
     });
     expect(state.activeRelease).toEqual(releaseA);
+  });
+
+  it('removes approvedRelease: approvedRelease and activation are mutually exclusive', () => {
+    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const state = startActivation(withApproved, releaseB, '2026-07-24T00:00:30.000Z');
+    expect(state.approvedRelease).toBeUndefined();
+    expect(state.activation).toEqual({
+      targetRelease: releaseB,
+      deadlineAt: '2026-07-24T00:00:30.000Z',
+    });
   });
 
   it('is a no-op when an activation already exists, so concurrent launches never conflict', () => {

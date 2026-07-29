@@ -40,12 +40,11 @@ describe('zodUpdateControllerState', () => {
     expect(zodUpdateControllerState.safeParse(validControllerState).success).toBe(true);
   });
 
-  it('accepts every optional field populated', () => {
+  it('accepts every optional field populated except the mutually exclusive approvedRelease/activation', () => {
     const full = {
       ...validControllerState,
       mode: 'automatic',
       latestRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
-      approvedRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
       activation: {
         targetRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
         deadlineAt: '2026-07-24T00:00:30.000Z',
@@ -54,6 +53,28 @@ describe('zodUpdateControllerState', () => {
       lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
     };
     expect(zodUpdateControllerState.safeParse(full).success).toBe(true);
+  });
+
+  it('accepts approvedRelease alone, without an activation', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        approvedRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects approvedRelease and activation coexisting', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        approvedRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+        activation: {
+          targetRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+          deadlineAt: '2026-07-24T00:00:30.000Z',
+        },
+      }).success,
+    ).toBe(false);
   });
 
   it('rejects an unsupported schemaVersion (fail closed, not default-fallback)', () => {
