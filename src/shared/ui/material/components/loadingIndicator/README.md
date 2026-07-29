@@ -6,7 +6,7 @@ Migration target: `MDLoadingIndicator`
 
 Implementation ownership: `migrating`
 
-Canonical implementation: `src/shared/ui/material/components/loading-indicator/MDLoadingIndicator.vue`
+Canonical implementation: `src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue`
 
 The current milestone status, remaining blockers, and next action are owned only by [`docs/roadmap.md`](../../docs/roadmap.md).
 
@@ -50,7 +50,7 @@ Renderer:
 
 ## Completion findings
 
-The current implementation and proof were created from the Button dependency scenario and are not yet accepted as a complete independent family contract.
+The standalone adapter and its Button composition are an operator-approved M1 library requirement and the required official dependency closure for `MDButton.loading`. They are not justified by a fabricated production consumer; current production operations are still classified separately against the official lifecycle guidance.
 
 1. The standalone adapter now defaults its active indicator to `primary` through its family-owned public component token.
 2. Button composition overrides only that public token to `currentColor`; the parent does not access a renderer variable.
@@ -146,7 +146,7 @@ Inside Button:
 | VFS write-access recovery        | browser `requestPermission()` followed by pending-write replay | user-controlled and potentially storage-bound; no reliable 5s upper bound | browser permission UI     | feature-owned textual pending status; retain disabled/re-entry guard and result status      |
 | Google Drive reauthorization     | provider token request                                         | provider/user-controlled; no reliable 5s upper bound                      | provider authorization UI | feature-owned textual pending status; disable the action and retain the re-entry guard      |
 
-No current production recovery operation uses `MDButton.loading`. The explicitly selected standalone `MDLoadingIndicator` component and its `MDButton.loading` composition contract remain first-class, non-deprecated library surface for confirmed short indeterminate operations.
+No current production recovery operation uses `MDButton.loading`. The standalone `MDLoadingIndicator` adapter and its `MDButton.loading` composition remain first-class, non-deprecated surface because M1 explicitly approves that library contract and requires the dependency to be complete before Button composes it. A future product consumer must still satisfy the short-indeterminate lifecycle contract before using it.
 
 ## Confirmed renderer defects
 
@@ -177,10 +177,10 @@ The prior unconditional `currentColor` mapping was a Mioframe contract/ownership
 
 | Material contract                      | Demand and evidence                                                               | Public Vue/token representation                                                        | Renderer status and mapping                                                   | Owner and decision                                      | Verification                                       |
 | -------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
-| Component identity                     | Button composition requires an independently owned official dependency            | root-exported `MDLoadingIndicator`                                                     | `direct` — renderer custom element                                            | Loading Indicator — `implement-now`                     | unit + browser + visual                            |
+| Component identity                     | operator-approved M1 Button dependency closure                                    | root-exported `MDLoadingIndicator`                                                     | `direct` — renderer custom element                                            | Loading Indicator — `implement-now`                     | unit + browser + visual                            |
 | Uncontained presentation               | selected dependency and standalone API surface                                    | no public variant prop                                                                 | `direct` — renderer default                                                   | Loading Indicator — `implement-now`                     | story + visual                                     |
 | Contained presentation                 | no confirmed current consumer                                                     | none                                                                                   | `direct` — renderer supports the deferred surface                             | Loading Indicator — `defer`                             | none                                               |
-| Short indeterminate process            | selected standalone component contract; no current production operation qualifies | mounted only for consumers confirmed to satisfy official guidance                      | renderer indeterminate behavior is available                                  | Loading Indicator — `implement-now`; features — `defer` | standalone proof + consumer lifecycle review       |
+| Short indeterminate process            | operator-approved library surface; no current production operation qualifies      | mounted only for consumers confirmed to satisfy official guidance                      | renderer indeterminate behavior is available                                  | Loading Indicator — `implement-now`; features — `defer` | standalone proof + consumer lifecycle review       |
 | Standalone accessible purpose and role | standalone indicator must communicate process purpose                             | required `label` → accessible name                                                     | `partial` — renderer supplies progressbar role; wrapper requires the name     | Loading Indicator — `wrapper-correction`                | browser role/name                                  |
 | Decorative parent composition          | nested Button indicator must not create a second semantic owner                   | explicit parent `aria-hidden`; no additional public mode                               | `not-applicable` — native accessibility attribute applied by Button           | Button — `wrapper-correction`                           | unit + browser accessibility tree                  |
 | Parent action availability             | loading presentation must not silently disable an action                          | no Loading Indicator API; consumer supplies Button `disabled` and guards separately    | `not-applicable` — outside dependency renderer ownership                      | consumer — `implement-now`                              | Button + consumer proof                            |
