@@ -77,19 +77,31 @@ function makeSymlink(root, relPath, target) {
 }
 
 let tempRoot;
+let gitConfigRoot;
 
 beforeEach(() => {
   // Temp repositories must prove repository-owned ignore rules without
-  // inheriting user, system, or command-line Git configuration.
-  vi.stubEnv('GIT_CONFIG_GLOBAL', os.devNull);
+  // inheriting user, system, command-line, template, or default XDG/Home
+  // Git configuration and exclude files.
+  gitConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-env-git-config-'));
+  const globalConfigPath = path.join(gitConfigRoot, 'global.gitconfig');
+  fs.writeFileSync(globalConfigPath, '', 'utf8');
+  vi.stubEnv('GIT_CONFIG_GLOBAL', globalConfigPath);
   vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1');
   vi.stubEnv('GIT_CONFIG_COUNT', '0');
+  vi.stubEnv('GIT_TEMPLATE_DIR', gitConfigRoot);
+  vi.stubEnv('XDG_CONFIG_HOME', gitConfigRoot);
+  vi.stubEnv('HOME', gitConfigRoot);
+  vi.stubEnv('USERPROFILE', gitConfigRoot);
   tempRoot = null;
 });
 
 afterEach(() => {
   if (tempRoot) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+  if (gitConfigRoot) {
+    fs.rmSync(gitConfigRoot, { recursive: true, force: true });
   }
   vi.unstubAllEnvs();
 });
