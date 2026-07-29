@@ -20,8 +20,9 @@ Implementation ownership: `migrating`
 - Official Material defines public contracts; current Mioframe consumers select the subset implemented now; installed `@m3e/web` remains a private renderer.
 - The public entry point exports canonical `MDButton` and `MDLoadingIndicator` adapters.
 - `MDButton` is narrowed to current action-button demand: filled/outlined/text colors, small/extra-small sizes, rounded shape, label, leading icon, disabled state, native button/submit behavior, normal click bubbling, and boolean loading presentation.
-- Toggle state, selected content, elevated/tonal colors, larger sizes, square shape, reset, link fields, trailing icon, and unused form identity fields are deferred.
+- Toggle state, selected content, elevated/tonal colors, larger sizes, square shape, reset, link fields, trailing icon, unused form identity fields, and the unselected Button token surface are deferred.
 - Button loading is visual composition only: the Button host owns `aria-busy`; the nested Loading Indicator is hidden from the accessibility tree; loading does not imply disabled state or activation suppression.
+- `MDButton.loading` and standalone `MDLoadingIndicator` are an explicit operator-approved M1 library requirement and dependency closure for short indeterminate operations; no current production recovery operation is misrepresented as that consumer.
 - Consumers retain ownership of explicit `disabled` bindings, operation-specific guards, status, errors, and completion facts.
 - Both selected Button sizes hand off the supported Loading Indicator minimum overall size of `24`.
 - m3e exclusively owns Button pressed geometry, release timing, state layer, ripple, focus, elevation, expanded target, and motion; the wrapper contains no pseudo-class timing correction or parallel interaction state.
@@ -29,32 +30,39 @@ Implementation ownership: `migrating`
 - Feature-owned long or determinate progress remains outside Button, including ZIP import/export body progress.
 - Current direct Button consumers use the canonical `@shared/ui/material` export and the replaced legacy `MDButton` implementation is removed.
 - `MDLoadingIndicator` owns renderer integration, public geometry, standalone accessibility, the primary-default public color token, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`.
+- The Loading Indicator source family uses the canonical lower-camel-case path `components/loadingIndicator`.
 - Button composition overrides only the Loading Indicator-owned public color token to `currentColor`; standalone defaults and renderer inputs remain dependency-owned.
-- Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. `loading` is not their state model: they use feature-owned pending state and textual status while explicit disabled/re-entry guards remain. No current production recovery operation uses `MDButton.loading`, which remains valid and non-deprecated for confirmed short indeterminate operations.
+- Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. `loading` is not their state model: they use feature-owned pending state and textual status while explicit disabled/re-entry guards remain.
 - Shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, compatible with the selected renderer grammars.
 - Retained Material reference/system declarations live under canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was removed without an alias.
 - `token-api.md` is populated for the retained supported public surface.
+- Button owns the five official text-Button foreground/state-layer tokens required by the current Snackbar inverse-primary action context and privately maps them to documented m3e host inputs.
+- The legacy `.md *` descendant color/motion propagation is removed. A bounded production audit restored explicit ownership for Snackbar, Rich Tooltip, Dialog headline, and Empty State headline without renderer exclusions, marker attributes, or `!important`.
+- Snackbar now owns inverse-surface/inverse-on-surface context and supplies inverse-primary through the selected Button tokens; Rich Tooltip subhead/supporting text explicitly own on-surface-variant.
+- Real browser and bounded visual proof cover Snackbar resting/hover/focus/pressed color ownership and Rich Tooltip anatomy/action ownership.
 - Direct `@m3e/web` imports and raw `m3e-*` Vue elements are lint-rejected outside `src/shared/ui/material`.
+- Runtime `--m3e-*` references outside the Material boundary are rejected automatically.
 - `config/vueCustomElements.ts` is the exact compiler allow-list for `m3e-button` and `m3e-loading-indicator`; `vue/no-undef-components` remains globally enabled, with narrow described exceptions only on those two actual raw tags.
-- Storybook behavior mappings no longer use spec paths as source prefixes and are protected by resolver tests.
+- Storybook behavior mappings no longer use spec paths as source prefixes, include the renamed Loading Indicator family and color-ownership scenarios, and are protected by resolver tests.
+- Screenshot-owned stories touched by the milestone carry the `visual` tag.
+- CI autofix stages the complete working tree before cached-diff commit detection and has focused integration proof for tracked, untracked, symlink, and deleted output.
 - The intentional compatible dependency refresh, including `@m3e/web`, remains accepted PR scope.
-- CI autofix uses the fixed-point `scripts/ciAutofix.mjs` implementation and has focused integration proof.
 
 ### Correction remainder
 
-1. Complete operator visual review of the corrected Button interaction presentation and Button/standalone Loading Indicator presentation.
-2. Pass the required final current-head verification, including the release completion gate for this production dependency change.
-3. Re-review the complete resulting PR after documentation and any CI autofix commit, then make the merge-readiness decision.
+1. Pass the exact final current-head `pnpm verify:release` completion gate after all code and documentation commits. The latest local attempts were red only on the existing `appSmoke.spec.ts` startup flake, so the gate remains unresolved rather than waived.
+2. Complete operator visual and motion review of Button, standalone/composed Loading Indicator, Snackbar contextual action states, and Rich Tooltip color ownership.
+3. Re-review the complete current head, synchronize PR metadata, and make the merge-readiness decision.
 
-No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, CSS regex scanner, or new reduced-motion contract is required by this milestone.
+No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, broad CSS selector scanner, or new reduced-motion contract is required by this milestone.
 
 ## Milestones
 
 | ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                                                               |
 | --- | -------------------------------------------------- | ------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | M0  | m3e-backed architecture reset and token foundation | `correction` | none       | canonical token owners/catalogue; automated renderer boundary; exact selected custom-element allow-list; final completion gate                                                          |
-| M1a | `MDLoadingIndicator` dependency adapter            | `correction` | M0         | independently reconstructed contract; standalone/composed color ownership; valid consumer applicability; package-derived typing; independent proof; operator review; final verification |
-| M1  | `MDButton` action adapter pilot                    | `correction` | M1a        | demand-scoped action API; migrated consumers; explicit busy/loading ownership; valid Loading Indicator handoff; visible interaction proof; operator review; final verification          |
+| M1a | `MDLoadingIndicator` dependency adapter            | `correction` | M0         | operator-approved dependency contract; standalone/composed color ownership; lifecycle applicability; package-derived typing; independent proof; operator review; final verification     |
+| M1  | `MDButton` action adapter pilot                    | `correction` | M1a        | demand-scoped action API; migrated consumers; contextual token ownership; explicit busy/loading ownership; valid Loading Indicator handoff; visible interaction proof; operator review; final verification |
 | M2  | `MDSwitch` stateful adapter pilot                  | `planned`    | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                                                                |
 | M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                                                                  |
 
@@ -90,12 +98,14 @@ Existing implementation surface:
 
 Completed correction:
 
+- fixed the family path to `components/loadingIndicator`;
+- recorded the operator-approved M1 dependency-closure demand without inventing a production consumer;
 - independently reconstructed the standalone default and parent-composed color contracts;
 - selected and owned the official active-indicator component token because standalone and Button values differ;
 - replaced the inherited-color baseline with standalone primary-default/public-override proof;
 - classified every current loading consumer and replaced Loading Indicator presentation on externally suspended, unbounded operations with feature-owned textual pending status and disabled actions.
 
-Contained presentation remains deferred unless the corrected demand reconstruction finds a current consumer.
+Contained presentation remains deferred unless a current consumer is confirmed.
 
 ## M1 — Button
 
@@ -110,10 +120,12 @@ Selected implementation:
 - decorative Loading Indicator composition with `24/24` overall-size handoff;
 - Button-owned `aria-busy` and icon restoration;
 - consumer-owned action availability and operation guards;
+- five selected official text-Button tokens with primary defaults and Snackbar-owned inverse-primary contextual overrides;
 - renderer-owned pressed geometry, release timing, state layer, ripple, focus, elevation, expanded target, and motion;
-- migrated consumers without numeric loading compatibility.
+- migrated consumers without numeric loading compatibility;
+- completed shared-UI blast-radius migration after removing `.md *`.
 
-Button completion remains dependent on the corrected Loading Indicator contract and revalidated production consumer scenarios.
+Button completion now depends only on exact final current-head verification, operator visual/motion acceptance, and final resulting-PR review.
 
 ## Next component process
 
