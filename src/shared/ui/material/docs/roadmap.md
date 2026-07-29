@@ -4,7 +4,7 @@ This file is the only owner of the current sequence, milestone state, blockers, 
 
 ## Current state
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29
 
 Current milestone: `M0/M1 — m3e architecture reset, token ownership, and MDButton pilot`
 
@@ -19,40 +19,42 @@ Implementation ownership: `migrating`
 - `src/shared/ui/material` is the canonical owner of the project-facing Material Vue API, supported Material token API, renderer boundary, and Material-specific documentation.
 - Official Material defines public contracts; current Mioframe consumers select the subset implemented now; installed `@m3e/web` remains a private renderer.
 - The public entry point exports canonical `MDButton` and `MDLoadingIndicator` adapters.
-- `MDButton` is narrowed to current action-button demand: filled/outlined/text colors, small/extra-small sizes, rounded shape, label, leading icon, disabled state, native button/submit behavior, normal click bubbling, and boolean loading.
+- `MDButton` is narrowed to current action-button demand: filled/outlined/text colors, small/extra-small sizes, rounded shape, label, leading icon, disabled state, native button/submit behavior, normal click bubbling, and boolean loading presentation.
 - Toggle state, selected content, elevated/tonal colors, larger sizes, square shape, reset, link fields, trailing icon, and unused form identity fields are deferred.
-- Button loading is visual composition: the Button host owns `aria-busy`; the nested Loading indicator is hidden from the accessibility tree; standalone `MDLoadingIndicator` remains a named progressbar.
-- Both selected Button sizes hand off the supported Loading indicator minimum overall size of `24`.
-- Button pressed geometry releases with the physical host `:active` state through documented m3e pressed-shape inputs, while renderer-owned ripple/state feedback may complete independently.
-- `MDDialog` and `DialogForm` own busy action availability: busy forms expose `aria-busy`, disable apply/cancel actions, and do not inject a Loading indicator into the action button.
+- Button loading is visual composition only: the Button host owns `aria-busy`; the nested Loading Indicator is hidden from the accessibility tree; loading does not imply disabled state or activation suppression.
+- Consumers retain ownership of explicit `disabled` bindings, operation-specific guards, status, errors, and completion facts.
+- Both selected Button sizes hand off the supported Loading Indicator minimum overall size of `24`.
+- m3e exclusively owns Button pressed geometry, release timing, state layer, ripple, focus, elevation, expanded target, and motion; the wrapper contains no pseudo-class timing correction or parallel interaction state.
+- `MDDialog` and `DialogForm` own busy action availability: busy forms expose `aria-busy`, disable apply/cancel actions, and do not inject a Loading Indicator into the action button.
 - Feature-owned long or determinate progress remains outside Button, including ZIP import/export body progress.
 - Current direct Button consumers use the canonical `@shared/ui/material` export and the replaced legacy `MDButton` implementation is removed.
 - `MDLoadingIndicator` owns its renderer integration, public geometry, standalone accessibility, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`.
 - Shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, compatible with the selected renderer grammars.
 - Retained Material reference/system declarations live under canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was removed without an alias.
 - `token-api.md` is populated for the retained supported public surface.
-- Direct `@m3e/web` imports and raw `m3e-*` Vue elements are lint-rejected outside `src/shared/ui/material`; Vue recognizes only the selected `m3e-button` and `m3e-loading-indicator` custom elements.
+- Direct `@m3e/web` imports and raw `m3e-*` Vue elements are lint-rejected outside `src/shared/ui/material`.
+- `config/vueCustomElements.ts` is the exact compiler allow-list for `m3e-button` and `m3e-loading-indicator`; `vue/no-undef-components` remains globally enabled, with narrow described exceptions only on those two actual raw tags.
 - Storybook behavior mappings no longer use spec paths as source prefixes and are protected by resolver tests.
 - The intentional compatible dependency refresh, including `@m3e/web`, remains accepted PR scope.
 - CI autofix uses the fixed-point `scripts/ciAutofix.mjs` implementation and has focused integration proof.
 
 ### Verification remainder
 
-1. Complete operator visual review of Button pressed-shape release and Button/standalone Loading indicator presentation on the current preview.
-2. Run the required single final completion gate on the resulting head: `pnpm verify:release`.
+1. Complete operator visual review of the selected Button interaction presentation and Button/standalone Loading Indicator presentation on the current preview.
+2. Pass the required final current-head verification, including the release completion gate for this production dependency change.
 3. Re-review the complete resulting PR after documentation and any CI autofix commit, then make the merge-readiness decision.
 
 No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, CSS regex scanner, or new reduced-motion contract is required by this milestone.
 
 ## Milestones
 
-| ID  | Milestone                                          | Status         | Depends on | Exit gate                                                                                                                                        |
-| --- | -------------------------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | m3e-backed architecture reset and token foundation | `verification` | none       | canonical token owners/catalogue; automated renderer boundary; selected custom-element allow-list; final completion gate                         |
-| M1a | `MDLoadingIndicator` dependency adapter            | `verification` | M0         | accepted matrix; package-derived typing; standalone accessibility/geometry proof; controlled defect records; operator review; final verification |
-| M1  | `MDButton` action adapter pilot                    | `verification` | M1a        | demand-scoped action API; migrated consumers; busy/loading ownership; visible interaction proof; operator review; final verification             |
-| M2  | `MDSwitch` stateful adapter pilot                  | `planned`      | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                         |
-| M3  | sequential component migration                     | `planned`      | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                           |
+| ID | Milestone | Status | Depends on | Exit gate |
+| --- | --- | --- | --- | --- |
+| M0 | m3e-backed architecture reset and token foundation | `verification` | none | canonical token owners/catalogue; automated renderer boundary; exact selected custom-element allow-list; final completion gate |
+| M1a | `MDLoadingIndicator` dependency adapter | `verification` | M0 | accepted matrix; package-derived typing; standalone accessibility/geometry proof; controlled defect records; operator review; final verification |
+| M1 | `MDButton` action adapter pilot | `verification` | M1a | demand-scoped action API; migrated consumers; explicit busy/loading ownership; visible interaction proof; operator review; final verification |
+| M2 | `MDSwitch` stateful adapter pilot | `planned` | M1 | source-backed matrix; controlled state/event order; renderer-gap ownership; verification |
+| M3 | sequential component migration | `planned` | M2 | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership |
 
 ## Accepted foundation structure
 
@@ -95,11 +97,11 @@ Selected implementation:
 - small and extra-small sizes with a fixed rounded shape;
 - label and optional leading icon;
 - native button/submit behavior and normal event bubbling;
-- disabled and boolean loading states;
-- decorative Loading indicator composition with `24/24` overall-size handoff;
+- explicit disabled state and independent boolean loading presentation;
+- decorative Loading Indicator composition with `24/24` overall-size handoff;
 - Button-owned `aria-busy` and icon restoration;
-- immediate released-geometry mapping through documented renderer CSS inputs;
-- renderer-owned state layer, ripple, focus, elevation, and motion;
+- consumer-owned action availability and operation guards;
+- renderer-owned pressed geometry, release timing, state layer, ripple, focus, elevation, expanded target, and motion;
 - migrated consumers without numeric loading compatibility.
 
 ## Next component process
