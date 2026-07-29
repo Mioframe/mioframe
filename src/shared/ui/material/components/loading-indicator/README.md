@@ -54,7 +54,7 @@ The current implementation and proof were created from the Button dependency sce
 
 1. The standalone adapter now defaults its active indicator to `primary` through its family-owned public component token.
 2. Button composition overrides only that public token to `currentColor`; the parent does not access a renderer variable.
-3. Local file-system permission and Google authorization recovery actions can remain pending on browser/provider UI and are not short-process Loading Indicator scenarios. Their misleading loading presentation was removed while their explicit disabled/re-entry guards remain.
+3. Local file-system permission and Google authorization recovery actions can remain pending on browser/provider UI and are not short-process Loading Indicator scenarios. Their misleading loading presentation was replaced by feature-owned textual pending status while explicit disabled/re-entry guards remain.
 4. The standalone visual reference now covers the primary default and a distinctive public-token override; Button visual proof covers the composed `currentColor` handoff.
 
 ## Selected public API
@@ -139,14 +139,14 @@ Inside Button:
 
 ## Production consumer applicability
 
-| Consumer operation               | Lifecycle                                                      | Duration bounds                                                           | External suspension       | Decision                                                                                              |
-| -------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Repository read permission       | browser `requestPermission()` followed by recovery replay      | user-controlled; no reliable 5s upper bound                               | browser permission UI     | remove Loading Indicator presentation; retain disabled/re-entry guard                                 |
-| Repository read/write permission | browser `requestPermission()` followed by recovery replay      | user-controlled; no reliable 5s upper bound                               | browser permission UI     | remove Loading Indicator presentation; retain disabled/re-entry guard                                 |
-| VFS write-access recovery        | browser `requestPermission()` followed by pending-write replay | user-controlled and potentially storage-bound; no reliable 5s upper bound | browser permission UI     | remove Loading Indicator presentation; retain disabled/re-entry guard and feature-owned result status |
-| Google Drive reauthorization     | provider token request                                         | provider/user-controlled; no reliable 5s upper bound                      | provider authorization UI | remove Loading Indicator presentation; retain re-entry guard                                          |
+| Consumer operation               | Lifecycle                                                      | Duration bounds                                                           | External suspension       | Decision                                                                                    |
+| -------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+| Repository read permission       | browser `requestPermission()` followed by recovery replay      | user-controlled; no reliable 5s upper bound                               | browser permission UI     | feature-owned textual pending status; disable conflicting actions and retain re-entry guard |
+| Repository read/write permission | browser `requestPermission()` followed by recovery replay      | user-controlled; no reliable 5s upper bound                               | browser permission UI     | feature-owned textual pending status; disable conflicting actions and retain re-entry guard |
+| VFS write-access recovery        | browser `requestPermission()` followed by pending-write replay | user-controlled and potentially storage-bound; no reliable 5s upper bound | browser permission UI     | feature-owned textual pending status; retain disabled/re-entry guard and result status      |
+| Google Drive reauthorization     | provider token request                                         | provider/user-controlled; no reliable 5s upper bound                      | provider authorization UI | feature-owned textual pending status; disable the action and retain the re-entry guard      |
 
-No current production operation is accepted as short Loading Indicator demand. The explicitly selected standalone component and its Button composition contract remain first-class library surface; feature code may use that composition only when a bounded short indeterminate lifecycle is established.
+No current production operation is accepted as short Loading Indicator demand. The explicitly selected standalone component and its Button composition contract remain first-class, non-deprecated library surface; feature code may use that composition when a confirmed short indeterminate lifecycle is established.
 
 ## Confirmed renderer defects
 

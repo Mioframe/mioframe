@@ -432,11 +432,16 @@ describe('VfsActivityStatusChip', () => {
     expect(requestAccessMock).toHaveBeenCalledTimes(1);
     expect(grantButton?.attributes('disabled')).toBeDefined();
     expect(grantButton?.attributes('data-loading')).toBeUndefined();
+    expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite');
+    expect(wrapper.get('[role="status"]').text()).toBe(
+      'Waiting for browser permission. Unsaved changes will be restored after access is granted.',
+    );
 
     resolveRequest?.({ status: 'granted' });
     await vi.dynamicImportSettled();
 
     expect(dismissSaveStatusErrorMock).toHaveBeenCalledOnce();
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
     expect(
       wrapper.findAll('button').find((button) => button.text() === 'Grant write access'),
     ).toBeUndefined();

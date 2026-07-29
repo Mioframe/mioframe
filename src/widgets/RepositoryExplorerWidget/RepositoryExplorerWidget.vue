@@ -56,7 +56,8 @@ const {
   errorMessage,
   repositoryRecoveryErrors,
 });
-const { onRetryAuthorization } = googleDriveRecovery;
+const { isRetryAuthorizationLoading, onRetryAuthorization, retryAuthorizationMessage } =
+  googleDriveRecovery;
 const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
 
 const onClickPath = (path: string) => {
@@ -100,6 +101,7 @@ const onClickGrantFullAccess = () => {
         class="repository-explorer-widget__recovery"
         headline="Permission required"
         :supporting-text="localDirectoryRecoveryMessage"
+        :supporting-text-status="isGrantLocalDirectoryAccessDisabled"
       >
         <template #icon>
           <MDSymbol
@@ -128,9 +130,14 @@ const onClickGrantFullAccess = () => {
         class="repository-explorer-widget__recovery"
         :path="directoryPath"
         :errors="recoveryErrors"
+        :pending-message="retryAuthorizationMessage"
       >
         <template #actions>
-          <MDButton label="Retry authorization" @click="onRetryAuthorization" />
+          <MDButton
+            label="Retry authorization"
+            :disabled="isRetryAuthorizationLoading"
+            @click="onRetryAuthorization"
+          />
 
           <MDButton label="Return home" color="text" @click="onReturnHomeClick" />
         </template>

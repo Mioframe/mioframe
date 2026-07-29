@@ -30,7 +30,7 @@ Implementation ownership: `migrating`
 - Current direct Button consumers use the canonical `@shared/ui/material` export and the replaced legacy `MDButton` implementation is removed.
 - `MDLoadingIndicator` owns renderer integration, public geometry, standalone accessibility, the primary-default public color token, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`.
 - Button composition overrides only the Loading Indicator-owned public color token to `currentColor`; standalone defaults and renderer inputs remain dependency-owned.
-- Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. Their misleading Loading Indicator bindings are removed while explicit disabled/re-entry guards remain.
+- Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. Their misleading Loading Indicator bindings are replaced by feature-owned textual pending status while explicit disabled/re-entry guards remain.
 - Shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, compatible with the selected renderer grammars.
 - Retained Material reference/system declarations live under canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was removed without an alias.
 - `token-api.md` is populated for the retained supported public surface.
@@ -93,7 +93,7 @@ Completed correction:
 - independently reconstructed the standalone default and parent-composed color contracts;
 - selected and owned the official active-indicator component token because standalone and Button values differ;
 - replaced the inherited-color baseline with standalone primary-default/public-override proof;
-- classified every current loading consumer and removed presentation from externally suspended, unbounded operations.
+- classified every current loading consumer and replaced Loading Indicator presentation on externally suspended, unbounded operations with feature-owned textual pending status and disabled actions.
 
 Contained presentation remains deferred unless the corrected demand reconstruction finds a current consumer.
 

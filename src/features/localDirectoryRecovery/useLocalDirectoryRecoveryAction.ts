@@ -77,12 +77,13 @@ export const useLocalDirectoryRecoveryAction = ({
     isGrantLocalDirectoryAccessDisabled: computed(
       () => !recovery.value || activeRequestedMode.value !== undefined,
     ),
-    localDirectoryRecoveryMessage: computed(
-      () =>
-        recoveryMessageOverride.value ??
-        (recovery.value
-          ? `Mioframe remembers "${recovery.value.spaceName}", but your browser requires permission before opening it.`
-          : ''),
+    localDirectoryRecoveryMessage: computed(() =>
+      activeRequestedMode.value !== undefined
+        ? 'Waiting for browser permission. Mioframe will restore access after you respond.'
+        : (recoveryMessageOverride.value ??
+          (recovery.value
+            ? `Mioframe remembers "${recovery.value.spaceName}", but your browser requires permission before opening it.`
+            : '')),
     ),
   };
 };

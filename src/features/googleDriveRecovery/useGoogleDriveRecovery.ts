@@ -2,10 +2,20 @@ import {
   getGoogleDrivePathEmail,
   getGoogleDrivePathScope,
 } from '@shared/lib/googleDriveFileSystemProvider';
-import { ref, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { useMainServiceClient } from '@shared/service';
 
-export const useGoogleDriveRecovery = ({ path }: { path: MaybeRefOrGetter<string> }) => {
+interface GoogleDriveRecoveryOptions {
+  /** Google Drive path containing the account and authorization scope to recover. */
+  path: MaybeRefOrGetter<string>;
+}
+
+/**
+ * Owns Google Drive reauthorization availability and pending presentation state.
+ * @param options - Reactive Google Drive recovery inputs.
+ * @returns The guarded retry action and its feature-owned pending presentation.
+ */
+export const useGoogleDriveRecovery = ({ path }: GoogleDriveRecoveryOptions) => {
   const {
     google: { requestToken },
   } = useMainServiceClient();
@@ -33,5 +43,10 @@ export const useGoogleDriveRecovery = ({ path }: { path: MaybeRefOrGetter<string
   return {
     isRetryAuthorizationLoading,
     onRetryAuthorization,
+    retryAuthorizationMessage: computed(() =>
+      isRetryAuthorizationLoading.value
+        ? 'Complete authorization in the provider window.'
+        : undefined,
+    ),
   };
 };

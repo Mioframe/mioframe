@@ -181,14 +181,25 @@ const onInteractionOutside = () => {
     :target-element="triggerRef"
     @interaction-outside="onInteractionOutside"
   >
-    <div class="vfs-activity-status-chip__tooltip">
+    <div
+      class="vfs-activity-status-chip__tooltip"
+      :role="isGrantWriteAccessLoading ? 'status' : undefined"
+      :aria-live="isGrantWriteAccessLoading ? 'polite' : undefined"
+    >
       <template v-if="isActive">
         <p>Changes are still being saved.</p>
         <p>Keep this folder open until saving finishes.</p>
       </template>
 
       <template v-else>
-        <template v-if="storageFailureAfterGrant">
+        <template v-if="isGrantWriteAccessLoading">
+          <p>
+            Waiting for browser permission. Unsaved changes will be restored after access is
+            granted.
+          </p>
+        </template>
+
+        <template v-else-if="storageFailureAfterGrant">
           <p>Could not confirm the last save.</p>
           <p>Write access was granted but a storage failure prevented the save from completing.</p>
         </template>

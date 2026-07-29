@@ -2,6 +2,7 @@
 defineProps<{
   headline: string;
   supportingText: string;
+  supportingTextStatus?: boolean;
 }>();
 
 const slots = defineSlots<{
@@ -21,7 +22,11 @@ const slots = defineSlots<{
       {{ headline }}
     </div>
 
-    <div class="md-empty-state__supporting-text">
+    <div
+      class="md-empty-state__supporting-text"
+      :role="supportingTextStatus ? 'status' : undefined"
+      :aria-live="supportingTextStatus ? 'polite' : undefined"
+    >
       {{ supportingText }}
     </div>
 
