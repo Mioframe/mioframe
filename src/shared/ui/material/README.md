@@ -69,6 +69,8 @@ The matrix records demand evidence, selected and deferred Material surface, expl
 
 A confirmed incorrect m3e contract is `divergent`, references a stable `M3E-*` record, and follows the controlled workaround/fix lifecycle. A capability absent from m3e remains `missing` in the family matrix.
 
+Family READMEs own component contracts and matrix facts. They do not duplicate milestone status, remaining blockers, or next actions from `docs/roadmap.md`.
+
 ## Renderer boundary
 
 Allowed inside this directory:
@@ -90,7 +92,7 @@ Not allowed:
 - global component-token ownership, duplicate public token owners, token DSLs, or full Material/m3e catalogue copies;
 - silent legacy non-Material extensions.
 
-Repository enforcement rejects direct `@m3e/web` imports and raw `m3e-*` Vue elements outside this directory. Vue compilation recognizes only the renderer elements deliberately selected by current adapters: `m3e-button` and `m3e-loading-indicator`.
+Repository enforcement rejects direct `@m3e/web` imports and raw `m3e-*` Vue elements outside this directory. `config/vueCustomElements.ts` is the exact compiler allow-list for selected raw renderer tags. `vue/no-undef-components` remains enabled globally; selected raw tags use only narrow described local exceptions because that rule cannot consume the compiler predicate.
 
 ## Typing and verification
 
@@ -100,17 +102,4 @@ Tests prove the selected public contract through the faithful owner: Vue mapping
 
 Final verification uses the exact branch/task scope required by root policy. Because PR #162 changes production dependencies, its final completion gate is `pnpm verify:release`. Operator visual/motion review is manual during development; unresolved reported issues are tracked in the affected family README and `docs/roadmap.md`.
 
-## Current inventory
-
-| Area                            | Current state                                                                |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| `MDButton`                      | demand-scoped m3e-backed action adapter in verification                      |
-| `MDLoadingIndicator`            | canonical standalone/dependency adapter in verification                      |
-| Other public `MD*` components   | legacy-owned until focused migration                                         |
-| Shared m3e integration          | established with automated external boundary and selected-element allow-list |
-| Confirmed m3e defect registry   | established; `M3E-001` and `M3E-002` workarounds active                      |
-| Public component entry point    | established                                                                  |
-| Foundation/theme runtime owners | established                                                                  |
-| Public token catalogue          | established and populated                                                    |
-
-See `docs/roadmap.md` for the exact verification remainder and next action.
+See `docs/roadmap.md` for the current milestone state, exact verification remainder, and next action.
