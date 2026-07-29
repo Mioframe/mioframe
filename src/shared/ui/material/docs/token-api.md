@@ -206,7 +206,8 @@ The migration is complete. Canonical runtime declarations for every token above 
 ```text
 src/shared/ui/material/foundation/tokens.css
 src/shared/ui/material/foundation/theme.css
-src/shared/ui/material/components/loading-indicator/tokens.css
+src/shared/ui/material/components/button/tokens.css
+src/shared/ui/material/components/loadingIndicator/tokens.css
 ```
 
 `src/shared/lib/md/tokens.css` no longer exists. A token absent from this catalogue is not a supported Mioframe public token API, even if m3e or official Material defines a similarly named token.
