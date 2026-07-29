@@ -332,6 +332,9 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
                   targetRelease: {
                     releaseId: '99999999-9999-4999-8999-999999999999',
                     releaseSequence: 999,
+                    appVersion: '9.9.9',
+                    buildId: 'crash-recovery-simulated-target',
+                    buildDate: '2000-01-01T00:00:00.000Z',
                   },
                   deadlineAt: '2000-01-01T00:00:30.000Z',
                 },
@@ -369,5 +372,52 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     }
 
     await page.close();
+  });
+
+  test('a second live same-channel window blocks the clean launch a lone navigation would otherwise start', async () => {
+    const setupPage = await context.newPage();
+    await setupPage.goto(server.url);
+    await waitForControlledPage(setupPage);
+    const before = await readControllerState(setupPage, CONTROLLER_DB_NAME);
+    expect(before.status).toBe('valid');
+    const activeReleaseId =
+      before.status === 'valid' ? before.state.activeRelease.releaseId : undefined;
+    expect(activeReleaseId).toBeTruthy();
+
+    const secondWindow = await context.newPage();
+    await secondWindow.goto(server.url);
+    await waitForControlledPage(secondWindow);
+
+    const releaseD = await buildAndPublishManagedRelease({
+      channel: 'stable',
+      basePath: BASE_PATH,
+      appVersion: '1.4.0',
+      buildId: 'second-window-blocks-release-d',
+      workDir,
+    });
+
+    const checked = await sendProtocolRequest<{
+      snapshot: { latestRelease?: { releaseId: string } };
+    }>(setupPage, { type: 'CHECK_FOR_UPDATES' });
+    expect(checked.snapshot.latestRelease?.releaseId).toBe(releaseD.releaseId);
+    const installed = await sendProtocolRequest<{
+      snapshot: { scheduledRelease?: { releaseId: string } };
+    }>(setupPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
+    expect(installed.snapshot.scheduledRelease?.releaseId).toBe(releaseD.releaseId);
+
+    // secondWindow is still open and controlled: navigating setupPage must
+    // not activate release D.
+    await setupPage.reload();
+    await waitForControlledPage(setupPage);
+    await expect(setupPage.getByText(/^browser storage$/i)).toBeVisible();
+    const afterNavigation = await readControllerState(setupPage, CONTROLLER_DB_NAME);
+    expect(afterNavigation.status).toBe('valid');
+    if (afterNavigation.status === 'valid') {
+      expect(afterNavigation.state.activeRelease.releaseId).toBe(activeReleaseId);
+      expect(afterNavigation.state.approvedRelease?.releaseId).toBe(releaseD.releaseId);
+    }
+
+    await setupPage.close();
+    await secondWindow.close();
   });
 });

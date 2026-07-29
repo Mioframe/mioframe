@@ -51,6 +51,10 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         channel: 'chromium',
       },
+      // The complete managed-update corpus is Chromium's authoritative
+      // proof; the cross-engine spec below is Firefox/WebKit-only narrow
+      // smoke and must not duplicate onto Chromium too.
+      testIgnore: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
     },
     // Narrow cross-engine lifecycle smoke only: these two projects are
     // scoped to a single spec so the complete managed-update corpus stays
