@@ -7,6 +7,8 @@ description: 'Use for implementing, migrating, or materially changing one offici
 
 Implement one explicitly selected official Material component end to end through the Material → Vue → m3e boundary.
 
+This is the single canonical implementation workflow for both newly selected families and existing families that require completion. `material-component-completion` is only a focused entrypoint for uncertain or partial existing artifacts; it must read and apply this complete workflow rather than define a second one.
+
 ## Read first
 
 - applicable parent `AGENTS.md` files;
@@ -26,7 +28,7 @@ A component name is sufficient input only when these sources resolve the current
 Produce one complete family migration result:
 
 1. accepted demand-scoped Material–m3e–Vue matrix in the family README;
-2. canonical Vue adapter and any independently owned official dependency adapters;
+2. canonical Vue adapter and every required official dependency completed independently as its own canonical adapter;
 3. package-derived renderer typing and private mapping;
 4. selected public token declarations/catalogue entries when required;
 5. consumer migration and removal of replaced target-owned logic;
@@ -54,6 +56,18 @@ Select only current demand plus the minimum adjacent surface needed for a cohere
 ### 2. Resolve dependencies and ownership
 
 Identify every official Material component participating in the selected scenarios. Complete each required dependency as its own canonical `MD*` adapter before composing it.
+
+#### Dependency closure gate
+
+When a required official dependency is discovered:
+
+1. add it to an explicit ordered dependency queue;
+2. record only the parent demand and intended public handoff before dependency work starts;
+3. make the dependency the current selected family and run this entire workflow for it independently;
+4. if dependency artifacts already exist but their completion is uncertain, use `material-component-completion` to reconstruct and close that family first;
+5. resume parent composition only after the dependency family has an accepted matrix, public API, token ownership, renderer audit, defect decisions, independent proof, exports, and truthful status.
+
+A dependency must not be implemented incidentally inside the parent implementation, parent README, parent stories, or parent tests. Parent composition proof does not replace standalone dependency proof. A parent remains `migrating` while any required dependency remains `legacy`, `partial`, `blocked`, or otherwise incomplete.
 
 Record parent/dependency ownership and exact public handoff. A parent must not render a dependency’s raw `m3e-*`, set its private renderer variables, or own its accessibility, geometry, defects, motion, or token mapping.
 
@@ -144,6 +158,8 @@ Keep the component `migrating` while any selected implementation, dependency, ro
 
 - Public API derived from legacy Mioframe or m3e vocabulary.
 - Raw dependency renderer access from a parent.
+- Incidental dependency implementation that skips the dependency’s independent family workflow.
+- Parent completion claims while a required dependency is incomplete.
 - Private shadow DOM or method access.
 - Parallel state-layer, ripple, focus, accessibility, geometry-engine, or motion implementation in the wrapper.
 - Host pseudo-class or renderer-CSS overrides that change renderer-owned interaction timing or transient geometry.
@@ -162,6 +178,7 @@ Migration target:
 Official sources:
 Selected Material surface:
 Deferred or source-conflict surface:
+Dependency queue and closure statuses:
 Dependency adapters and statuses:
 Public Vue API:
 Supported public tokens and owners:
