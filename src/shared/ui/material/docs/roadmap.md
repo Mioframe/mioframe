@@ -8,7 +8,7 @@ Last updated: 2026-07-29
 
 Current milestone: `M0/M1 — m3e architecture reset, token ownership, and MDButton pilot`
 
-Status: `verification`
+Status: `correction`
 
 Owner: PR #162 / `refactor/material-docs-ownership`
 
@@ -28,7 +28,7 @@ Implementation ownership: `migrating`
 - `MDDialog` and `DialogForm` own busy action availability: busy forms expose `aria-busy`, disable apply/cancel actions, and do not inject a Loading Indicator into the action button.
 - Feature-owned long or determinate progress remains outside Button, including ZIP import/export body progress.
 - Current direct Button consumers use the canonical `@shared/ui/material` export and the replaced legacy `MDButton` implementation is removed.
-- `MDLoadingIndicator` owns its renderer integration, public geometry, standalone accessibility, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`.
+- `MDLoadingIndicator` already owns renderer integration, public geometry, standalone accessibility, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`; its standalone color contract and current consumer applicability remain under correction.
 - Shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, compatible with the selected renderer grammars.
 - Retained Material reference/system declarations live under canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was removed without an alias.
 - `token-api.md` is populated for the retained supported public surface.
@@ -38,23 +38,27 @@ Implementation ownership: `migrating`
 - The intentional compatible dependency refresh, including `@m3e/web`, remains accepted PR scope.
 - CI autofix uses the fixed-point `scripts/ciAutofix.mjs` implementation and has focused integration proof.
 
-### Verification remainder
+### Correction remainder
 
-1. Complete operator visual review of the selected Button interaction presentation and Button/standalone Loading Indicator presentation on the current preview.
-2. Pass the required final current-head verification, including the release completion gate for this production dependency change.
-3. Re-review the complete resulting PR after documentation and any CI autofix commit, then make the merge-readiness decision.
+1. Complete `MDLoadingIndicator` through the name-only completion flow using an independent official-contract reconstruction rather than accepting its current family matrix.
+2. Correct the standalone active-indicator color contract: official standalone default is `primary`; Button-composed presentation may use `currentColor` only through a Loading Indicator-owned public component token or public API override.
+3. Reclassify each current Button loading consumer against official Loading Indicator usage guidance, including expected/worst-case duration and browser/provider-controlled waiting. Existing rendering alone is not demand evidence.
+4. Update implementation, family matrix, token catalogue, stories, browser/visual proof, Button handoff, and affected consumers according to the resulting accepted contract.
+5. Complete operator visual review of the corrected Button interaction presentation and Button/standalone Loading Indicator presentation.
+6. Pass the required final current-head verification, including the release completion gate for this production dependency change.
+7. Re-review the complete resulting PR after documentation and any CI autofix commit, then make the merge-readiness decision.
 
 No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, CSS regex scanner, or new reduced-motion contract is required by this milestone.
 
 ## Milestones
 
-| ID  | Milestone                                          | Status         | Depends on | Exit gate                                                                                                                                        |
-| --- | -------------------------------------------------- | -------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | m3e-backed architecture reset and token foundation | `verification` | none       | canonical token owners/catalogue; automated renderer boundary; exact selected custom-element allow-list; final completion gate                   |
-| M1a | `MDLoadingIndicator` dependency adapter            | `verification` | M0         | accepted matrix; package-derived typing; standalone accessibility/geometry proof; controlled defect records; operator review; final verification |
-| M1  | `MDButton` action adapter pilot                    | `verification` | M1a        | demand-scoped action API; migrated consumers; explicit busy/loading ownership; visible interaction proof; operator review; final verification    |
-| M2  | `MDSwitch` stateful adapter pilot                  | `planned`      | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                         |
-| M3  | sequential component migration                     | `planned`      | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                           |
+| ID  | Milestone                                           | Status       | Depends on | Exit gate                                                                                                                                                                             |
+| --- | --------------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | m3e-backed architecture reset and token foundation | `correction` | none       | canonical token owners/catalogue; automated renderer boundary; exact selected custom-element allow-list; final completion gate                                                        |
+| M1a | `MDLoadingIndicator` dependency adapter             | `correction` | M0         | independently reconstructed contract; standalone/composed color ownership; valid consumer applicability; package-derived typing; independent proof; operator review; final verification |
+| M1  | `MDButton` action adapter pilot                     | `correction` | M1a        | demand-scoped action API; migrated consumers; explicit busy/loading ownership; valid Loading Indicator handoff; visible interaction proof; operator review; final verification          |
+| M2  | `MDSwitch` stateful adapter pilot                   | `planned`    | M1         | source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                                                              |
+| M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; dependencies first; demand-scoped API/tokens; explicit gap ownership                                                                                |
 
 ## Accepted foundation structure
 
@@ -77,16 +81,23 @@ One public token has one canonical base owner. A selected theme override must re
 
 ## M1a — Loading indicator
 
-Selected implementation:
+Existing implementation surface:
 
 - required `label` and optional numeric overall `size` API;
 - independent root export and package-derived renderer source type;
 - standalone browser role/name and host-geometry proof;
-- independent size and inherited-color visual baselines;
+- independent size and current inherited-color visual baselines;
 - decorative Button composition through the public Vue boundary;
 - owner-local `M3E-001`/`M3E-002` workarounds.
 
-Contained presentation remains deferred.
+Open correction:
+
+- independently reconstruct the standalone default and parent-composed color contracts;
+- select and own the official active-indicator component token when standalone and Button values differ;
+- replace baselines that preserve an incorrect contract rather than proving Material correctness;
+- validate the real duration and lifecycle of each production consumer before accepting it as Loading Indicator demand.
+
+Contained presentation remains deferred unless the corrected demand reconstruction finds a current consumer.
 
 ## M1 — Button
 
@@ -104,16 +115,19 @@ Selected implementation:
 - renderer-owned pressed geometry, release timing, state layer, ripple, focus, elevation, expanded target, and motion;
 - migrated consumers without numeric loading compatibility.
 
+Button completion remains dependent on the corrected Loading Indicator contract and revalidated production consumer scenarios.
+
 ## Next component process
 
 For each later component:
 
-1. inspect official overview/specs/guidelines/accessibility and related components;
-2. select current demand and complete official dependencies first;
-3. create the accepted Material–m3e–Vue matrix;
-4. implement the minimum canonical adapter and selected token surface;
-5. keep m3e private and route gaps to the correct owner;
-6. migrate consumers and remove replaced target ownership;
-7. verify through the faithful proof owners and exact branch/task scope.
+1. inspect official overview/specs/guidelines/accessibility and related components before accepting existing family artifacts;
+2. select current demand from production scenarios and complete official dependencies first;
+3. distinguish standalone defaults from parent-composed overrides;
+4. create the accepted Material–m3e–Vue matrix;
+5. implement the minimum canonical adapter and selected token surface;
+6. keep m3e private and route gaps to the correct owner;
+7. migrate consumers and remove replaced target ownership;
+8. verify through the faithful proof owners and exact branch/task scope.
 
 Consider shared adapter extraction only after M1 and M2 demonstrate repeated concrete code, not merely repeated documentation structure.
