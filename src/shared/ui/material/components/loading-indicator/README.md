@@ -8,7 +8,9 @@ Implementation ownership: `migrating`
 
 Canonical implementation: `src/shared/ui/material/components/loading-indicator/MDLoadingIndicator.vue`
 
-## Status and ownership
+The current milestone status, remaining blockers, and next action are owned only by [`docs/roadmap.md`](../../docs/roadmap.md).
+
+## Ownership
 
 Loading Indicator is an independently owned official Material component:
 
@@ -23,11 +25,7 @@ MDButton.loading
 
 Loading Indicator owns its public API, renderer integration, standalone accessibility, geometry, private mappings, defects, tests, stories, and visual proof.
 
-Button owns composition state, placement, `aria-busy`, decorative accessibility suppression, inherited color context, and selected overall size. Button does not own renderer inputs, geometry, defects, or motion.
-
-The selected implementation and automated proof are complete. The family remains in `verification` pending operator visual review, the PR-level final completion gate, and final full-PR review.
-
-No unresolved operator-reported Loading Indicator visual or motion issue is currently recorded. Operator review is manual during development; a reported issue reopens this family.
+Button owns loading presentation, placement, `aria-busy`, decorative accessibility suppression, inherited color context, and selected overall size. Loading does not imply disabled state or activation suppression; consumers own action availability and operation-specific guards. Button does not own Loading Indicator renderer inputs, geometry, defects, or motion.
 
 ## Official sources
 
@@ -79,11 +77,11 @@ renderer shape scale      = unchanged and renderer-owned
 The adapter sets host width/height from public overall size and maps the active-size renderer input separately. It does not inspect or compensate internal animated-shape geometry.
 
 | Public size | Host size | Active-size input |
-| ----------- | --------- | ----------------- |
-| `24`        | `24px`    | `19px`            |
-| `32`        | `32px`    | `25.333333…px`    |
-| `40`        | `40px`    | `31.666667…px`    |
-| `48`        | `48px`    | `38px`            |
+| --- | --- | --- |
+| `24` | `24px` | `19px` |
+| `32` | `32px` | `25.333333…px` |
+| `40` | `40px` | `31.666667…px` |
+| `48` | `48px` | `38px` |
 
 ## Button composition mapping
 
@@ -100,6 +98,7 @@ Inside Button:
 - the indicator inherits the Button content color;
 - the indicator is hidden from the accessibility tree;
 - the Button remains the semantic owner and exposes `aria-busy`;
+- loading does not set `disabled` or suppress activation;
 - the leading icon is restored after loading ends.
 
 ## Confirmed renderer defects
@@ -128,25 +127,26 @@ Current mitigation:
 
 ## Material–m3e–Vue matrix
 
-| Material contract                      | Demand and evidence                                                | Public Vue representation                                | Renderer status and mapping                                                   | Owner and decision                                  | Verification                                       |
-| -------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------- |
-| Component identity                     | Button loading requires an independently owned official dependency | root-exported `MDLoadingIndicator`                       | `direct` — renderer custom element                                            | Loading Indicator — `implement-now`                 | unit + browser + visual                            |
-| Uncontained presentation               | current Button composition and standalone proof surface            | no public variant prop                                   | `direct` — renderer default                                                   | Loading Indicator — `implement-now`                 | story + visual                                     |
-| Contained presentation                 | no current consumer; official Loading Indicator sources above      | none                                                     | `direct` — renderer supports the deferred surface                             | Loading Indicator — `defer`                         | none                                               |
-| Short indeterminate process            | current Button action feedback                                     | mounted while parent is loading                          | `direct` — renderer indeterminate behavior                                    | Loading Indicator — `implement-now`                 | contract + visual                                  |
-| Standalone accessible purpose and role | standalone indicator must communicate process purpose              | required `label` → accessible name                       | `partial` — renderer supplies progressbar role; wrapper requires the name     | Loading Indicator — `wrapper-correction`            | browser role/name                                  |
-| Decorative parent composition          | nested Button indicator must not create a second semantic owner    | explicit parent `aria-hidden`; no additional public mode | `not-applicable` — native accessibility attribute applied by Button           | Button — `wrapper-correction`                       | unit + browser accessibility tree                  |
-| Inherited active color                 | Button loading must follow Button content color                    | `currentColor`                                           | `direct` — documented renderer color input                                    | Loading Indicator — `implement-now`                 | independent visual                                 |
-| Overall and active size                | selected Button composition and official 48/38 geometry            | numeric overall `size`                                   | `divergent` — `M3E-001`/`M3E-002`; host size plus private active-size mapping | Loading Indicator — `temporary-renderer-workaround` | unit + browser geometry + visual                   |
-| Public component tokens                | no current CSS consumer                                            | none                                                     | `not-applicable` — renderer inputs remain private                             | Loading Indicator — `defer`                         | none                                               |
-| Motion and reduced motion              | renderer motion is selected; no wrapper control is required        | no public control                                        | `direct` — renderer-owned animation                                           | m3e — `implement-now`                               | installed-artifact assessment + operator reporting |
-| Forced colors                          | selected environment must remain legible                           | none                                                     | `direct` — renderer uses `CanvasText`                                         | m3e — `implement-now`                               | operator reporting                                 |
+| Material contract | Demand and evidence | Public Vue representation | Renderer status and mapping | Owner and decision | Verification |
+| --- | --- | --- | --- | --- | --- |
+| Component identity | Button loading requires an independently owned official dependency | root-exported `MDLoadingIndicator` | `direct` — renderer custom element | Loading Indicator — `implement-now` | unit + browser + visual |
+| Uncontained presentation | current Button composition and standalone proof surface | no public variant prop | `direct` — renderer default | Loading Indicator — `implement-now` | story + visual |
+| Contained presentation | no current consumer; official Loading Indicator sources above | none | `direct` — renderer supports the deferred surface | Loading Indicator — `defer` | none |
+| Short indeterminate process | current Button action feedback | mounted while parent is loading | `direct` — renderer indeterminate behavior | Loading Indicator — `implement-now` | contract + visual |
+| Standalone accessible purpose and role | standalone indicator must communicate process purpose | required `label` → accessible name | `partial` — renderer supplies progressbar role; wrapper requires the name | Loading Indicator — `wrapper-correction` | browser role/name |
+| Decorative parent composition | nested Button indicator must not create a second semantic owner | explicit parent `aria-hidden`; no additional public mode | `not-applicable` — native accessibility attribute applied by Button | Button — `wrapper-correction` | unit + browser accessibility tree |
+| Parent action availability | loading presentation must not silently disable an action | no Loading Indicator API; consumer supplies Button `disabled` and guards separately | `not-applicable` — outside dependency renderer ownership | consumer — `implement-now` | Button + consumer proof |
+| Inherited active color | Button loading must follow Button content color | `currentColor` | `direct` — documented renderer color input | Loading Indicator — `implement-now` | independent visual |
+| Overall and active size | selected Button composition and official 48/38 geometry | numeric overall `size` | `divergent` — `M3E-001`/`M3E-002`; host size plus private active-size mapping | Loading Indicator — `temporary-renderer-workaround` | unit + browser geometry + visual |
+| Public component tokens | no current CSS consumer | none | `not-applicable` — renderer inputs remain private | Loading Indicator — `defer` | none |
+| Motion and reduced motion | renderer motion is selected; no wrapper control is required | no public control | `direct` — renderer-owned animation | m3e — `implement-now` | installed-artifact assessment + operator reporting |
+| Forced colors | selected environment must remain legible | none | `direct` — renderer uses `CanvasText` | m3e — `implement-now` | operator reporting |
 
 ## Token and parent boundary
 
 No public Loading Indicator component token is currently required, so no placeholder declarations are added. Shared reference/system roles belong to foundation. Parent components use public props, inherited color, or standard native accessibility attributes; they do not set dependency-private renderer inputs.
 
-Button renders `MDLoadingIndicator`, hands off the supported overall size, relies on inherited color, makes the nested instance decorative, and gives loading precedence over its icon route. It does not own renderer mapping, geometry, defects, or motion.
+Button renders `MDLoadingIndicator`, hands off the supported overall size, relies on inherited color, makes the nested instance decorative, and gives loading precedence over its icon route. It does not own renderer mapping, geometry, defects, motion, or action availability.
 
 ## Implemented proof
 
@@ -155,12 +155,6 @@ Button renders `MDLoadingIndicator`, hands off the supported overall size, relie
 - standalone size and inherited-color stories/baselines;
 - browser host bounding-box proof without shadow-DOM access;
 - standalone browser progressbar role/name proof;
-- Button composition proof for decorative accessibility, inherited presentation, size handoff, and icon restoration;
+- Button composition proof for decorative accessibility, inherited presentation, size handoff, loading/disabled independence, and icon restoration;
 - revalidation of `M3E-001` and `M3E-002` against installed `2.6.3`;
 - renderer motion assessment without inventing an unsupported defect.
-
-## Verification remainder
-
-- complete operator visual review of standalone and Button-composed presentation;
-- pass the PR-level final `pnpm verify:release` completion gate on the final head;
-- complete final full-PR review with no unresolved operator-reported issue.
