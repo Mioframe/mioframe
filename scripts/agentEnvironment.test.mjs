@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { checkAgentEnvironment, getDirectorySymlinkType } from './agentEnvironment.mjs';
 
@@ -79,6 +79,11 @@ function makeSymlink(root, relPath, target) {
 let tempRoot;
 
 beforeEach(() => {
+  // Temp repositories must prove repository-owned ignore rules without
+  // inheriting user, system, or command-line Git configuration.
+  vi.stubEnv('GIT_CONFIG_GLOBAL', os.devNull);
+  vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1');
+  vi.stubEnv('GIT_CONFIG_COUNT', '0');
   tempRoot = null;
 });
 
@@ -86,6 +91,7 @@ afterEach(() => {
   if (tempRoot) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
+  vi.unstubAllEnvs();
 });
 
 describe('CLAUDE.md adapters — check mode', () => {
