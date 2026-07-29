@@ -4,12 +4,14 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 
 ## Required workflow
 
+- Use `material-component` as the normal operator-facing entrypoint. The Material artifact name is sufficient input.
+- The router resolves official name, existing family, current demand, mode, dependencies, renderer evidence, proof, and verification scope from the repository.
+- `material-component-adapter` is the single canonical implementation workflow.
+- `material-component-completion` adds completion preflight for an existing partial, incidental, dependency-created, previously migrated, or otherwise uncertain component; it does not define another implementation process.
 - Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, `docs/token-api.md`, `docs/m3e-defects.md`, `docs/roadmap.md`, and the selected family README.
-- Use `material-component-adapter` for one explicitly selected new, migrating, or materially changed official Material component.
-- Use `material-component-completion` when an existing component is partial, incidental, dependency-created, previously migrated, or otherwise has uncertain independent workflow coverage.
-- Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or another decision not already resolved by the canonical documents.
+- Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or another decision not already resolved by canonical evidence.
 - Complete required official Material dependency adapters before composing them from a parent.
-- When a dependency is discovered, process it as the next first-class family through the complete adapter workflow; do not implement it as incidental parent scope. Resume parent composition only after dependency closure.
+- When a dependency is discovered, process its name automatically as the next first-class family through the same name-only routing and complete adapter workflow. Do not require another operator prompt. Resume parent composition only after dependency closure.
 
 ## Authority
 
@@ -61,7 +63,7 @@ Use the proof model defined by `docs/component-adapter.md` and repository testin
 
 Final verification uses the exact task scope required by the root `AGENTS.md`; Material-specific documents must not replace it with an unscoped command.
 
-A component remains `migrating` until its selected contract, dependencies, public exports, token ownership, defect records, consumer migration, required standalone and composed proof, current-head verification, and reported operator issues are resolved. Green CI alone is not architecture approval.
+A component remains `migrating` until its selected contract, dependencies, public exports, token ownership, defect records, consumer migration, required proof, current-head verification, and reported operator issues are resolved. Green CI alone is not architecture approval.
 
 ## Boundary
 
