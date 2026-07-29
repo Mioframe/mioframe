@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Mioframe Material Loading indicator adapter backed privately by @m3e/web. Demand-scoped to the default/uncontained indeterminate presentation required by MDButton loading composition: an accessible purpose label, an optional numeric size (24-240 dp, default 48, clamped outside that range), and inherited active-indicator color.',
+          'Mioframe Material Loading indicator adapter backed privately by @m3e/web. Demand-scoped to the default/uncontained indeterminate presentation: an accessible purpose label, an optional numeric size (24-240 dp, default 48, clamped outside that range), and the official primary active-indicator color with a public component-token override.',
       },
     },
   },
@@ -38,17 +38,18 @@ export const SizeMatrix: Story = {
   }),
 };
 
-export const InheritedColorOnColoredSurfaces: Story = {
+export const ColorContract: Story = {
   tags: ['visual'],
   render: () => ({
     components: { MDLoadingIndicator },
     template: `
-      <div data-testid="visual-md-loading-indicator-inherited-color" class="visual-checker-backdrop">
+      <div data-testid="visual-md-loading-indicator-colors" class="visual-checker-backdrop">
         <div class="visual-row">
-          <span style="color: #6750a4;"><MDLoadingIndicator label="Primary colored" /></span>
-          <span style="color: #ffffff; background: #6750a4; display: inline-flex; padding: 8px;">
-            <MDLoadingIndicator label="On primary background" />
-          </span>
+          <MDLoadingIndicator label="Default primary" />
+          <MDLoadingIndicator
+            label="Public color override"
+            style="--md-comp-loading-indicator-active-indicator-color: #006e1c;"
+          />
         </div>
       </div>
     `,

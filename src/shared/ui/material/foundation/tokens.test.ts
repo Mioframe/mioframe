@@ -5,6 +5,8 @@ const LEGACY_TOKENS_PATH = './src/shared/lib/md/tokens.css';
 const FOUNDATION_TOKENS_PATH = './src/shared/ui/material/foundation/tokens.css';
 const FOUNDATION_THEME_PATH = './src/shared/ui/material/foundation/theme.css';
 const FOUNDATION_INDEX_PATH = './src/shared/ui/material/foundation/index.css';
+const LOADING_INDICATOR_TOKENS_PATH =
+  './src/shared/ui/material/components/loading-indicator/tokens.css';
 const APP_STYLES_PATH = './src/app/styles/styles.css';
 const MD_INDEX_PATH = './src/shared/lib/md/index.css';
 const TOKEN_API_DOC_PATH = './src/shared/ui/material/docs/token-api.md';
@@ -47,6 +49,7 @@ describe('Material foundation token ownership', () => {
   const foundationTokens = readFileSync(FOUNDATION_TOKENS_PATH, 'utf8');
   const foundationTheme = readFileSync(FOUNDATION_THEME_PATH, 'utf8');
   const foundationIndex = readFileSync(FOUNDATION_INDEX_PATH, 'utf8');
+  const loadingIndicatorTokens = readFileSync(LOADING_INDICATOR_TOKENS_PATH, 'utf8');
   const appStyles = readFileSync(APP_STYLES_PATH, 'utf8');
   const mdIndex = readFileSync(MD_INDEX_PATH, 'utf8');
   const catalogue = readFileSync(TOKEN_API_DOC_PATH, 'utf8');
@@ -95,9 +98,10 @@ describe('Material foundation token ownership', () => {
     const declaredTokens = new Set([
       ...extractDeclaredCustomProperties(foundationTokens),
       ...extractDeclaredCustomProperties(foundationTheme),
+      ...extractDeclaredCustomProperties(loadingIndicatorTokens),
     ]);
     const publicDeclaredTokens = [...declaredTokens].filter(
-      (name) => !name.startsWith('--md-private-'),
+      (name) => !name.startsWith('--md-private-') && !name.startsWith('--m3e-'),
     );
     const catalogueTokens = extractCatalogueTableTokens(catalogue);
 
@@ -132,7 +136,19 @@ describe('Material foundation token ownership', () => {
   it('has one declaration owner per public token, except the sanctioned elevation override', () => {
     const tokensCssNames = extractDeclaredCustomProperties(foundationTokens);
     const themeCssNames = extractDeclaredCustomProperties(foundationTheme);
-    const sharedNames = [...tokensCssNames].filter((name) => themeCssNames.has(name));
+    const loadingIndicatorCssNames = extractDeclaredCustomProperties(loadingIndicatorTokens);
+    const declarationCounts = new Map<string, number>();
+
+    for (const names of [tokensCssNames, themeCssNames, loadingIndicatorCssNames]) {
+      for (const name of names) {
+        if (name.startsWith('--md-private-') || name.startsWith('--m3e-')) continue;
+        declarationCounts.set(name, (declarationCounts.get(name) ?? 0) + 1);
+      }
+    }
+
+    const sharedNames = [...declarationCounts]
+      .filter(([, count]) => count > 1)
+      .map(([name]) => name);
 
     expect(new Set(sharedNames)).toEqual(SANCTIONED_CROSS_FILE_TOKENS);
   });

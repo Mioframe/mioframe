@@ -22,8 +22,9 @@ const props = withDefaults(
     size?: 'extra-small' | 'small' | undefined;
     /**
      * Shows a Material Loading indicator in place of the leading icon for a short
-     * async action (Loading indicator placement guidance). Takes precedence over
-     * the leading icon, which is restored once loading ends.
+     * indeterminate process. Takes precedence over the leading icon, which is
+     * restored once loading ends. Do not use while completion is suspended on
+     * browser, provider, or other user-controlled UI.
      */
     loading?: boolean | undefined;
   }>(),
@@ -99,6 +100,7 @@ const onClick = (event: MouseEvent) => {
     >
       <MDLoadingIndicator
         v-if="isLoading"
+        class="md-button__loading-indicator"
         aria-hidden="true"
         :label="props.label"
         :size="loadingIndicatorSize"
@@ -125,5 +127,9 @@ const onClick = (event: MouseEvent) => {
 .md-button__icon {
   display: inline-flex;
   color: inherit;
+}
+
+.md-button__loading-indicator {
+  --md-comp-loading-indicator-active-indicator-color: currentColor;
 }
 </style>

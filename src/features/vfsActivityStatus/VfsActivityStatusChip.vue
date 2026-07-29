@@ -223,7 +223,6 @@ const onInteractionOutside = () => {
         color="text"
         :disabled="isGrantWriteAccessLoading"
         label="Grant write access"
-        :loading="isGrantWriteAccessLoading"
         @click="onClickGrantWriteAccess"
       />
       <MDButton v-if="isError" color="text" label="Dismiss" @click="onClickDismissError" />

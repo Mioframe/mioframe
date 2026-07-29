@@ -10,6 +10,17 @@ describe('MDLoadingIndicator adapter', () => {
     expect(indicator.attributes('aria-label')).toBe('Loading news article');
   });
 
+  it('keeps public color overrides on the renderer host', () => {
+    const wrapper = mount(MDLoadingIndicator, {
+      attrs: { style: '--md-comp-loading-indicator-active-indicator-color: #006e1c' },
+      props: { label: 'Loading' },
+    });
+
+    expect(wrapper.get('m3e-loading-indicator').attributes('style')).toContain(
+      '--md-comp-loading-indicator-active-indicator-color: #006e1c',
+    );
+  });
+
   describe('overall host geometry', () => {
     it('sizes the host to the official default overall size of 48 when no size is supplied', () => {
       const wrapper = mount(MDLoadingIndicator, { props: { label: 'Loading' } });

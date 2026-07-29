@@ -49,6 +49,7 @@ describe('MDButton adapter', () => {
     const indicator = button.get('m3e-loading-indicator');
     expect(button.attributes('aria-busy')).toBe('true');
     expect(indicator.attributes('aria-hidden')).toBe('true');
+    expect(indicator.classes()).toContain('md-button__loading-indicator');
     expect(indicator.attributes('style')).toContain('width: 24px');
     expect(button.find('[data-icon]').exists()).toBe(false);
 

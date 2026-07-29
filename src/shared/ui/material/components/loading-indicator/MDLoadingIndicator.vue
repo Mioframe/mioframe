@@ -80,11 +80,9 @@ const style = computed(() => ({
 </template>
 
 <style scoped>
+@import './tokens.css';
+
 .md-loading-indicator {
   vertical-align: middle;
-  /* Inherits the composing component's rendered color, matching the Loading
-     indicator accessibility requirement to keep 3:1 contrast against the
-     component it is placed in. */
-  --m3e-loading-indicator-active-indicator-color: currentColor;
 }
 </style>

@@ -48,14 +48,14 @@ Renderer:
 - installed artifacts and browser behavior are runtime evidence;
 - `M3eLoadingIndicatorElement` is the package-derived type source.
 
-## Open completion findings
+## Completion findings
 
 The current implementation and proof were created from the Button dependency scenario and are not yet accepted as a complete independent family contract.
 
-1. The adapter currently maps active color unconditionally to `currentColor`. That satisfies Button composition but does not preserve the official standalone `primary` default.
-2. Standalone and Button-composed colors therefore require explicit separate ownership. The Loading Indicator family must own the selected official active-indicator component token and standalone default; Button may override only that public token or public Vue API at its composition site.
-3. Current recovery-action consumers may remain pending while browser or provider-controlled UI waits for user action. Existing rendering does not establish that these operations satisfy the official short-process guidance. Each operation lifecycle must be reclassified before it can remain selected demand.
-4. Existing inherited-color visual baselines prove current rendering only. They do not prove that the standalone Material contract is correct.
+1. The standalone adapter now defaults its active indicator to `primary` through its family-owned public component token.
+2. Button composition overrides only that public token to `currentColor`; the parent does not access a renderer variable.
+3. Local file-system permission and Google authorization recovery actions can remain pending on browser/provider UI and are not short-process Loading Indicator scenarios. Their misleading loading presentation was removed while their explicit disabled/re-entry guards remain.
+4. The standalone visual reference now covers the primary default and a distinctive public-token override; Button visual proof covers the composed `currentColor` handoff.
 
 ## Selected public API
 
@@ -86,7 +86,7 @@ The corrected family contract requires Loading Indicator ownership of:
 --md-comp-loading-indicator-active-indicator-color
 ```
 
-Expected ownership:
+Implemented ownership:
 
 ```text
 Loading Indicator standalone default
@@ -139,15 +139,14 @@ Inside Button:
 
 ## Production consumer applicability
 
-The current production consumers are recovery actions around local file-system permission and Google authorization flows. Before they remain accepted Loading Indicator demand, the completion flow must inspect for each operation:
+| Consumer operation               | Lifecycle                                                      | Duration bounds                                                           | External suspension       | Decision                                                                                              |
+| -------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Repository read permission       | browser `requestPermission()` followed by recovery replay      | user-controlled; no reliable 5s upper bound                               | browser permission UI     | remove Loading Indicator presentation; retain disabled/re-entry guard                                 |
+| Repository read/write permission | browser `requestPermission()` followed by recovery replay      | user-controlled; no reliable 5s upper bound                               | browser permission UI     | remove Loading Indicator presentation; retain disabled/re-entry guard                                 |
+| VFS write-access recovery        | browser `requestPermission()` followed by pending-write replay | user-controlled and potentially storage-bound; no reliable 5s upper bound | browser permission UI     | remove Loading Indicator presentation; retain disabled/re-entry guard and feature-owned result status |
+| Google Drive reauthorization     | provider token request                                         | provider/user-controlled; no reliable 5s upper bound                      | provider authorization UI | remove Loading Indicator presentation; retain re-entry guard                                          |
 
-- when the loading state begins and ends;
-- expected and worst-case duration;
-- whether native browser or provider UI waits for user action;
-- whether the Button indicator remains visible and truthful during the wait;
-- whether the correct outcome is short Loading Indicator presentation, feature-owned long status, another progress component, or no indicator during the user-controlled phase.
-
-The family matrix must not classify these operations as short merely because `MDButton.loading` is already bound to their state.
+No current production operation is accepted as short Loading Indicator demand. The explicitly selected standalone component and its Button composition contract remain first-class library surface; feature code may use that composition only when a bounded short indeterminate lifecycle is established.
 
 ## Confirmed renderer defects
 
@@ -172,25 +171,25 @@ Current accepted geometry mitigation:
 - no private DOM/method access;
 - no renderer vocabulary in public API or parent adapters.
 
-The current unconditional `currentColor` mapping is not part of the accepted defect mitigation and remains under correction as a Mioframe contract/ownership issue.
+The prior unconditional `currentColor` mapping was a Mioframe contract/ownership issue, not a renderer defect. It has been replaced by the standalone primary default and explicit Button public-token override.
 
 ## Material–m3e–Vue matrix
 
-| Material contract                      | Demand and evidence                                                    | Public Vue/token representation                                                        | Renderer status and mapping                                                   | Owner and decision                                  | Verification                                       |
-| -------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------------- |
-| Component identity                     | Button composition requires an independently owned official dependency | root-exported `MDLoadingIndicator`                                                     | `direct` — renderer custom element                                            | Loading Indicator — `implement-now`                 | unit + browser + visual                            |
-| Uncontained presentation               | selected dependency and standalone API surface                         | no public variant prop                                                                 | `direct` — renderer default                                                   | Loading Indicator — `implement-now`                 | story + visual                                     |
-| Contained presentation                 | no confirmed current consumer                                          | none                                                                                   | `direct` — renderer supports the deferred surface                             | Loading Indicator — `defer`                         | none                                               |
-| Short indeterminate process            | current recovery operations require lifecycle reclassification         | mounted only for consumers confirmed to satisfy official guidance                      | renderer indeterminate behavior is available                                  | feature/Loading Indicator — `correction-required`   | consumer lifecycle + browser proof                 |
-| Standalone accessible purpose and role | standalone indicator must communicate process purpose                  | required `label` → accessible name                                                     | `partial` — renderer supplies progressbar role; wrapper requires the name     | Loading Indicator — `wrapper-correction`            | browser role/name                                  |
-| Decorative parent composition          | nested Button indicator must not create a second semantic owner        | explicit parent `aria-hidden`; no additional public mode                               | `not-applicable` — native accessibility attribute applied by Button           | Button — `wrapper-correction`                       | unit + browser accessibility tree                  |
-| Parent action availability             | loading presentation must not silently disable an action               | no Loading Indicator API; consumer supplies Button `disabled` and guards separately    | `not-applicable` — outside dependency renderer ownership                      | consumer — `implement-now`                          | Button + consumer proof                            |
-| Standalone active color                | official uncontained default uses `primary`                            | `--md-comp-loading-indicator-active-indicator-color`; default `--md-sys-color-primary` | private family mapping to renderer active-indicator color input               | Loading Indicator — `correction-required`           | token contract + standalone visual                 |
-| Button-composed active color           | active indicator must contrast with and follow Button content          | parent override of Loading Indicator public token to `currentColor`                    | no parent access to private renderer input                                    | Button — `correction-required`                      | Button loading visual + token boundary proof       |
-| Overall and active size                | selected Button composition and official 48/38 geometry                | numeric overall `size`                                                                 | `divergent` — `M3E-001`/`M3E-002`; host size plus private active-size mapping | Loading Indicator — `temporary-renderer-workaround` | unit + browser geometry + visual                   |
-| Public component token catalogue       | standalone and Button-composed active colors differ                    | selected active-indicator color token and `token-api.md` entry                         | private family mapping only                                                   | Loading Indicator — `correction-required`           | declaration/catalogue/runtime/visual agreement     |
-| Motion and reduced motion              | renderer motion is selected; no wrapper control is required            | no public control                                                                      | `direct` — renderer-owned animation                                           | m3e — `implement-now`                               | installed-artifact assessment + operator reporting |
-| Forced colors                          | selected environment must remain legible                               | none                                                                                   | `direct` — renderer uses `CanvasText`                                         | m3e — `implement-now`                               | operator reporting                                 |
+| Material contract                      | Demand and evidence                                                               | Public Vue/token representation                                                        | Renderer status and mapping                                                   | Owner and decision                                      | Verification                                       |
+| -------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| Component identity                     | Button composition requires an independently owned official dependency            | root-exported `MDLoadingIndicator`                                                     | `direct` — renderer custom element                                            | Loading Indicator — `implement-now`                     | unit + browser + visual                            |
+| Uncontained presentation               | selected dependency and standalone API surface                                    | no public variant prop                                                                 | `direct` — renderer default                                                   | Loading Indicator — `implement-now`                     | story + visual                                     |
+| Contained presentation                 | no confirmed current consumer                                                     | none                                                                                   | `direct` — renderer supports the deferred surface                             | Loading Indicator — `defer`                             | none                                               |
+| Short indeterminate process            | selected standalone component contract; no current production operation qualifies | mounted only for consumers confirmed to satisfy official guidance                      | renderer indeterminate behavior is available                                  | Loading Indicator — `implement-now`; features — `defer` | standalone proof + consumer lifecycle review       |
+| Standalone accessible purpose and role | standalone indicator must communicate process purpose                             | required `label` → accessible name                                                     | `partial` — renderer supplies progressbar role; wrapper requires the name     | Loading Indicator — `wrapper-correction`                | browser role/name                                  |
+| Decorative parent composition          | nested Button indicator must not create a second semantic owner                   | explicit parent `aria-hidden`; no additional public mode                               | `not-applicable` — native accessibility attribute applied by Button           | Button — `wrapper-correction`                           | unit + browser accessibility tree                  |
+| Parent action availability             | loading presentation must not silently disable an action                          | no Loading Indicator API; consumer supplies Button `disabled` and guards separately    | `not-applicable` — outside dependency renderer ownership                      | consumer — `implement-now`                              | Button + consumer proof                            |
+| Standalone active color                | official uncontained default uses `primary`                                       | `--md-comp-loading-indicator-active-indicator-color`; default `--md-sys-color-primary` | private family mapping to renderer active-indicator color input               | Loading Indicator — `implement-now`                     | token contract + standalone visual                 |
+| Button-composed active color           | active indicator must contrast with and follow Button content                     | parent override of Loading Indicator public token to `currentColor`                    | no parent access to private renderer input                                    | Button — `implement-now`                                | Button loading visual + token boundary proof       |
+| Overall and active size                | selected Button composition and official 48/38 geometry                           | numeric overall `size`                                                                 | `divergent` — `M3E-001`/`M3E-002`; host size plus private active-size mapping | Loading Indicator — `temporary-renderer-workaround`     | unit + browser geometry + visual                   |
+| Public component token catalogue       | standalone and Button-composed active colors differ                               | selected active-indicator color token and `token-api.md` entry                         | private family mapping only                                                   | Loading Indicator — `implement-now`                     | declaration/catalogue/runtime/visual agreement     |
+| Motion and reduced motion              | renderer motion is selected; no wrapper control is required                       | no public control                                                                      | `direct` — renderer-owned animation                                           | m3e — `implement-now`                                   | installed-artifact assessment + operator reporting |
+| Forced colors                          | selected environment must remain legible                                          | none                                                                                   | `direct` — renderer uses `CanvasText`                                         | m3e — `implement-now`                                   | operator reporting                                 |
 
 ## Proof status
 
@@ -204,10 +203,10 @@ Confirmed and reusable:
 - revalidation of `M3E-001` and `M3E-002` against installed `2.6.3`;
 - renderer motion assessment without inventing an unsupported defect.
 
-Must be corrected or revalidated:
+Corrected in this completion pass:
 
 - standalone default active color;
 - Loading Indicator public token declaration/catalogue/private mapping agreement;
 - Button public-token override and resulting presentation;
-- standalone and Button-composed color visual baselines;
+- standalone and Button-composed color visual references;
 - production consumer applicability under official duration and lifecycle guidance.

@@ -48,9 +48,7 @@ const {
   grantReadOnlyAccess,
   hasGoogleDriveRecovery,
   hasLocalDirectoryRecovery,
-  isGrantFullAccessLoading,
   isGrantLocalDirectoryAccessDisabled,
-  isGrantReadOnlyAccessLoading,
   localDirectoryRecoveryMessage,
 } = useRepositoryExplorerRecovery({
   directoryPath,
@@ -58,7 +56,7 @@ const {
   errorMessage,
   repositoryRecoveryErrors,
 });
-const { isRetryAuthorizationLoading, onRetryAuthorization } = googleDriveRecovery;
+const { onRetryAuthorization } = googleDriveRecovery;
 const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
 
 const onClickPath = (path: string) => {
@@ -115,13 +113,11 @@ const onClickGrantFullAccess = () => {
             color="text"
             label="Read only"
             :disabled="isGrantLocalDirectoryAccessDisabled"
-            :loading="isGrantReadOnlyAccessLoading"
             @click="onClickGrantReadOnlyAccess"
           />
           <MDButton
             label="Grant full access"
             :disabled="isGrantLocalDirectoryAccessDisabled"
-            :loading="isGrantFullAccessLoading"
             @click="onClickGrantFullAccess"
           />
         </template>
@@ -134,11 +130,7 @@ const onClickGrantFullAccess = () => {
         :errors="recoveryErrors"
       >
         <template #actions>
-          <MDButton
-            label="Retry authorization"
-            :loading="isRetryAuthorizationLoading"
-            @click="onRetryAuthorization"
-          />
+          <MDButton label="Retry authorization" @click="onRetryAuthorization" />
 
           <MDButton label="Return home" color="text" @click="onReturnHomeClick" />
         </template>

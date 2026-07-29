@@ -73,7 +73,6 @@ vi.mock('@shared/ui/material', () => ({
     props: {
       label: { type: String, required: true },
       disabled: { type: Boolean, default: false },
-      loading: { type: Boolean, default: false },
     },
     emits: ['click'],
     setup(props, { emit }) {
@@ -83,7 +82,6 @@ vi.mock('@shared/ui/material', () => ({
           {
             type: 'button',
             disabled: props.disabled,
-            'data-loading': props.loading ? 'true' : '',
             onClick: () => {
               if (props.disabled) {
                 return;
@@ -433,7 +431,7 @@ describe('VfsActivityStatusChip', () => {
 
     expect(requestAccessMock).toHaveBeenCalledTimes(1);
     expect(grantButton?.attributes('disabled')).toBeDefined();
-    expect(grantButton?.attributes('data-loading')).toBe('true');
+    expect(grantButton?.attributes('data-loading')).toBeUndefined();
 
     resolveRequest?.({ status: 'granted' });
     await vi.dynamicImportSettled();

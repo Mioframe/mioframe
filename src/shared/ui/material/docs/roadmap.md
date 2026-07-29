@@ -28,7 +28,9 @@ Implementation ownership: `migrating`
 - `MDDialog` and `DialogForm` own busy action availability: busy forms expose `aria-busy`, disable apply/cancel actions, and do not inject a Loading Indicator into the action button.
 - Feature-owned long or determinate progress remains outside Button, including ZIP import/export body progress.
 - Current direct Button consumers use the canonical `@shared/ui/material` export and the replaced legacy `MDButton` implementation is removed.
-- `MDLoadingIndicator` already owns renderer integration, public geometry, standalone accessibility, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`; its standalone color contract and current consumer applicability remain under correction.
+- `MDLoadingIndicator` owns renderer integration, public geometry, standalone accessibility, the primary-default public color token, tests, stories, and the controlled `M3E-001`/`M3E-002` workarounds revalidated against installed `@m3e/web` `2.6.3`.
+- Button composition overrides only the Loading Indicator-owned public color token to `currentColor`; standalone defaults and renderer inputs remain dependency-owned.
+- Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. Their misleading Loading Indicator bindings are removed while explicit disabled/re-entry guards remain.
 - Shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, compatible with the selected renderer grammars.
 - Retained Material reference/system declarations live under canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was removed without an alias.
 - `token-api.md` is populated for the retained supported public surface.
@@ -40,13 +42,9 @@ Implementation ownership: `migrating`
 
 ### Correction remainder
 
-1. Complete `MDLoadingIndicator` through the name-only completion flow using an independent official-contract reconstruction rather than accepting its current family matrix.
-2. Correct the standalone active-indicator color contract: official standalone default is `primary`; Button-composed presentation may use `currentColor` only through a Loading Indicator-owned public component token or public API override.
-3. Reclassify each current Button loading consumer against official Loading Indicator usage guidance, including expected/worst-case duration and browser/provider-controlled waiting. Existing rendering alone is not demand evidence.
-4. Update implementation, family matrix, token catalogue, stories, browser/visual proof, Button handoff, and affected consumers according to the resulting accepted contract.
-5. Complete operator visual review of the corrected Button interaction presentation and Button/standalone Loading Indicator presentation.
-6. Pass the required final current-head verification, including the release completion gate for this production dependency change.
-7. Re-review the complete resulting PR after documentation and any CI autofix commit, then make the merge-readiness decision.
+1. Complete operator visual review of the corrected Button interaction presentation and Button/standalone Loading Indicator presentation.
+2. Pass the required final current-head verification, including the release completion gate for this production dependency change.
+3. Re-review the complete resulting PR after documentation and any CI autofix commit, then make the merge-readiness decision.
 
 No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, CSS regex scanner, or new reduced-motion contract is required by this milestone.
 
@@ -86,16 +84,16 @@ Existing implementation surface:
 - required `label` and optional numeric overall `size` API;
 - independent root export and package-derived renderer source type;
 - standalone browser role/name and host-geometry proof;
-- independent size and current inherited-color visual baselines;
+- independent size and primary-default/public-override color visual baselines;
 - decorative Button composition through the public Vue boundary;
 - owner-local `M3E-001`/`M3E-002` workarounds.
 
-Open correction:
+Completed correction:
 
-- independently reconstruct the standalone default and parent-composed color contracts;
-- select and own the official active-indicator component token when standalone and Button values differ;
-- replace baselines that preserve an incorrect contract rather than proving Material correctness;
-- validate the real duration and lifecycle of each production consumer before accepting it as Loading Indicator demand.
+- independently reconstructed the standalone default and parent-composed color contracts;
+- selected and owned the official active-indicator component token because standalone and Button values differ;
+- replaced the inherited-color baseline with standalone primary-default/public-override proof;
+- classified every current loading consumer and removed presentation from externally suspended, unbounded operations.
 
 Contained presentation remains deferred unless the corrected demand reconstruction finds a current consumer.
 

@@ -34,7 +34,7 @@ Private namespaces:
 
 Private namespaces are excluded from this catalogue. `foundation/tokens.css` also retains two private bridges consumed only by the foundation itself: `--md-private-elevation-shadow-color` (elevation shadow-color redirect) and the `--md-private-motion-expressive-fast-spatial-duration`/`-easing`/`-fast-effects-duration`/`-easing` group (fixed Web conversion of the Expressive spring curves). Neither is listed below.
 
-No `--md-comp-*` component family is populated yet. `MDButton` and `MDLoadingIndicator` currently require no CSS-level component-token customization; their family matrices record the complete official surface as `deferred`.
+The Loading Indicator family owns the currently selected `--md-comp-*` surface. Button has no selected component token of its own; its Loading Indicator composition overrides the dependency-owned token at the composition site.
 
 ## Entry format
 
@@ -181,6 +181,14 @@ Material source: `m3.material.io/styles/motion/easing-and-duration/tokens-specs`
 | `--md-sys-motion-duration-short1`, `--md-sys-motion-duration-short2`, `--md-sys-motion-duration-short3`, `--md-sys-motion-duration-short4`, `--md-sys-motion-duration-medium1`, `--md-sys-motion-duration-medium2`, `--md-sys-motion-duration-medium3`, `--md-sys-motion-duration-medium4`, `--md-sys-motion-duration-long1`, `--md-sys-motion-duration-long2`, `--md-sys-motion-duration-long3`, `--md-sys-motion-duration-long4`, `--md-sys-motion-duration-extra-long1`, `--md-sys-motion-duration-extra-long2`, `--md-sys-motion-duration-extra-long3`, `--md-sys-motion-duration-extra-long4` | `<time>`            | duration scale                                       | `50ms` through `1s`, see `foundation/tokens.css`                    | foundation | `foundation/tokens.css` | consumed by `transition-duration` in shared UI/`.md` base class                                             | `.md` base class transition behavior; motion-affected component visual baselines |
 | `--md-sys-motion-spring-fast-spatial-stiffness`, `--md-sys-motion-spring-fast-spatial-damping`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `<number>`          | Material 3 Expressive fast-spatial spring parameters | `800` / `0.6`                                                       | foundation | `foundation/tokens.css` | fixed Web conversion via private `--md-private-motion-expressive-fast-spatial-*` bridge (not itself public) | installed-artifact inspection; recorded as a documented Web spring conversion    |
 
+## Loading Indicator component (`components/loading-indicator/tokens.css`)
+
+Material source: `m3.material.io/components/loading-indicator/specs` (uncontained active-indicator color).
+
+| Token                                                | Grammar   | Purpose                                          | Default                       | Scope            | Owner                                     | Renderer mapping                                                 | Verification                                                                                             |
+| ---------------------------------------------------- | --------- | ------------------------------------------------ | ----------------------------- | ---------------- | ----------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `--md-comp-loading-indicator-active-indicator-color` | `<color>` | uncontained Loading Indicator active-shape color | `var(--md-sys-color-primary)` | component family | `components/loading-indicator/tokens.css` | private `--m3e-loading-indicator-active-indicator-color` mapping | Loading Indicator contract/browser/visual proof; Button loading composition contract and visual baseline |
+
 ## Migration state
 
 The migration is complete. Canonical runtime declarations for every token above live in:
@@ -188,8 +196,9 @@ The migration is complete. Canonical runtime declarations for every token above 
 ```text
 src/shared/ui/material/foundation/tokens.css
 src/shared/ui/material/foundation/theme.css
+src/shared/ui/material/components/loading-indicator/tokens.css
 ```
 
 `src/shared/lib/md/tokens.css` no longer exists. A token absent from this catalogue is not a supported Mioframe public token API, even if m3e or official Material defines a similarly named token.
 
-No `--md-comp-*` component-family token is currently supported; Button and Loading indicator require no CSS-level customization today, so their family matrices record the complete official token surface as `deferred`.
+Loading Indicator supports the single component token catalogued above. Button owns no component-family token; its composition uses the dependency token without accessing renderer variables.
