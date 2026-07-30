@@ -87,13 +87,24 @@ Do not copy m3e defaults merely to present a complete-looking public API.
 
 A public `--md-comp-*` token must satisfy all conditions:
 
-1. official path and semantics are verified;
-2. a current consumer, theme, or selected component scenario requires it;
-3. it has one family owner and meaningful runtime default/fallback;
-4. its mapping to rendered behavior is implemented and verified;
-5. it is listed in `token-api.md`.
+1. its exact official Material token path and semantics are verified;
+2. its public CSS name is derived from that official path, not from legacy Mioframe or renderer vocabulary;
+3. a current consumer, theme, or selected component scenario requires the rendered part and state;
+4. it has one family owner and meaningful runtime default/fallback;
+5. its complete renderer input and fallback path is known for the selected state;
+6. its mapping to the rendered result is implemented and verified;
+7. it is listed in `token-api.md`.
 
-Current need selects an official token; it does not invent one.
+Current need selects an official token; it does not invent one. A renderer input with similar meaning does not authorize a public token name.
+
+Demand must be recorded as an observable result rather than a broad component customization. For example:
+
+```text
+Snackbar action label remains inverse-primary in
+resting, hovered, focused, and pressed states.
+```
+
+The selected subset must contain every official token needed to preserve that result across the required states and rendered parts. It must exclude parts with no current consumer. A label-only scenario does not justify publishing icon tokens, while a resting label token is insufficient when the renderer uses separate hovered, focused, or pressed label inputs.
 
 When no official token exists, choose one explicit result:
 
@@ -103,17 +114,32 @@ When no official token exists, choose one explicit result:
 - assign a confirmed renderer defect to m3e;
 - leave the customization unsupported.
 
+## State, part, and fallback trace
+
+Before implementing a contextual component-token override, the family README must trace every required rendered state and part:
+
+| State | Rendered part | Official Material token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
+| ----- | ------------- | ---------------------------- | ---------------------- | --------------------------- | ----------------------- | ----- |
+
+The trace is required for resting and every selected transient or disabled state that can choose a different renderer value. Inspect the exact lockfile-resolved artifact rather than assuming that a resting token continues to apply during hover, focus, press, selection, or disablement.
+
+The renderer fallback column must identify both the direct family input and the fallback that becomes effective when the direct input is absent. If that fallback would violate the current consumer result, the corresponding official token is part of the minimum complete public subset.
+
+Do not add tokens merely because adjacent renderer inputs exist. Add only the states and parts required by the confirmed scenario.
+
 ## Mapping and CSS grammar
 
 ```text
-supported official Material token
-  → canonical --md-ref-* / --md-sys-* / --md-comp-* declaration
-  → documented semantically equivalent renderer input when required
+exact official Material token path
+  → canonical public --md-ref-* / --md-sys-* / --md-comp-* declaration
+  → documented semantically equivalent renderer input
+  → renderer fallback chain
+  → rendered current-consumer result
 ```
 
 For every selected token:
 
-- preserve official family/variant/state/part/property semantics;
+- preserve official family/variant/state/part/property semantics and ordering;
 - keep one canonical base declaration owner;
 - prefer direct system-role consumption when m3e already uses the correct role;
 - keep component mappings inside the owning family;
@@ -131,8 +157,8 @@ Semantic equality is not sufficient when consumers accept different CSS grammars
 - CSS grammar;
 - canonical default or source;
 - scope and owner;
-- official Material source;
-- renderer mapping when applicable;
+- exact official Material token path or role source;
+- renderer input and relevant fallback when applicable;
 - representative verification;
 - any selected theme override of a foundation-owned role.
 
@@ -148,13 +174,18 @@ The former mixed-owner token file must not be recreated. Any legacy migration mu
 
 Verify only the selected supported public surface:
 
-- official source and semantic path are recorded;
+- the exact official source, token path, state, part, and semantic property are recorded;
+- the public name is derived from the official path rather than the renderer input;
 - canonical base declaration exists;
 - `token-api.md` matches runtime declarations and selected theme overrides;
 - CSS grammar works for every selected consumer;
+- the family matrix contains the complete state/part/input/fallback trace;
 - family mappings use documented semantic inputs or a fully gated workaround;
-- representative overrides affect the intended rendered result where observable;
+- browser proof checks the rendered part’s computed result in every selected state;
+- checking only a custom-property value, host state, source mapping, or screenshot does not prove the rendered token result;
+- visual proof may supplement but not replace the rendered browser assertion;
+- no unconsumed public token is included merely for symmetry or renderer completeness;
 - no `--m3e-*` leaks outside the Material boundary;
 - no undocumented duplicate public owner remains.
 
-Do not require one test per renderer variable, copy complete third-party catalogues, or create infrastructure solely to enumerate renderer internals.
+Do not require one test per renderer variable, copy complete third-party catalogues, or create infrastructure solely to enumerate renderer internals. The trace and proof are limited to the states and parts selected by current demand.
