@@ -33,7 +33,7 @@ Stage isolation is a runtime boundary, not only a documentation convention.
 The outer orchestrator is thin. It may:
 
 - resolve the family;
-- inspect canonical artifact statuses and repository refs;
+- inspect canonical artifact statuses and readable working-tree files;
 - select the earliest invalid stage;
 - launch a fresh stage worker;
 - validate the resulting artifact and report;
@@ -46,15 +46,30 @@ Every stage execution uses a new agent/subagent context. The worker receives onl
 - the component name and canonical family;
 - the selected stage skill;
 - applicable repository rules;
-- current repository state/ref;
+- current readable working-tree file state;
 - canonical upstream artifact paths;
 - explicit return-stage or blocker facts already recorded in repository artifacts.
 
-Hidden reasoning, conversational summaries, and conclusions that are not committed to canonical artifacts are not inter-stage inputs. Later workers reconstruct nothing from another worker’s private context; they validate repository artifacts.
+A Git ref, `HEAD`, commit object, index, or healthy local Git object database is not an inter-stage input or prerequisite. Hidden reasoning, conversational summaries, and conclusions that are not written to canonical artifacts are not inter-stage inputs. Later workers reconstruct nothing from another worker’s private context; they validate repository artifacts.
 
 The review worker must not be the worker that authored or corrected `ARCHITECTURE.md`, production implementation, or `MIGRATION.md` for the reviewed result.
 
 If the agent environment cannot launch a fresh worker for the selected stage, the outer workflow is `blocked` on orchestration infrastructure. It must not continue all stages in one context and claim isolation.
+
+## Git ownership and verification boundary
+
+Coding agents and Material stage workers do not own Git. They must not run raw `git`, inspect or repair `.git`, fetch remotes, manipulate refs/index/worktrees, stage, commit, reset, or rebase.
+
+Use file-oriented repository tools for stage selection, implementation, migration, and review. Stage artifacts reference canonical upstream artifact paths and their declared revisions/statuses; commit/ref fields are optional descriptive metadata, never a gate.
+
+Repository verification commands may use Git internally to resolve changed paths. If a required `pnpm verify*` command fails because Git metadata is unavailable or corrupt:
+
+- do not repair Git;
+- complete otherwise safe stage-owned file work first;
+- record the exact project-command failure;
+- treat verification as blocked only when it is the remaining completion gate.
+
+Git corruption is therefore an environment/verification issue, not evidence that design, architecture, implementation, migration, or review cannot begin.
 
 ## Family artifacts
 
@@ -150,7 +165,7 @@ The orchestrator repeatedly selects the earliest condition that applies:
 2. missing/stale/blocked/not-ready `ARCHITECTURE.md` → architecture;
 3. missing/partial/blocked/stale `IMPLEMENTATION.md` or implementation drift → implementation;
 4. missing/partial/blocked/stale `MIGRATION.md` or remaining consumer/legacy work → migration;
-5. missing/stale/blocked `REVIEW.md`, review ref behind current head, or actionable review findings → review;
+5. missing/stale/blocked `REVIEW.md`, inconsistency with current readable artifacts/code, or actionable review findings → review;
 6. all gates current → complete.
 
 For every selected stage, the orchestrator launches a fresh worker, validates repository outputs, and discards that worker context before selecting the next stage.
@@ -184,10 +199,10 @@ The outer orchestration may stop only for:
 - unavailable fresh-worker/subagent orchestration capability;
 - an unresolved material architecture decision that official evidence and repository rules cannot determine;
 - required operator visual/motion acceptance;
-- an external/infrastructure gate that cannot be retried or diagnosed with available tools;
+- a required project verification command blocked by an irreducible external/infrastructure failure after stage-owned edits are complete;
 - safety-required operator input.
 
-A completed stage, ordinary failing test, code finding, cache age, or missing repeated command is not an external blocker.
+A completed stage, ordinary failing test, code finding, cache age, unavailable Git ref, or missing repeated command is not an external blocker.
 
 ## Stage ownership rules
 
@@ -195,9 +210,9 @@ A completed stage, ordinary failing test, code finding, cache age, or missing re
 - A later stage must not rewrite an earlier artifact to make current work easier.
 - When new evidence invalidates an earlier artifact, return control to the orchestrator and route backward through a fresh worker.
 - Do not duplicate the complete content of an earlier artifact in later records; reference exact sections.
-- Stage artifacts use explicit statuses and source/ref metadata so staleness is detectable.
+- Stage artifacts use explicit statuses and canonical upstream artifact references so staleness is detectable without requiring Git commit metadata.
 - `roadmap.md` remains the only owner of project-wide milestone order and current next action.
-- PR title, body, draft state, review threads, and merge remain operator/architect responsibilities.
+- PR title, body, draft state, review threads, Git operations, and merge remain operator/architect responsibilities.
 
 ## Completion
 
@@ -208,5 +223,5 @@ A Material component is not complete because code and CI are green. Completion r
 - complete implementation with no deviations;
 - complete consumer migration and legacy removal;
 - independent review by a fresh worker;
-- current-head required verification;
+- required project verification;
 - required operator visual/motion acceptance.
