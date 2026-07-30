@@ -420,4 +420,79 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     await setupPage.close();
     await secondWindow.close();
   });
+
+  test('a temporary Automatic preparation failure recovers on a later check of the same published release', async () => {
+    // Publishes one more real release and injects exactly one aborted
+    // network request for one of its ordinary files — a genuine, real
+    // fetch/hash preparation failure inside the worker's own preparation
+    // path, not a reproduction of the private protocol or an internal
+    // Playwright/Cache-Storage mock. See the managed pinned application
+    // updates feature, "Automatic preparation is not retried" correction.
+    //
+    // Runs last in this shared lifecycle: it schedules a real clean-launch
+    // activation, and every earlier test here (in particular crash recovery,
+    // which compares two raw persisted `activeRelease` reads for exact
+    // shape equality) must keep seeing its own pre-existing state-write
+    // timing undisturbed.
+    const releaseRetry = await buildAndPublishManagedRelease({
+      channel: 'stable',
+      basePath: BASE_PATH,
+      appVersion: '1.3.0',
+      buildId: 'automatic-retry-release',
+      workDir,
+    });
+    const [targetFile] = releaseRetry.files;
+    const targetUrl = new URL(`${BASE_PATH}${targetFile.path}`, server.url).toString();
+
+    const page = await context.newPage();
+    await page.goto(server.url);
+    await waitForControlledPage(page);
+    await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'automatic' });
+
+    let abortedCount = 0;
+    await context.route(targetUrl, async (route) => {
+      const request = route.request();
+      if (abortedCount === 0 && request.serviceWorker() !== null) {
+        abortedCount += 1;
+        await route.abort('failed');
+        return;
+      }
+      await route.continue();
+    });
+
+    try {
+      const failedCheck = await sendProtocolRequest<{
+        snapshot: {
+          latestRelease?: { releaseId: string };
+          scheduledRelease?: { releaseId: string };
+        };
+      }>(page, { type: 'CHECK_FOR_UPDATES' });
+
+      expect(failedCheck.snapshot.latestRelease?.releaseId).toBe(releaseRetry.releaseId);
+      expect(failedCheck.snapshot.scheduledRelease).toBeUndefined();
+      expect(abortedCount).toBe(1);
+    } finally {
+      await context.unroute(targetUrl);
+    }
+
+    const retriedCheck = await sendProtocolRequest<{
+      snapshot: { scheduledRelease?: { releaseId: string } };
+    }>(page, { type: 'CHECK_FOR_UPDATES' });
+    expect(retriedCheck.snapshot.scheduledRelease?.releaseId).toBe(releaseRetry.releaseId);
+
+    await page.close();
+
+    const activationPage = await context.newPage();
+    await activationPage.goto(server.url);
+    await waitForControlledPage(activationPage);
+    const committed = await waitForControllerState(
+      activationPage,
+      (r) => r.status === 'valid' && r.state.activeRelease.releaseId === releaseRetry.releaseId,
+    );
+    expect(committed.status).toBe('valid');
+    if (committed.status === 'valid') {
+      expect(committed.state.approvedRelease).toBeUndefined();
+    }
+    await activationPage.close();
+  });
 });

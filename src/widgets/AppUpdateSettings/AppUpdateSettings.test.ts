@@ -226,18 +226,34 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
-  it('ready: shows Update ready, no Update now, and a working Cancel action', async () => {
+  it('ready (Manual): shows Update ready, no Update now, and a working Cancel action', async () => {
     status.value = 'ready';
+    mode.value = 'manual';
     scheduledReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update ready');
-    expect(root.textContent).toContain('Close all Mioframe windows to finish updating.');
+    expect(root.textContent).toContain(
+      'Close all Mioframe windows and reopen Mioframe to guarantee the update.',
+    );
     expect(getButtonByText(root, 'Update now')).toBeNull();
     getButtonByText(root, 'Cancel scheduled update')?.click();
     await nextTick();
 
     expect(cancelScheduledUpdateMock).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it('ready (Automatic): shows Update ready, no Update now, no Cancel action, and stays Automatic', async () => {
+    status.value = 'ready';
+    mode.value = 'automatic';
+    scheduledReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
+    const { root, unmount } = await mountWidget();
+
+    expect(root.textContent).toContain('Update ready');
+    expect(getButtonByText(root, 'Update now')).toBeNull();
+    expect(getButtonByText(root, 'Cancel scheduled update')).toBeNull();
+    expect(root.querySelector('[data-state="checked"]')).not.toBeNull();
     unmount();
   });
 

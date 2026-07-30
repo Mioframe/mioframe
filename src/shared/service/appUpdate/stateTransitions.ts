@@ -64,7 +64,11 @@ export function applyCheckForUpdates(
   const known = state.latestRelease ?? state.activeRelease;
 
   if (isSameSequenceConflict(discovered, known)) {
-    return { outcome: 'rejected-conflict', state: { ...state, lastSuccessfulCheckAt: checkedAt } };
+    // Invalid publication metadata: fails closed by leaving `state`
+    // completely untouched, including `lastSuccessfulCheckAt` — this must
+    // never look like an ordinary successful check to the orchestration or
+    // the UI (see the update-check orchestration's `check-failed` mapping).
+    return { outcome: 'rejected-conflict', state };
   }
   // Anything not strictly newer is ignored — including the exact same
   // release already known (e.g. the very first check ever, discovering
@@ -137,13 +141,50 @@ export function approveAutomaticRelease(
 }
 
 /**
- * Cancels a scheduled Manual update. A no-op once activation has already
- * started: an in-progress activation is not a "scheduled" update anymore.
+ * Resolves whether `state.latestRelease` currently requires Automatic
+ * preparation, independent of whether the discovery that produced this state
+ * actually changed `latestRelease` — a temporarily failed preparation of an
+ * already-known `latestRelease` must remain retryable by a later check of
+ * the exact same release, not only by a newer discovery
+ * ({@link CheckForUpdatesOutcome} `'updated'`).
+ *
+ * Returns the target to prepare when all of these hold: mode is Automatic;
+ * `latestRelease` is strictly newer than `activeRelease`; it is not already
+ * `approvedRelease`; no activation is in progress; and it is not the
+ * recorded `failedActivationRelease`. Returns `undefined` otherwise.
+ * @param state - Current controller state.
+ * @returns The release to prepare, or `undefined` when none is required.
+ */
+export function resolveAutomaticPreparationTarget(
+  state: UpdateControllerState,
+): ReleaseSummary | undefined {
+  const {
+    mode,
+    latestRelease,
+    activeRelease,
+    approvedRelease,
+    activation,
+    failedActivationRelease,
+  } = state;
+  if (mode !== 'automatic' || !latestRelease || activation) return undefined;
+  if (!isNewerSequence(latestRelease, activeRelease)) return undefined;
+  if (approvedRelease?.releaseId === latestRelease.releaseId) return undefined;
+  if (failedActivationRelease?.releaseId === latestRelease.releaseId) return undefined;
+  return latestRelease;
+}
+
+/**
+ * Cancels a scheduled Manual update. Cancellation belongs only to Manual
+ * mode — an Automatic approval is a no-op here, even if a client sends this
+ * command directly, so a user cannot leave Automatic mode approved for a
+ * release and then cancel it out from under themselves. Also a no-op once
+ * activation has already started: an in-progress activation is not a
+ * "scheduled" update anymore.
  * @param state - Current controller state.
  * @returns The resulting state.
  */
 export function cancelScheduledUpdate(state: UpdateControllerState): UpdateControllerState {
-  if (state.activation || !state.approvedRelease) return state;
+  if (state.mode !== 'manual' || state.activation || !state.approvedRelease) return state;
   const { approvedRelease: _approvedRelease, ...rest } = state;
   return rest;
 }

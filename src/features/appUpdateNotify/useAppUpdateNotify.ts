@@ -38,6 +38,7 @@ export function useAppUpdateNotify(onView: () => void): void {
       notifiedReleaseIdsThisSession.add(latest.releaseId);
       addSnackbar({
         text: 'Mioframe update available',
+        timeout: 7000,
         actionLabel: 'View',
         callback: onView,
       });

@@ -55,6 +55,7 @@ describe('useAppUpdateNotify', () => {
     expect(addSnackbarMock).toHaveBeenCalledTimes(1);
     expect(addSnackbarMock).toHaveBeenCalledWith({
       text: 'Mioframe update available',
+      timeout: 7000,
       actionLabel: 'View',
       callback: onView,
     });

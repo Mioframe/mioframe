@@ -49,7 +49,7 @@ const availableVersion = computed(() => {
 const showUpdateNow = computed(
   () => mode.value === 'manual' && displayStatus.value === 'update-available',
 );
-const showCancel = computed(() => displayStatus.value === 'ready');
+const showCancel = computed(() => mode.value === 'manual' && scheduledRelease.value !== undefined);
 const isCheckDisabled = computed(
   () => isBusy.value || displayStatus.value === 'unavailable' || displayStatus.value === 'checking',
 );
@@ -87,7 +87,7 @@ const onToggleAutomaticUpdates = () => {
       <p>Running version: {{ APP_VERSION }}</p>
       <p v-if="availableVersion">Available version: {{ availableVersion }}</p>
       <p v-if="displayStatus === 'ready'">
-        Update ready. Close all Mioframe windows to finish updating.
+        Update ready. Close all Mioframe windows and reopen Mioframe to guarantee the update.
       </p>
     </section>
 
@@ -104,7 +104,7 @@ const onToggleAutomaticUpdates = () => {
         mode="single-action"
         role="switch"
         label-text="Automatic updates"
-        supporting-text="Download and prepare newer releases automatically. They still only apply after every Mioframe window closes."
+        supporting-text="Download and prepare newer releases automatically. Updates apply when Mioframe restarts. Close all Mioframe windows and reopen it to guarantee the update."
         :line-count="2"
         :aria-checked="mode === 'automatic'"
         :aria-disabled="isAutomaticToggleDisabled ? 'true' : undefined"

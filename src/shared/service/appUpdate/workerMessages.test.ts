@@ -98,6 +98,35 @@ describe('handleWorkerMessage', () => {
     expect(writtenState).not.toHaveProperty('approvedRelease');
   });
 
+  it('CANCEL_SCHEDULED_UPDATE is a no-op for an Automatic approval, even sent directly, and writes nothing', async () => {
+    readControllerStateMock.mockResolvedValue({
+      status: 'valid',
+      state: {
+        ...baseState,
+        mode: 'automatic',
+        approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      },
+    });
+    const { handleWorkerMessage } = await import('./workerMessages');
+
+    const result = await handleWorkerMessage(
+      'stable',
+      '/',
+      CHANNEL_ORIGIN,
+      { type: 'CANCEL_SCHEDULED_UPDATE' },
+      enqueue,
+      createFakeCoordinator(),
+    );
+
+    expect(result).toEqual({
+      snapshot: expect.objectContaining({
+        mode: 'automatic',
+        scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      }),
+    });
+    expect(writeControllerStateMock).not.toHaveBeenCalled();
+  });
+
   describe('SET_MODE', () => {
     it('to manual clears an unstarted approval and persists it', async () => {
       readControllerStateMock.mockResolvedValue({

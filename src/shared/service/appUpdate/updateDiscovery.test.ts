@@ -203,6 +203,113 @@ describe('runUpdateCheck', () => {
     expect(result.snapshot.scheduledRelease).toBeUndefined();
     expect(result.snapshot.error).toBeUndefined();
   });
+
+  it('retries preparation on a later check of the same latestRelease after a prior preparation failure, reuses the matching descriptor, and approves once preparation succeeds', async () => {
+    mockPersistentState(baseState);
+    fetchLatestReleasePointerMock.mockResolvedValue(releaseB);
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorB);
+    prepareMock.mockRejectedValueOnce(new Error('temporary failure'));
+    const { runUpdateCheck } = await import('./updateDiscovery');
+
+    const first = await runUpdateCheck('stable', '/', enqueue, coordinator);
+    expect(first.snapshot.latestRelease).toEqual(summaryB);
+    expect(first.snapshot.scheduledRelease).toBeUndefined();
+
+    prepareMock.mockResolvedValueOnce(descriptorB);
+    const second = await runUpdateCheck('stable', '/', enqueue, coordinator);
+
+    expect(prepareMock).toHaveBeenCalledTimes(2);
+    expect(prepareMock).toHaveBeenLastCalledWith('stable', '/', summaryB, descriptorB);
+    expect(second.snapshot.scheduledRelease).toEqual(summaryB);
+  });
+
+  it('does not retry preparation once the latestRelease is already approved', async () => {
+    mockPersistentState(baseState);
+    fetchLatestReleasePointerMock.mockResolvedValue(releaseB);
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorB);
+    prepareMock.mockResolvedValue(descriptorB);
+    const { runUpdateCheck } = await import('./updateDiscovery');
+
+    const first = await runUpdateCheck('stable', '/', enqueue, coordinator);
+    expect(first.snapshot.scheduledRelease).toEqual(summaryB);
+    expect(prepareMock).toHaveBeenCalledTimes(1);
+
+    const second = await runUpdateCheck('stable', '/', enqueue, coordinator);
+
+    expect(prepareMock).toHaveBeenCalledTimes(1);
+    expect(second.snapshot.scheduledRelease).toEqual(summaryB);
+  });
+
+  it('does not prepare a latestRelease recorded as the failed activation release', async () => {
+    mockState({ ...baseState, latestRelease: summaryB, failedActivationRelease: summaryB });
+    fetchLatestReleasePointerMock.mockResolvedValue(releaseB);
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorB);
+    const { runUpdateCheck } = await import('./updateDiscovery');
+
+    const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
+
+    expect(prepareMock).not.toHaveBeenCalled();
+    expect(result.snapshot.scheduledRelease).toBeUndefined();
+  });
+
+  it('returns check-failed and preserves the complete previous state on a same-sequence conflicting discovery, without preparing', async () => {
+    const withPriorState: UpdateControllerState = {
+      ...baseState,
+      latestRelease: summaryB,
+      lastSuccessfulCheckAt: '2026-07-20T00:00:00.000Z',
+    };
+    mockState(withPriorState);
+    const conflictingDescriptor: ReleaseDescriptor = {
+      ...descriptorB,
+      releaseId: 'release-b-imposter',
+    };
+    fetchLatestReleasePointerMock.mockResolvedValue({
+      releaseId: conflictingDescriptor.releaseId,
+      releaseSequence: conflictingDescriptor.releaseSequence,
+    });
+    fetchReleaseDescriptorMock.mockResolvedValue(conflictingDescriptor);
+    const { runUpdateCheck } = await import('./updateDiscovery');
+
+    const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
+
+    expect(result.snapshot.error).toBe('check-failed');
+    expect(result.snapshot.latestRelease).toEqual(summaryB);
+    expect(result.snapshot.lastSuccessfulCheckAt).toBe('2026-07-20T00:00:00.000Z');
+    expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(prepareMock).not.toHaveBeenCalled();
+  });
+
+  it('recovers with an ordinary successful check once a later discovery is a genuinely valid newer release', async () => {
+    mockPersistentState({
+      ...baseState,
+      latestRelease: summaryB,
+      lastSuccessfulCheckAt: '2026-07-20T00:00:00.000Z',
+    });
+    const conflictingDescriptor: ReleaseDescriptor = {
+      ...descriptorB,
+      releaseId: 'release-b-imposter',
+    };
+    fetchLatestReleasePointerMock.mockResolvedValueOnce({
+      releaseId: conflictingDescriptor.releaseId,
+      releaseSequence: conflictingDescriptor.releaseSequence,
+    });
+    fetchReleaseDescriptorMock.mockResolvedValueOnce(conflictingDescriptor);
+    const { runUpdateCheck } = await import('./updateDiscovery');
+
+    const conflictResult = await runUpdateCheck('stable', '/', enqueue, coordinator);
+    expect(conflictResult.snapshot.error).toBe('check-failed');
+
+    const releaseC: ReleaseRef = { releaseId: 'release-c', releaseSequence: 3 };
+    const descriptorC = buildDescriptor(releaseC);
+    fetchLatestReleasePointerMock.mockResolvedValueOnce(releaseC);
+    fetchReleaseDescriptorMock.mockResolvedValueOnce(descriptorC);
+    prepareMock.mockResolvedValue(descriptorC);
+
+    const recovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
+
+    expect(recovered.snapshot.error).toBeUndefined();
+    expect(recovered.snapshot.latestRelease?.releaseId).toBe('release-c');
+  });
 });
 
 describe('runScheduledDiscoveryCheck', () => {

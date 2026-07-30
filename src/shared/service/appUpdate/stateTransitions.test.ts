@@ -8,6 +8,7 @@ import {
   commitActivation,
   applyCheckForUpdates,
   isActivationExpired,
+  resolveAutomaticPreparationTarget,
   rollbackActivation,
   shouldStartActivation,
   startActivation,
@@ -82,8 +83,12 @@ describe('applyCheckForUpdates', () => {
     expect(result.state.lastSuccessfulCheckAt).toBe('2026-07-24T00:00:00.000Z');
   });
 
-  it('rejects a same-sequence conflicting identity as invalid metadata', () => {
-    const withLatest = { ...baseState, latestRelease: releaseB };
+  it('rejects a same-sequence conflicting identity as invalid metadata, preserving state completely untouched', () => {
+    const withLatest = {
+      ...baseState,
+      latestRelease: releaseB,
+      lastSuccessfulCheckAt: '2026-07-20T00:00:00.000Z',
+    };
     const conflicting = {
       releaseId: 'release-b-imposter',
       releaseSequence: 2,
@@ -93,7 +98,9 @@ describe('applyCheckForUpdates', () => {
     };
     const result = applyCheckForUpdates(withLatest, conflicting, '2026-07-24T00:00:00.000Z');
     expect(result.outcome).toBe('rejected-conflict');
+    expect(result.state).toBe(withLatest);
     expect(result.state.latestRelease).toEqual(releaseB);
+    expect(result.state.lastSuccessfulCheckAt).toBe('2026-07-20T00:00:00.000Z');
   });
 
   it('never changes activeRelease', () => {
@@ -188,15 +195,27 @@ describe('approveAutomaticRelease', () => {
 });
 
 describe('cancelScheduledUpdate', () => {
-  it('clears a scheduled approval', () => {
-    const withApproved = { ...baseState, approvedRelease: releaseB };
+  it('clears a Manual scheduled approval', () => {
+    const withApproved = { ...baseState, mode: 'manual' as const, approvedRelease: releaseB };
     const state = cancelScheduledUpdate(withApproved);
     expect(state.approvedRelease).toBeUndefined();
+  });
+
+  it('is a no-op for an Automatic approval, even sent directly: cancellation belongs only to Manual mode', () => {
+    const automaticApproved: UpdateControllerState = {
+      ...baseState,
+      mode: 'automatic',
+      approvedRelease: releaseB,
+    };
+    const state = cancelScheduledUpdate(automaticApproved);
+    expect(state).toBe(automaticApproved);
+    expect(state.approvedRelease).toEqual(releaseB);
   });
 
   it('is a no-op once activation has already started', () => {
     const withActivation: UpdateControllerState = {
       ...baseState,
+      mode: 'manual',
       approvedRelease: releaseB,
       activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
     };
@@ -206,6 +225,79 @@ describe('cancelScheduledUpdate', () => {
 
   it('is a no-op when nothing is scheduled', () => {
     expect(cancelScheduledUpdate(baseState)).toEqual(baseState);
+  });
+});
+
+describe('resolveAutomaticPreparationTarget', () => {
+  const automaticState: UpdateControllerState = {
+    ...baseState,
+    mode: 'automatic',
+    latestRelease: releaseB,
+  };
+
+  it('selects a strictly newer latestRelease in Automatic mode', () => {
+    expect(resolveAutomaticPreparationTarget(automaticState)).toEqual(releaseB);
+  });
+
+  it('selects it regardless of whether this discovery is what set latestRelease (retry of an already-known release)', () => {
+    // No discovery-outcome field is consulted at all — the same input shape
+    // a stale-but-still-unprepared latestRelease produces after a prior
+    // temporary preparation failure.
+    expect(resolveAutomaticPreparationTarget(automaticState)).toEqual(releaseB);
+  });
+
+  it('returns undefined in Manual mode', () => {
+    expect(
+      resolveAutomaticPreparationTarget({ ...automaticState, mode: 'manual' }),
+    ).toBeUndefined();
+  });
+
+  it('returns undefined when nothing has been discovered', () => {
+    expect(resolveAutomaticPreparationTarget({ ...baseState, mode: 'automatic' })).toBeUndefined();
+  });
+
+  it('returns undefined when latestRelease is already active (not newer)', () => {
+    const alreadyActive: UpdateControllerState = {
+      ...automaticState,
+      activeRelease: releaseB,
+      latestRelease: releaseB,
+    };
+    expect(resolveAutomaticPreparationTarget(alreadyActive)).toBeUndefined();
+  });
+
+  it('returns undefined when latestRelease is already approved', () => {
+    expect(
+      resolveAutomaticPreparationTarget({ ...automaticState, approvedRelease: releaseB }),
+    ).toBeUndefined();
+  });
+
+  it('still selects latestRelease when a different, older release is approved', () => {
+    // approvedRelease and latestRelease can briefly diverge in Automatic
+    // mode (e.g. approvedRelease from an earlier switch-to-automatic while a
+    // newer release was independently discovered but not yet prepared).
+    expect(
+      resolveAutomaticPreparationTarget({ ...automaticState, approvedRelease: releaseA }),
+    ).toEqual(releaseB);
+  });
+
+  it('returns undefined while an activation is in progress', () => {
+    const withActivation: UpdateControllerState = {
+      ...automaticState,
+      activation: { targetRelease: releaseC, deadlineAt: '2026-07-24T00:00:30.000Z' },
+    };
+    expect(resolveAutomaticPreparationTarget(withActivation)).toBeUndefined();
+  });
+
+  it('returns undefined when latestRelease is the recorded failed activation release', () => {
+    expect(
+      resolveAutomaticPreparationTarget({ ...automaticState, failedActivationRelease: releaseB }),
+    ).toBeUndefined();
+  });
+
+  it('still selects latestRelease when a different release is recorded as failed', () => {
+    expect(
+      resolveAutomaticPreparationTarget({ ...automaticState, failedActivationRelease: releaseC }),
+    ).toEqual(releaseB);
   });
 });
 
