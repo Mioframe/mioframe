@@ -9,7 +9,7 @@ Applies to the whole repository. Applicable instructions are cumulative: a deepe
 - Inspect only task-relevant files and direct dependencies first. Expand the search only when evidence shows a wider impact.
 - If repository state, third-party semantics, or required behavior is unverified, verify it or report it as unresolved. Do not invent facts.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between that target and current `verify`; do not claim target resolver behavior before its migration step is implemented.
-- `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material library architecture, adapter contract, token ownership contract, public token API catalogue, upstream-defect registry, and migration records.
+- `src/shared/ui/material/docs/component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material staged workflow, design contract, architecture, implementation rules, token ownership, public token catalogue, renderer-defect registry, and migration records.
 - Update an `AGENTS.md` or skill only when a change establishes or changes a durable repository rule, ownership/dependency model, public-contract convention, or verification workflow. Do not edit instructions merely because one concrete API changed.
 
 ## Architecture and implementation workflow
@@ -51,7 +51,12 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
-- `material-component-adapter`: one official Material component or proven inseparable family implemented or migrated end to end as a stable Mioframe Vue API backed privately by the documented public `@m3e/web` contract when viable;
+- `material-component`: one official Material family routed through exactly one next stage;
+- `material-component-design`: complete official `DESIGN.md` only;
+- `material-component-architecture`: ready demand-scoped `ARCHITECTURE.md` only;
+- `material-component-implementation`: canonical component code/proof plus `IMPLEMENTATION.md`, without consumer migration;
+- `material-component-migration`: consumer migration, legacy removal, final verification, and `MIGRATION.md`;
+- `material-component-review`: independent full-family review and `REVIEW.md`;
 - `test-first`: one meaningful red/green check for changed observable behavior when applicable;
 - `unit-testing`: deterministic pure/domain/service/storage/CRDT and module-boundary proof in the `unit-tests` lane;
 - `component-contract-testing`: Vue public API, native semantics, ARIA ownership, and non-browser wiring in the `unit-tests` lane;
