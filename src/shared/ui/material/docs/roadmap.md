@@ -35,7 +35,7 @@ Implementation ownership: `migrating`
 - Browser-permission and provider-authorization actions are classified as externally suspended, unbounded operations. `loading` is not their state model: they use feature-owned pending state and textual status while explicit disabled/re-entry guards remain.
 - Shared state-opacity roles use `8%`/`10%`/`10%`/`16%`, compatible with the selected renderer grammars.
 - Retained Material reference/system declarations live under canonical foundation/theme owners; `src/shared/lib/md/tokens.css` was removed without an alias.
-- `token-api.md` is populated for the retained supported public surface.
+- Foundation, theme, and Loading Indicator entries in `token-api.md` are populated; the Button section is explicitly marked as a pre-merge correction record until code and catalogue are replaced atomically.
 - The legacy `.md *` descendant color/motion propagation is removed. A bounded production audit restored explicit ownership for Snackbar, Rich Tooltip, Dialog headline, and Empty State headline without renderer exclusions, marker attributes, or `!important`.
 - Snackbar owns inverse-surface/inverse-on-surface context; Rich Tooltip subhead/supporting text explicitly own on-surface-variant.
 - Direct `@m3e/web` imports and raw `m3e-*` Vue elements are lint-rejected outside `src/shared/ui/material`.
@@ -75,9 +75,10 @@ No compatibility aliases are required because the incorrect token names have not
 1. Replace the current Button token declarations, private renderer mappings, Snackbar overrides, catalogue entries, tests, and affected visual baselines with the accepted seven-token contract.
 2. Prove the Snackbar action label’s computed inverse-primary color in resting, hovered, focused, and pressed states. Keep keyboard/focus success assertions in Storybook behavior tests; visual specs only prepare deterministic states and capture screenshots.
 3. Remove the unconsumed text-Button icon token and the ineffective `MDAppBar.__trailing-elements` legacy content-color declaration unless a real contextual contract is established.
-4. Pass the exact final current-head `pnpm verify:release` completion gate after all code and documentation commits. The previous local attempts were red on `appSmoke.spec.ts`; that gate remains unresolved rather than waived.
-5. Complete operator visual and motion review of Button, standalone/composed Loading Indicator, corrected Snackbar contextual action states, and Rich Tooltip color ownership.
-6. Re-review the complete current head, synchronize PR metadata, and make the merge-readiness decision.
+4. Remove the temporary Button correction note from `token-api.md` and return its status to `populated` only after executable declarations and catalogue match the accepted target.
+5. Pass the exact final current-head `pnpm verify:release` completion gate after all code and documentation commits. The previous local attempts were red on `appSmoke.spec.ts`; that gate remains unresolved rather than waived.
+6. Complete operator visual and motion review of Button, standalone/composed Loading Indicator, corrected Snackbar contextual action states, and Rich Tooltip color ownership.
+7. Re-review the complete current head, synchronize PR metadata, and make the merge-readiness decision.
 
 No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, broad CSS selector scanner, or new reduced-motion contract is required by this milestone.
 
