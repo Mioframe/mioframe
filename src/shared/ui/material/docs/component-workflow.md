@@ -20,11 +20,41 @@ The separation is mandatory. It keeps each reasoning step focused and creates du
 These are different boundaries:
 
 - **Operator invocation** — one `material-component <name>` command. It autonomously orchestrates the full workflow until completion or a genuine external blocker.
-- **Stage scope** — one focused internal execution of design, architecture, implementation, migration, or review. It owns one artifact and then returns control to the orchestrator.
+- **Stage scope** — one focused execution of design, architecture, implementation, migration, or review in a fresh agent/subagent context. It owns one artifact and then returns control to the orchestrator.
 
-One operator invocation may execute multiple stage scopes sequentially. A stage scope must never absorb work owned by another stage.
+One operator invocation may execute multiple stage workers sequentially. A stage worker must never absorb work owned by another stage.
 
 The operator supplies only the component name. Repeated manual invocations are not part of the normal workflow.
+
+## Worker isolation
+
+Stage isolation is a runtime boundary, not only a documentation convention.
+
+The outer orchestrator is thin. It may:
+
+- resolve the family;
+- inspect canonical artifact statuses and repository refs;
+- select the earliest invalid stage;
+- launch a fresh stage worker;
+- validate the resulting artifact and report;
+- route dependencies, corrections, completion, or a genuine blocker.
+
+The orchestrator must not perform official research, architecture decisions, implementation, migration, or review itself.
+
+Every stage execution uses a new agent/subagent context. The worker receives only:
+
+- the component name and canonical family;
+- the selected stage skill;
+- applicable repository rules;
+- current repository state/ref;
+- canonical upstream artifact paths;
+- explicit return-stage or blocker facts already recorded in repository artifacts.
+
+Hidden reasoning, conversational summaries, and conclusions that are not committed to canonical artifacts are not inter-stage inputs. Later workers reconstruct nothing from another worker’s private context; they validate repository artifacts.
+
+The review worker must not be the worker that authored or corrected `ARCHITECTURE.md`, production implementation, or `MIGRATION.md` for the reviewed result.
+
+If the agent environment cannot launch a fresh worker for the selected stage, the outer workflow is `blocked` on orchestration infrastructure. It must not continue all stages in one context and claim isolation.
 
 ## Family artifacts
 
@@ -108,7 +138,7 @@ repository rules, consumer scenarios, proof, and merge gates?
 
 Owner: `material-component-review`.
 
-Review is independent and read-only except for `REVIEW.md`. Findings return work to the earliest owning stage. The outer orchestrator executes that correction stage and repeats review automatically.
+Review is independent and read-only except for `REVIEW.md`. Findings return work to the earliest owning stage. The outer orchestrator launches a fresh correction worker and later a new independent review worker.
 
 Gate: verdict `compliant` or `compliant-with-listed-risks`, required operator acceptance complete, and merge readiness recorded.
 
@@ -123,15 +153,15 @@ The orchestrator repeatedly selects the earliest condition that applies:
 5. missing/stale/blocked `REVIEW.md`, review ref behind current head, or actionable review findings → review;
 6. all gates current → complete.
 
-After every successful stage scope, the orchestrator validates the artifact and immediately selects the next stage within the same operator invocation.
+For every selected stage, the orchestrator launches a fresh worker, validates repository outputs, and discards that worker context before selecting the next stage.
 
-An implementation or review finding that invalidates architecture routes back to architecture. A design omission routes back to design. Ordinary correction work does not require a new operator command.
+An implementation or review finding that invalidates architecture routes back to architecture. A design omission routes back to design. Ordinary correction work does not require a new operator command, but it always uses a new worker context.
 
 ## Dependency queue
 
 A parent family pauses when it requires another official Material component.
 
-The dependency passes the same stages as a first-class family. The orchestrator processes dependency stages automatically and then resumes the parent. Parent and dependency work remain separate stage scopes and separate artifacts.
+The dependency passes the same stages as a first-class family. The orchestrator processes dependency stages automatically through separate fresh workers and then resumes the parent. Parent and dependency work remain separate stage contexts and separate artifacts.
 
 Parent architecture cannot be `ready` until dependency design and architecture are ready. Parent implementation cannot complete until dependency implementation is complete. Parent migration and review cannot complete while dependency closure is incomplete.
 
@@ -151,6 +181,7 @@ The outer orchestration may stop only for:
 
 - genuinely missing official content after all fallbacks;
 - unavailable permissions or required tools;
+- unavailable fresh-worker/subagent orchestration capability;
 - an unresolved material architecture decision that official evidence and repository rules cannot determine;
 - required operator visual/motion acceptance;
 - an external/infrastructure gate that cannot be retried or diagnosed with available tools;
@@ -162,7 +193,7 @@ A completed stage, ordinary failing test, code finding, cache age, or missing re
 
 - A stage worker must not perform work owned by a later stage.
 - A later stage must not rewrite an earlier artifact to make current work easier.
-- When new evidence invalidates an earlier artifact, return control to the orchestrator and route backward.
+- When new evidence invalidates an earlier artifact, return control to the orchestrator and route backward through a fresh worker.
 - Do not duplicate the complete content of an earlier artifact in later records; reference exact sections.
 - Stage artifacts use explicit statuses and source/ref metadata so staleness is detectable.
 - `roadmap.md` remains the only owner of project-wide milestone order and current next action.
@@ -176,6 +207,6 @@ A Material component is not complete because code and CI are green. Completion r
 - ready architecture;
 - complete implementation with no deviations;
 - complete consumer migration and legacy removal;
-- independent review;
+- independent review by a fresh worker;
 - current-head required verification;
 - required operator visual/motion acceptance.
