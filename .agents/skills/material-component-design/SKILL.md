@@ -1,11 +1,11 @@
 ---
 name: material-component-design
-description: 'Use with only an official Material component name to create or refresh that family DESIGN.md as a complete source-backed snapshot of the official Material 3 Expressive documentation, without Mioframe demand, renderer, implementation, or migration decisions.'
+description: 'Use with only an official Material component name to create or refresh that family DESIGN.md as a complete source-backed snapshot of the official Material 3 Expressive documentation, without Mioframe demand, renderer, architecture, implementation, or migration decisions.'
 ---
 
 # Material component design
 
-Create or refresh one family `DESIGN.md` before adapter architecture or implementation.
+Create or refresh one family `DESIGN.md` before architecture or implementation.
 
 ## Input contract
 
@@ -32,7 +32,7 @@ src/shared/ui/material/components/<family>/DESIGN.md
 
 Follow `src/shared/ui/material/docs/design-document.md`.
 
-The artifact is a complete normalized official-design snapshot. It is not an implementation brief, architecture plan, adapter matrix, renderer audit, or migration report.
+The artifact is a complete normalized official-design snapshot. It is not an implementation brief, architecture plan, adapter matrix, renderer audit, migration report, or review result.
 
 ## Read first
 
@@ -42,7 +42,7 @@ The artifact is a complete normalized official-design snapshot. It is not an imp
 - the existing family `DESIGN.md`, when present;
 - the official Material source cache/index and exact applicable component pages.
 
-Do not read the current family README, adapter implementation, stories, tests, m3e package, current consumers, or roadmap before the official design ledger is complete. Those sources can bias a supposedly complete official snapshot toward the currently implemented subset.
+Do not read the current family README, architecture, implementation, stories, tests, m3e package, current consumers, migration record, review, or roadmap before the official design ledger is complete. Those sources can bias a supposedly complete official snapshot toward the currently implemented subset.
 
 ## Required official source pass
 
@@ -93,7 +93,7 @@ For every official component token, preserve:
 - documented values for light, dark, high contrast, and other published modes;
 - unresolved or absent values exactly as unresolved/absent.
 
-Do not rename tokens into Mioframe CSS names and do not select a supported subset. Selection belongs to later adapter architecture.
+Do not rename tokens into Mioframe CSS names and do not select a supported subset. Selection belongs to `material-component-architecture`.
 
 ## Separation rules
 
@@ -120,7 +120,7 @@ Before reporting complete, verify that:
 5. source conflicts and extraction gaps are explicit;
 6. status is truthfully `current`, `stale`, or `blocked`.
 
-Do not proceed into adapter implementation from this skill. The completed design document is the handoff artifact for `material-component-adapter` or `material-component-completion`.
+Do not proceed into architecture or implementation from this skill. The completed design document is the handoff artifact for a later `material-component-architecture` invocation.
 
 ## Report
 
@@ -140,6 +140,7 @@ Complete accessibility guidance:
 Official token rows captured:
 Source conflicts or extraction gaps: none | <details>
 Document status: current | stale | blocked
+Next stage: architecture | design correction required
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 ```
 
@@ -148,7 +149,8 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Producing only a summary or demand-scoped subset.
 - Using the family README as the official design source.
 - Deriving official facts from current code, stories, tests, m3e, or consumers.
-- Mixing implementation, renderer, migration, or verification decisions into `DESIGN.md`.
+- Mixing architecture, implementation, renderer, migration, verification, or review decisions into `DESIGN.md`.
 - Omitting unused official capability.
 - Treating links to official pages as a substitute for the complete local description.
 - Guessing missing measurements, tokens, defaults, or behavior.
+- Running the architecture or any later stage in the same invocation.
