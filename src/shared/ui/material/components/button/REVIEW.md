@@ -49,9 +49,9 @@ One migration-owned cleanup remains: `MDAppBar.__trailing-elements` still declar
 
 ## Documentation consistency
 
-`docs/token-api.md` already contains the accepted seven Button rows but still carries stale pre-correction prose and `Status: correction`. It must be returned to the normal populated catalogue state and describe Button and Loading Indicator as staged, accepted runtime token owners.
+`docs/token-api.md` is now the populated supported catalogue and records the accepted seven Button tokens and Loading Indicator token without provisional lifecycle claims. `docs/roadmap.md` and the PR description route the next invocation to Button implementation correction.
 
-`docs/roadmap.md` and the PR description are architect-owned current-state records and are updated separately from the coding correction.
+No additional documentation correction is required before the implementation worker starts. Downstream stage records must be refreshed after the code/test corrections and final verification.
 
 ## Proof and verification
 
@@ -63,9 +63,8 @@ Automated proof does not substitute for operator assessment of appearance and re
 
 1. Remove behavior assertions from Button visual specs while preserving focus assertions in behavior tests.
 2. Remove the ineffective AppBar trailing-elements `--md-content-color` declaration.
-3. Synchronize `token-api.md` with the accepted current runtime token catalogue.
-4. Pass GitHub CI on the resulting head.
-5. Record operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar contextual states, and the other affected color-ownership surfaces.
+3. Pass GitHub CI on the resulting head.
+4. Record operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar contextual states, and the other affected color-ownership surfaces.
 
 ## Major issues
 
@@ -75,7 +74,6 @@ None.
 
 1. Visual and behavior proof ownership is mixed by `toBeFocused()` assertions in the visual lane.
 2. AppBar retains an ineffective legacy contextual-color declaration.
-3. The token catalogue contains correct rows but stale status and lifecycle prose.
 
 ## Accepted risks
 
@@ -96,7 +94,7 @@ None.
 
 `implementation`.
 
-The orchestrator must launch a fresh implementation worker for the visual-test ownership correction, continue through a fresh migration worker for AppBar and catalogue cleanup, run the required final verification, and then launch a new independent review worker. It must not repeat design or architecture unless a correction worker discovers evidence that invalidates those artifacts.
+The orchestrator must launch a fresh implementation worker for the visual-test ownership correction, continue through a fresh migration worker for AppBar cleanup and downstream record refresh, run the required final verification, and then launch a new independent review worker. It must not repeat design or architecture unless a correction worker discovers evidence that invalidates those artifacts.
 
 ## Merge readiness
 
