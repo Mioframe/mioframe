@@ -47,7 +47,7 @@ Family `README.md` files are static indexes only. They do not own mutable stage 
 
 Stage workers use only readable workspace files, canonical artifacts, official source tools, and documented project commands.
 
-They do not inspect hidden workspace metadata, external delivery state, or unrelated execution-environment internals. A project command failure is recorded as verification evidence only after otherwise safe stage-owned edits are complete.
+They do not inspect hidden workspace metadata or unrelated execution-environment internals and do not ask the operator to choose repair procedures. A project command failure is recorded as verification evidence only after otherwise safe stage-owned edits are complete.
 
 No worker-ID registry, artifact digest infrastructure, or duplicate verification framework is required. Canonical artifacts, observable workspace state, isolated review, project verification, and operator visual assessment are sufficient.
 
