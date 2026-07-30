@@ -2,7 +2,7 @@
 
 ## Decision
 
-Every official Material component family progresses through isolated stages:
+Every official Material family progresses through isolated stages:
 
 ```text
 official Material sources
@@ -13,63 +13,50 @@ official Material sources
   → independent REVIEW.md
 ```
 
-The separation is mandatory. It keeps each reasoning step focused and creates durable handoffs that later stages can verify instead of reconstructing.
+The separation is mandatory. It keeps each reasoning step focused and creates durable handoffs that later stages validate instead of reconstructing.
 
 ## Operator invocation and stage scope
 
 These are different boundaries:
 
 - **Operator invocation** — one `material-component <name>` command. It autonomously orchestrates the full workflow until completion or a genuine external blocker.
-- **Stage scope** — one focused execution of design, architecture, implementation, migration, or review in a fresh agent/subagent context. It owns one artifact and then returns control to the orchestrator.
+- **Stage scope** — one focused execution of design, architecture, implementation, migration, or review in a fresh worker context. It owns one artifact and returns control to the orchestrator.
 
-One operator invocation may execute multiple stage workers sequentially. A stage worker must never absorb work owned by another stage.
-
-The operator supplies only the component name. Repeated manual invocations are not part of the normal workflow.
+One operator invocation may execute multiple stage workers sequentially. A stage worker must never absorb work owned by another stage. The operator supplies only the component name.
 
 ## Worker isolation
 
-Stage isolation is a runtime boundary, not only a documentation convention.
-
-The outer orchestrator is thin. It may:
+The outer orchestrator may only:
 
 - resolve the family;
-- inspect canonical artifact statuses and readable working-tree files;
+- inspect canonical artifact statuses and readable workspace files;
 - select the earliest invalid stage;
 - launch a fresh stage worker;
 - validate the resulting artifact and report;
 - route dependencies, corrections, completion, or a genuine blocker.
 
-The orchestrator must not perform official research, architecture decisions, implementation, migration, or review itself.
+It must not perform official research, architecture decisions, implementation, migration, or review itself.
 
-Every stage execution uses a new agent/subagent context. The worker receives only:
+Every stage execution uses a new worker context. The worker receives only:
 
 - the component name and canonical family;
 - the selected stage skill;
-- applicable repository rules;
-- current readable working-tree file state;
+- applicable workspace rules;
+- readable workspace files;
 - canonical upstream artifact paths;
-- explicit return-stage or blocker facts already recorded in repository artifacts.
+- explicit return-stage or blocker facts already recorded in artifacts.
 
-A Git ref, `HEAD`, commit object, index, or healthy local Git object database is not an inter-stage input or prerequisite. Hidden reasoning, conversational summaries, and conclusions that are not written to canonical artifacts are not inter-stage inputs. Later workers reconstruct nothing from another worker’s private context; they validate repository artifacts.
+Hidden reasoning, conversational summaries, and unwritten conclusions are not inter-stage inputs. The review worker must not be the worker that authored or corrected `ARCHITECTURE.md`, production implementation, or `MIGRATION.md` for the reviewed result.
 
-The review worker must not be the worker that authored or corrected `ARCHITECTURE.md`, production implementation, or `MIGRATION.md` for the reviewed result.
+If the environment cannot launch a fresh worker, the workflow is blocked on orchestration capability. It must not continue all stages in one context and claim isolation.
 
-If the agent environment cannot launch a fresh worker for the selected stage, the outer workflow is `blocked` on orchestration infrastructure. It must not continue all stages in one context and claim isolation.
+## Workspace boundary
 
-## Git ownership and verification boundary
+Coding workers operate only on readable files and documented project commands.
 
-Coding agents and Material stage workers do not own Git. They must not run raw `git`, inspect or repair `.git`, fetch remotes, manipulate refs/index/worktrees, stage, commit, reset, or rebase.
-
-Use file-oriented repository tools for stage selection, implementation, migration, and review. Stage artifacts reference canonical upstream artifact paths and their declared revisions/statuses; commit/ref fields are optional descriptive metadata, never a gate.
-
-Repository verification commands may use Git internally to resolve changed paths. If a required `pnpm verify*` command fails because Git metadata is unavailable or corrupt:
-
-- do not repair Git;
-- complete otherwise safe stage-owned file work first;
-- record the exact project-command failure;
-- treat verification as blocked only when it is the remaining completion gate.
-
-Git corruption is therefore an environment/verification issue, not evidence that design, architecture, implementation, migration, or review cannot begin.
+- Hidden workspace metadata and unrelated environment internals are outside stage scope.
+- Environment-repair choices are never delegated to the operator by a coding worker.
+- If a project command fails before reaching its relevant check, complete otherwise safe stage-owned file work, record the exact command failure, and report verification as blocked only when it remains the final gate.
 
 ## Family artifacts
 
@@ -83,11 +70,11 @@ src/shared/ui/material/components/<family>/
   README.md
 ```
 
-`README.md` is only a short family index and navigation entry. It must not duplicate mutable stage status, milestone status, or next action.
+`README.md` is only a short family index. It must not duplicate mutable stage status, milestone status, or next action.
 
 ### DESIGN.md
 
-Answers:
+Answers only:
 
 ```text
 What does official Material define?
@@ -95,7 +82,7 @@ What does official Material define?
 
 Owner: `material-component-design`.
 
-Contains the complete official component contract and token catalogue. Contains no Mioframe demand, Vue API, m3e mapping, code, tests, migration, or status decisions.
+Contains the complete official component contract and token catalogue. Contains no Mioframe demand, Vue API, renderer mapping, code, tests, migration, or status decisions.
 
 Gate: status `current`.
 
@@ -104,13 +91,13 @@ Gate: status `current`.
 Answers:
 
 ```text
-What must Mioframe implement now, who owns it, how does m3e participate,
+What must Mioframe implement now, who owns it, how does the renderer participate,
 and how will implementation, proof, and migration be performed?
 ```
 
 Owner: `material-component-architecture`.
 
-Consumes the complete `DESIGN.md`, current scenarios, repository ownership, and exact renderer evidence. Resolves public API, selected tokens, dependencies, gaps, implementation passes, proof, and migration. Makes no production edits.
+Consumes the complete `DESIGN.md`, current scenarios, workspace ownership, and exact renderer evidence. Resolves public API, selected tokens, dependencies, gaps, implementation passes, proof, and migration. Makes no production edits.
 
 Gate: status `ready` and no unresolved coding decision.
 
@@ -124,7 +111,7 @@ Was the accepted component architecture implemented and proven at the component 
 
 Owner: `material-component-implementation`.
 
-The primary output is code, tokens, tests, stories, exports, and defect records. `IMPLEMENTATION.md` is the durable handoff describing completed passes, proof, verification, deviations, and migration readiness.
+The primary output is code, tokens, tests, stories, exports, and defect records. `IMPLEMENTATION.md` records completed passes, proof, verification, deviations, and migration readiness.
 
 Gate: status `complete`, architecture deviations `none`, migration readiness `ready`.
 
@@ -138,7 +125,7 @@ Were all approved consumers migrated, scenarios preserved, and replaced legacy o
 
 Owner: `material-component-migration`.
 
-Contains the consumer inventory, migrated paths, preserved behavior and failure cases, removed ownership, proof, and final verification.
+Contains consumer inventory, migrated paths, preserved behavior and failure cases, removed ownership, proof, and final verification.
 
 Gate: status `complete` and review readiness `ready`, except an explicit operator-only visual gate may remain.
 
@@ -148,27 +135,27 @@ Answers:
 
 ```text
 Does the full resulting family comply with official design, accepted architecture,
-repository rules, consumer scenarios, proof, and merge gates?
+workspace rules, consumer scenarios, proof, and completion gates?
 ```
 
 Owner: `material-component-review`.
 
-Review is independent and read-only except for `REVIEW.md`. Findings return work to the earliest owning stage. The outer orchestrator launches a fresh correction worker and later a new independent review worker.
+Review is independent and read-only except for `REVIEW.md`. Findings return work to the earliest owning stage. The orchestrator launches a fresh correction worker and later a new independent review worker.
 
-Gate: verdict `compliant` or `compliant-with-listed-risks`, required operator acceptance complete, and merge readiness recorded.
+Gate: verdict `compliant` or `compliant-with-listed-risks`, required operator acceptance complete, and completion readiness recorded.
 
 ## Autonomous state machine
 
 The orchestrator repeatedly selects the earliest condition that applies:
 
-1. missing/stale/blocked/incomplete `DESIGN.md` → design;
-2. missing/stale/blocked/not-ready `ARCHITECTURE.md` → architecture;
-3. missing/partial/blocked/stale `IMPLEMENTATION.md` or implementation drift → implementation;
-4. missing/partial/blocked/stale `MIGRATION.md` or remaining consumer/legacy work → migration;
-5. missing/stale/blocked `REVIEW.md`, inconsistency with current readable artifacts/code, or actionable review findings → review;
+1. missing, stale, blocked, or incomplete `DESIGN.md` → design;
+2. missing, stale, blocked, or not-ready `ARCHITECTURE.md` → architecture;
+3. missing, partial, blocked, stale `IMPLEMENTATION.md`, or implementation drift → implementation;
+4. missing, partial, blocked, stale `MIGRATION.md`, or remaining consumer/legacy work → migration;
+5. missing, stale, blocked `REVIEW.md`, inconsistency with current readable artifacts/code, or actionable findings → review;
 6. all gates current → complete.
 
-For every selected stage, the orchestrator launches a fresh worker, validates repository outputs, and discards that worker context before selecting the next stage.
+For every selected stage, the orchestrator launches a fresh worker, validates workspace outputs, and discards that worker context before selecting the next stage.
 
 An implementation or review finding that invalidates architecture routes back to architecture. A design omission routes back to design. Ordinary correction work does not require a new operator command, but it always uses a new worker context.
 
@@ -176,7 +163,7 @@ An implementation or review finding that invalidates architecture routes back to
 
 A parent family pauses when it requires another official Material component.
 
-The dependency passes the same stages as a first-class family. The orchestrator processes dependency stages automatically through separate fresh workers and then resumes the parent. Parent and dependency work remain separate stage contexts and separate artifacts.
+The dependency passes the same stages as a first-class family. The orchestrator processes dependency stages automatically through separate fresh workers and then resumes the parent. Parent and dependency work remain separate contexts and artifacts.
 
 Parent architecture cannot be `ready` until dependency design and architecture are ready. Parent implementation cannot complete until dependency implementation is complete. Parent migration and review cannot complete while dependency closure is incomplete.
 
@@ -185,24 +172,24 @@ Parent architecture cannot be `ready` until dependency design and architecture a
 A source-cache freshness threshold triggers a refresh attempt; it does not automatically make a complete snapshot stale.
 
 - `current` — all required official content is represented from the newest successfully acquired official revision and there is no evidence of a newer material revision.
-- `stale` — there is affirmative evidence that official content or its material revision changed after the recorded snapshot.
+- `stale` — affirmative evidence shows official content or its material revision changed after the recorded snapshot.
 - `blocked` — required official content remains missing, contradictory, or incompletely extracted after all available source and cache fallbacks.
 
-A failed refresh helper or route-index request is not itself a blocker when a complete official snapshot and token resource are available and no newer revision is known.
+A failed refresh helper is not itself a blocker when a complete official snapshot and token resource remain available and no newer revision is known.
 
 ## Genuine external blockers
 
 The outer orchestration may stop only for:
 
 - genuinely missing official content after all fallbacks;
-- unavailable permissions or required tools;
-- unavailable fresh-worker/subagent orchestration capability;
-- an unresolved material architecture decision that official evidence and repository rules cannot determine;
+- unavailable required source tools or permissions;
+- unavailable fresh-worker orchestration capability;
+- an unresolved material architecture decision that official evidence and workspace rules cannot determine;
 - required operator visual/motion acceptance;
-- a required project verification command blocked by an irreducible external/infrastructure failure after stage-owned edits are complete;
+- a required project verification command that cannot execute or complete after stage-owned edits are done;
 - safety-required operator input.
 
-A completed stage, ordinary failing test, code finding, cache age, unavailable Git ref, or missing repeated command is not an external blocker.
+A completed stage, ordinary failing test, code finding, cache age, or missing repeated command is not an external blocker.
 
 ## Stage ownership rules
 
@@ -210,13 +197,12 @@ A completed stage, ordinary failing test, code finding, cache age, unavailable G
 - A later stage must not rewrite an earlier artifact to make current work easier.
 - When new evidence invalidates an earlier artifact, return control to the orchestrator and route backward through a fresh worker.
 - Do not duplicate the complete content of an earlier artifact in later records; reference exact sections.
-- Stage artifacts use explicit statuses and canonical upstream artifact references so staleness is detectable without requiring Git commit metadata.
+- Stage artifacts use explicit statuses and canonical upstream artifact references so staleness is detectable from workspace files.
 - `roadmap.md` remains the only owner of project-wide milestone order and current next action.
-- PR title, body, draft state, review threads, Git operations, and merge remain operator/architect responsibilities.
 
 ## Completion
 
-A Material component is not complete because code and CI are green. Completion requires:
+A Material component is not complete because code and automated checks pass. Completion requires:
 
 - current complete official design;
 - ready architecture;
