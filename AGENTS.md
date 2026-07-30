@@ -7,8 +7,8 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Current readable workspace files, the `AGENTS.md` tree, `.agents/skills/*/SKILL.md`, project documentation, code, and tests are the source of truth.
 - Read the root and applicable nested `AGENTS.md` files before editing. Use relevant skills as operating instructions; do not restate their detailed policy in plans or reports.
 - Inspect task-relevant files and direct dependencies first. Expand only when evidence shows wider impact.
-- Verify uncertain repository behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
-- `docs/testing/architecture.md` is the canonical project-wide testing policy. `docs/testing/migration-plan.md` records temporary gaps between the target and current verifier behavior.
+- Verify uncertain workspace behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
+- `docs/testing/architecture.md` is the canonical project-wide testing policy.
 - `src/shared/ui/material/docs/component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
@@ -25,7 +25,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight is unresolved, or while task-specific `TEST IMPACT` is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every abstraction, state, layer, compatibility path, recovery mechanism, optimization, registry, mapping, or helper must map to a current requirement or verified invariant.
 - Compare the proposal with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
-- Treat the ready handoff or repository-backed deterministic blueprint as the implementation contract. If new facts invalidate it, stop and update it explicitly.
+- Treat the ready handoff or workspace-backed deterministic blueprint as the implementation contract. If new facts invalidate it, stop and update it explicitly.
 - Preserve existing user scenarios unless the task explicitly changes them.
 - If two correction rounds still reveal ownership drift, mixed responsibilities, unresolved scenarios, or growing workaround logic, return to architecture.
 
