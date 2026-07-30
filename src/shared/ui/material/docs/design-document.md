@@ -27,9 +27,19 @@ How is it implemented, migrated, tested, or reviewed?
 
 Those decisions belong to later stage artifacts and runtime owners.
 
-## Authority and lifecycle
+## Authority and source acquisition
 
 Official Material documentation is the authority. `DESIGN.md` is the complete local, source-backed snapshot used by later architecture and implementation stages.
+
+The design stage must autonomously use the available source chain instead of stopping after the first failed helper:
+
+1. current official Material MCP/source service;
+2. official cache refresh and route index;
+3. direct official component routes when available;
+4. the newest complete repository or MCP cache snapshot;
+5. resolved official token resources associated with that snapshot.
+
+A failed route index, refresh script, or freshness check is evidence about tooling, not evidence that official content changed. Continue through the fallback chain.
 
 The document records:
 
@@ -37,15 +47,27 @@ The document records:
 - source snapshot date;
 - cache/source revision used for extraction;
 - whether every required official page was available;
+- refresh attempts and fallback source selected;
 - source conflicts, unresolved values, or extraction gaps.
+
+## Status lifecycle
 
 A family design document has one status:
 
-- `current` — every required official source is represented completely;
-- `stale` — official sources changed after the recorded snapshot;
-- `blocked` — a required source is unavailable, contradictory, or incompletely extracted.
+- `current` — every required official source is represented completely from the newest successfully acquired official revision, and there is no affirmative evidence that a newer material revision exists;
+- `stale` — there is affirmative evidence that official component content or its material source revision changed after the recorded snapshot;
+- `blocked` — required official content remains unavailable, contradictory, or incompletely extracted after all available source and cache fallbacks.
 
-A missing, stale, or blocked `DESIGN.md` blocks architecture, implementation, migration, review, and complete status.
+A configured cache freshness window is only a refresh trigger. Age alone does not make a complete snapshot `stale` or `blocked`.
+
+A transient refresh failure does not block architecture when:
+
+- all required official tabs are available in a complete snapshot;
+- the associated token resource is complete;
+- no newer source revision or changed content is known;
+- the refresh limitation is recorded explicitly.
+
+A missing, genuinely stale, or blocked `DESIGN.md` blocks architecture, implementation, migration, review, and complete status.
 
 ## Required source set
 
@@ -131,6 +153,7 @@ It must include every applicable official fact in a structured, non-duplicative 
    - unresolved token values;
    - missing official guidance;
    - deprecated or superseded guidance;
+   - refresh or extraction limitations;
    - no Mioframe or renderer decision in this section.
 
 10. **Related official contracts**
@@ -178,10 +201,12 @@ Do not replace complete coverage with a short summary, a selected-surface matrix
 
 Regenerate or update `DESIGN.md` when:
 
-- official source content changed;
-- the source cache revision changed materially;
+- official source content is known to have changed;
+- a newer source cache revision is available;
 - a previously unavailable official page became available;
 - review found an omitted official capability, token, state, measurement, or guidance rule.
+
+A freshness threshold may trigger a refresh attempt but does not invalidate a complete document without newer evidence.
 
 Implementation, migration, and review changes alone do not modify `DESIGN.md`.
 
@@ -197,4 +222,4 @@ A design document is complete only when:
 - source conflicts and extraction gaps are explicit;
 - status is `current`.
 
-The design skill stops after this artifact. Architecture begins only in a later invocation.
+The design stage returns control to the outer `material-component` orchestrator after writing and validating this artifact. Architecture begins in a fresh internal stage scope, potentially within the same operator invocation.
