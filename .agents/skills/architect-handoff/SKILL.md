@@ -31,9 +31,9 @@ You may skip this skill for:
 - narrow fixes where ownership, source of truth, final state, and verification are explicit and unchanged;
 - work covered by an applicable deterministic standard-authoring policy when the agent can derive a ready repository-backed contract from authoritative sources and no escalation condition is present.
 
-For one explicit official Material component target or proven inseparable family, `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, and a ready family `README.md` provide the normal deterministic architecture. Use `material-component-adapter` without a separate handoff when renderer viability, implementation ownership, the public Vue contract, consumer migration, and verification are fully resolved. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision outside that contract.
+For one explicit official Material component target or proven inseparable family, a current complete family `DESIGN.md`, `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, and a ready demand-scoped family `README.md` provide the normal deterministic architecture. Use `material-component-adapter` without a separate handoff only when the design artifact, renderer viability, implementation ownership, public Vue contract, consumer migration, and verification are fully resolved. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision outside that contract.
 
-If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready artifact, and reason no unresolved architecture decision remains.
+If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready artifacts, and reason no unresolved architecture decision remains.
 
 ## Token budget
 
@@ -111,7 +111,7 @@ When blocked, resolve the handoff first. Do not patch forward and expect review 
 ## Implementation contract
 
 - Treat the ready handoff as upstream input for tasking, preflight, coding, PR description, and review.
-- When the skill is legitimately skipped, treat the repository-backed deterministic workflow and its ready contract as the equivalent implementation contract.
+- When the skill is legitimately skipped, treat the repository-backed deterministic workflow and its ready artifacts as the equivalent implementation contract.
 - Do not implement while the applicable contract is `not ready` or `blocked`.
 - Do not ask the coding agent to resolve product, architecture, test-ownership, or performance-evidence decisions left open by the applicable contract.
 - Restate only implementation-relevant decisions downstream.
