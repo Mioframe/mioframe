@@ -1,12 +1,12 @@
 # Mioframe Material migration roadmap
 
-This file is the only owner of the current sequence, milestone state, blockers, and next action. Durable rules live in `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, and `m3e-defects.md`.
+This file is the only owner of current milestone order, status, blockers, and next action. Durable rules live in `component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, and `m3e-defects.md`.
 
 ## Current state
 
 Last updated: 2026-07-30
 
-Current milestone: `M0/M1 — design-first m3e architecture, token ownership, and MDButton pilot`
+Current milestone: `M0/M1 — restore staged Material workflow and revalidate Loading Indicator/Button pilot`
 
 Status: `correction`
 
@@ -14,70 +14,95 @@ Owner: PR #162 / `refactor/material-docs-ownership`
 
 Implementation ownership: `migrating`
 
-## Accepted architecture
+## Accepted workflow
 
 ```text
-official Material documentation
-  → complete components/<family>/DESIGN.md
-  → current Mioframe demand
-  → demand-scoped family README matrix
-  → public Vue MD* API and selected runtime tokens
-  → private @m3e/web renderer
+material-component-design
+  → components/<family>/DESIGN.md
+
+material-component-architecture
+  → components/<family>/ARCHITECTURE.md
+
+material-component-implementation
+  → code/tests/stories/tokens + IMPLEMENTATION.md
+
+material-component-migration
+  → consumers/legacy removal + MIGRATION.md
+
+material-component-review
+  → REVIEW.md
 ```
 
-`DESIGN.md` is the full official component description. It is not demand-scoped and contains the complete official variants, configurations, states, guidance, accessibility, geometry, related components, and component-token catalogue.
+`material-component <name>` selects the earliest invalid stage, runs exactly one stage, writes its handoff artifact, and stops.
 
-The family README is the Mioframe implementation contract. It selects from `DESIGN.md`, records Vue and renderer mappings, ownership, defects, proof, and deferred runtime surface.
+The five stages must not be recombined. Their separation is required so agents preserve focus and later agents can verify explicit upstream decisions rather than reconstructing them from code.
 
-A missing, stale, blocked, or incomplete family `DESIGN.md` blocks implementation completion and `migrated` status.
+Family `README.md` is an index only. It is not a design, architecture, implementation, migration, or review artifact.
 
-## Implemented
+## Workflow correction completed
 
-- `src/shared/ui/material` is the canonical project-facing Material Vue and token boundary.
-- Official Material remains the public contract authority; installed `@m3e/web` remains private.
-- Canonical `MDButton` and `MDLoadingIndicator` adapters and exports exist.
-- Current direct Button consumers use `@shared/ui/material`; the legacy Button implementation was removed.
-- Button loading composition, accessibility ownership, independent disabled state, and Loading Indicator handoff are implemented.
-- Loading Indicator owns standalone geometry, accessibility, selected active-color token, and controlled `M3E-001`/`M3E-002` workarounds.
-- The Loading Indicator family path is `components/loadingIndicator`.
-- Foundation/theme token ownership, dark inverse/outline mappings, renderer boundaries, custom-element allow-list, and token catalogue enforcement are implemented.
-- Global `.md *` color/motion ownership was removed; Snackbar, Rich Tooltip, Dialog, and Empty State color ownership was migrated locally.
-- Storybook impact mappings, screenshot tags, and CI-autofix complete-tree detection were corrected.
-- The intentional compatible dependency refresh, including `@m3e/web`, remains accepted PR scope.
+- Added `docs/component-workflow.md` as the stage state machine.
+- Restored separate skills:
+  - `material-component-design`;
+  - `material-component-architecture`;
+  - `material-component-implementation`;
+  - `material-component-migration`;
+  - `material-component-review`.
+- Changed `material-component` into a one-stage router.
+- Removed unified `material-component-adapter` and `material-component-completion` workflows.
+- Updated Material boundary rules, architecture, token policy, implementation preflight, and generic architecture handoff to require `DESIGN.md` plus ready `ARCHITECTURE.md` before coding.
+- Defined durable `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` handoffs.
+- Preserved Material → Vue → private m3e ownership and demand-scoped runtime API.
 
-## Primary correction blocker: missing complete design artifacts
+## Existing implementation retained as evidence
 
-The current Button and Loading Indicator families do not yet contain:
+The branch currently contains working pilot code and proof for:
+
+- canonical `MDLoadingIndicator` and `MDButton` exports;
+- m3e-backed renderer integration;
+- Button loading composition and dependency handoff;
+- selected tokens and token catalogue infrastructure;
+- renderer-boundary enforcement;
+- current consumer migration;
+- shared color ownership corrections;
+- unit, browser, Storybook, and visual proof;
+- CI autofix complete-tree handling.
+
+These artifacts are implementation evidence only. They do not bypass missing earlier stage artifacts and must be revalidated stage by stage.
+
+## Primary blocker: pilot families have not passed the restored stages
+
+The current families do not yet have the canonical chain:
 
 ```text
-src/shared/ui/material/components/button/DESIGN.md
-src/shared/ui/material/components/loadingIndicator/DESIGN.md
+components/loadingIndicator/DESIGN.md
+components/loadingIndicator/ARCHITECTURE.md
+components/loadingIndicator/IMPLEMENTATION.md
+components/loadingIndicator/MIGRATION.md
+components/loadingIndicator/REVIEW.md
+
+components/button/DESIGN.md
+components/button/ARCHITECTURE.md
+components/button/IMPLEMENTATION.md
+components/button/MIGRATION.md
+components/button/REVIEW.md
 ```
 
-Their existing READMEs are demand-scoped adapter records, not complete official Material descriptions.
+Their existing READMEs are provisional mixed records created by the abandoned unified workflow. They are not accepted handoffs and must be reduced to indexes after the staged artifacts are created.
 
-Before either family can be approved:
+Do not create placeholder artifacts. Each stage must independently satisfy its own gate.
 
-1. run the design stage for Button and Loading Indicator;
-2. capture every applicable official overview, specs, guidelines, accessibility, related-component, and token source;
-3. include the complete official surface and complete component-token catalogue, including unused capability;
-4. record source snapshot metadata and conflicts;
-5. rebuild the family README matrices with exact `DESIGN.md` references;
-6. re-review all selected/deferred decisions and current implementation against the complete design artifacts.
+## Known implementation finding awaiting staged resolution
 
-Do not create abbreviated placeholders. A design artifact is accepted only when its status is `current` under `docs/design-document.md`.
-
-## Secondary correction blocker: Button contextual token contract
-
-The first Button component-token runtime pass is not accepted:
+The current Button runtime token pass is known to be incorrect:
 
 - public `hover`/`focus` names were derived from m3e vocabulary instead of official Material `hovered`/`focused` paths;
-- the current five-token subset omits state-specific hovered/focused/pressed label tokens, so Snackbar action text can fall back from inverse-primary to primary;
-- the published text-Button icon token has no current contextual consumer;
-- browser proof does not prove the rendered label color in each interaction state;
-- existing Snackbar state baselines cannot be treated as Material-correct acceptance evidence.
+- state-specific hovered/focused/pressed label tokens are missing, so Snackbar action text can fall back from inverse-primary to primary;
+- a contextual icon token has no current consumer;
+- browser proof does not prove rendered label color in each interaction state;
+- affected Snackbar baselines cannot be treated as Material-correct acceptance evidence.
 
-The provisional accepted target is seven text-Button tokens:
+A provisional seven-token target was identified:
 
 ```text
 --md-comp-button-text-label-text-color
@@ -89,64 +114,82 @@ The provisional accepted target is seven text-Button tokens:
 --md-comp-button-text-pressed-state-layer-color
 ```
 
-This target must be confirmed against the complete Button `DESIGN.md` before code correction. No compatibility aliases are required because the incorrect names have not shipped.
+This is not yet an accepted architecture. The Button architecture stage must confirm or correct it against the complete `DESIGN.md`, current Snackbar scenario, and exact renderer fallback chain before implementation changes resume.
 
-## Correction remainder
+## Required staged recovery
 
-1. Create complete current `DESIGN.md` artifacts for Button and Loading Indicator.
-2. Rebuild both family README matrices with exact design references and re-evaluate all selected/deferred/default/dependency decisions.
-3. Confirm or correct the provisional seven-token Button target from the complete design token catalogue.
-4. Replace Button runtime declarations, renderer mappings, Snackbar overrides, catalogue entries, tests, and affected baselines atomically.
-5. Prove Snackbar action-label computed color in resting, hovered, focused, and pressed states.
-6. Remove the unconsumed text-Button icon token and ineffective `MDAppBar.__trailing-elements` content-color declaration unless a real supported contract is established.
-7. Keep behavioral focus assertions in browser behavior tests; visual specs only prepare deterministic states and capture screenshots.
-8. Return `token-api.md` to normal supported-catalogue status only after executable Button declarations and catalogue match.
-9. Pass the exact final current-head `pnpm verify:release` gate.
-10. Complete operator visual and motion review of Button, standalone/composed Loading Indicator, corrected Snackbar states, and Rich Tooltip.
-11. Re-review the complete resulting head, synchronize PR metadata, and make the merge-readiness decision.
+### Loading Indicator dependency
 
-No exact dependency pin, renderer-version registry, Lit application dependency, WebKit expansion, bundle-budget infrastructure, broad CSS selector scanner, or new reduced-motion contract is required by this milestone.
+1. Run `material-component Loading indicator` → create complete `DESIGN.md`; stop.
+2. Run it again → create ready `ARCHITECTURE.md`; stop.
+3. Run it again → audit/correct canonical code and component-owned proof; write `IMPLEMENTATION.md`; stop.
+4. Run it again → confirm direct consumers/legacy scope and final verification responsibilities; write `MIGRATION.md`; stop.
+5. Run it again → independent review and operator gate; write `REVIEW.md`; stop.
+
+### Button parent
+
+After Loading Indicator design/architecture/implementation closure:
+
+1. create complete Button `DESIGN.md`;
+2. create ready Button `ARCHITECTURE.md`, including dependency handoff and official token state traces;
+3. correct/audit implementation and write `IMPLEMENTATION.md`;
+4. revalidate every current Button consumer, remove remaining ineffective legacy ownership, run final verification, and write `MIGRATION.md`;
+5. perform independent review and operator visual/motion acceptance; write `REVIEW.md`.
+
+## Remaining code findings to resolve in their owning stages
+
+- Confirm or replace the provisional Button token target in architecture.
+- Implement the accepted state-complete Button token contract without pre-merge aliases.
+- Prove Snackbar action-label computed color in resting, hovered, focused, and pressed states.
+- Remove the ineffective `MDAppBar.__trailing-elements` content-color declaration unless architecture establishes a real context contract.
+- Keep behavioral focus assertions in behavior tests; visual specs only prepare deterministic states and capture screenshots.
+- Return `token-api.md` to normal supported-catalogue status only after declarations, architecture, and proof agree.
+- Pass exact final current-head `pnpm verify:release` during migration after all code and consumer changes.
+- Complete operator visual/motion review for Button, standalone/composed Loading Indicator, Snackbar states, and Rich Tooltip.
 
 ## Milestones
 
-| ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                                                                 |
-| --- | -------------------------------------------------- | ------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | design-first m3e architecture and token foundation | `correction` | none       | design-document contract; canonical token owners/catalogue; renderer boundary; final verification                                                                                         |
-| M1a | `MDLoadingIndicator` design and dependency adapter | `correction` | M0         | complete current `DESIGN.md`; accepted README mapping; standalone/composed ownership; independent proof; operator review; final verification                                              |
-| M1  | `MDButton` design and action adapter pilot         | `correction` | M1a        | complete current `DESIGN.md`; demand-scoped API; migrated consumers; state-complete contextual tokens; dependency handoff; visible interaction proof; operator review; final verification |
-| M2  | `MDSwitch` design and stateful adapter pilot       | `planned`    | M1         | complete design artifact; source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                                        |
-| M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; design first; dependencies first; demand-scoped runtime API/tokens; explicit gap ownership                                                              |
+| ID | Milestone | Status | Depends on | Exit gate |
+| -- | --------- | ------ | ---------- | --------- |
+| M0 | staged m3e architecture and token foundation | `correction` | none | staged skills/docs current; renderer boundary; canonical token owners; final verification |
+| M1a | `MDLoadingIndicator` staged dependency family | `correction` | M0 | five current family artifacts; accepted standalone/composed ownership; proof; operator review |
+| M1 | `MDButton` staged action family | `correction` | M1a | five current family artifacts; migrated consumers; official contextual tokens; dependency handoff; proof; operator review |
+| M2 | `MDSwitch` stateful pilot | `planned` | M1 | complete five-stage workflow; controlled state/event order; renderer-gap ownership; verification |
+| M3 | sequential component migration | `planned` | M2 | one family and one stage at a time; dependencies first; explicit ownership; independent review |
 
 ## Accepted family structure
 
 ```text
 material/components/<family>/DESIGN.md
-  → complete official Material component contract
+  → complete official Material contract
+
+material/components/<family>/ARCHITECTURE.md
+  → selected Mioframe/Vue/m3e implementation plan
+
+material/components/<family>/IMPLEMENTATION.md
+  → component implementation and proof handoff
+
+material/components/<family>/MIGRATION.md
+  → consumer migration and legacy removal
+
+material/components/<family>/REVIEW.md
+  → independent compliance and merge readiness
 
 material/components/<family>/README.md
-  → demand-scoped Material–Vue–m3e mapping
+  → short navigation index
 
 material/components/<family>/tokens.css
-  → selected supported official component tokens
-  → private family-local renderer mappings
-
-material/docs/token-api.md
-  → complete supported runtime consumer catalogue
+  → architecture-selected public tokens and private mappings
 ```
 
-## Next component process
+## Next action
 
-For every component:
+Run:
 
-1. create or refresh the complete official `DESIGN.md`;
-2. stop if source coverage is blocked or stale;
-3. select current demand from the complete design artifact;
-4. complete official dependency designs and adapters first;
-5. distinguish standalone defaults from parent-composed overrides;
-6. create the demand-scoped Material–m3e–Vue README matrix with exact design references;
-7. trace contextual tokens through official path, public token, renderer input/fallback, and consumer result;
-8. implement the minimum canonical adapter and selected runtime token surface;
-9. migrate consumers and remove replaced ownership;
-10. verify computed rendered results and run the exact completion gate.
+```text
+material-component Loading indicator
+```
 
-Consider shared adapter extraction only after M1 and M2 demonstrate repeated concrete code, not merely repeated documentation structure.
+The router must select only the design stage, create a complete current `components/loadingIndicator/DESIGN.md`, report its result, and stop.
+
+No exact dependency pin, renderer-version registry, direct Lit ownership, WebKit expansion, bundle-budget infrastructure, broad CSS selector scanner, or new reduced-motion contract is required by this milestone. Shared adapter extraction remains deferred until repeated implementation code—not repeated documentation structure—demonstrates a need.
