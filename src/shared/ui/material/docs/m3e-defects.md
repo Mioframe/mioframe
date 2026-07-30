@@ -80,9 +80,9 @@ Mioframe status:
 - Last revalidated version: `2.6.3`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
-- Family design: `../components/loadingIndicator/DESIGN.md` — pending restored design stage
-- Family architecture: `../components/loadingIndicator/ARCHITECTURE.md` — pending restored architecture stage
-- Family implementation: `../components/loadingIndicator/IMPLEMENTATION.md` — pending staged revalidation
+- Family design: `../components/loadingIndicator/DESIGN.md` — current
+- Family architecture: `../components/loadingIndicator/ARCHITECTURE.md` — ready; workaround accepted
+- Family implementation: `../components/loadingIndicator/IMPLEMENTATION.md` — complete revalidation
 - Upstream issue: none
 - Upstream pull request: none
 
@@ -90,7 +90,7 @@ Mioframe status:
 
 Loading indicator has independently meaningful overall/container and active-indicator geometry. Existing official evidence records a 48dp overall size and 38dp active-indicator size for the default uncontained configuration.
 
-The restored design stage must preserve the complete official geometry and sources before the family architecture is accepted.
+The current design preserves the complete official geometry and sources accepted by the family architecture.
 
 Sources currently recorded as evidence:
 
@@ -128,13 +128,13 @@ Consumers following the public m3e documentation therefore cannot control the im
 
 The current public `MDLoadingIndicator.size` behavior cannot map through the documented m3e CSS input in `2.6.2`–`2.6.3`.
 
-The restored architecture stage must confirm that this public size contract remains selected before retaining the workaround.
+The ready architecture confirms that this public size contract remains selected and retains the workaround.
 
 ### Current implementation evidence
 
 `MDLoadingIndicator` currently uses the confirmed effective host-level `--m3e-loading-indicator-size` input privately. Renderer vocabulary does not leak into its public Vue API, parent components, or consumers.
 
-This is retained implementation evidence, not an approved staged result until Loading Indicator `DESIGN.md`, `ARCHITECTURE.md`, and `IMPLEMENTATION.md` revalidate it.
+This mapping is the complete implementation revalidated against the current design and ready architecture.
 
 ### Correct upstream result
 
@@ -158,15 +158,15 @@ Mioframe consumes a version whose documented input is effective, updates the pri
 - Last revalidated version: `2.6.3`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
-- Family design: `../components/loadingIndicator/DESIGN.md` — pending restored design stage
-- Family architecture: `../components/loadingIndicator/ARCHITECTURE.md` — pending restored architecture stage
-- Family implementation: `../components/loadingIndicator/IMPLEMENTATION.md` — pending staged revalidation
+- Family design: `../components/loadingIndicator/DESIGN.md` — current
+- Family architecture: `../components/loadingIndicator/ARCHITECTURE.md` — ready; workaround accepted
+- Family implementation: `../components/loadingIndicator/IMPLEMENTATION.md` — complete revalidation
 - Upstream issue: none
 - Upstream pull request: none
 
 ### Official Material expectation
 
-Official evidence distinguishes the Loading indicator overall/container size from active-indicator size and records a 48dp/38dp default relationship. The restored design stage must capture the complete official sizing contract before architecture acceptance.
+Official evidence distinguishes the Loading indicator overall/container size from active-indicator size and records a 48dp/38dp default relationship. The current design captures the complete official sizing contract accepted by architecture.
 
 Sources currently recorded as evidence:
 
@@ -197,7 +197,7 @@ Forwarding public overall size directly to the effective active-size input produ
 
 `MDLoadingIndicator` currently sets host width/height from public overall size and maps the private effective active-size input to `overallSize × 38 / 48`. Internal animated-shape scale remains renderer-owned.
 
-This mitigation must be accepted or replaced by the restored Loading Indicator architecture stage and then recorded in `IMPLEMENTATION.md`.
+The ready Loading Indicator architecture accepts this mitigation, and `IMPLEMENTATION.md` records its revalidation.
 
 ### Correct upstream result
 
