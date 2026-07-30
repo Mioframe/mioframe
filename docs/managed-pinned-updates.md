@@ -8,7 +8,7 @@ Managed pinning applies only to the stable deployment (`/`) and the develop depl
 
 ## Architecture status
 
-The architecture is ready for implementation with the hardening decisions in this document. These decisions replace earlier assumptions that release identity, archived-index integrity, the UI/worker wire protocol, activation read state, and message-event follow-up work were already complete.
+The architecture and hardening decisions in this document are implemented by the managed-update feature. This document remains the contract for later maintenance and review; code changes must preserve its release identity, archived-index integrity, private protocol, activation read state, and event-lifetime ownership rules.
 
 The solution remains deliberately small:
 
@@ -48,9 +48,10 @@ one releaseSequence maps to exactly one releaseId
 
 Any conflict fails closed without changing persisted state or deleting a cache. The invariant must be enforced at every durable boundary:
 
-- retained-release publication validation;
+- retained-release publication validation before any retained-tree write;
 - discovery against every release reference in controller state;
-- persisted controller-state parsing;
+- approval and activation transitions;
+- persisted controller-state validation before both reads and writes;
 - release-cache preparation before an existing cache can be deleted or replaced.
 
 `startActivation` does not accept an independent target. It derives the target only from `state.approvedRelease`, and is a no-op when no valid approval exists. This removes the possibility of activating a release different from the approved release.
@@ -87,7 +88,18 @@ The application, controller worker, and publisher-injected watchdog communicate 
 protocolVersion: 1
 ```
 
-The version is present in requests, responses, acknowledgements, and broadcasts. TypeScript boundaries parse external data at runtime rather than casting `event.data`.
+The version is present in requests, responses, acknowledgements, failure envelopes, and broadcasts. TypeScript boundaries parse external data at runtime rather than casting `event.data`.
+
+Unexpected worker-handler failures cross the boundary only as the stable v1 envelope:
+
+```ts
+{
+  protocolVersion: 1;
+  error: 'unavailable';
+}
+```
+
+The envelope never exposes an exception message or diagnostics. UI clients resolve it as unavailable, the same fail-closed result used for malformed or absent responses.
 
 Protocol v1 evolves additively:
 
@@ -97,7 +109,7 @@ Protocol v1 evolves additively:
 
 No negotiation service, compatibility adapter registry, generic RPC abstraction, or request IDs are required. Each request already owns a dedicated `MessageChannel`.
 
-The watchdog performs a small explicit runtime check of the v1 fields it consumes. Tests prove that a pinned v1 application and watchdog remain compatible with later additive v1 controller changes.
+The watchdog performs a small explicit runtime check of the v1 fields it consumes. Malformed activation-status responses are ignored completely: they neither arm nor disarm the watchdog and never cause a boot failure by themselves. Tests prove that a pinned v1 application and watchdog remain compatible with later additive v1 controller changes.
 
 ## Command execution and timeouts
 
@@ -115,18 +127,18 @@ After any foreground command durably changes snapshot-relevant state, the worker
 
 ## Event-lifetime follow-up work
 
-A worker message handler returns the response plus optional follow-up work owned by the same message event:
+A worker message handler returns the response plus optional deferred follow-up work owned by the same message event:
 
 ```ts
 interface WorkerMessageResult<Response> {
   response: Response;
-  lifetimeWork?: Promise<void>;
+  runLifetimeWork?: () => Promise<void>;
 }
 ```
 
-The worker posts the response and keeps `lifetimeWork` inside the original `event.waitUntil()` promise. This follow-up work includes cache cleanup and required state-change or rollback broadcasts.
+`runLifetimeWork` is a callback rather than an already-running promise. The worker must first post `response`, then invoke and await `runLifetimeWork()` inside the original `event.waitUntil()` promise. Cleanup, state invalidation, and rollback broadcasts therefore cannot start before the requester has received its durable result.
 
-Cleanup remains best effort: its failure does not change an already durable lifecycle result. No durable cleanup scheduler or retry database is introduced.
+Read-only and no-op commands return no follow-up callback. Cleanup remains best effort: its failure does not change an already durable lifecycle result. No durable cleanup scheduler or retry database is introduced.
 
 ## Modes
 
@@ -136,11 +148,13 @@ A successful discovery records the latest valid release. If it is newer than the
 
 A temporary preparation failure does not require a newer publication to recover. A later successful check of the same latest release retries preparation. Automatic approvals cannot be cancelled while the mode remains Automatic.
 
+Repeated `SET_MODE automatic` requests are true no-ops when neither mode nor approval changes: they do not persist, prepare, clean up, or broadcast.
+
 ### Manual
 
 Discovery records newer releases without preparing them. The user may schedule the latest release through **Install on next launch**, cancel a scheduled Manual update before activation, or explicitly retry the latest release after a failed activation.
 
-Manual installation commands are no-ops outside Manual mode at both orchestration and pure-transition boundaries.
+Manual installation commands are no-ops outside Manual mode at both orchestration and pure-transition boundaries, including when the mode changes while preparation is in flight. Repeated `SET_MODE manual` requests are true no-ops when the state already uses Manual mode.
 
 ## Applying an update
 
@@ -168,7 +182,7 @@ activatingRelease?: ReleaseSummary
 
 It is derived directly from `state.activation?.targetRelease`; it is not new persisted state.
 
-The entity exposes an `activating` status with priority over `ready`, `update-available`, and rollback-derived failure status. Update-available Snackbar notifications are suppressed while an activation exists.
+The entity exposes an `activating` status with priority over `ready`, `update-available`, and rollback-derived failure status. The App updates pane renders the activating release separately from the available release and does not offer install or retry actions while activation is in progress. Update-available Snackbar notifications are suppressed while an activation exists.
 
 After a durable `BOOT_OK` commit, the worker returns the acknowledgement and schedules a same-channel state invalidation under the same message-event lifetime. Existing UI readers therefore refresh from the committed active release instead of remaining on the pre-commit snapshot.
 
@@ -178,7 +192,7 @@ A browser-level UI test must cover clean launch through commit and prove that th
 
 Starting activation does not change `activeRelease`. The new release becomes active only after the initial router navigation succeeds, the Vue app mounts, the first render completes, and the worker durably commits `BOOT_OK`.
 
-On `BOOT_FAILED`, the worker durably removes the activation, preserves the previous active release, records the failed target, and then reloads same-channel windows. Rollback persistence failure does not start a reload loop.
+On `BOOT_FAILED`, the worker durably removes the activation, preserves the previous active release, records the failed target, posts the rollback acknowledgement, and only then starts the same-channel rollback broadcast and cache cleanup under the originating message-event lifetime. Rollback persistence failure does not start a reload loop.
 
 Automatic mode does not reapprove the exact failed release. In Manual mode the App updates pane shows **Retry update**, which uses the existing install-on-next-launch operation. A successful retry clears the failure. The ordinary “Mioframe update available” Snackbar is suppressed while the latest release is the recorded failed release.
 
@@ -186,7 +200,7 @@ Automatic mode does not reapprove the exact failed release. In Manual mode the A
 
 The dedicated App updates pane owns presentation and user actions. It shows:
 
-- current and latest application versions;
+- current, available, and activating application versions without conflating them;
 - update mode;
 - last successful check time;
 - checking, preparing, available, ready, activating, failure, and unavailable states;
@@ -217,16 +231,17 @@ Changed contracts:
 
 - release identity validation and cache immutability;
 - release descriptor schema v1 and archived-index integrity;
-- private UI/worker/watchdog protocol v1;
+- private UI/worker/watchdog protocol v1 and stable failure envelope;
 - client timeout ownership for long commands;
 - activation snapshot and UI status;
-- message-event lifetime for cleanup and invalidation.
+- deferred message-event lifetime for cleanup, invalidation, and rollback broadcasts.
 
 Primary proof owners:
 
 - publisher, descriptor, state-schema, transition, cache, preparation, protocol, client, snapshot, entity, notification, and worker-message unit tests;
+- real `src/sw.ts` wiring tests for response-before-follow-up ordering;
 - managed-update browser tests for clean launch, activation UI, boot commit, rollback, retry, long preparation, controller upgrade, and cross-engine close-and-reopen;
-- watchdog parity and pinned-v1 compatibility tests.
+- watchdog parity, malformed-response, and pinned-v1 compatibility tests.
 
 Repository impact metadata must continue selecting all managed-update release suites for these paths.
 
