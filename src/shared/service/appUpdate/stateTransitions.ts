@@ -1,5 +1,7 @@
 import {
   CONTROLLER_STATE_SCHEMA_VERSION,
+  collectReleaseReferences,
+  hasReleaseIdentityConflict,
   type ReleaseRef,
   type ReleaseSummary,
   type UpdateControllerState,
@@ -29,9 +31,6 @@ export function buildInitialControllerState(
 const isNewerSequence = (candidate: ReleaseRef, known: ReleaseRef): boolean =>
   candidate.releaseSequence > known.releaseSequence;
 
-const isSameSequenceConflict = (candidate: ReleaseRef, known: ReleaseRef): boolean =>
-  candidate.releaseSequence === known.releaseSequence && candidate.releaseId !== known.releaseId;
-
 /** Outcome of {@link applyCheckForUpdates}. */
 export type CheckForUpdatesOutcome = 'updated' | 'ignored-stale' | 'rejected-conflict';
 
@@ -51,6 +50,10 @@ export type CheckForUpdatesResult = {
  * A strictly newer discovery than a previously recorded failed release also
  * clears that failure record, since it can no longer affect Automatic
  * approval or the UI (an obsolete failure the user has already moved past).
+ *
+ * `discovered` is checked against every release reference currently present
+ * in `state` (not only `latestRelease`/`activeRelease`), rejecting both a
+ * same-sequence-different-id and a same-id-different-sequence conflict.
  * @param state - Current controller state.
  * @param discovered - The validated release summary for the discovered release.
  * @param checkedAt - ISO timestamp of this successful check.
@@ -63,7 +66,7 @@ export function applyCheckForUpdates(
 ): CheckForUpdatesResult {
   const known = state.latestRelease ?? state.activeRelease;
 
-  if (isSameSequenceConflict(discovered, known)) {
+  if (hasReleaseIdentityConflict([discovered, ...collectReleaseReferences(state)])) {
     // Invalid publication metadata: fails closed by leaving `state`
     // completely untouched, including `lastSuccessfulCheckAt` — this must
     // never look like an ordinary successful check to the orchestration or
@@ -236,26 +239,27 @@ export function switchToAutomaticMode(
  * Starts a clean-launch activation of `state.approvedRelease`. `activeRelease`
  * is left unchanged — it only ever changes on a later `BOOT_OK` commit. A
  * no-op when an activation already exists, so concurrent qualifying
- * navigations can call this without creating conflicting activations.
+ * navigations can call this without creating conflicting activations. Also a
+ * no-op when there is no approval to activate: the target is derived only
+ * from `state.approvedRelease`, so a release different from the approved one
+ * can never be activated.
  *
  * Removes `approvedRelease`: it and `activation` are mutually exclusive
  * ownership states — once a release is selected for the current
  * clean-launch attempt, it is no longer merely "prepared and waiting".
  * @param state - Current controller state.
- * @param target - The release summary to activate; must equal `state.approvedRelease`.
  * @param deadlineAt - ISO timestamp of the boot-confirmation deadline.
  * @returns The resulting state.
  */
 export function startActivation(
   state: UpdateControllerState,
-  target: ReleaseSummary,
   deadlineAt: string,
 ): UpdateControllerState {
-  if (state.activation) return state;
-  const { approvedRelease: _approvedRelease, ...rest } = state;
+  if (state.activation || !state.approvedRelease) return state;
+  const { approvedRelease, ...rest } = state;
   return {
     ...rest,
-    activation: { targetRelease: target, deadlineAt },
+    activation: { targetRelease: approvedRelease, deadlineAt },
   };
 }
 

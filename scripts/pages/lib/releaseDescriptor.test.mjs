@@ -44,6 +44,8 @@ describe('buildReleaseDescriptor', () => {
       buildId: 'abc123',
       buildDate: '2026-07-24T00:00:00.000Z',
       indexUrl: '/updates/releases/018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f/index.html',
+      indexSha256: '0'.repeat(64),
+      indexByteSize: 100,
       files: [{ path: 'assets/a.js', sha256: '0'.repeat(64), byteSize: 10 }],
     });
 

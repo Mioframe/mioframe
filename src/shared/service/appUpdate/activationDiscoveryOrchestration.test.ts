@@ -49,6 +49,8 @@ const descriptorC = {
   buildId: 'build-c',
   buildDate: '2026-07-24T00:00:00.000Z',
   indexUrl: `/updates/releases/${releaseC.releaseId}/index.html`,
+  indexSha256: '0'.repeat(64),
+  indexByteSize: 100,
   files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
 };
 const summaryC = {
@@ -99,8 +101,8 @@ describe('activation vs. discovery orchestration', () => {
     const { runUpdateCheck } = await import('./updateDiscovery');
     const discovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(discovered.snapshot.latestRelease).toEqual(summaryC);
-    expect(discovered.snapshot.scheduledRelease).toBeUndefined();
+    expect(discovered.response.snapshot.latestRelease).toEqual(summaryC);
+    expect(discovered.response.snapshot.scheduledRelease).toBeUndefined();
     expect(prepareMock).not.toHaveBeenCalled();
     expect(getCurrent().activation).toEqual(activatingB.activation);
 
@@ -109,12 +111,12 @@ describe('activation vs. discovery orchestration', () => {
       'stable',
       '/',
       CHANNEL_ORIGIN,
-      { type: 'BOOT_OK', releaseId: releaseB.releaseId },
+      { protocolVersion: 1, type: 'BOOT_OK', releaseId: releaseB.releaseId },
       enqueue,
       coordinator,
     );
 
-    expect(committed).toMatchObject({ ack: 'committed' });
+    expect(committed.response).toMatchObject({ ack: 'committed' });
     const final = getCurrent();
     expect(final.activeRelease).toEqual(releaseB);
     expect(final.activation).toBeUndefined();
@@ -129,7 +131,7 @@ describe('activation vs. discovery orchestration', () => {
     const { runUpdateCheck } = await import('./updateDiscovery');
     const discovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(discovered.snapshot.latestRelease).toEqual(summaryC);
+    expect(discovered.response.snapshot.latestRelease).toEqual(summaryC);
     expect(prepareMock).not.toHaveBeenCalled();
 
     const { handleWorkerMessage } = await import('./workerMessages');
@@ -137,12 +139,12 @@ describe('activation vs. discovery orchestration', () => {
       'stable',
       '/',
       CHANNEL_ORIGIN,
-      { type: 'BOOT_FAILED', releaseId: releaseB.releaseId },
+      { protocolVersion: 1, type: 'BOOT_FAILED', releaseId: releaseB.releaseId },
       enqueue,
       coordinator,
     );
 
-    expect(rolledBack).toMatchObject({ ack: 'rolled-back' });
+    expect(rolledBack.response).toMatchObject({ ack: 'rolled-back' });
     const final = getCurrent();
     expect(final.activeRelease).toEqual(releaseA);
     expect(final.activation).toBeUndefined();

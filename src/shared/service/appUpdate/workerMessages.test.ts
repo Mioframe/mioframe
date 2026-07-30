@@ -14,6 +14,8 @@ vi.mock('./controllerState', () => ({
 vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
 vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() });
 
+const PROTOCOL_VERSION = 1 as const;
+
 const baseState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
@@ -51,7 +53,7 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'GET_SNAPSHOT' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'GET_SNAPSHOT' },
         enqueue,
         createFakeCoordinator(),
       ),
@@ -64,13 +66,17 @@ describe('handleWorkerMessage', () => {
       'stable',
       '/',
       CHANNEL_ORIGIN,
-      { type: 'GET_SNAPSHOT' },
+      { protocolVersion: PROTOCOL_VERSION, type: 'GET_SNAPSHOT' },
       enqueue,
       createFakeCoordinator(),
     );
 
-    expect(result).toEqual({ snapshot: expect.objectContaining({ mode: 'manual' }) });
+    expect(result.response).toEqual({
+      protocolVersion: PROTOCOL_VERSION,
+      snapshot: expect.objectContaining({ mode: 'manual' }),
+    });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(result.lifetimeWork).toBeUndefined();
   });
 
   it('CANCEL_SCHEDULED_UPDATE clears an approved release and persists it', async () => {
@@ -84,12 +90,15 @@ describe('handleWorkerMessage', () => {
       'stable',
       '/',
       CHANNEL_ORIGIN,
-      { type: 'CANCEL_SCHEDULED_UPDATE' },
+      { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
       enqueue,
       createFakeCoordinator(),
     );
 
-    expect(result).toEqual({ snapshot: expect.objectContaining({ scheduledRelease: undefined }) });
+    expect(result.response).toEqual({
+      protocolVersion: PROTOCOL_VERSION,
+      snapshot: expect.objectContaining({ scheduledRelease: undefined }),
+    });
     expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
     const call = writeControllerStateMock.mock.calls[0];
     if (!call) throw new Error('Expected writeControllerState to have been called');
@@ -113,18 +122,20 @@ describe('handleWorkerMessage', () => {
       'stable',
       '/',
       CHANNEL_ORIGIN,
-      { type: 'CANCEL_SCHEDULED_UPDATE' },
+      { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
       enqueue,
       createFakeCoordinator(),
     );
 
-    expect(result).toEqual({
+    expect(result.response).toEqual({
+      protocolVersion: PROTOCOL_VERSION,
       snapshot: expect.objectContaining({
         mode: 'automatic',
         scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
       }),
     });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(result.lifetimeWork).toBeUndefined();
   });
 
   describe('SET_MODE', () => {
@@ -143,12 +154,13 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'SET_MODE', mode: 'manual' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'manual' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ mode: 'manual', scheduledRelease: undefined }),
       });
     });
@@ -161,12 +173,15 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'SET_MODE', mode: 'automatic' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
       );
 
-      expect(result).toEqual({ snapshot: expect.objectContaining({ mode: 'automatic' }) });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ mode: 'automatic' }),
+      });
       expect(coordinator.prepare).not.toHaveBeenCalled();
     });
 
@@ -182,7 +197,7 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'SET_MODE', mode: 'automatic' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
       );
@@ -191,7 +206,8 @@ describe('handleWorkerMessage', () => {
         releaseId: 'release-b',
         releaseSequence: 2,
       });
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({
           scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
         }),
@@ -218,13 +234,14 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'SET_MODE', mode: 'automatic' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
       );
 
       expect(coordinator.prepare).not.toHaveBeenCalled();
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ mode: 'automatic', scheduledRelease: undefined }),
       });
     });
@@ -243,12 +260,13 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'SET_MODE', mode: 'automatic' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
       );
 
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
       });
     });
@@ -262,12 +280,15 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ snapshot: expect.objectContaining({ error: 'unavailable' }) });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ error: 'unavailable' }),
+      });
     });
 
     it('prepares and approves the latest known release', async () => {
@@ -282,7 +303,7 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
       );
@@ -291,7 +312,8 @@ describe('handleWorkerMessage', () => {
         releaseId: 'release-b',
         releaseSequence: 2,
       });
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({
           scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
         }),
@@ -312,12 +334,13 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
       );
 
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
       });
     });
@@ -342,13 +365,14 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
       );
 
       expect(coordinator.prepare).not.toHaveBeenCalled();
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ scheduledRelease: undefined }),
       });
     });
@@ -370,12 +394,13 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
       );
 
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
       });
     });
@@ -396,14 +421,15 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
       );
 
       expect(coordinator.prepare).not.toHaveBeenCalled();
       expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ scheduledRelease: undefined, error: undefined }),
       });
     });
@@ -423,7 +449,7 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         createFakeCoordinator(),
       );
@@ -452,14 +478,15 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
       );
 
       expect(coordinator.prepare).toHaveBeenCalledTimes(1);
       expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ scheduledRelease: undefined, error: undefined }),
       });
     });
@@ -480,7 +507,7 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
       );
@@ -489,7 +516,8 @@ describe('handleWorkerMessage', () => {
         releaseId: 'release-b',
         releaseSequence: 2,
       });
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({
           scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
         }),
@@ -516,12 +544,13 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_OK', releaseId: 'release-b' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({
           activeRelease: { releaseId: 'release-b', releaseSequence: 2 },
         }),
@@ -548,7 +577,7 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_OK', releaseId: 'release-b' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
       );
@@ -566,13 +595,18 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_OK', releaseId: 'unknown' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'unknown' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ snapshot: expect.anything(), ack: 'ignored' });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'ignored',
+      });
       expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.lifetimeWork).toBeUndefined();
     });
 
     it('acknowledges error, without throwing, when persistence fails', async () => {
@@ -594,12 +628,90 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_OK', releaseId: 'release-b' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ snapshot: expect.anything(), ack: 'error' });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'error',
+      });
+      expect(result.lifetimeWork).toBeUndefined();
+    });
+
+    it('durably commits, producing a same-channel state-invalidation broadcast as follow-up work', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          activation: {
+            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      const postMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: 'https://mioframe.example/settings', postMessage },
+      ]);
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      // The invalidation broadcast is `lifetimeWork`: an existing UI reader
+      // refreshes to the committed active release only once it is awaited.
+      await result.lifetimeWork;
+      expect(postMessage).toHaveBeenCalledWith({
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'APP_UPDATE_STATE_CHANGED',
+      });
+    });
+
+    it('cleanup and broadcast failures never change the already-durable committed response', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          activation: {
+            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      matchAllMock.mockRejectedValue(new Error('clients.matchAll unavailable'));
+      const { handleWorkerMessage } = await import('./workerMessages');
+      const failingCoordinator = createFakeCoordinator({
+        runCleanup: () => Promise.reject(new Error('cleanup failed')),
+      });
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
+        enqueue,
+        failingCoordinator,
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({
+          activeRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        }),
+        ack: 'committed',
+      });
+      await expect(result.lifetimeWork).resolves.toBeUndefined();
     });
   });
 
@@ -629,16 +741,23 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_FAILED', releaseId: 'release-b' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({ activeRelease: baseState.activeRelease }),
         ack: 'rolled-back',
       });
+      // The rollback broadcast is `lifetimeWork`, owned by the same message
+      // event's lifetime as the already-resolved acknowledgement above; see
+      // `sw.test.ts` for the real response-before-broadcast ordering proof
+      // (`handleWorkerMessage` itself never posts the response).
+      await result.lifetimeWork;
       expect(postMessage).toHaveBeenCalledWith({
+        protocolVersion: PROTOCOL_VERSION,
         type: 'APP_UPDATE_ROLLBACK',
         releaseId: 'release-b',
       });
@@ -660,7 +779,7 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_FAILED', releaseId: 'release-b' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
       );
@@ -681,14 +800,19 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_FAILED', releaseId: 'unknown' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'unknown' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ snapshot: expect.anything(), ack: 'ignored' });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'ignored',
+      });
       expect(matchAllMock).not.toHaveBeenCalled();
       expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.lifetimeWork).toBeUndefined();
     });
 
     it('acknowledges error and does not broadcast when rollback persistence fails', async () => {
@@ -707,13 +831,18 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'BOOT_FAILED', releaseId: 'release-b' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'release-b' },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ snapshot: expect.anything(), ack: 'error' });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'error',
+      });
       expect(matchAllMock).not.toHaveBeenCalled();
+      expect(result.lifetimeWork).toBeUndefined();
     });
   });
 
@@ -733,11 +862,14 @@ describe('handleWorkerMessage', () => {
 
       await broadcastStateChanged('/', CHANNEL_ORIGIN);
 
-      expect(postMessage).toHaveBeenCalledWith({ type: 'APP_UPDATE_STATE_CHANGED' });
+      expect(postMessage).toHaveBeenCalledWith({
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'APP_UPDATE_STATE_CHANGED',
+      });
       expect(foreignPostMessage).not.toHaveBeenCalled();
     });
 
-    it('never carries a snapshot, only the invalidation type', async () => {
+    it('never carries a snapshot, only the invalidation type and protocol version', async () => {
       const postMessage = vi.fn();
       matchAllMock.mockResolvedValue([
         { type: 'window', url: 'https://mioframe.example/', postMessage },
@@ -748,7 +880,7 @@ describe('handleWorkerMessage', () => {
 
       const call = postMessage.mock.calls[0];
       if (!call) throw new Error('Expected postMessage to have been called');
-      expect(Object.keys(call[0])).toEqual(['type']);
+      expect(new Set(Object.keys(call[0]))).toEqual(new Set(['type', 'protocolVersion']));
     });
   });
 
@@ -768,12 +900,21 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-b' },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'GET_ACTIVATION_STATUS',
+          releaseId: 'release-b',
+        },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ isActivationTarget: true, deadlineAt: '2026-07-24T00:00:30.000Z' });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        isActivationTarget: true,
+        deadlineAt: '2026-07-24T00:00:30.000Z',
+      });
+      expect(result.lifetimeWork).toBeUndefined();
     });
 
     it('reports false when this release is not the activation target', async () => {
@@ -783,12 +924,20 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-a' },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'GET_ACTIVATION_STATUS',
+          releaseId: 'release-a',
+        },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ isActivationTarget: false });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        isActivationTarget: false,
+      });
+      expect(result.lifetimeWork).toBeUndefined();
     });
 
     it('reports false when there is no activation at all', async () => {
@@ -798,12 +947,20 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { type: 'GET_ACTIVATION_STATUS', releaseId: 'release-b' },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'GET_ACTIVATION_STATUS',
+          releaseId: 'release-b',
+        },
         enqueue,
         createFakeCoordinator(),
       );
 
-      expect(result).toEqual({ isActivationTarget: false });
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        isActivationTarget: false,
+      });
+      expect(result.lifetimeWork).toBeUndefined();
     });
   });
 });

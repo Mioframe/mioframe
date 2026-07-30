@@ -15,8 +15,15 @@ import { MDButton } from '@shared/ui/Button';
 import { MDList, MDListItem } from '@shared/ui/Lists';
 import { MDSwitch } from '@shared/ui/Switch';
 
-const { status, mode, activeRelease, latestRelease, scheduledRelease, lastSuccessfulCheckAt } =
-  useAppUpdate();
+const {
+  status,
+  mode,
+  activeRelease,
+  latestRelease,
+  scheduledRelease,
+  activatingRelease,
+  lastSuccessfulCheckAt,
+} = useAppUpdate();
 const { checkForUpdates, isChecking } = useAppUpdateCheck();
 const { setMode, isChangingMode } = useAppUpdateModeChange();
 const { installOnNextLaunch, isInstalling } = useAppUpdateInstallOnNextLaunch();
@@ -39,7 +46,9 @@ const isBusy = computed(
   () => isChecking.value || isInstalling.value || isChangingMode.value || isCancelling.value,
 );
 
-const availableRelease = computed(() => scheduledRelease.value ?? latestRelease.value);
+const availableRelease = computed(
+  () => scheduledRelease.value ?? activatingRelease.value ?? latestRelease.value,
+);
 const availableVersion = computed(() => {
   const release = availableRelease.value;
   if (!release || release.releaseId === activeRelease.value?.releaseId) return undefined;
@@ -91,6 +100,9 @@ const onToggleAutomaticUpdates = () => {
       <p v-if="availableVersion">Available version: {{ availableVersion }}</p>
       <p v-if="displayStatus === 'ready'">
         Update ready. Close all Mioframe windows and reopen Mioframe to guarantee the update.
+      </p>
+      <p v-if="displayStatus === 'activating'">
+        Activating the update now. This page will refresh automatically once it's ready.
       </p>
     </section>
 

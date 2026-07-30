@@ -21,6 +21,8 @@ function buildDescriptor(release: ReleaseRef): ReleaseDescriptor {
     buildId: 'build-1',
     buildDate: '2026-07-24T00:00:00.000Z',
     indexUrl: `/updates/releases/${release.releaseId}/index.html`,
+    indexSha256: '0'.repeat(64),
+    indexByteSize: 100,
     files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
   };
 }

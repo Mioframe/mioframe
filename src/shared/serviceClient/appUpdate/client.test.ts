@@ -10,7 +10,7 @@ import {
 
 const snapshot = {
   mode: 'manual' as const,
-  activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+  activeRelease: { releaseId: '11111111-1111-4111-8111-111111111111', releaseSequence: 1 },
 };
 
 /** A promise that never settles, standing in for a `ready` that never resolves. */
@@ -18,7 +18,7 @@ const NEVER_SETTLES = new Promise<never>(() => {});
 
 function stubControlledServiceWorker() {
   const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
-    ports[0]?.postMessage({ snapshot });
+    ports[0]?.postMessage({ protocolVersion: 1, snapshot });
   });
   vi.stubGlobal('navigator', {
     serviceWorker: {
@@ -52,31 +52,55 @@ describe('appUpdate client', () => {
     const result = await getAppUpdateSnapshot();
 
     expect(result).toEqual(snapshot);
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({ type: 'GET_SNAPSHOT' });
+    expect(postMessage.mock.calls[0]?.[0]).toEqual({ protocolVersion: 1, type: 'GET_SNAPSHOT' });
   });
 
   it('checkForAppUpdates sends CHECK_FOR_UPDATES', async () => {
     const postMessage = stubControlledServiceWorker();
     await checkForAppUpdates();
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({ type: 'CHECK_FOR_UPDATES' });
+    expect(postMessage.mock.calls[0]?.[0]).toEqual({
+      protocolVersion: 1,
+      type: 'CHECK_FOR_UPDATES',
+    });
   });
 
   it('setAppUpdateMode sends SET_MODE with the given mode', async () => {
     const postMessage = stubControlledServiceWorker();
     await setAppUpdateMode('automatic');
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({ type: 'SET_MODE', mode: 'automatic' });
+    expect(postMessage.mock.calls[0]?.[0]).toEqual({
+      protocolVersion: 1,
+      type: 'SET_MODE',
+      mode: 'automatic',
+    });
   });
 
   it('installAppUpdateOnNextLaunch sends INSTALL_ON_NEXT_LAUNCH', async () => {
     const postMessage = stubControlledServiceWorker();
     await installAppUpdateOnNextLaunch();
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({ type: 'INSTALL_ON_NEXT_LAUNCH' });
+    expect(postMessage.mock.calls[0]?.[0]).toEqual({
+      protocolVersion: 1,
+      type: 'INSTALL_ON_NEXT_LAUNCH',
+    });
   });
 
   it('cancelScheduledAppUpdate sends CANCEL_SCHEDULED_UPDATE', async () => {
     const postMessage = stubControlledServiceWorker();
     await cancelScheduledAppUpdate();
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({ type: 'CANCEL_SCHEDULED_UPDATE' });
+    expect(postMessage.mock.calls[0]?.[0]).toEqual({
+      protocolVersion: 1,
+      type: 'CANCEL_SCHEDULED_UPDATE',
+    });
+  });
+
+  it('resolves undefined when the response is missing a valid protocolVersion (fails closed, never throws)', async () => {
+    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+      ports[0]?.postMessage({ snapshot });
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: NEVER_SETTLES, controller: { postMessage } },
+    });
+
+    await expect(getAppUpdateSnapshot()).resolves.toBeUndefined();
   });
 });
 
@@ -117,12 +141,12 @@ describe('subscribeToAppUpdateStateChanged', () => {
     expect(onStateChanged).not.toHaveBeenCalled();
   });
 
-  it('calls onStateChanged for a state-invalidation broadcast', () => {
+  it('calls onStateChanged for a valid v1 state-invalidation broadcast', () => {
     const { dispatch } = stubServiceWorkerEventTarget();
     const onStateChanged = vi.fn();
 
     subscribeToAppUpdateStateChanged(onStateChanged);
-    dispatch({ type: 'APP_UPDATE_STATE_CHANGED' });
+    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_STATE_CHANGED' });
 
     expect(onStateChanged).toHaveBeenCalledTimes(1);
   });
@@ -132,7 +156,18 @@ describe('subscribeToAppUpdateStateChanged', () => {
     const onStateChanged = vi.fn();
 
     subscribeToAppUpdateStateChanged(onStateChanged);
-    dispatch({ type: 'APP_UPDATE_ROLLBACK', releaseId: 'release-a' });
+    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_ROLLBACK', releaseId: 'release-a' });
+
+    expect(onStateChanged).not.toHaveBeenCalled();
+  });
+
+  it('ignores a state-invalidation broadcast with a missing or unsupported protocol version (fails closed)', () => {
+    const { dispatch } = stubServiceWorkerEventTarget();
+    const onStateChanged = vi.fn();
+
+    subscribeToAppUpdateStateChanged(onStateChanged);
+    dispatch({ type: 'APP_UPDATE_STATE_CHANGED' });
+    dispatch({ protocolVersion: 2, type: 'APP_UPDATE_STATE_CHANGED' });
 
     expect(onStateChanged).not.toHaveBeenCalled();
   });
@@ -170,7 +205,7 @@ describe('appUpdate client timeout', () => {
     vi.unstubAllGlobals();
   });
 
-  it('resolves undefined when the controller never responds', async () => {
+  it('resolves undefined when the controller never responds to GET_SNAPSHOT (a fast, bounded command)', async () => {
     const postMessage = vi.fn();
     vi.stubGlobal('navigator', {
       serviceWorker: {
@@ -180,6 +215,80 @@ describe('appUpdate client timeout', () => {
     });
 
     const resultPromise = getAppUpdateSnapshot();
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(await resultPromise).toBeUndefined();
+  });
+
+  it('CHECK_FOR_UPDATES carries no client-side timeout: it still resolves with the final snapshot after exceeding ten seconds', async () => {
+    let capturedPorts: MessagePort[] | undefined;
+    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+      capturedPorts = ports;
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
+    });
+
+    const resultPromise = checkForAppUpdates();
+    // Well past the bounded transport timeout other commands use — this
+    // command must never be marked unavailable merely for taking this long.
+    await vi.advanceTimersByTimeAsync(15_000);
+    capturedPorts?.[0]?.postMessage({ protocolVersion: 1, snapshot });
+
+    expect(await resultPromise).toEqual(snapshot);
+  });
+
+  it('INSTALL_ON_NEXT_LAUNCH carries no client-side timeout: it still resolves with the final snapshot after exceeding ten seconds', async () => {
+    let capturedPorts: MessagePort[] | undefined;
+    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+      capturedPorts = ports;
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
+    });
+
+    const resultPromise = installAppUpdateOnNextLaunch();
+    await vi.advanceTimersByTimeAsync(15_000);
+    capturedPorts?.[0]?.postMessage({ protocolVersion: 1, snapshot });
+
+    expect(await resultPromise).toEqual(snapshot);
+  });
+
+  it('SET_MODE to Automatic carries no client-side timeout: it still resolves with the final snapshot after exceeding ten seconds', async () => {
+    let capturedPorts: MessagePort[] | undefined;
+    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+      capturedPorts = ports;
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
+    });
+
+    const resultPromise = setAppUpdateMode('automatic');
+    await vi.advanceTimersByTimeAsync(15_000);
+    capturedPorts?.[0]?.postMessage({ protocolVersion: 1, snapshot });
+
+    expect(await resultPromise).toEqual(snapshot);
+  });
+
+  it('SET_MODE to Manual keeps the bounded transport timeout and resolves undefined when unanswered', async () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
+    });
+
+    const resultPromise = setAppUpdateMode('manual');
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(await resultPromise).toBeUndefined();
+  });
+
+  it('CANCEL_SCHEDULED_UPDATE keeps the bounded transport timeout and resolves undefined when unanswered', async () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
+    });
+
+    const resultPromise = cancelScheduledAppUpdate();
     await vi.advanceTimersByTimeAsync(10_000);
 
     expect(await resultPromise).toBeUndefined();

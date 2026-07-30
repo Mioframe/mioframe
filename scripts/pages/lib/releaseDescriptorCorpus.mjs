@@ -19,6 +19,8 @@ export const validReleaseDescriptor = {
   buildId: 'abcdef0123456789',
   buildDate: '2026-07-24T00:00:00.000Z',
   indexUrl: '/updates/releases/018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f/index.html',
+  indexSha256: SHA256_OF_EMPTY_STRING,
+  indexByteSize: 2048,
   files: [{ path: 'assets/app-3f2a1c.js', sha256: SHA256_OF_EMPTY_STRING, byteSize: 1024 }],
 };
 
@@ -119,6 +121,22 @@ export const invalidReleaseDescriptors = [
       ...validReleaseDescriptor,
       releaseId: validReleaseDescriptor.releaseId.toUpperCase(),
     },
+  },
+  {
+    name: 'malformed indexSha256',
+    descriptor: { ...validReleaseDescriptor, indexSha256: 'not-a-hash' },
+  },
+  {
+    name: 'uppercase indexSha256 (must be lowercase, not merely valid hex)',
+    descriptor: { ...validReleaseDescriptor, indexSha256: SHA256_OF_EMPTY_STRING.toUpperCase() },
+  },
+  {
+    name: 'non-integer indexByteSize',
+    descriptor: { ...validReleaseDescriptor, indexByteSize: 1.5 },
+  },
+  {
+    name: 'negative indexByteSize',
+    descriptor: { ...validReleaseDescriptor, indexByteSize: -1 },
   },
   {
     name: 'duplicate file paths (even with identical content)',

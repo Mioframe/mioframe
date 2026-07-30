@@ -15,6 +15,9 @@ const latestReleaseRef = ref<
 const scheduledReleaseRef = ref<
   { releaseId: string; releaseSequence: number; appVersion: string } | undefined
 >(undefined);
+const activatingReleaseRef = ref<
+  { releaseId: string; releaseSequence: number; appVersion: string } | undefined
+>(undefined);
 const lastSuccessfulCheckAt = ref<string | undefined>(undefined);
 
 const checkForUpdatesMock = vi.fn();
@@ -36,6 +39,7 @@ vi.mock('@entity/appUpdate', async () => {
       activeRelease,
       latestRelease: latestReleaseRef,
       scheduledRelease: scheduledReleaseRef,
+      activatingRelease: activatingReleaseRef,
       lastSuccessfulCheckAt,
     }),
   };
@@ -171,6 +175,7 @@ describe('AppUpdateSettings', () => {
     activeRelease.value = { releaseId: 'release-a', releaseSequence: 1 };
     latestReleaseRef.value = undefined;
     scheduledReleaseRef.value = undefined;
+    activatingReleaseRef.value = undefined;
     lastSuccessfulCheckAt.value = undefined;
     isChecking.value = false;
     isChangingMode.value = false;
@@ -278,6 +283,40 @@ describe('AppUpdateSettings', () => {
     expect(getButtonByText(root, 'Update now')).toBeNull();
     expect(getButtonByText(root, 'Cancel scheduled update')).toBeNull();
     expect(root.querySelector('[data-state="checked"]')).not.toBeNull();
+    unmount();
+  });
+
+  it('activating (Manual): shows the activating hint and version, and never shows Update now, Retry update, or Cancel', async () => {
+    status.value = 'activating';
+    mode.value = 'manual';
+    activatingReleaseRef.value = {
+      releaseId: 'release-b',
+      releaseSequence: 2,
+      appVersion: '1.1.0',
+    };
+    const { root, unmount } = await mountWidget();
+
+    expect(root.textContent).toContain('Activating the update now');
+    expect(root.textContent).toContain('Available version: 1.1.0');
+    expect(getButtonByText(root, 'Update now')).toBeNull();
+    expect(getButtonByText(root, 'Retry update')).toBeNull();
+    expect(getButtonByText(root, 'Cancel scheduled update')).toBeNull();
+    unmount();
+  });
+
+  it('activating (Automatic): shows the activating hint, never Update ready or an update-available action', async () => {
+    status.value = 'activating';
+    mode.value = 'automatic';
+    activatingReleaseRef.value = {
+      releaseId: 'release-b',
+      releaseSequence: 2,
+      appVersion: '1.1.0',
+    };
+    const { root, unmount } = await mountWidget();
+
+    expect(root.textContent).toContain('Activating the update now');
+    expect(root.textContent).not.toContain('Update ready');
+    expect(root.textContent).not.toContain('Update available');
     unmount();
   });
 

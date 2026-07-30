@@ -14,6 +14,7 @@ export type AppUpdateStatus =
   | 'update-available'
   | 'rolled-back'
   | 'ready'
+  | 'activating'
   | 'install-failed'
   | 'check-failed';
 
@@ -23,6 +24,12 @@ function deriveAppUpdateStatus(
 ): AppUpdateStatus {
   if (!isAvailable) return 'unavailable';
   if (!snapshot) return 'not-checked';
+  // Activation in progress takes priority over every other status,
+  // including a stale error, `ready`, `update-available`, and any
+  // rollback-derived failure presentation: the worker has already selected
+  // a release for this clean launch, and no other action is meaningful
+  // while that resolves.
+  if (snapshot.activatingRelease) return 'activating';
   if (snapshot.error === 'install-failed') return 'install-failed';
   if (snapshot.error === 'check-failed') return 'check-failed';
   if (snapshot.scheduledRelease) return 'ready';
@@ -101,6 +108,7 @@ const setupAppUpdate = () => {
     activeRelease: computed(() => snapshot.value?.activeRelease),
     latestRelease: computed(() => snapshot.value?.latestRelease),
     scheduledRelease: computed(() => snapshot.value?.scheduledRelease),
+    activatingRelease: computed(() => snapshot.value?.activatingRelease),
     failedRelease: computed(() => snapshot.value?.failedRelease),
     lastSuccessfulCheckAt: computed(() => snapshot.value?.lastSuccessfulCheckAt),
     error: computed(() => snapshot.value?.error),

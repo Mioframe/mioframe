@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -76,6 +77,31 @@ describe('publishManagedRelease', () => {
 
     const latest = JSON.parse(readFileSync(join(workDir, 'updates', 'latest.json'), 'utf8'));
     expect(latest).toEqual({ releaseId: descriptor.releaseId, releaseSequence: 1 });
+  });
+
+  it('computes indexSha256 and indexByteSize from the final archived index bytes, after watchdog injection', () => {
+    writeBasicDist(buildIndexHtml('<stable/>'));
+
+    const descriptor = publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      basePath: '/',
+      appVersion: '1.0.0',
+      buildId: 'sha1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+
+    const archivedIndexBytes = readFileSync(
+      join(workDir, 'updates', 'releases', descriptor.releaseId, 'index.html'),
+    );
+    // If the hash/size had been computed before watchdog injection, this
+    // would fail: the actual on-disk archived index already contains the
+    // injected watchdog script.
+    expect(descriptor.indexByteSize).toBe(archivedIndexBytes.byteLength);
+    expect(descriptor.indexSha256).toBe(
+      createHash('sha256').update(archivedIndexBytes).digest('hex'),
+    );
   });
 
   it('publishes a first develop release under branch/develop/', () => {

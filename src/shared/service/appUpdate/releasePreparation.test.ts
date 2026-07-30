@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseDescriptor, ReleaseRef } from './contracts';
 import { createFakeCacheStorage } from './fakeCacheStorage.testUtils';
-import { buildReleaseCacheName, readReleaseDescriptorMarker } from './releaseCache';
+import {
+  buildReleaseCacheName,
+  readReleaseDescriptorMarker,
+  writeReleaseDescriptorMarker,
+} from './releaseCache';
 
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
 const fetchMock = vi.fn();
@@ -19,6 +23,8 @@ const release: ReleaseRef = {
 };
 const FILE_SHA256 = '0'.repeat(64);
 
+const ARCHIVED_INDEX_HTML = '<html>archived</html>';
+
 const descriptor: ReleaseDescriptor = {
   schemaVersion: 1,
   releaseId: release.releaseId,
@@ -27,6 +33,8 @@ const descriptor: ReleaseDescriptor = {
   buildId: 'build-1',
   buildDate: '2026-07-24T00:00:00.000Z',
   indexUrl: `${BASE_PATH}updates/releases/${release.releaseId}/index.html`,
+  indexSha256: FILE_SHA256,
+  indexByteSize: ARCHIVED_INDEX_HTML.length,
   files: [{ path: 'assets/app.js', sha256: FILE_SHA256, byteSize: 3 }],
 };
 
@@ -37,7 +45,7 @@ function mockDigestMatchesFileHash(): void {
 
 function mockSuccessfulDownloads(): void {
   fetchMock.mockImplementation((url: string) => {
-    if (url.endsWith('index.html')) return new Response('<html>archived</html>');
+    if (url.endsWith('index.html')) return new Response(ARCHIVED_INDEX_HTML);
     return new Response('AAA');
   });
 }
@@ -170,6 +178,39 @@ describe('prepareRelease', () => {
     expect(cachesByName.has(cacheName)).toBe(false);
   });
 
+  it('rejects a truncated archived index (byte-size mismatch) and deletes the cache', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.endsWith('index.html')) return new Response(ARCHIVED_INDEX_HTML.slice(0, -1));
+      return new Response('AAA');
+    });
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow(
+      'Byte size mismatch for archived index',
+    );
+
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    expect(cachesByName.has(cacheName)).toBe(false);
+  });
+
+  it('rejects a modified archived index with a matching byte size but a wrong hash, and deletes the cache', async () => {
+    mockSuccessfulDownloads();
+    // First digest call hashes the one release file (matches FILE_SHA256);
+    // the second hashes the archived index, deliberately mismatching.
+    digestMock.mockReset();
+    digestMock
+      .mockResolvedValueOnce(new Uint8Array(32).buffer)
+      .mockResolvedValueOnce(new Uint8Array(32).fill(1).buffer);
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow(
+      'SHA-256 mismatch for archived index',
+    );
+
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    expect(cachesByName.has(cacheName)).toBe(false);
+  });
+
   it('rejects when the archived index cannot be downloaded, and deletes the cache', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url.endsWith('index.html')) return new Response('nope', { status: 500 });
@@ -200,5 +241,21 @@ describe('prepareRelease', () => {
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow('offline');
     expect(committedMarker).toEqual(descriptor);
+  });
+
+  it('fails preparation without deleting the cache when its marker uses the same releaseId with a different releaseSequence', async () => {
+    const { prepareRelease } = await import('./releasePreparation');
+    const cacheName = buildReleaseCacheName(CHANNEL, release.releaseId);
+    const existingCache = await fakeCaches.open(cacheName);
+    const conflictingMarker: ReleaseDescriptor = { ...descriptor, releaseSequence: 99 };
+    await writeReleaseDescriptorMarker(existingCache, conflictingMarker);
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow(
+      'Release identity conflict',
+    );
+
+    expect(cachesByName.has(cacheName)).toBe(true);
+    const marker = await readReleaseDescriptorMarker(await fakeCaches.open(cacheName));
+    expect(marker).toEqual(conflictingMarker);
   });
 });

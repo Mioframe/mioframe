@@ -9,6 +9,7 @@ import {
 import {
   buildReleaseCacheName,
   checkReleaseAvailability,
+  readReleaseDescriptorMarker,
   writeReleaseDescriptorMarker,
   writeReleaseIndexMarker,
 } from './releaseCache';
@@ -110,9 +111,11 @@ export async function fetchReleaseDescriptor(
 }
 
 /**
- * Downloads, validates, and commits every file in `descriptor` into one
- * immutable release cache; the validated descriptor is written as its
- * commit marker last.
+ * Downloads, validates, and commits every file in `descriptor`, plus its
+ * archived index (byte-size and SHA-256 verified against
+ * `descriptor.indexByteSize`/`descriptor.indexSha256`), into one immutable
+ * release cache; the validated descriptor is written as its commit marker
+ * last, only after the index and every ordinary asset are valid.
  *
  * A no-op when `descriptor`'s release is already fully committed and
  * available — safe to call repeatedly (e.g. a slower stale preparation
@@ -129,10 +132,19 @@ export async function fetchReleaseDescriptor(
  * not good. Downloads and hashing run with bounded concurrency
  * ({@link DOWNLOAD_CONCURRENCY_LIMIT}), not an unbounded `Promise.all` over
  * every file.
+ *
+ * Before deleting or replacing the cache, its commit marker (if any is still
+ * readable) is checked for a release identity conflict: the cache is keyed
+ * by `releaseId`, so a marker for the same `releaseId` but a different
+ * `releaseSequence` means the same release id has been reused for a
+ * different release — preparation fails without deleting or mutating the
+ * cache. A missing or corrupt marker is not a conflict: it already proved
+ * "not available" above and continues through the ordinary exact-release
+ * restoration path.
  * @param channelBasePath - This worker's channel base path.
  * @param channel - Managed channel.
  * @param descriptor - The validated release descriptor to prepare.
- * @throws When any file fails to download or fails byte-size/hash validation.
+ * @throws When any file fails to download or fails byte-size/hash validation, or when the existing cache's marker conflicts with `descriptor`'s identity.
  */
 export async function prepareRelease(
   channelBasePath: string,
@@ -145,6 +157,17 @@ export async function prepareRelease(
   const existingCache = await caches.open(cacheName);
   if (await checkReleaseAvailability(existingCache, release, channelBasePath)) {
     return;
+  }
+
+  const existingMarker = await readReleaseDescriptorMarker(existingCache);
+  if (
+    existingMarker &&
+    existingMarker.releaseId === descriptor.releaseId &&
+    existingMarker.releaseSequence !== descriptor.releaseSequence
+  ) {
+    throw new Error(
+      `Release identity conflict: cache for releaseId "${descriptor.releaseId}" already holds releaseSequence ${existingMarker.releaseSequence}, cannot prepare releaseSequence ${descriptor.releaseSequence}`,
+    );
   }
 
   await caches.delete(cacheName);
@@ -173,7 +196,14 @@ export async function prepareRelease(
     if (!indexResponse.ok) {
       throw new Error(`Failed to download archived index: ${descriptor.indexUrl}`);
     }
-    const indexHtml = await indexResponse.text();
+    const indexBytes = await indexResponse.arrayBuffer();
+    if (indexBytes.byteLength !== descriptor.indexByteSize) {
+      throw new Error(`Byte size mismatch for archived index: ${descriptor.indexUrl}`);
+    }
+    if ((await sha256Hex(indexBytes)) !== descriptor.indexSha256) {
+      throw new Error(`SHA-256 mismatch for archived index: ${descriptor.indexUrl}`);
+    }
+    const indexHtml = new TextDecoder().decode(indexBytes);
     await writeReleaseIndexMarker(cache, indexHtml);
 
     // Written last: this marker's presence and validity is what makes the

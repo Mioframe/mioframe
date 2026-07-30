@@ -38,6 +38,8 @@ function buildDescriptor(release: ReleaseRef): ReleaseDescriptor {
     buildId: `build-${release.releaseId}`,
     buildDate: '2026-07-24T00:00:00.000Z',
     indexUrl: `/updates/releases/${release.releaseId}/index.html`,
+    indexSha256: '0'.repeat(64),
+    indexByteSize: 100,
     files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
   };
 }
@@ -87,7 +89,7 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.error).toBe('check-failed');
+    expect(result.response.snapshot.error).toBe('check-failed');
     expect(fetchReleaseDescriptorMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
   });
@@ -100,7 +102,7 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.error).toBe('check-failed');
+    expect(result.response.snapshot.error).toBe('check-failed');
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
@@ -112,8 +114,8 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.latestRelease).toEqual(summaryB);
-    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(result.response.snapshot.latestRelease).toEqual(summaryB);
+    expect(result.response.snapshot.scheduledRelease).toBeUndefined();
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
@@ -128,7 +130,7 @@ describe('runUpdateCheck', () => {
 
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
     expect(prepareMock).toHaveBeenCalledWith('stable', '/', summaryB, descriptorB);
-    expect(result.snapshot.scheduledRelease).toEqual(summaryB);
+    expect(result.response.snapshot.scheduledRelease).toEqual(summaryB);
   });
 
   it('does not approve when the user switched to Manual while preparation was in flight', async () => {
@@ -144,7 +146,7 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(result.response.snapshot.scheduledRelease).toBeUndefined();
   });
 
   it('does not approve a stale preparation superseded by a newer discovery', async () => {
@@ -164,7 +166,7 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(result.response.snapshot.scheduledRelease).toBeUndefined();
   });
 
   it('does not approve its prepared target if that target became activeRelease while preparation was in flight', async () => {
@@ -186,7 +188,7 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(result.response.snapshot.scheduledRelease).toBeUndefined();
     expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
   });
 
@@ -208,8 +210,8 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.latestRelease).toEqual(summaryB);
-    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(result.response.snapshot.latestRelease).toEqual(summaryB);
+    expect(result.response.snapshot.scheduledRelease).toBeUndefined();
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
@@ -222,9 +224,9 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.latestRelease).toEqual(summaryB);
-    expect(result.snapshot.scheduledRelease).toBeUndefined();
-    expect(result.snapshot.error).toBeUndefined();
+    expect(result.response.snapshot.latestRelease).toEqual(summaryB);
+    expect(result.response.snapshot.scheduledRelease).toBeUndefined();
+    expect(result.response.snapshot.error).toBeUndefined();
   });
 
   it('retries preparation on a later check of the same latestRelease after a prior preparation failure, reuses the matching descriptor, and approves once preparation succeeds', async () => {
@@ -235,15 +237,15 @@ describe('runUpdateCheck', () => {
     const { runUpdateCheck } = await import('./updateDiscovery');
 
     const first = await runUpdateCheck('stable', '/', enqueue, coordinator);
-    expect(first.snapshot.latestRelease).toEqual(summaryB);
-    expect(first.snapshot.scheduledRelease).toBeUndefined();
+    expect(first.response.snapshot.latestRelease).toEqual(summaryB);
+    expect(first.response.snapshot.scheduledRelease).toBeUndefined();
 
     prepareMock.mockResolvedValueOnce(descriptorB);
     const second = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
     expect(prepareMock).toHaveBeenCalledTimes(2);
     expect(prepareMock).toHaveBeenLastCalledWith('stable', '/', summaryB, descriptorB);
-    expect(second.snapshot.scheduledRelease).toEqual(summaryB);
+    expect(second.response.snapshot.scheduledRelease).toEqual(summaryB);
   });
 
   it('does not retry preparation once the latestRelease is already approved', async () => {
@@ -254,13 +256,13 @@ describe('runUpdateCheck', () => {
     const { runUpdateCheck } = await import('./updateDiscovery');
 
     const first = await runUpdateCheck('stable', '/', enqueue, coordinator);
-    expect(first.snapshot.scheduledRelease).toEqual(summaryB);
+    expect(first.response.snapshot.scheduledRelease).toEqual(summaryB);
     expect(prepareMock).toHaveBeenCalledTimes(1);
 
     const second = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
     expect(prepareMock).toHaveBeenCalledTimes(1);
-    expect(second.snapshot.scheduledRelease).toEqual(summaryB);
+    expect(second.response.snapshot.scheduledRelease).toEqual(summaryB);
   });
 
   it('does not prepare a latestRelease recorded as the failed activation release', async () => {
@@ -272,7 +274,7 @@ describe('runUpdateCheck', () => {
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
     expect(prepareMock).not.toHaveBeenCalled();
-    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(result.response.snapshot.scheduledRelease).toBeUndefined();
   });
 
   it('returns check-failed and preserves the complete previous state on a same-sequence conflicting discovery, without preparing', async () => {
@@ -295,9 +297,9 @@ describe('runUpdateCheck', () => {
 
     const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(result.snapshot.error).toBe('check-failed');
-    expect(result.snapshot.latestRelease).toEqual(summaryB);
-    expect(result.snapshot.lastSuccessfulCheckAt).toBe('2026-07-20T00:00:00.000Z');
+    expect(result.response.snapshot.error).toBe('check-failed');
+    expect(result.response.snapshot.latestRelease).toEqual(summaryB);
+    expect(result.response.snapshot.lastSuccessfulCheckAt).toBe('2026-07-20T00:00:00.000Z');
     expect(writeControllerStateMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
   });
@@ -320,7 +322,7 @@ describe('runUpdateCheck', () => {
     const { runUpdateCheck } = await import('./updateDiscovery');
 
     const conflictResult = await runUpdateCheck('stable', '/', enqueue, coordinator);
-    expect(conflictResult.snapshot.error).toBe('check-failed');
+    expect(conflictResult.response.snapshot.error).toBe('check-failed');
 
     const releaseC: ReleaseRef = { releaseId: 'release-c', releaseSequence: 3 };
     const descriptorC = buildDescriptor(releaseC);
@@ -330,8 +332,8 @@ describe('runUpdateCheck', () => {
 
     const recovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
 
-    expect(recovered.snapshot.error).toBeUndefined();
-    expect(recovered.snapshot.latestRelease?.releaseId).toBe('release-c');
+    expect(recovered.response.snapshot.error).toBeUndefined();
+    expect(recovered.response.snapshot.latestRelease?.releaseId).toBe('release-c');
   });
 });
 

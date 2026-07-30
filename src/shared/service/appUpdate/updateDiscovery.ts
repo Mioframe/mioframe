@@ -2,7 +2,11 @@ import { toReleaseSummary, type ManagedChannel, type ReleaseDescriptor } from '.
 import { writeControllerState } from './controllerState';
 import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
-import type { AppUpdateWorkerResponse } from './protocol';
+import {
+  withProtocolVersion,
+  type AppUpdateWorkerResponse,
+  type WorkerMessageResult,
+} from './protocol';
 import { runReleaseCacheCleanup } from './releaseCache';
 import { fetchLatestReleasePointer, fetchReleaseDescriptor } from './releasePreparation';
 import { buildAppUpdateSnapshot } from './snapshot';
@@ -43,25 +47,35 @@ import {
  * state after preparation, before approving it, so a stale completion (mode
  * switched to Manual, or superseded by a newer discovery, while preparing)
  * can never silently approve the wrong release.
+ *
+ * `lifetimeWork` carries only the Automatic-approval cache cleanup, when an
+ * approval actually happened. Same-channel broadcast ownership belongs to
+ * each caller: {@link runScheduledDiscoveryCheck} owns the background
+ * invalidation broadcast; the `CHECK_FOR_UPDATES` protocol handler owns the
+ * foreground one.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
- * @returns The resulting response snapshot.
+ * @returns The resulting response snapshot, plus any cache-cleanup follow-up work.
  */
 export async function runUpdateCheck(
   channel: ManagedChannel,
   channelBasePath: string,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
-): Promise<AppUpdateWorkerResponse> {
+): Promise<WorkerMessageResult<AppUpdateWorkerResponse>> {
   let descriptor: ReleaseDescriptor;
   try {
     const pointer = await fetchLatestReleasePointer(channelBasePath);
     descriptor = await fetchReleaseDescriptor(channelBasePath, pointer);
   } catch {
     const currentState = await withState(channel, enqueue, (state) => state);
-    return { snapshot: buildAppUpdateSnapshot(currentState, 'check-failed') };
+    return {
+      response: withProtocolVersion({
+        snapshot: buildAppUpdateSnapshot(currentState, 'check-failed'),
+      }),
+    };
   }
   const discovered = toReleaseSummary(descriptor);
 
@@ -73,7 +87,11 @@ export async function runUpdateCheck(
   });
 
   if (afterDiscovery.outcome === 'rejected-conflict') {
-    return { snapshot: buildAppUpdateSnapshot(afterDiscovery.state, 'check-failed') };
+    return {
+      response: withProtocolVersion({
+        snapshot: buildAppUpdateSnapshot(afterDiscovery.state, 'check-failed'),
+      }),
+    };
   }
 
   const target = resolveAutomaticPreparationTarget(afterDiscovery.state);
@@ -81,7 +99,9 @@ export async function runUpdateCheck(
     // Nothing currently requires Automatic preparation: wrong mode, nothing
     // newer than `activeRelease`, already approved, an activation is in
     // progress, or it is the recorded failed release.
-    return { snapshot: buildAppUpdateSnapshot(afterDiscovery.state) };
+    return {
+      response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(afterDiscovery.state) }),
+    };
   }
 
   // Reuse the descriptor this check already fetched and validated only when
@@ -95,27 +115,34 @@ export async function runUpdateCheck(
     // Background preparation failure never blocks reporting the discovery
     // itself: `latestRelease` stays recorded, and a later check retries
     // preparation via `resolveAutomaticPreparationTarget` above.
-    return { snapshot: buildAppUpdateSnapshot(afterDiscovery.state) };
+    return {
+      response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(afterDiscovery.state) }),
+    };
   }
 
-  const approved = await withState(channel, enqueue, async (state) => {
+  const { approved, approvalChanged } = await withState(channel, enqueue, async (state) => {
     // Re-validate against the current state: the user may have switched to
     // Manual, or a newer release may already have superseded this one,
     // while preparation was in flight.
     if (state.mode !== 'automatic' || state.latestRelease?.releaseId !== target.releaseId) {
-      return state;
+      return { approved: state, approvalChanged: false };
     }
     const next = approveAutomaticRelease(state, target);
-    if (next !== state) {
-      await writeControllerState(channel, next);
-      void coordinator
-        .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
-        .catch(() => {});
+    if (next === state) {
+      return { approved: next, approvalChanged: false };
     }
-    return next;
+    await writeControllerState(channel, next);
+    return { approved: next, approvalChanged: true };
   });
 
-  return { snapshot: buildAppUpdateSnapshot(approved) };
+  return {
+    response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(approved) }),
+    lifetimeWork: approvalChanged
+      ? coordinator
+          .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+          .catch(() => {})
+      : undefined,
+  };
 }
 
 /**
@@ -129,7 +156,10 @@ export async function runUpdateCheck(
  * This is a thin adapter over {@link runUpdateCheck} for the scheduler (see
  * `scheduledDiscoveryCheckScheduler.ts`), which has no requester waiting on
  * a response. Never throws: a failure is silently swallowed and does not
- * affect the current session.
+ * affect the current session. Awaits `runUpdateCheck`'s cache-cleanup
+ * follow-up work itself — this call already runs under the navigation
+ * `fetch` event's own `waitUntil()` ownership (see `src/sw.ts`), not a
+ * `message` event's.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
@@ -146,5 +176,6 @@ export async function runScheduledDiscoveryCheck(
   coordinator: PreparationCoordinator,
 ): Promise<boolean> {
   const result = await runUpdateCheck(channel, channelBasePath, enqueue, coordinator);
-  return result.snapshot.error !== 'check-failed';
+  if (result.lifetimeWork) await result.lifetimeWork;
+  return result.response.snapshot.error !== 'check-failed';
 }

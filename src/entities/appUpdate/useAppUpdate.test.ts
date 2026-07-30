@@ -114,6 +114,36 @@ describe('useAppUpdate', () => {
     expect(scheduledRelease.value).toEqual({ releaseId: 'release-b', releaseSequence: 2 });
   });
 
+  it('reports activating when activatingRelease is present', async () => {
+    getAppUpdateSnapshotMock.mockResolvedValue({
+      mode: 'manual',
+      activeRelease,
+      activatingRelease: { releaseId: 'release-b', releaseSequence: 2 },
+    });
+    const { useAppUpdate } = await import('./useAppUpdate');
+    const { status, activatingRelease, refresh } = useAppUpdate();
+    await refresh();
+
+    expect(status.value).toBe('activating');
+    expect(activatingRelease.value).toEqual({ releaseId: 'release-b', releaseSequence: 2 });
+  });
+
+  it('reports activating with priority over ready, update-available, and rolled-back', async () => {
+    getAppUpdateSnapshotMock.mockResolvedValue({
+      mode: 'manual',
+      activeRelease,
+      latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      activatingRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      failedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+    });
+    const { useAppUpdate } = await import('./useAppUpdate');
+    const { status, refresh } = useAppUpdate();
+    await refresh();
+
+    expect(status.value).toBe('activating');
+  });
+
   it('reports check-failed and install-failed from the applied snapshot error', async () => {
     getAppUpdateSnapshotMock.mockResolvedValue({ mode: 'manual', activeRelease });
     const { useAppUpdate } = await import('./useAppUpdate');

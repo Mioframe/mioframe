@@ -16,26 +16,30 @@ const notifiedReleaseIdsThisSession = new Set<string>();
  * User-facing notification: shows one short Snackbar per application
  * session when Manual mode discovers a newer release that has not yet been
  * scheduled and has not already been notified this session. Never shown in
- * Automatic mode, and never shown for a release that is the single recorded
+ * Automatic mode, never shown for a release that is the single recorded
  * `failedRelease` (the user already knows about it from the update-failed
  * status; a genuinely newer release discovered after it still notifies
- * normally). A strictly newer release id may notify again within the same
- * session; the same release id never repeats.
+ * normally), and never shown while an activation exists — the worker has
+ * already selected a release for the current clean launch, and offering to
+ * schedule another one would be meaningless. A strictly newer release id may
+ * notify again within the same session; the same release id never repeats.
  *
  * Never imports page navigation: the caller (an app-level composition root)
  * injects `onView` and owns opening the App updates pane.
  * @param onView - Called when the user selects the Snackbar's `View` action.
  */
 export function useAppUpdateNotify(onView: () => void): void {
-  const { mode, activeRelease, latestRelease, scheduledRelease, failedRelease } = useAppUpdate();
+  const { mode, activeRelease, latestRelease, scheduledRelease, activatingRelease, failedRelease } =
+    useAppUpdate();
   const { addSnackbar } = useSnackbar();
 
   watch(
-    [mode, activeRelease, latestRelease, scheduledRelease, failedRelease],
-    ([currentMode, active, latest, scheduled, failed]) => {
+    [mode, activeRelease, latestRelease, scheduledRelease, activatingRelease, failedRelease],
+    ([currentMode, active, latest, scheduled, activating, failed]) => {
       if (currentMode !== 'manual') return;
       if (!active || !latest || latest.releaseId === active.releaseId) return;
       if (scheduled) return;
+      if (activating) return;
       if (failed?.releaseId === latest.releaseId) return;
       if (notifiedReleaseIdsThisSession.has(latest.releaseId)) return;
 

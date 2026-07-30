@@ -1062,6 +1062,7 @@ function addReleaseOnlyCommands(commands) {
       'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
       'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
       'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
+      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
     ],
     weight: classifyCommandWeight({ label: 'managed-updates' }),
   });

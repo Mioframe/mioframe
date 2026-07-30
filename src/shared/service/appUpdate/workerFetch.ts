@@ -203,7 +203,7 @@ export async function handleNavigationFetch(
         );
         if (shouldStartActivation(state, { otherLiveClientCount })) {
           const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
-          state = startActivation(state, state.approvedRelease, deadlineAt);
+          state = startActivation(state, deadlineAt);
           await writeControllerState(channel, state);
         }
       }

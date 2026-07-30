@@ -28,10 +28,11 @@ describe('deriveAppUpdatesDisplayStatus', () => {
     expect(derive('update-available', { isPreparing: true })).toBe('preparing');
   });
 
-  it('maps not-checked, up-to-date, and ready through unchanged', () => {
+  it('maps not-checked, up-to-date, ready, and activating through unchanged', () => {
     expect(derive('not-checked')).toBe('not-checked');
     expect(derive('up-to-date')).toBe('up-to-date');
     expect(derive('ready')).toBe('ready');
+    expect(derive('activating')).toBe('activating');
   });
 
   it('maps both update-available and install-failed to update-available: the release remains available to retry', () => {
@@ -65,6 +66,7 @@ describe('getAppUpdatesDisplayStatusText', () => {
     ['update-available', 'Update available'],
     ['preparing', 'Preparing update…'],
     ['ready', 'Update ready'],
+    ['activating', 'Activating update…'],
     ['update-failed', 'Update failed'],
     ['could-not-check', 'Could not check for updates'],
     ['offline', 'Offline'],

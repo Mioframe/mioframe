@@ -92,6 +92,8 @@ export function isValidReleaseDescriptor(candidate) {
     buildId,
     buildDate,
     indexUrl,
+    indexSha256,
+    indexByteSize,
     files,
   } = candidate;
   return (
@@ -110,6 +112,11 @@ export function isValidReleaseDescriptor(candidate) {
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(buildDate) &&
     typeof indexUrl === 'string' &&
     indexUrl.length > 0 &&
+    typeof indexSha256 === 'string' &&
+    SHA256_HEX_PATTERN.test(indexSha256) &&
+    typeof indexByteSize === 'number' &&
+    Number.isInteger(indexByteSize) &&
+    indexByteSize >= 0 &&
     Array.isArray(files) &&
     files.length > 0 &&
     files.every(isValidReleaseFile) &&
@@ -124,6 +131,16 @@ export function isValidReleaseDescriptor(candidate) {
  */
 export function computeFileSha256(filePath) {
   return createHash('sha256').update(readFileSync(filePath)).digest('hex');
+}
+
+/**
+ * Computes the lowercase hex SHA-256 digest of in-memory content, e.g. the
+ * final archived `index.html` bytes after boot-watchdog injection.
+ * @param content Content to hash (a UTF-8 string or a `Buffer`).
+ * @returns Lowercase hex SHA-256 digest.
+ */
+export function computeContentSha256(content) {
+  return createHash('sha256').update(content).digest('hex');
 }
 
 function walkFiles(dir) {
@@ -180,6 +197,8 @@ export function allocateReleaseSequence(existingSequences) {
  * @param params.buildId CI build identity (e.g. commit SHA).
  * @param params.buildDate ISO 8601 UTC build timestamp.
  * @param params.indexUrl Channel-root-relative URL of this release's archived index.
+ * @param params.indexSha256 Lowercase hex SHA-256 digest of the final archived `index.html` bytes, computed after boot-watchdog injection.
+ * @param params.indexByteSize Exact byte size of the final archived `index.html`, computed after boot-watchdog injection.
  * @param params.files This release's file list, from {@link collectReleaseFiles}.
  * @returns The validated `ReleaseDescriptor`.
  */
@@ -190,6 +209,8 @@ export function buildReleaseDescriptor({
   buildId,
   buildDate,
   indexUrl,
+  indexSha256,
+  indexByteSize,
   files,
 }) {
   const descriptor = {
@@ -200,6 +221,8 @@ export function buildReleaseDescriptor({
     buildId,
     buildDate,
     indexUrl,
+    indexSha256,
+    indexByteSize,
     files,
   };
   if (!isValidReleaseDescriptor(descriptor)) {
@@ -214,7 +237,10 @@ export function buildReleaseDescriptor({
  * conflicting descriptor aborts the whole read rather than silently
  * skipping it, since publishing on top of a corrupt retained tree is
  * unsafe. Validates that:
- * - the descriptor filename (`<releaseId>.json`) matches its own `releaseId`;
+ * - the descriptor filename (`<releaseId>.json`) matches its own `releaseId`
+ *   (which also makes two retained descriptors sharing a `releaseId` with a
+ *   different `releaseSequence` structurally impossible: two files cannot
+ *   both be named after the same `releaseId`);
  * - the release's archived index directory (`<releaseId>/index.html`) exists;
  * - no two retained descriptors share a `releaseSequence` with a different `releaseId`.
  * @param releasesDir Channel's `updates/releases` directory.
@@ -254,10 +280,10 @@ export function readRetainedReleaseDescriptors(releasesDir) {
 
   const releaseIdBySequence = new Map();
   for (const descriptor of descriptors) {
-    const conflicting = releaseIdBySequence.get(descriptor.releaseSequence);
-    if (conflicting !== undefined && conflicting !== descriptor.releaseId) {
+    const conflictingId = releaseIdBySequence.get(descriptor.releaseSequence);
+    if (conflictingId !== undefined && conflictingId !== descriptor.releaseId) {
       throw new Error(
-        `Retained releaseSequence ${descriptor.releaseSequence} is used by both "${conflicting}" and "${descriptor.releaseId}"`,
+        `Retained releaseSequence ${descriptor.releaseSequence} is used by both "${conflictingId}" and "${descriptor.releaseId}"`,
       );
     }
     releaseIdBySequence.set(descriptor.releaseSequence, descriptor.releaseId);

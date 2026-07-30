@@ -84,7 +84,9 @@ async function sendProtocolRequest<T>(page: Page, request: Record<string, unknow
         channel.port1.onmessage = (event) => {
           resolve(event.data);
         };
-        navigator.serviceWorker.controller?.postMessage(req, [channel.port2]);
+        navigator.serviceWorker.controller?.postMessage({ protocolVersion: 1, ...req }, [
+          channel.port2,
+        ]);
       }),
     request,
   );

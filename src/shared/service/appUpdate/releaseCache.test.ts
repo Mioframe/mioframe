@@ -33,6 +33,8 @@ const descriptor: ReleaseDescriptor = {
   buildId: 'sha1',
   buildDate: '2026-07-24T00:00:00.000Z',
   indexUrl: `/updates/releases/${RELEASE_ID}/index.html`,
+  indexSha256: '0'.repeat(64),
+  indexByteSize: 100,
   files: [
     { path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 10 },
     { path: 'assets/vendor.js', sha256: '1'.repeat(64), byteSize: 20 },

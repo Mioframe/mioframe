@@ -160,4 +160,51 @@ describe('zodUpdateControllerState', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('rejects approvedRelease not strictly newer than activeRelease', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        activeRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+        approvedRelease: { ...releaseSummaryB, releaseId: RELEASE_A, releaseSequence: 2 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects activation.targetRelease not strictly newer than activeRelease', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        activeRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
+        activation: {
+          targetRelease: { ...releaseSummaryB, releaseId: RELEASE_A, releaseSequence: 1 },
+          deadlineAt: '2026-07-24T00:00:30.000Z',
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a same-sequence, different-releaseId conflict between two release references', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        latestRelease: {
+          ...releaseSummaryB,
+          releaseSequence: validControllerState.activeRelease.releaseSequence,
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a same-releaseId, different-releaseSequence conflict between two release references', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        failedActivationRelease: {
+          ...releaseSummaryB,
+          releaseId: validControllerState.activeRelease.releaseId,
+        },
+      }).success,
+    ).toBe(false);
+  });
 });

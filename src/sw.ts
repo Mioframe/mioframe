@@ -22,7 +22,7 @@ import {
 } from './shared/service/appUpdate/cleanLaunch';
 import { createOperationQueue } from './shared/service/appUpdate/operationQueue';
 import { createPreparationCoordinator } from './shared/service/appUpdate/preparationCoordinator';
-import type { AppUpdateWorkerRequest } from './shared/service/appUpdate/protocol';
+import { zodAppUpdateWorkerRequest } from './shared/service/appUpdate/protocol';
 import { runReleaseCacheCleanup } from './shared/service/appUpdate/releaseCache';
 import { createScheduledDiscoveryCheckScheduler } from './shared/service/appUpdate/scheduledDiscoveryCheckScheduler';
 import { runScheduledDiscoveryCheck } from './shared/service/appUpdate/updateDiscovery';
@@ -154,20 +154,43 @@ self.addEventListener('message', (event) => {
   // rather than answered.
   if (!isSameChannelWindowClient(event.source, channelBasePath, channelOrigin)) return;
 
-  const request: AppUpdateWorkerRequest = event.data;
+  // A malformed payload or an unsupported/missing protocol version is
+  // ignored exactly like a foreign-channel request above: no state
+  // mutation, no response, and never a thrown error out of this handler.
+  const parsedRequest = zodAppUpdateWorkerRequest.safeParse(event.data);
+  if (!parsedRequest.success) return;
+  const request = parsedRequest.data;
+
   const respond = (result: unknown) => {
     if (event.ports[0]) event.ports[0].postMessage(result);
   };
+
+  // The response is posted as soon as `handleWorkerMessage` resolves;
+  // `lifetimeWork` (cache cleanup, a same-channel invalidation broadcast, or
+  // a rollback broadcast) is awaited afterwards, still inside this same
+  // `message` event's `waitUntil()` — never delaying the response itself.
   event.waitUntil(
-    handleWorkerMessage(
-      channel,
-      channelBasePath,
-      channelOrigin,
-      request,
-      enqueue,
-      preparationCoordinator,
-    ).then(respond, (error: unknown) => {
-      respond({ error: error instanceof Error ? error.message : 'unavailable' });
-    }),
+    (async () => {
+      let result;
+      try {
+        result = await handleWorkerMessage(
+          channel,
+          channelBasePath,
+          channelOrigin,
+          request,
+          enqueue,
+          preparationCoordinator,
+        );
+      } catch (error: unknown) {
+        respond({ error: error instanceof Error ? error.message : 'unavailable' });
+        return;
+      }
+      respond(result.response);
+      // `lifetimeWork` is documented as best effort and every current
+      // producer already swallows its own failures; this catch is a defense
+      // in depth so a future producer's mistake can never throw out of this
+      // handler or surface as an unhandled rejection.
+      if (result.lifetimeWork) await result.lifetimeWork.catch(() => {});
+    })(),
   );
 });

@@ -17,19 +17,30 @@
  * matching `stateTransitions.ts`/`workerMessages.ts`'s durable commit and
  * rollback semantics.
  *
- * The private protocol message type strings and ack timeout below must stay
- * in sync with `src/shared/service/appUpdate/protocol.ts` and
- * `bootConfirmation.ts`'s `BOOT_ACK_TIMEOUT_MS`. This script runs as a Node
- * publisher tool with no TypeScript loader, so it cannot import those
- * modules directly (see `releaseDescriptor.mjs`'s doc comment for the same
- * constraint); `watchdogProtocolParity.test.ts` proves the literal copies
- * below stay in exact agreement.
+ * The private protocol message type strings, protocol version, and ack
+ * timeout below must stay in sync with
+ * `src/shared/service/appUpdate/protocol.ts` and `bootConfirmation.ts`'s
+ * `BOOT_ACK_TIMEOUT_MS`. This script runs as a Node publisher tool with no
+ * TypeScript loader, so it cannot import those modules directly (see
+ * `releaseDescriptor.mjs`'s doc comment for the same constraint);
+ * `watchdogProtocolParity.test.ts` proves the literal copies below stay in
+ * exact agreement.
+ *
+ * Every message the watchdog sends carries `protocolVersion: 1`. Every
+ * message it consumes (an acknowledgement, the activation-status response,
+ * or the rollback broadcast) is checked for that exact field before any of
+ * its other fields are read; a missing, mismatched, or otherwise malformed
+ * message is ignored — never thrown — exactly like "no response at all"
+ * (timeout, or no controller).
  */
 
 const MAIN_MODULE_SCRIPT_MARKER = '<script type="module"';
 
 /** Must match `src/shared/service/appUpdate/bootConfirmation.ts`'s `BOOT_ACK_TIMEOUT_MS`. */
 export const WATCHDOG_ACK_TIMEOUT_MS = 5_000;
+
+/** Must match `src/shared/service/appUpdate/protocol.ts`'s `APP_UPDATE_PROTOCOL_VERSION`. */
+export const WATCHDOG_PROTOCOL_VERSION = 1;
 
 /**
  * Builds the watchdog's self-contained inline script source for one
@@ -42,6 +53,7 @@ export function buildWatchdogScript(releaseId) {
 
   return `(function () {
   var RELEASE_ID = ${releaseIdLiteral};
+  var PROTOCOL_VERSION = ${WATCHDOG_PROTOCOL_VERSION};
   var BOOT_OK = 'BOOT_OK';
   var BOOT_FAILED = 'BOOT_FAILED';
   var GET_ACTIVATION_STATUS = 'GET_ACTIVATION_STATUS';
@@ -87,8 +99,12 @@ export function buildWatchdogScript(releaseId) {
   function reportBootFailed() {
     if (settled || bootFailedReported) return;
     bootFailedReported = true;
-    sendToController({ type: BOOT_FAILED, releaseId: RELEASE_ID }).then(function (response) {
-      var ack = response && response.ack;
+    sendToController({
+      protocolVersion: PROTOCOL_VERSION,
+      type: BOOT_FAILED,
+      releaseId: RELEASE_ID,
+    }).then(function (response) {
+      var ack = response && response.protocolVersion === PROTOCOL_VERSION ? response.ack : null;
       if (ack === 'error') {
         settled = true;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
@@ -116,8 +132,11 @@ export function buildWatchdogScript(releaseId) {
   window.mioframeAppUpdateBootOk = function () {
     if (settled || bootOkReported) return;
     bootOkReported = true;
-    sendToController({ type: BOOT_OK, releaseId: RELEASE_ID }).then(function (response) {
-      if (response && response.ack === 'committed') {
+    var request = { protocolVersion: PROTOCOL_VERSION, type: BOOT_OK, releaseId: RELEASE_ID };
+    sendToController(request).then(function (response) {
+      var isCommitted =
+        response && response.protocolVersion === PROTOCOL_VERSION && response.ack === 'committed';
+      if (isCommitted) {
         settled = true;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
         window.removeEventListener('error', onEarlyFatalError);
@@ -137,7 +156,8 @@ export function buildWatchdogScript(releaseId) {
       var channel = new MessageChannel();
       channel.port1.onmessage = function (event) {
         var data = event.data;
-        if (data && data.isActivationTarget === false) {
+        if (!data || data.protocolVersion !== PROTOCOL_VERSION) return;
+        if (data.isActivationTarget === false) {
           // Not this session's activation target: permanently disarm rather
           // than merely skip arming the deadline timer, so an ordinary
           // runtime error later in this session can never send a spurious
@@ -148,7 +168,7 @@ export function buildWatchdogScript(releaseId) {
           window.removeEventListener('unhandledrejection', onEarlyFatalError);
           return;
         }
-        if (!data || !data.isActivationTarget || !data.deadlineAt) return;
+        if (!data.isActivationTarget || !data.deadlineAt) return;
         var msRemaining = new Date(data.deadlineAt).getTime() - Date.now();
         if (msRemaining <= 0) {
           reportBootFailed();
@@ -157,14 +177,19 @@ export function buildWatchdogScript(releaseId) {
         deadlineTimer = setTimeout(reportBootFailed, msRemaining);
       };
       navigator.serviceWorker.controller.postMessage(
-        { type: GET_ACTIVATION_STATUS, releaseId: RELEASE_ID },
+        { protocolVersion: PROTOCOL_VERSION, type: GET_ACTIVATION_STATUS, releaseId: RELEASE_ID },
         [channel.port2],
       );
     });
 
     navigator.serviceWorker.addEventListener('message', function (event) {
       var data = event.data;
-      if (data && data.type === ROLLBACK && data.releaseId === RELEASE_ID) {
+      if (
+        data &&
+        data.protocolVersion === PROTOCOL_VERSION &&
+        data.type === ROLLBACK &&
+        data.releaseId === RELEASE_ID
+      ) {
         location.reload();
       }
     });

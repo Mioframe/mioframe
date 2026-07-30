@@ -93,6 +93,10 @@ export const zodReleaseDescriptor = z.object({
   buildId: z.string().check(z.minLength(1)),
   buildDate: z.iso.datetime(),
   indexUrl: z.string().check(z.minLength(1)),
+  /** Lowercase hex SHA-256 digest of the final archived `index.html` bytes, computed after boot-watchdog injection. */
+  indexSha256: z.string().check(z.refine((value) => SHA256_HEX_PATTERN.test(value))),
+  /** Exact byte size of the final archived `index.html`, computed after boot-watchdog injection. */
+  indexByteSize: z.number().check(z.int(), z.nonnegative()),
   files: z.array(zodReleaseFile).check(z.minLength(1), z.refine(hasUniqueFilePaths)),
 });
 /** A {@link zodReleaseDescriptor}-validated release descriptor. */
@@ -203,6 +207,56 @@ export const zodActivation = z.object({
 export type Activation = z.infer<typeof zodActivation>;
 
 /**
+ * Returns `true` when two release identities violate the one-to-one
+ * `releaseId`/`releaseSequence` invariant: the same `releaseSequence` with a
+ * different `releaseId`, or the same `releaseId` with a different
+ * `releaseSequence`. Two references with identical fields are not a
+ * conflict.
+ * @param a - First release identity.
+ * @param b - Second release identity.
+ * @returns Whether `a` and `b` conflict.
+ */
+const isReleaseIdentityConflict = (a: ReleaseRef, b: ReleaseRef): boolean =>
+  (a.releaseSequence === b.releaseSequence && a.releaseId !== b.releaseId) ||
+  (a.releaseId === b.releaseId && a.releaseSequence !== b.releaseSequence);
+
+/**
+ * Returns `true` when any pair in `refs` violates the one-to-one release
+ * identity invariant (see {@link isReleaseIdentityConflict}).
+ * @param refs - Release identities to check pairwise.
+ * @returns Whether any pair conflicts.
+ */
+export const hasReleaseIdentityConflict = (refs: readonly ReleaseRef[]): boolean =>
+  refs.some((ref, index) =>
+    refs.slice(index + 1).some((other) => isReleaseIdentityConflict(ref, other)),
+  );
+
+/**
+ * Collects every release reference currently present in persisted controller
+ * state — `activeRelease`, `latestRelease`, `approvedRelease`,
+ * `activation.targetRelease`, and `failedActivationRelease` — omitting
+ * unset optional references. The single place both the persisted-state
+ * schema and release discovery use to enforce the release identity
+ * invariant across every reference.
+ * @param state - Release references to collect from.
+ * @returns Every present release reference.
+ */
+export const collectReleaseReferences = (state: {
+  activeRelease: ReleaseRef;
+  latestRelease?: ReleaseRef | undefined;
+  approvedRelease?: ReleaseRef | undefined;
+  activation?: { targetRelease: ReleaseRef } | undefined;
+  failedActivationRelease?: ReleaseRef | undefined;
+}): ReleaseRef[] =>
+  [
+    state.activeRelease,
+    state.latestRelease,
+    state.approvedRelease,
+    state.activation?.targetRelease,
+    state.failedActivationRelease,
+  ].filter((ref): ref is ReleaseRef => ref !== undefined);
+
+/**
  * The service worker's complete persisted update-controller state: the only
  * source of truth for `activeRelease`, `approvedRelease`, and `activation`.
  * Deliberately excludes any client-specific, operation-token, or transient
@@ -230,6 +284,22 @@ export const zodUpdateControllerState = z
     z.refine(
       (state) => !(state.approvedRelease && state.activation),
       'approvedRelease and activation must not coexist',
+    ),
+    z.refine(
+      (state) =>
+        !state.approvedRelease ||
+        state.approvedRelease.releaseSequence > state.activeRelease.releaseSequence,
+      'approvedRelease must be strictly newer than activeRelease',
+    ),
+    z.refine(
+      (state) =>
+        !state.activation ||
+        state.activation.targetRelease.releaseSequence > state.activeRelease.releaseSequence,
+      'activation.targetRelease must be strictly newer than activeRelease',
+    ),
+    z.refine(
+      (state) => !hasReleaseIdentityConflict(collectReleaseReferences(state)),
+      'every release reference must obey the one-to-one releaseId/releaseSequence invariant',
     ),
   );
 /** A {@link zodUpdateControllerState}-validated persisted controller state. */

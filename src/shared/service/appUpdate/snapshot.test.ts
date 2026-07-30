@@ -60,4 +60,19 @@ describe('buildAppUpdateSnapshot', () => {
     const snapshot = buildAppUpdateSnapshot(state);
     expect(snapshot.error).toBeUndefined();
   });
+
+  it('maps activation.targetRelease to activatingRelease', () => {
+    const { approvedRelease: _approvedRelease, ...withoutApproval } = state;
+    const activatingState: UpdateControllerState = {
+      ...withoutApproval,
+      activation: { targetRelease: releaseSummaryB, deadlineAt: '2026-07-24T00:00:30.000Z' },
+    };
+    const snapshot = buildAppUpdateSnapshot(activatingState);
+    expect(snapshot.activatingRelease).toEqual(releaseSummaryB);
+  });
+
+  it('omits activatingRelease when there is no activation', () => {
+    const snapshot = buildAppUpdateSnapshot(state);
+    expect(snapshot.activatingRelease).toBeUndefined();
+  });
 });

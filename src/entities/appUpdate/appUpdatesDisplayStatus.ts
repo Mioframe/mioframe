@@ -14,6 +14,7 @@ export type AppUpdatesDisplayStatus =
   | 'update-available'
   | 'preparing'
   | 'ready'
+  | 'activating'
   | 'update-failed'
   | 'could-not-check'
   | 'offline';
@@ -62,6 +63,8 @@ export function deriveAppUpdatesDisplayStatus({
       return 'update-failed';
     case 'ready':
       return 'ready';
+    case 'activating':
+      return 'activating';
     case 'check-failed':
       return isOnline ? 'could-not-check' : 'offline';
   }
@@ -89,6 +92,8 @@ export function getAppUpdatesDisplayStatusText(displayStatus: AppUpdatesDisplayS
       return 'Preparing update…';
     case 'ready':
       return 'Update ready';
+    case 'activating':
+      return 'Activating update…';
     case 'update-failed':
       return 'Update failed';
     case 'could-not-check':

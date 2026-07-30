@@ -124,6 +124,41 @@ describe('applyCheckForUpdates', () => {
     expect(result.outcome).toBe('updated');
     expect(result.state.failedActivationRelease).toEqual(releaseC);
   });
+
+  it('rejects a conflict against approvedRelease, even when latestRelease itself is unset', () => {
+    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const conflicting = { ...releaseB, releaseId: 'release-b-imposter' };
+    const result = applyCheckForUpdates(withApproved, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('rejected-conflict');
+    expect(result.state).toBe(withApproved);
+  });
+
+  it('rejects a conflict against activation.targetRelease', () => {
+    const withActivation: UpdateControllerState = {
+      ...baseState,
+      activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
+    };
+    const conflicting = { ...releaseB, releaseId: 'release-b-imposter' };
+    const result = applyCheckForUpdates(withActivation, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('rejected-conflict');
+    expect(result.state).toBe(withActivation);
+  });
+
+  it('rejects a conflict against failedActivationRelease', () => {
+    const withFailure = { ...baseState, failedActivationRelease: releaseB };
+    const conflicting = { ...releaseB, releaseId: 'release-b-imposter' };
+    const result = applyCheckForUpdates(withFailure, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('rejected-conflict');
+    expect(result.state).toBe(withFailure);
+  });
+
+  it('rejects a same-releaseId, different-releaseSequence conflict against a known reference', () => {
+    const withLatest = { ...baseState, latestRelease: releaseB };
+    const conflicting = { ...releaseB, releaseSequence: 5 };
+    const result = applyCheckForUpdates(withLatest, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('rejected-conflict');
+    expect(result.state).toBe(withLatest);
+  });
 });
 
 describe('approveManualRelease', () => {
@@ -399,8 +434,9 @@ describe('shouldStartActivation', () => {
 });
 
 describe('startActivation', () => {
-  it('persists activation before the target would be served, leaving activeRelease unchanged', () => {
-    const state = startActivation(baseState, releaseB, '2026-07-24T00:00:30.000Z');
+  it('persists activation of the approved release before it would be served, leaving activeRelease unchanged', () => {
+    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const state = startActivation(withApproved, '2026-07-24T00:00:30.000Z');
     expect(state.activation).toEqual({
       targetRelease: releaseB,
       deadlineAt: '2026-07-24T00:00:30.000Z',
@@ -410,7 +446,7 @@ describe('startActivation', () => {
 
   it('removes approvedRelease: approvedRelease and activation are mutually exclusive', () => {
     const withApproved = { ...baseState, approvedRelease: releaseB };
-    const state = startActivation(withApproved, releaseB, '2026-07-24T00:00:30.000Z');
+    const state = startActivation(withApproved, '2026-07-24T00:00:30.000Z');
     expect(state.approvedRelease).toBeUndefined();
     expect(state.activation).toEqual({
       targetRelease: releaseB,
@@ -419,9 +455,16 @@ describe('startActivation', () => {
   });
 
   it('is a no-op when an activation already exists, so concurrent launches never conflict', () => {
-    const withActivation = startActivation(baseState, releaseB, '2026-07-24T00:00:30.000Z');
-    const again = startActivation(withActivation, releaseC, '2026-07-24T00:05:30.000Z');
+    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const withActivation = startActivation(withApproved, '2026-07-24T00:00:30.000Z');
+    const again = startActivation(withActivation, '2026-07-24T00:05:30.000Z');
     expect(again).toEqual(withActivation);
+  });
+
+  it('is a no-op when there is no approval to activate, so it can never activate a release different from the approved one', () => {
+    const state = startActivation(baseState, '2026-07-24T00:00:30.000Z');
+    expect(state).toBe(baseState);
+    expect(state.activation).toBeUndefined();
   });
 });
 

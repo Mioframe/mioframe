@@ -85,8 +85,16 @@ describe('buildWatchdogScript', () => {
     const script = buildWatchdogScript('release-1');
     expect(script).toContain('function sendToController(message)');
     expect(script).toContain('new MessageChannel()');
-    expect(script).toContain('sendToController({ type: BOOT_OK, releaseId: RELEASE_ID })');
-    expect(script).toContain('sendToController({ type: BOOT_FAILED, releaseId: RELEASE_ID })');
+    expect(script).toContain('type: BOOT_OK, releaseId: RELEASE_ID');
+    expect(script).toContain('type: BOOT_FAILED,');
+    expect(script).toContain('releaseId: RELEASE_ID,');
+  });
+
+  it('stamps every outgoing message with the current protocol version', () => {
+    const script = buildWatchdogScript('release-1');
+    const occurrences = script.split('protocolVersion: PROTOCOL_VERSION').length - 1;
+    // BOOT_OK, BOOT_FAILED, and GET_ACTIVATION_STATUS each send it.
+    expect(occurrences).toBe(3);
   });
 
   it('only disarms on a BOOT_OK response acknowledging a committed outcome', () => {
@@ -117,10 +125,8 @@ describe('buildWatchdogScript', () => {
   it('disarms outside activation: isActivationTarget === false sets settled, clears the deadline timer, and removes the early-error listeners', () => {
     const script = buildWatchdogScript('release-1');
     const activationStatusBody = script.slice(
-      script.indexOf(
-        'channel.port1.onmessage = function (event) {\n        var data = event.data;\n        if (data && data.isActivationTarget === false) {',
-      ),
-      script.indexOf('if (!data || !data.isActivationTarget || !data.deadlineAt) return;'),
+      script.indexOf('channel.port1.onmessage = function (event) {'),
+      script.indexOf('if (!data.isActivationTarget || !data.deadlineAt) return;'),
     );
     expect(activationStatusBody).toContain('settled = true;');
     expect(activationStatusBody).toContain('clearTimeout(deadlineTimer)');
@@ -146,9 +152,12 @@ describe('buildWatchdogScript', () => {
 describe('watchdog disarm outside activation', () => {
   it('permanently disarms when isActivationTarget is false: a later runtime error never reports BOOT_FAILED', async () => {
     const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
       isActivationTarget: false,
     });
-    expect(calls).toEqual([{ type: 'GET_ACTIVATION_STATUS', releaseId: 'release-1' }]);
+    expect(calls).toEqual([
+      { protocolVersion: 1, type: 'GET_ACTIVATION_STATUS', releaseId: 'release-1' },
+    ]);
 
     window.dispatchEvent(new Event('error'));
     await flushTasks();
@@ -158,9 +167,23 @@ describe('watchdog disarm outside activation', () => {
     vi.unstubAllGlobals();
   });
 
+  it('ignores an activation-status response with a missing or unsupported protocol version, never disarming', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      isActivationTarget: false,
+    });
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
   it('a true activation target remains armed: a later runtime error still reports BOOT_FAILED', async () => {
     const deadlineAt = new Date(Date.now() + 60_000).toISOString();
     const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
       isActivationTarget: true,
       deadlineAt,
     });
