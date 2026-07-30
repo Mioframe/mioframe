@@ -17,6 +17,7 @@ import { join } from 'node:path';
 
 import {
   allocateReleaseSequence,
+  assertReleaseIdNotRetained,
   buildReleaseDescriptor,
   collectReleaseFiles,
   computeContentSha256,
@@ -50,6 +51,7 @@ function resolveChannelBase(workDir, channel) {
  * @param options.appVersion `package.json` version this release was built from.
  * @param options.buildId CI build identity (e.g. commit SHA).
  * @param [options.buildDate] ISO 8601 UTC build timestamp; defaults to now.
+ * @param [options.generateReleaseId] Generates the new release's immutable id; defaults to `crypto.randomUUID`. Overridable only so a test can deterministically inject an already-retained id.
  * @returns The published `ReleaseDescriptor`.
  */
 export function publishManagedRelease({
@@ -60,6 +62,7 @@ export function publishManagedRelease({
   appVersion,
   buildId,
   buildDate = new Date().toISOString(),
+  generateReleaseId = randomUUID,
 }) {
   if (!MANAGED_CHANNELS.has(channel)) {
     throw new Error(`Unsupported managed channel: ${String(channel)}`);
@@ -77,10 +80,14 @@ export function publishManagedRelease({
     existingDescriptors.map((descriptor) => descriptor.releaseSequence),
   );
 
-  // 3. inject the boot watchdog into the archived index (before the main
+  // 3. generate the new release id and reject it outright if it collides
+  // with an already-retained release, before any write for it begins
+  const releaseId = generateReleaseId();
+  assertReleaseIdNotRetained(existingDescriptors, releaseId);
+
+  // 4. inject the boot watchdog into the archived index (before the main
   // module entry, so it can detect a fatal failure even in the main
   // application bundle itself) and hash its final bytes
-  const releaseId = randomUUID();
   const indexUrl = `${basePath}updates/releases/${releaseId}/index.html`;
   const indexHtml = readFileSync(join(distDir, 'index.html'), 'utf8');
   const archivedIndexHtml = injectWatchdogScript(indexHtml, releaseId);
@@ -88,7 +95,7 @@ export function publishManagedRelease({
   const indexSha256 = computeContentSha256(indexBytes);
   const indexByteSize = indexBytes.byteLength;
 
-  // 4. build the descriptor in memory
+  // 5. build the descriptor in memory
   const files = collectReleaseFiles(distDir);
   const descriptor = buildReleaseDescriptor({
     releaseId,
@@ -102,13 +109,13 @@ export function publishManagedRelease({
     files,
   });
 
-  // 5. validate every immutable collision
+  // 6. validate every immutable collision
   validateNoImmutableCollision(existingDescriptors, files);
 
-  // 6. validate the projected artifact size
+  // 7. validate the projected artifact size
   validateProjectedArtifactSize(files);
 
-  // 7. copy immutable assets
+  // 8. copy immutable assets
   const distAssetsDir = join(distDir, 'assets');
   if (existsSync(distAssetsDir)) {
     const assetsDir = join(channelBase, 'assets');
@@ -116,26 +123,26 @@ export function publishManagedRelease({
     cpSync(distAssetsDir, assetsDir, { recursive: true });
   }
 
-  // 8. write the archived index
+  // 9. write the archived index
   const archivedReleaseDir = join(releasesDir, releaseId);
   mkdirSync(archivedReleaseDir, { recursive: true });
   writeFileSync(join(archivedReleaseDir, 'index.html'), archivedIndexHtml, 'utf8');
 
-  // 9. write descriptor
+  // 10. write descriptor
   writeFileSync(
     join(releasesDir, `${releaseId}.json`),
     JSON.stringify(descriptor, null, 2) + '\n',
     'utf8',
   );
 
-  // 10. update root/channel deployment files
+  // 11. update root/channel deployment files
   if (channel === 'stable') {
     applyManagedStablePublish(workDir, distDir);
   } else {
     applyManagedBranchPublish(workDir, distDir, 'develop');
   }
 
-  // 11. write latest.json last
+  // 12. write latest.json last
   const latest = { releaseId: descriptor.releaseId, releaseSequence: descriptor.releaseSequence };
   writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify(latest, null, 2) + '\n', 'utf8');
 

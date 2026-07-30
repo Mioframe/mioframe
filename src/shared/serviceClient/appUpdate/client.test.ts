@@ -102,6 +102,28 @@ describe('appUpdate client', () => {
 
     await expect(getAppUpdateSnapshot()).resolves.toBeUndefined();
   });
+
+  it('resolves undefined, without throwing, when the worker sends the stable v1 failure envelope', async () => {
+    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+      ports[0]?.postMessage({ protocolVersion: 1, error: 'unavailable' });
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: NEVER_SETTLES, controller: { postMessage } },
+    });
+
+    await expect(getAppUpdateSnapshot()).resolves.toBeUndefined();
+  });
+
+  it('resolves undefined, without throwing, for a malformed failure envelope (wrong error literal)', async () => {
+    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+      ports[0]?.postMessage({ protocolVersion: 1, error: 'something-else' });
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: NEVER_SETTLES, controller: { postMessage } },
+    });
+
+    await expect(getAppUpdateSnapshot()).resolves.toBeUndefined();
+  });
 });
 
 describe('subscribeToAppUpdateStateChanged', () => {

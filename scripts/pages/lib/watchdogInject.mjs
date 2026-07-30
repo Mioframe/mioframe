@@ -150,14 +150,33 @@ export function buildWatchdogScript(releaseId) {
     });
   };
 
+  // Parses one GET_ACTIVATION_STATUS response, accepting only the exact
+  // two v1 shapes: { protocolVersion, isActivationTarget: false } or
+  // { protocolVersion, isActivationTarget: true, deadlineAt: <valid ISO
+  // string> }. Any other shape (missing/mismatched protocolVersion, a
+  // truthy non-boolean isActivationTarget, a missing/non-string/unparsable
+  // deadlineAt) returns null so the caller can ignore it completely, never
+  // disarming, arming a timer, or reporting a boot failure from malformed
+  // data. Returns the deadline as a parsed number so the caller never
+  // re-parses the same string twice.
+  function parseActivationStatusResponse(data) {
+    if (!data || data.protocolVersion !== PROTOCOL_VERSION) return null;
+    if (data.isActivationTarget === false) return { isActivationTarget: false };
+    if (data.isActivationTarget !== true) return null;
+    if (typeof data.deadlineAt !== 'string') return null;
+    var deadlineAtMs = Date.parse(data.deadlineAt);
+    if (!isFinite(deadlineAtMs)) return null;
+    return { isActivationTarget: true, deadlineAtMs: deadlineAtMs };
+  }
+
   if (navigator.serviceWorker) {
     navigator.serviceWorker.ready.then(function () {
       if (settled || !navigator.serviceWorker.controller) return;
       var channel = new MessageChannel();
       channel.port1.onmessage = function (event) {
-        var data = event.data;
-        if (!data || data.protocolVersion !== PROTOCOL_VERSION) return;
-        if (data.isActivationTarget === false) {
+        var parsed = parseActivationStatusResponse(event.data);
+        if (!parsed) return;
+        if (!parsed.isActivationTarget) {
           // Not this session's activation target: permanently disarm rather
           // than merely skip arming the deadline timer, so an ordinary
           // runtime error later in this session can never send a spurious
@@ -168,8 +187,7 @@ export function buildWatchdogScript(releaseId) {
           window.removeEventListener('unhandledrejection', onEarlyFatalError);
           return;
         }
-        if (!data.isActivationTarget || !data.deadlineAt) return;
-        var msRemaining = new Date(data.deadlineAt).getTime() - Date.now();
+        var msRemaining = parsed.deadlineAtMs - Date.now();
         if (msRemaining <= 0) {
           reportBootFailed();
           return;

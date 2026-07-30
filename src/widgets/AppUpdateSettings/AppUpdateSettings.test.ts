@@ -286,7 +286,7 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
-  it('activating (Manual): shows the activating hint and version, and never shows Update now, Retry update, or Cancel', async () => {
+  it('activating (Manual): shows the activating hint and version, never an available version, and never shows Update now, Retry update, or Cancel', async () => {
     status.value = 'activating';
     mode.value = 'manual';
     activatingReleaseRef.value = {
@@ -297,14 +297,15 @@ describe('AppUpdateSettings', () => {
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Activating the update now');
-    expect(root.textContent).toContain('Available version: 1.1.0');
+    expect(root.textContent).toContain('Activating version: 1.1.0');
+    expect(root.textContent).not.toContain('Available version');
     expect(getButtonByText(root, 'Update now')).toBeNull();
     expect(getButtonByText(root, 'Retry update')).toBeNull();
     expect(getButtonByText(root, 'Cancel scheduled update')).toBeNull();
     unmount();
   });
 
-  it('activating (Automatic): shows the activating hint, never Update ready or an update-available action', async () => {
+  it('activating (Automatic): shows the activating hint and version, never Update ready, an update-available action, or an available version', async () => {
     status.value = 'activating';
     mode.value = 'automatic';
     activatingReleaseRef.value = {
@@ -315,6 +316,8 @@ describe('AppUpdateSettings', () => {
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Activating the update now');
+    expect(root.textContent).toContain('Activating version: 1.1.0');
+    expect(root.textContent).not.toContain('Available version');
     expect(root.textContent).not.toContain('Update ready');
     expect(root.textContent).not.toContain('Update available');
     unmount();

@@ -293,6 +293,22 @@ export function readRetainedReleaseDescriptors(releasesDir) {
 }
 
 /**
+ * Validates that a freshly generated `releaseId` is not already retained for
+ * this channel, so a UUID collision (or a broken injected generator) can
+ * never overwrite an existing release's descriptor, archived index, or
+ * files. Must be checked before any retained-tree write for the new release
+ * begins.
+ * @param existingDescriptors Every retained `ReleaseDescriptor` for this channel.
+ * @param releaseId The freshly generated candidate release id.
+ * @throws {Error} When `releaseId` is already retained.
+ */
+export function assertReleaseIdNotRetained(existingDescriptors, releaseId) {
+  if (existingDescriptors.some((descriptor) => descriptor.releaseId === releaseId)) {
+    throw new Error(`Generated releaseId "${releaseId}" is already retained for this channel`);
+  }
+}
+
+/**
  * Validates that none of `newFiles` collides with an already-retained file
  * at the same path but with different content.
  * @param existingDescriptors Every retained `ReleaseDescriptor` for this channel.

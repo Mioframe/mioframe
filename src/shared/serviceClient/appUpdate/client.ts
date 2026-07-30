@@ -62,11 +62,18 @@ async function sendToController(
     };
 
     channel.port1.onmessage = (event) => {
-      // A malformed response or an unsupported/missing protocol version is
-      // treated exactly like no response at all (see `settle`'s callers),
-      // never thrown.
-      const parsed = zodAppUpdateWorkerResponse.safeParse(event.data);
-      settle(parsed.success ? parsed.data : undefined);
+      // Exactly two shapes ever legitimately cross this boundary: a
+      // successful response, or the stable v1 failure envelope
+      // (`zodAppUpdateWorkerFailureResponse`) the worker sends when its
+      // handler threw. Both a well-formed failure envelope and anything else
+      // malformed resolve exactly like no response at all (see `settle`'s
+      // callers), never thrown — this private protocol never exposes a raw
+      // exception message to the UI.
+      const parsedResponse = zodAppUpdateWorkerResponse.safeParse(event.data);
+      // Whether `event.data` is the worker's stable v1 failure envelope
+      // (`zodAppUpdateWorkerFailureResponse`, see `protocol.ts`) or anything
+      // else malformed, both resolve exactly like no response at all.
+      settle(parsedResponse.success ? parsedResponse.data : undefined);
     };
     if (timeoutMs !== undefined) {
       setTimeout(() => {

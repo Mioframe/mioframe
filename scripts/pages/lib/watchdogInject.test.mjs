@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildWatchdogScript, injectWatchdogScript } from './watchdogInject.mjs';
 
 /**
@@ -11,6 +11,33 @@ import { buildWatchdogScript, injectWatchdogScript } from './watchdogInject.mjs'
 function flushTasks() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+// A watchdog instance that never disarms (e.g. an ignored malformed
+// response) permanently attaches its own `error`/`unhandledrejection`
+// listener to the real `window`, which is never stubbed. Left alone, that
+// listener would still be live in a later test and fire on that later
+// test's own `window.dispatchEvent`, contaminating its assertions. Every
+// test in this file gets a completely fresh `window` listener slate.
+let addedWindowListeners = [];
+const realAddEventListener = window.addEventListener.bind(window);
+const realRemoveEventListener = window.removeEventListener.bind(window);
+
+beforeEach(() => {
+  addedWindowListeners = [];
+  vi.spyOn(window, 'addEventListener').mockImplementation((type, listener, options) => {
+    if (type === 'error' || type === 'unhandledrejection') {
+      addedWindowListeners.push([type, listener]);
+    }
+    return realAddEventListener(type, listener, options);
+  });
+});
+
+afterEach(() => {
+  for (const [type, listener] of addedWindowListeners) {
+    realRemoveEventListener(type, listener);
+  }
+  vi.restoreAllMocks();
+});
 
 /**
  * Executes a built watchdog script against a stubbed `navigator.serviceWorker`
@@ -126,7 +153,7 @@ describe('buildWatchdogScript', () => {
     const script = buildWatchdogScript('release-1');
     const activationStatusBody = script.slice(
       script.indexOf('channel.port1.onmessage = function (event) {'),
-      script.indexOf('if (!data.isActivationTarget || !data.deadlineAt) return;'),
+      script.indexOf('var msRemaining = parsed.deadlineAtMs'),
     );
     expect(activationStatusBody).toContain('settled = true;');
     expect(activationStatusBody).toContain('clearTimeout(deadlineTimer)');
@@ -190,6 +217,108 @@ describe('watchdog disarm outside activation', () => {
 
     window.dispatchEvent(new Event('error'));
     await flushTasks();
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
+  it('an invalid deadlineAt date string is ignored: never arms a timer or reports BOOT_FAILED merely from receiving it', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: true,
+      deadlineAt: 'not-a-valid-date',
+    });
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a missing deadlineAt on a true activation target is ignored', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: true,
+    });
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a numeric deadlineAt is ignored (must be a string)', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: true,
+      deadlineAt: Date.now() - 1000,
+    });
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('an object deadlineAt is ignored (must be a string)', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: true,
+      deadlineAt: {},
+    });
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a null deadlineAt is ignored (must be a string)', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: true,
+      deadlineAt: null,
+    });
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a truthy non-boolean isActivationTarget is ignored, even with an otherwise-valid deadlineAt', async () => {
+    const deadlineAt = new Date(Date.now() + 60_000).toISOString();
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: 1,
+      deadlineAt,
+    });
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a false variant with unrelated deadline fields still disarms (additive v1 fields do not break parsing)', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: false,
+      deadlineAt: 'not-a-valid-date',
+    });
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a valid past deadline still triggers the existing boot-failure path immediately', async () => {
+    const deadlineAt = new Date(Date.now() - 1000).toISOString();
+    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+      protocolVersion: 1,
+      isActivationTarget: true,
+      deadlineAt,
+    });
 
     expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
 

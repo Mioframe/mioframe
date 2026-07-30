@@ -6,6 +6,7 @@ import {
   zodAppUpdateRollbackBroadcast,
   zodAppUpdateSnapshot,
   zodAppUpdateStateChangedBroadcast,
+  zodAppUpdateWorkerFailureResponse,
   zodAppUpdateWorkerRequest,
   zodAppUpdateWorkerResponse,
 } from './protocol';
@@ -98,6 +99,41 @@ describe('zodAppUpdateWorkerResponse', () => {
       futureField: 'ignored',
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('zodAppUpdateWorkerFailureResponse', () => {
+  it('parses the stable v1 failure envelope', () => {
+    const result = zodAppUpdateWorkerFailureResponse.safeParse({
+      protocolVersion: 1,
+      error: 'unavailable',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('fails closed on a missing or wrong protocolVersion', () => {
+    expect(zodAppUpdateWorkerFailureResponse.safeParse({ error: 'unavailable' }).success).toBe(
+      false,
+    );
+    expect(
+      zodAppUpdateWorkerFailureResponse.safeParse({ protocolVersion: 2, error: 'unavailable' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('fails closed on any error value other than the one stable literal', () => {
+    expect(
+      zodAppUpdateWorkerFailureResponse.safeParse({
+        protocolVersion: 1,
+        error: 'something-else',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('never overlaps with a valid worker response: exactly one of the two schemas parses it', () => {
+    const failure = { protocolVersion: 1, error: 'unavailable' };
+    expect(zodAppUpdateWorkerFailureResponse.safeParse(failure).success).toBe(true);
+    expect(zodAppUpdateWorkerResponse.safeParse(failure).success).toBe(false);
   });
 });
 

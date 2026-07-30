@@ -113,6 +113,13 @@ export function applyCheckForUpdates(
  * A no-op while an activation is already in progress: `approvedRelease` and
  * `activation` are mutually exclusive ownership states, and no release may
  * be approved until the current clean-launch attempt resolves.
+ *
+ * A no-op when `prepared` conflicts with any release reference currently
+ * present in `state` (`activeRelease`, `latestRelease`, `approvedRelease`,
+ * `activation.targetRelease`, or `failedActivationRelease`): a
+ * same-sequence-different-id or same-id-different-sequence identity can
+ * never be approved. An exact retry of the recorded failed release (same
+ * `releaseId` and `releaseSequence`) is not a conflict and remains allowed.
  * @param state - Current controller state.
  * @param prepared - The exact release summary the user approved and that was fully prepared.
  * @returns The resulting state.
@@ -124,6 +131,7 @@ export function approveManualRelease(
   if (state.mode !== 'manual') return state;
   if (state.activation) return state;
   if (!isNewerSequence(prepared, state.activeRelease)) return state;
+  if (hasReleaseIdentityConflict([prepared, ...collectReleaseReferences(state)])) return state;
   return { ...state, approvedRelease: prepared };
 }
 
@@ -137,6 +145,13 @@ export function approveManualRelease(
  * A no-op while an activation is already in progress: `approvedRelease` and
  * `activation` are mutually exclusive ownership states, and no release may
  * be approved until the current clean-launch attempt resolves.
+ *
+ * A no-op when `prepared` conflicts with any release reference currently
+ * present in `state` (`activeRelease`, `latestRelease`, `approvedRelease`,
+ * `activation.targetRelease`, or `failedActivationRelease`): a
+ * same-sequence-different-id or same-id-different-sequence identity can
+ * never be approved, even when it would otherwise pass the forward-only
+ * sequence rules above.
  * @param state - Current controller state.
  * @param prepared - The release summary that finished background preparation.
  * @returns The resulting state, unchanged if `prepared` is not a forward improvement.
@@ -151,6 +166,7 @@ export function approveAutomaticRelease(
   if (state.approvedRelease && prepared.releaseSequence <= state.approvedRelease.releaseSequence) {
     return state;
   }
+  if (hasReleaseIdentityConflict([prepared, ...collectReleaseReferences(state)])) return state;
   return { ...state, approvedRelease: prepared };
 }
 
@@ -207,11 +223,16 @@ export function cancelScheduledUpdate(state: UpdateControllerState): UpdateContr
  * Switches to Manual mode. Clears an Automatic approval that has not yet
  * entered activation; an in-progress activation and its own approved target
  * are left untouched.
+ *
+ * A true no-op, returning `state` unchanged (same reference), when `mode` is
+ * already Manual — so a repeated `SET_MODE manual` command never causes a
+ * needless persist, cleanup, or broadcast.
  * @param state - Current controller state.
  * @returns The resulting state.
  */
 export function switchToManualMode(state: UpdateControllerState): UpdateControllerState {
-  if (state.mode === 'automatic' && !state.activation && state.approvedRelease) {
+  if (state.mode === 'manual') return state;
+  if (!state.activation && state.approvedRelease) {
     const { approvedRelease: _approvedRelease, ...rest } = state;
     return { ...rest, mode: 'manual' };
   }
@@ -223,6 +244,13 @@ export function switchToManualMode(state: UpdateControllerState): UpdateControll
  * (the latest known release, fully prepared by the caller as part of this
  * switch), approves it through the same forward-only rule as
  * {@link approveAutomaticRelease}.
+ *
+ * A true no-op, returning `state` unchanged (same reference), when `mode` is
+ * already Automatic and either no `preparedRelease` is given, or
+ * {@link approveAutomaticRelease} itself would not change the approval — so a
+ * repeated `SET_MODE automatic` command with nothing new to approve never
+ * causes a needless persist, cleanup, or broadcast. Switching mode away from
+ * Manual is always a real change, even when nothing ends up approved.
  * @param state - Current controller state.
  * @param preparedRelease - The latest known release summary, if already fully prepared.
  * @returns The resulting state.
@@ -231,6 +259,9 @@ export function switchToAutomaticMode(
   state: UpdateControllerState,
   preparedRelease?: ReleaseSummary,
 ): UpdateControllerState {
+  if (state.mode === 'automatic') {
+    return preparedRelease ? approveAutomaticRelease(state, preparedRelease) : state;
+  }
   const withMode: UpdateControllerState = { ...state, mode: 'automatic' };
   return preparedRelease ? approveAutomaticRelease(withMode, preparedRelease) : withMode;
 }
@@ -247,6 +278,14 @@ export function switchToAutomaticMode(
  * Removes `approvedRelease`: it and `activation` are mutually exclusive
  * ownership states — once a release is selected for the current
  * clean-launch attempt, it is no longer merely "prepared and waiting".
+ *
+ * Belt-and-suspenders hardening on top of {@link approveManualRelease}'s and
+ * {@link approveAutomaticRelease}'s own invariants, reusing the same
+ * canonical invariant helpers rather than a separate identity
+ * implementation: also a no-op when `approvedRelease` is not strictly newer
+ * than `activeRelease`, or when activating it would conflict with any
+ * release reference currently present in `state` — both of which the
+ * canonical controller-state schema also enforces on every persisted read.
  * @param state - Current controller state.
  * @param deadlineAt - ISO timestamp of the boot-confirmation deadline.
  * @returns The resulting state.
@@ -256,7 +295,12 @@ export function startActivation(
   deadlineAt: string,
 ): UpdateControllerState {
   if (state.activation || !state.approvedRelease) return state;
-  const { approvedRelease, ...rest } = state;
+  const { approvedRelease } = state;
+  if (!isNewerSequence(approvedRelease, state.activeRelease)) return state;
+  if (hasReleaseIdentityConflict([approvedRelease, ...collectReleaseReferences(state)])) {
+    return state;
+  }
+  const { approvedRelease: _approvedRelease, ...rest } = state;
   return {
     ...rest,
     activation: { targetRelease: approvedRelease, deadlineAt },

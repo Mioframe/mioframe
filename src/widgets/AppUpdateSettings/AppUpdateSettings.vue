@@ -50,10 +50,12 @@ const availableRelease = computed(
   () => scheduledRelease.value ?? activatingRelease.value ?? latestRelease.value,
 );
 const availableVersion = computed(() => {
+  if (displayStatus.value === 'activating') return undefined;
   const release = availableRelease.value;
   if (!release || release.releaseId === activeRelease.value?.releaseId) return undefined;
   return release.appVersion;
 });
+const activatingVersion = computed(() => activatingRelease.value?.appVersion);
 
 const showUpdateNow = computed(
   () => mode.value === 'manual' && displayStatus.value === 'update-available',
@@ -98,11 +100,14 @@ const onToggleAutomaticUpdates = () => {
       <h3 class="app-update-settings__status-headline">{{ statusText }}</h3>
       <p>Running version: {{ APP_VERSION }}</p>
       <p v-if="availableVersion">Available version: {{ availableVersion }}</p>
+      <p v-if="displayStatus === 'activating' && activatingVersion">
+        Activating version: {{ activatingVersion }}
+      </p>
       <p v-if="displayStatus === 'ready'">
         Update ready. Close all Mioframe windows and reopen Mioframe to guarantee the update.
       </p>
       <p v-if="displayStatus === 'activating'">
-        Activating the update now. This page will refresh automatically once it's ready.
+        Activating the update now. The status will update automatically when activation completes.
       </p>
     </section>
 

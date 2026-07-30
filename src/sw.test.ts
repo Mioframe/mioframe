@@ -5,9 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // managed-update domain modules. This file isolates exactly that wiring —
 // every domain module is mocked — to prove the `message` handler's
 // event-lifetime contract: `handleWorkerMessage()`'s response is posted
-// immediately, `lifetimeWork` is awaited afterwards under the same
-// `waitUntil()`, a malformed or foreign-channel request never reaches the
-// handler at all, and a `lifetimeWork` rejection never surfaces.
+// immediately, `runLifetimeWork` is invoked and awaited only afterwards
+// under the same `waitUntil()`, a malformed or foreign-channel request never
+// reaches the handler at all, and a `runLifetimeWork` rejection never
+// surfaces.
 
 const handleWorkerMessageMock = vi.fn();
 const broadcastStateChangedMock = vi.fn();
@@ -142,12 +143,13 @@ describe('src/sw.ts message handler', () => {
     vi.unstubAllGlobals();
   });
 
-  it('posts the response immediately, then keeps the event alive until lifetimeWork completes', async () => {
+  it('posts the response immediately, then keeps the event alive until runLifetimeWork completes', async () => {
     const listener = await importSwAndGetMessageListener();
     const deferredLifetimeWork = createDeferredVoid();
+    const runLifetimeWork = vi.fn(() => deferredLifetimeWork.promise);
     handleWorkerMessageMock.mockResolvedValue({
       response: { protocolVersion: 1, snapshot: { mode: 'manual' } },
-      lifetimeWork: deferredLifetimeWork.promise,
+      runLifetimeWork,
     });
 
     const postMessage = vi.fn();
@@ -166,8 +168,9 @@ describe('src/sw.ts message handler', () => {
     await flushMicrotasks();
 
     // The response is already posted, but the event's own lifetime is still
-    // pending: `lifetimeWork` has not resolved yet.
+    // pending: `runLifetimeWork`'s returned promise has not resolved yet.
     expect(postMessage).toHaveBeenCalledWith({ protocolVersion: 1, snapshot: { mode: 'manual' } });
+    expect(runLifetimeWork).toHaveBeenCalledTimes(1);
     expect(isSettled()).toBe(false);
 
     deferredLifetimeWork.resolve();
@@ -176,11 +179,46 @@ describe('src/sw.ts message handler', () => {
     expect(isSettled()).toBe(true);
   });
 
-  it('a lifetimeWork rejection never surfaces: the event lifetime still resolves', async () => {
+  it('never invokes runLifetimeWork before the response has been posted', async () => {
+    const listener = await importSwAndGetMessageListener();
+    const callOrder: string[] = [];
+    const postMessage = vi.fn(() => {
+      callOrder.push('postMessage');
+    });
+    const deferredLifetimeWork = createDeferredVoid();
+    const runLifetimeWork = vi.fn(() => {
+      callOrder.push('runLifetimeWork');
+      return deferredLifetimeWork.promise;
+    });
+    handleWorkerMessageMock.mockResolvedValue({
+      response: { protocolVersion: 1, snapshot: { mode: 'manual' } },
+      runLifetimeWork,
+    });
+
+    let waitUntilPromise: Promise<unknown> | undefined;
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage }],
+      waitUntil: (promise) => {
+        waitUntilPromise = promise;
+      },
+    });
+    if (!waitUntilPromise) throw new Error('Expected event.waitUntil to have been called');
+
+    await flushMicrotasks();
+
+    expect(callOrder).toEqual(['postMessage', 'runLifetimeWork']);
+
+    deferredLifetimeWork.resolve();
+    await expect(waitUntilPromise).resolves.toBeUndefined();
+  });
+
+  it('a runLifetimeWork rejection never surfaces: the event lifetime still resolves', async () => {
     const listener = await importSwAndGetMessageListener();
     handleWorkerMessageMock.mockResolvedValue({
       response: { protocolVersion: 1, snapshot: { mode: 'manual' } },
-      lifetimeWork: Promise.reject(new Error('a future producer forgot to catch this')),
+      runLifetimeWork: () => Promise.reject(new Error('a future producer forgot to catch this')),
     });
 
     const postMessage = vi.fn();
@@ -244,7 +282,7 @@ describe('src/sw.ts message handler', () => {
     expect(waitUntil).not.toHaveBeenCalled();
   });
 
-  it('a no-op/read-only request with no lifetimeWork resolves the event immediately after the response', async () => {
+  it('a no-op/read-only request with no runLifetimeWork resolves the event immediately after the response', async () => {
     const listener = await importSwAndGetMessageListener();
     handleWorkerMessageMock.mockResolvedValue({
       response: { protocolVersion: 1, snapshot: { mode: 'manual' } },
@@ -266,7 +304,7 @@ describe('src/sw.ts message handler', () => {
     expect(postMessage).toHaveBeenCalledWith({ protocolVersion: 1, snapshot: { mode: 'manual' } });
   });
 
-  it('handleWorkerMessage rejecting still posts an error response, without throwing out of the handler', async () => {
+  it('handleWorkerMessage rejecting still posts the stable v1 failure envelope, without throwing out of the handler or leaking the raw exception message', async () => {
     const listener = await importSwAndGetMessageListener();
     handleWorkerMessageMock.mockRejectedValue(new Error('Controller state is unavailable'));
 
@@ -283,6 +321,9 @@ describe('src/sw.ts message handler', () => {
     if (!waitUntilPromise) throw new Error('Expected event.waitUntil to have been called');
 
     await expect(waitUntilPromise).resolves.toBeUndefined();
-    expect(postMessage).toHaveBeenCalledWith({ error: 'Controller state is unavailable' });
+    expect(postMessage).toHaveBeenCalledWith({ protocolVersion: 1, error: 'unavailable' });
+    expect(postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ error: 'Controller state is unavailable' }),
+    );
   });
 });

@@ -48,11 +48,12 @@ import {
  * switched to Manual, or superseded by a newer discovery, while preparing)
  * can never silently approve the wrong release.
  *
- * `lifetimeWork` carries only the Automatic-approval cache cleanup, when an
- * approval actually happened. Same-channel broadcast ownership belongs to
- * each caller: {@link runScheduledDiscoveryCheck} owns the background
- * invalidation broadcast; the `CHECK_FOR_UPDATES` protocol handler owns the
- * foreground one.
+ * `runLifetimeWork` carries only the Automatic-approval cache cleanup, when
+ * an approval actually happened, and never starts it until invoked.
+ * Same-channel broadcast ownership belongs to each caller:
+ * {@link runScheduledDiscoveryCheck} owns the background invalidation
+ * broadcast; the `CHECK_FOR_UPDATES` protocol handler owns the foreground
+ * one.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
@@ -137,10 +138,11 @@ export async function runUpdateCheck(
 
   return {
     response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(approved) }),
-    lifetimeWork: approvalChanged
-      ? coordinator
-          .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
-          .catch(() => {})
+    runLifetimeWork: approvalChanged
+      ? () =>
+          coordinator
+            .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+            .catch(() => {})
       : undefined,
   };
 }
@@ -176,6 +178,6 @@ export async function runScheduledDiscoveryCheck(
   coordinator: PreparationCoordinator,
 ): Promise<boolean> {
   const result = await runUpdateCheck(channel, channelBasePath, enqueue, coordinator);
-  if (result.lifetimeWork) await result.lifetimeWork;
+  if (result.runLifetimeWork) await result.runLifetimeWork();
   return result.response.snapshot.error !== 'check-failed';
 }

@@ -207,6 +207,40 @@ describe('approveManualRelease', () => {
     expect(state).toBe(automaticState);
     expect(state.approvedRelease).toBeUndefined();
   });
+
+  it('rejects a same-sequence conflict against latestRelease', () => {
+    const withLatest = { ...baseState, latestRelease: releaseB };
+    const conflicting = { ...releaseB, releaseId: 'release-b-imposter' };
+    const state = approveManualRelease(withLatest, conflicting);
+    expect(state).toBe(withLatest);
+    expect(state.approvedRelease).toBeUndefined();
+  });
+
+  it('rejects a same-releaseId, different-releaseSequence conflict against an existing approvedRelease', () => {
+    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const conflicting = { ...releaseB, releaseSequence: 5 };
+    const state = approveManualRelease(withApproved, conflicting);
+    expect(state).toBe(withApproved);
+  });
+
+  it('rejects a conflict against failedActivationRelease that is not an exact retry', () => {
+    const withFailure = { ...baseState, failedActivationRelease: releaseB };
+    const conflicting = { ...releaseB, releaseId: 'release-b-imposter' };
+    const state = approveManualRelease(withFailure, conflicting);
+    expect(state).toBe(withFailure);
+  });
+
+  it('rejects a conflict against activation.targetRelease', () => {
+    // activation already short-circuits to a no-op before the conflict
+    // check runs, but the outcome must still be the unchanged state.
+    const withActivation: UpdateControllerState = {
+      ...baseState,
+      activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
+    };
+    const conflicting = { ...releaseC, releaseSequence: releaseB.releaseSequence };
+    const state = approveManualRelease(withActivation, conflicting);
+    expect(state).toEqual(withActivation);
+  });
 });
 
 describe('approveAutomaticRelease', () => {
@@ -259,6 +293,21 @@ describe('approveAutomaticRelease', () => {
     };
     const state = approveAutomaticRelease(withActivation, releaseC);
     expect(state).toEqual(withActivation);
+  });
+
+  it('rejects a same-sequence conflict against latestRelease', () => {
+    const withLatest = { ...baseState, latestRelease: releaseB };
+    const conflicting = { ...releaseB, releaseId: 'release-b-imposter' };
+    const state = approveAutomaticRelease(withLatest, conflicting);
+    expect(state).toBe(withLatest);
+    expect(state.approvedRelease).toBeUndefined();
+  });
+
+  it('rejects a same-releaseId, different-releaseSequence conflict against an existing approvedRelease', () => {
+    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const conflicting = { ...releaseC, releaseId: releaseB.releaseId };
+    const state = approveAutomaticRelease(withApproved, conflicting);
+    expect(state).toBe(withApproved);
   });
 });
 
@@ -370,6 +419,17 @@ describe('resolveAutomaticPreparationTarget', () => {
 });
 
 describe('switchToManualMode', () => {
+  it('is a true no-op (same reference) when mode is already Manual', () => {
+    const state = switchToManualMode(baseState);
+    expect(state).toBe(baseState);
+  });
+
+  it('is a true no-op (same reference) when mode is already Manual, even with an existing Manual approval', () => {
+    const manualApproved: UpdateControllerState = { ...baseState, approvedRelease: releaseB };
+    const state = switchToManualMode(manualApproved);
+    expect(state).toBe(manualApproved);
+  });
+
   it('clears an unstarted automatic approval', () => {
     const automaticApproved: UpdateControllerState = {
       ...baseState,
@@ -406,6 +466,31 @@ describe('switchToAutomaticMode', () => {
     const state = switchToAutomaticMode(baseState, releaseB);
     expect(state.mode).toBe('automatic');
     expect(state.approvedRelease).toEqual(releaseB);
+  });
+
+  it('is a true no-op (same reference) when mode is already Automatic and nothing is prepared', () => {
+    const automaticState: UpdateControllerState = { ...baseState, mode: 'automatic' };
+    const state = switchToAutomaticMode(automaticState);
+    expect(state).toBe(automaticState);
+  });
+
+  it('is a true no-op (same reference) when mode is already Automatic and the prepared release changes nothing (already approved)', () => {
+    const alreadyApproved: UpdateControllerState = {
+      ...baseState,
+      mode: 'automatic',
+      approvedRelease: releaseB,
+    };
+    const state = switchToAutomaticMode(alreadyApproved, releaseB);
+    expect(state).toBe(alreadyApproved);
+  });
+
+  it('is still a real change when mode was Manual, even if the prepared release ends up approving nothing', () => {
+    // Switching mode away from Manual is itself an observable change, even
+    // when approveAutomaticRelease's own rules end up approving nothing.
+    const state = switchToAutomaticMode(baseState, releaseA);
+    expect(state).not.toBe(baseState);
+    expect(state.mode).toBe('automatic');
+    expect(state.approvedRelease).toBeUndefined();
   });
 });
 
@@ -465,6 +550,27 @@ describe('startActivation', () => {
     const state = startActivation(baseState, '2026-07-24T00:00:30.000Z');
     expect(state).toBe(baseState);
     expect(state.activation).toBeUndefined();
+  });
+
+  it('is a no-op when approvedRelease is not strictly newer than activeRelease', () => {
+    const invalidApproval: UpdateControllerState = { ...baseState, approvedRelease: releaseA };
+    const state = startActivation(invalidApproval, '2026-07-24T00:00:30.000Z');
+    expect(state).toBe(invalidApproval);
+  });
+
+  it('is a no-op when the resulting activation would violate the canonical controller-state schema', () => {
+    // approvedRelease is strictly newer than activeRelease on its own, but
+    // conflicts (same sequence, different id) with latestRelease already
+    // present in state — the resulting activation would carry that same
+    // conflicting identity, which the canonical schema must reject.
+    const conflictingLatest = { ...releaseB, releaseId: 'release-b-imposter' };
+    const invalidState: UpdateControllerState = {
+      ...baseState,
+      approvedRelease: releaseB,
+      latestRelease: conflictingLatest,
+    };
+    const state = startActivation(invalidState, '2026-07-24T00:00:30.000Z');
+    expect(state).toBe(invalidState);
   });
 });
 

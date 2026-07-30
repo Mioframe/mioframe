@@ -174,7 +174,10 @@ test('activation is represented in the App updates UI, without a false update-av
       const pane = reopenedPage.locator('.app-updates-pane');
       const statusHeadline = pane.locator('.app-update-settings__status-headline');
       await expect(statusHeadline).toHaveText(/activating update/i);
-      await expect(pane.getByText(/available version:\s*1\.1\.0/i)).toBeVisible();
+      await expect(pane.getByText(/activating version:\s*1\.1\.0/i)).toBeVisible();
+      // The activating release is never shown as an ordinary available
+      // update while activation is in progress.
+      await expect(pane.getByText(/available version:\s*1\.1\.0/i)).toHaveCount(0);
       // No update-available Snackbar while activation exists.
       await expect(reopenedPage.getByText(/mioframe update available/i)).toHaveCount(0);
       // No Retry/Update-now action for the activating release.

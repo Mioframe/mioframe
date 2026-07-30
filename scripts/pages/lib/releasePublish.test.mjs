@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+  mkdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -151,6 +159,57 @@ describe('publishManagedRelease', () => {
     expect(existsSync(join(workDir, 'updates', 'releases', `${first.releaseId}.json`))).toBe(true);
     expect(existsSync(join(workDir, 'assets', 'app-1.js'))).toBe(true);
     expect(existsSync(join(workDir, 'assets', 'app-2.js'))).toBe(true);
+  });
+
+  it('throws on a generated releaseId that is already retained, without modifying the retained tree', () => {
+    writeBasicDist(buildIndexHtml('<v1/>'));
+    const first = publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      basePath: '/',
+      appVersion: '1.0.0',
+      buildId: 'sha1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+
+    const descriptorPath = join(workDir, 'updates', 'releases', `${first.releaseId}.json`);
+    const archivedIndexPath = join(workDir, 'updates', 'releases', first.releaseId, 'index.html');
+    const assetPath = join(workDir, 'assets', 'app-1.js');
+    const rootIndexPath = join(workDir, 'index.html');
+    const latestPath = join(workDir, 'updates', 'latest.json');
+
+    const descriptorBefore = readFileSync(descriptorPath, 'utf8');
+    const archivedIndexBefore = readFileSync(archivedIndexPath, 'utf8');
+    const assetBefore = readFileSync(assetPath, 'utf8');
+    const rootIndexBefore = readFileSync(rootIndexPath, 'utf8');
+    const latestBefore = readFileSync(latestPath, 'utf8');
+
+    writeFileSync(join(distDir, 'index.html'), buildIndexHtml('<v2/>'));
+    writeFileSync(join(distDir, 'assets', 'app-2.js'), 'content-2');
+
+    expect(() =>
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'stable',
+        basePath: '/',
+        appVersion: '1.1.0',
+        buildId: 'sha2',
+        generateReleaseId: () => first.releaseId,
+      }),
+    ).toThrow(`Generated releaseId "${first.releaseId}" is already retained for this channel`);
+
+    expect(readFileSync(descriptorPath, 'utf8')).toBe(descriptorBefore);
+    expect(readFileSync(archivedIndexPath, 'utf8')).toBe(archivedIndexBefore);
+    expect(readFileSync(assetPath, 'utf8')).toBe(assetBefore);
+    expect(readFileSync(rootIndexPath, 'utf8')).toBe(rootIndexBefore);
+    expect(readFileSync(latestPath, 'utf8')).toBe(latestBefore);
+    expect(existsSync(join(workDir, 'assets', 'app-2.js'))).toBe(false);
+    const sortAsc = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+    expect(readdirSync(join(workDir, 'updates', 'releases')).sort(sortAsc)).toEqual(
+      [first.releaseId, `${first.releaseId}.json`].sort(sortAsc),
+    );
   });
 
   it('throws on an immutable collision without writing any new state', () => {

@@ -22,7 +22,10 @@ import {
 } from './shared/service/appUpdate/cleanLaunch';
 import { createOperationQueue } from './shared/service/appUpdate/operationQueue';
 import { createPreparationCoordinator } from './shared/service/appUpdate/preparationCoordinator';
-import { zodAppUpdateWorkerRequest } from './shared/service/appUpdate/protocol';
+import {
+  withProtocolVersion,
+  zodAppUpdateWorkerRequest,
+} from './shared/service/appUpdate/protocol';
 import { runReleaseCacheCleanup } from './shared/service/appUpdate/releaseCache';
 import { createScheduledDiscoveryCheckScheduler } from './shared/service/appUpdate/scheduledDiscoveryCheckScheduler';
 import { runScheduledDiscoveryCheck } from './shared/service/appUpdate/updateDiscovery';
@@ -165,10 +168,12 @@ self.addEventListener('message', (event) => {
     if (event.ports[0]) event.ports[0].postMessage(result);
   };
 
-  // The response is posted as soon as `handleWorkerMessage` resolves;
-  // `lifetimeWork` (cache cleanup, a same-channel invalidation broadcast, or
-  // a rollback broadcast) is awaited afterwards, still inside this same
-  // `message` event's `waitUntil()` — never delaying the response itself.
+  // The response is posted as soon as `handleWorkerMessage` resolves; only
+  // afterwards is `runLifetimeWork` (cache cleanup, a same-channel
+  // invalidation broadcast, or a rollback broadcast) invoked and awaited,
+  // still inside this same `message` event's `waitUntil()` — this ordering
+  // is what guarantees the underlying follow-up work never starts before the
+  // response has already been posted.
   event.waitUntil(
     (async () => {
       let result;
@@ -181,16 +186,18 @@ self.addEventListener('message', (event) => {
           enqueue,
           preparationCoordinator,
         );
-      } catch (error: unknown) {
-        respond({ error: error instanceof Error ? error.message : 'unavailable' });
+      } catch {
+        // Never a raw exception message: this private protocol only ever
+        // sends the stable, versioned failure envelope across the boundary.
+        respond(withProtocolVersion({ error: 'unavailable' as const }));
         return;
       }
       respond(result.response);
-      // `lifetimeWork` is documented as best effort and every current
+      // `runLifetimeWork` is documented as best effort and every current
       // producer already swallows its own failures; this catch is a defense
       // in depth so a future producer's mistake can never throw out of this
       // handler or surface as an unhandled rejection.
-      if (result.lifetimeWork) await result.lifetimeWork.catch(() => {});
+      if (result.runLifetimeWork) await result.runLifetimeWork().catch(() => {});
     })(),
   );
 });

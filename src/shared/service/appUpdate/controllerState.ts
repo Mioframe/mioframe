@@ -69,12 +69,24 @@ export async function readControllerState(
 
 /**
  * Atomically persists this channel's complete controller state.
+ *
+ * Validates `state` against the canonical {@link zodUpdateControllerState}
+ * schema before writing: a state that violates the persisted-state invariants
+ * (e.g. `approvedRelease` and `activation` both set, or a release-identity
+ * conflict) must never reach durable storage, since only the next read would
+ * otherwise catch it — turning a rejected write into a later full outage for
+ * this channel. Never silently normalizes or resets `state`; throws instead.
  * @param channel - Managed channel.
  * @param state - The complete state to persist.
+ * @throws {Error} When `state` does not satisfy the canonical controller-state schema.
  */
 export async function writeControllerState(
   channel: ManagedChannel,
   state: UpdateControllerState,
 ): Promise<void> {
-  await set(CONTROLLER_STATE_KEY, state, createControllerStateStore(channel));
+  const result = zodUpdateControllerState.safeParse(state);
+  if (!result.success) {
+    throw new Error('Refusing to persist an invalid controller state');
+  }
+  await set(CONTROLLER_STATE_KEY, result.data, createControllerStateStore(channel));
 }

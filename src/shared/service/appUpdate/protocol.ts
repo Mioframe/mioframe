@@ -110,6 +110,21 @@ export const zodAppUpdateWorkerResponse = z.object({
 export type AppUpdateWorkerResponse = z.infer<typeof zodAppUpdateWorkerResponse>;
 
 /**
+ * The single stable protocol-v1 failure envelope `src/sw.ts`'s message
+ * handler sends when `handleWorkerMessage()` throws an unexpected error.
+ * Never carries the raw exception message or any other diagnostic detail —
+ * this private protocol boundary only ever exposes this one fixed shape for
+ * an unexpected failure, exactly like {@link zodAppUpdateWorkerResponse}'s
+ * `snapshot.error` field for an expected, already-classified one.
+ */
+export const zodAppUpdateWorkerFailureResponse = z.object({
+  protocolVersion: zodProtocolVersion,
+  error: z.literal('unavailable'),
+});
+/** A {@link zodAppUpdateWorkerFailureResponse}-validated private protocol failure envelope. */
+export type AppUpdateWorkerFailureResponse = z.infer<typeof zodAppUpdateWorkerFailureResponse>;
+
+/**
  * Private worker protocol response to `BOOT_OK`/`BOOT_FAILED`, acknowledging
  * exactly what the worker durably persisted (or failed to). The watchdog
  * only disables its own error handlers and deadline timer on a `committed`
@@ -182,20 +197,26 @@ export function withProtocolVersion<T extends object>(
 
 /**
  * A worker message handler's result: the response to post back to the
- * requester immediately, plus optional follow-up work owned by the same
- * originating `message` event's lifetime (cache cleanup, a same-channel
- * invalidation broadcast, or a rollback broadcast). Never itself sent over
- * `postMessage` — an internal, same-thread return contract between
+ * requester immediately, plus an optional deferred follow-up work callback
+ * owned by the same originating `message` event's lifetime (cache cleanup, a
+ * same-channel invalidation broadcast, or a rollback broadcast). Never itself
+ * sent over `postMessage` — an internal, same-thread return contract between
  * `handleWorkerMessage()`/`runUpdateCheck()` and `src/sw.ts`'s message
  * handler.
+ *
+ * `runLifetimeWork` is a callback, not an already-running `Promise`: the
+ * underlying work (cache cleanup, a broadcast) must not start until the
+ * caller explicitly invokes it, so it can never begin before `response` has
+ * already been posted.
  */
 export type WorkerMessageResult<Response> = {
   /** The response to post back to the requester immediately. */
   response: Response;
   /**
-   * Optional follow-up work kept alive under the same message event's
-   * `waitUntil()`. Best effort: its rejection must never change the
-   * already-posted `response`.
+   * Optional deferred follow-up work, kept alive under the same message
+   * event's `waitUntil()` once invoked. Best effort: its rejection must never
+   * change the already-posted `response`. Must be called only after
+   * `response` has been posted, never before.
    */
-  lifetimeWork?: Promise<void> | undefined;
+  runLifetimeWork?: (() => Promise<void>) | undefined;
 };

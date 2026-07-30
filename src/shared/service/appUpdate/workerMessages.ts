@@ -24,6 +24,7 @@ import {
   approveManualRelease,
   cancelScheduledUpdate,
   commitActivation,
+  resolveAutomaticPreparationTarget,
   rollbackActivation,
   switchToAutomaticMode,
   switchToManualMode,
@@ -99,7 +100,9 @@ export async function broadcastStateChanged(
 /**
  * Runs this channel's release-cache cleanup as best-effort follow-up work:
  * failures are swallowed rather than surfaced, since cleanup must never
- * change an already-durable command result.
+ * change an already-durable command result. Deferred: starting the cleanup
+ * itself is the caller's responsibility, not this function's — this only
+ * builds the promise once called.
  * @param channel - Managed channel to clean up.
  * @param coordinator - The channel's preparation coordinator.
  * @returns A promise that never rejects.
@@ -114,17 +117,22 @@ function cleanupReleaseCache(
 }
 
 /**
- * Combines zero or more optional follow-up work promises into the single
- * `lifetimeWork` promise a `WorkerMessageResult` carries, running them
- * concurrently. `undefined` when none are given, so a read-only or no-op
- * request never carries pointless follow-up work.
- * @param work - Optional follow-up work promises to combine.
- * @returns The combined promise, or `undefined` when `work` is empty.
+ * Combines zero or more optional deferred follow-up work callbacks into the
+ * single `runLifetimeWork` callback a `WorkerMessageResult` carries.
+ * `undefined` when none are given, so a read-only or no-op request never
+ * carries pointless follow-up work. None of `work`'s callbacks are invoked
+ * until the combined callback itself is invoked — this must never start any
+ * follow-up work before the response has been posted. Once invoked, the
+ * underlying work items may run concurrently.
+ * @param work - Optional deferred follow-up work callbacks to combine.
+ * @returns The combined callback, or `undefined` when `work` is empty.
  */
-function combineLifetimeWork(...work: Array<Promise<void> | undefined>): Promise<void> | undefined {
-  const pending = work.filter((item): item is Promise<void> => item !== undefined);
+function combineLifetimeWork(
+  ...work: Array<(() => Promise<void>) | undefined>
+): (() => Promise<void>) | undefined {
+  const pending = work.filter((item): item is () => Promise<void> => item !== undefined);
   if (pending.length === 0) return undefined;
-  return Promise.all(pending).then(() => undefined);
+  return () => Promise.all(pending.map((run) => run())).then(() => undefined);
 }
 
 /**
@@ -138,12 +146,20 @@ function combineLifetimeWork(...work: Array<Promise<void> | undefined>): Promise
  * never triggers preparation or approval of another release:
  * `approvedRelease` and `activation` are mutually exclusive, and no release
  * may be approved until the current clean-launch attempt resolves.
+ *
+ * Uses {@link resolveAutomaticPreparationTarget} — the same decision
+ * `runUpdateCheck` uses — to decide whether preparation is required, rather
+ * than a separate simplified `latestRelease !== activeRelease` condition:
+ * this is what makes a repeated `SET_MODE automatic` with the latest release
+ * already approved fetch nothing, prepare nothing, write nothing, and
+ * broadcast nothing. State is written, and follow-up work created, only when
+ * the transition actually returns a different state object.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
- * @returns The resulting response, plus cache-cleanup and same-channel invalidation follow-up work.
+ * @returns The resulting response, plus cache-cleanup and same-channel invalidation follow-up work when a real change occurred.
  */
 async function switchToAutomaticModeWithPrepare(
   channel: ManagedChannel,
@@ -153,17 +169,22 @@ async function switchToAutomaticModeWithPrepare(
   coordinator: PreparationCoordinator,
 ): Promise<WorkerMessageResult<AppUpdateWorkerResponse>> {
   const decision = await withState(channel, enqueue, async (state) => {
-    const target = state.latestRelease;
-    const needsPrepare =
-      !state.activation && target && target.releaseId !== state.activeRelease.releaseId;
-    if (!needsPrepare) {
+    const target = resolveAutomaticPreparationTarget({ ...state, mode: 'automatic' });
+    if (!target) {
       const next = switchToAutomaticMode(state);
+      if (next === state) {
+        return {
+          done: true as const,
+          result: { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }) },
+        };
+      }
       await writeControllerState(channel, next);
       return {
         done: true as const,
         result: {
           response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }),
-          lifetimeWork: broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+          runLifetimeWork: () =>
+            broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
         },
       };
     }
@@ -182,12 +203,15 @@ async function switchToAutomaticModeWithPrepare(
   return withState(channel, enqueue, async (state) => {
     const stillValid = !error && state.latestRelease?.releaseId === target.releaseId;
     const next = switchToAutomaticMode(state, stillValid ? target : undefined);
+    if (next === state) {
+      return { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next, error) }) };
+    }
     await writeControllerState(channel, next);
     return {
       response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next, error) }),
-      lifetimeWork: combineLifetimeWork(
-        cleanupReleaseCache(channel, coordinator),
-        broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+      runLifetimeWork: combineLifetimeWork(
+        () => cleanupReleaseCache(channel, coordinator),
+        () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
       ),
     };
   });
@@ -264,9 +288,9 @@ async function installLatestOnNextLaunch(
     await writeControllerState(channel, next);
     return {
       response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }),
-      lifetimeWork: combineLifetimeWork(
-        cleanupReleaseCache(channel, coordinator),
-        broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+      runLifetimeWork: combineLifetimeWork(
+        () => cleanupReleaseCache(channel, coordinator),
+        () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
       ),
     };
   });
@@ -282,10 +306,10 @@ async function installLatestOnNextLaunch(
  * navigation or another protocol request waiting on the same lock.
  *
  * Returns a {@link WorkerMessageResult}: `src/sw.ts` posts `response`
- * immediately, then keeps `lifetimeWork` (cache cleanup, a same-channel
- * invalidation broadcast, or a rollback broadcast) alive under the same
- * `message` event's `waitUntil()`. A read-only or no-op request carries no
- * `lifetimeWork` at all.
+ * immediately, then only afterwards invokes and keeps `runLifetimeWork`
+ * (cache cleanup, a same-channel invalidation broadcast, or a rollback
+ * broadcast) alive under the same `message` event's `waitUntil()`. A
+ * read-only or no-op request carries no `runLifetimeWork` at all.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
@@ -318,10 +342,10 @@ export async function handleWorkerMessage(
       const stateChanged = result.response.snapshot.error !== 'check-failed';
       return {
         response: result.response,
-        lifetimeWork: combineLifetimeWork(
-          result.lifetimeWork,
+        runLifetimeWork: combineLifetimeWork(
+          result.runLifetimeWork,
           stateChanged
-            ? broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
+            ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
             : undefined,
         ),
       };
@@ -331,12 +355,15 @@ export async function handleWorkerMessage(
       if (request.mode === 'manual') {
         return withState(channel, enqueue, async (state) => {
           const next = switchToManualMode(state);
+          if (next === state) {
+            return { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }) };
+          }
           await writeControllerState(channel, next);
           return {
             response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }),
-            lifetimeWork: combineLifetimeWork(
-              cleanupReleaseCache(channel, coordinator),
-              broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+            runLifetimeWork: combineLifetimeWork(
+              () => cleanupReleaseCache(channel, coordinator),
+              () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
             ),
           };
         });
@@ -368,9 +395,9 @@ export async function handleWorkerMessage(
         await writeControllerState(channel, next);
         return {
           response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }),
-          lifetimeWork: combineLifetimeWork(
-            cleanupReleaseCache(channel, coordinator),
-            broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+          runLifetimeWork: combineLifetimeWork(
+            () => cleanupReleaseCache(channel, coordinator),
+            () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
           ),
         };
       });
@@ -403,9 +430,9 @@ export async function handleWorkerMessage(
           }),
           // Existing UI readers refresh from the committed active release
           // instead of remaining on their pre-commit snapshot.
-          lifetimeWork: combineLifetimeWork(
-            cleanupReleaseCache(channel, coordinator),
-            broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+          runLifetimeWork: combineLifetimeWork(
+            () => cleanupReleaseCache(channel, coordinator),
+            () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
           ),
         };
       });
@@ -438,9 +465,10 @@ export async function handleWorkerMessage(
           }),
           // The acknowledgement above is posted before this broadcast can
           // reload same-channel windows, including this one.
-          lifetimeWork: combineLifetimeWork(
-            broadcastRollback(channelBasePath, channelOrigin, request.releaseId).catch(() => {}),
-            cleanupReleaseCache(channel, coordinator),
+          runLifetimeWork: combineLifetimeWork(
+            () =>
+              broadcastRollback(channelBasePath, channelOrigin, request.releaseId).catch(() => {}),
+            () => cleanupReleaseCache(channel, coordinator),
           ),
         };
       });

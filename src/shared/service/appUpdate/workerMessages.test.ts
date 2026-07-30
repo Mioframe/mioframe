@@ -76,7 +76,7 @@ describe('handleWorkerMessage', () => {
       snapshot: expect.objectContaining({ mode: 'manual' }),
     });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
-    expect(result.lifetimeWork).toBeUndefined();
+    expect(result.runLifetimeWork).toBeUndefined();
   });
 
   it('CANCEL_SCHEDULED_UPDATE clears an approved release and persists it', async () => {
@@ -135,10 +135,89 @@ describe('handleWorkerMessage', () => {
       }),
     });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
-    expect(result.lifetimeWork).toBeUndefined();
+    expect(result.runLifetimeWork).toBeUndefined();
   });
 
   describe('SET_MODE', () => {
+    it('to manual is a true no-op when already Manual: no write, no cleanup, no broadcast', async () => {
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'manual' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ mode: 'manual' }),
+      });
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('to automatic is a true no-op when already Automatic with nothing new to approve: no write, no cleanup, no broadcast', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, mode: 'automatic' },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ mode: 'automatic' }),
+      });
+      expect(coordinator.prepare).not.toHaveBeenCalled();
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('to automatic with the latest release already approved does not fetch, prepare, write, or broadcast again', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          mode: 'automatic',
+          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({
+          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        }),
+      });
+      expect(coordinator.prepare).not.toHaveBeenCalled();
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeUndefined();
+    });
+
     it('to manual clears an unstarted approval and persists it', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
@@ -606,7 +685,7 @@ describe('handleWorkerMessage', () => {
         ack: 'ignored',
       });
       expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result.lifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
 
     it('acknowledges error, without throwing, when persistence fails', async () => {
@@ -638,7 +717,7 @@ describe('handleWorkerMessage', () => {
         snapshot: expect.anything(),
         ack: 'error',
       });
-      expect(result.lifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
 
     it('durably commits, producing a same-channel state-invalidation broadcast as follow-up work', async () => {
@@ -668,9 +747,10 @@ describe('handleWorkerMessage', () => {
         createFakeCoordinator(),
       );
 
-      // The invalidation broadcast is `lifetimeWork`: an existing UI reader
-      // refreshes to the committed active release only once it is awaited.
-      await result.lifetimeWork;
+      // The invalidation broadcast is `runLifetimeWork`: an existing UI
+      // reader refreshes to the committed active release only once it is
+      // invoked and awaited.
+      await result.runLifetimeWork?.();
       expect(postMessage).toHaveBeenCalledWith({
         protocolVersion: PROTOCOL_VERSION,
         type: 'APP_UPDATE_STATE_CHANGED',
@@ -711,7 +791,7 @@ describe('handleWorkerMessage', () => {
         }),
         ack: 'committed',
       });
-      await expect(result.lifetimeWork).resolves.toBeUndefined();
+      await expect(result.runLifetimeWork?.()).resolves.toBeUndefined();
     });
   });
 
@@ -751,11 +831,12 @@ describe('handleWorkerMessage', () => {
         snapshot: expect.objectContaining({ activeRelease: baseState.activeRelease }),
         ack: 'rolled-back',
       });
-      // The rollback broadcast is `lifetimeWork`, owned by the same message
-      // event's lifetime as the already-resolved acknowledgement above; see
-      // `sw.test.ts` for the real response-before-broadcast ordering proof
-      // (`handleWorkerMessage` itself never posts the response).
-      await result.lifetimeWork;
+      // The rollback broadcast is `runLifetimeWork`, owned by the same
+      // message event's lifetime as the already-resolved acknowledgement
+      // above; see `sw.test.ts` for the real response-before-broadcast
+      // ordering proof (`handleWorkerMessage` itself never posts the
+      // response).
+      await result.runLifetimeWork?.();
       expect(postMessage).toHaveBeenCalledWith({
         protocolVersion: PROTOCOL_VERSION,
         type: 'APP_UPDATE_ROLLBACK',
@@ -812,7 +893,7 @@ describe('handleWorkerMessage', () => {
       });
       expect(matchAllMock).not.toHaveBeenCalled();
       expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result.lifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
 
     it('acknowledges error and does not broadcast when rollback persistence fails', async () => {
@@ -842,7 +923,7 @@ describe('handleWorkerMessage', () => {
         ack: 'error',
       });
       expect(matchAllMock).not.toHaveBeenCalled();
-      expect(result.lifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
   });
 
@@ -914,7 +995,7 @@ describe('handleWorkerMessage', () => {
         isActivationTarget: true,
         deadlineAt: '2026-07-24T00:00:30.000Z',
       });
-      expect(result.lifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
 
     it('reports false when this release is not the activation target', async () => {
@@ -937,7 +1018,7 @@ describe('handleWorkerMessage', () => {
         protocolVersion: PROTOCOL_VERSION,
         isActivationTarget: false,
       });
-      expect(result.lifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
 
     it('reports false when there is no activation at all', async () => {
@@ -960,7 +1041,7 @@ describe('handleWorkerMessage', () => {
         protocolVersion: PROTOCOL_VERSION,
         isActivationTarget: false,
       });
-      expect(result.lifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
   });
 });
