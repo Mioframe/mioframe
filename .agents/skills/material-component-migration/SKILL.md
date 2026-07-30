@@ -25,7 +25,7 @@ Required statuses:
 - `ARCHITECTURE.md`: `ready` and references the current design;
 - `IMPLEMENTATION.md`: `complete`, no architecture deviations, migration readiness `ready`.
 
-Stop and route backward if the migration requires a new public API, token, state, owner, renderer workaround, or component behavior not already resolved by architecture and implementation.
+Stop and route backward if migration requires a new public API, token, state, owner, renderer workaround, or component behavior not already resolved by architecture and implementation.
 
 ## Output
 
@@ -44,19 +44,25 @@ Do not modify `DESIGN.md`. Do not redesign `ARCHITECTURE.md` or component intern
 ## Read first
 
 - applicable `AGENTS.md` files;
-- the family design, architecture, and implementation artifacts;
-- the architecture migration inventory and pass order;
+- family design, architecture, and implementation artifacts;
+- architecture migration inventory and pass order;
 - current direct and indirect consumers;
 - legacy implementation and exports;
 - affected product tests, Storybook stories, visual baselines, and verification metadata;
-- repository shared-UI and testing rules.
+- shared-UI and testing rules.
+
+## Workspace boundary
+
+Use only readable files, file-oriented tools, and documented project commands.
+
+Do not inspect hidden workspace metadata or unrelated environment internals. If a project command fails before reaching its relevant check, complete otherwise safe migration work and record the exact command failure as remaining verification.
 
 ## Migration rules
 
 - Use only the canonical root-exported `MD*` API and selected public tokens.
-- Keep m3e imports, tags, types, events, CSS inputs, and renderer DOM out of consumers.
+- Keep renderer imports, tags, types, events, CSS inputs, and renderer DOM out of consumers.
 - Preserve product ownership of operation state, disabled guards, errors, status, persistence, routing, and business behavior.
-- Do not move feature/entity/widget/page responsibility into Material or shared UI.
+- Do not move feature, entity, widget, or page responsibility into Material or shared UI.
 - Migrate dependencies before parents and parents before consumers when architecture defines that order.
 - Remove replaced legacy ownership only after every consumer has a valid destination.
 - Do not preserve compatibility aliases by default for an unshipped or fully migrated internal API.
@@ -89,10 +95,6 @@ Verify:
 
 Run the exact final verification gate required by root policy after all migration and documentation changes.
 
-## Git boundary
-
-Do not run raw `git`, inspect or repair `.git`, fetch remotes, or require `HEAD`/commit metadata. Work from readable repository files and canonical artifacts. If the final verify-managed command cannot run because Git metadata is unavailable, record the exact infrastructure blocker after completing safe migration work; do not attempt Git repair.
-
 ## Migration record
 
 ```text
@@ -102,7 +104,7 @@ Status: complete | partial | blocked | stale
 DESIGN.md reference:
 ARCHITECTURE.md reference:
 IMPLEMENTATION.md reference:
-Migration file state: <consumer/runtime/artifact state reviewed>
+Migration workspace state: <consumer/runtime/artifact state reviewed>
 
 ## Consumer inventory
 ## Migrated consumers
@@ -122,10 +124,10 @@ Migration is `complete` only when:
 - all materially distinct scenarios and failure paths are verified;
 - obsolete target ownership is removed without aliases unless architecture requires them;
 - no renderer detail leaks into consumers;
-- final verification passes, or its exact environment blocker is recorded and migration remains `blocked` only on that verification;
+- final verification passes, or its exact project-command blocker is recorded and migration remains blocked only on that verification;
 - the resulting family is ready for independent review when verification is complete.
 
-Operator visual acceptance may remain an explicit review gate; it must not be fabricated by the coding agent.
+Operator visual acceptance may remain an explicit review gate; it must not be fabricated by the coding worker.
 
 ## Report
 
@@ -151,8 +153,8 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Changing the official design artifact.
 - Inventing or revising public API, ownership, token selection, or renderer strategy.
 - Adding consumer-specific hacks inside the canonical component.
-- Accessing raw m3e or private tokens from consumers.
+- Accessing raw renderer or private tokens from consumers.
 - Migrating unrelated Material families for cleanup.
 - Keeping replaced logic only to reduce migration work.
-- Running independent review in the same invocation.
-- Running raw Git commands or treating Git object health as a migration input gate.
+- Running independent review in the same worker context.
+- Inspecting hidden workspace metadata or unrelated environment internals.
