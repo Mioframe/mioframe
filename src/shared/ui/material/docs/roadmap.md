@@ -22,7 +22,7 @@ The operator runs exactly one command with only a component name:
 material-component <name>
 ```
 
-The command autonomously orchestrates isolated internal stages:
+The command autonomously orchestrates isolated internal stages through fresh agent/subagent workers:
 
 ```text
 material-component-design
@@ -41,9 +41,11 @@ material-component-review
   → REVIEW.md
 ```
 
-The stages must not be recombined into one reasoning task. Each stage has one focus and one durable handoff. However, successful completion of a stage returns control to the outer orchestrator, which immediately starts the next internally actionable stage in the same operator invocation.
+The stages must not be recombined into one reasoning task or executed as phases inside one agent context. Each stage has one fresh worker, one focus, and one durable handoff. Successful completion returns control to the thin outer orchestrator, which validates repository outputs, discards that worker context, and launches a new worker for the next internally actionable stage in the same operator invocation.
 
-The operator must not relaunch the command after each stage. Dependencies are processed automatically as first-class families and the parent resumes when their required gates are complete.
+The orchestrator does not perform stage-owned research, architecture, code, migration, or review. The operator must not relaunch the command after each stage. Dependencies are processed automatically as first-class families through separate workers and the parent resumes when their required gates are complete.
+
+If the environment cannot create a fresh stage worker, the workflow is blocked on orchestration infrastructure. Continuing all stages in one context is not an accepted fallback.
 
 Family `README.md` is an index only. It does not own mutable stage status or next action.
 
@@ -51,11 +53,14 @@ Family `README.md` is an index only. It does not own mutable stage status or nex
 
 - Restored separate design, architecture, implementation, migration, and review skills.
 - Changed `material-component` from a one-stage router into an autonomous staged orchestrator.
-- Defined the distinction between one operator invocation and one internal stage scope.
+- Defined the distinction between one operator invocation and one internal stage worker.
+- Required a new agent/subagent context for every stage and every correction round.
+- Restricted the orchestrator to selection, worker launch, artifact validation, and routing.
+- Required review to run in a worker independent from architecture, implementation, and migration authors.
 - Removed the requirement for repeated operator commands.
 - Added automatic dependency processing and backward correction routing.
-- Added genuine external stop conditions.
-- Updated Material boundary rules, source lifecycle, token policy, implementation preflight, and architecture handoff.
+- Added genuine external stop conditions, including unavailable worker orchestration.
+- Updated root and Material boundary rules, source lifecycle, token policy, implementation preflight, and architecture handoff.
 - Defined durable `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` handoffs.
 - Kept Material → Vue → private m3e ownership and demand-scoped runtime API.
 - Removed mutable stage-status tables from family README indexes.
@@ -83,7 +88,7 @@ It contains:
 - the complete eight-row official component-token catalogue;
 - source conflicts and refresh limitations without mixing Mioframe or m3e decisions.
 
-The next internally invalid stage is Loading Indicator architecture. The outer orchestrator must continue from architecture through implementation, migration, and review without asking the operator to rerun the command between stages.
+The next internally invalid stage is Loading Indicator architecture. The outer orchestrator must launch a fresh architecture worker and then continue through fresh implementation, migration, and review workers without asking the operator to rerun the command between stages.
 
 ## Existing implementation retained as evidence
 
@@ -99,7 +104,7 @@ The branch currently contains implementation evidence for:
 - unit, browser, Storybook, and visual proof;
 - CI autofix complete-tree handling.
 
-This evidence does not bypass stage gates. Architecture and implementation stages must audit and either accept, correct, or remove it.
+This evidence does not bypass stage gates. Architecture and implementation workers must audit and either accept, correct, or remove it from repository evidence; they do not inherit conclusions from previous worker context.
 
 ## Known Button finding awaiting staged resolution
 
@@ -123,7 +128,7 @@ A provisional seven-token candidate was identified:
 --md-comp-button-text-pressed-state-layer-color
 ```
 
-This is not yet accepted architecture. Button `DESIGN.md` must capture the complete official token catalogue, and Button `ARCHITECTURE.md` must confirm or correct the selected subset and renderer fallback trace before implementation changes.
+This is not yet accepted architecture. Button `DESIGN.md` must capture the complete official token catalogue, and a fresh Button architecture worker must confirm or correct the selected subset and renderer fallback trace before implementation changes.
 
 ## Autonomous recovery sequence
 
@@ -138,11 +143,12 @@ material-component Loading indicator
 must:
 
 1. recognize the current complete `DESIGN.md`;
-2. create ready `ARCHITECTURE.md`;
-3. audit/correct canonical code and component-owned proof, then write `IMPLEMENTATION.md`;
-4. migrate/validate consumers, remove obsolete ownership, run required final verification, then write `MIGRATION.md`;
-5. perform independent review and write `REVIEW.md`;
-6. stop only for a genuine external blocker or required operator visual/motion acceptance.
+2. launch a fresh architecture worker to create ready `ARCHITECTURE.md`;
+3. launch a fresh implementation worker to audit/correct canonical code and component-owned proof, then write `IMPLEMENTATION.md`;
+4. launch a fresh migration worker to migrate/validate consumers, remove obsolete ownership, run required final verification, then write `MIGRATION.md`;
+5. launch a fresh independent review worker and write `REVIEW.md`;
+6. route any finding to a new worker for the earliest owning stage and repeat independent review with another fresh worker;
+7. stop only for a genuine external blocker or required operator visual/motion acceptance.
 
 ### Button parent
 
@@ -152,7 +158,7 @@ After required Loading Indicator dependency closure, one invocation of:
 material-component Button
 ```
 
-must automatically perform the complete Button design, architecture, implementation, migration, and review sequence, including dependency validation and correction of the token contract.
+must automatically perform the complete Button design, architecture, implementation, migration, and review sequence through separate fresh workers, including dependency validation and correction of the token contract.
 
 ## Remaining implementation findings to resolve in their owning stages
 
@@ -167,13 +173,13 @@ must automatically perform the complete Button design, architecture, implementat
 
 ## Milestones
 
-| ID  | Milestone                                     | Status       | Depends on | Exit gate                                                                                                                 |
-| --- | --------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged m3e workflow and foundation | `correction` | none       | autonomous orchestration; staged skills/docs current; renderer boundary; canonical token owners; final verification       |
-| M1a | `MDLoadingIndicator` staged dependency family | `correction` | M0         | five current family artifacts; accepted standalone/composed ownership; proof; operator review                             |
-| M1  | `MDButton` staged action family               | `correction` | M1a        | five current family artifacts; migrated consumers; official contextual tokens; dependency handoff; proof; operator review |
-| M2  | `MDSwitch` stateful pilot                     | `planned`    | M1         | complete autonomous staged workflow; controlled state/event order; renderer-gap ownership; verification                   |
-| M3  | sequential component migration                | `planned`    | M2         | one family with internally isolated stages; dependencies first; explicit ownership; independent review                    |
+| ID  | Milestone                                     | Status       | Depends on | Exit gate                                                                                                                                            |
+| --- | --------------------------------------------- | ------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | autonomous staged m3e workflow and foundation | `correction` | none       | thin orchestrator; physically isolated fresh workers; staged skills/docs current; renderer boundary; canonical token owners; final verification      |
+| M1a | `MDLoadingIndicator` staged dependency family | `correction` | M0         | five current family artifacts from isolated workers; accepted standalone/composed ownership; proof; independent review; operator review             |
+| M1  | `MDButton` staged action family               | `correction` | M1a        | five current family artifacts; migrated consumers; official contextual tokens; dependency handoff; proof; independent review; operator review        |
+| M2  | `MDSwitch` stateful pilot                     | `planned`    | M1         | complete autonomous staged workflow; controlled state/event order; renderer-gap ownership; verification                                              |
+| M3  | sequential component migration                | `planned`    | M2         | one family with physically isolated stages; dependencies first; explicit ownership; independent review                                               |
 
 ## Accepted family structure
 
@@ -208,6 +214,6 @@ Run once:
 material-component Loading indicator
 ```
 
-The command must continue automatically from architecture through all internally actionable stages. A report that only repeats design status or asks for another identical invocation is a workflow failure.
+The command must continue automatically from architecture through all internally actionable stages by launching a new worker for each stage. A report that only repeats design status, asks for another identical invocation, or performs multiple stages in one agent context is a workflow failure.
 
 No exact dependency pin, renderer-version registry, direct Lit ownership, WebKit expansion, bundle-budget infrastructure, broad CSS selector scanner, or new reduced-motion contract is required by this milestone. Shared adapter extraction remains deferred until repeated implementation code—not repeated documentation structure—demonstrates a need.
