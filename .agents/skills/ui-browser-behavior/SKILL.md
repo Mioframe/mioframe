@@ -1,6 +1,6 @@
 ---
 name: ui-browser-behavior
-description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch, layout, scrolling, overlays, responsive rendering, browser APIs, motion lifecycle, or mobile behavior. Choose Storybook behavior or app E2E by ownership.'
+description: 'Use for UI behavior requiring real focus, keyboard, pointer/touch, layout, scrolling, overlays, responsive rendering, browser APIs, motion lifecycle, or mobile behavior. Choose Storybook behavior or application E2E by ownership.'
 ---
 
 # UI browser behavior workflow
@@ -17,7 +17,7 @@ Use `storybook-behavior` when behavior belongs to reusable UI and can be exercis
 
 Use `e2e` when the complete product scenario crosses page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, or repository boundaries.
 
-Do not route reusable component behavior into app E2E merely because the component has product consumers.
+Do not route reusable component behavior into application E2E merely because the component has product consumers.
 
 ## Workflow
 
@@ -43,7 +43,7 @@ Separate paths are required when they have different owners or failure risks, fo
 - attempted disabled activation when the adapter owns disabled forwarding;
 - programmatic state updates when hidden renderer drift is a risk.
 
-Do not duplicate native or renderer behavior merely because the underlying component supports it. Use repository scenarios and changed risk to choose proof.
+Do not duplicate native or renderer behavior merely because the underlying component supports it. Use current scenarios and changed risk to choose proof.
 
 ## Public CSS token proof
 
@@ -52,8 +52,8 @@ Only an active Mioframe public token requires browser proof.
 When such a token is part of the accepted contract:
 
 - set a distinctive non-default value through the public surface;
-- assert the intended public rendered result when it is observable;
-- do not inspect private renderer shadow DOM;
+- assert the intended public rendered result when observable;
+- do not inspect private renderer DOM;
 - do not treat a declaration or resolved custom-property value alone as proof.
 
 Do not test every third-party renderer variable or internal default.
@@ -68,14 +68,14 @@ Use real input and assert the exact public acquisition, release, interruption, c
 
 ### Private renderer-owned animation
 
-When the animation occurs inside inaccessible third-party private DOM and Mioframe does not own the timing or implementation:
+When animation occurs inside inaccessible private renderer DOM and Mioframe does not own timing or implementation:
 
 - do not invent host-level proxy assertions;
 - `element.matches(':active')` proves only browser press acquisition/release, not internal shape morph, ripple, transition, or reduced-motion handling;
 - do not use screenshots as proof of a transition lifecycle;
-- do not inspect private shadow DOM in tests;
-- use exact-version implementation source review plus operator manual testing, as required by the owning component workflow;
-- test only Mioframe-owned integration, such as ensuring the adapter does not disable or replace the renderer behavior.
+- do not inspect private renderer DOM in tests;
+- use exact installed-version source review plus operator manual testing as required by the owning component workflow;
+- test only Mioframe-owned integration.
 
 Report limitations accurately instead of claiming unobservable animation was automated.
 
@@ -84,7 +84,7 @@ Report limitations accurately instead of claiming unobservable animation was aut
 - Prefer role, accessible name, and label locators.
 - Do not invoke private APIs, component methods, internal handlers, or synthetic internal events.
 - Lower-level setup may establish initial state only outside the behavior under test.
-- Wait for observable contracts, not Vue callbacks, DOM identity, arbitrary sleeps, or assumed animation durations.
+- Wait for observable contracts, not framework callbacks, DOM identity, arbitrary sleeps, or assumed animation durations.
 - Treat detachment, lost ordinary input, or unexplained scrolling as possible product defects before weakening tests.
 - Do not use `force`, broad retries, or recovery loops that may repeat an already-delivered action.
 
@@ -107,14 +107,14 @@ For the owning Playwright lane:
 - do not use spec paths as source prefixes to group tests;
 - a changed spec selects itself;
 - use standalone only when no truthful stable source mapping exists;
-- shared config/helpers require full-lane fallback unless all consumers are explicit and validated;
-- new, moved, renamed, or removed specs update the registry in the same change.
+- shared config and helpers require full-lane fallback unless all consumers are explicit and validated;
+- new, moved, or removed specs update the registry in the same change.
 
 ## Mobile and responsive execution
 
 Source impact chooses scenarios; project applicability belongs to persistent test metadata.
 
-Current selected app E2E scenarios continue to use the existing desktop/mobile project matrix until every scenario is audited and a separate migration proves that narrower execution preserves mobile-risk coverage.
+Current selected application E2E scenarios continue to use the existing desktop/mobile matrix until every scenario is audited and a separate migration proves that narrower execution preserves mobile-risk coverage.
 
 Do not introduce a generic criticality tag as a substitute for real touch, viewport, responsive composition, overlay, capability, lifecycle, or platform differences.
 
@@ -127,18 +127,18 @@ pnpm verify --only storybook-behavior --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
 
-Preserve applicable `--base`, `--profile`, and `--files` scope when rerunning a failed browser lane. The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
+Preserve applicable `--profile` and `--files` scope when rerunning a failed browser lane. The top-level task later runs one final read-only project verification.
 
 ## Forbidden
 
 - deterministic logic, schemas, migrations, service/storage/CRDT transformations;
 - component unit or visual tests as substitutes for browser proof;
-- broad app E2E when Storybook owns reusable behavior;
+- broad application E2E when Storybook owns reusable behavior;
 - screenshots in behavior specs;
 - architectural boundary violations to simplify setup;
 - source mappings overloaded with spec grouping;
 - reducing desktop/mobile coverage without the dedicated audited migration;
 - declaration-only CSS assertions presented as rendered proof;
-- private renderer DOM, Lit internals, or third-party animation parameters;
+- private renderer DOM or animation parameters;
 - proxy assertions presented as proof of a different contract;
 - exhaustive testing of third-party behavior unchanged by Mioframe.
