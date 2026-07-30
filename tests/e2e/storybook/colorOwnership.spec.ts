@@ -15,11 +15,22 @@ test('Snackbar owns inverse surface, message, action, and close colors', async (
 
   await action.focus();
   await expect(action).toBeFocused();
+  await expect(action.locator('.md-button__label-text')).toHaveCSS('color', 'rgb(208, 188, 255)');
+  await expect(action).toHaveCSS('--md-comp-button-text-focused-label-text-color', '#d0bcff');
+  await expect(action).toHaveCSS('--md-comp-button-text-focused-state-layer-color', '#d0bcff');
+
   await page.keyboard.press('Enter');
   await action.hover();
-  await expect(action).toHaveCSS('--md-comp-button-text-hover-state-layer-color', '#d0bcff');
+  await expect(action.locator('.md-button__label-text')).toHaveCSS('color', 'rgb(208, 188, 255)');
+  await expect(action).toHaveCSS('--md-comp-button-text-hovered-label-text-color', '#d0bcff');
+  await expect(action).toHaveCSS('--md-comp-button-text-hovered-state-layer-color', '#d0bcff');
 
   const box = await action.boundingBox();
   if (!box) throw new Error('Missing Snackbar action geometry.');
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(action.locator('.md-button__label-text')).toHaveCSS('color', 'rgb(208, 188, 255)');
+  await expect(action).toHaveCSS('--md-comp-button-text-pressed-label-text-color', '#d0bcff');
+  await expect(action).toHaveCSS('--md-comp-button-text-pressed-state-layer-color', '#d0bcff');
+  await page.mouse.up();
 });

@@ -188,3 +188,28 @@ export const LegacySurfaceColorOwnership: Story = {
     `,
   }),
 };
+
+export const ContextualTextTokens: Story = {
+  tags: ['visual'],
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div class="visual-checker-backdrop" style="background: var(--md-sys-color-inverse-surface); padding: 16px;">
+        <MDButton
+          data-testid="contextual-text-button"
+          label="Undo"
+          color="text"
+          style="
+            --md-comp-button-text-label-text-color: var(--md-sys-color-inverse-primary);
+            --md-comp-button-text-hovered-label-text-color: var(--md-sys-color-inverse-primary);
+            --md-comp-button-text-focused-label-text-color: var(--md-sys-color-inverse-primary);
+            --md-comp-button-text-pressed-label-text-color: var(--md-sys-color-inverse-primary);
+            --md-comp-button-text-hovered-state-layer-color: var(--md-sys-color-inverse-primary);
+            --md-comp-button-text-focused-state-layer-color: var(--md-sys-color-inverse-primary);
+            --md-comp-button-text-pressed-state-layer-color: var(--md-sys-color-inverse-primary);
+          "
+        />
+      </div>
+    `,
+  }),
+};

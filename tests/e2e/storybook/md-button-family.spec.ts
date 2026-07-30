@@ -214,6 +214,31 @@ test('MDButton variants and content keep component color inside a legacy Materia
   );
 });
 
+test('MDButton renders contextual text label colors in every selected state', async ({ page }) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--contextual-text-tokens');
+
+  const button = page.getByTestId('contextual-text-button');
+  const label = button.locator('.md-button__label-text');
+  const inversePrimary = 'rgb(208, 188, 255)';
+
+  await expect(label).toHaveCSS('color', inversePrimary);
+
+  await button.hover();
+  await expect(label).toHaveCSS('color', inversePrimary);
+
+  await page.mouse.move(0, 0);
+  await page.keyboard.press('Tab');
+  await expect(button).toBeFocused();
+  await expect(label).toHaveCSS('color', inversePrimary);
+
+  const box = await button.boundingBox();
+  if (!box) throw new Error('Missing contextual MDButton geometry.');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(label).toHaveCSS('color', inversePrimary);
+  await page.mouse.up();
+});
+
 test('MDIconButton expanded target activates clicks outside the visible button box', async ({
   page,
 }) => {

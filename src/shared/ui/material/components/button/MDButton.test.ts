@@ -14,18 +14,25 @@ describe('MDButton adapter', () => {
     const css = readFileSync('./src/shared/ui/material/components/button/tokens.css', 'utf8');
     const publicTokens = [
       '--md-comp-button-text-label-text-color',
-      '--md-comp-button-text-icon-color',
-      '--md-comp-button-text-hover-state-layer-color',
-      '--md-comp-button-text-focus-state-layer-color',
+      '--md-comp-button-text-hovered-label-text-color',
+      '--md-comp-button-text-focused-label-text-color',
+      '--md-comp-button-text-pressed-label-text-color',
+      '--md-comp-button-text-hovered-state-layer-color',
+      '--md-comp-button-text-focused-state-layer-color',
       '--md-comp-button-text-pressed-state-layer-color',
     ];
 
     for (const token of publicTokens) expect(css).toContain(`${token}:`);
     expect(css).toContain('--m3e-text-button-label-text-color:');
-    expect(css).toContain('--m3e-text-button-icon-color:');
+    expect(css).toContain('--m3e-text-button-hover-label-text-color:');
+    expect(css).toContain('--m3e-text-button-focus-label-text-color:');
+    expect(css).toContain('--m3e-text-button-pressed-label-text-color:');
     expect(css).toContain('--m3e-text-button-hover-state-layer-color:');
     expect(css).toContain('--m3e-text-button-focus-state-layer-color:');
     expect(css).toContain('--m3e-text-button-pressed-state-layer-color:');
+    expect(css).not.toContain('--md-comp-button-text-icon-color');
+    expect(css).not.toContain('--md-comp-button-text-hover-state-layer-color');
+    expect(css).not.toContain('--md-comp-button-text-focus-state-layer-color');
     expect(css).not.toContain('--md-content-color');
   });
 
@@ -58,6 +65,29 @@ describe('MDButton adapter', () => {
     const button = mountButton({ disabled: true, nativeType: 'submit' }).get('m3e-button');
     expect(getElementProperty(button.element, 'disabled')).toBe(true);
     expect(getElementProperty(button.element, 'type')).toBe('submit');
+  });
+
+  it('maps false Boolean values as properties and forwards global attributes', () => {
+    const button = mount(MDButton, {
+      attrs: { id: 'save-action', title: 'Save changes' },
+      props: { disabled: false, label: 'Save' },
+    }).get('m3e-button');
+
+    expect(getElementProperty(button.element, 'disabled')).toBe(false);
+    expect(getElementProperty(button.element, 'toggle')).toBe(false);
+    expect(button.attributes('disabled')).toBeUndefined();
+    expect(button.attributes('id')).toBe('save-action');
+    expect(button.attributes('title')).toBe('Save changes');
+  });
+
+  it('forwards the renderer click payload unchanged', async () => {
+    const wrapper = mountButton();
+    const event = new MouseEvent('click');
+
+    wrapper.get('m3e-button').element.dispatchEvent(event);
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.emitted('click')).toEqual([[event]]);
   });
 
   it('uses a decorative loading indicator, marks the button busy, and restores its icon', async () => {

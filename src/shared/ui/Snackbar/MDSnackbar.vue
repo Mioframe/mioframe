@@ -89,9 +89,11 @@ const onClickClose = () => {
 
   &__action {
     --md-comp-button-text-label-text-color: var(--md-sys-color-inverse-primary);
-    --md-comp-button-text-icon-color: var(--md-sys-color-inverse-primary);
-    --md-comp-button-text-hover-state-layer-color: var(--md-sys-color-inverse-primary);
-    --md-comp-button-text-focus-state-layer-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-hovered-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-focused-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-pressed-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-hovered-state-layer-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-focused-state-layer-color: var(--md-sys-color-inverse-primary);
     --md-comp-button-text-pressed-state-layer-color: var(--md-sys-color-inverse-primary);
   }
 }

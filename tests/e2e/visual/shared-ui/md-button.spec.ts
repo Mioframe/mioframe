@@ -97,3 +97,57 @@ test('MDButton renders a visible settled ripple on real Space-key press', async 
 
   await page.keyboard.up('Space');
 });
+
+test('MDButton contextual text colors match the inverse-surface resting baseline', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--contextual-text-tokens');
+  const surface = page.locator('.visual-checker-backdrop');
+
+  await expect(surface).toHaveScreenshot('md-button-contextual-resting.png', {
+    animations: 'disabled',
+  });
+});
+
+test('MDButton contextual text colors match the inverse-surface hover baseline', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--contextual-text-tokens');
+  const surface = page.locator('.visual-checker-backdrop');
+  await surface.getByRole('button', { name: 'Undo' }).hover();
+
+  await expect(surface).toHaveScreenshot('md-button-contextual-hover.png', {
+    animations: 'disabled',
+  });
+});
+
+test('MDButton contextual text colors match the inverse-surface focus baseline', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--contextual-text-tokens');
+  const surface = page.locator('.visual-checker-backdrop');
+  const button = surface.getByRole('button', { name: 'Undo' });
+  await page.keyboard.press('Tab');
+  await expect(button).toBeFocused();
+
+  await expect(surface).toHaveScreenshot('md-button-contextual-focus.png', {
+    animations: 'disabled',
+  });
+});
+
+test('MDButton contextual text colors match the inverse-surface pressed baseline', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--contextual-text-tokens');
+  const surface = page.locator('.visual-checker-backdrop');
+  const button = surface.getByRole('button', { name: 'Undo' });
+  const box = await button.boundingBox();
+  if (!box) throw new Error('Missing contextual MDButton bounding box.');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+
+  await expect(surface).toHaveScreenshot('md-button-contextual-pressed.png', {
+    animations: 'disabled',
+  });
+  await page.mouse.up();
+});
