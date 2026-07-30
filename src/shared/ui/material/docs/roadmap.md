@@ -123,13 +123,13 @@ The orchestrator must not repeat design or architecture unless a correction work
 
 ## Milestones
 
-| ID  | Milestone                                      | Status            | Depends on | Exit gate                                                                                                                       |
-| --- | ---------------------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged renderer workflow/foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
-| M1a | `MDLoadingIndicator` staged dependency family  | `operator-review` | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance; fresh review |
-| M1  | `MDButton` staged action family                | `verified, pending review` | M1a | two correction findings resolved; project verification; operator visual/motion acceptance; fresh independent review             |
-| M2  | `MDSwitch` stateful pilot                      | `planned`         | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
-| M3  | sequential component migration                 | `planned`         | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                     |
+| ID  | Milestone                                      | Status                     | Depends on | Exit gate                                                                                                                       |
+| --- | ---------------------------------------------- | -------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | autonomous staged renderer workflow/foundation | `implemented`              | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
+| M1a | `MDLoadingIndicator` staged dependency family  | `operator-review`          | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance; fresh review |
+| M1  | `MDButton` staged action family                | `verified, pending review` | M1a        | two correction findings resolved; project verification; operator visual/motion acceptance; fresh independent review             |
+| M2  | `MDSwitch` stateful pilot                      | `planned`                  | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
+| M3  | sequential component migration                 | `planned`                  | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                     |
 
 ## Remaining technical gates
 
