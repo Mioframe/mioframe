@@ -122,11 +122,11 @@ renderer shape scale      = unchanged and renderer-owned
 ```
 
 | Public size | Host size | Active-size input |
-| --- | --- | --- |
-| `24` | `24px` | `19px` |
-| `32` | `32px` | `25.333333…px` |
-| `40` | `40px` | `31.666667…px` |
-| `48` | `48px` | `38px` |
+| ----------- | --------- | ----------------- |
+| `24`        | `24px`    | `19px`            |
+| `32`        | `32px`    | `25.333333…px`    |
+| `40`        | `40px`    | `31.666667…px`    |
+| `48`        | `48px`    | `38px`            |
 
 Button currently maps both selected Button sizes to Loading Indicator overall size `24`.
 
@@ -136,12 +136,12 @@ The complete design stage must confirm official overall/active geometry, contain
 
 Current lifecycle assessment:
 
-| Consumer operation | Lifecycle | Duration bounds | External suspension | Current decision |
-| --- | --- | --- | --- | --- |
-| Repository read permission | browser permission plus recovery replay | user-controlled; no reliable upper bound | browser UI | feature-owned textual pending status; explicit guards |
-| Repository read/write permission | browser permission plus recovery replay | user-controlled; no reliable upper bound | browser UI | feature-owned textual pending status; explicit guards |
-| VFS write-access recovery | permission plus pending-write replay | user/storage-controlled | browser UI | feature-owned status and guards |
-| Google Drive reauthorization | provider token request | provider/user-controlled | provider UI | feature-owned status and guards |
+| Consumer operation               | Lifecycle                               | Duration bounds                          | External suspension | Current decision                                      |
+| -------------------------------- | --------------------------------------- | ---------------------------------------- | ------------------- | ----------------------------------------------------- |
+| Repository read permission       | browser permission plus recovery replay | user-controlled; no reliable upper bound | browser UI          | feature-owned textual pending status; explicit guards |
+| Repository read/write permission | browser permission plus recovery replay | user-controlled; no reliable upper bound | browser UI          | feature-owned textual pending status; explicit guards |
+| VFS write-access recovery        | permission plus pending-write replay    | user/storage-controlled                  | browser UI          | feature-owned status and guards                       |
+| Google Drive reauthorization     | provider token request                  | provider/user-controlled                 | provider UI         | feature-owned status and guards                       |
 
 No current production recovery operation uses `MDButton.loading`. The standalone adapter and Button composition remain an explicit M1 library requirement, but the complete design document must confirm the official lifecycle contract before completion.
 
@@ -165,20 +165,20 @@ The complete `DESIGN.md` must establish the exact official geometry requirement 
 
 This matrix must be rebuilt with a `DESIGN.md reference` column.
 
-| Material contract | Demand and evidence | Public Vue/token representation | Renderer status and mapping | Owner and decision | Verification |
-| --- | --- | --- | --- | --- | --- |
-| Component identity | operator-approved M1 Button dependency closure | root-exported `MDLoadingIndicator` | `direct` — renderer custom element | Loading Indicator — `implement-now` | unit + browser + visual |
-| Uncontained presentation | selected standalone/dependency surface | no public variant prop | `direct` — renderer default | Loading Indicator — `implement-now` | story + visual |
-| Contained presentation | no confirmed current consumer | none | renderer supports deferred surface | Loading Indicator — `defer` | none |
-| Short indeterminate process | operator-approved library surface | use only for consumers matching official lifecycle guidance | renderer behavior available | Loading Indicator — provisional `implement-now` | standalone proof + lifecycle review |
-| Standalone role/name | purpose must be communicated | required `label` → accessible name | `partial` — renderer role, wrapper name | Loading Indicator — `wrapper-correction` | browser role/name |
-| Decorative Button composition | nested indicator must not create another semantic owner | parent `aria-hidden` | `not-applicable` | Button — `wrapper-correction` | unit + browser tree |
-| Parent action availability | presentation must not silently disable action | consumer-owned `disabled`/guards | `not-applicable` | consumer | Button + consumer proof |
-| Standalone active color | current interpretation: primary | selected public runtime token | private family mapping | Loading Indicator — provisional `implement-now` | token + visual |
-| Button-composed active color | follows Button content | parent override to `currentColor` | no private parent access | Button — provisional `implement-now` | visual + boundary proof |
-| Overall and active size | current 48/38 interpretation plus Button composition | numeric overall `size` | `divergent` — provisional `M3E-001`/`M3E-002` | Loading Indicator — workaround | unit + browser + visual |
-| Motion and reduced motion | renderer motion selected | no public control | `direct` — renderer-owned | m3e | artifact assessment + operator review |
-| Forced colors | must remain legible | none | renderer uses platform color | m3e | operator review |
+| Material contract             | Demand and evidence                                     | Public Vue/token representation                             | Renderer status and mapping                   | Owner and decision                              | Verification                          |
+| ----------------------------- | ------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------- | ------------------------------------- |
+| Component identity            | operator-approved M1 Button dependency closure          | root-exported `MDLoadingIndicator`                          | `direct` — renderer custom element            | Loading Indicator — `implement-now`             | unit + browser + visual               |
+| Uncontained presentation      | selected standalone/dependency surface                  | no public variant prop                                      | `direct` — renderer default                   | Loading Indicator — `implement-now`             | story + visual                        |
+| Contained presentation        | no confirmed current consumer                           | none                                                        | renderer supports deferred surface            | Loading Indicator — `defer`                     | none                                  |
+| Short indeterminate process   | operator-approved library surface                       | use only for consumers matching official lifecycle guidance | renderer behavior available                   | Loading Indicator — provisional `implement-now` | standalone proof + lifecycle review   |
+| Standalone role/name          | purpose must be communicated                            | required `label` → accessible name                          | `partial` — renderer role, wrapper name       | Loading Indicator — `wrapper-correction`        | browser role/name                     |
+| Decorative Button composition | nested indicator must not create another semantic owner | parent `aria-hidden`                                        | `not-applicable`                              | Button — `wrapper-correction`                   | unit + browser tree                   |
+| Parent action availability    | presentation must not silently disable action           | consumer-owned `disabled`/guards                            | `not-applicable`                              | consumer                                        | Button + consumer proof               |
+| Standalone active color       | current interpretation: primary                         | selected public runtime token                               | private family mapping                        | Loading Indicator — provisional `implement-now` | token + visual                        |
+| Button-composed active color  | follows Button content                                  | parent override to `currentColor`                           | no private parent access                      | Button — provisional `implement-now`            | visual + boundary proof               |
+| Overall and active size       | current 48/38 interpretation plus Button composition    | numeric overall `size`                                      | `divergent` — provisional `M3E-001`/`M3E-002` | Loading Indicator — workaround                  | unit + browser + visual               |
+| Motion and reduced motion     | renderer motion selected                                | no public control                                           | `direct` — renderer-owned                     | m3e                                             | artifact assessment + operator review |
+| Forced colors                 | must remain legible                                     | none                                                        | renderer uses platform color                  | m3e                                             | operator review                       |
 
 ## Current proof and blockers
 
