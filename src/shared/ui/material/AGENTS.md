@@ -29,9 +29,13 @@ Read `docs/component-workflow.md` first.
 
 The operator supplies the component name once. The `material-component` orchestrator autonomously executes as many isolated stage scopes as are internally actionable, validates each handoff, processes dependencies, routes corrections backward, and continues until completion or a genuine external blocker.
 
-One stage scope owns one reasoning focus and one artifact. A stage worker returns control after its report; the outer orchestrator may then open the next stage scope in the same operator invocation. Do not require repeated operator commands to advance the state machine.
+One stage scope owns one reasoning focus and one artifact. Every stage scope must run in a fresh agent/subagent context. The thin orchestrator may select the next stage, launch the stage worker, validate its declared outputs, and route the result; it must not perform design research, architecture decisions, implementation, migration, or review itself.
 
-The router always selects the earliest missing, stale, blocked, incomplete, or invalid stage. Later code does not permit skipping an earlier stage.
+A stage worker receives only the component name, current repository state, applicable rules, and paths to canonical upstream artifacts. Hidden reasoning, conversational summaries, or prose from another worker are not valid handoffs. The review worker must be independent from workers that authored the architecture, implementation, or migration under review.
+
+If the available environment cannot create a fresh worker for the next stage, stop the outer workflow as an infrastructure blocker. Do not simulate isolation by continuing all stages in one agent context. Do not require repeated operator commands to advance an otherwise available state machine.
+
+The orchestrator always selects the earliest missing, stale, blocked, incomplete, or invalid stage. Later code does not permit skipping an earlier stage.
 
 Required stage gates:
 
@@ -41,7 +45,7 @@ Required stage gates:
 - `MIGRATION.md`: consumers migrated and legacy ownership removed, status `complete`;
 - `REVIEW.md`: independent review on the resulting head.
 
-A required official dependency passes the same stages as a first-class family. Pause the parent, process dependency stages automatically in separate scopes, and resume the parent when the required dependency gate is complete. Do not ask the operator to launch a dependency command.
+A required official dependency passes the same stages as a first-class family. Pause the parent, process dependency stages automatically in separate fresh workers, and resume the parent when the required dependency gate is complete. Do not ask the operator to launch a dependency command.
 
 `README.md` is only a short family index. It is not a substitute for any stage artifact and must not duplicate mutable stage status or next action.
 
@@ -142,7 +146,7 @@ A component remains incomplete until all five stage artifacts are current, final
 
 ## Genuine external blockers
 
-The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable permissions/tools, an unresolved material architecture decision, an irreducible external/infrastructure gate, required operator visual/motion acceptance, or safety-required input.
+The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable permissions/tools, inability to create the required fresh stage worker, an unresolved material architecture decision, an irreducible external/infrastructure gate, required operator visual/motion acceptance, or safety-required input.
 
 A completed stage, failed refresh helper, cache age, ordinary code/test finding, or missing repeated operator command is not an external blocker.
 
