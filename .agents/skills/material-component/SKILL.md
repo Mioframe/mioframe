@@ -16,11 +16,11 @@ Loading indicator
 MDLoadingIndicator
 ```
 
-Do not require an implementation brief, mode, file path, renderer mapping, dependency list, verification command, or repeated operator invocation.
+Do not require an implementation brief, mode, file path, renderer mapping, dependency list, verification command, Git ref, or repeated operator invocation.
 
 ## Operator contract
 
-One operator invocation must autonomously advance the component as far as the repository and available tools allow.
+One operator invocation must autonomously advance the component as far as the repository files and available tools allow.
 
 The operator supplies the component name once. The orchestrator is responsible for:
 
@@ -38,7 +38,7 @@ Do not stop merely because one stage completed. Do not require the operator to l
 
 The orchestrator owns only state-machine control:
 
-- inspect canonical artifact statuses and repository refs;
+- inspect canonical artifact statuses and current readable working-tree files;
 - select the earliest invalid stage;
 - construct the minimal worker handoff;
 - launch the stage worker;
@@ -54,13 +54,26 @@ A worker handoff contains only:
 - the resolved official component and canonical family;
 - the selected stage skill;
 - applicable repository rules;
-- current repository ref/state;
+- current readable working-tree file state;
 - paths to required canonical upstream artifacts;
 - exact genuine blocker or return-stage information when applicable.
 
-Do not pass hidden chain of thought, conversational reasoning, conclusions that are not present in canonical artifacts, or an ad hoc implementation brief from a previous worker. Repository files and stage artifacts are the handoff.
+Do not require `HEAD`, a branch ref, a commit object, or a healthy local Git object database to select or execute a Material stage. Do not pass hidden chain of thought, conversational reasoning, conclusions that are not present in canonical artifacts, or an ad hoc implementation brief from a previous worker. Repository files and stage artifacts are the handoff.
 
 The review worker must be fresh and independent from workers that authored or corrected the architecture, implementation, or migration under review.
+
+## Git boundary
+
+The coding orchestrator and stage workers must not run raw `git` commands, inspect or repair `.git`, fetch remotes, move refs, stage, commit, reset, rebase, or create worktrees. Git and GitHub are operator/architect responsibilities.
+
+Project verification commands may use Git internally for impact planning. If a required `pnpm verify*` command fails because local Git metadata is unavailable or corrupt:
+
+1. do not attempt Git repair;
+2. do not stop before completing otherwise safe file inspection and stage-owned edits;
+3. record the exact verification failure in the owning stage artifact;
+4. return a verification infrastructure blocker only when that command is the remaining gate.
+
+A broken `HEAD` or object database is not by itself a design, architecture, implementation, migration, or review-input blocker.
 
 ## Stage isolation inside one operator run
 
@@ -116,10 +129,10 @@ Repeat:
    - `ARCHITECTURE.md` missing, stale, blocked, not ready, or not based on the current design → architecture;
    - `IMPLEMENTATION.md` missing, partial, blocked, stale, architecture-deviating, or implementation drift exists → implementation;
    - `MIGRATION.md` missing, partial, blocked, stale, consumers remain, legacy ownership remains, or final verification is unresolved → migration;
-   - `REVIEW.md` missing, stale, blocked, behind the current resulting head, or actionable findings remain → review;
+   - `REVIEW.md` missing, stale, blocked, inconsistent with current readable artifacts/code, or actionable findings remain → review;
    - all artifacts and gates current → complete.
 2. Launch a fresh agent/subagent worker with only the selected stage handoff and execute only that stage skill.
-3. Validate its artifact, declared status, source/ref metadata, and report from repository state rather than trusting prose alone.
+3. Validate its artifact, declared status, upstream references, and report from readable repository files rather than trusting prose alone.
 4. When the stage succeeds, return to step 1 immediately in the same operator invocation and launch a new worker for the next stage.
 5. When the stage identifies an earlier-stage defect, route backward, launch a fresh worker for the owning stage, and then resume the loop.
 6. When review returns actionable findings, launch the owning correction worker and later launch a new independent review worker.
@@ -146,10 +159,10 @@ Stop the outer operator invocation only when one of these remains after exhausti
 - permissions, a required external tool, or the required fresh-worker mechanism is unavailable;
 - official evidence and repository constraints leave a material architecture choice that cannot be resolved deterministically;
 - required operator visual/motion acceptance is the only remaining gate;
-- a failing external/infrastructure gate cannot be retried or diagnosed within the available tools;
+- a required project verification command is blocked by irreducible external/infrastructure failure after stage-owned edits are complete;
 - safety policy requires operator input.
 
-A cache freshness threshold, failed refresh helper, completed stage, missing repeated command, or ordinary code/test finding is not by itself an external blocker.
+A cache freshness threshold, failed refresh helper, completed stage, missing repeated command, unavailable Git ref, or ordinary code/test finding is not by itself an external blocker.
 
 Use `architect-handoff` only for a real unresolved decision outside the deterministic Material workflow, such as cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior that official design and repository evidence cannot resolve.
 
@@ -195,4 +208,5 @@ Include the full report from every stage worker executed during the run. Do not 
 - Asking the coding stage to invent architecture.
 - Asking the operator to rerun the same component command merely to advance the state machine.
 - Marking the component complete from green CI alone.
+- Using raw Git, Git object health, `HEAD`, or commit refs as a prerequisite for stage work.
 - Editing PR metadata or merging.
