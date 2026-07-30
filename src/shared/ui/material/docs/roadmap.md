@@ -167,13 +167,13 @@ must automatically perform the complete Button design, architecture, implementat
 
 ## Milestones
 
-| ID  | Milestone                                      | Status       | Depends on | Exit gate                                                                                                                 |
-| --- | ---------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged m3e workflow and foundation | `correction` | none       | autonomous orchestration; staged skills/docs current; renderer boundary; canonical token owners; final verification      |
+| ID  | Milestone                                     | Status       | Depends on | Exit gate                                                                                                                 |
+| --- | --------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| M0  | autonomous staged m3e workflow and foundation | `correction` | none       | autonomous orchestration; staged skills/docs current; renderer boundary; canonical token owners; final verification       |
 | M1a | `MDLoadingIndicator` staged dependency family | `correction` | M0         | five current family artifacts; accepted standalone/composed ownership; proof; operator review                             |
 | M1  | `MDButton` staged action family               | `correction` | M1a        | five current family artifacts; migrated consumers; official contextual tokens; dependency handoff; proof; operator review |
-| M2  | `MDSwitch` stateful pilot                     | `planned`    | M1         | complete autonomous staged workflow; controlled state/event order; renderer-gap ownership; verification                  |
-| M3  | sequential component migration               | `planned`    | M2         | one family with internally isolated stages; dependencies first; explicit ownership; independent review                   |
+| M2  | `MDSwitch` stateful pilot                     | `planned`    | M1         | complete autonomous staged workflow; controlled state/event order; renderer-gap ownership; verification                   |
+| M3  | sequential component migration                | `planned`    | M2         | one family with internally isolated stages; dependencies first; explicit ownership; independent review                    |
 
 ## Accepted family structure
 
