@@ -17,7 +17,7 @@ Use this skill when the task changes or clarifies any of these and no determinis
 - cross-layer ownership or FSD boundaries;
 - shared UI primitives or consumer-visible blast radius;
 - storage, service, worker, diagnostics, performance, or workflow contracts;
-- Material patterns or UI composition with unresolved architecture consequences;
+- Material patterns or UI composition with unresolved architecture consequences outside the staged Material workflow;
 - task scope spanning more than one owner or requiring pass order;
 - an escalation condition from a standard-authoring workflow.
 
@@ -31,15 +31,15 @@ You may skip this skill for:
 - narrow fixes where ownership, source of truth, final state, and verification are explicit and unchanged;
 - work covered by an applicable deterministic standard-authoring policy when the agent can derive a ready repository-backed contract from authoritative sources and no escalation condition is present.
 
-For one explicit official Material component target or proven inseparable family, a current complete family `DESIGN.md`, `src/shared/ui/material/docs/architecture.md`, `component-adapter.md`, and a ready demand-scoped family `README.md` provide the normal deterministic architecture. Use `material-component-adapter` without a separate handoff only when the design artifact, renderer viability, implementation ownership, public Vue contract, consumer migration, and verification are fully resolved. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or another decision outside that contract.
+For one official Material component family, the deterministic architecture is a current complete family `DESIGN.md` plus ready family `ARCHITECTURE.md`, created through `material-component-design` and `material-component-architecture`. Use `material-component-implementation` without a separate generic handoff only when those artifacts resolve renderer viability, implementation ownership, public Vue/token contracts, proof, and migration plan. Use this handoff when work changes cross-family ownership, global theme ownership, renderer strategy, public token architecture, or product behavior outside that family architecture.
 
-If you skip this skill, the implementation preflight must name the deterministic workflow, authoritative sources, ready artifacts, and reason no unresolved architecture decision remains.
+If you skip this skill, implementation preflight must name the deterministic workflow, authoritative sources, ready artifacts, and reason no unresolved architecture decision remains.
 
 ## Token budget
 
 Keep the handoff compact.
 
-- Prefer short bullet points over prose.
+- Prefer short bullets over prose.
 - For small but non-trivial tasks, the handoff should usually fit in 20–40 lines.
 - Do not expand stable repository rules, FSD explanations, Material rules, or testing policy unless directly relevant.
 - Use `N/A` for genuinely inapplicable sections.
