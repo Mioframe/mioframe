@@ -4,6 +4,6 @@
 
 ## Claude Code compatibility
 
-This repository uses AGENTS.md as the canonical agent instruction format.
+This workspace uses `AGENTS.md` and `.agents/skills/*/SKILL.md` as the canonical coding instructions.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or canonical skill files under .agents/skills instead.
+Load only the applicable workspace rules and skills for the current code task. Do not duplicate policy in this file.
