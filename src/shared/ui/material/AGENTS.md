@@ -27,9 +27,11 @@ material-component-review
 
 Read `docs/component-workflow.md` first.
 
-One invocation runs one stage only and stops after its artifact/report. Do not combine research, architecture, coding, migration, and review in one agent task.
+The operator supplies the component name once. The `material-component` orchestrator autonomously executes as many isolated stage scopes as are internally actionable, validates each handoff, processes dependencies, routes corrections backward, and continues until completion or a genuine external blocker.
 
-The router selects the earliest missing, stale, blocked, incomplete, or invalid stage. Later code does not permit skipping an earlier stage.
+One stage scope owns one reasoning focus and one artifact. A stage worker returns control after its report; the outer orchestrator may then open the next stage scope in the same operator invocation. Do not require repeated operator commands to advance the state machine.
+
+The router always selects the earliest missing, stale, blocked, incomplete, or invalid stage. Later code does not permit skipping an earlier stage.
 
 Required stage gates:
 
@@ -39,9 +41,9 @@ Required stage gates:
 - `MIGRATION.md`: consumers migrated and legacy ownership removed, status `complete`;
 - `REVIEW.md`: independent review on the resulting head.
 
-A required official dependency passes the same stages as a first-class family. Pause the parent and process one dependency stage per later invocation. Do not recursively execute multiple stages in one run.
+A required official dependency passes the same stages as a first-class family. Pause the parent, process dependency stages automatically in separate scopes, and resume the parent when the required dependency gate is complete. Do not ask the operator to launch a dependency command.
 
-`README.md` is only a short family index. It is not a substitute for any stage artifact.
+`README.md` is only a short family index. It is not a substitute for any stage artifact and must not duplicate mutable stage status or next action.
 
 Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior outside the deterministic Material workflow.
 
@@ -67,6 +69,8 @@ Answers only what official Material defines. It includes the complete official v
 
 It contains no current demand, Vue API, m3e mapping, code, tests, migration, proof, or PR status.
 
+A source freshness threshold triggers a refresh attempt but does not by itself make a complete snapshot stale. `stale` requires evidence of newer official content. `blocked` requires genuinely missing or incomplete official content after available fallbacks.
+
 ### ARCHITECTURE.md
 
 Answers what Mioframe must implement now and how. It references exact `DESIGN.md` sections, resolves dependencies and owners, defines the complete selected public Vue/token contracts, renderer mappings and gaps, implementation passes, `TEST IMPACT`, migration inventory, acceptance criteria, and forbidden approaches.
@@ -87,7 +91,7 @@ Migration does not redesign the component.
 
 ### REVIEW.md
 
-Independently compares the full result with official design, accepted architecture, implementation, consumers, repository rules, proof, verification, and operator visual/motion acceptance. Review does not fix code; it routes findings to the earliest owning stage.
+Independently compares the full result with official design, accepted architecture, implementation, consumers, repository rules, proof, verification, and operator visual/motion acceptance. Review does not fix code; it returns findings to the orchestrator, which routes them to the earliest owning stage.
 
 ## Public API and ownership
 
@@ -135,6 +139,12 @@ For contextual tokens, browser proof asserts the computed rendered result for ea
 Final verification uses the exact task scope required by root `AGENTS.md`.
 
 A component remains incomplete until all five stage artifacts are current, final verification passes, and required operator visual/motion acceptance is recorded. Green CI alone is not architecture approval.
+
+## Genuine external blockers
+
+The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable permissions/tools, an unresolved material architecture decision, an irreducible external/infrastructure gate, required operator visual/motion acceptance, or safety-required input.
+
+A completed stage, failed refresh helper, cache age, ordinary code/test finding, or missing repeated operator command is not an external blocker.
 
 ## Boundary
 
