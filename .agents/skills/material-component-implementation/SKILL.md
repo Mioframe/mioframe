@@ -93,6 +93,10 @@ Implement the `TEST IMPACT` from `ARCHITECTURE.md` through faithful owners:
 
 Visual tests may prepare deterministic states and capture pixels, but behavioral success criteria remain in behavior tests.
 
+## Git boundary
+
+Do not run raw `git`, inspect or repair `.git`, fetch remotes, or require `HEAD`/commit metadata. Inspect and edit readable repository files directly. If a verify-managed project command later fails because Git metadata is unavailable, record that verification blocker after completing safe implementation work.
+
 ## Implementation record
 
 `IMPLEMENTATION.md` is a concise handoff, not duplicated architecture or code documentation:
@@ -103,7 +107,7 @@ Visual tests may prepare deterministic states and capture pixels, but behavioral
 Status: complete | partial | blocked | stale
 DESIGN.md reference:
 ARCHITECTURE.md reference:
-Implementation commit/ref:
+Implementation file state: <canonical files and artifact statuses reviewed>
 
 ## Implemented passes
 ## Public API implemented
@@ -122,7 +126,7 @@ Implementation commit/ref:
 
 Run focused feedback during implementation and the exact implementation-stage scope required by root verification policy.
 
-Do not claim full component completion: product migration, final current-head verification, operator visual acceptance, and independent review belong to later stages.
+Do not claim full component completion: product migration, final verification, operator visual acceptance, and independent review belong to later stages.
 
 ## Completion gate
 
@@ -132,7 +136,7 @@ Implementation is `complete` only when:
 - family and dependency code is canonical and exported;
 - selected tokens, mappings, defects, tests, stories, and proof agree;
 - no architecture deviation exists;
-- focused verification passes;
+- focused verification passes, or its exact environment blocker is recorded after implementation work is complete;
 - the public component is ready for consumer migration.
 
 ## Report
@@ -164,3 +168,4 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Updating visual baselines without inspection.
 - Treating green CI as migration or review completion.
 - Running the migration or review stage in the same invocation.
+- Running raw Git commands or treating Git object health as an implementation input gate.
