@@ -51,7 +51,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 
 - `vue-component-implementation`: `.vue` components and UI composables;
 - `shared-ui-implementation`: project-specific or generic shared UI primitives outside official Material component families;
-- `material-component`: one official Material family routed through exactly one next stage;
+- `material-component`: one operator command autonomously orchestrates one official Material family through ordered, freshly isolated stage workers until completion or a genuine external blocker;
 - `material-component-design`: complete official `DESIGN.md` only;
 - `material-component-architecture`: ready demand-scoped `ARCHITECTURE.md` only;
 - `material-component-implementation`: canonical component code/proof plus `IMPLEMENTATION.md`, without consumer migration;
@@ -66,6 +66,8 @@ Use the applicable skill instead of duplicating its rules in the task:
 - `crdt-storage`: Automerge, VFS, storage, repository lifecycle, and managed resources;
 - `diagnostic-events`: Sentry-backed diagnostics, privacy, and error reporting;
 - `verification`: inspect and execute automatic verify planning, use focused overrides, handle failures, and report final task/verify status.
+
+For the Material staged workflow, isolation is physical rather than rhetorical: the thin orchestrator selects, launches, validates, and routes, while each design, architecture, implementation, migration, and review stage runs in a fresh agent/subagent context. The orchestrator must not perform stage-owned research, decisions, code, migration, or review itself. A stage worker consumes only repository state, applicable rules, the component name, and canonical upstream artifacts; hidden reasoning or prose from another worker is not a handoff. The review worker must be independent from workers that authored architecture, implementation, or migration. If the available agent environment cannot create these isolated workers, report the Material workflow as blocked instead of simulating isolation in one context.
 
 ## Implementation quality
 
