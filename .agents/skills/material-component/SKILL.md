@@ -1,134 +1,123 @@
 ---
 name: material-component
-description: 'Use with only a Material artifact name to create or refresh its complete DESIGN.md, then implement, resume, normalize, or verify the corresponding Mioframe MD* adapter through the canonical Material workflow.'
+description: 'Use with only a Material component name to resolve and run exactly one next stage in the canonical design → architecture → implementation → migration → review workflow.'
 ---
 
 # Material component
 
-Accept exactly one required input: the Material artifact name.
+Accept exactly one required input: the Material component name.
 
-Valid examples:
+Examples:
 
 ```text
-MDLoadingIndicator
-Loading indicator
-loading-indicator
-MDButton
 Button
+MDButton
+Loading indicator
+MDLoadingIndicator
 ```
 
-Do not require an implementation brief, mode, parent component, dependency context, file path, renderer mapping, known defect list, or verification instructions from the operator. Resolve those from the repository and official sources.
+Do not require an implementation brief, mode, file path, renderer mapping, dependency list, or verification command from the operator.
 
-## Resolve the artifact
+## Read first
 
-Normalize the supplied name against:
+- applicable `AGENTS.md` files;
+- `src/shared/ui/material/docs/component-workflow.md`;
+- stage skills:
+  - `material-component-design`;
+  - `material-component-architecture`;
+  - `material-component-implementation`;
+  - `material-component-migration`;
+  - `material-component-review`.
 
-- public `MD*` exports;
-- `src/shared/ui/material/components/*` families;
-- family `DESIGN.md` and README files;
-- canonical implementations;
-- current and legacy consumers;
-- official Material component names and routes.
+## Resolve the family
 
-Prefer an exact existing `MD*` artifact or family match. Strip only conventional `MD` prefix, case, spaces, and hyphen differences when resolving aliases.
+Normalize the supplied name against official Material names, existing `MD*` exports, family paths, stage artifacts, current implementations, and legacy consumers.
 
-Ask for clarification only when the name genuinely maps to multiple distinct official Material components and repository evidence cannot resolve the intended artifact.
+Ask for clarification only when repository and official evidence leave multiple distinct official components unresolved.
 
-## Required design stage
+## One invocation, one stage
 
-Read `material-component-design`, `material-component-adapter`, and `material-component-completion`.
-
-Before selecting implementation mode, inspect:
+Inspect the canonical family artifacts:
 
 ```text
-src/shared/ui/material/components/<family>/DESIGN.md
+DESIGN.md
+ARCHITECTURE.md
+IMPLEMENTATION.md
+MIGRATION.md
+REVIEW.md
 ```
 
-Use `material-component-design` when the document is missing, stale, blocked, demand-truncated, renderer-shaped, or otherwise incomplete.
+Select the earliest invalid stage:
 
-The design stage must produce a complete official Material snapshot. It must not select current demand, inspect m3e, or implement code.
+1. `DESIGN.md` missing, stale, blocked, incomplete, demand-scoped, or renderer-shaped → `material-component-design`;
+2. `ARCHITECTURE.md` missing, stale, blocked, not ready, or not based on the current design → `material-component-architecture`;
+3. `IMPLEMENTATION.md` missing, partial, blocked, stale, architecture-deviating, or implementation drift exists → `material-component-implementation`;
+4. `MIGRATION.md` missing, partial, blocked, stale, consumers remain, legacy ownership remains, or final verification is unresolved → `material-component-migration`;
+5. `REVIEW.md` missing, stale, blocked, behind the current resulting head, or operator review remains unresolved → `material-component-review`;
+6. all artifacts and gates current → report complete without speculative changes.
 
-Do not continue into adapter or completion workflow unless `DESIGN.md` status is `current` and the complete-source gate passes. Report a blocked design result when official sources are unavailable or incomplete.
+Run exactly the selected stage and stop after its required artifact/report. Do not continue into the next stage in the same invocation, even when the selected stage succeeds.
 
-## Select the adapter mode automatically
+## Backward routing
 
-After the design gate passes:
+Later-stage evidence may invalidate an earlier artifact:
 
-- use `material-component-adapter` when no existing family implementation artifacts exist and the component is genuinely new;
-- use `material-component-completion` when any implementation, README, tests, stories, tokens, exports, defect records, consumers, migration status, or previous completion claim already exists.
+- missing or incorrect official fact → design;
+- unresolved API, ownership, dependency, renderer, token, proof, or migration decision → architecture;
+- component code, mapping, token, test, story, defect, or export mismatch → implementation;
+- consumer, legacy-removal, product-scenario, or final-verification gap → migration;
+- manual visual/motion gate only → review/operator.
 
-Existing `migrated` or `verification` status does not bypass completion preflight.
+Route to the earliest owner. Do not patch around an invalid earlier artifact.
 
-If the component is already complete, still audit the design and completion gates and report `complete` without speculative changes.
+## Dependency queue
 
-## Resolve all adapter context internally
+When the current family depends on another official Material component:
 
-After `DESIGN.md` is accepted, derive from repository evidence:
+- read the parent `ARCHITECTURE.md` dependency queue;
+- pause the parent at the appropriate gate;
+- select the dependency’s earliest missing stage on a later invocation;
+- run only that one dependency stage;
+- resume the parent only after the required dependency stages are complete.
 
-- current production scenarios and demand;
-- selected and deferred official surface by exact design references;
-- parent and dependency ownership;
-- standalone defaults and composed overrides;
-- public API and token ownership;
-- exact lockfile-resolved renderer capability;
-- existing defects and workarounds;
-- required tests, browser behavior, visual proof, and final verification scope.
-
-Do not ask the operator to restate facts available in the design document, code, tests, documentation, lockfile artifacts, or official sources.
-
-## Dependency recursion
-
-When the selected component requires another official Material component:
-
-1. add the dependency to the ordered closure queue;
-2. invoke this same name-only routing process for the dependency;
-3. complete its design stage first;
-4. complete or verify it as a first-class adapter family;
-5. resume the parent only after both dependency design and adapter closure gates pass.
-
-Do not request a separate operator prompt for discovered dependencies.
+Do not recursively execute multiple dependency and parent stages in one invocation. Do not ask the operator for a second implementation brief.
 
 ## Architecture escalation
 
-Use `architect-handoff` only when repository, accepted design artifacts, and renderer evidence leave a real unresolved architecture choice that changes cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior.
+Use `architect-handoff` only for a real unresolved decision outside the deterministic Material workflow, such as cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior that official design and repository evidence cannot resolve.
 
-Do not escalate merely because design or implementation artifacts are incomplete, inconsistent, or incorrect; the design and completion workflows own those cases.
-
-## Reporting discipline
-
-The router report is only a routing summary. It must not replace or shorten the reports required by the selected workflows.
-
-After the routing summary:
-
-- include the complete `MATERIAL DESIGN RESULT` when the design stage ran;
-- for `new`, include the complete `MATERIAL ADAPTER RESULT` required by `material-component-adapter`;
-- for `completion`, include the complete `MATERIAL COMPONENT COMPLETION RESULT` required by `material-component-completion`;
-- for every recursively processed dependency, include its design and adapter/completion results before the parent resumes.
-
-When completion mode returns a clean worktree, the final response must still include the design-status check, independent expected-contract ledger, standalone-default versus parent-override comparison, production-consumer applicability comparison, complete closure inventory, and explicit no-change justification required by `material-component-completion`.
-
-A generic summary such as "official sources match the matrix", "tests are present", or "no correction required" is invalid without the required comparison evidence. Verification counts and green CI do not replace design or contract evidence.
+Incomplete stage artifacts are handled by their owning stage, not by a generic handoff.
 
 ## Report
 
-First report the routing summary:
+First report the routing result:
 
 ```text
-MATERIAL COMPONENT RESULT
+MATERIAL COMPONENT ROUTING RESULT
 Input artifact:
 Resolved official component:
-Resolved Mioframe family:
-Design artifact path:
-Design status: current | stale | blocked | missing
-Design stage run: yes | no
-Selected adapter mode: new | completion | none (design blocked)
-Dependencies processed:
-Current demand:
-Corrections or implementation completed:
-Remaining blockers:
-Exact final verification command:
-Implementation ownership: legacy | migrating | migrated
-Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
+Canonical family:
+DESIGN.md status:
+ARCHITECTURE.md status:
+IMPLEMENTATION.md status:
+MIGRATION.md status:
+REVIEW.md status:
+Selected stage: design | architecture | implementation | migration | review | complete
+Dependency selected instead of parent: none | <family and stage>
+Reason:
+Next stage after this run: <stage or none>
+Overall family status: legacy | designing | architecting | implementing | migrating | reviewing | complete | blocked
 ```
 
-Then include the complete reports required by every workflow that ran. Do not omit them.
+Then include the complete report required by the selected stage.
+
+Do not compress a stage report into a generic summary.
+
+## Forbidden
+
+- Running more than one stage in the same invocation.
+- Combining official research, architecture decisions, code, consumer migration, and review in one task.
+- Treating README, code, m3e, tests, or snapshots as substitutes for stage artifacts.
+- Skipping an earlier invalid stage because later code already exists.
+- Marking the component complete from green CI alone.
+- Editing PR metadata or merging.
