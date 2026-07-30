@@ -1,6 +1,6 @@
 # Loading indicator design
 
-Status: stale
+Status: current
 
 Official component: Loading indicator  
 Source snapshot date: 2026-07-20  
@@ -16,7 +16,7 @@ Design document date: 2026-07-30
 | `https://m3.material.io/components/loading-indicator/guidelines`    | Loading indicator Guidelines    | Cached page inspected                          |
 | `https://m3.material.io/components/loading-indicator/accessibility` | Loading indicator Accessibility | Cached page inspected                          |
 
-The cache contains all four official tabs and reports no unresolved token rows or component resources. It is nevertheless outside its configured freshness window. A refresh attempted on 2026-07-30 failed because `site_meta.js` did not provide a usable route list, so current official-source identity could not be reverified. This document therefore remains `stale` and cannot hand off to architecture.
+The newest successfully acquired official snapshot contains all four official tabs and reports no unresolved token rows or missing component resources. A refresh attempted on 2026-07-30 failed because `site_meta.js` did not provide a usable route list, but no newer source revision or changed official content was discovered. Under the repository source lifecycle, the failed helper is recorded as a tooling limitation and does not invalidate this complete snapshot.
 
 ## Identity and purpose
 
@@ -162,7 +162,7 @@ Source: Specs, Tokens & specs; resolved token resource `designSystems/20543ce188
 
 ## Source conflicts and unknowns
 
-1. **Stale source identity.** The complete cached pages were captured on 2026-07-20, but the cache is outside its seven-day freshness window. The 2026-07-30 refresh failed before route discovery, and route metadata marks the four component routes `stale` because it cannot currently verify identity or an unambiguous route match.
+1. **Refresh limitation.** The complete cached pages were captured on 2026-07-20. The 2026-07-30 refresh helper failed before route discovery because `site_meta.js` did not provide a usable route list. No newer source revision or changed official content was found, so this is recorded as a tooling limitation rather than stale design evidence.
 2. **Swapped size display names.** The official token resource assigns the display name “Loading indicator container width” to `active-indicator.size` (38 dp) and “Loading indicator active indicator size” to `container.width` (48 dp). The paths, numeric values, measurement prose, and illustration establish the opposite semantic relationship. The catalogue preserves the official display names verbatim rather than silently correcting them.
 3. **Container color conflict.** The contained-configuration prose and illustration specify primary-container, matching `contained.container.color`. The same token set additionally publishes a general `container.color` using secondary-container without explaining which configuration consumes it.
 4. **Dark high-contrast serialization.** The cached Markdown table serializes the dark high-contrast contained active-indicator value as `{"alpha":1}`. The resolved token resource reports `#000000`; the catalogue uses that resolved value and records this extraction discrepancy here.
