@@ -5,8 +5,8 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Routing
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component targets.
-- Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. The router executes exactly one next stage: design, architecture, implementation, migration, or review.
-- Do not route official Material work through a unified implementation/migration workflow or treat current code/README as a substitute for missing stage artifacts.
+- Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. One operator command orchestrates every internally actionable stage through separate fresh workers.
+- Do not route official Material work through a unified reasoning task or treat current code or README as a substitute for missing stage artifacts.
 
 ## Contains
 
@@ -25,4 +25,4 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 ## Verification
 
-Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Material component verification is divided between implementation, migration, and independent review stages. Final completion requires repository verification.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Material component verification is divided between implementation, migration, and independent review stages. Final completion requires the project verification selected by root rules.
