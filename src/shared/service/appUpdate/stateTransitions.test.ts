@@ -377,13 +377,7 @@ describe('switchToAutomaticMode', () => {
 describe('shouldStartActivation', () => {
   const withApproved = { ...baseState, approvedRelease: releaseB };
 
-  it('starts whenever no other same-channel window is live: a new window and a reload of the final window are indistinguishable here', () => {
-    // shouldStartActivation has no concept of "reload" — the caller
-    // (workerFetch.ts) already excludes this navigation's own prior and
-    // resulting client identities before computing otherLiveClientCount, so
-    // a reload of the sole remaining window produces the exact same input
-    // as opening a brand-new window and starts activation the same way: a
-    // safe application restart, not a case to special-case here.
+  it('starts when no other same-channel window is live', () => {
     expect(shouldStartActivation(withApproved, { otherLiveClientCount: 0 })).toBe(true);
   });
 
