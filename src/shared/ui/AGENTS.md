@@ -5,7 +5,8 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Routing
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component targets.
-- Use `material-component-adapter` and the deeper `src/shared/ui/material/AGENTS.md` rules for one explicit official Material component target or proven inseparable family implementation, migration, or adapter change.
+- Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. The router executes exactly one next stage: design, architecture, implementation, migration, or review.
+- Do not route official Material work through a unified implementation/migration workflow or treat current code/README as a substitute for missing stage artifacts.
 
 ## Contains
 
@@ -19,9 +20,9 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 - When generic or product UI consumes an official Material component, it must use the curated Mioframe `MD*` Vue API.
 - Native HTML and project-specific or generic shared UI remain valid when they are the correct owner.
 - Generic shared UI must not depend directly on `@m3e/web`, render `m3e-*` elements, use renderer element types, or consume `--m3e-*` variables. Those renderer details are private to `src/shared/ui/material`.
-- Existing Material components outside `src/shared/ui/material` remain valid legacy owners until their focused migration; do not add new Material ownership at legacy paths.
+- Existing Material components outside `src/shared/ui/material` remain valid legacy owners until their focused migration stage; do not add new Material ownership at legacy paths.
 - Do not move product behavior into a shared primitive merely to reuse an official Material component.
 
 ## Verification
 
-Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Final completion requires repository verification.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Material component verification is divided between implementation, migration, and independent review stages. Final completion requires repository verification.
