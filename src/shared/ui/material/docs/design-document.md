@@ -22,10 +22,10 @@ It does not answer:
 What does Mioframe implement now?
 How does m3e render it?
 Which current consumers need it?
-How is it tested or migrated?
+How is it implemented, migrated, tested, or reviewed?
 ```
 
-Those implementation decisions belong to the family `README.md`, adapter code, token catalogue, defect records, and roadmap.
+Those decisions belong to later stage artifacts and runtime owners.
 
 ## Authority and lifecycle
 
@@ -45,7 +45,7 @@ A family design document has one status:
 - `stale` — official sources changed after the recorded snapshot;
 - `blocked` — a required source is unavailable, contradictory, or incompletely extracted.
 
-A missing, stale, or blocked `DESIGN.md` blocks adapter architecture, implementation, completion review, and a `migrated` status.
+A missing, stale, or blocked `DESIGN.md` blocks architecture, implementation, migration, review, and complete status.
 
 ## Required source set
 
@@ -152,18 +152,20 @@ Use:
 
 Do not replace complete coverage with a short summary, a selected-surface matrix, or links to external pages.
 
-## Separation from the family README
+## Separation from later stage artifacts
 
-The two artifacts have different ownership:
+| Artifact | Question answered | Scope |
+| -------- | ----------------- | ----- |
+| `DESIGN.md` | What does official Material define? | complete official component contract |
+| `ARCHITECTURE.md` | What must Mioframe implement now and how? | demand-scoped Material–Vue–m3e plan |
+| `IMPLEMENTATION.md` | Was the accepted component architecture implemented? | component code/proof handoff |
+| `MIGRATION.md` | Were consumers migrated and legacy ownership removed? | application adoption |
+| `REVIEW.md` | Does the complete result satisfy all contracts and gates? | independent review |
+| `README.md` | Where are the family artifacts and runtime entry points? | short index only |
 
-| Artifact    | Question answered                                                  | Scope                                   |
-| ----------- | ------------------------------------------------------------------ | --------------------------------------- |
-| `DESIGN.md` | What does official Material define?                                | complete official component contract    |
-| `README.md` | What does Mioframe implement, defer, map, correct, and verify now? | demand-scoped Material–Vue–m3e contract |
+`ARCHITECTURE.md` must reference exact `DESIGN.md` sections for every selected, deferred, conflicting, or restrictive decision.
 
-The family README must reference exact sections of `DESIGN.md` for every selected, deferred, conflicting, or restrictive decision.
-
-The README must not become a second shortened copy of official Material documentation. `DESIGN.md` must not contain:
+`DESIGN.md` must not contain:
 
 - current Mioframe demand;
 - `implement-now` or `defer` decisions;
@@ -181,7 +183,7 @@ Regenerate or update `DESIGN.md` when:
 - a previously unavailable official page became available;
 - review found an omitted official capability, token, state, measurement, or guidance rule.
 
-Implementation changes alone do not modify `DESIGN.md`.
+Implementation, migration, and review changes alone do not modify `DESIGN.md`.
 
 ## Completion gate
 
@@ -191,6 +193,8 @@ A design document is complete only when:
 - the complete component surface is described regardless of current demand;
 - every official component token is included or explicitly recorded as unavailable;
 - exact measurements, defaults, states, and accessibility rules are preserved;
-- no m3e, Mioframe implementation, demand, or proof decision is mixed into the artifact;
+- no m3e, Mioframe architecture, implementation, migration, demand, or proof decision is mixed into the artifact;
 - source conflicts and extraction gaps are explicit;
 - status is `current`.
+
+The design skill stops after this artifact. Architecture begins only in a later invocation.
