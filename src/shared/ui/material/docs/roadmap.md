@@ -106,13 +106,13 @@ These corrections did not change `DESIGN.md`, `ARCHITECTURE.md`, the public Butt
 
 ## Milestones
 
-| ID  | Milestone                                      | Status            | Depends on | Exit gate                                                                                                                       |
-| --- | ---------------------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged renderer workflow/foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
-| M1a | `MDLoadingIndicator` staged dependency family  | `operator-review` | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance               |
+| ID  | Milestone                                      | Status            | Depends on | Exit gate                                                                                                                         |
+| --- | ---------------------------------------------- | ----------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | autonomous staged renderer workflow/foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership          |
+| M1a | `MDLoadingIndicator` staged dependency family  | `operator-review` | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance                 |
 | M1  | `MDButton` staged action family                | `operator-review` | M1a        | five family artifacts; accepted tokens and consumers; project verification; independent review; operator visual/motion acceptance |
-| M2  | `MDSwitch` stateful pilot                     | `planned`         | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
-| M3  | sequential component migration                | `planned`         | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                     |
+| M2  | `MDSwitch` stateful pilot                      | `planned`         | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                      |
+| M3  | sequential component migration                 | `planned`         | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                       |
 
 ## Remaining pilot gates
 
