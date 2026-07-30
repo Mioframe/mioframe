@@ -5,112 +5,113 @@ description: 'Use this skill before implementing or reviewing .vue components or
 
 # Vue component implementation
 
-Use this skill before writing or materially changing a `.vue` component or a UI composable that backs one. It complements `implementation-preflight`; it does not replace the owner-map or acceptance/risk matrix work that skill already requires.
+Use this skill before writing or materially changing a `.vue` component or a UI composable that backs one. It complements `implementation-preflight`; it does not replace owner-map or acceptance/risk work.
 
 ## When to use
 
-Use this skill for any task that adds or changes:
+Use for any task that adds or changes:
 
 - a `.vue` single-file component;
 - a composable that owns component-facing reactive state, DOM refs, or lifecycle;
-- shared UI primitives, widget/pane composition, or feature dialogs/sheets/menus.
+- shared UI primitives, widget/pane composition, or feature dialogs, sheets, and menus.
 
-Skip it for copy-only text changes, prop renames with no contract change, or non-UI logic.
+Skip for copy-only text changes, prop renames with no contract change, or non-UI logic.
 
 ## Required Vue component contract
 
-Write this short contract before the first production edit. Keep it to a few lines per item.
+Write this short contract before the first production edit:
 
-1. **Root/render contract**: single stable root element, its block class, and whether a root child component is used instead of a wrapper.
-2. **Props**: typed props this component accepts (`defineProps` with type-based declaration).
-3. **Emits**: typed emits this component raises (`defineEmits` with type-based declaration), named for the user action/selection, not a parent command.
-4. **Slots**: slots exposed, and any slot props forwarded (`defineSlots`).
-5. **Attrs forwarding**: whether `$attrs`/`useAttrs()`/`v-bind="attrs"` is forwarded transparently; this is allowed only for a documented transparent host/adaptor contract, and must state which root/child element receives it.
-6. **Derived state/computed plan**: which values are `computed` from props/state, and why no manual state machine is needed.
-7. **Interaction ownership**: which user actions this component owns vs. which it delegates to a parent via emit.
-8. **DOM access/ref justification**: any `useTemplateRef`/DOM access and the concrete browser API need (focus, measurement, scroll, third-party integration).
-9. **Show/hidden ownership**: confirms the parent composition decides whether this component renders at all; this component does not have a normal empty render path.
-10. **Browser/visual verification**: which Playwright/e2e, Storybook visual, or browser smoke check covers the change, or why none applies.
+1. **Root/render contract**: stable root, block class, and whether a root child component is used instead of a wrapper.
+2. **Props**: typed accepted props.
+3. **Emits**: typed user-action or selection events.
+4. **Slots**: exposed slots and forwarded slot props.
+5. **Attrs forwarding**: whether and where transparent attribute forwarding is part of the public contract.
+6. **Derived state/computed plan**: computed values and why no manual state machine is needed.
+7. **Interaction ownership**: actions owned locally versus delegated through emits.
+8. **DOM access/ref justification**: concrete browser API need.
+9. **Show/hidden ownership**: parent composition decides whether the component renders.
+10. **Browser/visual verification**: owning proof or reason none applies.
 
-If any item is unclear, resolve it before editing `.vue` files; do not start with broad pseudo-architecture and patch ownership later.
+Resolve unclear items before editing.
 
 ## Declarative state rules
 
-- Prefer named `computed` values over complex inline template expressions or v-if chains.
-- Do not build a custom state machine when derived `computed` state from existing reactive sources is enough.
-- Move non-trivial pure derivation into named `computed` values or pure helpers.
+- Prefer named `computed` values over complex inline expressions or conditional chains.
+- Do not build a custom state machine when derived state is enough.
+- Move non-trivial pure derivation into named computed values or pure helpers.
 - Move lifecycle-managed side effects into composables that own setup and cleanup.
 
 ## Component communication rules
 
-- Use props down, emits up, and slots for parent/child composition.
-- Do not use `dispatchEvent`/custom DOM events for component-to-component communication; use `defineEmits` instead.
-- Do not use `querySelector`/`querySelectorAll` to coordinate with sibling or child components; use refs, props, emits, or provide/inject instead.
-- Template refs and direct DOM access are allowed only for real browser API needs: focus, measurement, scrolling, or third-party widget integration. State that justification in the contract.
+- Use props down, emits up, and slots for composition.
+- Do not use `dispatchEvent` or custom DOM events for component-to-component communication.
+- Do not use `querySelector` or `querySelectorAll` to coordinate siblings or children.
+- Template refs and direct DOM access are allowed only for real browser API needs such as focus, measurement, scrolling, or third-party integration.
 
 ## Event handler rules
 
-- Prefer named handlers from `<script setup>`: `@click="onClick"`.
-- Named handler calls with local template context (e.g. `v-for`/slot scope) are allowed when they keep the component contract explicit: `@click="onClickItem(item.id)"`, `@keydown="onKeydown($event, item.id)"`.
-- Anonymous inline arrow or function handlers are forbidden: `@click="() => onClickItem(item.id)"`, `@click="function () { onClickItem(item.id) }"`.
-- Direct inline mutations in event expressions are forbidden: `@click="selectedId = item.id"`, `@click="count++"`. Move the mutation into a named handler in `<script setup>`.
-- Non-trivial event logic (more than a single call) belongs in a named `<script setup>` handler, not inline in the template.
+- Prefer named handlers from `<script setup>`.
+- Named handler calls with local template context are allowed.
+- Anonymous inline arrow or function handlers are forbidden.
+- Direct inline mutations in event expressions are forbidden.
+- Non-trivial event logic belongs in a named handler.
 
 ## Styling and deep selector rules
 
-- `:deep()` is allowed only at an explicit, documented integration boundary (e.g. styling a known third-party node). State the boundary and blast radius in the contract or an inline comment; do not use it to casually reach into unrelated child internals.
-- Do not style a child component's internal classes from a parent unless that child is the documented integration boundary.
-- Prefer child props, slots, or CSS custom properties over deep selector overrides.
+- `:deep()` is allowed only at an explicit documented integration boundary.
+- Do not style child private classes from a parent unless the child is the documented boundary.
+- Prefer child props, slots, or CSS custom properties over deep overrides.
 
 ## v-bind and attrs rules
 
-- Do not use `$attrs`, `useAttrs()`, or bare `v-bind` as a generic escape hatch. Attribute forwarding is allowed only for documented transparent host/adaptor components where forwarding is part of the public contract. Prefer explicit props, emits, and slots.
-- Do not bind a broad, untyped object (`v-bind="someConfigObject"`) to hide the component's real prop/emit contract. Spell out the props the component actually accepts.
+- Do not use `$attrs`, `useAttrs()`, or bare `v-bind` as a generic escape hatch.
+- Attribute forwarding is allowed only for documented transparent host/adaptor components.
+- Do not spread broad untyped configuration objects to hide the real component contract.
 
-## Architecture-sensitive rules (not enforced by lint)
+## Architecture-sensitive rules
 
-These PR #98 lessons are not safe to enforce syntactically; review them explicitly.
+These durable lessons require explicit review rather than syntactic enforcement:
 
 - Do not pass the whole `props` object into shared UI composables. Pass explicit refs/values or a narrow typed options object.
-- Runtime dev warnings must not replace a strict public API. Prefer types, explicit props, emits, slots, and composition boundaries first.
-- Do not use `defineExpose` as a normal component API. It is allowed only for documented browser/focus integration APIs.
-- Do not use `pointer-events` pass-through or overlay stacking to route interactions unless the component contract explicitly owns this geometry and browser/visual verification covers hover, focus, click, touch, and disabled states.
-- Do not suppress focus visuals. Shared UI may delegate focus rendering only to the project focus/state-layer system, and browser verification must cover it.
-- Non-scoped CSS in shared UI is allowed only for documented component-family internals or token/theme files. Ordinary component implementation styles must stay scoped.
+- Runtime development warnings must not replace a strict public API.
+- Do not use `defineExpose` as a normal component API; reserve it for documented browser/focus integration.
+- Do not use pointer-event pass-through or overlay stacking to route interactions unless the component contract owns the geometry and browser/visual proof covers it.
+- Do not suppress focus visuals.
+- Non-scoped CSS in shared UI is allowed only for documented component-family internals or token/theme files.
 - `!important` is forbidden.
 
-## Testing/verification rules
+## Testing and verification
 
-- Use `component-contract-testing` for small render/props/emits/slots/wiring contracts.
-- Use `ui-browser-behavior` and Playwright/Storybook visual coverage for layout, focus, pointer/touch, scrolling, teleport, overlays, or Material state visuals.
-- A passing lint/type-check is not proof of correct Vue composition; verify the contract above explicitly.
+- Use `component-contract-testing` for render, props, emits, slots, and wiring contracts.
+- Use `ui-browser-behavior` and visual proof for layout, focus, pointer/touch, scrolling, teleport, overlays, or Material state visuals.
+- Passing lint and type-check is not proof of correct Vue composition.
 
 ## Review checklist
 
-Reject or send back for rework when:
+Reject or return for rework when:
 
-1. The component dispatches/listens to DOM custom events instead of using emits.
-2. The component or its tests use `querySelector`/`querySelectorAll` for coordination (not a justified low-level browser integration).
-3. A broad untyped object is `v-bind`-spread to hide the real prop contract.
-4. `:deep()` reaches into another component's internals without a documented integration boundary.
-5. The component has a normal empty/hidden render path instead of the parent deciding visibility.
-6. Template logic builds an ad hoc state machine where `computed` derived state would do.
-7. Root render contract is unstable (fragment root, conditional root shape, wrapper added only to satisfy single-root linting).
-8. Event bindings use anonymous inline functions or inline mutations instead of named handlers.
+1. The component uses DOM custom events instead of emits.
+2. The component or tests use selectors for coordination without a justified low-level integration.
+3. A broad untyped object hides the real prop contract.
+4. `:deep()` reaches into another component without a documented boundary.
+5. The component owns a normal empty/hidden render path instead of the parent deciding visibility.
+6. Template logic builds an ad hoc state machine where computed derivation is sufficient.
+7. The root contract is unstable.
+8. Event bindings use anonymous functions or inline mutations.
 
 Pass condition:
 
-- `$attrs` / `useAttrs()` forwarding is either absent or documented as a transparent host/adaptor contract.
-- Event bindings use named handlers or named handler calls with local context; anonymous inline functions and inline mutations are absent.
+- attribute forwarding is absent or documented as a transparent host/adaptor contract;
+- event bindings use named handlers or named handler calls with local context.
 
 ## Forbidden
 
-- Do not treat `$attrs` forwarding as a default allowed Vue pattern.
-- Do not pass the whole `props` object into shared UI composables.
-- Do not use `defineExpose` as a normal component API outside a documented browser/focus integration.
-- Do not suppress focus visuals.
-- Do not use non-scoped CSS in shared UI components without a documented component-family contract.
-- `!important` is forbidden.
+- Treating attribute forwarding as a default allowed pattern.
+- Passing the whole props object into shared UI composables.
+- Using `defineExpose` as a normal component API.
+- Suppressing focus visuals.
+- Using non-scoped CSS in shared UI without a documented family contract.
+- `!important`.
 
 ## Wrong/right examples
 
@@ -133,7 +134,7 @@ const onSave = () => emit('save');
 </script>
 ```
 
-Wrong — querySelector coordination:
+Wrong — selector coordination:
 
 ```vue
 <script setup lang="ts">
@@ -143,7 +144,7 @@ const onOpen = () => {
 </script>
 ```
 
-Right — props/emit-driven state owned by the parent:
+Right — parent-owned state:
 
 ```vue
 <script setup lang="ts">
@@ -157,7 +158,7 @@ const onCloseMenu = () => {
 </template>
 ```
 
-Wrong — broad prop bag hiding the contract:
+Wrong — broad prop bag:
 
 ```vue
 <MDButton v-bind="buttonConfig" />
@@ -169,7 +170,7 @@ Right — explicit props:
 <MDButton :label="label" :disabled="isDisabled" @click="onClick" />
 ```
 
-Wrong — anonymous inline handler and inline mutation:
+Wrong — anonymous handler and inline mutation:
 
 ```vue
 <li v-for="item in items" :key="item.id">
@@ -178,7 +179,7 @@ Wrong — anonymous inline handler and inline mutation:
 </li>
 ```
 
-Right — named handler call with local `v-for` context:
+Right — named handler call:
 
 ```vue
 <li v-for="item in items" :key="item.id">
