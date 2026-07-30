@@ -39,10 +39,11 @@ Produce one complete family migration result:
 2. canonical Vue adapter and every required official dependency completed independently as its own canonical adapter;
 3. package-derived renderer typing and private mapping;
 4. selected public token declarations/catalogue entries when required;
-5. consumer migration and removal of replaced target-owned logic;
-6. contract, browser, accessibility, visual, and risk-specific proof;
-7. accurate defect and roadmap records;
-8. final task-scope verification required by the root repository policy.
+5. complete official-token-to-renderer state/part/fallback trace for contextual tokens;
+6. consumer migration and removal of replaced target-owned logic;
+7. contract, browser, accessibility, visual, and risk-specific proof;
+8. accurate defect and roadmap records;
+9. final task-scope verification required by the root repository policy.
 
 Do not split research, implementation, target consumer migration, and target-owner removal into permanent partial workflows when one focused task can safely complete them.
 
@@ -60,6 +61,8 @@ Inspect current consumers, legacy behavior, tests, and stories. Classify each re
 - `source-conflict`.
 
 Select only current demand plus the minimum adjacent surface needed for a coherent public API. Negative or restrictive decisions require positive official evidence.
+
+State demand as an observable result. For contextual appearance, identify the rendered part and every relevant state rather than saying only that a consumer “customizes” the component.
 
 ### 2. Resolve dependencies and ownership
 
@@ -89,6 +92,13 @@ Before production edits, update the selected family README and dependency family
 
 Every production mapping, public prop/value/default, slot, emit, controlled state, native mapping, selected token, composition, relevant combination, dependency, renderer gap, and verification claim must have a matrix row.
 
+For every contextual token scenario, add a state/part trace with these columns:
+
+| State | Rendered part | Official Material token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
+| ----- | ------------- | ---------------------------- | ---------------------- | --------------------------- | ----------------------- | ----- |
+
+Include resting and every selected transient or disabled state that can choose a different renderer value. Do not collapse distinct renderer state inputs into one broad row when that would hide a fallback change.
+
 ### 4. Inspect the consumed renderer
 
 Inspect the exact lockfile-resolved family entry point and installed package artifact:
@@ -96,6 +106,7 @@ Inspect the exact lockfile-resolved family entry point and installed package art
 - resolved version and exports;
 - element class and value aliases;
 - properties, attributes, events, slots, native behavior, accessibility, and CSS inputs;
+- direct family inputs and fallback chains for every selected state and rendered part;
 - observable browser behavior for selected scenarios.
 
 Use upstream source, demos, tags, and changelogs only as supporting evidence. Do not use prerelease behavior, another version, private shadow DOM, or private methods.
@@ -127,14 +138,21 @@ Follow `docs/component-tokens.md`.
 
 - Foundation owns supported `--md-ref-*` and `--md-sys-*` roles.
 - The family owns only selected official `--md-comp-<family>-*` tokens and private renderer mappings.
+- Derive each public token name from the exact official Material token path; never derive it from an m3e input name.
 - Every supported public token has one owner and one `token-api.md` entry.
 - Unsupported official tokens remain `deferred` in the family matrix.
+- Select the complete minimum set required by the current rendered parts and states; exclude parts with no current consumer.
+- Trace `official path → public token → renderer input → renderer fallback → consumer result → proof` for every selected token.
 - Verify CSS grammar against every selected current consumer and use browser proof when representation affects rendering.
 - Do not expose `--m3e-*`, publish `--md-private-*`, or recreate a mixed-owner/global component-token file.
+
+A resting token is not proof of hover, focus, press, selected, or disabled behavior. If the renderer selects a separate input in a state, inspect its fallback and include the corresponding official token only when the confirmed scenario requires that rendered result.
 
 ### 7. Migrate consumers
 
 Migrate current consumers to the canonical Vue and selected token APIs. Preserve their scenarios and interaction tier. Remove obsolete target-owned implementation, exports, stories, and tests after all current scenarios have a valid destination. Leave unrelated legacy components unchanged.
+
+For contextual overrides, verify the complete user-visible state set at the real consumer. Do not stop after assigning tokens at the consumer boundary.
 
 ### 8. Verify
 
@@ -148,16 +166,19 @@ At minimum, cover the changed contracts through their faithful owners:
 - observable browser or visual proof for selected renderer-owned appearance;
 - independent dependency presentation proof;
 - public token declaration/catalogue/mapping agreement;
+- exact official-token/public-token/renderer-input/fallback trace;
+- computed rendered-part result in every selected state;
 - selected state combinations, transient-state restoration, and parent/dependency handoff;
 - exact-version defect and reduced-motion assessment where applicable.
 
-Do not inspect private renderer DOM in tests or claim appearance from host state, token presence, or event receipt alone.
+Do not inspect private renderer DOM in tests. Do not claim rendered token correctness from a host custom-property value, source mapping, state flag, or screenshot alone. Browser proof must assert the computed result on the rendered light-DOM part or another public observable surface. Visual proof supplements that assertion and owns only pixel presentation, not keyboard or focus-movement success criteria.
 
 Run focused feedback during implementation. The top-level task then runs one final read-only verification using the exact branch/task scope required by the root `AGENTS.md`. Do not substitute plain `pnpm verify` when the root policy requires `--base` or another scope.
 
 ### 9. Update status truthfully
 
-- Family README owns component-specific facts and matrix state.
+- Family README owns component-specific facts, accepted target mapping, and current implementation gaps.
+- `docs/token-api.md` changes atomically with executable public token declarations.
 - `docs/m3e-defects.md` owns confirmed renderer-defect lifecycle.
 - `docs/roadmap.md` alone owns the current milestone, remaining blockers, and next action.
 - Durable architecture documents must not contain PR-specific completion history.
@@ -168,6 +189,9 @@ Keep the component `migrating` while any selected implementation, dependency, ro
 
 - Requiring an operator-authored implementation brief when the artifact name and repository evidence resolve the work.
 - Public API derived from legacy Mioframe or m3e vocabulary.
+- Public token names derived from renderer input names instead of exact official Material paths.
+- Declaring a contextual token subset without tracing every required state, rendered part, renderer input, and fallback.
+- Publishing tokens for unconsumed parts merely for symmetry or renderer completeness.
 - Raw dependency renderer access from a parent.
 - Private shadow DOM or method access.
 - Parallel state-layer, ripple, focus, accessibility, geometry-engine, or motion implementation in the wrapper.
@@ -176,7 +200,7 @@ Keep the component `migrating` while any selected implementation, dependency, ro
 - Regex or normalized-name lint ignores presented as an exact renderer raw-tag allow-list.
 - Handwritten `new () => HTMLElement` renderer glue.
 - Duplicate token owners, token DSLs, TypeScript token registries, or exhaustive copies of Material/m3e defaults.
-- Completion claims based only on green CI, source inspection, stories without visual-runner proof, or unscoped verification.
+- Completion claims based only on green CI, source inspection, custom-property assertions, stories without visual-runner proof, or unscoped verification.
 
 ## Report
 
@@ -191,6 +215,7 @@ Deferred or source-conflict surface:
 Dependency adapters and statuses:
 Public Vue API:
 Supported public tokens and owners:
+Token state/part/fallback trace:
 Renderer version and installed artifacts inspected:
 Renderer coverage:
 Wrapper corrections:
