@@ -23,7 +23,7 @@ Use the smallest useful set:
 
 Do not build Cartesian products, token matrices, or one baseline per renderer capability.
 
-Themes, RTL, optional m3e slots, and token overrides need dedicated baselines only when:
+Themes, RTL, optional renderer slots, and token overrides need dedicated baselines only when:
 
 - a current Mioframe scenario depends on them;
 - the adapter customizes them;
@@ -31,17 +31,17 @@ Themes, RTL, optional m3e slots, and token overrides need dedicated baselines on
 
 ## Compatibility coverage
 
-Before replacing a public UI owner, identify current stable visible scenarios that consumers actually rely on.
+Before replacing a public UI owner, identify current stable visible scenarios that consumers rely on.
 
-For each materially distinct current scenario, record:
+For each materially distinct scenario, record:
 
 - the canonical baseline that displays it; or
-- a clear reason an existing baseline already covers it; or
-- a reason it has no separate stable visual output.
+- why an existing baseline already covers it; or
+- why it has no separate stable visual output.
 
 A new baseline does not by itself approve a changed result. Current Mioframe compatibility changes require an explicit decision.
 
-Do not require legacy comparison for newly exposed m3e capability that had no previous Mioframe contract.
+Do not require legacy comparison for newly exposed renderer capability that had no previous Mioframe contract.
 
 ## Workflow
 
@@ -52,7 +52,7 @@ Do not require legacy comparison for newly exposed m3e capability that had no pr
 5. Wait for fonts, icons, and fixture readiness.
 6. Capture the smallest readable surface.
 7. Update source-to-spec metadata when ownership changes.
-8. Confirm added, moved, renamed, or removed specs and baselines preserve deterministic ownership or use the documented full-lane fallback.
+8. Confirm added, moved, or removed specs and baselines preserve deterministic ownership or use the documented full-lane fallback.
 9. Inspect every intentional baseline change.
 10. Run focused visual verification and return to the top-level task. This skill does not run a separate final gate.
 11. Prepare operator evidence when the first canonical component or meaningful visible change requires review.
@@ -69,7 +69,7 @@ They do not prove:
 - reduced-motion logic;
 - animation quality.
 
-For private renderer-owned motion, use exact-version source inspection and operator manual testing according to the owning component workflow. Do not create pressed-state fixtures merely to simulate proof of an inaccessible animation.
+For private renderer-owned motion, use exact installed-version source inspection and operator manual testing according to the owning component workflow. Do not create pressed-state fixtures merely to simulate proof of an inaccessible animation.
 
 ## Strict boundary
 
@@ -82,12 +82,12 @@ Do not reproduce token tables through large computed-style assertions.
 - map component, story, theme, font, icon, fixture, and rendering sources to owning specs;
 - do not put visual spec paths into source prefixes to group tests;
 - a changed spec selects itself;
-- a changed baseline follows repository snapshot conventions;
-- unresolved added, modified, deleted, or renamed baseline changes require the documented full visual fallback;
+- a changed baseline follows workspace snapshot conventions;
+- unresolved added, modified, removed, or moved baseline changes require the documented full visual fallback;
 - shared visual configuration requires broad fallback unless consumers are explicit and validated;
 - every visual spec is mapped or has a justified standalone reason.
 
-Until the visual resolver migration is implemented, current `verify` may still run a broader visual lane. Do not claim focused baseline ownership behavior already exists.
+Until visual-impact migration is implemented, `verify` may run a broader visual lane. Do not claim focused baseline ownership behavior already exists.
 
 ## Operator Material review
 
@@ -107,11 +107,11 @@ Report:
 Canonical visual stories: <story ids>
 Current scenarios covered: <summary>
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
-Material/m3e differences requiring review: none | <summary>
+Material/renderer differences requiring review: none | <summary>
 Operator visual and motion acceptance: required | accepted | rejected | blocked (<reason>)
 ```
 
-An automated agent never reports operator acceptance as `accepted`.
+An automated worker never reports operator acceptance as `accepted`.
 
 ## Commands
 
@@ -126,7 +126,7 @@ pnpm test:visual:update
 pnpm verify --only visual --files <source-story-or-spec-paths...>
 ```
 
-Preserve applicable `--base`, `--profile`, and `--files` scope when rerunning visual verification. The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
+Preserve applicable `--profile` and `--files` scope when rerunning visual verification. The top-level task later runs one final read-only project verification.
 
 ## Forbidden
 
