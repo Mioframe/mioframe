@@ -19,6 +19,7 @@ Do not begin implementation when:
 - the applicable handoff is missing or `not ready`;
 - a deterministic workflow is unresolved or `blocked`;
 - required behavior, ownership, source of truth, target state, public contract, dependency, agent-access boundary, or test ownership is unresolved;
+- an official Material component lacks a current complete family `DESIGN.md` or a ready demand-scoped family README;
 - the proposed passes expand scope beyond the accepted contract;
 - task-specific `TEST IMPACT` is incomplete;
 - the simplest viable implementation has not been compared with the proposed design.
@@ -29,7 +30,7 @@ Resolve the upstream contract first.
 
 Record compactly:
 
-- authoring source: ready handoff or named deterministic workflow and artifact;
+- authoring source: ready handoff or named deterministic workflow and ready artifacts;
 - goal and non-goals;
 - confirmed current behavior and evidence;
 - owners and public entry points;
@@ -41,6 +42,15 @@ Record compactly:
 - required removal of replaced logic;
 - `TEST IMPACT`;
 - final verification.
+
+For Material component work, the authoring source must name both:
+
+```text
+components/<family>/DESIGN.md
+components/<family>/README.md
+```
+
+`DESIGN.md` proves the complete official Material contract. The README proves the accepted demand-scoped Mioframe/Vue/m3e contract. Neither artifact substitutes for the other.
 
 Do not repeat repository-wide policy or the complete upstream contract.
 
@@ -90,7 +100,7 @@ When a public or shared owner changes, record:
 
 Use the domain workflow as the primary execution contract:
 
-- official Material component target or proven inseparable family implementation, migration, or adapter change: `material-component-adapter`; use its ready family `README.md` as the deterministic authoring contract and escalate to `architect-handoff` only for unresolved cross-family, theme, renderer-strategy, or public-token architecture;
+- official Material component target or proven inseparable family implementation, migration, or adapter change: `material-component-adapter`; require its current complete family `DESIGN.md` and ready demand-scoped family `README.md`, and escalate to `architect-handoff` only for unresolved cross-family, theme, renderer-strategy, or public-token architecture;
 - project-specific or generic shared UI primitive outside official Material targets: `shared-ui-implementation`;
 - storage/service/worker/provider: applicable scoped rules and `crdt-storage`;
 - diagnostics: `diagnostic-events`;
@@ -106,7 +116,7 @@ The preflight records only task-specific owners, risks, pass order, proof, and m
 - Keep behavior-preserving cleanup separate from functional change when practical.
 - Do not start the next risky pass before the previous one has focused verification.
 - Split the task when one independently valid prerequisite has materially wider blast radius than the selected target.
-- Do not split research, adapter implementation, target consumer migration, and target-owner removal into permanent independent work when one focused PR can safely complete them.
+- Do not split design extraction, adapter implementation, target consumer migration, and target-owner removal into one mixed artifact; the design document remains a distinct first-stage output even when one top-level workflow executes the stages sequentially.
 
 ## Output
 
