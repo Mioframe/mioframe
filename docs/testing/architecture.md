@@ -112,18 +112,18 @@ Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated acti
 
 ## Execution lanes
 
-| Verify label or process      | Executes                                                                                                 |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| static verification          | Formatting, linting, type-checking, instruction compatibility, and other deterministic workspace checks  |
-| `unit-tests`                 | Deterministic behavior and component-contract tests through Vitest                                       |
-| `storybook-behavior`         | Reusable browser behavior through Playwright against isolated Storybook                                  |
-| `e2e`                        | Complete product scenarios through application Playwright tests                                          |
-| `visual`                     | Screenshot regression against canonical Storybook stories                                                |
-| release verification         | Release behavior against the built production artifact                                                   |
-| `mutation`                   | Registered narrow mutation targets                                                                       |
-| persistent performance check | Existing automated benchmark or budget selected by impact metadata                                       |
-| task-specific measurement    | Reproducible one-off measurement named in preflight; not automatically inferred                          |
-| operator review              | Manual Material comparison                                                                               |
+| Verify label or process      | Executes                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| static verification          | Formatting, linting, type-checking, instruction compatibility, and other deterministic workspace checks |
+| `unit-tests`                 | Deterministic behavior and component-contract tests through Vitest                                      |
+| `storybook-behavior`         | Reusable browser behavior through Playwright against isolated Storybook                                 |
+| `e2e`                        | Complete product scenarios through application Playwright tests                                         |
+| `visual`                     | Screenshot regression against canonical Storybook stories                                               |
+| release verification         | Release behavior against the built production artifact                                                  |
+| `mutation`                   | Registered narrow mutation targets                                                                      |
+| persistent performance check | Existing automated benchmark or budget selected by impact metadata                                      |
+| task-specific measurement    | Reproducible one-off measurement named in preflight; not automatically inferred                         |
+| operator review              | Manual Material comparison                                                                              |
 
 ## Proof boundaries
 
