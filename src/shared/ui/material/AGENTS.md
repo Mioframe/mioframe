@@ -27,13 +27,13 @@ material-component-review
 
 Read `docs/component-workflow.md` first.
 
-The operator supplies the component name once. The `material-component` orchestrator autonomously executes as many isolated stage scopes as are internally actionable, validates each handoff, processes dependencies, routes corrections backward, and continues until completion or a genuine external blocker.
+The operator supplies the component name once. The orchestrator executes every internally actionable stage through isolated workers, validates each handoff, processes dependencies, routes corrections backward, and continues until completion or a genuine external blocker.
 
-One stage scope owns one reasoning focus and one artifact. Every stage scope must run in a fresh agent/subagent context. The thin orchestrator may select the next stage, launch the stage worker, validate its declared outputs, and route the result; it must not perform design research, architecture decisions, implementation, migration, or review itself.
+One stage scope owns one reasoning focus and one artifact. Every stage runs in a fresh worker context. The orchestrator may select, launch, validate, and route; it must not perform design research, architecture decisions, implementation, migration, or review itself.
 
-A stage worker receives only the component name, current repository state, applicable rules, and paths to canonical upstream artifacts. Hidden reasoning, conversational summaries, or prose from another worker are not valid handoffs. The review worker must be independent from workers that authored the architecture, implementation, or migration under review.
+A stage worker receives only the component name, readable workspace files, applicable rules, and paths to canonical upstream artifacts. Hidden reasoning, conversational summaries, and prose from another worker are not valid handoffs. The review worker must be independent from workers that authored architecture, implementation, or migration.
 
-If the available environment cannot create a fresh worker for the next stage, stop the outer workflow as an infrastructure blocker. Do not simulate isolation by continuing all stages in one agent context. Do not require repeated operator commands to advance an otherwise available state machine.
+If the environment cannot create a fresh worker, stop the outer workflow as an orchestration blocker. Do not simulate isolation inside one agent context and do not require repeated operator commands.
 
 The orchestrator always selects the earliest missing, stale, blocked, incomplete, or invalid stage. Later code does not permit skipping an earlier stage.
 
@@ -43,13 +43,13 @@ Required stage gates:
 - `ARCHITECTURE.md`: demand-scoped deterministic plan, status `ready`;
 - `IMPLEMENTATION.md`: architecture implemented with no deviations, status `complete`;
 - `MIGRATION.md`: consumers migrated and legacy ownership removed, status `complete`;
-- `REVIEW.md`: independent review on the resulting head.
+- `REVIEW.md`: independent review of the resulting workspace.
 
-A required official dependency passes the same stages as a first-class family. Pause the parent, process dependency stages automatically in separate fresh workers, and resume the parent when the required dependency gate is complete. Do not ask the operator to launch a dependency command.
+A required official dependency passes the same stages as a first-class family. Pause the parent, process the dependency automatically through separate fresh workers, and resume the parent when the required dependency gate is complete.
 
 `README.md` is only a short family index. It is not a substitute for any stage artifact and must not duplicate mutable stage status or next action.
 
-Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior outside the deterministic Material workflow.
+Use `architect-handoff` only for unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior outside the deterministic Material workflow.
 
 ## Authority
 
@@ -58,26 +58,26 @@ Use `architect-handoff` only when work changes unresolved cross-family ownership
 3. Family `ARCHITECTURE.md` selects current Mioframe demand and resolves Vue API, dependencies, ownership, tokens, renderer mapping, proof, and migration.
 4. Family code plus `IMPLEMENTATION.md` records component-owned implementation and proof.
 5. `MIGRATION.md` records consumer adoption and legacy removal.
-6. `REVIEW.md` records independent compliance and merge readiness.
+6. `REVIEW.md` records independent compliance and completion readiness.
 7. Canonical CSS declarations plus `docs/token-api.md` define the supported public token surface.
 8. `docs/m3e-defects.md` owns confirmed renderer-defect identities and lifecycle.
 9. `docs/roadmap.md` alone owns project-wide milestone status and next action.
 
-The installed lockfile-resolved `@m3e/web` artifact and observable browser behavior define the private renderer capability actually consumed. Upstream renderer source, tags, demos, and changelogs are supporting evidence only. Legacy Mioframe and m3e APIs are not public-contract authorities.
+The installed lockfile-resolved `@m3e/web` artifact and observable browser behavior define the private renderer capability actually consumed. Upstream renderer source, demos, and changelogs are supporting evidence only. Legacy Mioframe and renderer APIs are not public-contract authorities.
 
 ## Stage boundaries
 
 ### DESIGN.md
 
-Answers only what official Material defines. It includes the complete official variants, configurations, anatomy, states, behavior, guidance, accessibility, geometry, motion, related components, and component-token catalogue, whether or not Mioframe uses them.
+Answers only what official Material defines. It includes complete variants, configurations, anatomy, states, behavior, guidance, accessibility, geometry, motion, related components, and component-token catalogue, whether or not Mioframe uses them.
 
-It contains no current demand, Vue API, m3e mapping, code, tests, migration, proof, or PR status.
+It contains no current demand, Vue API, renderer mapping, code, tests, migration, proof, or delivery status.
 
 A source freshness threshold triggers a refresh attempt but does not by itself make a complete snapshot stale. `stale` requires evidence of newer official content. `blocked` requires genuinely missing or incomplete official content after available fallbacks.
 
 ### ARCHITECTURE.md
 
-Answers what Mioframe must implement now and how. It references exact `DESIGN.md` sections, resolves dependencies and owners, defines the complete selected public Vue/token contracts, renderer mappings and gaps, implementation passes, `TEST IMPACT`, migration inventory, acceptance criteria, and forbidden approaches.
+Answers what Mioframe must implement now and how. It references exact `DESIGN.md` sections, resolves dependencies and owners, defines selected public Vue/token contracts, renderer mappings and gaps, implementation passes, `TEST IMPACT`, migration inventory, acceptance criteria, and forbidden approaches.
 
 It contains no implementation progress. Coding must not begin while its status is not `ready`.
 
@@ -89,22 +89,22 @@ Implementation does not migrate product consumers or remove consumer-facing lega
 
 ### MIGRATION.md
 
-Owns the complete consumer inventory, migration, preserved user scenarios and failure paths, obsolete ownership removal, final current-head verification, and review readiness.
+Owns complete consumer inventory, migration, preserved user scenarios and failure paths, obsolete ownership removal, final required verification, and review readiness.
 
 Migration does not redesign the component.
 
 ### REVIEW.md
 
-Independently compares the full result with official design, accepted architecture, implementation, consumers, repository rules, proof, verification, and operator visual/motion acceptance. Review does not fix code; it returns findings to the orchestrator, which routes them to the earliest owning stage.
+Independently compares the full result with official design, accepted architecture, implementation, consumers, workspace rules, proof, verification, and operator visual/motion acceptance. Review does not fix code; it returns findings to the orchestrator for routing to the earliest owning stage.
 
 ## Public API and ownership
 
 - Expose a demand-scoped official Material contract expressed idiomatically in Vue.
-- Keep public types and terminology independent from m3e.
-- Do not add unused renderer/native/token surface for hypothetical completeness.
+- Keep public types and terminology independent from the renderer.
+- Do not add unused renderer, native, or token surface for hypothetical completeness.
 - Define precedence and restoration for public states that may coexist.
 - A composed official Material component remains independently owned and is used through its canonical `MD*` API.
-- The parent owns composition meaning and state handoff; the dependency owns its own stage artifacts, renderer mapping, accessibility, geometry, tokens, defects, tests, and visual proof.
+- The parent owns composition meaning and state handoff; the dependency owns its own artifacts, renderer mapping, accessibility, geometry, tokens, defects, tests, and visual proof.
 - Parent composition proof does not replace standalone dependency proof.
 - Visual loading/busy presentation and activation blocking are independent unless `ARCHITECTURE.md` explicitly assigns both.
 
@@ -117,36 +117,36 @@ Independently compares the full result with official design, accepted architectu
 - `components/<family>/tokens.css` owns only that family’s selected official `--md-comp-<family>-*` surface and private renderer mappings.
 - `docs/token-api.md` lists every supported public token; declarations and catalogue entries change together.
 - `--app-*` belongs outside Material. `--m3e-*` and `--md-private-*` remain private.
-- Derive every public component-token name from the exact official path in `DESIGN.md`, never from m3e vocabulary.
+- Derive every public component-token name from the exact official path in `DESIGN.md`, never from renderer vocabulary.
 - For contextual tokens, `ARCHITECTURE.md` traces every required state and rendered part through `official path → public token → renderer input → fallback → consumer result → proof`.
 - Do not publish tokens for unconsumed parts merely for symmetry or renderer completeness.
-- Do not recreate a mixed-owner legacy token file, compatibility alias, duplicate public owner, TypeScript token registry, token DSL, or exhaustive public Material/m3e copy.
+- Do not recreate a mixed-owner legacy token file, compatibility alias, duplicate public owner, TypeScript token registry, token DSL, or exhaustive public Material/renderer copy.
 
 ## Renderer boundary
 
-Prefer documented m3e APIs. Keep renderer imports, tags, types, events, and private CSS inputs inside the canonical owning implementation.
+Prefer documented renderer APIs. Keep renderer imports, tags, types, events, and private CSS inputs inside the canonical owning implementation.
 
 A temporary exact-version workaround is allowed only when the gate in `docs/component-adapter.md` is satisfied and `ARCHITECTURE.md` plus `docs/m3e-defects.md` record it. It must remain owner-local, public-host-only, removable, and must not recreate renderer-owned interaction, accessibility, geometry, state, or motion systems.
 
-Do not override renderer-owned interaction timing or transient geometry with host pseudo-classes or renderer-CSS switching. Route unacceptable behavior to `m3e-fix` or `blocked`.
+Do not override renderer-owned interaction timing or transient geometry with host pseudo-classes or renderer-CSS switching. Route unacceptable behavior to a renderer correction or `blocked`.
 
 Vue custom-element glue derives from package-exported element classes or `HTMLElementTagNameMap`. `config/vueCustomElements.ts` is the exact selected raw-tag allow-list.
 
 ## Verification and completion
 
-Use repository testing architecture and the proof selected by `ARCHITECTURE.md`.
+Use the workspace testing architecture and proof selected by `ARCHITECTURE.md`.
 
 Observable renderer-owned appearance requires browser or visual proof. Host state, token presence, event receipt, custom-property value, source inspection, or a story alone is insufficient.
 
 For contextual tokens, browser proof asserts the computed rendered result for each selected state and part. Visual proof supplements it; behavior tests own keyboard and focus success criteria.
 
-Final verification uses the exact task scope required by root `AGENTS.md`.
+Final verification uses the exact task scope required by root `AGENTS.md` and the `verification` skill.
 
-A component remains incomplete until all five stage artifacts are current, final verification passes, and required operator visual/motion acceptance is recorded. Green CI alone is not architecture approval.
+A component remains incomplete until all five stage artifacts are current, final verification passes, and required operator visual/motion acceptance is recorded. Automated checks alone are not architecture approval.
 
 ## Genuine external blockers
 
-The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable permissions/tools, inability to create the required fresh stage worker, an unresolved material architecture decision, an irreducible external/infrastructure gate, required operator visual/motion acceptance, or safety-required input.
+The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable required source tools or permissions, inability to create the required fresh worker, an unresolved material architecture decision, a required project verification command that cannot execute, required operator visual/motion acceptance, or safety-required input.
 
 A completed stage, failed refresh helper, cache age, ordinary code/test finding, or missing repeated operator command is not an external blocker.
 
