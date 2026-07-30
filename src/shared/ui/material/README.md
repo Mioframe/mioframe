@@ -40,7 +40,7 @@ components/<family>/README.md
 Artifact roles:
 
 - `DESIGN.md` — complete normalized official Material contract;
-- `ARCHITECTURE.md` — demand-scoped Mioframe/Vue/m3e plan;
+- `ARCHITECTURE.md` — demand-scoped Mioframe/Vue/renderer plan;
 - `IMPLEMENTATION.md` — component implementation and proof handoff;
 - `MIGRATION.md` — consumer migration and legacy removal;
 - `REVIEW.md` — independent final compliance review;
@@ -48,7 +48,7 @@ Artifact roles:
 
 A missing, stale, blocked, or incomplete earlier artifact blocks later stage execution. Current code, renderer artifacts, stories, tests, and family README are not substitutes.
 
-`material-component <name>` accepts only the component name and autonomously orchestrates the isolated stages in order. A thin orchestrator launches a fresh agent/subagent worker for each stage, validates only repository artifacts, and discards that worker context before launching the next one. The operator does not relaunch the command after every stage. If fresh-worker orchestration is unavailable, the workflow is blocked rather than executed in one context. See `docs/component-workflow.md`.
+`material-component <name>` accepts only the component name and autonomously orchestrates isolated stages in order. A thin orchestrator launches a fresh worker for each stage, validates workspace artifacts, and discards that worker context before launching the next one. The operator does not relaunch the command after every stage. If fresh-worker orchestration is unavailable, the workflow is blocked rather than executed in one context. See `docs/component-workflow.md`.
 
 ## Public component API
 
@@ -63,7 +63,7 @@ A public `MD*` component:
 - uses official Material terminology selected by its ready architecture;
 - exposes only current demand plus the minimum coherent surface;
 - keeps deferred official capability expandable without renderer-shaped API;
-- exposes no raw m3e tags, types, events, or CSS inputs;
+- exposes no raw renderer tags, types, events, or CSS inputs;
 - contains no non-Material behavior without an explicit architecture decision.
 
 Vue props, emits, slots, refs, native mappings, and explicit dependency composition may represent Material semantics without adding product semantics.
@@ -112,10 +112,10 @@ Not allowed:
 - renderer API exported to consumers;
 - private shadow-DOM access or copied renderer internals;
 - duplicate renderer geometry, state-layer, ripple, focus, elevation, accessibility, or motion systems;
-- global component-token ownership, duplicate public token owners, token DSLs, or exhaustive runtime Material/m3e copies;
+- global component-token ownership, duplicate public token owners, token DSLs, or exhaustive runtime Material/renderer copies;
 - silent legacy non-Material extensions.
 
-Repository enforcement rejects direct `@m3e/web` imports and raw `m3e-*` Vue elements outside this directory. `config/vueCustomElements.ts` is the exact compiler allow-list.
+Workspace checks reject direct renderer imports and raw renderer Vue elements outside this directory. `config/vueCustomElements.ts` is the exact compiler allow-list.
 
 ## Typing, proof, and completion
 
@@ -125,6 +125,6 @@ Architecture selects proof before implementation. Component tests own Vue mappin
 
 Renderer-owned appearance is not inferred from source inspection, token presence, events, host state, or a story alone.
 
-Final verification uses the exact branch/task scope required by root policy. Operator visual/motion acceptance is a separate gate and must not be fabricated by agents.
+Final verification uses the project command selected by root policy. Operator visual/motion acceptance is a separate gate and must not be fabricated by workers.
 
 See `docs/roadmap.md` for current milestone state and next action.
