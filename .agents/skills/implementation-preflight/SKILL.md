@@ -19,7 +19,7 @@ Do not begin implementation when:
 - the applicable handoff is missing or `not ready`;
 - a deterministic workflow is unresolved or `blocked`;
 - required behavior, ownership, source of truth, target state, public contract, dependency, agent-access boundary, or test ownership is unresolved;
-- an official Material component lacks a current complete family `DESIGN.md` or a ready demand-scoped family README;
+- an official Material component lacks a current complete family `DESIGN.md` or ready family `ARCHITECTURE.md`;
 - the proposed passes expand scope beyond the accepted contract;
 - task-specific `TEST IMPACT` is incomplete;
 - the simplest viable implementation has not been compared with the proposed design.
@@ -43,14 +43,16 @@ Record compactly:
 - `TEST IMPACT`;
 - final verification.
 
-For Material component work, the authoring source must name both:
+For Material component implementation, the authoring source must name:
 
 ```text
 components/<family>/DESIGN.md
-components/<family>/README.md
+components/<family>/ARCHITECTURE.md
 ```
 
-`DESIGN.md` proves the complete official Material contract. The README proves the accepted demand-scoped Mioframe/Vue/m3e contract. Neither artifact substitutes for the other.
+`DESIGN.md` proves the complete official contract. `ARCHITECTURE.md` proves the accepted demand-scoped Mioframe/Vue/m3e implementation plan. Neither substitutes for the other.
+
+The implementation preflight must not include consumer migration passes. Those belong to a later `material-component-migration` invocation after `IMPLEMENTATION.md` is complete.
 
 Do not repeat repository-wide policy or the complete upstream contract.
 
@@ -86,7 +88,7 @@ Do not list proof merely because a lane exists. Every selected proof maps to a c
 
 ## Consumer migration
 
-When a public or shared owner changes, record:
+When a public or shared owner changes, migration preflight records:
 
 - affected consumer inventory;
 - current and canonical owner;
@@ -96,19 +98,23 @@ When a public or shared owner changes, record:
 - obsolete target-owned implementation and exports to remove;
 - unrelated legacy components or shared modules that must remain unchanged.
 
+This record is created in the migration stage, not component implementation.
+
 ## Workflow routing
 
 Use the domain workflow as the primary execution contract:
 
-- official Material component target or proven inseparable family implementation, migration, or adapter change: `material-component-adapter`; require its current complete family `DESIGN.md` and ready demand-scoped family `README.md`, and escalate to `architect-handoff` only for unresolved cross-family, theme, renderer-strategy, or public-token architecture;
-- project-specific or generic shared UI primitive outside official Material targets: `shared-ui-implementation`;
+- official Material component: `material-component` selects exactly one of design, architecture, implementation, migration, or review;
+- Material implementation edits: `material-component-implementation`, requiring current `DESIGN.md` and ready `ARCHITECTURE.md`;
+- Material consumer migration: `material-component-migration`, requiring complete `IMPLEMENTATION.md`;
+- project-specific or generic shared UI outside official Material targets: `shared-ui-implementation`;
 - storage/service/worker/provider: applicable scoped rules and `crdt-storage`;
 - diagnostics: `diagnostic-events`;
-- ordinary Vue implementation mechanics: `vue-component-implementation`.
+- ordinary Vue mechanics: `vue-component-implementation`.
 
 Use testing skills according to the proof selected in `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
-The preflight records only task-specific owners, risks, pass order, proof, and metadata changes. It must not restate resolver implementation or general testing policy.
+The preflight records only task-specific owners, risks, pass order, proof, and metadata changes. It must not restate general workflow or testing policy.
 
 ## Breadth control
 
@@ -116,7 +122,7 @@ The preflight records only task-specific owners, risks, pass order, proof, and m
 - Keep behavior-preserving cleanup separate from functional change when practical.
 - Do not start the next risky pass before the previous one has focused verification.
 - Split the task when one independently valid prerequisite has materially wider blast radius than the selected target.
-- Do not split design extraction, adapter implementation, target consumer migration, and target-owner removal into one mixed artifact; the design document remains a distinct first-stage output even when one top-level workflow executes the stages sequentially.
+- Do not recombine Material research, architecture, implementation, migration, and review into one preflight or agent task.
 
 ## Output
 
