@@ -99,17 +99,16 @@ The accepted public Button token surface is exactly:
 --md-comp-button-text-pressed-state-layer-color
 ```
 
-The runtime declarations, private m3e mappings, Snackbar inverse-primary overrides, and rendered label proof now use these official paths. The old renderer-derived `hover`/`focus` names, contextual icon token, and five-token provisional surface are removed without aliases.
+The runtime declarations, private m3e mappings, Snackbar inverse-primary overrides, rendered label proof, and populated `token-api.md` catalogue now use these official paths. The old renderer-derived `hover`/`focus` names, contextual icon token, and five-token provisional surface are removed without aliases.
 
 ## Current correction findings
 
-The architect follow-up found three completion issues that the previous independent review missed:
+The architect follow-up found two completion issues that the previous independent review missed:
 
 1. **Implementation:** Button visual specs still assert `toBeFocused()`. Focus success belongs to Storybook behavior tests; visual specs should establish the deterministic focus state and capture screenshots only.
 2. **Migration:** `MDAppBar.__trailing-elements` still declares ineffective legacy `--md-content-color` without an accepted contextual contract. Remove the declaration without replacing it with a descendant color bridge.
-3. **Catalogue documentation:** `token-api.md` contains the correct seven Button rows but stale correction status and pre-stage prose. Return it to the normal populated catalogue state after confirming declarations, mappings, and proof remain aligned.
 
-These findings do not invalidate `DESIGN.md`, `ARCHITECTURE.md`, the public Button API, or the accepted seven-token contract.
+These findings do not invalidate `DESIGN.md`, `ARCHITECTURE.md`, the public Button API, the accepted seven-token contract, or the current token catalogue.
 
 ## Required correction sequence
 
@@ -123,7 +122,7 @@ must now:
 
 1. recognize `REVIEW.md` return stage `implementation`;
 2. launch a fresh implementation worker to remove behavior assertions from the visual lane while retaining behavior coverage;
-3. launch a fresh migration worker to remove the AppBar legacy declaration and synchronize `token-api.md`;
+3. launch a fresh migration worker to remove the AppBar legacy declaration and refresh downstream stage records;
 4. run the exact required final verification for the resulting head;
 5. launch a new independent review worker;
 6. stop only at the operator visual/motion gate if no additional findings remain.
@@ -136,7 +135,7 @@ The orchestrator must not repeat design or architecture unless a correction work
 | --- | --------------------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | M0  | autonomous staged m3e workflow and foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
 | M1a | `MDLoadingIndicator` staged dependency family | `operator-review` | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance; fresh review |
-| M1  | `MDButton` staged action family               | `correction`      | M1a        | three correction findings resolved; final CI; operator visual/motion acceptance; fresh independent review                       |
+| M1  | `MDButton` staged action family               | `correction`      | M1a        | two correction findings resolved; final CI; operator visual/motion acceptance; fresh independent review                         |
 | M2  | `MDSwitch` stateful pilot                     | `planned`         | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
 | M3  | sequential component migration                | `planned`         | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                     |
 
