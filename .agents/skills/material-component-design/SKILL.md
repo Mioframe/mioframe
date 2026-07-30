@@ -13,7 +13,7 @@ This is one internal stage scope. When invoked by `material-component`, complete
 
 The only required input is the Material component name.
 
-Accept official names and repository aliases such as:
+Accept official names and workspace aliases such as:
 
 ```text
 Button
@@ -22,7 +22,7 @@ Loading indicator
 MDLoadingIndicator
 ```
 
-Resolve the official component and canonical family path from repository and official evidence. Ask for clarification only when the name genuinely maps to multiple distinct official Material components.
+Resolve the official component and canonical family path from workspace and official evidence. Ask for clarification only when the name genuinely maps to multiple distinct official Material components.
 
 ## Output artifact
 
@@ -44,7 +44,7 @@ The artifact is a complete normalized official-design snapshot. It is not an imp
 - the existing family `DESIGN.md`, when present;
 - the official Material source cache/index and exact applicable component pages.
 
-Do not read the current family README, architecture, implementation, stories, tests, m3e package, current consumers, migration record, review, or roadmap before the official design ledger is complete. Those sources can bias a supposedly complete official snapshot toward the currently implemented subset.
+Do not read the current family README, architecture, implementation, stories, tests, renderer package, current consumers, migration record, review, or roadmap before the official design ledger is complete. Those sources can bias a complete official snapshot toward the currently implemented subset.
 
 ## Autonomous official source pass
 
@@ -61,15 +61,15 @@ Inspect every applicable official source, including:
 
 Use the available source chain autonomously:
 
-1. current official Material MCP/source service;
+1. current official Material source service;
 2. official cache refresh and route index;
 3. direct official routes when available;
-4. newest complete repository or MCP cache snapshot;
+4. newest complete workspace or source-cache snapshot;
 5. resolved official token resources associated with that snapshot.
 
 Do not stop after the first failed refresh helper. Continue through all available fallbacks.
 
-Record exact source routes, titles, capture date, source/cache revision, refresh attempts, and the fallback selected.
+Record exact source routes, titles, capture date, source/cache revision, refresh attempts, and fallback selected.
 
 A freshness threshold only triggers a refresh attempt. It does not make a complete snapshot stale by itself.
 
@@ -79,11 +79,11 @@ Use statuses exactly:
 - `stale` — affirmative evidence exists that official content or source revision changed after the snapshot;
 - `blocked` — required content remains unavailable or incomplete after all available fallbacks.
 
-If the complete cached pages and token resource are available and no newer revision is known, a failed route-index or refresh request must be recorded as a tooling limitation while the document remains `current`.
+If complete cached pages and token resource are available and no newer revision is known, a failed route-index or refresh request must be recorded as a tooling limitation while the document remains `current`.
 
 ## Completeness rules
 
-The document must describe the complete official component contract, including unsupported-by-Mioframe capability.
+The document must describe the complete official component contract, including capability not currently supported by Mioframe.
 
 Cover:
 
@@ -111,7 +111,7 @@ For every official component token, preserve:
 - official display name;
 - system and reference aliases;
 - documented values for light, dark, high contrast, and other published modes;
-- unresolved or absent values exactly as unresolved/absent.
+- unresolved or absent values exactly as unresolved or absent.
 
 Do not rename tokens into Mioframe CSS names and do not select a supported subset. Selection belongs to `material-component-architecture`.
 
@@ -122,10 +122,10 @@ Do not rename tokens into Mioframe CSS names and do not select a supported subse
 - current product demand;
 - `implement-now`, `defer`, or migration decisions;
 - Vue API design;
-- m3e API, mappings, fallback chains, defects, or workarounds;
+- renderer API, mappings, fallback chains, defects, or workarounds;
 - implementation paths;
 - tests or verification plans;
-- PR or roadmap status.
+- delivery or roadmap status.
 
 Use structured paraphrase for prose. Preserve exact names, paths, measurements, token values, and source references. Do not copy entire official pages verbatim.
 
@@ -135,12 +135,12 @@ Before reporting complete, verify that:
 
 1. every applicable official page is represented;
 2. the document includes the full official surface, not only a selected subset;
-3. all component tokens from the official specs are present;
+3. all component tokens from official specs are present;
 4. no Mioframe or renderer decision leaked into the artifact;
 5. source conflicts and extraction gaps are explicit;
 6. status follows the lifecycle rules above.
 
-After writing the artifact, return control to the `material-component` orchestrator. Do not personally execute architecture inside this stage scope. The outer orchestrator may start architecture immediately in a fresh scope when the design status is `current`.
+After writing the artifact, return control to the `material-component` orchestrator. Do not personally execute architecture inside this stage scope. The outer orchestrator may start architecture immediately in a fresh scope when design status is `current`.
 
 ## Report
 
@@ -168,8 +168,8 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 ## Forbidden
 
 - Producing only a summary or demand-scoped subset.
-- Using the family README as the official design source.
-- Deriving official facts from current code, stories, tests, m3e, or consumers.
+- Using family README as the official design source.
+- Deriving official facts from current code, stories, tests, renderer artifacts, or consumers.
 - Mixing architecture, implementation, renderer, migration, verification, or review decisions into `DESIGN.md`.
 - Omitting unused official capability.
 - Treating links to official pages as a substitute for the complete local description.
