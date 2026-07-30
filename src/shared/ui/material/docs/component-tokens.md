@@ -119,7 +119,7 @@ When no official token exists, choose one explicit result:
 Before implementing a contextual component-token override, the family README must trace every required rendered state and part:
 
 | State | Rendered part | Official Material token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
-| ----- | ------------- | ---------------------------- | ---------------------- | --------------------------- | ----------------------- | ----- |
+| ----- | ------------- | ---------------------------- | --------------------- | --------------------------- | ----------------------- | ----- |
 
 The trace is required for resting and every selected transient or disabled state that can choose a different renderer value. Inspect the exact lockfile-resolved artifact rather than assuming that a resting token continues to apply during hover, focus, press, selection, or disablement.
 

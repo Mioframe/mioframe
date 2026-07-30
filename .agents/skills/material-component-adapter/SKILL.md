@@ -95,7 +95,7 @@ Every production mapping, public prop/value/default, slot, emit, controlled stat
 For every contextual token scenario, add a state/part trace with these columns:
 
 | State | Rendered part | Official Material token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
-| ----- | ------------- | ---------------------------- | ---------------------- | --------------------------- | ----------------------- | ----- |
+| ----- | ------------- | ---------------------------- | --------------------- | --------------------------- | ----------------------- | ----- |
 
 Include resting and every selected transient or disabled state that can choose a different renderer value. Do not collapse distinct renderer state inputs into one broad row when that would hide a fallback change.
 

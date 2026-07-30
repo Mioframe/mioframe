@@ -51,7 +51,7 @@ The matrix covers every selected public prop, value, default, slot, emit, contro
 For a contextual token scenario, the README also contains a state/part trace:
 
 | State | Rendered part | Official Material token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
-| ----- | ------------- | ---------------------------- | ---------------------- | --------------------------- | ----------------------- | ----- |
+| ----- | ------------- | ---------------------------- | --------------------- | --------------------------- | ----------------------- | ----- |
 
 The trace includes resting and every selected transient or disabled state whose renderer value can differ. It must not infer public names from renderer inputs or assume a resting token remains effective in another state.
 
