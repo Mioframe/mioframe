@@ -46,9 +46,9 @@ Artifact roles:
 - `REVIEW.md` — independent final compliance review;
 - `README.md` — short navigation index only.
 
-A missing, stale, blocked, or incomplete earlier artifact blocks all later stages. Current code, renderer artifacts, stories, tests, and family README are not substitutes.
+A missing, stale, blocked, or incomplete earlier artifact blocks later stage execution. Current code, renderer artifacts, stories, tests, and family README are not substitutes.
 
-`material-component <name>` runs exactly one next stage and stops. See `docs/component-workflow.md`.
+`material-component <name>` accepts only the component name and autonomously orchestrates the isolated stages in order. Each internal stage owns one artifact and returns control to the orchestrator. The operator does not relaunch the command after every stage. See `docs/component-workflow.md`.
 
 ## Public component API
 
