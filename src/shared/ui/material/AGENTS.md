@@ -8,7 +8,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 - The router resolves official name, existing family, current demand, mode, dependencies, renderer evidence, proof, and verification scope from the repository.
 - `material-component-adapter` is the single canonical implementation workflow.
 - `material-component-completion` adds completion preflight for an existing partial, incidental, dependency-created, previously migrated, or otherwise uncertain component; it does not define another implementation process.
-- Read `docs/architecture.md`, `docs/component-adapter.md`, `docs/component-tokens.md`, `docs/token-api.md`, `docs/m3e-defects.md`, `docs/roadmap.md`, and the selected family README.
+- Read `docs/architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, `roadmap.md`, and the selected family README.
 - Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or another decision not already resolved by canonical evidence.
 - Complete required official Material dependency adapters before composing them from a parent.
 - When a dependency is discovered, process its name automatically as the next first-class family through the same name-only routing and complete adapter workflow. Do not require another operator prompt. Resume parent composition only after dependency closure.
@@ -43,6 +43,10 @@ Upstream source, tags, demos, and changelogs are supporting evidence only. Legac
 - `docs/token-api.md` lists every supported public token; declarations and catalogue entries change together.
 - `--app-*` belongs outside Material. `--m3e-*` and `--md-private-*` remain private.
 - Verify CSS value grammar against every selected current consumer. Equal numeric meaning does not guarantee grammar compatibility.
+- Derive every public `--md-comp-*` name from the exact official Material token path, never from m3e vocabulary.
+- For contextual tokens, trace every required state and rendered part through `official path → public token → renderer input → fallback → consumer result → browser proof`.
+- A resting token does not prove hover, focus, press, selected, or disabled output when the renderer uses separate state inputs.
+- Do not publish tokens for an unconsumed rendered part merely for symmetry or renderer completeness.
 - Do not recreate a mixed-owner legacy token file, compatibility alias, duplicate public owner, TypeScript token registry, token DSL, or exhaustive copy of Material/m3e defaults.
 
 ## Renderer boundary
@@ -59,7 +63,9 @@ Vue custom-element glue must derive from package-exported element classes or `HT
 
 ## Verification and completion
 
-Use the proof model defined by `docs/component-adapter.md` and repository testing policy. Observable renderer-owned appearance requires browser or visual proof; host state, token presence, event receipt, or source inspection alone is insufficient.
+Use the proof model defined by `docs/component-adapter.md` and repository testing policy. Observable renderer-owned appearance requires browser or visual proof; host state, token presence, event receipt, custom-property value, or source inspection alone is insufficient.
+
+For contextual tokens, browser proof must assert the computed rendered result for each selected state and part. Visual proof supplements that result; it does not own keyboard or focus-movement success criteria.
 
 Final verification uses the exact task scope required by the root `AGENTS.md`; Material-specific documents must not replace it with an unscoped command.
 
