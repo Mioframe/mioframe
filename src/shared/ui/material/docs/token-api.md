@@ -8,7 +8,7 @@ It is not the complete official Material token catalogue. Complete official comp
 
 ## Current correction note
 
-The Button and Loading Indicator families do not yet have complete current `DESIGN.md` artifacts. Their runtime and adapter completion therefore remains blocked even where executable declarations already exist.
+The Button and Loading Indicator families do not yet have complete current `DESIGN.md` artifacts. Their runtime implementation and staged completion therefore remain blocked even where executable declarations already exist.
 
 The Button entries below mirror the current pre-merge runtime declarations so declaration/catalogue agreement remains inspectable. They are not accepted as the final supported Button API.
 
@@ -18,7 +18,7 @@ The current Button declarations have three known defects:
 - missing hovered/focused/pressed label-text tokens required by the Snackbar action scenario;
 - an unconsumed contextual icon token.
 
-A provisional seven-token target is recorded in `components/button/README.md` and `docs/roadmap.md`, but it must be confirmed against the complete Button `DESIGN.md` before implementation. The coding correction must replace the Button runtime declarations and this catalogue section atomically, without compatibility aliases. No consumer should adopt the current five-token Button section.
+A provisional seven-token candidate is recorded in `docs/roadmap.md`, but the Button architecture stage must confirm or correct it against the complete Button `DESIGN.md`. The implementation correction must replace the Button runtime declarations and this catalogue section atomically, without compatibility aliases. No consumer should adopt the current five-token Button section.
 
 ## Inclusion rule
 
@@ -26,13 +26,14 @@ A token normally appears here only when it is:
 
 1. present under an exact official path in the current family `DESIGN.md` or an applicable official foundation source;
 2. intentionally supported by Mioframe now;
-3. declared by its canonical runtime owner;
-4. mapped to the rendered result where required;
-5. covered by representative verification.
+3. selected by a ready family `ARCHITECTURE.md` when it is component-owned;
+4. declared by its canonical runtime owner;
+5. mapped to the rendered result where required;
+6. covered by representative verification.
 
-Official component tokens not supported at runtime remain completely documented in the family `DESIGN.md` and are classified as `deferred` only where relevant in the family README. m3e variables and owner-local private bridges are never listed here.
+Official component tokens not supported at runtime remain completely documented in the family `DESIGN.md` and are classified as `defer` only in the family `ARCHITECTURE.md`. m3e variables and owner-local private bridges are never listed here.
 
-The temporary Button correction entries below are the only pre-merge exception to the normal inclusion rule. They exist solely to describe the current executable declarations until the design stage and accepted replacement land.
+The temporary Button correction entries below are the only pre-merge exception to the normal inclusion rule. They exist solely to describe the current executable declarations until the design and architecture stages produce an accepted replacement.
 
 ## Runtime owners
 
@@ -113,7 +114,7 @@ Material source for all rows: `m3.material.io/styles/color/roles` (system color 
 | `--md-sys-color-outline`, `--md-sys-color-outline-variant`                                                                                                                                                 | `<color>` | outline role                                     | neutral-variant 50/80 → neutral-variant 60/30              | theme | `foundation/theme.css` | consumed by MD\* adapters                                                                                                     | same as above                                                                                        |
 | `--md-sys-color-scrim`, `--md-sys-color-shadow`                                                                                                                                                            | `<color>` | scrim and elevation shadow base color            | neutral 0 → neutral 0                                      | theme | `foundation/theme.css` | `--md-private-elevation-shadow-color` fallback in `foundation/tokens.css`                                                     | elevation-consuming component visual baselines                                                       |
 | `--md-sys-color-primary-fixed`, `--md-sys-color-on-primary-fixed`, `--md-sys-color-primary-fixed-dim`, `--md-sys-color-on-primary-fixed-variant`                                                           | `<color>` | primary fixed-tone add-ons                       | primary 90/10/80/30 (fixed roles do not invert for dark)   | theme | `foundation/theme.css` | consumed by MD\* adapters                                                                                                     | same as above                                                                                        |
-| `--md-sys-color-secondary-fixed`, `--md-sys-color-on-secondary-fixed`, `--md-sys-color-secondary-fixed-dim`, `--md-sys-color-on-secondary-fixed-variant`                                                   | `<color>` | secondary fixed-tone add-ons                     | secondary 90/10/80/30 (fixed roles do not invert for dark) | theme | `foundation/theme.css` | consumed by MD\* adapters                                                                                                     | same as above                                                                                        |
+| `--md-sys-color-secondary-fixed`, `--md-sys-color-on-secondary-fixed`, `--md-sys-color-secondary-fixed-dim`, `--md-sys-color-on-secondary-fixed-variant`                                                   | `<color>` | secondary fixed-tone add-ons                     | secondary 90/100/80/30 (fixed roles do not invert for dark) | theme | `foundation/theme.css` | consumed by MD\* adapters                                                                                                     | same as above                                                                                        |
 | `--md-sys-color-tertiary-fixed`, `--md-sys-color-on-tertiary-fixed`, `--md-sys-color-tertiary-fixed-dim`, `--md-sys-color-on-tertiary-fixed-variant`                                                       | `<color>` | tertiary fixed-tone add-ons                      | tertiary 90/10/80/30 (fixed roles do not invert for dark)  | theme | `foundation/theme.css` | consumed by MD\* adapters                                                                                                     | same as above                                                                                        |
 
 `--md-sys-color-surface-tint-color` (the pre-deprecation alias of `--md-sys-color-surface-tint`) is removed: it had no current consumer, and Material superseded it with `--md-sys-color-surface-tint`, which remains supported above.
@@ -124,7 +125,7 @@ Material source: `m3.material.io/styles/shape/shape-scale-tokens`.
 
 | Token                                   | Grammar                                               | Purpose                               | Default                           | Scope      | Owner                   | Renderer mapping                                | Verification               |
 | --------------------------------------- | ----------------------------------------------------- | ------------------------------------- | --------------------------------- | ---------- | ----------------------- | ----------------------------------------------- | -------------------------- |
-| `--md-sys-shape-corner-none`            | `<length>`                                            | no corner radius                      | `0`                               | foundation | `foundation/tokens.css` | direct consumption by shared UI and MD adapters | component visual baselines |
+| `--md-sys-shape-corner-full`            | `<length>`                                            | fully rounded/circular corner         | `50cqmin`                         | foundation | `foundation/tokens.css` | direct consumption by shared UI and MD adapters | component visual baselines |
 | `--md-sys-shape-corner-extra-small`     | `<length>`                                            | extra-small corner radius             | `4px`                             | foundation | `foundation/tokens.css` | same as above                                   | same as above              |
 | `--md-sys-shape-corner-small`           | `<length>`                                            | small corner radius                   | `8px`                             | foundation | `foundation/tokens.css` | same as above                                   | same as above              |
 | `--md-sys-shape-corner-medium`          | `<length>`                                            | medium corner radius                  | `12px`                            | foundation | `foundation/tokens.css` | same as above                                   | same as above              |
@@ -199,15 +200,15 @@ Material source: `m3.material.io/styles/motion/easing-and-duration/tokens-specs`
 
 ## Button component (`components/button/tokens.css`) — pre-merge correction entries
 
-These five rows describe the current executable declarations only. They are not accepted as the final public Button contract. They must be replaced atomically after the complete Button `DESIGN.md` confirms the official token paths and the demand-scoped target.
+These five rows describe the current executable declarations only. They are not accepted as the final public Button contract. They must be replaced atomically after the complete Button `DESIGN.md` and ready Button `ARCHITECTURE.md` confirm the selected token paths.
 
 | Token                                             | Grammar   | Current runtime purpose                | Default                       | Scope            | Owner                          | Current renderer mapping                                      | Correction status                                                                                   |
 | ------------------------------------------------- | --------- | -------------------------------------- | ----------------------------- | ---------------- | ------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `--md-comp-button-text-label-text-color`          | `<color>` | text Button resting label color        | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-label-text-color` mapping          | provisionally retained; confirm against Button `DESIGN.md`                                          |
-| `--md-comp-button-text-icon-color`                | `<color>` | text Button resting leading-icon color | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-icon-color` mapping                | remove unless the design-backed demand review finds a current contextual icon consumer              |
-| `--md-comp-button-text-hover-state-layer-color`   | `<color>` | text Button hover state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-state-layer-color` mapping   | replace with official `hovered` path after design confirmation; add hovered label token if selected |
-| `--md-comp-button-text-focus-state-layer-color`   | `<color>` | text Button focus state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-state-layer-color` mapping   | replace with official `focused` path after design confirmation; add focused label token if selected |
-| `--md-comp-button-text-pressed-state-layer-color` | `<color>` | text Button pressed state-layer color  | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-state-layer-color` mapping | confirm pressed state-layer and label selection against the complete design artifact                |
+| `--md-comp-button-text-label-text-color`          | `<color>` | text Button resting label color        | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-label-text-color` mapping          | provisionally retained; confirm against Button `DESIGN.md` and `ARCHITECTURE.md`                     |
+| `--md-comp-button-text-icon-color`                | `<color>` | text Button resting leading-icon color | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-icon-color` mapping                | remove unless the architecture stage confirms a current contextual icon consumer                    |
+| `--md-comp-button-text-hover-state-layer-color`   | `<color>` | text Button hover state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-state-layer-color` mapping   | replace with official `hovered` path if selected; add hovered label token when required             |
+| `--md-comp-button-text-focus-state-layer-color`   | `<color>` | text Button focus state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-state-layer-color` mapping   | replace with official `focused` path if selected; add focused label token when required             |
+| `--md-comp-button-text-pressed-state-layer-color` | `<color>` | text Button pressed state-layer color  | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-state-layer-color` mapping | confirm pressed state-layer and label selection in architecture                                     |
 
 ## Loading Indicator component (`components/loadingIndicator/tokens.css`)
 
@@ -219,7 +220,7 @@ Provisional official source until the complete family design artifact is created
 
 ## Migration state
 
-The foundation and theme token migration is complete. Button runtime tokens remain in pre-merge correction. Loading Indicator runtime ownership is implemented, but family completion remains blocked until its complete `DESIGN.md` confirms the official standalone and composed contract.
+The foundation and theme token migration is complete. Button runtime tokens remain in pre-merge correction. Loading Indicator runtime ownership is implemented, but family completion remains blocked until its complete `DESIGN.md` and ready `ARCHITECTURE.md` confirm the official standalone and composed contracts.
 
 Canonical runtime declarations currently live in:
 
@@ -232,4 +233,4 @@ src/shared/ui/material/components/loadingIndicator/tokens.css
 
 `src/shared/lib/md/tokens.css` no longer exists. A token absent from this catalogue is not a supported Mioframe runtime token API, even when it appears in an official family `DESIGN.md` or m3e defines a similarly named input.
 
-Button's current five declarations must not be consumed. They will be replaced only after the complete Button design and demand review. This document returns to `populated` status only when both family design artifacts are current and runtime declarations, catalogue entries, mappings, and proof match the accepted selected contracts.
+Button's current five declarations must not be consumed. They will be replaced only after the complete Button design and architecture stages. This document returns to `populated` status only when both family design artifacts are current, both architectures are ready, and runtime declarations, catalogue entries, mappings, and proof match the accepted selected contracts.
