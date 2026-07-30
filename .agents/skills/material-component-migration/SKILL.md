@@ -87,7 +87,11 @@ Verify:
 - affected browser, visual, accessibility, mobile, and release risks are covered according to architecture;
 - impact metadata maps changed source and proof correctly.
 
-Run the exact final current-head verification gate required by root policy after all migration and documentation changes.
+Run the exact final verification gate required by root policy after all migration and documentation changes.
+
+## Git boundary
+
+Do not run raw `git`, inspect or repair `.git`, fetch remotes, or require `HEAD`/commit metadata. Work from readable repository files and canonical artifacts. If the final verify-managed command cannot run because Git metadata is unavailable, record the exact infrastructure blocker after completing safe migration work; do not attempt Git repair.
 
 ## Migration record
 
@@ -98,7 +102,7 @@ Status: complete | partial | blocked | stale
 DESIGN.md reference:
 ARCHITECTURE.md reference:
 IMPLEMENTATION.md reference:
-Migration commit/ref:
+Migration file state: <consumer/runtime/artifact state reviewed>
 
 ## Consumer inventory
 ## Migrated consumers
@@ -118,8 +122,8 @@ Migration is `complete` only when:
 - all materially distinct scenarios and failure paths are verified;
 - obsolete target ownership is removed without aliases unless architecture requires them;
 - no renderer detail leaks into consumers;
-- final current-head verification passes;
-- the resulting family is ready for independent review.
+- final verification passes, or its exact environment blocker is recorded and migration remains `blocked` only on that verification;
+- the resulting family is ready for independent review when verification is complete.
 
 Operator visual acceptance may remain an explicit review gate; it must not be fabricated by the coding agent.
 
@@ -151,3 +155,4 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Migrating unrelated Material families for cleanup.
 - Keeping replaced logic only to reduce migration work.
 - Running independent review in the same invocation.
+- Running raw Git commands or treating Git object health as a migration input gate.
