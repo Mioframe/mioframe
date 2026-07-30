@@ -1,28 +1,22 @@
 # Mioframe Material token API
 
-Status: `correction`
+Status: `populated`
 
 This document is the complete consumer-facing catalogue of Material CSS custom properties currently supported by Mioframe at runtime.
 
 It is not the complete official Material token catalogue. Complete official component-token catalogues belong in each family `DESIGN.md`. Canonical CSS files provide executable supported declarations and runtime values; this catalogue and those declarations change together.
 
-## Current correction note
+## Current state
 
-Loading Indicator now has a complete current `DESIGN.md`; its runtime selection still requires a ready `ARCHITECTURE.md`. Button does not yet have a complete current `DESIGN.md`. Runtime completion for both families remains subject to their staged architecture, implementation, migration, and review gates.
+Loading Indicator and Button now have current complete `DESIGN.md` artifacts, ready `ARCHITECTURE.md` artifacts, accepted runtime selections, complete implementation and migration records, and representative automated proof.
 
-The Button entries below mirror the current pre-merge runtime declarations so declaration/catalogue agreement remains inspectable. They are not accepted as the final supported Button API.
+The Button catalogue below records the accepted seven-token contextual text contract. The provisional five-token surface, renderer-derived public `hover`/`focus` names, and unconsumed contextual icon token are removed without compatibility aliases.
 
-The current Button declarations have three known defects:
-
-- renderer-derived `hover`/`focus` public state names instead of official Material `hovered`/`focused` paths;
-- missing hovered/focused/pressed label-text tokens required by the Snackbar action scenario;
-- an unconsumed contextual icon token.
-
-A provisional seven-token candidate is recorded in `docs/roadmap.md`, but the Button architecture stage must confirm or correct it against the complete Button `DESIGN.md`. The implementation correction must replace the Button runtime declarations and this catalogue section atomically, without compatibility aliases. No consumer should adopt the current five-token Button section.
+Operator visual/motion acceptance and fresh final review remain merge gates, but they do not make the already implemented runtime token catalogue provisional.
 
 ## Inclusion rule
 
-A token normally appears here only when it is:
+A token appears here only when it is:
 
 1. present under an exact official path in the current family `DESIGN.md` or an applicable official foundation source;
 2. intentionally supported by Mioframe now;
@@ -32,8 +26,6 @@ A token normally appears here only when it is:
 6. covered by representative verification.
 
 Official component tokens not supported at runtime remain completely documented in the family `DESIGN.md` and are classified as `defer` only in the family `ARCHITECTURE.md`. m3e variables and owner-local private bridges are never listed here.
-
-The temporary Button correction entries below are the only pre-merge exception to the normal inclusion rule. They exist solely to describe the current executable declarations until the design and architecture stages produce an accepted replacement.
 
 ## Runtime owners
 
@@ -153,7 +145,7 @@ Material source: `m3.material.io/styles/typography/type-scale-tokens`. Grammar f
 | `--md-sys-typescale-body-large-font`, `--md-sys-typescale-body-large-weight`, `--md-sys-typescale-body-large-size`, `--md-sys-typescale-body-large-tracking`, `--md-sys-typescale-body-large-line-height`                                                               | body-large type scale role                                  | plain/regular/16sp/0.5sp/24sp                   | foundation | `foundation/tokens.css` | same pattern                                               | same as above                                         |
 | `--md-sys-typescale-body-medium-font`, `--md-sys-typescale-body-medium-weight`, `--md-sys-typescale-body-medium-size`, `--md-sys-typescale-body-medium-tracking`, `--md-sys-typescale-body-medium-line-height`                                                          | body-medium type scale role                                 | plain/regular/14sp/0.25sp/20sp                  | foundation | `foundation/tokens.css` | same pattern                                               | same as above                                         |
 | `--md-sys-typescale-body-small-font`, `--md-sys-typescale-body-small-weight`, `--md-sys-typescale-body-small-size`, `--md-sys-typescale-body-small-tracking`, `--md-sys-typescale-body-small-line-height`                                                               | body-small type scale role                                  | plain/regular/12sp/0.4sp/16sp                   | foundation | `foundation/tokens.css` | same pattern                                               | same as above                                         |
-| `--md-sys-typescale-label-large-font`, `--md-sys-typescale-label-large-weight`, `--md-sys-typescale-label-large-size`, `--md-sys-typescale-label-large-tracking`, `--md-sys-typescale-label-large-line-height`                                                          | label-large type scale role                                 | plain/medium/14sp/0.1sp/20sp                    | foundation | `foundation/tokens.css` | same pattern                                               | same as above                                         |
+| `--md-sys-typesccale-label-large-font`, `--md-sys-typescale-label-large-weight`, `--md-sys-typescale-label-large-size`, `--md-sys-typescale-label-large-tracking`, `--md-sys-typescale-label-large-line-height`                                                         | label-large type scale role                                 | plain/medium/14sp/0.1sp/20sp                    | foundation | `foundation/tokens.css` | same pattern                                               | same as above                                         |
 | `--md-sys-typescale-label-medium-font`, `--md-sys-typescale-label-medium-weight`, `--md-sys-typescale-label-medium-size`, `--md-sys-typescale-label-medium-tracking`, `--md-sys-typescale-label-medium-line-height`, `--md-sys-typescale-label-medium-weight-prominent` | label-medium type scale role, plus prominent weight variant | plain/medium/12sp/0.5sp/16sp, prominent=bold    | foundation | `foundation/tokens.css` | same pattern                                               | same as above                                         |
 | `--md-sys-typescale-label-small-font`, `--md-sys-typescale-label-small-weight`, `--md-sys-typescale-label-small-size`, `--md-sys-typescale-label-small-tracking`, `--md-sys-typescale-label-small-line-height`                                                          | label-small type scale role                                 | plain/medium/11sp/0.5sp/16sp                    | foundation | `foundation/tokens.css` | same pattern                                               | same as above                                         |
 
@@ -202,19 +194,19 @@ Material source: `m3.material.io/styles/motion/easing-and-duration/tokens-specs`
 
 Official source: `components/button/DESIGN.md`, selected contextual text Button paths recorded in `components/button/ARCHITECTURE.md`.
 
-| Token                                             | Grammar   | Purpose                               | Default                       | Scope            | Owner                          | Renderer mapping                                              | Verification                              |
-| ------------------------------------------------- | --------- | ------------------------------------- | ----------------------------- | ---------------- | ------------------------------ | ------------------------------------------------------------- | ----------------------------------------- |
-| `--md-comp-button-text-label-text-color`          | `<color>` | text Button resting label color       | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-label-text-color` mapping          | selected official contextual Button token |
-| `--md-comp-button-text-hovered-label-text-color`  | `<color>` | text Button hovered label color       | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-label-text-color` mapping    | selected official contextual Button token |
-| `--md-comp-button-text-focused-label-text-color`  | `<color>` | text Button focused label color       | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-label-text-color` mapping    | selected official contextual Button token |
-| `--md-comp-button-text-pressed-label-text-color`  | `<color>` | text Button pressed label color       | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-label-text-color` mapping  | selected official contextual Button token |
-| `--md-comp-button-text-hovered-state-layer-color` | `<color>` | text Button hovered state-layer color | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-state-layer-color` mapping   | selected official contextual Button token |
-| `--md-comp-button-text-focused-state-layer-color` | `<color>` | text Button focused state-layer color | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-state-layer-color` mapping   | selected official contextual Button token |
-| `--md-comp-button-text-pressed-state-layer-color` | `<color>` | text Button pressed state-layer color | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-state-layer-color` mapping | selected official contextual Button token |
+| Token                                             | Grammar   | Purpose                               | Default                       | Scope            | Owner                          | Renderer mapping                                              | Verification                                                    |
+| ------------------------------------------------- | --------- | ------------------------------------- | ----------------------------- | ---------------- | ------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------- |
+| `--md-comp-button-text-label-text-color`          | `<color>` | text Button resting label color       | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-label-text-color` mapping          | contract, rendered-label behavior, and contextual visual proof  |
+| `--md-comp-button-text-hovered-label-text-color`  | `<color>` | text Button hovered label color       | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-label-text-color` mapping    | rendered-label hover behavior and contextual visual proof       |
+| `--md-comp-button-text-focused-label-text-color`  | `<color>` | text Button focused label color       | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-label-text-color` mapping    | rendered-label keyboard-focus behavior and contextual visual proof |
+| `--md-comp-button-text-pressed-label-text-color`  | `<color>` | text Button pressed label color       | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-label-text-color` mapping  | rendered-label pointer-press behavior and contextual visual proof |
+| `--md-comp-button-text-hovered-state-layer-color` | `<color>` | text Button hovered state-layer color | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-state-layer-color` mapping   | contextual browser token assertion and hover visual proof       |
+| `--md-comp-button-text-focused-state-layer-color` | `<color>` | text Button focused state-layer color | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-state-layer-color` mapping   | contextual browser token assertion and focus visual proof       |
+| `--md-comp-button-text-pressed-state-layer-color` | `<color>` | text Button pressed state-layer color | resting label token           | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-state-layer-color` mapping | contextual browser token assertion and pressed visual proof     |
 
 ## Loading Indicator component (`components/loadingIndicator/tokens.css`)
 
-Official source: `components/loadingIndicator/DESIGN.md`, token path `md.comp.loading-indicator.active-indicator.color`.
+Official source: `components/loadingIndicator/DESIGN.md`, token path `md.comp.loading-indicator.active-indicator.color`, selected in `components/loadingIndicator/ARCHITECTURE.md`.
 
 | Token                                                | Grammar   | Purpose                                          | Default                       | Scope            | Owner                                    | Renderer mapping                                                 | Verification                                                                                             |
 | ---------------------------------------------------- | --------- | ------------------------------------------------ | ----------------------------- | ---------------- | ---------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -222,9 +214,7 @@ Official source: `components/loadingIndicator/DESIGN.md`, token path `md.comp.lo
 
 ## Migration state
 
-The foundation and theme token migration is complete. Button runtime tokens remain in pre-merge correction. Loading Indicator has a current complete design artifact and implemented runtime ownership, but architecture, implementation audit, migration, and review stages remain required.
-
-Canonical runtime declarations currently live in:
+Foundation, theme, Button, and Loading Indicator runtime token migration is complete for the selected pilot surface. Canonical runtime declarations live in:
 
 ```text
 src/shared/ui/material/foundation/tokens.css
@@ -235,4 +225,4 @@ src/shared/ui/material/components/loadingIndicator/tokens.css
 
 `src/shared/lib/md/tokens.css` no longer exists. A token absent from this catalogue is not a supported Mioframe runtime token API, even when it appears in an official family `DESIGN.md` or m3e defines a similarly named input.
 
-Button's current five declarations must not be consumed. They will be replaced only after the complete Button design and architecture stages. This document returns to `populated` status only when both family design artifacts are current, both architectures are ready, and runtime declarations, catalogue entries, mappings, and proof match the accepted selected contracts.
+Future token changes must repeat the family design and architecture decision path and update declarations, mappings, this catalogue, and representative proof together.
