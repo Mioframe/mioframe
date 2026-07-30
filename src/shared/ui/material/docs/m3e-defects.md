@@ -66,10 +66,10 @@ Mioframe status:
 
 ## Summary
 
-| ID | Component | Summary | Affected version | Mioframe status | Upstream status |
-| -- | --------- | ------- | ---------------- | ---------------- | --------------- |
-| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`–`2.6.3` | `workaround-active` | `unreported` |
-| `M3E-002` | Loading indicator | Uncontained host size is coupled to active-indicator size | `2.6.2`–`2.6.3` | `workaround-active` | `unreported` |
+| ID        | Component         | Summary                                                                 | Affected version | Mioframe status     | Upstream status |
+| --------- | ----------------- | ----------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
+| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
+| `M3E-002` | Loading indicator | Uncontained host size is coupled to active-indicator size               | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
 
 `M3E-003` was removed before merge as a Mioframe representation misclassification. Its ID is retired; see Removed records.
 
@@ -146,10 +146,10 @@ Mioframe consumes a version whose documented input is effective, updates the pri
 
 ### Revalidation history
 
-| m3e version | Date | Result | Evidence |
-| ----------- | ---- | ------ | -------- |
-| `2.6.2` | 2026-07-27 | confirmed | exact source inspection and focused mapping tests |
-| `2.6.3` | 2026-07-27 | confirmed | installed artifact still reads `--m3e-loading-indicator-size` |
+| m3e version | Date       | Result    | Evidence                                                      |
+| ----------- | ---------- | --------- | ------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection and focused mapping tests             |
+| `2.6.3`     | 2026-07-27 | confirmed | installed artifact still reads `--m3e-loading-indicator-size` |
 
 ## M3E-002 — Uncontained host size is coupled to active-indicator size
 
@@ -209,10 +209,10 @@ Mioframe consumes a version with independent correct sizing, removes explicit ho
 
 ### Revalidation history
 
-| m3e version | Date | Result | Evidence |
-| ----------- | ---- | ------ | -------- |
-| `2.6.2` | 2026-07-27 | confirmed | source inspection, host-box tests, and visual evidence |
-| `2.6.3` | 2026-07-27 | confirmed | uncontained host width remains coupled to active-indicator size |
+| m3e version | Date       | Result    | Evidence                                                        |
+| ----------- | ---------- | --------- | --------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | source inspection, host-box tests, and visual evidence          |
+| `2.6.3`     | 2026-07-27 | confirmed | uncontained host width remains coupled to active-indicator size |
 
 ## Removed records
 
@@ -229,10 +229,10 @@ The relevant correction and proof must be reconstructed in Button `ARCHITECTURE.
 
 ### Revalidation history
 
-| m3e version | Date | Result |
-| ----------- | ---- | ------ |
-| `2.6.2` | 2026-07-27 | initially classified from source inspection and operator reproduction |
-| `2.6.3` | 2026-07-27 | reclassified and removed after installed-artifact inspection |
+| m3e version | Date       | Result                                                                |
+| ----------- | ---------- | --------------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | initially classified from source inspection and operator reproduction |
+| `2.6.3`     | 2026-07-27 | reclassified and removed after installed-artifact inspection          |
 
 ## Update protocol
 
