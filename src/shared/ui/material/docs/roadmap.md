@@ -4,13 +4,13 @@ This file owns current milestone order, component-stage status, technical blocke
 
 ## Current state
 
-Last updated: 2026-07-30 (migration correction applied)
+Last updated: 2026-07-31
 
 Current milestone: `M0/M1 — complete autonomous staged workflow and finish Loading Indicator/Button pilot`
 
-Status: `correction`
+Status: `operator-review`
 
-Implementation ownership: `migrating`
+Implementation ownership: `complete`
 
 ## Accepted operator workflow
 
@@ -65,7 +65,7 @@ components/loadingIndicator/REVIEW.md          blocked on operator review
 
 The selected uncontained implementation, public size/color API, Button composition boundary, renderer workarounds M3E-001/M3E-002, automated proof, and consumer inventory are complete. No technical correction is currently required.
 
-Remaining Loading Indicator gate: operator visual/motion acceptance, followed by fresh review of the resulting workspace.
+Remaining Loading Indicator gate: operator visual/motion acceptance.
 
 ## Button state
 
@@ -76,7 +76,7 @@ components/button/DESIGN.md          current
 components/button/ARCHITECTURE.md    ready
 components/button/IMPLEMENTATION.md  complete
 components/button/MIGRATION.md       complete
-components/button/REVIEW.md          blocked, return stage implementation (findings resolved, pending fresh review)
+components/button/REVIEW.md          compliant-with-listed-risks; operator review required
 ```
 
 The accepted public Button token surface is exactly:
@@ -93,60 +93,35 @@ The accepted public Button token surface is exactly:
 
 The runtime declarations, private renderer mappings, Snackbar inverse-primary overrides, rendered label proof, and populated `token-api.md` catalogue use these official paths. The old renderer-derived `hover`/`focus` names, contextual icon token, and five-token provisional surface are removed without aliases.
 
-## Current correction findings
+## Completed correction round
 
-The architect follow-up found two completion issues that the previous independent review missed. Both are now resolved:
+The two findings from the previous independent review are resolved and independently re-reviewed:
 
-1. **Implementation (resolved):** Button visual specs asserted `toBeFocused()`. Focus success belongs to Storybook behavior tests; the visual-lane behavior assertion was removed, retaining only deterministic focus setup and screenshot capture.
-2. **Migration (resolved):** `MDAppBar.__trailing-elements` declared ineffective legacy `--md-content-color` without an accepted contextual contract. The declaration was removed without a replacement descendant color bridge, after confirming no live consumer depended on the inherited value.
+1. Button visual specs no longer assert focus success. They establish deterministic focus state and capture screenshots; Storybook behavior owns `toBeFocused()` assertions.
+2. `MDAppBar.__trailing-elements` no longer declares the ineffective legacy `--md-content-color`. No replacement descendant color bridge was introduced, and current trailing consumers retain their own color ownership.
 
-These findings did not invalidate `DESIGN.md`, `ARCHITECTURE.md`, the public Button API, the accepted seven-token contract, or the current token catalogue.
+The resulting workspace passed the required project verification. The fresh independent Button review found no remaining technical issue and returned `compliant-with-listed-risks`, with operator visual/motion acceptance as the only family gate.
 
-## Required correction sequence
-
-One invocation of:
-
-```text
-material-component Button
-```
-
-has now:
-
-1. recognized `REVIEW.md` return stage `implementation`;
-2. run a fresh implementation worker that removed the behavior assertion from the visual lane while retaining behavior coverage;
-3. run a fresh migration worker that removed the AppBar legacy declaration and refreshed downstream stage records;
-4. run the required project verification for the resulting workspace.
-
-Remaining: launch a new independent review worker, then stop at the operator visual/motion gate if no additional technical findings remain.
-
-The orchestrator must not repeat design or architecture unless a correction worker discovers evidence that invalidates those artifacts.
+These corrections did not change `DESIGN.md`, `ARCHITECTURE.md`, the public Button API, the accepted seven-token contract, or the current token catalogue.
 
 ## Milestones
 
-| ID  | Milestone                                      | Status                     | Depends on | Exit gate                                                                                                                       |
-| --- | ---------------------------------------------- | -------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged renderer workflow/foundation | `implemented`              | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
-| M1a | `MDLoadingIndicator` staged dependency family  | `operator-review`          | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance; fresh review |
-| M1  | `MDButton` staged action family                | `verified, pending review` | M1a        | two correction findings resolved; project verification; operator visual/motion acceptance; fresh independent review             |
-| M2  | `MDSwitch` stateful pilot                      | `planned`                  | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
-| M3  | sequential component migration                 | `planned`                  | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                     |
+| ID  | Milestone                                      | Status            | Depends on | Exit gate                                                                                                                       |
+| --- | ---------------------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | autonomous staged renderer workflow/foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
+| M1a | `MDLoadingIndicator` staged dependency family  | `operator-review` | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance               |
+| M1  | `MDButton` staged action family                | `operator-review` | M1a        | five family artifacts; accepted tokens and consumers; project verification; independent review; operator visual/motion acceptance |
+| M2  | `MDSwitch` stateful pilot                     | `planned`         | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
+| M3  | sequential component migration                | `planned`         | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                     |
 
-## Remaining technical gates
+## Remaining pilot gates
 
-1. ~~Run the Button correction sequence once.~~ Done: implementation visual-lane correction and the AppBar migration cleanup are both applied.
-2. ~~Pass the required project verification on the resulting workspace.~~ Done: `pnpm verify` passed all 10 checks on the corrected workspace (one pre-existing, unrelated `scripts/agentEnvironment.mjs` eslint warning remains, not introduced by this correction).
-3. Run fresh independent family review of the corrected workspace.
-4. Complete operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar interaction states, Rich Tooltip, and other affected color-ownership surfaces.
-5. Review the complete Material pilot result and remove any remaining false or obsolete workspace claims.
+1. Complete operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar interaction states, Rich Tooltip, and other affected color-ownership surfaces.
+2. Record the operator result in the family review artifacts.
+3. Perform the final full pilot review and remove any remaining false or obsolete workspace claims.
 
 ## Next operator action
 
-Run once:
-
-```text
-material-component Button
-```
-
-A correct result launches a fresh independent review worker against the corrected workspace (both technical findings resolved, project verification passing) and stops at operator visual/motion acceptance when no further technical findings remain.
+Visually inspect the pilot surfaces. Report any defect found. If no defect is found, confirm acceptance; no additional `material-component Button` invocation is required.
 
 No exact dependency pin, renderer-version registry, direct Lit ownership, WebKit expansion, bundle-budget infrastructure, broad CSS selector scanner, new reduced-motion contract, or shared adapter abstraction is required by this milestone.
