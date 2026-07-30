@@ -29,7 +29,13 @@ Expected statuses:
 
 If an earlier artifact is missing or stale, review may record the blocker but must not reconstruct or replace that stage.
 
-A readable Git ref or commit object is not an input gate. Review the current readable family files, consumers, tests, records, and verification evidence.
+Review the current readable family files, consumers, tests, records, and verification evidence.
+
+## Workspace boundary
+
+Use only readable files, file-oriented tools, and documented project commands.
+
+Do not inspect hidden workspace metadata or unrelated environment internals. If required verification evidence is unavailable because a project command cannot execute, record the exact migration or verification blocker without diagnosing the environment.
 
 ## Output
 
@@ -44,14 +50,14 @@ Do not modify production code, tests, stories, snapshots, tokens, architecture, 
 ## Review order
 
 1. Validate complete official source coverage in `DESIGN.md`.
-2. Compare `ARCHITECTURE.md` with design, current scenarios, repository ownership, and the simplest viable alternative.
+2. Compare `ARCHITECTURE.md` with design, current scenarios, workspace ownership, and the simplest viable alternative.
 3. Compare the full implementation with every architecture decision and forbidden approach.
 4. Review all current consumers and legacy-removal claims from `MIGRATION.md`.
 5. Inspect public API, token names/defaults, state precedence, renderer boundaries, dependencies, accessibility, browser/mobile behavior, motion, visual presentation, defects, and error paths.
 6. Check faithful proof ownership and required verification evidence.
 7. Confirm operator visual/motion acceptance where required.
 
-Green CI proves only automated checks; it is not architecture or Material approval.
+Automated checks prove only their covered contracts; they are not architecture or Material approval.
 
 ## Finding ownership
 
@@ -65,16 +71,12 @@ Route each finding to one stage:
 
 Do not patch findings during review and do not scatter one underlying issue across multiple stages.
 
-## Git boundary
-
-Do not run raw `git`, inspect or repair `.git`, fetch remotes, manipulate refs, or require `HEAD`/commit metadata. GitHub/current-head PR review remains operator/architect-owned. If project verification evidence is unavailable because local Git metadata is corrupt, record that exact migration/verification blocker rather than attempting repair.
-
 ## Review artifact
 
 ```text
 # <Component> review
 
-Reviewed repository state: <canonical artifact/code/consumer state inspected>
+Reviewed workspace state: <canonical artifact/code/consumer state inspected>
 Review date:
 DESIGN.md status:
 ARCHITECTURE.md status:
@@ -95,7 +97,7 @@ Verdict: compliant | compliant-with-listed-risks | blocked
 ## Accepted risks
 ## Items not required
 ## Required return stage
-## Merge readiness
+## Completion status
 ```
 
 Use exact evidence and consolidate related findings.
@@ -113,14 +115,7 @@ A family is review-complete only when:
 - no replaced logic or false claim remains;
 - required verification passes.
 
-Use one merge-readiness result:
-
-- `can merge`;
-- `can merge with listed risks`;
-- `should not merge until blockers are fixed`;
-- `not enough information to decide`.
-
-The coding agent does not edit PR metadata, perform Git operations, or merge. The operator/architect owns GitHub review and merge actions.
+This stage determines component compliance only. External delivery decisions are outside its scope.
 
 ## Report
 
@@ -136,15 +131,15 @@ Major issues:
 Minor issues:
 Required return stage: none | design | architecture | implementation | migration | operator
 Review verdict:
-Merge readiness:
+Completion status: complete | blocked
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 ```
 
 ## Forbidden
 
 - Fixing code or rewriting earlier artifacts during review.
-- Treating screenshots or green CI as Material correctness by themselves.
-- Reviewing only the latest patch instead of the full resulting family.
-- Approving while ownership, API, dependencies, shared UI impact, required proof, or operator acceptance is unresolved.
+- Treating screenshots or automated checks as Material correctness by themselves.
+- Reviewing only the latest changed files instead of the full resulting family.
+- Marking the family compliant while ownership, API, dependencies, shared UI impact, required proof, or operator acceptance is unresolved.
 - Creating a new implementation path inside the review stage.
-- Running raw Git commands or treating Git object health as a review input gate.
+- Inspecting hidden workspace metadata or unrelated environment internals.
