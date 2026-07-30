@@ -67,7 +67,7 @@ Use the applicable skill instead of duplicating its rules in the task:
 - `diagnostic-events`: Sentry-backed diagnostics, privacy, and error reporting;
 - `verification`: inspect and execute automatic verify planning, use focused overrides, handle failures, and report final task/verify status.
 
-For the Material staged workflow, isolation is physical rather than rhetorical: the thin orchestrator selects, launches, validates, and routes, while each design, architecture, implementation, migration, and review stage runs in a fresh agent/subagent context. The orchestrator must not perform stage-owned research, decisions, code, migration, or review itself. A stage worker consumes only repository state, applicable rules, the component name, and canonical upstream artifacts; hidden reasoning or prose from another worker is not a handoff. The review worker must be independent from workers that authored architecture, implementation, or migration. If the available agent environment cannot create these isolated workers, report the Material workflow as blocked instead of simulating isolation in one context.
+For the Material staged workflow, isolation is physical rather than rhetorical: the thin orchestrator selects, launches, validates, and routes, while each design, architecture, implementation, migration, and review stage runs in a fresh agent/subagent context. The orchestrator must not perform stage-owned research, decisions, code, migration, or review itself. A stage worker consumes only repository file state, applicable rules, the component name, and canonical upstream artifacts; hidden reasoning or prose from another worker is not a handoff. The review worker must be independent from workers that authored architecture, implementation, or migration. If the available agent environment cannot create these isolated workers, report the Material workflow as blocked instead of simulating isolation in one context.
 
 ## Implementation quality
 
@@ -93,9 +93,12 @@ For the Material staged workflow, isolation is physical rather than rhetorical: 
 - `use*` exposes reactive or lifecycle-managed capabilities; `setup*` wires dependencies and cleanup; `define*` is side-effect-light; `create*` returns a fresh owned instance; `get*` derives or looks up; `is*` is boolean; `zod*` exports schemas; `*Service` is background infrastructure; `on*` names handlers; `$` suffix is reserved for raw RxJS observables.
 - Add a child `AGENTS.md` only for stable local invariants that the parent cannot express cleanly. Child files refine rather than repeat parent rules.
 
-## Pull request workflow
+## Pull request and Git ownership
 
-- Local coding agents own repository files and local commands. The operator or architect owns PR title and body, draft/ready state, review threads, complete resulting-PR review, merge readiness, and merge execution.
+- Local coding agents own repository file edits and project commands. The operator or architect owns Git and GitHub: `.git`, refs, index, branches, worktrees, commits, remotes, fetch/pull/push, PR title and body, draft/ready state, review threads, complete resulting-PR review, merge readiness, and merge execution.
+- Coding agents must not run raw `git` commands, modify `.git`, repair object databases, move refs, stage, commit, fetch, reset, rebase, or create/remove worktrees. Do not offer Git-repair choices to the operator as part of a coding task.
+- Use file-oriented tools for inspection and edits. Repository state for coding and staged handoffs means the current readable working-tree files and canonical artifacts, not a required `HEAD` or commit object.
+- Project commands such as `pnpm verify` may use Git internally for impact planning. A Git-metadata failure may block that verification command, but it does not block safe file inspection or implementation work that does not require Git. Complete the assigned edits first where possible, then report the exact verification blocker without attempting Git repair.
 - Keep a PR in draft while implementation, required proof, current-head verification, or review blockers remain. Mark it ready only after the current head has complete required checks, the full resulting diff has been reviewed, PR metadata is accurate, and no unresolved review threads remain.
 - Green CI proves only that automated checks passed. It is not architecture approval or merge readiness. Re-review the current head after every pushed commit, including CI autofix commits.
 - CI autofix stages the complete working tree before commit detection; the cached diff is the single source of truth so tracked changes, untracked files and symlinks, and deletions are handled together.
