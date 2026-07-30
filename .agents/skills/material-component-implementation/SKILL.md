@@ -52,17 +52,23 @@ Do not migrate application consumers or remove legacy consumer-facing owners in 
 - applicable `AGENTS.md` files;
 - family `DESIGN.md` and `ARCHITECTURE.md`;
 - Material token, renderer-boundary, testing, and verification rules;
-- exact lockfile-resolved m3e public artifacts;
+- exact lockfile-resolved renderer public artifacts;
 - existing family code, tests, stories, tokens, exports, and defect records;
 - required dependency implementation records.
 
-The coding agent must not reselect demand, redesign the API, change ownership, or choose another gap strategy.
+The coding worker must not reselect demand, redesign the API, change ownership, or choose another gap strategy.
+
+## Workspace boundary
+
+Use only readable files, file-oriented tools, and documented project commands.
+
+Do not inspect hidden workspace metadata or unrelated environment internals. If a project command fails before reaching its relevant check, complete otherwise safe implementation work and record the exact command failure as remaining verification.
 
 ## Implementation rules
 
 - Implement only the selected surface in `ARCHITECTURE.md`.
 - Use official Material terminology and Vue mechanics exactly as specified.
-- Keep public types independent from m3e and derive private glue from package-exported types.
+- Keep public types independent from the renderer and derive private glue from package-exported types.
 - Keep renderer imports, tags, events, types, and CSS inputs inside the canonical family.
 - Use only approved wrapper corrections and exact-version workarounds.
 - Do not access private shadow DOM or recreate renderer-owned state, ripple, focus, geometry, accessibility, elevation, or motion systems.
@@ -93,10 +99,6 @@ Implement the `TEST IMPACT` from `ARCHITECTURE.md` through faithful owners:
 
 Visual tests may prepare deterministic states and capture pixels, but behavioral success criteria remain in behavior tests.
 
-## Git boundary
-
-Do not run raw `git`, inspect or repair `.git`, fetch remotes, or require `HEAD`/commit metadata. Inspect and edit readable repository files directly. If a verify-managed project command later fails because Git metadata is unavailable, record that verification blocker after completing safe implementation work.
-
 ## Implementation record
 
 `IMPLEMENTATION.md` is a concise handoff, not duplicated architecture or code documentation:
@@ -107,7 +109,7 @@ Do not run raw `git`, inspect or repair `.git`, fetch remotes, or require `HEAD`
 Status: complete | partial | blocked | stale
 DESIGN.md reference:
 ARCHITECTURE.md reference:
-Implementation file state: <canonical files and artifact statuses reviewed>
+Implementation workspace state: <canonical files and artifact statuses reviewed>
 
 ## Implemented passes
 ## Public API implemented
@@ -136,7 +138,7 @@ Implementation is `complete` only when:
 - family and dependency code is canonical and exported;
 - selected tokens, mappings, defects, tests, stories, and proof agree;
 - no architecture deviation exists;
-- focused verification passes, or its exact environment blocker is recorded after implementation work is complete;
+- focused verification passes, or its exact project-command blocker is recorded after implementation work is complete;
 - the public component is ready for consumer migration.
 
 ## Report
@@ -166,6 +168,6 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Migrating product consumers or deleting consumer-facing legacy ownership.
 - Expanding API, tokens, abstractions, or renderer support beyond `ARCHITECTURE.md`.
 - Updating visual baselines without inspection.
-- Treating green CI as migration or review completion.
-- Running the migration or review stage in the same invocation.
-- Running raw Git commands or treating Git object health as an implementation input gate.
+- Treating automated checks as migration or review completion.
+- Running the migration or review stage in the same worker context.
+- Inspecting hidden workspace metadata or unrelated environment internals.
