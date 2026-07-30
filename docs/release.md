@@ -382,7 +382,7 @@ gate. Therefore an incorrect PR version does not block the demo, while failed
 implementation verification still does. The sticky preview comment links to
 `https://mioframe.github.io/pr/<number>/`. PR previews for release sync-back
 branches remain skipped, as before (see `Release sync-back` above). PR preview
-cleanup on PR close removes only that PR's `pr/<number>/` slot.
+cleanup on PR close removes only that PR's `/pr/<number>/` slot.
 
 `deploy-preview` checks out trusted tooling from the PR's **base** ref (see
 `Trusted publishing boundary` above), never from the PR head, so that
@@ -573,17 +573,34 @@ and never changes `activeRelease` — only a later `BOOT_OK` commit does. While
 an activation is in progress, update checks may refresh `latestRelease` but
 must not prepare or approve another release.
 
-A qualifying navigation (a genuinely new same-channel window, not a reload
-of an already-open one, with no other controlled or uncontrolled
-same-channel window currently live) starts an `activation`, serving its
-target and arming a boot-confirmation deadline
-(`BOOT_CONFIRMATION_TIMEOUT_MS`, 30s). The publisher-injected boot watchdog
-reports `BOOT_OK`/`BOOT_FAILED` back to the worker over an acknowledged
-`MessageChannel` request; the worker only disarms the watchdog once it
-confirms a durable `committed` (`BOOT_OK`) or `rolled-back` (`BOOT_FAILED`)
-persistence — never merely because a message was sent. An already-open
-session is never force-reloaded: a Manual "Install on next launch" or an
-Automatic background approval only ever applies on the _next_ clean launch.
+The portable activation contract is:
+
+```text
+close every Mioframe window
+→ reopen Mioframe
+→ the scheduled release starts activation
+```
+
+For each navigation, the worker counts every other controlled or uncontrolled
+same-channel window and excludes only the navigation identities exposed by the
+standard `FetchEvent.clientId` and `FetchEvent.resultingClientId` fields. When
+no other same-channel window is live and a valid approval exists, the worker
+starts `activation`, serves its target, and arms the 30-second
+`BOOT_CONFIRMATION_TIMEOUT_MS` deadline.
+
+The worker does not read non-standard navigation identity fields, detect or
+classify reloads, or branch by browser. A sole-window reload may or may not
+qualify depending on browser timing; the system neither promises nor forbids
+that behavior. Closing every Mioframe window and reopening it is the only
+cross-browser guaranteed trigger and is the scenario verified in Chromium,
+Firefox, and WebKit.
+
+The publisher-injected boot watchdog reports `BOOT_OK`/`BOOT_FAILED` back to
+the worker over an acknowledged `MessageChannel` request; the worker only
+disarms the watchdog once it confirms a durable `committed` (`BOOT_OK`) or
+`rolled-back` (`BOOT_FAILED`) persistence — never merely because a message was
+sent. An already-open session is never force-updated when a Manual installation
+or Automatic background approval is scheduled.
 
 A rollback never copies or restores a previous release, because
 `activeRelease` never changed during activation; it only clears the
@@ -626,12 +643,27 @@ never called, and the watchdog's own early-fatal-error detection reports
 ### Rollback and reload
 
 A `BOOT_FAILED` report is only acted on once the worker durably persists
-the rollback; only then does it broadcast `APP_UPDATE_ROLLBACK` to every
-same-channel window (never a foreign channel, branch, or PR preview), which
-is what actually triggers each of those windows' own reload. If rollback
-_persistence_ itself fails, the watchdog never reloads — it shows a small,
-self-contained recovery message and leaves the page recoverable by a later
-launch, avoiding a reload loop.
+the rollback. The worker posts the `rolled-back` acknowledgement first, then
+starts the `APP_UPDATE_ROLLBACK` broadcast to every same-channel window
+(never a foreign channel, branch, or PR preview); that broadcast triggers
+each failed-release window's reload. If rollback persistence itself fails,
+the watchdog never reloads — it shows a small, self-contained recovery
+message and leaves the page recoverable by a later launch, avoiding a reload
+loop.
+
+### Message-event lifetime and response ordering
+
+Worker command handling returns an immediate response plus an optional
+deferred `runLifetimeWork: () => Promise<void>` callback. `src/sw.ts` posts
+the response first and only then invokes and awaits the callback inside the
+originating `message` event's `event.waitUntil()` promise.
+
+Cache cleanup, state-change invalidation, and rollback broadcasts therefore
+cannot begin before the requesting client has received the durable command
+result. Read-only and true no-op commands return no follow-up callback.
+Follow-up failures remain best effort and never alter an already-persisted
+transition or its response. No durable cleanup scheduler, operation record,
+or retry database is introduced.
 
 ### Stable/develop isolation
 
@@ -681,21 +713,25 @@ it.
 A new preparation waits for every cleanup already scheduled when it is
 registered; a cleanup scheduled after a preparation is registered captures
 that release ID when the cleanup actually starts and protects its cache.
-Cleanup never blocks the lifecycle transition's own response, and a cleanup
-failure never makes an already-persisted transition appear to have failed or
-poisons later cleanup/preparation work. Release downloads and hashing use a
-small bounded concurrency limit, not an unbounded fetch over every file.
+For message commands, cleanup starts only through deferred
+`runLifetimeWork()` after the response is posted. Cleanup never blocks or
+changes the lifecycle transition's own response, and a cleanup failure never
+makes an already-persisted transition appear to have failed or poisons later
+cleanup/preparation work. Release downloads and hashing use a small bounded
+concurrency limit, not an unbounded fetch over every file.
 
-### Automatic check event lifetime
+### Scheduled discovery event lifetime
 
-The Automatic-mode background check is triggered by ordinary navigation and
-deduplicated once per worker instance lifetime (`AutomaticCheckScheduler`),
-but its promise is attached to the triggering `fetch` event via
-`event.waitUntil` — a Service Worker may otherwise be terminated once its
-event handler returns, killing an untracked background check mid-flight.
-The navigation's own response is never awaited on it: `event.respondWith`
-resolves independently, so update discovery and preparation can never delay
-a navigation.
+The background discovery check is triggered by ordinary navigation and
+deduplicated once per worker instance lifetime
+(`ScheduledDiscoveryCheckScheduler`), but its promise is attached to the
+triggering `fetch` event via `event.waitUntil` — a Service Worker may
+otherwise be terminated once its event handler returns, killing an untracked
+background check mid-flight. It runs in both update modes; only Automatic
+mode continues from discovery into preparation and approval. The navigation's
+own response is never awaited on it: `event.respondWith` resolves
+independently, so update discovery and preparation can never delay a
+navigation.
 
 ## Production artifact validation
 
