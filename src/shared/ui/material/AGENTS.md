@@ -2,38 +2,92 @@
 
 Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-facing Material library boundary.
 
-## Required workflow
+## Required staged workflow
 
-- Use `material-component` as the normal operator-facing entrypoint. The Material artifact name is sufficient input.
-- `material-component-design` owns the first artifact: a complete official Material snapshot in `components/<family>/DESIGN.md`.
-- A missing, stale, blocked, or incomplete `DESIGN.md` blocks adapter architecture, implementation, completion review, and `migrated` status.
-- The router resolves the official family, ensures a current design artifact, then resolves current demand, mode, dependencies, renderer evidence, proof, and verification scope from the repository.
-- `material-component-adapter` is the canonical demand-scoped implementation workflow. It consumes `DESIGN.md`; it does not replace or shorten it.
-- `material-component-completion` adds completion preflight for an existing partial, incidental, dependency-created, previously migrated, or otherwise uncertain component; it does not define another implementation process.
-- Read `docs/design-document.md`, `docs/architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, `roadmap.md`, the selected family `DESIGN.md`, and the selected family README.
-- Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or another decision not already resolved by canonical evidence.
-- Complete required official Material dependency design documents and adapters before composing them from a parent.
-- When a dependency is discovered, process its name automatically as the next first-class family through design and adapter/completion workflow. Do not require another operator prompt. Resume parent composition only after dependency closure.
+Use `material-component <name>` as the normal operator-facing entrypoint.
+
+Every official family follows exactly:
+
+```text
+material-component-design
+  → components/<family>/DESIGN.md
+
+material-component-architecture
+  → components/<family>/ARCHITECTURE.md
+
+material-component-implementation
+  → component code/proof + components/<family>/IMPLEMENTATION.md
+
+material-component-migration
+  → consumer migration + components/<family>/MIGRATION.md
+
+material-component-review
+  → components/<family>/REVIEW.md
+```
+
+Read `docs/component-workflow.md` first.
+
+One invocation runs one stage only and stops after its artifact/report. Do not combine research, architecture, coding, migration, and review in one agent task.
+
+The router selects the earliest missing, stale, blocked, incomplete, or invalid stage. Later code does not permit skipping an earlier stage.
+
+Required stage gates:
+
+- `DESIGN.md`: complete official Material snapshot, status `current`;
+- `ARCHITECTURE.md`: demand-scoped deterministic plan, status `ready`;
+- `IMPLEMENTATION.md`: architecture implemented with no deviations, status `complete`;
+- `MIGRATION.md`: consumers migrated and legacy ownership removed, status `complete`;
+- `REVIEW.md`: independent review on the resulting head.
+
+A required official dependency passes the same stages as a first-class family. Pause the parent and process one dependency stage per later invocation. Do not recursively execute multiple stages in one run.
+
+`README.md` is only a short family index. It is not a substitute for any stage artifact.
+
+Use `architect-handoff` only when work changes unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior outside the deterministic Material workflow.
 
 ## Authority
 
 1. Official Material 3 Expressive documentation defines the complete public component and token model.
-2. The family `DESIGN.md` is the complete normalized local snapshot of that official model.
-3. Current Mioframe scenarios select the subset required now.
-4. The installed lockfile-resolved `@m3e/web` artifact and observable browser behavior define the private renderer capability actually consumed.
-5. The selected family README records the accepted demand-scoped Material–m3e–Vue mapping and proof.
-6. Canonical CSS declarations plus `docs/token-api.md` define the supported public token surface.
-7. `docs/m3e-defects.md` owns confirmed renderer-defect identities and lifecycle.
+2. Family `DESIGN.md` is the complete normalized local snapshot of that official model.
+3. Family `ARCHITECTURE.md` selects current Mioframe demand and resolves Vue API, dependencies, ownership, tokens, renderer mapping, proof, and migration.
+4. Family code plus `IMPLEMENTATION.md` records component-owned implementation and proof.
+5. `MIGRATION.md` records consumer adoption and legacy removal.
+6. `REVIEW.md` records independent compliance and merge readiness.
+7. Canonical CSS declarations plus `docs/token-api.md` define the supported public token surface.
+8. `docs/m3e-defects.md` owns confirmed renderer-defect identities and lifecycle.
+9. `docs/roadmap.md` alone owns project-wide milestone status and next action.
 
-Upstream source, tags, demos, and changelogs are supporting renderer evidence only. Legacy Mioframe and m3e APIs are not public-contract authorities.
+The installed lockfile-resolved `@m3e/web` artifact and observable browser behavior define the private renderer capability actually consumed. Upstream renderer source, tags, demos, and changelogs are supporting evidence only. Legacy Mioframe and m3e APIs are not public-contract authorities.
 
-## Design artifact boundary
+## Stage boundaries
 
-- `components/<family>/DESIGN.md` answers only what official Material defines.
-- It includes the complete official variants, configurations, anatomy, states, behavior, guidance, accessibility, geometry, motion, related components, and component-token catalogue, whether or not Mioframe currently uses them.
-- It does not contain current demand, `implement-now`/`defer`, Vue API, m3e mappings, code paths, tests, migration status, or PR history.
-- The family README answers what Mioframe selects, maps, corrects, defers, and verifies now, and references exact `DESIGN.md` sections for every decision.
-- Do not use a family README, implementation, story, test, or m3e artifact as a substitute for a complete `DESIGN.md`.
+### DESIGN.md
+
+Answers only what official Material defines. It includes the complete official variants, configurations, anatomy, states, behavior, guidance, accessibility, geometry, motion, related components, and component-token catalogue, whether or not Mioframe uses them.
+
+It contains no current demand, Vue API, m3e mapping, code, tests, migration, proof, or PR status.
+
+### ARCHITECTURE.md
+
+Answers what Mioframe must implement now and how. It references exact `DESIGN.md` sections, resolves dependencies and owners, defines the complete selected public Vue/token contracts, renderer mappings and gaps, implementation passes, `TEST IMPACT`, migration inventory, acceptance criteria, and forbidden approaches.
+
+It contains no implementation progress. Coding must not begin while its status is not `ready`.
+
+### IMPLEMENTATION.md
+
+Is a concise handoff for canonical component code, tokens, exports, defects, tests, stories, proof, and implementation-stage verification. It must report no architecture deviation before migration starts.
+
+Implementation does not migrate product consumers or remove consumer-facing legacy ownership.
+
+### MIGRATION.md
+
+Owns the complete consumer inventory, migration, preserved user scenarios and failure paths, obsolete ownership removal, final current-head verification, and review readiness.
+
+Migration does not redesign the component.
+
+### REVIEW.md
+
+Independently compares the full result with official design, accepted architecture, implementation, consumers, repository rules, proof, verification, and operator visual/motion acceptance. Review does not fix code; it routes findings to the earliest owning stage.
 
 ## Public API and ownership
 
@@ -42,49 +96,48 @@ Upstream source, tags, demos, and changelogs are supporting renderer evidence on
 - Do not add unused renderer/native/token surface for hypothetical completeness.
 - Define precedence and restoration for public states that may coexist.
 - A composed official Material component remains independently owned and is used through its canonical `MD*` API.
-- The parent owns composition meaning and state handoff; the dependency owns its design document, renderer mapping, accessibility, geometry, tokens, defects, tests, and visual proof.
+- The parent owns composition meaning and state handoff; the dependency owns its own stage artifacts, renderer mapping, accessibility, geometry, tokens, defects, tests, and visual proof.
 - Parent composition proof does not replace standalone dependency proof.
-- Visual loading/busy presentation and activation blocking are independent. Loading must not imply disabled state or suppress activation unless the accepted family contract explicitly assigns both to the component.
+- Visual loading/busy presentation and activation blocking are independent unless `ARCHITECTURE.md` explicitly assigns both.
 
 ## Token ownership
 
-- `DESIGN.md` records the complete official component-token catalogue without selecting Mioframe support.
+- `DESIGN.md` records the complete official component-token catalogue without selecting runtime support.
+- `ARCHITECTURE.md` selects the minimum complete token set for confirmed rendered parts and states.
 - `foundation/tokens.css` owns supported renderer-independent `--md-ref-*` and `--md-sys-*` foundations.
 - `foundation/theme.css` owns the default palette and light/dark system-color assignments.
 - `components/<family>/tokens.css` owns only that family’s selected official `--md-comp-<family>-*` surface and private renderer mappings.
 - `docs/token-api.md` lists every supported public token; declarations and catalogue entries change together.
 - `--app-*` belongs outside Material. `--m3e-*` and `--md-private-*` remain private.
-- Verify CSS value grammar against every selected current consumer. Equal numeric meaning does not guarantee grammar compatibility.
-- Derive every public `--md-comp-*` name from the exact official Material token path in the family `DESIGN.md`, never from m3e vocabulary.
-- For contextual tokens, trace every required state and rendered part through `official path → public token → renderer input → fallback → consumer result → browser proof`.
-- A resting token does not prove hover, focus, press, selected, or disabled output when the renderer uses separate state inputs.
-- Do not publish tokens for an unconsumed rendered part merely for symmetry or renderer completeness.
-- Do not recreate a mixed-owner legacy token file, compatibility alias, duplicate public owner, TypeScript token registry, token DSL, or exhaustive public copy of Material/m3e defaults.
+- Derive every public component-token name from the exact official path in `DESIGN.md`, never from m3e vocabulary.
+- For contextual tokens, `ARCHITECTURE.md` traces every required state and rendered part through `official path → public token → renderer input → fallback → consumer result → proof`.
+- Do not publish tokens for unconsumed parts merely for symmetry or renderer completeness.
+- Do not recreate a mixed-owner legacy token file, compatibility alias, duplicate public owner, TypeScript token registry, token DSL, or exhaustive public Material/m3e copy.
 
 ## Renderer boundary
 
-Prefer documented m3e APIs. Keep renderer imports, tags, types, events, and private CSS inputs inside the canonical owning adapter.
+Prefer documented m3e APIs. Keep renderer imports, tags, types, events, and private CSS inputs inside the canonical owning implementation.
 
-A temporary exact-version workaround is allowed only when the complete gate in `docs/component-adapter.md` is satisfied and the linked family matrix and `docs/m3e-defects.md` record remain current. It must use only public host-level inputs, remain owner-local and removable, and must not recreate renderer-owned interaction, accessibility, geometry, state, or motion systems.
+A temporary exact-version workaround is allowed only when the gate in `docs/component-adapter.md` is satisfied and `ARCHITECTURE.md` plus `docs/m3e-defects.md` record it. It must remain owner-local, public-host-only, removable, and must not recreate renderer-owned interaction, accessibility, geometry, state, or motion systems.
 
-Do not override renderer-owned interaction timing or transient geometry with host pseudo-classes such as `:active`, `:not(:active)`, `:hover`, or `:focus-visible`, or by switching renderer CSS inputs around those pseudo-classes. If observable renderer behavior is unacceptable, classify it as `divergent`, `m3e-fix`, or `blocked`; do not compensate with a parallel wrapper state or timing path.
+Do not override renderer-owned interaction timing or transient geometry with host pseudo-classes or renderer-CSS switching. Route unacceptable behavior to `m3e-fix` or `blocked`.
 
-Vue custom-element glue must derive from package-exported element classes or `HTMLElementTagNameMap`. Handwritten `new () => HTMLElement` declarations are not package-derived.
-
-`config/vueCustomElements.ts` is the exact raw-tag allow-list. Do not mirror it with `vue/no-undef-components.ignorePatterns`: those entries are regular expressions matched against normalized component names and are broader than an exact tag list. Keep unselected, misspelled, and differently cased renderer tags as lint errors; use a described local lint exception only on an actual selected raw tag when the generic undefined-component rule cannot consume the compiler predicate.
+Vue custom-element glue derives from package-exported element classes or `HTMLElementTagNameMap`. `config/vueCustomElements.ts` is the exact selected raw-tag allow-list.
 
 ## Verification and completion
 
-Use the proof model defined by `docs/component-adapter.md` and repository testing policy. Observable renderer-owned appearance requires browser or visual proof; host state, token presence, event receipt, custom-property value, or source inspection alone is insufficient.
+Use repository testing architecture and the proof selected by `ARCHITECTURE.md`.
 
-For contextual tokens, browser proof must assert the computed rendered result for each selected state and part. Visual proof supplements that result; it does not own keyboard or focus-movement success criteria.
+Observable renderer-owned appearance requires browser or visual proof. Host state, token presence, event receipt, custom-property value, source inspection, or a story alone is insufficient.
 
-Final verification uses the exact task scope required by the root `AGENTS.md`; Material-specific documents must not replace it with an unscoped command.
+For contextual tokens, browser proof asserts the computed rendered result for each selected state and part. Visual proof supplements it; behavior tests own keyboard and focus success criteria.
 
-A component remains `migrating` until its current `DESIGN.md`, selected contract, dependencies, public exports, token ownership, defect records, consumer migration, required proof, current-head verification, and reported operator issues are resolved. Green CI alone is not architecture approval.
+Final verification uses the exact task scope required by root `AGENTS.md`.
+
+A component remains incomplete until all five stage artifacts are current, final verification passes, and required operator visual/motion acceptance is recorded. Green CI alone is not architecture approval.
 
 ## Boundary
 
 Outside this directory, product code must not import `@m3e/web`, render `m3e-*`, use renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
 
-Do not introduce Lit directly, a generic adapter framework, or another public token registry without a demonstrated repeated need and a separate architecture decision.
+Do not introduce Lit directly, a generic adapter framework, or another public token registry without demonstrated repeated need and a separate architecture decision.
