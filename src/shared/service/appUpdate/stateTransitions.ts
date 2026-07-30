@@ -99,7 +99,8 @@ export function applyCheckForUpdates(
  * caller resolved and prepared; never re-derived from a newer discovery. An
  * explicit Manual action may approve the exact release recorded as
  * previously failed — unlike the Automatic path, this is a deliberate user
- * retry.
+ * retry — but never a release that is not strictly newer than
+ * `state.activeRelease`.
  *
  * A no-op while an activation is already in progress: `approvedRelease` and
  * `activation` are mutually exclusive ownership states, and no release may
@@ -113,13 +114,16 @@ export function approveManualRelease(
   prepared: ReleaseSummary,
 ): UpdateControllerState {
   if (state.activation) return state;
+  if (!isNewerSequence(prepared, state.activeRelease)) return state;
   return { ...state, approvedRelease: prepared };
 }
 
 /**
  * Records an Automatic-mode approval once `prepared` has been fully
- * committed locally. Only ever moves `approvedRelease` forward, and never
- * approves the exact release currently recorded as having failed its boot.
+ * committed locally. Only ever moves `approvedRelease` forward, never
+ * approves a release that is not strictly newer than `state.activeRelease`,
+ * and never approves the exact release currently recorded as having failed
+ * its boot.
  *
  * A no-op while an activation is already in progress: `approvedRelease` and
  * `activation` are mutually exclusive ownership states, and no release may
@@ -133,6 +137,7 @@ export function approveAutomaticRelease(
   prepared: ReleaseSummary,
 ): UpdateControllerState {
   if (state.activation) return state;
+  if (!isNewerSequence(prepared, state.activeRelease)) return state;
   if (state.failedActivationRelease?.releaseId === prepared.releaseId) return state;
   if (state.approvedRelease && prepared.releaseSequence <= state.approvedRelease.releaseSequence) {
     return state;

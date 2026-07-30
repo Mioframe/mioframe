@@ -138,10 +138,23 @@ describe('approveManualRelease', () => {
     expect(state.approvedRelease).toEqual(releaseB);
   });
 
-  it('may approve the exact release recorded as previously failed (explicit Manual retry)', () => {
+  it('may approve the exact release recorded as previously failed (explicit Manual retry), when it is newer than activeRelease', () => {
     const withFailure = { ...baseState, failedActivationRelease: releaseB };
     const state = approveManualRelease(withFailure, releaseB);
     expect(state.approvedRelease).toEqual(releaseB);
+  });
+
+  it('does not approve the active release', () => {
+    const state = approveManualRelease(baseState, releaseA);
+    expect(state).toBe(baseState);
+    expect(state.approvedRelease).toBeUndefined();
+  });
+
+  it('does not approve an older release than activeRelease', () => {
+    const withNewerActive = { ...baseState, activeRelease: releaseB };
+    const state = approveManualRelease(withNewerActive, releaseA);
+    expect(state).toBe(withNewerActive);
+    expect(state.approvedRelease).toBeUndefined();
   });
 
   it('is a no-op while an activation is already in progress', () => {
@@ -182,6 +195,19 @@ describe('approveAutomaticRelease', () => {
     const withFailure = { ...baseState, failedActivationRelease: releaseB };
     const state = approveAutomaticRelease(withFailure, releaseC);
     expect(state.approvedRelease).toEqual(releaseC);
+  });
+
+  it('does not approve the active release', () => {
+    const state = approveAutomaticRelease(baseState, releaseA);
+    expect(state).toBe(baseState);
+    expect(state.approvedRelease).toBeUndefined();
+  });
+
+  it('does not approve an older release than activeRelease', () => {
+    const withNewerActive = { ...baseState, activeRelease: releaseB };
+    const state = approveAutomaticRelease(withNewerActive, releaseA);
+    expect(state).toBe(withNewerActive);
+    expect(state.approvedRelease).toBeUndefined();
   });
 
   it('is a no-op while an activation is already in progress', () => {

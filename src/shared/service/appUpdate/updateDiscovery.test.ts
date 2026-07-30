@@ -167,6 +167,29 @@ describe('runUpdateCheck', () => {
     expect(result.snapshot.scheduledRelease).toBeUndefined();
   });
 
+  it('does not approve its prepared target if that target became activeRelease while preparation was in flight', async () => {
+    // Second read shows the target release already committed as activeRelease
+    // (e.g. a concurrent clean-launch activation resolved while this check's
+    // background preparation was still running) — mode is still Automatic
+    // and latestRelease still matches the target, so only the activeRelease
+    // comparison inside approveAutomaticRelease can catch this.
+    readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state: baseState })
+      .mockResolvedValueOnce({
+        status: 'valid',
+        state: { ...baseState, activeRelease: releaseB, latestRelease: summaryB },
+      });
+    fetchLatestReleasePointerMock.mockResolvedValue(releaseB);
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorB);
+    prepareMock.mockResolvedValue(descriptorB);
+    const { runUpdateCheck } = await import('./updateDiscovery');
+
+    const result = await runUpdateCheck('stable', '/', enqueue, coordinator);
+
+    expect(result.snapshot.scheduledRelease).toBeUndefined();
+    expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
+  });
+
   it('records discovery but does not prepare or approve while an activation is in progress', async () => {
     const activation = {
       targetRelease: {
