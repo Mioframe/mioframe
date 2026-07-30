@@ -56,17 +56,17 @@ The Button and Loading Indicator families own the currently declared `--md-comp-
 
 Every supported token has an entry with:
 
-| Field            | Required content                                                     |
-| ---------------- | -------------------------------------------------------------------- |
-| Token            | exact CSS custom-property name                                       |
-| Grammar          | accepted CSS value grammar                                           |
-| Purpose          | Material semantic role                                               |
-| Default          | canonical default or fallback source                                 |
-| Scope            | foundation, theme, or component family                               |
-| Owner            | canonical declaration file                                           |
+| Field            | Required content                                                       |
+| ---------------- | ---------------------------------------------------------------------- |
+| Token            | exact CSS custom-property name                                         |
+| Grammar          | accepted CSS value grammar                                             |
+| Purpose          | Material semantic role                                                 |
+| Default          | canonical default or fallback source                                   |
+| Scope            | foundation, theme, or component family                                 |
+| Owner            | canonical declaration file                                             |
 | Material source  | exact family `DESIGN.md` token path or official foundation role source |
-| Renderer mapping | direct system consumption, documented m3e mapping, or none           |
-| Verification     | representative contract/browser/visual proof                         |
+| Renderer mapping | direct system consumption, documented m3e mapping, or none             |
+| Verification     | representative contract/browser/visual proof                           |
 
 Rows group tokens that share every field except the exact name and literal default, to keep the catalogue navigable without omitting any retained token. Every grouped row spells out the complete, exact set of token names it covers — no name shorthand.
 
@@ -201,13 +201,13 @@ Material source: `m3.material.io/styles/motion/easing-and-duration/tokens-specs`
 
 These five rows describe the current executable declarations only. They are not accepted as the final public Button contract. They must be replaced atomically after the complete Button `DESIGN.md` confirms the official token paths and the demand-scoped target.
 
-| Token                                             | Grammar   | Current runtime purpose                | Default                       | Scope            | Owner                          | Current renderer mapping                                      | Correction status                                                                                       |
-| ------------------------------------------------- | --------- | -------------------------------------- | ----------------------------- | ---------------- | ------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `--md-comp-button-text-label-text-color`          | `<color>` | text Button resting label color        | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-label-text-color` mapping          | provisionally retained; confirm against Button `DESIGN.md`                                               |
-| `--md-comp-button-text-icon-color`                | `<color>` | text Button resting leading-icon color | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-icon-color` mapping                | remove unless the design-backed demand review finds a current contextual icon consumer                 |
-| `--md-comp-button-text-hover-state-layer-color`   | `<color>` | text Button hover state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-state-layer-color` mapping   | replace with official `hovered` path after design confirmation; add hovered label token if selected     |
-| `--md-comp-button-text-focus-state-layer-color`   | `<color>` | text Button focus state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-state-layer-color` mapping   | replace with official `focused` path after design confirmation; add focused label token if selected     |
-| `--md-comp-button-text-pressed-state-layer-color` | `<color>` | text Button pressed state-layer color  | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-state-layer-color` mapping | confirm pressed state-layer and label selection against the complete design artifact                    |
+| Token                                             | Grammar   | Current runtime purpose                | Default                       | Scope            | Owner                          | Current renderer mapping                                      | Correction status                                                                                   |
+| ------------------------------------------------- | --------- | -------------------------------------- | ----------------------------- | ---------------- | ------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `--md-comp-button-text-label-text-color`          | `<color>` | text Button resting label color        | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-label-text-color` mapping          | provisionally retained; confirm against Button `DESIGN.md`                                          |
+| `--md-comp-button-text-icon-color`                | `<color>` | text Button resting leading-icon color | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-icon-color` mapping                | remove unless the design-backed demand review finds a current contextual icon consumer              |
+| `--md-comp-button-text-hover-state-layer-color`   | `<color>` | text Button hover state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-hover-state-layer-color` mapping   | replace with official `hovered` path after design confirmation; add hovered label token if selected |
+| `--md-comp-button-text-focus-state-layer-color`   | `<color>` | text Button focus state-layer color    | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-focus-state-layer-color` mapping   | replace with official `focused` path after design confirmation; add focused label token if selected |
+| `--md-comp-button-text-pressed-state-layer-color` | `<color>` | text Button pressed state-layer color  | `var(--md-sys-color-primary)` | component family | `components/button/tokens.css` | private `--m3e-text-button-pressed-state-layer-color` mapping | confirm pressed state-layer and label selection against the complete design artifact                |
 
 ## Loading Indicator component (`components/loadingIndicator/tokens.css`)
 
