@@ -58,10 +58,11 @@ test('MDButton renders visible renderer-owned focus feedback on real keyboard fo
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--real-interaction-feedback');
   const surface = page.getByTestId('visual-md-button-real-interaction');
-  const button = surface.getByRole('button', { name: 'Press me', exact: true });
 
+  // Deterministic focus setup only: focus success is proven by the Storybook behavior lane
+  // (`md-button-family.spec.ts`). This visual spec only establishes focus state and captures
+  // the settled screenshot.
   await page.keyboard.press('Tab');
-  await expect(button).toBeFocused();
 
   await expect(surface).toHaveScreenshot('md-button-focus.png', { animations: 'disabled' });
 });
@@ -126,9 +127,11 @@ test('MDButton contextual text colors match the inverse-surface focus baseline',
 }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--contextual-text-tokens');
   const surface = page.locator('.visual-checker-backdrop');
-  const button = surface.getByRole('button', { name: 'Undo' });
+
+  // Deterministic focus setup only: focus success is proven by the Storybook behavior lane
+  // (`md-button-family.spec.ts`). This visual spec only establishes focus state and captures
+  // the settled screenshot.
   await page.keyboard.press('Tab');
-  await expect(button).toBeFocused();
 
   await expect(surface).toHaveScreenshot('md-button-contextual-focus.png', {
     animations: 'disabled',

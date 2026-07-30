@@ -1,10 +1,10 @@
 # Button migration
 
-Status: complete, correction required  
+Status: complete  
 DESIGN.md reference: `./DESIGN.md` (`Status: current`, official tabs snapshot 2026-07-20)  
 ARCHITECTURE.md reference: `./ARCHITECTURE.md` (`Status: ready`, architecture date 2026-07-30)  
-IMPLEMENTATION.md reference: `./IMPLEMENTATION.md` (`Status: complete`, implementation correction required)  
-Migration workspace state: Button consumers, Snackbar contextual handoff, legacy ownership, consumer proof, and project verification evidence inspected; AppBar cleanup remains.
+IMPLEMENTATION.md reference: `./IMPLEMENTATION.md` (`Status: complete`, implementation correction applied)  
+Migration workspace state: Button consumers, Snackbar contextual handoff, legacy ownership, consumer proof, and project verification evidence inspected; AppBar cleanup applied and verified.
 
 ## Consumer inventory
 
@@ -29,6 +29,7 @@ Migration workspace state: Button consumers, Snackbar contextual handoff, legacy
 ## Legacy ownership removed
 
 - Removed Snackbar's obsolete provisional Button token overrides.
+- Removed the ineffective `--md-content-color: var(--md-sys-color-on-surface-variant);` declaration from `MDAppBar.vue`'s `&__trailing-elements` rule (`src/shared/ui/AppBar/MDAppBar.vue`). This custom property had no accepted Button or contextual-color contract behind it: every component actually rendered inside the AppBar `trailingElements` slot across all 8 consumers (`MDIconButton` directly or via `MDContextMenuButton`/`RepositoryExplorerEntryManageButton`, and `MDAssistChip` via `VfsActivityStatusChip`) sets its own `--md-content-color`/`color` chain on its own root and never relied on the inherited value from AppBar. Confirmed by consumer inspection before removal; no replacement generic descendant color bridge or new contextual-color contract was introduced, per REVIEW.md's explicit instruction.
 - No compatibility aliases, raw renderer details, duplicate Button wrappers, deep imports, or obsolete Button exports remain outside the canonical family.
 - Unrelated legacy native controls and other Material families were not removed.
 
@@ -40,13 +41,28 @@ Migration workspace state: Button consumers, Snackbar contextual handoff, legacy
 
 ## Final verification
 
-The recorded full project verification passed before the two follow-up corrections were identified. It must be rerun after the visual-test ownership correction and AppBar cleanup.
+`pnpm verify` (full run, no `--only` scope, started 2026-07-30T19:20:11Z) was rerun after both the implementation visual-lane correction and this migration's AppBar cleanup were applied. Result: **passed**, all 10 checks green:
+
+- `agent-environment`: passed
+- `format`: passed (136 files, correct format)
+- `oxlint`: passed
+- `eslint`: passed (0 errors; 1 pre-existing warning in `scripts/agentEnvironment.mjs:394` (`jsdoc/require-jsdoc`), unrelated to this change and not in this correction's scope)
+- `type-check`: passed (no errors)
+- `unit-tests`: 259 passed (25 files)
+- `e2e`: 110 passed (10.5m)
+- `storybook-behavior`: 34 passed (1.5m)
+- `visual`: 219 passed (6.5m)
+- `mutation`: score 85.95, ≥ break threshold 60 — passed
+
+An earlier full run's `e2e` check failed with a container-level `SIGTERM` (Podman container hit its resource/timeout limit mid-suite, with one `Mobile Chrome` `appSmoke` test timing out waiting for a UI label) before reaching the `storybook-behavior`, `visual`, and `mutation` checks. A focused `pnpm verify --only e2e` rerun passed cleanly, confirming the failure was a transient environment/container flake unrelated to the one-line CSS declaration removed by this change. The full `pnpm verify` gate was then rerun end-to-end and passed all 10 checks as recorded above.
 
 ## Remaining migration blockers
 
-- Remove the ineffective `--md-content-color` declaration from `MDAppBar.__trailing-elements` without adding a generic descendant color bridge.
-- Rerun the required project verification after both correction-owned file changes are complete.
+None. Both migration-owned findings are resolved:
+
+- The ineffective `--md-content-color` declaration was removed from `MDAppBar.__trailing-elements` without adding a generic descendant color bridge.
+- The required project verification was rerun after both correction-owned file changes (implementation visual-lane correction and this AppBar cleanup) and passed in full.
 
 ## Review readiness
 
-Blocked until the implementation correction, AppBar cleanup, and resulting project verification are complete. Operator visual/motion acceptance remains a later review gate.
+Clean. The implementation correction, AppBar cleanup, and resulting full project verification are all complete and passing. Ready for a fresh independent review worker. Operator visual/motion acceptance remains a separate, later review gate not owned by this stage.

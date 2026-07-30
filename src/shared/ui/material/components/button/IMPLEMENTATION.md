@@ -1,9 +1,9 @@
 # Button implementation
 
-Status: complete, correction required  
+Status: complete  
 DESIGN.md reference: `./DESIGN.md` (`Status: current`, official tabs snapshot 2026-07-20)  
 ARCHITECTURE.md reference: `./ARCHITECTURE.md` (`Status: ready`, architecture date 2026-07-30)  
-Implementation workspace state: canonical Button runtime, tokens, exports, component proof, and dependency artifacts inspected; visual-test ownership correction remains.
+Implementation workspace state: canonical Button runtime, tokens, exports, component proof, and dependency artifacts inspected; visual-test ownership correction applied.
 
 ## Implemented passes
 
@@ -13,6 +13,7 @@ Implementation workspace state: canonical Button runtime, tokens, exports, compo
 4. Revalidated real-browser geometry, activation, form, focus, disabled, loading, target-hit, press restoration, reduced-motion, and legacy-surface coverage.
 5. Added a Button-owned inverse-surface fixture and browser proof for resting, hovered, keyboard-focused, and pressed contextual label results. Added bounded visual baselines for those four states.
 6. Revalidated Button Storybook behavior/visual impact selection and retained existing family mappings.
+7. Removed the two misplaced `toBeFocused()` behavior assertions from `tests/e2e/visual/shared-ui/md-button.spec.ts` (real-interaction focus state and contextual-text focus state). The visual lane now only drives the deterministic `Tab` keypress needed to reach the settled focus state before capturing each screenshot; it asserts no behavioral success criteria. Confirmed `tests/e2e/storybook/md-button-family.spec.ts` already independently asserts `toBeFocused()` for both the plain real-interaction MDButton (`--focus-indicator-target` story) and the contextual-text MDButton (`--contextual-text-tokens` story), so Storybook behavior proof already owns keyboard focus success for both scenarios and no coverage was lost.
 
 ## Public API implemented
 
@@ -38,7 +39,7 @@ Implementation workspace state: canonical Button runtime, tokens, exports, compo
 
 - `MDButton.test.ts`: selected tokens/private mappings, defaults and retained values, Boolean properties, fallthrough, native submit, event payload, label/icon, loading restoration, busy/decorative semantics, and disabled/loading independence.
 - `md-button-family.spec.ts`: browser contract matrix plus rendered inverse-primary label results for resting, hover, keyboard focus, and pointer press.
-- `md-button.spec.ts`: selected variants, sizes, loading, legacy surface, renderer interaction, and four contextual inverse-surface visual states.
+- `md-button.spec.ts`: selected variants, sizes, loading, legacy surface, renderer interaction, and four contextual inverse-surface visual states, now with deterministic-only focus setup (no behavior assertion) in the two focus-state visual tests.
 - Package type-check, Vue raw-tag selection, renderer-boundary checks, and token catalogue agreement remain selected by workspace ownership.
 
 ## Verification performed
@@ -48,6 +49,7 @@ Implementation workspace state: canonical Button runtime, tokens, exports, compo
 - Focused Storybook behavior — passed, 15 tests.
 - Button visual update and inspection — passed, 12 tests.
 - Focused visual verification expanded to the full visual set; Button proof passed while the then-unmigrated Snackbar states identified the expected migration-stage token update.
+- Visual-test ownership correction: `pnpm verify --only format --files tests/e2e/visual/shared-ui/md-button.spec.ts` — passed. `pnpm verify --only eslint --files tests/e2e/visual/shared-ui/md-button.spec.ts` — passed. `pnpm verify --only type-check` — passed. `pnpm verify --only visual --files tests/e2e/visual/shared-ui/md-button.spec.ts` — passed, 219 tests (full visual lane triggered by the changed visual spec; no baseline regressions).
 
 The migration stage owns Snackbar adoption, affected consumer visual proof, and the final project verification.
 
@@ -57,8 +59,8 @@ None.
 
 ## Remaining implementation blockers
 
-- Remove `toBeFocused()` assertions from Button visual specs. The visual lane must only establish deterministic state and capture screenshots; focus success remains owned by Storybook behavior proof.
+None.
 
 ## Migration readiness
 
-Blocked only on the visual-test ownership correction above. No public API, token, renderer mapping, or architecture change is required.
+Ready. No public API, token, renderer mapping, or architecture change is required.

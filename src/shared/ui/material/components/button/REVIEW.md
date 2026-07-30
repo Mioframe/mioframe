@@ -1,68 +1,70 @@
 # Button review
 
-Reviewed workspace state: current Button design, architecture, runtime, tokens, consumer migration, proof, and stage artifacts inspected on 2026-07-30  
-DESIGN.md status: `current`  
-ARCHITECTURE.md status: `ready`  
-IMPLEMENTATION.md status: `complete`, correction required  
-MIGRATION.md status: `complete`, correction required  
-Operator visual status: required  
-Verdict: blocked
+Reviewed workspace state: current Button `DESIGN.md`/`ARCHITECTURE.md`/`IMPLEMENTATION.md`/`MIGRATION.md`; `MDButton.vue`, `tokens.css`, `MDButton.test.ts`; `tests/e2e/visual/shared-ui/md-button.spec.ts`; `tests/e2e/storybook/md-button-family.spec.ts`; `src/shared/ui/AppBar/MDAppBar.vue`; `src/shared/ui/Snackbar/MDSnackbar.vue`; `docs/token-api.md`; `docs/roadmap.md`; the `src/shared/ui/material` `AGENTS.md` chain; and current `.verify/logs/*` (23:20–23:44, 2026-07-30) inspected directly, independent of the prior review and the two correction workers' self-reports.
+Review date: 2026-07-31
+DESIGN.md status: `current`
+ARCHITECTURE.md status: `ready`
+IMPLEMENTATION.md status: `complete`
+MIGRATION.md status: `complete`
+Operator visual status: required
+Verdict: compliant-with-listed-risks
 
 ## Goal and scenarios reviewed
 
-The independent worker reviewed the complete demand-scoped Button family: filled, outlined, and text actions; extra-small and small sizes; required label and optional leading icon; native button/submit behavior; disabled behavior; loading composition; target geometry; keyboard, pointer, focus, press, and reduced-motion behavior; contextual text tokens; Snackbar action integration; and current product consumers.
-
-The architect follow-up reviewed the observable workspace result rather than accepting the stage report as authority. The accepted official design, selected API, dependency boundary, seven-token contextual contract, runtime mappings, Snackbar overrides, and consumer inventory remain valid.
+This is a re-review after the prior `REVIEW.md` (2026-07-30, verdict `blocked`) found two correction items and routed them to `implementation`. Both correction claims are independently re-verified below from the actual files, not accepted on the correction workers' prose. The full demand-scoped Button family remains in scope: filled/outlined/text color, extra-small/small size, required label with optional leading icon, native button/submit, disabled behavior, loading composition via `MDLoadingIndicator`, 48×48dp target, keyboard/pointer/focus/press/reduced-motion behavior, the seven-token Snackbar contextual contract, and current product consumers.
 
 ## Official design compliance
 
-`DESIGN.md` records all four official Button tabs and the complete associated Button token resource. It separates official facts from renderer and product demand and documents the newest successfully acquired complete snapshot. No design correction is required by the current findings.
+No design change occurred in this correction round. `DESIGN.md` still records all four official Button tabs and the complete token resource with a documented refresh attempt and no evidence of a newer revision. No design correction is required.
 
 ## Architecture compliance
 
-`ARCHITECTURE.md` selects the narrowest complete current surface, keeps the single renderer host as the interaction and native-semantics owner, and rejects speculative renderer surface and wrapper-owned interaction state.
-
-The seven contextual text tokens are demand-backed by Snackbar and use official Material paths. Loading remains presentation-only and composes the independently owned Loading Indicator without moving pending, disabled, or re-entry ownership into Button.
-
-No architecture correction is required.
+No architecture change occurred in this correction round. `ARCHITECTURE.md` remains `ready`, still selects the narrowest current surface, keeps `m3e-button` as the single semantic/native host, and traces the seven contextual text tokens end to end. No architecture correction is required.
 
 ## Implementation compliance
 
-The Button runtime and token correction are accepted:
+Correction 1 re-verified directly against the file, not the implementation worker's report:
 
-- the public Vue API remains limited to the selected contract;
-- the seven official contextual text tokens replace the provisional five-token surface;
-- old `hover`/`focus` names, the unconsumed icon token, and compatibility aliases are absent;
-- private renderer mappings remain inside the family;
-- rendered label color is covered in resting, hovered, focused, and pressed states;
-- Button loading composition remains decorative, busy, 24 px, `currentColor`, and independent from activation blocking.
+- `tests/e2e/visual/shared-ui/md-button.spec.ts` contains zero `toBeFocused()` (or any other behavioral) assertions. Both focus-adjacent tests (`...focus baseline` at line ~125 and the real-interaction focus-feedback test at line ~56) drive only a deterministic `page.keyboard.press('Tab')`, with an explicit comment attributing focus-success proof to the Storybook behavior lane, then capture the settled screenshot with `animations: 'disabled'`. This matches the required visual-lane scope: establish state, capture appearance, assert nothing behavioral.
+- `MDButton.vue`, `tokens.css`, and `MDButton.test.ts` are unchanged in substance from the prior accepted implementation: the seven official contextual tokens are declared exactly as architected (verified verbatim in `tokens.css`), no leftover `hover`/`focus`-named public token or contextual icon token remains, the single `m3e-button` host receives the private renderer mappings, and `MDButton.test.ts` covers false-Boolean property mapping, `aria-busy` toggling on `loading`, and disabled-while-loading precedence exactly as `IMPLEMENTATION.md` claims.
 
-One implementation-owned test-boundary correction remains: visual specs still assert `toBeFocused()`. Focus behavior already belongs to Storybook behavior proof. Visual specs must only establish deterministic focus state and capture the screenshot.
+No implementation-owned finding remains.
 
 ## Migration and legacy removal
 
-Snackbar correctly supplies inverse-primary through all seven selected contextual Button tokens. Existing product consumers remain on the canonical root export, and renderer vocabulary does not leak outside the Material boundary.
+Correction 2 re-verified directly:
 
-One migration-owned cleanup remains: `MDAppBar.__trailing-elements` still declares ineffective legacy `--md-content-color` without an accepted Button or contextual-color contract. Remove that declaration; do not replace it with a generic descendant color bridge.
+- `src/shared/ui/AppBar/MDAppBar.vue`'s `&__trailing-elements` rule (lines 59–63) declares only `display`, `gap`, and `margin-right`; the `--md-content-color` declaration is gone, and no replacement generic descendant color bridge was added.
+- An independent repository-wide search for `--md-content-color` found no remaining reference anywhere that depends on inheritance from `MDAppBar__trailing-elements`: every other declaration/consumption of that property (MDCard, MDChipBase, MDSwitch, MDMenuItemBase, MDNavigationRailButton/BarButton, MDSnackbar, MDBottomSheet\*, MDTable, MDSplitLayout, `ripple.css`, `RepositoryExplorerWidget`, `VfsActivityStatusChip`, etc.) sets or reads the property on its own subtree, not by inheriting AppBar's removed value. The 8 pane-level files that use the `trailingElements` slot (`HomePane`, `DocumentViewPane`, `SettingsPane`, `HelpArticlePane`, `HelpIndexPane`, `DataStoragePrivacyPane`, `RepoExplorerPane`, `AboutMioframePane`) each render `MDIconButton`, `MDContextMenuButton`, `RepositoryExplorerEntryManageButton`, or `MDAssistChip`/`VfsActivityStatusChip` content that sets its own color chain, matching `MIGRATION.md`'s claim.
+- `MDSnackbar.vue`'s `&__action` rule sets exactly the seven selected contextual tokens (four label-text states, three state-layer states) to `--md-sys-color-inverse-primary`, matching the architected trace.
+
+No migration-owned finding remains.
 
 ## Documentation consistency
 
-`docs/token-api.md` is the populated supported catalogue and records the accepted seven Button tokens and Loading Indicator token without provisional lifecycle claims. `docs/roadmap.md` routes the next invocation to Button implementation correction.
-
-Downstream stage records must be refreshed after the two file corrections and final project verification.
+`docs/token-api.md` (`populated`) lists exactly the seven accepted Button tokens with no provisional names or aliases, consistent with `tokens.css`. `docs/roadmap.md` (last updated 2026-07-30, correction round) accurately records both findings as resolved, records the real `pnpm verify` result, and correctly names "launch a new independent review worker" as the only remaining step before the operator visual/motion gate — consistent with what this review is doing. No documentation correction is required.
 
 ## Proof and verification
 
-The implementation and migration records contain successful automated proof from before the two follow-up findings. The required project verification must be rerun after the resulting workspace corrections.
+`.verify/logs/*` (all timestamped 2026-07-30, 23:20:xx–23:44:14, a single contiguous run) were read directly and match `MIGRATION.md`'s recorded final verification exactly:
+
+- `format.log`, `oxlint.log`, `type-check.log`: clean.
+- `eslint.log`: 0 errors, 1 pre-existing `scripts/agentEnvironment.mjs:394` `jsdoc/require-jsdoc` warning, unrelated to Button.
+- `unit-tests.log`: 259 passed (25 files).
+- `e2e.log`: 110 passed (10.5m).
+- `storybook-behavior.log`: 34 passed (1.5m), including the `MDButton focus indicator follows real keyboard focus...` test (`--focus-indicator-target` story) and the `MDButton renders contextual text label colors in every selected state` test (`--contextual-text-tokens` story), both of which assert `toBeFocused()` directly against the actual file — confirming Storybook behavior proof independently owns keyboard-focus success for both the plain and contextual-text scenarios, so no coverage gap was introduced by removing the visual-lane assertions.
+- `visual.log`: 219 passed (6.5m).
+- `mutation.log`: final score 85.95 ≥ break threshold 60.
+
+`pnpm verify:status` currently reports `idle` (no run in progress), consistent with this being a completed, settled result rather than a stale or partial one. No rerun was necessary; this review did not start a new verification run.
 
 Automated proof does not substitute for operator assessment of appearance and renderer-owned motion.
 
 ## Blockers
 
-1. Remove behavior assertions from Button visual specs while preserving focus assertions in behavior tests.
-2. Remove the ineffective AppBar trailing-elements `--md-content-color` declaration.
-3. Pass the required project verification after those corrections.
-4. Record operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar contextual states, and the other affected color-ownership surfaces.
+None remaining from the two prior technical findings — both are resolved and independently re-verified above.
+
+1. Record operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar contextual states, and the other affected color-ownership surfaces. This is the sole remaining gate; it requires a human visual/motion judgment this review cannot grant.
 
 ## Major issues
 
@@ -70,8 +72,7 @@ None.
 
 ## Minor issues
 
-1. Visual and behavior proof ownership is mixed by `toBeFocused()` assertions in the visual lane.
-2. AppBar retains an ineffective legacy contextual-color declaration.
+None.
 
 ## Accepted risks
 
@@ -90,10 +91,8 @@ None.
 
 ## Required return stage
 
-`implementation`.
-
-The orchestrator must launch a fresh implementation worker for the visual-test ownership correction, continue through a fresh migration worker for AppBar cleanup and downstream record refresh, run the required project verification, and then launch a new independent review worker. It must not repeat design or architecture unless a correction worker discovers evidence that invalidates those artifacts.
+None. Both prior findings are resolved and independently confirmed against actual workspace state; no new technical finding requires returning to design, architecture, implementation, or migration.
 
 ## Completion status
 
-Blocked until the two technical corrections, resulting project verification, and operator visual/motion acceptance are complete.
+Technically complete. The only remaining gate is operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar contextual states, and the other affected color-ownership surfaces — a manual judgment this review stage does not own and cannot grant.
