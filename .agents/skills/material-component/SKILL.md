@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use with only a Material component name to autonomously orchestrate the complete design → architecture → implementation → migration → review workflow until completion or a genuine external blocker.'
+description: 'Use with only a Material component name to autonomously orchestrate the complete design → architecture → implementation → migration → review workflow through fresh isolated stage workers until completion or a genuine external blocker.'
 ---
 
 # Material component
@@ -25,14 +25,42 @@ One operator invocation must autonomously advance the component as far as the re
 The operator supplies the component name once. The orchestrator is responsible for:
 
 - resolving the canonical family;
-- executing every required stage in order;
+- selecting every required stage in order;
+- launching a fresh agent/subagent worker for each selected stage;
 - validating each stage artifact before continuing;
 - processing official Material dependencies automatically;
 - routing findings backward to the earliest owning stage;
-- running implementation and migration work when their gates become ready;
 - continuing until the family is complete or a genuine external blocker remains.
 
 Do not stop merely because one stage completed. Do not require the operator to launch the same component command repeatedly.
+
+## Thin orchestrator boundary
+
+The orchestrator owns only state-machine control:
+
+- inspect canonical artifact statuses and repository refs;
+- select the earliest invalid stage;
+- construct the minimal worker handoff;
+- launch the stage worker;
+- validate its artifact and report;
+- route success, dependency work, correction, or a genuine blocker.
+
+The orchestrator must not perform official-source research, architecture decisions, code edits, consumer migration, verification interpretation owned by a stage, or final review itself.
+
+Every stage must run in a fresh agent/subagent context. Continuing the next stage in the same reasoning context is not an isolated stage and is forbidden. If the environment cannot create the required worker, stop with an infrastructure blocker instead of simulating separation inside one agent.
+
+A worker handoff contains only:
+
+- the resolved official component and canonical family;
+- the selected stage skill;
+- applicable repository rules;
+- current repository ref/state;
+- paths to required canonical upstream artifacts;
+- exact genuine blocker or return-stage information when applicable.
+
+Do not pass hidden chain of thought, conversational reasoning, conclusions that are not present in canonical artifacts, or an ad hoc implementation brief from a previous worker. Repository files and stage artifacts are the handoff.
+
+The review worker must be fresh and independent from workers that authored or corrected the architecture, implementation, or migration under review.
 
 ## Stage isolation inside one operator run
 
@@ -46,11 +74,11 @@ design
   → review
 ```
 
-Each stage is a separate internal execution scope with one reasoning focus and one durable handoff artifact. Complete and validate that scope before opening the next one.
+Each stage worker has one reasoning focus and one durable handoff artifact. Complete and validate that worker result before launching the next worker.
 
 The `stop` and `do not continue` rules inside stage skills apply to the stage worker: that worker must return control to this orchestrator after its artifact and report. They do not terminate the outer operator invocation.
 
-Never mix research, architecture invention, coding, migration, and review inside one stage scope.
+Never mix research, architecture invention, coding, migration, and review inside one worker context.
 
 ## Read first
 
@@ -90,11 +118,11 @@ Repeat:
    - `MIGRATION.md` missing, partial, blocked, stale, consumers remain, legacy ownership remains, or final verification is unresolved → migration;
    - `REVIEW.md` missing, stale, blocked, behind the current resulting head, or actionable findings remain → review;
    - all artifacts and gates current → complete.
-2. Open a fresh internal stage scope and execute only the selected stage skill.
-3. Validate its artifact, declared status, source/ref metadata, and report.
-4. When the stage succeeds, return to step 1 immediately in the same operator invocation.
-5. When the stage identifies an earlier-stage defect, route backward, correct the owning artifact in a fresh stage scope, and then resume the loop.
-6. When review returns actionable findings, execute the owning correction stage and repeat review.
+2. Launch a fresh agent/subagent worker with only the selected stage handoff and execute only that stage skill.
+3. Validate its artifact, declared status, source/ref metadata, and report from repository state rather than trusting prose alone.
+4. When the stage succeeds, return to step 1 immediately in the same operator invocation and launch a new worker for the next stage.
+5. When the stage identifies an earlier-stage defect, route backward, launch a fresh worker for the owning stage, and then resume the loop.
+6. When review returns actionable findings, launch the owning correction worker and later launch a new independent review worker.
 
 After two correction rounds that still reveal ownership errors, unresolved scenarios, architectural drift, or growing workaround logic, return to architecture rather than continuing local patches.
 
@@ -105,17 +133,17 @@ When the current family depends on another official Material component:
 - read the parent `ARCHITECTURE.md` dependency queue;
 - pause the parent at the required gate;
 - process the dependency through its own earliest invalid stage;
-- continue the dependency stage by stage automatically;
+- continue the dependency stage by stage through separate fresh workers;
 - resume the parent as soon as the required dependency gate is complete.
 
-Dependencies remain first-class families with their own artifacts. Do not combine parent and dependency reasoning in one stage scope, but do not ask the operator to launch a separate command.
+Dependencies remain first-class families with their own artifacts. Do not combine parent and dependency reasoning in one worker context, but do not ask the operator to launch a separate command.
 
 ## Genuine stop conditions
 
 Stop the outer operator invocation only when one of these remains after exhausting available repository mechanisms and tool fallbacks:
 
 - required official source content is genuinely unavailable or incomplete;
-- permissions or a required external tool are unavailable;
+- permissions, a required external tool, or the required fresh-worker mechanism is unavailable;
 - official evidence and repository constraints leave a material architecture choice that cannot be resolved deterministically;
 - required operator visual/motion acceptance is the only remaining gate;
 - a failing external/infrastructure gate cannot be retried or diagnosed within the available tools;
@@ -134,6 +162,7 @@ MATERIAL COMPONENT RESULT
 Input artifact:
 Resolved official component:
 Canonical family:
+Stage workers launched:
 Stages executed:
 Dependencies processed:
 DESIGN.md status:
@@ -150,12 +179,16 @@ Overall family status: complete | blocked
 Next operator action: none | <single required action>
 ```
 
-Include the full report from every stage executed during the run. Do not compress stage results into a generic summary.
+Include the full report from every stage worker executed during the run. Do not compress stage results into a generic summary.
 
 ## Forbidden
 
 - Requiring one operator invocation per stage.
 - Stopping after a successful stage when the next stage is internally actionable.
+- Performing stage-owned work inside the orchestrator.
+- Reusing the same agent context for consecutive stages.
+- Letting the architecture/implementation/migration worker perform the independent review.
+- Passing hidden reasoning or non-canonical prose as an inter-stage handoff.
 - Combining multiple reasoning stages into one undifferentiated task.
 - Treating README, code, m3e, tests, or snapshots as substitutes for stage artifacts.
 - Skipping an earlier invalid stage because later code already exists.
