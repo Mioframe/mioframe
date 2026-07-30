@@ -2,38 +2,59 @@
 
 ## Decision
 
-`src/shared/ui/material` owns the Material token contract consumed by the application and canonical `MD*` adapters.
+`src/shared/ui/material` owns two different token records:
 
 ```text
-application theme selection and overrides
-  → Material foundation and theme tokens
-  → selected component-family tokens
+family DESIGN.md
+  → complete official component-token catalogue
+
+runtime CSS + token-api.md
+  → selected supported Mioframe token API
   → private m3e renderer mappings
 ```
 
-The physical declaration owner must match the semantic owner.
+The complete official catalogue and the supported runtime subset must not be conflated.
 
-| Contract                                                | Canonical runtime owner          | Public status                                      |
-| ------------------------------------------------------- | -------------------------------- | -------------------------------------------------- |
-| Material reference/system foundations                   | `foundation/tokens.css`          | public when declared and catalogued                |
-| Default palette and light/dark system-color assignments | `foundation/theme.css`           | public theme contract when declared and catalogued |
-| Selected official component tokens                      | `components/<family>/tokens.css` | public for that family                             |
-| Owner-local renderer mappings and bridges               | owning foundation/family         | private                                            |
-| Approved application tokens (`--app-*`)                 | outside `src/shared/ui/material` | application API, not Material API                  |
-| Public token catalogue                                  | `docs/token-api.md`              | consumer-facing documentation                      |
+## Contract owners
 
-`--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace belongs in the public catalogue.
+| Contract | Canonical owner | Public status |
+| --- | --- | --- |
+| Complete official component-token catalogue | `components/<family>/DESIGN.md` | source-backed design record, not runtime API |
+| Material reference/system foundations | `foundation/tokens.css` | public when declared and catalogued |
+| Default palette and light/dark system-color assignments | `foundation/theme.css` | public theme contract when declared and catalogued |
+| Selected official component tokens | `components/<family>/tokens.css` | public for that family |
+| Owner-local renderer mappings and bridges | owning foundation/family | private |
+| Approved application tokens (`--app-*`) | outside `src/shared/ui/material` | application API, not Material API |
+| Supported public token catalogue | `docs/token-api.md` | consumer-facing runtime documentation |
+
+`--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace belongs in the public catalogue or family design document.
+
+## Complete official catalogue
+
+Every family `DESIGN.md` contains every official component token published for that component, including all variants, configurations, sizes, states, parts, selected/unselected modes, disabled values, motion, shape, elevation, typography, spacing, and contrast modes.
+
+For every official token, preserve:
+
+- exact official path;
+- official display name;
+- system/reference aliases;
+- documented light, dark, high-contrast, or other values;
+- unresolved or absent official values explicitly.
+
+The design catalogue is complete regardless of current Mioframe demand or renderer support. It is not a list of supported CSS custom properties and does not map token names to `--md-comp-*` automatically.
 
 ## Availability states
 
-An official Material token is:
+After the complete design catalogue exists, an official Material token may be classified for runtime use as:
 
-- `supported` — declared by its canonical owner, catalogued, mapped where required, and verified;
-- `deferred` — official but not selected now; recorded only in the relevant family matrix;
-- `private` — renderer or implementation detail;
+- `supported` — selected, declared by its canonical owner, catalogued, mapped where required, and verified;
+- `deferred` — official and present in `DESIGN.md`, but not selected now;
+- `source-conflict` — official sources in `DESIGN.md` do not support one reliable runtime decision;
 - `not-material` — project customization requiring an application or explicitly approved extension owner.
 
-Existence in Material documentation or m3e does not make a token part of Mioframe public API.
+Renderer-private inputs are not Material token availability states.
+
+Existence in Material documentation or m3e does not make a token part of Mioframe public runtime API. Lack of current demand does not remove it from `DESIGN.md`.
 
 ## Foundation and theme ownership
 
@@ -46,24 +67,27 @@ Existence in Material documentation or m3e does not make a token part of Miofram
 - dark system-color assignments;
 - explicitly selected theme overrides of foundation roles when the public catalogue records both the canonical base owner and the theme override.
 
-A public token has one canonical base owner. A theme override is allowed only inside `theme.css`, must be explicit in `token-api.md`, and must be covered by the same runtime/visual contract. This does not permit an independent second default or an undocumented duplicate declaration.
+A public token has one canonical base owner. A theme override is allowed only inside `theme.css`, must be explicit in `token-api.md`, and must be covered by the same runtime/visual contract.
 
 Application theme selection, persistence, and product-specific tokens remain outside Material.
 
-## Component-family ownership
+## Component-family runtime ownership
 
-Each family owns only the selected official `--md-comp-<family>-*` subset required by current scenarios.
+Each family runtime owns only the selected official `--md-comp-<family>-*` subset required by current scenarios.
 
 ```text
+components/button/DESIGN.md
+  → complete official Button token catalogue
+
 components/button/tokens.css
-  → selected --md-comp-button-* declarations
+  → selected supported --md-comp-button-* declarations
   → private mapping to documented --m3e-button-* inputs
 ```
 
-A family must not:
+A family runtime must not:
 
 - define another family’s tokens;
-- mirror the complete Material component-token catalogue;
+- expose the complete design catalogue as supported CSS merely for completeness;
 - mirror all renderer variables;
 - use a global component-token file as a second owner;
 - expose renderer token names to consumers.
@@ -76,18 +100,19 @@ Using m3e removes the need to reproduce every Material component default in Miof
 
 Mioframe still owns:
 
-1. supported foundation and theme contracts;
-2. selected public component-token API;
-3. explicit Material-to-m3e mappings where the renderer does not already consume the correct role;
-4. removable, documented workarounds for confirmed renderer divergences.
+1. complete source-backed family design documents;
+2. supported foundation and theme contracts;
+3. selected public component-token API;
+4. explicit Material-to-m3e mappings where the renderer does not already consume the correct role;
+5. removable, documented workarounds for confirmed renderer divergences.
 
-Do not copy m3e defaults merely to present a complete-looking public API.
+Do not copy m3e defaults merely to present a complete-looking public API. Do not omit official tokens from `DESIGN.md` merely because m3e lacks or renames them.
 
 ## Selecting a public component token
 
 A public `--md-comp-*` token must satisfy all conditions:
 
-1. its exact official Material token path and semantics are verified;
+1. its exact official Material path and semantics exist in the current family `DESIGN.md`;
 2. its public CSS name is derived from that official path, not from legacy Mioframe or renderer vocabulary;
 3. a current consumer, theme, or selected component scenario requires the rendered part and state;
 4. it has one family owner and meaningful runtime default/fallback;
@@ -104,7 +129,7 @@ Snackbar action label remains inverse-primary in
 resting, hovered, focused, and pressed states.
 ```
 
-The selected subset must contain every official token needed to preserve that result across the required states and rendered parts. It must exclude parts with no current consumer. A label-only scenario does not justify publishing icon tokens, while a resting label token is insufficient when the renderer uses separate hovered, focused, or pressed label inputs.
+The selected runtime subset must contain every official token needed to preserve that result across the required states and rendered parts. It must exclude parts with no current consumer. A label-only scenario does not justify publishing icon tokens, while a resting label token is insufficient when the renderer uses separate hovered, focused, or pressed label inputs.
 
 When no official token exists, choose one explicit result:
 
@@ -118,20 +143,20 @@ When no official token exists, choose one explicit result:
 
 Before implementing a contextual component-token override, the family README must trace every required rendered state and part:
 
-| State | Rendered part | Official Material token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
-| ----- | ------------- | ---------------------------- | --------------------- | --------------------------- | ----------------------- | ----- |
+| State | Rendered part | DESIGN.md token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
+| --- | --- | --- | --- | --- | --- | --- |
 
 The trace is required for resting and every selected transient or disabled state that can choose a different renderer value. Inspect the exact lockfile-resolved artifact rather than assuming that a resting token continues to apply during hover, focus, press, selection, or disablement.
 
-The renderer fallback column must identify both the direct family input and the fallback that becomes effective when the direct input is absent. If that fallback would violate the current consumer result, the corresponding official token is part of the minimum complete public subset.
+The renderer fallback column must identify both the direct family input and the fallback that becomes effective when the direct input is absent. If that fallback would violate the current consumer result, the corresponding official token is part of the minimum complete runtime subset.
 
-Do not add tokens merely because adjacent renderer inputs exist. Add only the states and parts required by the confirmed scenario.
+Do not add runtime tokens merely because adjacent renderer inputs exist. Add only the states and parts required by the confirmed scenario. The adjacent official tokens remain documented in `DESIGN.md`.
 
 ## Mapping and CSS grammar
 
 ```text
-exact official Material token path
-  → canonical public --md-ref-* / --md-sys-* / --md-comp-* declaration
+exact official Material token path in DESIGN.md
+  → canonical supported --md-ref-* / --md-sys-* / --md-comp-* declaration
   → documented semantically equivalent renderer input
   → renderer fallback chain
   → rendered current-consumer result
@@ -149,33 +174,36 @@ For every selected token:
 
 Semantic equality is not sufficient when consumers accept different CSS grammars. Verify the chosen representation against every selected current consumer. Prefer one shared foundation representation when it preserves meaning and works everywhere; otherwise keep conversion private to the owning adapter. Visible grammar changes require browser proof.
 
-## Public catalogue
+## Supported public catalogue
 
-`docs/token-api.md` is the complete human-facing index of supported tokens. Each entry records:
+`docs/token-api.md` is the complete human-facing index of supported runtime tokens. It is not the complete official Material token catalogue.
 
-- exact name and semantic purpose;
+Each entry records:
+
+- exact supported CSS name and semantic purpose;
 - CSS grammar;
 - canonical default or source;
 - scope and owner;
-- exact official Material token path or role source;
+- exact official Material token path or role source from `DESIGN.md`;
 - renderer input and relevant fallback when applicable;
 - representative verification;
 - any selected theme override of a foundation-owned role.
 
-Executable CSS remains the runtime source. Catalogue and declaration change together. Absence from `token-api.md` means the token is not a supported Mioframe public API.
+Executable CSS remains the runtime source. Catalogue and declaration change together. Absence from `token-api.md` means the token is not a supported Mioframe runtime API; it may still be an official token documented in the family `DESIGN.md`.
 
 Do not create a TypeScript token enum, token DSL, or duplicate runtime registry.
 
 ## Legacy migration invariant
 
-The former mixed-owner token file must not be recreated. Any legacy migration must inventory declarations and consumers, move retained tokens to semantic owners, remove invalid/unused/application-owned entries from Material, update the single global import, populate `token-api.md`, delete the legacy source without an alias, and leave no undocumented duplicate public declaration owner.
+The former mixed-owner token file must not be recreated. Any legacy migration must inventory declarations and consumers, select retained official tokens from complete family design documents, move them to semantic owners, remove invalid/unused/application-owned runtime entries from Material, update the single global import, populate `token-api.md`, delete the legacy source without an alias, and leave no undocumented duplicate public declaration owner.
 
 ## Verification
 
-Verify only the selected supported public surface:
+Verify only the selected supported runtime surface, while separately verifying that `DESIGN.md` remains complete:
 
-- the exact official source, token path, state, part, and semantic property are recorded;
-- the public name is derived from the official path rather than the renderer input;
+- the design document contains the complete official component-token catalogue;
+- the selected exact official source, token path, state, part, and semantic property are recorded;
+- the public name is derived from the design path rather than the renderer input;
 - canonical base declaration exists;
 - `token-api.md` matches runtime declarations and selected theme overrides;
 - CSS grammar works for every selected consumer;
@@ -188,4 +216,4 @@ Verify only the selected supported public surface:
 - no `--m3e-*` leaks outside the Material boundary;
 - no undocumented duplicate public owner remains.
 
-Do not require one test per renderer variable, copy complete third-party catalogues, or create infrastructure solely to enumerate renderer internals. The trace and proof are limited to the states and parts selected by current demand.
+Do not require one runtime test per official or renderer token. Runtime trace and proof are limited to states and parts selected by current demand; complete official enumeration belongs to `DESIGN.md`.
