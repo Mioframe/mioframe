@@ -48,6 +48,13 @@ The family-level `Official sources` section records the exact official pages use
 
 The matrix covers every selected public prop, value, default, slot, emit, controlled state, native mapping, accessibility behavior, token, relevant state combination, dependency, renderer gap, and proof claim. No production mapping, supported token, composition, or completion claim exists without a matrix row.
 
+For a contextual token scenario, the README also contains a state/part trace:
+
+| State | Rendered part | Official Material token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
+| ----- | ------------- | ---------------------------- | ---------------------- | --------------------------- | ----------------------- | ----- |
+
+The trace includes resting and every selected transient or disabled state whose renderer value can differ. It must not infer public names from renderer inputs or assume a resting token remains effective in another state.
+
 ## Public Vue API
 
 The public API uses official Material terminology and Vue mechanics.
@@ -97,6 +104,18 @@ Follow `component-tokens.md` and `token-api.md`.
 | application extensions                                  | outside `src/shared/ui/material` |
 
 Every supported public token has one semantic owner and one catalogue entry. Official but unsupported tokens remain `deferred` in the family matrix. Private renderer and owner-local variables do not appear in public API.
+
+A public component token name is derived only from its exact official Material path. For every contextual token, record and verify:
+
+```text
+exact official path
+  → public Mioframe token
+  → direct renderer input
+  → renderer fallback
+  → rendered current-consumer result
+```
+
+The selected subset must be complete for the current rendered parts and states, but must not include unconsumed parts merely for symmetry. A resting token does not prove hover, focus, press, selected, or disabled behavior when the renderer selects separate state inputs.
 
 Verify CSS value grammar against every selected consumer. A visible grammar or mapping change requires browser proof. Do not recreate a mixed-owner legacy file, global component-token owner, TypeScript token registry, token DSL, or complete renderer-token mirror.
 
@@ -164,11 +183,13 @@ For each parent and dependency adapter, require the proof selected by its matrix
 - meaningful independent stories;
 - executable visual-regression baselines where stable presentation is owned;
 - token declaration/catalogue/mapping/grammar agreement;
+- exact official-token/public-token/renderer-input/fallback trace for contextual tokens;
+- computed rendered-part result for each selected state;
 - exact-version divergence and reduced-motion assessment;
 - complete defect records for confirmed divergences;
 - parent/dependency state, label, accessibility, size, color/token, disabled, slot, restoration, and event-bubbling handoff.
 
-A Storybook story, host state, event receipt, token presence, or source inspection does not prove rendered appearance. A parent screenshot does not replace dependency-owned visual proof. Do not inspect private renderer DOM in tests.
+A Storybook story, host state, event receipt, token presence, custom-property value, or source inspection does not prove rendered appearance. Browser proof must check the rendered public result. A parent screenshot does not replace dependency-owned visual proof. Visual specs may prepare deterministic interaction states and capture pixels, but behavioral success criteria such as focus movement remain in behavior tests. Do not inspect private renderer DOM in tests.
 
 The top-level task runs one final read-only verification using the exact branch/task scope required by root `AGENTS.md`. Material documents must not replace that policy with plain unscoped `pnpm verify`.
 
@@ -178,6 +199,7 @@ A target completes only when:
 
 - its matrix is accepted and its selected official public API is implemented;
 - all selected state combinations and dependency handoffs are resolved;
+- every contextual token has a complete official-path/input/fallback/result trace;
 - every required dependency has a canonical adapter and root export;
 - renderer glue is package-derived;
 - required browser accessibility and visual evidence exists;
