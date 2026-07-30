@@ -1,13 +1,13 @@
 ---
 name: material-component-architecture
-description: 'Use after a current complete Material family DESIGN.md exists to create or refresh that family ARCHITECTURE.md as the demand-scoped Mioframe–Vue–m3e implementation plan, without editing production code or migrating consumers.'
+description: 'Use after a current complete Material family DESIGN.md exists to create or refresh that family ARCHITECTURE.md as the demand-scoped Mioframe–Vue–renderer implementation plan, without editing production code or migrating consumers.'
 ---
 
 # Material component architecture
 
 Resolve one Material component implementation architecture from an accepted official design artifact.
 
-This stage exists to keep research, architecture, coding, and migration separate. It produces a complete coding handoff and stops.
+This stage keeps research, architecture, coding, and migration separate. It produces a complete coding handoff and returns control to the orchestrator.
 
 ## Input contract
 
@@ -31,6 +31,12 @@ src/shared/ui/material/components/<family>/ARCHITECTURE.md
 
 Do not edit production code, tests, stories, snapshots, public exports, tokens, consumers, or migration files in this stage.
 
+## Workspace boundary
+
+Use only readable workspace files, file-oriented tools, official source tools, and documented project commands.
+
+Do not inspect hidden workspace metadata, unrelated environment internals, or external delivery state.
+
 ## Read first
 
 - applicable `AGENTS.md` files;
@@ -38,10 +44,10 @@ Do not edit production code, tests, stories, snapshots, public exports, tokens, 
 - `src/shared/ui/material/docs/architecture.md`;
 - `src/shared/ui/material/docs/component-adapter.md`;
 - `src/shared/ui/material/docs/component-tokens.md`;
-- the current family `DESIGN.md`;
+- current family `DESIGN.md`;
 - current and legacy consumers;
 - current implementation, tests, and stories when they exist;
-- the exact lockfile-resolved m3e package entry point and public artifacts;
+- exact lockfile-resolved renderer package entry point and public artifacts;
 - relevant defect, token catalogue, testing, and verification rules.
 
 Treat existing code and README files as implementation evidence, not architecture authority.
@@ -59,7 +65,7 @@ Treat existing code and README files as implementation evidence, not architectur
 7. selected public component-token surface and exact official token paths;
 8. contextual state/part trace through renderer input and fallback;
 9. exact lockfile-resolved renderer coverage: `direct`, `partial`, `missing`, `divergent`, or `not-applicable`;
-10. wrapper corrections, m3e fixes, blocked behavior, and controlled workaround decisions;
+10. wrapper corrections, renderer fixes, blocked behavior, and controlled workaround decisions;
 11. implementation passes and files/modules expected to change;
 12. proof ownership and `TEST IMPACT`;
 13. consumer migration inventory, obsolete owners to remove, and migration pass order;
@@ -74,14 +80,14 @@ A parent architecture is not `ready` while a required official dependency lacks:
 - a ready `ARCHITECTURE.md`;
 - an explicit public handoff and ownership boundary.
 
-Record the dependency queue and stop. Do not implement the dependency inside the parent architecture task and do not run another stage in the same invocation.
+Record the dependency queue and return control to the orchestrator. Do not implement the dependency inside the parent architecture worker and do not execute another stage in the same worker context.
 
 ## Public API and token rules
 
 - Derive public semantics only from `DESIGN.md`, current confirmed demand, and Vue mechanics.
-- Do not derive public API or token names from m3e or legacy Mioframe vocabulary.
-- Select the minimum complete surface for the confirmed scenarios, including every required state and rendered part.
-- Do not add adjacent renderer/native/token surface merely for symmetry or hypothetical reuse.
+- Do not derive public API or token names from renderer or legacy Mioframe vocabulary.
+- Select the minimum complete surface for confirmed scenarios, including every required state and rendered part.
+- Do not add adjacent renderer, native, or token surface merely for symmetry or hypothetical reuse.
 - For every contextual token record:
 
 ```text
@@ -101,11 +107,11 @@ DESIGN.md official path
 Choose one owner for each selected gap:
 
 - `wrapper-correction`;
-- `temporary-renderer-workaround` under the repository gate;
-- `m3e-fix`;
+- `temporary-renderer-workaround` under the workspace gate;
+- `renderer-fix`;
 - `blocked`.
 
-Do not leave the coding agent to choose between unresolved approaches.
+Do not leave the coding worker to choose between unresolved approaches.
 
 ## Artifact structure
 
@@ -138,7 +144,7 @@ Architecture date:
 ## Implementation readiness
 ```
 
-Every selected/deferred/restrictive decision references `DESIGN.md`. Every implementation pass is deterministic enough for a coding agent.
+Every selected, deferred, or restrictive decision references `DESIGN.md`. Every implementation pass is deterministic enough for a coding worker.
 
 ## Completion gate
 
@@ -151,7 +157,7 @@ Report `ready` only when:
 - the simplest viable design was compared and selected;
 - no coding decision remains open.
 
-Do not continue into implementation from this skill.
+Do not continue into implementation from this worker. Return control to the orchestrator.
 
 ## Report
 
@@ -181,6 +187,6 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Editing `DESIGN.md` to fit current demand.
 - Editing production code, tests, stories, snapshots, tokens, exports, or consumers.
 - Mixing implementation progress or migration results into `ARCHITECTURE.md`.
-- Leaving public API, ownership, renderer strategy, proof, or migration choices to the coding agent.
-- Treating a family README or current code as the architecture artifact.
-- Running the implementation or migration stage in the same invocation.
+- Leaving public API, ownership, renderer strategy, proof, or migration choices to the coding worker.
+- Treating family README or current code as the architecture artifact.
+- Running implementation or migration in the same worker context.
