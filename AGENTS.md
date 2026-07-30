@@ -16,6 +16,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 
 - Work only with readable workspace files, file-oriented tools, and project commands documented by the workspace.
 - Do not inspect hidden workspace metadata, tool implementation state, or unrelated environment internals.
+- Do not load internal verifier-migration, delivery, publication, or environment-administration documentation unless the task explicitly targets that system.
 - Do not perform actions outside the workspace or ask the operator to choose environment-repair procedures.
 - When a project command fails before reaching its relevant check, record the exact command and failure, continue safe file work where possible, and do not diagnose or repair the execution environment unless the task explicitly targets that infrastructure.
 
