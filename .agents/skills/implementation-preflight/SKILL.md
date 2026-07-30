@@ -1,6 +1,6 @@
 ---
 name: implementation-preflight
-description: 'Use before non-trivial code edits to convert a ready architecture handoff or deterministic repository authoring contract into a compact implementation plan with explicit ownership, passes, TEST IMPACT, and verification.'
+description: 'Use before non-trivial code edits to convert a ready architecture handoff or deterministic workspace authoring contract into a compact implementation plan with explicit ownership, passes, TEST IMPACT, and verification.'
 ---
 
 # Implementation preflight
@@ -10,7 +10,7 @@ Run this before non-trivial production edits.
 The preflight does not invent architecture. It consumes either:
 
 - a ready `architect-handoff`; or
-- a deterministic repository-backed authoring contract whose applicable policy explicitly allows the handoff to be skipped.
+- a deterministic workspace-backed authoring contract whose applicable policy explicitly allows the handoff to be skipped.
 
 ## Stop conditions
 
@@ -20,7 +20,7 @@ Do not begin implementation when:
 - a deterministic workflow is unresolved or `blocked`;
 - required behavior, ownership, source of truth, target state, public contract, dependency, agent-access boundary, or test ownership is unresolved;
 - an official Material component lacks a current complete family `DESIGN.md` or ready family `ARCHITECTURE.md`;
-- the proposed passes expand scope beyond the accepted contract;
+- proposed passes expand scope beyond the accepted contract;
 - task-specific `TEST IMPACT` is incomplete;
 - the simplest viable implementation has not been compared with the proposed design.
 
@@ -50,11 +50,11 @@ components/<family>/DESIGN.md
 components/<family>/ARCHITECTURE.md
 ```
 
-`DESIGN.md` proves the complete official contract. `ARCHITECTURE.md` proves the accepted demand-scoped Mioframe/Vue/m3e implementation plan. Neither substitutes for the other.
+`DESIGN.md` proves the complete official contract. `ARCHITECTURE.md` proves the accepted demand-scoped Mioframe/Vue/renderer implementation plan. Neither substitutes for the other.
 
-The implementation preflight must not include consumer migration passes. Those belong to a later `material-component-migration` invocation after `IMPLEMENTATION.md` is complete.
+The implementation preflight must not include consumer migration passes. Those belong to the later migration worker after `IMPLEMENTATION.md` is complete.
 
-Do not repeat repository-wide policy or the complete upstream contract.
+Do not repeat workspace-wide policy or the complete upstream contract.
 
 ## TEST IMPACT
 
@@ -102,17 +102,17 @@ This record is created in the migration stage, not component implementation.
 
 ## Workflow routing
 
-Use the domain workflow as the primary execution contract:
+Use the domain workflow as the execution contract:
 
-- official Material component: `material-component` selects exactly one of design, architecture, implementation, migration, or review;
-- Material implementation edits: `material-component-implementation`, requiring current `DESIGN.md` and ready `ARCHITECTURE.md`;
-- Material consumer migration: `material-component-migration`, requiring complete `IMPLEMENTATION.md`;
+- official Material component: `material-component` autonomously orchestrates design, architecture, implementation, migration, and review through fresh workers;
+- Material implementation worker: `material-component-implementation`, requiring current `DESIGN.md` and ready `ARCHITECTURE.md`;
+- Material migration worker: `material-component-migration`, requiring complete `IMPLEMENTATION.md`;
 - project-specific or generic shared UI outside official Material targets: `shared-ui-implementation`;
-- storage/service/worker/provider: applicable scoped rules and `crdt-storage`;
+- storage, service, worker, or provider: applicable scoped rules and `crdt-storage`;
 - diagnostics: `diagnostic-events`;
 - ordinary Vue mechanics: `vue-component-implementation`.
 
-Use testing skills according to the proof selected in `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
+Use testing skills according to proof selected in `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
 The preflight records only task-specific owners, risks, pass order, proof, and metadata changes. It must not restate general workflow or testing policy.
 
@@ -122,8 +122,8 @@ The preflight records only task-specific owners, risks, pass order, proof, and m
 - Keep behavior-preserving cleanup separate from functional change when practical.
 - Do not start the next risky pass before the previous one has focused verification.
 - Split the task when one independently valid prerequisite has materially wider blast radius than the selected target.
-- Do not recombine Material research, architecture, implementation, migration, and review into one preflight or agent task.
+- Do not recombine Material research, architecture, implementation, migration, and review into one preflight or worker task.
 
 ## Output
 
-Keep the preflight implementation-oriented and concise. It should tell a coding agent exactly what to change, what must remain unchanged, how to prove it, and when to stop.
+Keep the preflight implementation-oriented and concise. It should tell a coding worker exactly what to change, what must remain unchanged, how to prove it, and when to stop.
