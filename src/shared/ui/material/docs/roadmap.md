@@ -132,9 +132,9 @@ The orchestrator must not repeat design or architecture unless a correction work
 
 ## Milestones
 
-| ID  | Milestone                                     | Status            | Depends on | Exit gate                                                                                                                        |
-| --- | --------------------------------------------- | ----------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged m3e workflow and foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership         |
+| ID  | Milestone                                     | Status            | Depends on | Exit gate                                                                                                                       |
+| --- | --------------------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | autonomous staged m3e workflow and foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
 | M1a | `MDLoadingIndicator` staged dependency family | `operator-review` | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance; fresh review |
 | M1  | `MDButton` staged action family               | `correction`      | M1a        | three correction findings resolved; final CI; operator visual/motion acceptance; fresh independent review                       |
 | M2  | `MDSwitch` stateful pilot                     | `planned`         | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
