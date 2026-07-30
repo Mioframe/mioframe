@@ -156,9 +156,9 @@ Do not replace complete coverage with a short summary, a selected-surface matrix
 
 The two artifacts have different ownership:
 
-| Artifact | Question answered | Scope |
-| --- | --- | --- |
-| `DESIGN.md` | What does official Material define? | complete official component contract |
+| Artifact    | Question answered                                                  | Scope                                   |
+| ----------- | ------------------------------------------------------------------ | --------------------------------------- |
+| `DESIGN.md` | What does official Material define?                                | complete official component contract    |
 | `README.md` | What does Mioframe implement, defer, map, correct, and verify now? | demand-scoped Material–Vue–m3e contract |
 
 The family README must reference exact sections of `DESIGN.md` for every selected, deferred, conflicting, or restrictive decision.

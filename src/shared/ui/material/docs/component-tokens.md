@@ -17,15 +17,15 @@ The complete official catalogue and the supported runtime subset must not be con
 
 ## Contract owners
 
-| Contract | Canonical owner | Public status |
-| --- | --- | --- |
-| Complete official component-token catalogue | `components/<family>/DESIGN.md` | source-backed design record, not runtime API |
-| Material reference/system foundations | `foundation/tokens.css` | public when declared and catalogued |
-| Default palette and light/dark system-color assignments | `foundation/theme.css` | public theme contract when declared and catalogued |
-| Selected official component tokens | `components/<family>/tokens.css` | public for that family |
-| Owner-local renderer mappings and bridges | owning foundation/family | private |
-| Approved application tokens (`--app-*`) | outside `src/shared/ui/material` | application API, not Material API |
-| Supported public token catalogue | `docs/token-api.md` | consumer-facing runtime documentation |
+| Contract                                                | Canonical owner                  | Public status                                      |
+| ------------------------------------------------------- | -------------------------------- | -------------------------------------------------- |
+| Complete official component-token catalogue             | `components/<family>/DESIGN.md`  | source-backed design record, not runtime API       |
+| Material reference/system foundations                   | `foundation/tokens.css`          | public when declared and catalogued                |
+| Default palette and light/dark system-color assignments | `foundation/theme.css`           | public theme contract when declared and catalogued |
+| Selected official component tokens                      | `components/<family>/tokens.css` | public for that family                             |
+| Owner-local renderer mappings and bridges               | owning foundation/family         | private                                            |
+| Approved application tokens (`--app-*`)                 | outside `src/shared/ui/material` | application API, not Material API                  |
+| Supported public token catalogue                        | `docs/token-api.md`              | consumer-facing runtime documentation              |
 
 `--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace belongs in the public catalogue or family design document.
 
@@ -144,7 +144,7 @@ When no official token exists, choose one explicit result:
 Before implementing a contextual component-token override, the family README must trace every required rendered state and part:
 
 | State | Rendered part | DESIGN.md token path | Public Mioframe token | Renderer input and fallback | Current consumer result | Proof |
-| --- | --- | --- | --- | --- | --- | --- |
+| ----- | ------------- | -------------------- | --------------------- | --------------------------- | ----------------------- | ----- |
 
 The trace is required for resting and every selected transient or disabled state that can choose a different renderer value. Inspect the exact lockfile-resolved artifact rather than assuming that a resting token continues to apply during hover, focus, press, selection, or disablement.
 

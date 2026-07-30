@@ -115,13 +115,13 @@ The parent owns composition meaning, placement, and state handoff. It must not r
 
 Follow `design-document.md`, `component-tokens.md`, and `token-api.md`.
 
-| Token layer | Owner |
-| --- | --- |
-| complete official component token catalogue | family `DESIGN.md` |
-| supported reference/system foundations | `foundation/tokens.css` |
-| default palette and light/dark system-color assignments | `foundation/theme.css` |
-| selected component tokens and private mappings | `components/<family>/tokens.css` |
-| application extensions | outside `src/shared/ui/material` |
+| Token layer                                             | Owner                            |
+| ------------------------------------------------------- | -------------------------------- |
+| complete official component token catalogue             | family `DESIGN.md`               |
+| supported reference/system foundations                  | `foundation/tokens.css`          |
+| default palette and light/dark system-color assignments | `foundation/theme.css`           |
+| selected component tokens and private mappings          | `components/<family>/tokens.css` |
+| application extensions                                  | outside `src/shared/ui/material` |
 
 Every supported public token has one semantic owner and one catalogue entry. Official but unsupported tokens remain completely documented in `DESIGN.md` and `deferred` in the family README. Private renderer and owner-local variables do not appear in public API.
 
