@@ -7,6 +7,8 @@ description: 'Use with only an official Material component name to create or ref
 
 Create or refresh one family `DESIGN.md` before architecture or implementation.
 
+This is one internal stage scope. When invoked by `material-component`, complete the artifact and return control to the outer orchestrator; do not require another operator command.
+
 ## Input contract
 
 The only required input is the Material component name.
@@ -44,7 +46,7 @@ The artifact is a complete normalized official-design snapshot. It is not an imp
 
 Do not read the current family README, architecture, implementation, stories, tests, m3e package, current consumers, migration record, review, or roadmap before the official design ledger is complete. Those sources can bias a supposedly complete official snapshot toward the currently implemented subset.
 
-## Required official source pass
+## Autonomous official source pass
 
 Inspect every applicable official source, including:
 
@@ -57,9 +59,27 @@ Inspect every applicable official source, including:
 - related components and delegated foundation guidance;
 - adaptive/platform guidance when present.
 
-Record exact source routes, titles, capture date, and cache/source revision.
+Use the available source chain autonomously:
 
-If a required page is missing or extraction is incomplete, do not silently summarize around the gap. Set the document status to `blocked`, list the missing source, and report the exact gap.
+1. current official Material MCP/source service;
+2. official cache refresh and route index;
+3. direct official routes when available;
+4. newest complete repository or MCP cache snapshot;
+5. resolved official token resources associated with that snapshot.
+
+Do not stop after the first failed refresh helper. Continue through all available fallbacks.
+
+Record exact source routes, titles, capture date, source/cache revision, refresh attempts, and the fallback selected.
+
+A freshness threshold only triggers a refresh attempt. It does not make a complete snapshot stale by itself.
+
+Use statuses exactly:
+
+- `current` — complete newest successfully acquired official revision; no evidence a newer material revision exists;
+- `stale` — affirmative evidence exists that official content or source revision changed after the snapshot;
+- `blocked` — required content remains unavailable or incomplete after all available fallbacks.
+
+If the complete cached pages and token resource are available and no newer revision is known, a failed route-index or refresh request must be recorded as a tooling limitation while the document remains `current`.
 
 ## Completeness rules
 
@@ -118,9 +138,9 @@ Before reporting complete, verify that:
 3. all component tokens from the official specs are present;
 4. no Mioframe or renderer decision leaked into the artifact;
 5. source conflicts and extraction gaps are explicit;
-6. status is truthfully `current`, `stale`, or `blocked`.
+6. status follows the lifecycle rules above.
 
-Do not proceed into architecture or implementation from this skill. The completed design document is the handoff artifact for a later `material-component-architecture` invocation.
+After writing the artifact, return control to the `material-component` orchestrator. Do not personally execute architecture inside this stage scope. The outer orchestrator may start architecture immediately in a fresh scope when the design status is `current`.
 
 ## Report
 
@@ -133,6 +153,7 @@ DESIGN.md path:
 Official routes inspected:
 Source snapshot date:
 Source/cache revision:
+Refresh attempts and fallback:
 Complete variants/configurations:
 Complete states/behavior:
 Complete geometry/specs:
@@ -140,7 +161,7 @@ Complete accessibility guidance:
 Official token rows captured:
 Source conflicts or extraction gaps: none | <details>
 Document status: current | stale | blocked
-Next stage: architecture | design correction required
+Next internal stage: architecture | design correction required
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 ```
 
@@ -153,4 +174,5 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Omitting unused official capability.
 - Treating links to official pages as a substitute for the complete local description.
 - Guessing missing measurements, tokens, defaults, or behavior.
-- Running the architecture or any later stage in the same invocation.
+- Stopping solely because a refresh helper failed while a complete newest-known snapshot is available.
+- Asking the operator to rerun the same component command to reach architecture.
