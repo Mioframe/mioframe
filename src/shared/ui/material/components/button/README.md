@@ -16,24 +16,24 @@ import { MDButton } from '@shared/ui/material';
 
 ## Stage artifacts
 
-| Stage          | Artifact                                   | Current status            |
-| -------------- | ------------------------------------------ | ------------------------- |
-| Design         | [`DESIGN.md`](./DESIGN.md)                 | missing                   |
-| Architecture   | [`ARCHITECTURE.md`](./ARCHITECTURE.md)     | blocked by design         |
-| Implementation | [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) | blocked by architecture   |
-| Migration      | [`MIGRATION.md`](./MIGRATION.md)           | blocked by implementation |
-| Review         | [`REVIEW.md`](./REVIEW.md)                 | blocked by migration      |
+- [`DESIGN.md`](./DESIGN.md)
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+- [`IMPLEMENTATION.md`](./IMPLEMENTATION.md)
+- [`MIGRATION.md`](./MIGRATION.md)
+- [`REVIEW.md`](./REVIEW.md)
+
+Each artifact owns its own status and source/ref metadata. This README does not duplicate mutable workflow state.
 
 This README is an index only. It does not define the official Material contract, selected Vue API, token surface, renderer mapping, implementation completion, migration status, or review verdict.
 
-Existing code, tests, stories, tokens, snapshots, and git history are implementation evidence to inspect during later stages. They do not bypass missing stage artifacts.
+Existing code, tests, stories, tokens, snapshots, and git history are implementation evidence to inspect during later stages. They do not bypass stage gates.
 
-Current known blockers and the next action are owned by [`docs/roadmap.md`](../../docs/roadmap.md).
+Current milestone status and any genuine operator action are owned by [`docs/roadmap.md`](../../docs/roadmap.md).
 
-Run:
+Normal operator entrypoint:
 
 ```text
 material-component Button
 ```
 
-The router must execute exactly one next stage and stop.
+The operator supplies the name once. The orchestrator advances dependencies and all internally actionable stages automatically.
