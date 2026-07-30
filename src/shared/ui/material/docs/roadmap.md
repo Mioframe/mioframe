@@ -1,6 +1,6 @@
 # Mioframe Material migration roadmap
 
-This file is the only owner of current milestone order, status, blockers, and next operator action. Durable rules live in `component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, and `m3e-defects.md`.
+This file owns current milestone order, component-stage status, technical blockers, and next operator action. Durable rules live in `component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, and `m3e-defects.md`.
 
 ## Current state
 
@@ -9,8 +9,6 @@ Last updated: 2026-07-30
 Current milestone: `M0/M1 — complete autonomous staged workflow and finish Loading Indicator/Button pilot`
 
 Status: `correction`
-
-Owner: PR #162 / `refactor/material-docs-ownership`
 
 Implementation ownership: `migrating`
 
@@ -22,7 +20,7 @@ The operator runs one command with only a component name:
 material-component <name>
 ```
 
-The command autonomously orchestrates physically isolated internal stages:
+The command autonomously orchestrates isolated internal stages:
 
 ```text
 fresh design worker
@@ -37,27 +35,21 @@ fresh independent review worker
   → REVIEW.md
 ```
 
-Each worker owns one reasoning focus and one durable handoff, then terminates. The thin orchestrator selects the earliest invalid stage, launches the next worker, validates repository outputs, routes backward when required, and continues the same operator invocation until completion or a genuine external blocker.
+Each worker owns one reasoning focus and one durable handoff, then terminates. The thin orchestrator selects the earliest invalid stage, launches the next worker, validates workspace outputs, routes backward when required, and continues the same operator invocation until completion or a genuine external blocker.
 
 The orchestrator does not perform stage-owned research, architecture, code, migration, or review. The operator does not repeat the command between successful stages. Dependencies pass through the same staged workflow as first-class families.
 
-If fresh-worker orchestration is unavailable, the workflow is blocked on orchestration infrastructure. Running all stages in one context is not an accepted fallback.
+If fresh-worker orchestration is unavailable, the workflow is blocked on orchestration capability. Running all stages in one context is not an accepted fallback.
 
 Family `README.md` files are static indexes only. They do not own mutable stage status or next action.
 
-## Workflow state
+## Agent workspace boundary
 
-The staged workflow architecture is restored and has been exercised for both pilot families:
+Stage workers use only readable workspace files, canonical artifacts, official source tools, and documented project commands.
 
-- separate design, architecture, implementation, migration, and review skills exist;
-- one operator invocation can continue across internally actionable stages;
-- each stage has a distinct artifact and ownership boundary;
-- dependency processing and backward correction routing are defined;
-- review is independent and read-only;
-- current code and previous worker conclusions are evidence, not substitutes for stage artifacts;
-- genuine external stop conditions include operator visual/motion acceptance.
+They do not inspect hidden workspace metadata, external delivery state, or unrelated execution-environment internals. A project command failure is recorded as verification evidence only after otherwise safe stage-owned edits are complete.
 
-No additional worker-ID registry, artifact digest infrastructure, or duplicate local verification framework is required. Repository artifacts, stage gates, the resulting diff, fresh review, and final GitHub CI are the accepted proof.
+No worker-ID registry, artifact digest infrastructure, or duplicate verification framework is required. Canonical artifacts, observable workspace state, isolated review, project verification, and operator visual assessment are sufficient.
 
 ## Loading Indicator state
 
@@ -73,7 +65,7 @@ components/loadingIndicator/REVIEW.md          blocked on operator review
 
 The selected uncontained implementation, public size/color API, Button composition boundary, renderer workarounds M3E-001/M3E-002, automated proof, and consumer inventory are complete. No technical correction is currently required.
 
-Remaining Loading Indicator gate: operator visual/motion acceptance, followed by fresh review of the then-current head.
+Remaining Loading Indicator gate: operator visual/motion acceptance, followed by fresh review of the resulting workspace.
 
 ## Button state
 
@@ -99,7 +91,7 @@ The accepted public Button token surface is exactly:
 --md-comp-button-text-pressed-state-layer-color
 ```
 
-The runtime declarations, private m3e mappings, Snackbar inverse-primary overrides, rendered label proof, and populated `token-api.md` catalogue now use these official paths. The old renderer-derived `hover`/`focus` names, contextual icon token, and five-token provisional surface are removed without aliases.
+The runtime declarations, private renderer mappings, Snackbar inverse-primary overrides, rendered label proof, and populated `token-api.md` catalogue use these official paths. The old renderer-derived `hover`/`focus` names, contextual icon token, and five-token provisional surface are removed without aliases.
 
 ## Current correction findings
 
@@ -123,9 +115,9 @@ must now:
 1. recognize `REVIEW.md` return stage `implementation`;
 2. launch a fresh implementation worker to remove behavior assertions from the visual lane while retaining behavior coverage;
 3. launch a fresh migration worker to remove the AppBar legacy declaration and refresh downstream stage records;
-4. run the exact required final verification for the resulting head;
+4. run the required project verification for the resulting workspace;
 5. launch a new independent review worker;
-6. stop only at the operator visual/motion gate if no additional findings remain.
+6. stop only at the operator visual/motion gate if no additional technical findings remain.
 
 The orchestrator must not repeat design or architecture unless a correction worker discovers evidence that invalidates those artifacts.
 
@@ -133,19 +125,19 @@ The orchestrator must not repeat design or architecture unless a correction work
 
 | ID  | Milestone                                     | Status            | Depends on | Exit gate                                                                                                                       |
 | --- | --------------------------------------------- | ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged m3e workflow and foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
+| M0  | autonomous staged renderer workflow/foundation | `implemented`     | none       | thin orchestrator; isolated stage ownership; staged skills/docs; renderer boundary; canonical foundation/token ownership        |
 | M1a | `MDLoadingIndicator` staged dependency family | `operator-review` | M0         | five family artifacts; accepted standalone/composed ownership; automated proof; operator visual/motion acceptance; fresh review |
-| M1  | `MDButton` staged action family               | `correction`      | M1a        | two correction findings resolved; final CI; operator visual/motion acceptance; fresh independent review                         |
+| M1  | `MDButton` staged action family               | `correction`      | M1a        | two correction findings resolved; project verification; operator visual/motion acceptance; fresh independent review             |
 | M2  | `MDSwitch` stateful pilot                     | `planned`         | M1         | complete staged workflow; controlled state/event order; renderer-gap ownership; verification                                    |
 | M3  | sequential component migration                | `planned`         | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                     |
 
-## Remaining merge gates
+## Remaining technical gates
 
 1. Run the Button correction sequence once.
-2. Obtain green GitHub CI on the resulting final head.
+2. Pass the required project verification on the resulting workspace.
 3. Complete operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar interaction states, Rich Tooltip, and other affected color-ownership surfaces.
 4. Run fresh independent family review after operator acceptance.
-5. Review the complete PR result, update PR metadata, and resolve any remaining review threads.
+5. Review the complete Material pilot result and remove any remaining false or obsolete workspace claims.
 
 ## Next operator action
 
