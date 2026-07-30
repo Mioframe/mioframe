@@ -48,7 +48,7 @@ Artifact roles:
 
 A missing, stale, blocked, or incomplete earlier artifact blocks later stage execution. Current code, renderer artifacts, stories, tests, and family README are not substitutes.
 
-`material-component <name>` accepts only the component name and autonomously orchestrates the isolated stages in order. Each internal stage owns one artifact and returns control to the orchestrator. The operator does not relaunch the command after every stage. See `docs/component-workflow.md`.
+`material-component <name>` accepts only the component name and autonomously orchestrates the isolated stages in order. A thin orchestrator launches a fresh agent/subagent worker for each stage, validates only repository artifacts, and discards that worker context before launching the next one. The operator does not relaunch the command after every stage. If fresh-worker orchestration is unavailable, the workflow is blocked rather than executed in one context. See `docs/component-workflow.md`.
 
 ## Public component API
 
