@@ -1,6 +1,6 @@
 # Managed pinned application updates
 
-This document defines the product and architecture contract for managed application-release updates. The general publication and release process remains documented in [`docs/release.md`](./release.md).
+This document is the canonical product and architecture contract for managed application-release updates. The general publication and release process remains documented in [`docs/release.md`](./release.md); any older managed-update wording there is superseded by this focused contract.
 
 ## Scope
 
