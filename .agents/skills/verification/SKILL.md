@@ -17,6 +17,7 @@ Use only documented project commands and their readable outputs.
 
 - Do not inspect hidden workspace metadata or unrelated environment internals.
 - Treat container, browser runtime, and command-runner internals as opaque unless the task explicitly targets them.
+- Do not load verifier implementation-migration documentation unless the task explicitly targets verifier infrastructure.
 - When a command fails before reaching its relevant project check, report the exact command and visible failure. Do not invent or perform environment-repair procedures.
 
 ## Focused execution
@@ -64,7 +65,7 @@ The automatic planner uses workspace facts:
 
 Each lane resolves to `skip`, `focused`, `full`, or blocking `invalid` with inspectable reasons. Unknown relevant impact selects the full owning lane. Full execution never bypasses invalid impact metadata.
 
-Until `docs/testing/migration-plan.md` is complete, do not describe target resolver behavior as already implemented.
+Do not describe planned resolver behavior as already implemented. Use only behavior visible from current project-command output and current tests.
 
 ## Impact metadata
 
