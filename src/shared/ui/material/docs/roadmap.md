@@ -109,13 +109,13 @@ No exact dependency pin, renderer-version registry, Lit application dependency, 
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| --- | --- | --- | --- | --- |
-| M0 | design-first m3e architecture and token foundation | `correction` | none | design-document contract; canonical token owners/catalogue; renderer boundary; final verification |
-| M1a | `MDLoadingIndicator` design and dependency adapter | `correction` | M0 | complete current `DESIGN.md`; accepted README mapping; standalone/composed ownership; independent proof; operator review; final verification |
-| M1 | `MDButton` design and action adapter pilot | `correction` | M1a | complete current `DESIGN.md`; demand-scoped API; migrated consumers; state-complete contextual tokens; dependency handoff; visible interaction proof; operator review; final verification |
-| M2 | `MDSwitch` design and stateful adapter pilot | `planned` | M1 | complete design artifact; source-backed matrix; controlled state/event order; renderer-gap ownership; verification |
-| M3 | sequential component migration | `planned` | M2 | one official component at a time; design first; dependencies first; demand-scoped runtime API/tokens; explicit gap ownership |
+| ID  | Milestone                                          | Status       | Depends on | Exit gate                                                                                                                                                                                 |
+| --- | -------------------------------------------------- | ------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | design-first m3e architecture and token foundation | `correction` | none       | design-document contract; canonical token owners/catalogue; renderer boundary; final verification                                                                                         |
+| M1a | `MDLoadingIndicator` design and dependency adapter | `correction` | M0         | complete current `DESIGN.md`; accepted README mapping; standalone/composed ownership; independent proof; operator review; final verification                                              |
+| M1  | `MDButton` design and action adapter pilot         | `correction` | M1a        | complete current `DESIGN.md`; demand-scoped API; migrated consumers; state-complete contextual tokens; dependency handoff; visible interaction proof; operator review; final verification |
+| M2  | `MDSwitch` design and stateful adapter pilot       | `planned`    | M1         | complete design artifact; source-backed matrix; controlled state/event order; renderer-gap ownership; verification                                                                        |
+| M3  | sequential component migration                     | `planned`    | M2         | one official component at a time; design first; dependencies first; demand-scoped runtime API/tokens; explicit gap ownership                                                              |
 
 ## Accepted family structure
 
