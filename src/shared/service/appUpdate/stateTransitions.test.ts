@@ -165,6 +165,13 @@ describe('approveManualRelease', () => {
     const state = approveManualRelease(withActivation, releaseC);
     expect(state).toEqual(withActivation);
   });
+
+  it('is a no-op outside Manual mode, even for an otherwise-valid release', () => {
+    const automaticState: UpdateControllerState = { ...baseState, mode: 'automatic' };
+    const state = approveManualRelease(automaticState, releaseB);
+    expect(state).toBe(automaticState);
+    expect(state.approvedRelease).toBeUndefined();
+  });
 });
 
 describe('approveAutomaticRelease', () => {

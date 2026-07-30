@@ -49,6 +49,9 @@ const availableVersion = computed(() => {
 const showUpdateNow = computed(
   () => mode.value === 'manual' && displayStatus.value === 'update-available',
 );
+const showRetryUpdate = computed(
+  () => mode.value === 'manual' && displayStatus.value === 'update-failed',
+);
 const showCancel = computed(() => mode.value === 'manual' && scheduledRelease.value !== undefined);
 const isCheckDisabled = computed(
   () => isBusy.value || displayStatus.value === 'unavailable' || displayStatus.value === 'checking',
@@ -95,6 +98,14 @@ const onToggleAutomaticUpdates = () => {
       v-if="showUpdateNow"
       class="app-update-settings__update-now"
       label="Update now"
+      :disabled="isBusy"
+      @click="onUpdateNow"
+    />
+
+    <MDButton
+      v-if="showRetryUpdate"
+      class="app-update-settings__retry-update"
+      label="Retry update"
       :disabled="isBusy"
       @click="onUpdateNow"
     />

@@ -234,16 +234,27 @@ export async function writeReleaseDescriptorMarker(
 }
 
 /**
- * Reads and validates a release cache's commit marker.
+ * Reads and validates a release cache's commit marker. Every failure mode —
+ * no marker present, a response body that is not valid JSON (rejects
+ * `response.json()`), or JSON that does not match {@link zodReleaseDescriptor}
+ * — returns `undefined` rather than throwing, so a corrupted marker is
+ * treated exactly like a missing one and callers fall through to the
+ * existing exact-release restoration path instead of an unhandled rejection.
  * @param cache - The release's Cache Storage cache.
- * @returns The validated descriptor, or `undefined` when no marker is present or it is invalid.
+ * @returns The validated descriptor, or `undefined` when no marker is present or it could not be read.
  */
 export async function readReleaseDescriptorMarker(
   cache: Pick<Cache, 'match'>,
 ): Promise<ReleaseDescriptor | undefined> {
   const response = await cache.match(RELEASE_DESCRIPTOR_MARKER_URL);
   if (!response) return undefined;
-  const parsed = zodReleaseDescriptor.safeParse(await response.json());
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return undefined;
+  }
+  const parsed = zodReleaseDescriptor.safeParse(body);
   return parsed.success ? parsed.data : undefined;
 }
 

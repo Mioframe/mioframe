@@ -182,6 +182,21 @@ describe('release descriptor marker', () => {
     };
     expect(await readReleaseDescriptorMarker(cache)).toBeUndefined();
   });
+
+  it('returns undefined when the marker body is malformed JSON', async () => {
+    const cache = { match: vi.fn(() => Promise.resolve(new Response('not valid json{'))) };
+    expect(await readReleaseDescriptorMarker(cache)).toBeUndefined();
+  });
+
+  it('returns undefined when reading the marker body rejects', async () => {
+    // A real `Response` whose body was already consumed once: a second
+    // `.json()` call rejects with "body stream already read", exercising the
+    // rejection path distinctly from a malformed-JSON parse failure.
+    const response = new Response(JSON.stringify(descriptor));
+    await response.text();
+    const cache = { match: vi.fn(() => Promise.resolve(response)) };
+    expect(await readReleaseDescriptorMarker(cache)).toBeUndefined();
+  });
 });
 
 describe('checkReleaseAvailability', () => {
@@ -222,6 +237,15 @@ describe('checkReleaseAvailability', () => {
     const marker = new Response(JSON.stringify(descriptor));
     const cache = buildMockCache(marker, undefined, ['/assets/app.js', '/assets/vendor.js']);
     expect(await checkReleaseAvailability(cache, expectedRelease, channelBasePath)).toBe(false);
+  });
+
+  it('is false, without throwing, when the descriptor marker is malformed JSON', async () => {
+    const marker = new Response('not valid json{');
+    const indexMarker = new Response('<html>archived</html>');
+    const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
+    await expect(checkReleaseAvailability(cache, expectedRelease, channelBasePath)).resolves.toBe(
+      false,
+    );
   });
 
   it('is false when a file is missing from the cache', async () => {

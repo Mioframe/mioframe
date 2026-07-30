@@ -58,7 +58,7 @@ export type WindowClientIdentity = {
  * still be counted. Branch, PR preview, other-channel, and foreign-origin
  * windows are never counted, per {@link isSameChannelPath}.
  * @param clients - Every currently live window client (any channel, controlled or not), from `clients.matchAll`.
- * @param excludedClientIds - The current navigation's own client ids (e.g. `clientId`, `resultingClientId`, `replacesClientId`), never counted.
+ * @param excludedClientIds - The current navigation's own client ids (`clientId`, `resultingClientId`), never counted.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
  * @returns The count of other same-channel window clients.

@@ -226,6 +226,30 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
+  it('update-failed (Manual): shows Retry update and calls installOnNextLaunch', async () => {
+    status.value = 'rolled-back';
+    mode.value = 'manual';
+    const { root, unmount } = await mountWidget();
+
+    expect(root.textContent).toContain('Update failed');
+    expect(getButtonByText(root, 'Update now')).toBeNull();
+    getButtonByText(root, 'Retry update')?.click();
+    await nextTick();
+
+    expect(installOnNextLaunchMock).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it('update-failed (Automatic): does not show Retry update', async () => {
+    status.value = 'rolled-back';
+    mode.value = 'automatic';
+    const { root, unmount } = await mountWidget();
+
+    expect(root.textContent).toContain('Update failed');
+    expect(getButtonByText(root, 'Retry update')).toBeNull();
+    unmount();
+  });
+
   it('ready (Manual): shows Update ready, no Update now, and a working Cancel action', async () => {
     status.value = 'ready';
     mode.value = 'manual';

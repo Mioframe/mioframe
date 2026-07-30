@@ -379,6 +379,122 @@ describe('handleWorkerMessage', () => {
         snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
       });
     });
+
+    it('does not start preparation in Automatic mode', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          mode: 'automatic',
+          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(coordinator.prepare).not.toHaveBeenCalled();
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: undefined }),
+      });
+    });
+
+    it('does not persist an approval reached in Automatic mode', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          mode: 'automatic',
+          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+    });
+
+    it('prevents approval when the mode switches to Automatic while preparation is in flight', async () => {
+      readControllerStateMock
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+        })
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: {
+            ...baseState,
+            mode: 'automatic',
+            latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          },
+        });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(coordinator.prepare).toHaveBeenCalledTimes(1);
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: undefined }),
+      });
+    });
+
+    it('retries and reschedules the exact release recorded as previously failed, when it is still newer than activeRelease', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          failedActivationRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', {
+        releaseId: 'release-b',
+        releaseSequence: 2,
+      });
+      expect(result).toEqual({
+        snapshot: expect.objectContaining({
+          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        }),
+      });
+    });
   });
 
   describe('BOOT_OK', () => {

@@ -289,6 +289,40 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     await page.close();
   });
 
+  test('after an Automatic rollback, switching to Manual mode and retrying schedules the failed release again', async () => {
+    // Continues directly from the previous two tests' real rollback: mode is
+    // still Automatic, and the worker's own persisted state already records
+    // release C (`scheduledReleaseId`) as `failedActivationRelease` and the
+    // still-current `latestRelease` — exactly the "release B fails boot →
+    // rollback to A" precondition, reusing that real boot failure rather
+    // than reproducing it.
+    expect(scheduledReleaseId).toBeTruthy();
+    const page = await context.newPage();
+    await page.goto(server.url);
+    await waitForControlledPage(page);
+
+    // Switch to Manual mode.
+    await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'manual' });
+
+    // Retry update: the real `INSTALL_ON_NEXT_LAUNCH` request the widget's
+    // "Retry update" action sends.
+    const retried = await sendProtocolRequest<{
+      snapshot: { scheduledRelease?: { releaseId: string } };
+    }>(page, { type: 'INSTALL_ON_NEXT_LAUNCH' });
+
+    expect(retried.snapshot.scheduledRelease?.releaseId).toBe(scheduledReleaseId);
+
+    // Restore the schedule this test intentionally created, so later tests
+    // in this shared lifecycle keep seeing the same pre-existing state this
+    // suite otherwise relies on (see the equivalent defensive-cleanup
+    // comments in managedUpdatesDevelop.spec.ts). This deliberately does not
+    // need release C to boot successfully again.
+    await sendProtocolRequest(page, { type: 'CANCEL_SCHEDULED_UPDATE' });
+    await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'automatic' });
+
+    await page.close();
+  });
+
   test('offline: a pinned release continues to serve the app without a network', async () => {
     const page = await context.newPage();
     await page.goto(server.url);

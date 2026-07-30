@@ -16,23 +16,27 @@ const notifiedReleaseIdsThisSession = new Set<string>();
  * User-facing notification: shows one short Snackbar per application
  * session when Manual mode discovers a newer release that has not yet been
  * scheduled and has not already been notified this session. Never shown in
- * Automatic mode. A strictly newer release id may notify again within the
- * same session; the same release id never repeats.
+ * Automatic mode, and never shown for a release that is the single recorded
+ * `failedRelease` (the user already knows about it from the update-failed
+ * status; a genuinely newer release discovered after it still notifies
+ * normally). A strictly newer release id may notify again within the same
+ * session; the same release id never repeats.
  *
  * Never imports page navigation: the caller (an app-level composition root)
  * injects `onView` and owns opening the App updates pane.
  * @param onView - Called when the user selects the Snackbar's `View` action.
  */
 export function useAppUpdateNotify(onView: () => void): void {
-  const { mode, activeRelease, latestRelease, scheduledRelease } = useAppUpdate();
+  const { mode, activeRelease, latestRelease, scheduledRelease, failedRelease } = useAppUpdate();
   const { addSnackbar } = useSnackbar();
 
   watch(
-    [mode, activeRelease, latestRelease, scheduledRelease],
-    ([currentMode, active, latest, scheduled]) => {
+    [mode, activeRelease, latestRelease, scheduledRelease, failedRelease],
+    ([currentMode, active, latest, scheduled, failed]) => {
       if (currentMode !== 'manual') return;
       if (!active || !latest || latest.releaseId === active.releaseId) return;
       if (scheduled) return;
+      if (failed?.releaseId === latest.releaseId) return;
       if (notifiedReleaseIdsThisSession.has(latest.releaseId)) return;
 
       notifiedReleaseIdsThisSession.add(latest.releaseId);

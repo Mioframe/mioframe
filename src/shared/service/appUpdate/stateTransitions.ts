@@ -102,6 +102,11 @@ export function applyCheckForUpdates(
  * retry — but never a release that is not strictly newer than
  * `state.activeRelease`.
  *
+ * A no-op outside Manual mode: this is the sole owner of the invariant that
+ * `INSTALL_ON_NEXT_LAUNCH` can never approve anything while in Automatic
+ * mode, including when the caller's own mode check ran before this release
+ * finished preparing and the mode changed in the meantime.
+ *
  * A no-op while an activation is already in progress: `approvedRelease` and
  * `activation` are mutually exclusive ownership states, and no release may
  * be approved until the current clean-launch attempt resolves.
@@ -113,6 +118,7 @@ export function approveManualRelease(
   state: UpdateControllerState,
   prepared: ReleaseSummary,
 ): UpdateControllerState {
+  if (state.mode !== 'manual') return state;
   if (state.activation) return state;
   if (!isNewerSequence(prepared, state.activeRelease)) return state;
   return { ...state, approvedRelease: prepared };
@@ -333,13 +339,17 @@ export type CleanLaunchInputs = {
  * `false` whenever an activation already exists (every qualifying
  * navigation is already served its target without starting another one),
  * there is nothing approved to activate, or another same-channel window is
- * still live. A reload of the only remaining same-channel window is treated
- * as a safe application restart — indistinguishable in product terms from
- * closing the final window and opening the application again — so it may
- * activate exactly like any other qualifying navigation once no other
- * window is live. Caller is responsible for scoping `otherLiveClientCount`
- * to the current channel only (excluding other channels, branches, and PR
- * previews) and for excluding this navigation's own client identities.
+ * still live. Has no concept of "reload": it only ever consumes
+ * `otherLiveClientCount`, never a request type, navigation history, or
+ * client identity. Whether a reload of the sole remaining window happens to
+ * produce `otherLiveClientCount === 0` depends on the caller's exclusion set
+ * (`clientId`/`resultingClientId` only, see `sw.ts`) and on browser-specific
+ * timing; this function neither guarantees nor forbids that outcome. The
+ * only cross-browser guaranteed activation trigger is closing every
+ * same-channel window and then opening a new one. Caller is responsible for
+ * scoping `otherLiveClientCount` to the current channel only (excluding
+ * other channels, branches, and PR previews) and for excluding this
+ * navigation's own client identities.
  * @param state - Current controller state.
  * @param inputs - Same-channel window-liveness facts for this navigation.
  * @returns Whether to start a new activation.

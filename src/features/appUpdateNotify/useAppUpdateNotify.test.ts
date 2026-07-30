@@ -8,9 +8,10 @@ const activeRelease = ref<{ releaseId: string; releaseSequence: number } | undef
 });
 const latestRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>(undefined);
 const scheduledRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>(undefined);
+const failedRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>(undefined);
 
 vi.mock('@entity/appUpdate', () => ({
-  useAppUpdate: () => ({ mode, activeRelease, latestRelease, scheduledRelease }),
+  useAppUpdate: () => ({ mode, activeRelease, latestRelease, scheduledRelease, failedRelease }),
 }));
 
 const addSnackbarMock = vi.fn();
@@ -27,6 +28,7 @@ describe('useAppUpdateNotify', () => {
     activeRelease.value = { releaseId: 'release-a', releaseSequence: 1 };
     latestRelease.value = undefined;
     scheduledRelease.value = undefined;
+    failedRelease.value = undefined;
     addSnackbarMock.mockClear();
   });
 
@@ -106,6 +108,22 @@ describe('useAppUpdateNotify', () => {
     await nextTick();
 
     expect(addSnackbarMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows nothing when the discovered release is the recorded failedRelease', async () => {
+    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+    failedRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+    await run();
+
+    expect(addSnackbarMock).not.toHaveBeenCalled();
+  });
+
+  it('notifies for a genuinely newer release discovered after a different failedRelease', async () => {
+    failedRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+    latestRelease.value = { releaseId: 'release-c', releaseSequence: 3 };
+    await run();
+
+    expect(addSnackbarMock).toHaveBeenCalledTimes(1);
   });
 
   it('calls onView (owned by the caller) from the Snackbar action', async () => {

@@ -61,40 +61,21 @@ self.addEventListener('activate', (event) => {
 });
 
 /**
- * Reads the standard `FetchEvent.replacesClientId` property via `Reflect.get`
- * (rather than a type assertion, which this project forbids), since
- * TypeScript's `lib.webworker.d.ts` does not declare it — unlike the closely
- * related, already-typed `clientId`/`resultingClientId` — even though it is
- * implemented by current browsers.
- * @param event - The navigation `FetchEvent`.
- * @returns The non-empty id of the document this navigation replaces, or `undefined`.
- */
-function getReplacesClientId(event: FetchEvent): string | undefined {
-  const replacesClientId: unknown = Reflect.get(event, 'replacesClientId');
-  return typeof replacesClientId === 'string' && replacesClientId !== ''
-    ? replacesClientId
-    : undefined;
-}
-
-/**
  * Builds the set of client ids that belong to this navigation itself, so the
  * clean-launch window count never counts a navigation against its own
- * outcome: the client being replaced (`replacesClientId`, when this
- * navigation reloads an existing document), the requesting client if any
- * (`clientId`), and the id already reserved for the resulting document
- * (`resultingClientId`). Uses identity, never URL, so a distinct window that
- * happens to share this navigation's URL is still counted.
- *
- * A reload of the only remaining same-channel window is a safe application
- * restart, not a case that must be prevented from activating — this
- * exclusion exists only so this navigation's own prior and resulting
- * documents are never mistaken for "another" live window, not to classify
- * whether this navigation is a reload at all.
+ * outcome: the requesting client if any (`clientId`) and the id already
+ * reserved for the resulting document (`resultingClientId`) — the two
+ * navigation-identity fields `lib.webworker.d.ts` actually declares.
+ * Deliberately never reads `FetchEvent.replacesClientId`: it is not part of
+ * that standard surface, and this project does not read undeclared
+ * properties via `Reflect.get` to recover it. Uses identity, never URL, so a
+ * distinct window that happens to share this navigation's URL is still
+ * counted.
  * @param event - The navigation `FetchEvent`.
  * @returns The set of this navigation's own client ids.
  */
 function buildNavigationExclusionClientIds(event: FetchEvent): ReadonlySet<string> {
-  const ids = [event.clientId, event.resultingClientId, getReplacesClientId(event)];
+  const ids = [event.clientId, event.resultingClientId];
   return new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0));
 }
 

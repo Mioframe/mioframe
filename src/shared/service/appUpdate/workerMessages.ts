@@ -151,6 +151,13 @@ async function switchToAutomaticModeWithPrepare(
  * `INSTALL_ON_NEXT_LAUNCH`. Preparation runs unlocked through `coordinator`;
  * the target is re-validated against current state before being approved.
  *
+ * A no-op, performing no preparation or approval, outside Manual mode: an
+ * unchanged snapshot is returned before preparation ever starts. Since mode
+ * can still change while preparation is in flight, the final approval also
+ * goes through {@link approveManualRelease}, which re-checks the mode
+ * against state read fresh after preparation completes — switching to
+ * Automatic mid-preparation can never create a Manual approval.
+ *
  * A no-op, performing no preparation or approval, while an activation is
  * already in progress: `approvedRelease` and `activation` are mutually
  * exclusive, and no release may be approved until the current clean-launch
@@ -168,6 +175,7 @@ async function installLatestOnNextLaunch(
   coordinator: PreparationCoordinator,
 ): Promise<AppUpdateWorkerResponse> {
   const initial = await withState(channel, enqueue, (state) => state);
+  if (initial.mode !== 'manual') return { snapshot: buildAppUpdateSnapshot(initial) };
   if (initial.activation) return { snapshot: buildAppUpdateSnapshot(initial) };
   const target = initial.latestRelease;
   if (!target) return { snapshot: buildAppUpdateSnapshot(initial, 'unavailable') };
@@ -187,10 +195,12 @@ async function installLatestOnNextLaunch(
       return { snapshot: buildAppUpdateSnapshot(state, 'install-failed') };
     }
     const next = approveManualRelease(state, target);
-    await writeControllerState(channel, next);
-    void coordinator
-      .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
-      .catch(() => {});
+    if (next !== state) {
+      await writeControllerState(channel, next);
+      void coordinator
+        .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
+        .catch(() => {});
+    }
     return { snapshot: buildAppUpdateSnapshot(next) };
   });
 }
