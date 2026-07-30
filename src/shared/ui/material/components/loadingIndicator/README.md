@@ -16,13 +16,13 @@ import { MDLoadingIndicator } from '@shared/ui/material';
 
 ## Stage artifacts
 
-| Stage | Artifact | Current status |
-| ----- | -------- | -------------- |
-| Design | [`DESIGN.md`](./DESIGN.md) | missing |
-| Architecture | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | blocked by design |
-| Implementation | [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) | blocked by architecture |
-| Migration | [`MIGRATION.md`](./MIGRATION.md) | blocked by implementation |
-| Review | [`REVIEW.md`](./REVIEW.md) | blocked by migration |
+| Stage          | Artifact                                   | Current status            |
+| -------------- | ------------------------------------------ | ------------------------- |
+| Design         | [`DESIGN.md`](./DESIGN.md)                 | missing                   |
+| Architecture   | [`ARCHITECTURE.md`](./ARCHITECTURE.md)     | blocked by design         |
+| Implementation | [`IMPLEMENTATION.md`](./IMPLEMENTATION.md) | blocked by architecture   |
+| Migration      | [`MIGRATION.md`](./MIGRATION.md)           | blocked by implementation |
+| Review         | [`REVIEW.md`](./REVIEW.md)                 | blocked by migration      |
 
 This README is an index only. It does not define the official Material contract, selected Vue API, token surface, renderer mapping, implementation completion, migration status, or review verdict.
 

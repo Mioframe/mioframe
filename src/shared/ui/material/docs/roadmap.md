@@ -149,13 +149,13 @@ After Loading Indicator design/architecture/implementation closure:
 
 ## Milestones
 
-| ID | Milestone | Status | Depends on | Exit gate |
-| -- | --------- | ------ | ---------- | --------- |
-| M0 | staged m3e architecture and token foundation | `correction` | none | staged skills/docs current; renderer boundary; canonical token owners; final verification |
-| M1a | `MDLoadingIndicator` staged dependency family | `correction` | M0 | five current family artifacts; accepted standalone/composed ownership; proof; operator review |
-| M1 | `MDButton` staged action family | `correction` | M1a | five current family artifacts; migrated consumers; official contextual tokens; dependency handoff; proof; operator review |
-| M2 | `MDSwitch` stateful pilot | `planned` | M1 | complete five-stage workflow; controlled state/event order; renderer-gap ownership; verification |
-| M3 | sequential component migration | `planned` | M2 | one family and one stage at a time; dependencies first; explicit ownership; independent review |
+| ID  | Milestone                                     | Status       | Depends on | Exit gate                                                                                                                 |
+| --- | --------------------------------------------- | ------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| M0  | staged m3e architecture and token foundation  | `correction` | none       | staged skills/docs current; renderer boundary; canonical token owners; final verification                                 |
+| M1a | `MDLoadingIndicator` staged dependency family | `correction` | M0         | five current family artifacts; accepted standalone/composed ownership; proof; operator review                             |
+| M1  | `MDButton` staged action family               | `correction` | M1a        | five current family artifacts; migrated consumers; official contextual tokens; dependency handoff; proof; operator review |
+| M2  | `MDSwitch` stateful pilot                     | `planned`    | M1         | complete five-stage workflow; controlled state/event order; renderer-gap ownership; verification                          |
+| M3  | sequential component migration                | `planned`    | M2         | one family and one stage at a time; dependencies first; explicit ownership; independent review                            |
 
 ## Accepted family structure
 

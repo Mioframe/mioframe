@@ -21,16 +21,16 @@ The complete official catalogue, selected architecture contract, and executable 
 
 ## Contract owners
 
-| Contract | Canonical owner | Status |
-| -------- | --------------- | ------ |
-| Complete official component-token catalogue | `components/<family>/DESIGN.md` | source-backed official record |
-| Selected component-token surface and state/part trace | `components/<family>/ARCHITECTURE.md` | ready implementation contract |
-| Material reference/system foundations | `foundation/tokens.css` | public when declared and catalogued |
-| Default palette and light/dark system-color assignments | `foundation/theme.css` | public theme contract |
-| Executable selected component tokens | `components/<family>/tokens.css` | public for that family |
-| Owner-local renderer mappings and bridges | owning foundation/family | private |
-| Approved application tokens (`--app-*`) | outside `src/shared/ui/material` | application API, not Material API |
-| Supported public token catalogue | `docs/token-api.md` | consumer-facing runtime documentation |
+| Contract                                                | Canonical owner                       | Status                                |
+| ------------------------------------------------------- | ------------------------------------- | ------------------------------------- |
+| Complete official component-token catalogue             | `components/<family>/DESIGN.md`       | source-backed official record         |
+| Selected component-token surface and state/part trace   | `components/<family>/ARCHITECTURE.md` | ready implementation contract         |
+| Material reference/system foundations                   | `foundation/tokens.css`               | public when declared and catalogued   |
+| Default palette and light/dark system-color assignments | `foundation/theme.css`                | public theme contract                 |
+| Executable selected component tokens                    | `components/<family>/tokens.css`      | public for that family                |
+| Owner-local renderer mappings and bridges               | owning foundation/family              | private                               |
+| Approved application tokens (`--app-*`)                 | outside `src/shared/ui/material`      | application API, not Material API     |
+| Supported public token catalogue                        | `docs/token-api.md`                   | consumer-facing runtime documentation |
 
 `--m3e-*` variables are private renderer inputs. `--md-private-*` variables are owner-local implementation details. Neither namespace belongs in the public catalogue or `DESIGN.md`.
 
