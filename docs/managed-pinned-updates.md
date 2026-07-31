@@ -46,13 +46,13 @@ A failed managed `install` leaves the legacy Workbox worker active. After releas
 
 ## Ownership and sources of truth
 
-| Owner                   | Responsibility                                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------------------------------ |
-| Publisher               | Append-only release archive and `latest.json`                                                          |
-| Controller worker       | Bootstrap classification, state, reconciliation, preparation, fetch, activation, rollback, caches     |
-| Service client/features | Explicit transport outcomes, finite busy state, user actions                                           |
-| Entity/widget/pane      | Snapshot projection and product composition                                                            |
-| Browser                 | Service-worker `install` / `waiting` / `activate` lifecycle and registration replacement               |
+| Owner                   | Responsibility                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| Publisher               | Append-only release archive and `latest.json`                                                     |
+| Controller worker       | Bootstrap classification, state, reconciliation, preparation, fetch, activation, rollback, caches |
+| Service client/features | Explicit transport outcomes, finite busy state, user actions                                      |
+| Entity/widget/pane      | Snapshot projection and product composition                                                       |
+| Browser                 | Service-worker `install` / `waiting` / `activate` lifecycle and registration replacement          |
 
 Sources of truth:
 
@@ -150,14 +150,14 @@ The runtime contract does not claim that this probe uniquely identifies one hist
 
 Install classification:
 
-| Controller state | Active predecessor evidence                                  | Result                                                   |
-| ---------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
-| valid            | any                                                          | preserve state unchanged; ordinary managed retry/upgrade |
-| invalid          | any                                                          | reject installation                                      |
-| absent           | no active worker                                             | genuine first registration                               |
-| absent           | valid managed probe                                          | reject as managed-state loss                             |
-| absent           | no managed response + exact compatible Workbox response      | supported one-time Workbox bootstrap                     |
-| absent           | timeout, conflicting, malformed, or unknown response         | reject installation                                      |
+| Controller state | Active predecessor evidence                             | Result                                                   |
+| ---------------- | ------------------------------------------------------- | -------------------------------------------------------- |
+| valid            | any                                                     | preserve state unchanged; ordinary managed retry/upgrade |
+| invalid          | any                                                     | reject installation                                      |
+| absent           | no active worker                                        | genuine first registration                               |
+| absent           | valid managed probe                                     | reject as managed-state loss                             |
+| absent           | no managed response + exact compatible Workbox response | supported one-time Workbox bootstrap                     |
+| absent           | timeout, conflicting, malformed, or unknown response    | reject installation                                      |
 
 Stale caches never authorize bootstrap. Positive evidence must come from the active predecessor. The managed controller must not answer the Workbox `CACHE_URLS` identity probe.
 
@@ -222,12 +222,12 @@ There is no once-per-worker lifetime latch. Concurrent triggers coalesce only wh
 
 Mode behavior:
 
-| Fresh state                                    | Automatic                                                      | Manual                                                   |
-| ---------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------- |
-| no candidate                                   | discover; persist newer as `available`; prepare it to `ready`   | discover; persist newer as `available`; do not prepare   |
-| `available(B)`                                 | prepare exact B                                                 | discover strictly newer; otherwise keep B available      |
-| `failed(B)`                                    | discover strictly newer; never retry B; prepare a newer result  | discover strictly newer; never retry B automatically     |
-| `ready` or `activating`                        | no-op                                                           | no-op                                                     |
+| Fresh state             | Automatic                                                      | Manual                                                 |
+| ----------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
+| no candidate            | discover; persist newer as `available`; prepare it to `ready`  | discover; persist newer as `available`; do not prepare |
+| `available(B)`          | prepare exact B                                                | discover strictly newer; otherwise keep B available    |
+| `failed(B)`             | discover strictly newer; never retry B; prepare a newer result | discover strictly newer; never retry B automatically   |
+| `ready` or `activating` | no-op                                                          | no-op                                                  |
 
 Manual mode therefore discovers and notifies about updates automatically but never downloads/prepares them without an explicit install action. Explicit Manual retry may prepare the exact failed candidate.
 
