@@ -1,6 +1,6 @@
 # Material component architecture and implementation contract
 
-This document defines durable rules shared by the architecture and implementation stages. Stage order and artifacts are owned by `component-workflow.md`.
+This document defines durable rules shared by the architecture and implementation stages. Stage order, control fields, routing, and final verification are owned by `component-workflow.md`.
 
 ## Unit of work
 
@@ -66,9 +66,9 @@ Allowed when selected by architecture:
 - refs and required native mappings;
 - explicit composition of independently owned Material dependencies.
 
-Forbidden by default:
+Not supported by default:
 
-- renderer vocabulary exposed because m3e supports it;
+- renderer vocabulary exposed merely because m3e supports it;
 - conflicting legacy naming;
 - unused native/link/form/token surface for completeness;
 - public dependency on renderer classes, events, tags, or CSS inputs.
@@ -81,13 +81,16 @@ Visual loading/busy presentation and activation blocking are independent contrac
 
 Applies to any canonical adapter whose single root is a raw `m3e-*` custom element with no wrapping element.
 
-- Such an adapter MUST set `inheritAttrs: false` and explicitly forward only an architecture-approved allow-list of host-level attributes onto the renderer root. Vue's default automatic `$attrs`/listener fallthrough is not compatible with "Public Vue API" above: an undeclared attribute or listener that reaches `m3e-*` becomes private renderer vocabulary exposed to consumers, whether or not it is documented as a public prop.
-- The allow-list is family-scoped and lives in that family's `ARCHITECTURE.md`. A minimum common allow-list applies to every family unless architecture explicitly narrows it further: `class`, `style`, `id`, `title`, `data-*`. Do not invent a broader HTML-global allow-list here; any attribute beyond what a family's `ARCHITECTURE.md` selects requires confirmed consumer demand and a separate explicit architecture update.
-- Consumer-supplied `class` and `style` must be merged with adapter-owned internal classes/styles, never replace them.
-- Any attribute or listener outside the explicit allow-list must be ignored by the renderer host: it must not reach the custom element as a property, attribute, or event handler.
-- This is a local, per-adapter filtering responsibility, consistent with the renderer-boundary and no-generic-adapter-framework stance in `src/shared/ui/material/AGENTS.md`. Do not introduce a generic wrapper, adapter base class, registry, schema, directive, or composable framework to implement it.
-- Proof ownership follows "Verification contract" below: component contract tests own the attrs-merge and unknown-attribute/listener-rejection behavior; browser proof (the lowest faithful Storybook behavior test) must additionally demonstrate that undeclared inputs cannot alter actual rendered custom-element state — not merely that they are absent from a snapshot or host attribute list. See "Accessibility and native behavior" above for how required ARIA/native state still reaches the renderer host through the allow-list or explicit props, not through unrestricted fallthrough.
-- Tightening fallthrough to an explicit allow-list is a breaking change for any consumer currently relying on leaked renderer access through `$attrs`. `material-component-migration` must audit every current consumer against the new allow-list before the family can be marked migrated/complete.
+- Set `inheritAttrs: false` and explicitly forward only the family allow-list selected by `ARCHITECTURE.md`.
+- Vue’s default automatic `$attrs` and listener fallthrough is not compatible with the private renderer boundary.
+- The minimum common allow-list is `class`, `style`, `id`, `title`, and `data-*`; any additional attribute requires confirmed consumer demand and an explicit family architecture decision.
+- Merge consumer `class` and `style` with adapter-owned values; do not replace internal ownership.
+- Ignore every undeclared attribute and listener so it cannot reach the custom element as a property, attribute, or event handler.
+- Keep filtering local to the adapter. Do not create a generic base, registry, schema, directive, or composable framework.
+- Component contract tests own merge and rejection behavior. Browser proof additionally shows that rejected dynamic inputs cannot change observable custom-element state.
+- Migration audits every current consumer before tightening fallthrough can be considered complete.
+
+Required ARIA/native state reaches the host through explicit props or the approved allow-list, never through unrestricted fallthrough.
 
 ## Dependency contract
 
@@ -108,12 +111,12 @@ The parent must not render the dependency’s raw m3e element, set private varia
 
 Follow `component-tokens.md` and `token-api.md`.
 
-| Token layer                                     | Owner                            |
-| ----------------------------------------------- | -------------------------------- |
-| complete official component token catalogue     | family `DESIGN.md`               |
-| selected runtime component token contract       | family `ARCHITECTURE.md`         |
+| Token layer | Owner |
+| --- | --- |
+| complete official component token catalogue | family `DESIGN.md` |
+| selected runtime component token contract | family `ARCHITECTURE.md` |
 | executable selected tokens and private mappings | `components/<family>/tokens.css` |
-| supported public catalogue                      | `docs/token-api.md`              |
+| supported public catalogue | `docs/token-api.md` |
 
 Every supported public token has one semantic owner and one catalogue entry.
 
@@ -183,7 +186,7 @@ The implementation stage consumes a ready `ARCHITECTURE.md` and must not:
 - implement an unresolved option;
 - migrate application consumers.
 
-When implementation evidence invalidates architecture, stop and return to the architecture stage.
+When implementation evidence invalidates architecture, record `Required return stage: architecture` and return to the orchestrator.
 
 ## Verification contract
 
@@ -208,4 +211,4 @@ Architecture is ready only when no coding decision remains unresolved.
 
 Implementation is complete only when every accepted pass is implemented, component-owned proof passes, no architecture deviation exists, and migration readiness is explicit.
 
-Consumer migration and final independent review remain separate stages. Green CI alone is not component completion.
+Consumer migration and independent review remain separate stages. Passing automated checks alone is not component completion.
