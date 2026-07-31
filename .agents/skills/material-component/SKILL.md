@@ -123,10 +123,9 @@ Validate only that the worker:
 
 - produced its owned artifact;
 - used all required control fields with valid enum values;
-- did not modify files outside its stage boundary;
 - returned a complete stage report.
 
-Do not independently re-evaluate the worker’s semantic conclusion.
+Stage-boundary and semantic compliance belong to the stage worker and the later independent review. The orchestrator does not reconstruct file-change history or independently audit the stage.
 
 When a worker records an earlier `Required return stage`, route there and then rerun all downstream stages in order.
 
