@@ -11,14 +11,9 @@ The agent designs appropriate proof and maintains workspace impact metadata. The
 
 A skipped or empty lane is not evidence that the proof type is unnecessary. When impact metadata is incomplete, fix it or use an explicit owning-lane fallback.
 
-## Workspace boundary
+## Command scope
 
-Use only documented project commands and their readable outputs.
-
-- Do not inspect hidden workspace metadata or unrelated environment internals.
-- Treat container, browser runtime, and command-runner internals as opaque unless the task explicitly targets them.
-- Do not load verifier implementation-migration documentation unless the task explicitly targets verifier infrastructure.
-- When a command fails before reaching its relevant project check, report the exact command and visible failure. Do not invent or perform environment-repair procedures.
+Use documented project commands and their readable outputs. When a command fails before reaching its relevant project check, record the exact command and visible failure. Do not infer a cause that is not shown by the command output.
 
 ## Focused execution
 
@@ -117,7 +112,7 @@ This replaces the ordinary final gate for that task. Do not run both as final ga
 For a one-off performance, memory, startup, main-thread, or bundle-size claim:
 
 1. run the reproducible measurement named in preflight;
-2. use the recorded representative scenario and environment;
+2. use the recorded representative scenario and execution setup;
 3. report the baseline or budget and measured result;
 4. rerun after implementation when comparison is required;
 5. run the one applicable final completion gate.
