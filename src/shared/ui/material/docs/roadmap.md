@@ -28,19 +28,19 @@ The workflow is not considered proven until the pilot completes through one `mat
 
 ## Pilot artifact state
 
-Artifacts written before the fixed control-field contract are mechanically invalid when required fields are absent. They must be refreshed by their owning stage; the orchestrator must not infer semantic status from prose.
+All existing pilot artifacts predate the fixed control-field contract. The design files contain valid official source content but do not yet expose every required standalone field; Button also formats its status as inline code rather than an exact enum value.
+
+Therefore the mechanical workflow must refresh each family from its design stage. A design refresh is expected to normalize metadata and revalidate the existing official source ledger, not change the official contract unless newer evidence is found.
 
 ### Loading Indicator
 
 ```text
-DESIGN.md          current
-ARCHITECTURE.md    refresh required
+DESIGN.md          refresh required for fixed control fields
+ARCHITECTURE.md    refresh required after design
 IMPLEMENTATION.md  refresh required after architecture
 MIGRATION.md       refresh required after implementation
 REVIEW.md          fresh independent review required
 ```
-
-Reason: architecture and downstream artifacts use the superseded verification ownership and predate the normalized control-field contract.
 
 Expected runtime change: none unless a stage worker finds a concrete discrepancy.
 
@@ -49,14 +49,14 @@ Operator visual status: `no-reported-defect`.
 ### Button
 
 ```text
-DESIGN.md          current
-ARCHITECTURE.md    refresh required
+DESIGN.md          refresh required for fixed control fields
+ARCHITECTURE.md    refresh required after design
 IMPLEMENTATION.md  refresh required after architecture
 MIGRATION.md       refresh required after implementation
 REVIEW.md          fresh independent review required
 ```
 
-Reason: architecture and downstream artifacts use the superseded verification ownership and predate the normalized control-field contract. The existing review also predates the final test-wrapper warning correction.
+The existing review also predates the final test-wrapper warning correction.
 
 Expected runtime change: none unless a stage worker finds a concrete discrepancy.
 
@@ -94,6 +94,6 @@ Run once:
 material-component Button
 ```
 
-The invocation must refresh the Loading Indicator dependency first, resume Button, run fresh independent reviews, and finish with one final `pnpm verify` without another operator command.
+The invocation must refresh the Loading Indicator dependency from design through independent review, resume Button from design through independent review, and finish with one final `pnpm verify` without another operator command.
 
 No manual family-artifact patch, separate dependency command, positive visual acknowledgement, local `verify:release`, dependency pin, worker registry, artifact hash system, or generic adapter framework is required.
