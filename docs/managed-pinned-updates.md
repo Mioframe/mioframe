@@ -156,7 +156,7 @@ Probe interpretation is normative:
 | silent by deadline | exact `true` | compatible Workbox predecessor |
 | valid managed response | exact `true` | conflicting evidence; reject |
 | malformed response from either probe | any | reject |
-| missing, timed-out, or non-`true` Workbox response without managed success | reject | reject |
+| missing, timed-out, or non-`true` Workbox response without managed success | any | reject |
 
 Silence from the managed probe is expected for a compatible Workbox predecessor and is not by itself a classification failure.
 
