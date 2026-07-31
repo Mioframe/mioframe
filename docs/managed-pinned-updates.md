@@ -33,14 +33,14 @@ While Manual pinning or managed rollback can start an older supported release, e
 
 ## Ownership and sources of truth
 
-| Owner | Responsibility |
-| --- | --- |
-| Publisher | Append-only immutable archive, one-time legacy migration metadata, frozen bridge artifact, `latest.json` |
-| Migration bridge | One-time legacy-to-managed state bootstrap and baseline serving |
-| Managed controller | Persisted state, transitions, preparation, fetch routing, activation, rollback, local caches, broadcasts |
-| Service client/features | Explicit transport outcomes, finite busy state, user actions |
-| Entity/widget/pane | Snapshot projection, product composition, truthful UI copy |
-| Browser | Controller `install` / `waiting` / `activate` lifecycle |
+| Owner                   | Responsibility                                                                                           |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| Publisher               | Append-only immutable archive, one-time legacy migration metadata, frozen bridge artifact, `latest.json` |
+| Migration bridge        | One-time legacy-to-managed state bootstrap and baseline serving                                          |
+| Managed controller      | Persisted state, transitions, preparation, fetch routing, activation, rollback, local caches, broadcasts |
+| Service client/features | Explicit transport outcomes, finite busy state, user actions                                             |
+| Entity/widget/pane      | Snapshot projection, product composition, truthful UI copy                                               |
+| Browser                 | Controller `install` / `waiting` / `activate` lifecycle                                                  |
 
 Sources of truth:
 
@@ -271,19 +271,19 @@ An active managed worker must never observe legitimate absent state. For owned n
 - Automatic may replace `failed` with newer but never retries the exact failed release;
 - Manual may explicitly retry the exact failed release.
 
-| State / event | Result |
-| --- | --- |
-| no candidate + newer discovery | `available(new)` |
-| `available(B)` + newer C | `available(C)` |
-| eligible `failed(B)` + newer C | `available(C)` |
-| `SET_MODE` | change mode only |
-| Automatic `available(B)` + fresh successful preparation | `ready(B)` |
-| Manual `available(B)` or `failed(B)` + fresh successful install | `ready(B)` |
-| Manual `ready(B)` + cancel | `available(B)` |
-| `ready(B)` + qualifying clean launch | `activating(B, deadline)`; active unchanged |
-| matching durable `BOOT_OK(B)` | active becomes B; candidate cleared |
-| matching durable `BOOT_FAILED(B)` or expiration | active unchanged; `failed(B)` |
-| stale/wrong completion or acknowledgement | no-op |
+| State / event                                                   | Result                                      |
+| --------------------------------------------------------------- | ------------------------------------------- |
+| no candidate + newer discovery                                  | `available(new)`                            |
+| `available(B)` + newer C                                        | `available(C)`                              |
+| eligible `failed(B)` + newer C                                  | `available(C)`                              |
+| `SET_MODE`                                                      | change mode only                            |
+| Automatic `available(B)` + fresh successful preparation         | `ready(B)`                                  |
+| Manual `available(B)` or `failed(B)` + fresh successful install | `ready(B)`                                  |
+| Manual `ready(B)` + cancel                                      | `available(B)`                              |
+| `ready(B)` + qualifying clean launch                            | `activating(B, deadline)`; active unchanged |
+| matching durable `BOOT_OK(B)`                                   | active becomes B; candidate cleared         |
+| matching durable `BOOT_FAILED(B)` or expiration                 | active unchanged; `failed(B)`               |
+| stale/wrong completion or acknowledgement                       | no-op                                       |
 
 Every long completion re-reads state and persists only when mode, candidate number, and phase still match. Every pure no-op returns the original state object.
 
@@ -293,12 +293,12 @@ Every long completion re-reads state and persists only when mode, candidate numb
 
 After a successful Manual → Automatic change, deferred reconciliation runs under the same message event after the response:
 
-| Fresh state | Deferred work |
-| --- | --- |
-| `available(B)` | prepare exact B; persist `ready(B)` only after fresh mode/number/phase check |
-| `failed(B)` | discover strictly newer; never retry B; prepare newly persisted available candidate |
-| no candidate | discover now; prepare resulting available candidate |
-| `ready` or `activating` | no follow-up beyond mode change |
+| Fresh state             | Deferred work                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------- |
+| `available(B)`          | prepare exact B; persist `ready(B)` only after fresh mode/number/phase check        |
+| `failed(B)`             | discover strictly newer; never retry B; prepare newly persisted available candidate |
+| no candidate            | discover now; prepare resulting available candidate                                 |
+| `ready` or `activating` | no follow-up beyond mode change                                                     |
 
 This trigger is independent of the once-per-worker navigation scheduler. Discovery/preparation remain outside `OperationQueue`; each later durable transition emits its own invalidation. Manual mode changes start no discovery or preparation.
 
@@ -354,10 +354,10 @@ Every foreground durable change sends exactly one post-response invalidation. Ea
 
 Cross-origin requests, `updates/**`, manifest, icons, APIs, fonts, registration scripts, and every other path remain browser network behavior.
 
-| State | Owned request result |
-| --- | --- |
+| State             | Owned request result               |
+| ----------------- | ---------------------------------- |
 | absent or invalid | controlled `503`; no live fallback |
-| valid | serve exact selected release |
+| valid             | serve exact selected release       |
 
 Selected release is candidate only while `activating`; otherwise active. Missing/corrupt selected cache restores only that exact archive or returns `503`.
 
@@ -395,26 +395,26 @@ Entity status directly projects `candidate.phase`. Existing actions remain Check
 
 ## Acceptance matrix
 
-| Scenario | Required result |
-| --- | --- |
-| New-channel first registration | managed-sw.js verified latest becomes initial baseline |
-| Legacy user opens after first managed publish | native sw.js update discovers bridge without new app-shell registration code |
-| Bridge install | exact archived legacy release becomes active; managed release remains available candidate |
-| Bridge-controlled launch | replacement registerSW.js explicitly registers managed-sw.js at same scope |
-| Final managed install over bridge | positive bridge probe plus valid state; state preserved |
-| Managed active + missing/invalid state + stale legacy cache | managed probe identifies upgrade; installation rejected |
-| Unknown or nonresponsive predecessor | installation rejected |
-| Active runtime + absent/invalid | owned navigation/assets return `503` |
-| Manual → Automatic + available | response first, then exact candidate preparation |
-| Manual → Automatic + failed/none | response first, then discovery; exact failed candidate not retried |
-| Long-request timeout | busy clears; snapshot/capability remain; late broadcast may refresh |
-| Manual deferral | active and remote archive remain available indefinitely |
-| Ready/activating B, C published | B remains selected |
-| Candidate boot succeeds | durable commit before invalidation/cleanup |
-| Candidate boot fails/expires | previous active remains; candidate failed |
-| Missing selected cache | exact restoration or `503` |
-| Stable/develop | no cross-channel state/cache/client/broadcast leakage |
-| Rollback data compatibility | previous supported active can read data written by newer supported release |
+| Scenario                                                    | Required result                                                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| New-channel first registration                              | managed-sw.js verified latest becomes initial baseline                                    |
+| Legacy user opens after first managed publish               | native sw.js update discovers bridge without new app-shell registration code              |
+| Bridge install                                              | exact archived legacy release becomes active; managed release remains available candidate |
+| Bridge-controlled launch                                    | replacement registerSW.js explicitly registers managed-sw.js at same scope                |
+| Final managed install over bridge                           | positive bridge probe plus valid state; state preserved                                   |
+| Managed active + missing/invalid state + stale legacy cache | managed probe identifies upgrade; installation rejected                                   |
+| Unknown or nonresponsive predecessor                        | installation rejected                                                                     |
+| Active runtime + absent/invalid                             | owned navigation/assets return `503`                                                      |
+| Manual → Automatic + available                              | response first, then exact candidate preparation                                          |
+| Manual → Automatic + failed/none                            | response first, then discovery; exact failed candidate not retried                        |
+| Long-request timeout                                        | busy clears; snapshot/capability remain; late broadcast may refresh                       |
+| Manual deferral                                             | active and remote archive remain available indefinitely                                   |
+| Ready/activating B, C published                             | B remains selected                                                                        |
+| Candidate boot succeeds                                     | durable commit before invalidation/cleanup                                                |
+| Candidate boot fails/expires                                | previous active remains; candidate failed                                                 |
+| Missing selected cache                                      | exact restoration or `503`                                                                |
+| Stable/develop                                              | no cross-channel state/cache/client/broadcast leakage                                     |
+| Rollback data compatibility                                 | previous supported active can read data written by newer supported release                |
 
 ## Required proof
 

@@ -8,16 +8,16 @@ The existing PR implementation is reusable evidence, not a compatibility contrac
 
 ## Owner map
 
-| Owner | Files / responsibility |
-| --- | --- |
-| Release contract | Node publisher validators, runtime descriptor schemas, shared descriptor corpus, migration pointer |
-| Publication | `scripts/pages/lib/releasePublish.mjs`, stable/develop publishers, retained archive and bridge artifacts |
-| Persisted lifecycle | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts` |
-| Bridge packaging/runtime | PWA build configuration, frozen `sw.js` bridge source, bridge registration replacement and tests |
-| Managed worker runtime | `src/shared/service/appUpdate/**`, `src/sw.ts` or renamed managed worker entry |
-| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**` |
-| User actions/composition | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane` |
-| Verification | colocated deterministic/component tests, worker wiring tests, existing app/release E2E, `managed-updates` label |
+| Owner                       | Files / responsibility                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Release contract            | Node publisher validators, runtime descriptor schemas, shared descriptor corpus, migration pointer              |
+| Publication                 | `scripts/pages/lib/releasePublish.mjs`, stable/develop publishers, retained archive and bridge artifacts        |
+| Persisted lifecycle         | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts`                        |
+| Bridge packaging/runtime    | PWA build configuration, frozen `sw.js` bridge source, bridge registration replacement and tests                |
+| Managed worker runtime      | `src/shared/service/appUpdate/**`, `src/sw.ts` or renamed managed worker entry                                  |
+| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**`              |
+| User actions/composition    | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane`                                             |
+| Verification                | colocated deterministic/component tests, worker wiring tests, existing app/release E2E, `managed-updates` label |
 
 Preserve `OperationQueue`, `PreparationCoordinator`, exact-release integrity/restoration, watchdog, channel isolation, response-before-follow-up ordering, existing FSD ownership, and existing scenario owners.
 
