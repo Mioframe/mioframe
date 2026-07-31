@@ -125,7 +125,7 @@ Do not rename tokens into Mioframe CSS names and do not select a supported subse
 - renderer API, mappings, fallback chains, defects, or workarounds;
 - implementation paths;
 - tests or verification plans;
-- delivery or roadmap status.
+- implementation or roadmap status.
 
 Use structured paraphrase for prose. Preserve exact names, paths, measurements, token values, and source references. Do not copy entire official pages verbatim.
 
