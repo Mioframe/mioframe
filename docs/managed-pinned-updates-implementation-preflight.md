@@ -8,15 +8,15 @@ The existing PR implementation is reusable evidence, not a compatibility contrac
 
 ## Owner map
 
-| Owner | Files / responsibility |
-| --- | --- |
-| Publication | `scripts/pages/lib/releaseDescriptor.mjs`, `releasePublish.mjs`, stable/develop publishers |
-| PWA registration identity | `config/plugins/pwa.ts`, app registration/bootstrap wiring |
-| Persisted lifecycle | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts` |
-| Worker runtime | `src/shared/service/appUpdate/**`, `src/sw.ts` |
-| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**` |
-| User actions/composition | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane` |
-| Verification | colocated deterministic/component tests, `src/sw*.test.ts`, existing app/release E2E, `managed-updates` label |
+| Owner                       | Files / responsibility                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Publication                 | `scripts/pages/lib/releaseDescriptor.mjs`, `releasePublish.mjs`, stable/develop publishers                    |
+| PWA registration identity   | `config/plugins/pwa.ts`, app registration/bootstrap wiring                                                    |
+| Persisted lifecycle         | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts`                      |
+| Worker runtime              | `src/shared/service/appUpdate/**`, `src/sw.ts`                                                                |
+| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**`            |
+| User actions/composition    | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane`                                           |
+| Verification                | colocated deterministic/component tests, `src/sw*.test.ts`, existing app/release E2E, `managed-updates` label |
 
 Preserve `OperationQueue`, `PreparationCoordinator`, exact-release integrity/restoration, watchdog, channel isolation, response-before-follow-up wiring, existing FSD ownership, and existing scenario owners.
 
