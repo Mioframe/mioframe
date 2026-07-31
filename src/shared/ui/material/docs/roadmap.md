@@ -133,13 +133,13 @@ If the command stops merely because one stage completed, leaves a stale review c
 
 ## Milestones
 
-| ID  | Milestone                                       | Status        | Depends on | Exit gate                                                                                                                                    |
-| --- | ----------------------------------------------- | ------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged renderer workflow/foundation | `implemented` | none       | thin orchestrator; isolated stage ownership; dependency queue; correction routing; one post-review final workflow verification               |
-| M1a | `MDLoadingIndicator` staged dependency family   | `stale`       | M0         | five current family artifacts; accepted standalone/composed ownership; required stage proof; no unresolved operator-reported defect          |
-| M1  | `MDButton` staged action family                 | `stale`       | M1a        | five current family artifacts; accepted tokens and consumers; independent review; no unresolved operator-reported defect; final verify passes |
-| M2  | `MDSwitch` stateful pilot                       | `planned`     | M1         | complete autonomous workflow; controlled state/event order; renderer-gap ownership; verification                                             |
-| M3  | sequential component migration                  | `planned`     | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                                  |
+| ID  | Milestone                                      | Status        | Depends on | Exit gate                                                                                                                                     |
+| --- | ---------------------------------------------- | ------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | autonomous staged renderer workflow/foundation | `implemented` | none       | thin orchestrator; isolated stage ownership; dependency queue; correction routing; one post-review final workflow verification                |
+| M1a | `MDLoadingIndicator` staged dependency family  | `stale`       | M0         | five current family artifacts; accepted standalone/composed ownership; required stage proof; no unresolved operator-reported defect           |
+| M1  | `MDButton` staged action family                | `stale`       | M1a        | five current family artifacts; accepted tokens and consumers; independent review; no unresolved operator-reported defect; final verify passes |
+| M2  | `MDSwitch` stateful pilot                      | `planned`     | M1         | complete autonomous workflow; controlled state/event order; renderer-gap ownership; verification                                              |
+| M3  | sequential component migration                 | `planned`     | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                                   |
 
 ## Next operator action
 
