@@ -22,13 +22,13 @@ import { MDLoadingIndicator } from '@shared/ui/material';
 - [`MIGRATION.md`](./MIGRATION.md)
 - [`REVIEW.md`](./REVIEW.md)
 
-Each artifact owns its own status and source/ref metadata. This README does not duplicate mutable workflow state.
+Each artifact owns its fixed control fields and source references. This README does not duplicate mutable workflow state.
 
 This README is an index only. It does not define the official Material contract, selected Vue API, token surface, renderer mapping, implementation completion, migration status, or review verdict.
 
-Existing code, tests, stories, tokens, snapshots, defect records, and git history are implementation evidence to inspect during later stages. They do not bypass stage gates.
+Current readable code, tests, stories, tokens, snapshots, and defect records are implementation evidence for the owning stages. They do not bypass stage gates. Git, PR, commit, and external check state are outside the worker workflow.
 
-Current milestone status and any genuine operator action are owned by [`docs/roadmap.md`](../../docs/roadmap.md).
+Current milestone status and the next operator action are owned by [`docs/roadmap.md`](../../docs/roadmap.md).
 
 Normal operator entrypoint:
 
