@@ -8,7 +8,7 @@ Mioframe exposes a canonical Vue Material library under:
 src/shared/ui/material
 ```
 
-Every official Material family is developed through isolated durable stages:
+Every official Material family is developed through isolated durable stages followed by one workflow-level verification:
 
 ```text
 official Material documentation
@@ -17,11 +17,12 @@ official Material documentation
   → component implementation + IMPLEMENTATION.md
   → consumer migration + MIGRATION.md
   → independent REVIEW.md
+  → final workflow verification
 ```
 
 Official Material 3 Expressive is the public-contract authority. `@m3e/web` is the preferred private renderer, not the API authority.
 
-The stage separation is an architecture constraint. Its purpose is to keep each agent focused on one class of work and give the next agent a complete, reviewable handoff.
+The stage separation is an architecture constraint. Its purpose is to keep each worker focused on one class of reasoning and give the next worker a complete, reviewable handoff. Final workflow verification closes the operator invocation; it is not a sixth reasoning stage or family artifact.
 
 ## Goals
 
@@ -30,6 +31,8 @@ The stage separation is an architecture constraint. Its purpose is to keep each 
 - give coding agents deterministic implementation instructions rather than design choices;
 - isolate component implementation from product-consumer migration;
 - independently review the full resulting family;
+- autonomously complete the staged workflow from one component-name invocation;
+- run one final read-only verification only after the current independent review;
 - use m3e maximally without leaking its vocabulary or ownership;
 - implement the minimum complete current contract without speculative surface.
 
@@ -39,12 +42,13 @@ The stage separation is an architecture constraint. Its purpose is to keep each 
 2. `components/<family>/DESIGN.md` is the complete normalized local snapshot of the official contract.
 3. Current Mioframe scenarios and repository rules select required behavior.
 4. `components/<family>/ARCHITECTURE.md` is the accepted demand-scoped implementation handoff.
-5. Family code plus `IMPLEMENTATION.md` records the canonical component implementation and proof.
-6. `MIGRATION.md` records consumer adoption and legacy removal.
-7. `REVIEW.md` records independent compliance and merge readiness.
+5. Family code plus `IMPLEMENTATION.md` records the canonical component implementation and focused component proof.
+6. `MIGRATION.md` records consumer adoption, legacy removal, and migration-scoped proof.
+7. `REVIEW.md` records independent compliance and final-workflow-verification readiness.
 8. Canonical CSS declarations plus `docs/token-api.md` define supported public tokens.
 9. `docs/m3e-defects.md` owns confirmed renderer-defect lifecycle.
 10. `docs/roadmap.md` alone owns project-wide milestone status and next action.
+11. The top-level `material-component` report owns the final workflow verification command and result.
 
 The installed lockfile-resolved m3e artifact and observable browser behavior define renderer capability actually consumed. Upstream renderer source, tags, demos, and changelogs are supporting evidence only. Legacy Mioframe code is migration evidence, not public API authority.
 
@@ -80,7 +84,7 @@ Answers:
 
 ```text
 What must Mioframe implement now, who owns it, how does m3e participate,
-and how will code, proof, and migration be completed?
+and how will code, stage proof, migration, and workflow closure be completed?
 ```
 
 It references exact design sections and resolves:
@@ -93,59 +97,69 @@ It references exact design sections and resolves:
 - selected component tokens;
 - renderer mapping, fallback, gaps, and workarounds;
 - implementation passes;
-- `TEST IMPACT`;
+- implementation-scoped and migration-scoped `TEST IMPACT`;
 - migration inventory and removal plan;
 - acceptance criteria, risks, and forbidden approaches.
 
 Its status must be `ready` before coding starts.
 
+Architecture must not assign the top-level final workflow verification to implementation, migration, review, a dependency family, or “whichever stage closes the family”. That command belongs to the outer orchestrator after all current independent reviews.
+
 ### IMPLEMENTATION.md
 
 Records whether the accepted architecture was implemented at the canonical component owner.
 
-The real implementation output is code, tokens, exports, defects, tests, stories, and proof. The record contains completed passes, verification, deviations, and migration readiness.
+The real implementation output is code, tokens, exports, defects, tests, stories, and proof. The record contains completed passes, focused implementation-stage verification, deviations, and migration readiness.
 
-A complete implementation has no architecture deviation. It does not migrate application consumers.
+A complete implementation has no architecture deviation. It does not migrate application consumers and does not own the top-level final workflow verification.
 
 ### MIGRATION.md
 
-Records the complete consumer inventory, migrated paths, preserved scenarios and failure paths, obsolete ownership removal, proof, and final current-head verification.
+Records the complete consumer inventory, migrated paths, preserved scenarios and failure paths, obsolete ownership removal, proof, and migration-stage verification.
 
-Migration consumes the accepted API. It does not redesign it.
+Migration consumes the accepted API. It does not redesign it and does not own or defer the top-level final workflow verification.
 
 ### REVIEW.md
 
-Independently compares official design, accepted architecture, full implementation, all consumers, proof, verification, and operator-reported visual/motion status.
+Independently compares official design, accepted architecture, full implementation, all consumers, proof, stage verification, and operator-reported visual/motion status.
 
-Review is read-only except for its own artifact. Findings route to the earliest owning stage.
+Review is read-only except for its own artifact. Findings route to the earliest owning stage. Review records whether the family is ready for final workflow verification; it does not run that command and does not treat its expected pending state as a finding or risk.
 
-## One invocation, one stage
+## One invocation, isolated stages
 
-The normal entrypoint is `material-component <name>`.
+The normal entrypoint is:
 
-The router selects the earliest invalid stage and runs only that stage:
+```text
+material-component <name>
+```
 
-1. design;
-2. architecture;
-3. implementation;
-4. migration;
-5. review.
+The operator supplies the component name once. A thin orchestrator autonomously repeats the state machine until completion or a genuine blocker:
 
-It stops after the selected artifact/report. It must not continue automatically into a later stage.
+1. select the earliest invalid design, architecture, implementation, migration, or review stage;
+2. run exactly that stage in a fresh worker context;
+3. validate its durable artifact and return to the state machine;
+4. process dependencies and correction routes automatically;
+5. after all affected reviews are current, run the one final workflow verification;
+6. route a verification failure to the earliest owning stage, require a fresh independent review after any workspace change, and rerun the same final command;
+7. finish only when all artifact gates and final verification pass on the unchanged workspace.
 
-A later-stage finding can route backward, but the later stage must not rewrite the earlier artifact itself.
+A stage worker stops after its selected artifact/report and returns control to the orchestrator. The outer operator invocation must not stop merely because one stage completed, and the operator must not repeat the command to advance the next internally actionable stage.
 
-See `component-workflow.md` for the state machine.
+The orchestrator does not perform stage-owned research, architecture, code, migration, or review. Running final workflow verification is orchestration closure, not stage reasoning.
+
+See `component-workflow.md` for the complete state machine.
 
 ## Dependency closure
 
-An official Material dependency is a first-class family and passes the same stages.
+An official Material dependency is a first-class family and passes the same five artifact stages.
 
-A parent architecture is not ready until required dependency design and architecture are ready. Parent implementation cannot complete before dependency implementation. Parent migration and review cannot complete while dependency closure is incomplete.
+A parent architecture is not ready until required dependency design and architecture are ready. Parent implementation cannot complete before dependency implementation. Parent migration and review cannot complete while required dependency artifact closure is incomplete.
 
 The parent owns composition meaning, placement, and state handoff. The dependency owns its official design, architecture, renderer integration, accessibility, geometry, tokens, defects, tests, stories, visual proof, migration facts, and review.
 
 Parent composition proof does not replace standalone dependency proof.
+
+The orchestrator does not run a separate top-level final verification after each dependency. It runs one final command after the parent and every affected dependency have current artifacts and independent reviews.
 
 ## Demand-scoped public surface
 
@@ -200,7 +214,9 @@ Owns:
 - canonical Vue adapter and export;
 - selected official component tokens;
 - private family-local renderer mappings;
-- component-specific defect records and proof.
+- component-specific defect records and stage proof.
+
+It does not own the outer workflow's final verification result.
 
 ### Parent adapter
 
@@ -209,6 +225,10 @@ Owns composition meaning, placement, controlled parent state, slots/events, nati
 ### m3e
 
 Owns private DOM, internal rendering/layout, private defaults, state layer, ripple, focus treatment, elevation, renderer motion, and private accessibility implementation.
+
+### Material orchestrator
+
+Owns state-machine control, fresh-worker sequencing, dependency processing, correction routing, and the one final read-only workflow verification after current independent review.
 
 ## Gap routing
 
@@ -273,9 +293,22 @@ Inside the canonical family:
 
 ## Verification and completion
 
-Architecture selects proof owners before coding. Implementation proves component-owned contracts. Migration proves product scenarios and legacy removal. Review checks the full result independently.
+Architecture selects proof owners before coding:
+
+- implementation proves component-owned contracts through focused implementation-stage verification;
+- migration proves product scenarios and legacy removal through focused migration-stage verification;
+- review checks the full result and stage evidence independently;
+- the outer orchestrator runs one final read-only workflow gate after the current review.
 
 Renderer-owned appearance requires browser or visual proof. Host state, token presence, event receipt, source inspection, or a story alone is insufficient.
+
+For ordinary Material component work, final workflow verification is:
+
+```text
+pnpm verify
+```
+
+`pnpm verify:release` is used only when the task itself changes release-sensitive infrastructure and the project verification rules classify it accordingly. Component code is not release-sensitive merely because it will eventually be merged or released.
 
 A component is complete only when:
 
@@ -284,9 +317,9 @@ A component is complete only when:
 - implementation is complete without deviations;
 - migration and legacy removal are complete;
 - independent review passes;
-- required current-head verification passes;
+- the required final workflow verification passes on the unchanged current workspace;
 - no concrete operator-reported visual/motion defect remains unresolved.
 
 Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: absence of a reported defect does not block completion and requires no explicit confirmation. A reported defect routes to its owning stage.
 
-Green CI alone is not architecture approval.
+A passing final verification alone is not architecture approval and does not replace the independent review.
