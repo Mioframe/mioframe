@@ -7,7 +7,7 @@ description: 'Use only after a current family DESIGN.md and ready ARCHITECTURE.m
 
 Implement one Material family strictly from its accepted architecture handoff.
 
-This stage owns canonical component code and component-owned proof. It does not own official research, architecture invention, or product-consumer migration.
+This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture invention, product-consumer migration, independent review, or the top-level final workflow verification.
 
 ## Input gate
 
@@ -51,7 +51,7 @@ Do not migrate application consumers or remove legacy consumer-facing owners in 
 
 - applicable `AGENTS.md` files;
 - family `DESIGN.md` and `ARCHITECTURE.md`;
-- Material token, renderer-boundary, testing, and verification rules;
+- Material token, renderer-boundary, testing, workflow, and verification rules;
 - exact lockfile-resolved renderer public artifacts;
 - existing family code, tests, stories, tokens, exports, and defect records;
 - required dependency implementation records.
@@ -82,7 +82,7 @@ The coding worker must not reselect demand, redesign the API, change ownership, 
 
 ## Proof ownership
 
-Implement the `TEST IMPACT` from `ARCHITECTURE.md` through faithful owners:
+Implement the implementation-owned portion of `TEST IMPACT` from `ARCHITECTURE.md` through faithful owners:
 
 - colocated Vue contract tests;
 - package-derived type-check;
@@ -93,6 +93,8 @@ Implement the `TEST IMPACT` from `ARCHITECTURE.md` through faithful owners:
 - risk-specific tests explicitly selected by architecture.
 
 Visual tests may prepare deterministic states and capture pixels, but behavioral success criteria remain in behavior tests.
+
+Do not run or defer the top-level final workflow verification from this stage. The orchestrator runs it after migration and the current independent review.
 
 ## Implementation record
 
@@ -111,7 +113,7 @@ Implementation workspace state: <canonical files and artifact statuses reviewed>
 ## Tokens and renderer mappings implemented
 ## Dependencies completed
 ## Proof completed
-## Verification performed
+## Implementation-stage verification
 ## Architecture deviations
 ## Remaining implementation blockers
 ## Migration readiness
@@ -121,9 +123,11 @@ Implementation workspace state: <canonical files and artifact statuses reviewed>
 
 ## Verification
 
-Run focused feedback during implementation and the exact implementation-stage scope required by root verification policy.
+Run focused verifier-managed feedback and the exact implementation-stage scope selected by architecture and root verification policy.
 
-Do not claim full component completion: product migration, final verification, operator-reported visual/motion status, and independent review belong to later stages.
+Do not claim full component completion: consumer migration, independent review, operator-reported visual/motion status, and the top-level final workflow verification remain outside this stage.
+
+Absence of the not-yet-run top-level final workflow verification is not an implementation blocker, accepted risk, or deferred implementation action.
 
 ## Completion gate
 
@@ -133,7 +137,7 @@ Implementation is `complete` only when:
 - family and dependency code is canonical and exported;
 - selected tokens, mappings, defects, tests, stories, and proof agree;
 - no architecture deviation exists;
-- focused verification passes, or its exact project-command blocker is recorded after implementation work is complete;
+- focused implementation-stage verification passes, or its exact project-command blocker is recorded after implementation work is complete;
 - the public component is ready for consumer migration.
 
 ## Report
@@ -150,7 +154,7 @@ Public API implemented:
 Tokens and mappings implemented:
 Dependencies completed:
 Proof completed:
-Verification:
+Implementation-stage verification:
 Architecture deviations: none | <details>
 Migration readiness: ready | blocked
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
@@ -165,3 +169,5 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Updating visual baselines without inspection.
 - Treating automated checks as migration or review completion.
 - Running the migration or review stage in the same worker context.
+- Running, deferring, or claiming ownership of the top-level final workflow verification.
+- Recording a not-yet-run top-level final gate as an implementation blocker, finding, risk, or next action.
