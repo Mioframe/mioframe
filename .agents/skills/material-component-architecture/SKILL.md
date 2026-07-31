@@ -7,7 +7,7 @@ description: 'Use after a current complete Material family DESIGN.md exists to c
 
 Resolve one Material component implementation architecture from an accepted official design artifact.
 
-This stage keeps research, architecture, coding, and migration separate. It produces a complete coding handoff and returns control to the orchestrator.
+This stage keeps research, architecture, coding, migration, review, and workflow closure separate. It produces a complete coding handoff and returns control to the orchestrator.
 
 ## Input contract
 
@@ -36,6 +36,7 @@ Do not edit production code, tests, stories, snapshots, public exports, tokens, 
 - applicable `AGENTS.md` files;
 - `src/shared/ui/material/docs/design-document.md`;
 - `src/shared/ui/material/docs/architecture.md`;
+- `src/shared/ui/material/docs/component-workflow.md`;
 - `src/shared/ui/material/docs/component-adapter.md`;
 - `src/shared/ui/material/docs/component-tokens.md`;
 - current family `DESIGN.md`;
@@ -61,10 +62,12 @@ Treat existing code and README files as implementation evidence, not architectur
 9. exact lockfile-resolved renderer coverage: `direct`, `partial`, `missing`, `divergent`, or `not-applicable`;
 10. wrapper corrections, renderer fixes, blocked behavior, and controlled workaround decisions;
 11. implementation passes and files/modules expected to change;
-12. proof ownership and `TEST IMPACT`;
+12. proof ownership and `TEST IMPACT`, split into implementation-scoped and migration-scoped focused proof;
 13. consumer migration inventory, obsolete owners to remove, and migration pass order;
 14. acceptance criteria, preserved behavior, risks, and forbidden approaches;
 15. implementation readiness: `ready` or `blocked`.
+
+Do not assign the top-level final workflow verification to implementation, migration, or review. `material-component` runs that single read-only gate after all affected artifacts and independent reviews are current.
 
 ## Dependency gate
 
@@ -107,6 +110,19 @@ Choose one owner for each selected gap:
 
 Do not leave the coding worker to choose between unresolved approaches.
 
+## Verification ownership
+
+`TEST IMPACT` must identify faithful proof owners without moving final workflow closure into a stage:
+
+- implementation owns focused component, renderer-boundary, token, browser, visual, and risk-specific proof for component-owned changes;
+- migration owns focused consumer, legacy-removal, product-scenario, and impact-metadata proof;
+- review independently evaluates the complete result and stage evidence;
+- the top-level `material-component` orchestrator owns the one final read-only workflow verification after the current review.
+
+For ordinary Material component work, the final workflow command is `pnpm verify`. Do not classify component work as release-sensitive merely because it will be merged or released. `pnpm verify:release` is selected only when the task itself changes release-sensitive infrastructure under the project verification rules.
+
+`ARCHITECTURE.md` may state final-workflow-verification impact facts needed by the verifier, but it must not assign execution to migration, review, a dependency family, or “whichever stage closes the family”.
+
 ## Artifact structure
 
 `ARCHITECTURE.md` must contain:
@@ -147,7 +163,8 @@ Report `ready` only when:
 - the complete design source is current;
 - all product and library scenarios are confirmed;
 - dependencies and owners are resolved;
-- public API, tokens, renderer mapping, gaps, proof, and migration are explicit;
+- public API, tokens, renderer mapping, gaps, stage proof, and migration are explicit;
+- final workflow verification ownership remains with the orchestrator;
 - the simplest viable design was compared and selected;
 - no coding decision remains open.
 
@@ -171,6 +188,8 @@ Selected public tokens:
 Renderer coverage and gaps:
 Implementation passes:
 Migration scope:
+Stage proof ownership:
+Final workflow verification owner: material-component orchestrator
 Unresolved blockers: none | <details>
 Architecture status: ready | blocked | stale
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
@@ -182,5 +201,6 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Editing production code, tests, stories, snapshots, tokens, exports, or consumers.
 - Mixing implementation progress or migration results into `ARCHITECTURE.md`.
 - Leaving public API, ownership, renderer strategy, proof, or migration choices to the coding worker.
+- Assigning the top-level final workflow verification to implementation, migration, review, a dependency, or an unspecified later stage.
 - Treating family README or current code as the architecture artifact.
 - Running implementation or migration in the same worker context.
