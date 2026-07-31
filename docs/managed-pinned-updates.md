@@ -99,13 +99,13 @@ The feature has not been published to stable or develop. The replacement may kee
 
 ## Ownership matrix
 
-| Owner | Responsibility |
-| --- | --- |
-| feature | User-triggered check, mode change, install-on-next-launch, cancel, and notification actions; only feature-local busy state |
-| entity | Reactive snapshot, derived update status, refresh/invalidation subscription, and stable UI-facing update facts |
-| widget | App updates product block, connectivity presentation, action composition, and truthful copy |
-| page/pane | Route and settings-pane composition only |
-| shared | Runtime protocol schemas/client, release schemas, and upper-layer-independent helpers |
+| Owner          | Responsibility                                                                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| feature        | User-triggered check, mode change, install-on-next-launch, cancel, and notification actions; only feature-local busy state                                                |
+| entity         | Reactive snapshot, derived update status, refresh/invalidation subscription, and stable UI-facing update facts                                                            |
+| widget         | App updates product block, connectivity presentation, action composition, and truthful copy                                                                               |
+| page/pane      | Route and settings-pane composition only                                                                                                                                  |
+| shared         | Runtime protocol schemas/client, release schemas, and upper-layer-independent helpers                                                                                     |
 | service/worker | Publication contract, persisted controller state, state transitions, discovery, preparation, cache ownership, fetch routing, activation, commit, rollback, and broadcasts |
 
 ## Sources of truth
@@ -238,23 +238,23 @@ Manual activation failure preserves exact retry of the failed release. Backgroun
 
 ## State transitions
 
-| Current state | Event | Result |
-| --- | --- | --- |
-| state absent | successful worker install preparation | active = published latest; mode = Automatic; no candidate |
-| no candidate | newer discovery | candidate = `available(new)` |
-| `available(B)` | newer discovery C | candidate = `available(C)` |
-| `failed(B)` | allowed newer discovery C | candidate = `available(C)` |
-| `ready` or `activating` | scheduled/explicit discovery | discovery is skipped; state unchanged |
-| any state | `SET_MODE` | mode changes in one short transaction; candidate phase is unchanged |
-| Automatic + `available(B)` | background preparation succeeds and state is still same Automatic candidate | candidate = `ready(B)` |
-| Automatic + `available(B)` | preparation fails or completion is stale | candidate remains `available(B)` |
-| Manual + `available(B)` | install succeeds and state is still same Manual candidate | candidate = `ready(B)` |
-| Manual + `failed(B)` | retry succeeds and state is still same Manual candidate | candidate = `ready(B)` |
-| Manual + `ready(B)` | cancel | candidate = `available(B)` |
-| `ready(B)` | qualifying clean launch | candidate = `activating(B, deadline)`; active unchanged |
-| `activating(B)` | durable `BOOT_OK(B)` | active = B; candidate removed |
-| `activating(B)` | durable `BOOT_FAILED(B)` or expired activation recovery | active unchanged; candidate = `failed(B)` |
-| any state | stale/wrong release acknowledgement | no-op |
+| Current state              | Event                                                                       | Result                                                              |
+| -------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| state absent               | successful worker install preparation                                       | active = published latest; mode = Automatic; no candidate           |
+| no candidate               | newer discovery                                                             | candidate = `available(new)`                                        |
+| `available(B)`             | newer discovery C                                                           | candidate = `available(C)`                                          |
+| `failed(B)`                | allowed newer discovery C                                                   | candidate = `available(C)`                                          |
+| `ready` or `activating`    | scheduled/explicit discovery                                                | discovery is skipped; state unchanged                               |
+| any state                  | `SET_MODE`                                                                  | mode changes in one short transaction; candidate phase is unchanged |
+| Automatic + `available(B)` | background preparation succeeds and state is still same Automatic candidate | candidate = `ready(B)`                                              |
+| Automatic + `available(B)` | preparation fails or completion is stale                                    | candidate remains `available(B)`                                    |
+| Manual + `available(B)`    | install succeeds and state is still same Manual candidate                   | candidate = `ready(B)`                                              |
+| Manual + `failed(B)`       | retry succeeds and state is still same Manual candidate                     | candidate = `ready(B)`                                              |
+| Manual + `ready(B)`        | cancel                                                                      | candidate = `available(B)`                                          |
+| `ready(B)`                 | qualifying clean launch                                                     | candidate = `activating(B, deadline)`; active unchanged             |
+| `activating(B)`            | durable `BOOT_OK(B)`                                                        | active = B; candidate removed                                       |
+| `activating(B)`            | durable `BOOT_FAILED(B)` or expired activation recovery                     | active unchanged; candidate = `failed(B)`                           |
+| any state                  | stale/wrong release acknowledgement                                         | no-op                                                               |
 
 No transition accepts an independent activation target. Activation always consumes the current `ready` candidate.
 
@@ -361,11 +361,11 @@ Everything else is ordinary browser network behavior and does not enter managed 
 
 Managed navigation and asset behavior:
 
-| Persisted state | Result |
-| --- | --- |
-| absent | ordinary network bootstrap |
-| invalid | controlled `503`, without live-deployment fallback |
-| valid | serve the selected exact release |
+| Persisted state | Result                                             |
+| --------------- | -------------------------------------------------- |
+| absent          | ordinary network bootstrap                         |
+| invalid         | controlled `503`, without live-deployment fallback |
+| valid           | serve the selected exact release                   |
 
 Selected release:
 
@@ -427,7 +427,10 @@ type AppUpdateSnapshot = {
 Unexpected worker-handler failure remains the stable envelope:
 
 ```ts
-{ protocolVersion: 1; error: 'unavailable' }
+{
+  protocolVersion: 1;
+  error: 'unavailable';
+}
 ```
 
 UI entity derives status from `candidate.phase` rather than reconciling separate release fields.
@@ -518,48 +521,48 @@ None. Only App updates entity/feature/widget/pane consumers and their tests chan
 
 ## Acceptance matrix
 
-| Scenario | Required observable result |
-| --- | --- |
-| Fresh install succeeds | latest immutable release is fully prepared before initial state is committed |
-| Fresh install fails | new controller installation fails; no partial managed state becomes active |
-| Manual discovery | newest eligible release becomes `available`; no preparation starts |
-| Manual indefinite deferral | active release continues serving; newer discoveries replace only `available` |
-| Manual install | exact candidate is prepared and becomes `ready` |
-| Manual cancel | same candidate returns to `available`; active is unchanged |
-| Manual activation failure | previous active remains; exact candidate becomes `failed`; Retry is available |
-| Manual explicit check after failure | a newer release may replace failed candidate; equal/older release preserves retry |
-| Automatic discovery | newest eligible candidate becomes available, then ready after background preparation |
-| Automatic preparation failure | mode remains Automatic; candidate remains available; later eligible trigger retries |
-| Mode changes during preparation | final completion changes phase only if fresh mode/candidate/phase still match |
-| Ready B and C published | B remains ready; C is not stored until B commits or is cancelled |
-| Activating B and C published | B remains activation target; C is not stored |
-| Automatic failed B and C published | eligible discovery replaces B with available C; exact B is not retried automatically |
-| Multiple windows | later durable user mode choice wins; stale completions are no-ops |
-| Invalid state navigation/assets | controlled `503`; no live-deployment fetch |
-| Invalid state non-release request | ordinary network behavior |
-| Missing selected cache | restore exact selected release or return `503` |
-| Controller upgrade | active and candidate state are preserved unchanged |
-| BOOT_OK | acknowledgement follows durable commit; UI readers refresh; obsolete cache cleanup is tracked |
-| BOOT_FAILED | acknowledgement follows durable rollback; rollback broadcast starts after acknowledgement |
-| Stable/develop | state, caches, clients, discovery, and broadcasts never cross channel boundaries |
-| Concurrent publication | serialized publish succeeds or conflicting publisher fails; committed release is never overwritten |
+| Scenario                            | Required observable result                                                                         |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Fresh install succeeds              | latest immutable release is fully prepared before initial state is committed                       |
+| Fresh install fails                 | new controller installation fails; no partial managed state becomes active                         |
+| Manual discovery                    | newest eligible release becomes `available`; no preparation starts                                 |
+| Manual indefinite deferral          | active release continues serving; newer discoveries replace only `available`                       |
+| Manual install                      | exact candidate is prepared and becomes `ready`                                                    |
+| Manual cancel                       | same candidate returns to `available`; active is unchanged                                         |
+| Manual activation failure           | previous active remains; exact candidate becomes `failed`; Retry is available                      |
+| Manual explicit check after failure | a newer release may replace failed candidate; equal/older release preserves retry                  |
+| Automatic discovery                 | newest eligible candidate becomes available, then ready after background preparation               |
+| Automatic preparation failure       | mode remains Automatic; candidate remains available; later eligible trigger retries                |
+| Mode changes during preparation     | final completion changes phase only if fresh mode/candidate/phase still match                      |
+| Ready B and C published             | B remains ready; C is not stored until B commits or is cancelled                                   |
+| Activating B and C published        | B remains activation target; C is not stored                                                       |
+| Automatic failed B and C published  | eligible discovery replaces B with available C; exact B is not retried automatically               |
+| Multiple windows                    | later durable user mode choice wins; stale completions are no-ops                                  |
+| Invalid state navigation/assets     | controlled `503`; no live-deployment fetch                                                         |
+| Invalid state non-release request   | ordinary network behavior                                                                          |
+| Missing selected cache              | restore exact selected release or return `503`                                                     |
+| Controller upgrade                  | active and candidate state are preserved unchanged                                                 |
+| BOOT_OK                             | acknowledgement follows durable commit; UI readers refresh; obsolete cache cleanup is tracked      |
+| BOOT_FAILED                         | acknowledgement follows durable rollback; rollback broadcast starts after acknowledgement          |
+| Stable/develop                      | state, caches, clients, discovery, and broadcasts never cross channel boundaries                   |
+| Concurrent publication              | serialized publish succeeds or conflicting publisher fails; committed release is never overwritten |
 
 ## Risk matrix
 
-| Risk | Mitigation / proof owner |
-| --- | --- |
-| Invalid persisted state bypasses pinning | schema boundary plus navigation/asset release tests |
-| Stale long completion overwrites user intent | fresh queue transaction checks exact mode, phase, and release number |
-| Candidate supersession becomes ambiguous | no supersession in ready/activating; one candidate only |
-| Release number reuse | publisher retained-tree validation and serialized/fail-on-conflict publication tests |
-| Incomplete/corrupt cache treated as ready | integrity verification and descriptor-marker-last tests |
-| Cleanup deletes selected/in-flight release | protected-number set and coordinator arbitration tests |
-| Response lost before rollback reload | real service-worker response-before-follow-up wiring test |
-| Worker terminated during background work | originating event `waitUntil`; idempotent retry on later eligible trigger |
-| Protocol drift between pinned app and controller | protocol v1 runtime parsing and additive compatibility tests |
-| Cross-channel mutation | path/origin/database/cache/client isolation unit and release E2E proof |
-| Browser clean-launch differences | Chromium, Firefox, and WebKit close-all-and-reopen scenarios |
-| Older app writes incompatible user data | backward-readable data contract; irreversible migration forbidden |
+| Risk                                             | Mitigation / proof owner                                                             |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Invalid persisted state bypasses pinning         | schema boundary plus navigation/asset release tests                                  |
+| Stale long completion overwrites user intent     | fresh queue transaction checks exact mode, phase, and release number                 |
+| Candidate supersession becomes ambiguous         | no supersession in ready/activating; one candidate only                              |
+| Release number reuse                             | publisher retained-tree validation and serialized/fail-on-conflict publication tests |
+| Incomplete/corrupt cache treated as ready        | integrity verification and descriptor-marker-last tests                              |
+| Cleanup deletes selected/in-flight release       | protected-number set and coordinator arbitration tests                               |
+| Response lost before rollback reload             | real service-worker response-before-follow-up wiring test                            |
+| Worker terminated during background work         | originating event `waitUntil`; idempotent retry on later eligible trigger            |
+| Protocol drift between pinned app and controller | protocol v1 runtime parsing and additive compatibility tests                         |
+| Cross-channel mutation                           | path/origin/database/cache/client isolation unit and release E2E proof               |
+| Browser clean-launch differences                 | Chromium, Firefox, and WebKit close-all-and-reopen scenarios                         |
+| Older app writes incompatible user data          | backward-readable data contract; irreversible migration forbidden                    |
 
 ## Required test proof
 
