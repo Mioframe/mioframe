@@ -1,18 +1,10 @@
 # Mioframe Material token API
 
-Status: `populated`
-
 This document is the complete consumer-facing catalogue of Material CSS custom properties currently supported by Mioframe at runtime.
 
 It is not the complete official Material token catalogue. Complete official component-token catalogues belong in each family `DESIGN.md`. Canonical CSS files provide executable supported declarations and runtime values; this catalogue and those declarations change together.
 
-## Current state
-
-Loading Indicator and Button now have current complete `DESIGN.md` artifacts, ready `ARCHITECTURE.md` artifacts, accepted runtime selections, complete implementation and migration records, and representative automated proof.
-
-The Button catalogue below records the accepted seven-token contextual text contract. The provisional five-token surface, renderer-derived public `hover`/`focus` names, and unconsumed contextual icon token are removed without compatibility aliases.
-
-Operator visual/motion acceptance and fresh final review remain merge gates, but they do not make the already implemented runtime token catalogue provisional.
+Mutable family-stage status, blockers, and next action belong only to `roadmap.md` and family stage artifacts. Operator visual/motion inspection is an external defect-reporting channel; it does not determine whether an implemented and declared token belongs to this runtime catalogue.
 
 ## Inclusion rule
 
@@ -212,9 +204,9 @@ Official source: `components/loadingIndicator/DESIGN.md`, token path `md.comp.lo
 | ---------------------------------------------------- | --------- | ------------------------------------------------ | ----------------------------- | ---------------- | ---------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `--md-comp-loading-indicator-active-indicator-color` | `<color>` | uncontained Loading Indicator active-shape color | `var(--md-sys-color-primary)` | component family | `components/loadingIndicator/tokens.css` | private `--m3e-loading-indicator-active-indicator-color` mapping | Loading Indicator contract/browser/visual proof; Button loading composition contract and visual baseline |
 
-## Migration state
+## Canonical declarations
 
-Foundation, theme, Button, and Loading Indicator runtime token migration is complete for the selected pilot surface. Canonical runtime declarations live in:
+The currently catalogued runtime declarations live in:
 
 ```text
 src/shared/ui/material/foundation/tokens.css
