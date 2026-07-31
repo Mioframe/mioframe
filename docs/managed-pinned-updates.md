@@ -52,7 +52,7 @@ A failed managed `install` leaves the legacy Workbox worker active. After releas
 | Controller worker       | Bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback |
 | Service client/features | Explicit transport outcomes, finite busy state, user actions                                        |
 | Entity/widget/pane      | Snapshot projection and product composition                                                         |
-| Browser                 | Service-worker lifecycle and registration replacement                                                |
+| Browser                 | Service-worker lifecycle and registration replacement                                               |
 
 Sources of truth:
 
@@ -150,26 +150,26 @@ The Workbox probe proves runtime compatibility, not unique historical Mioframe i
 
 Probe interpretation is normative:
 
-| Managed probe | Workbox probe | Result |
-| --- | --- | --- |
-| valid managed response | missing or silent | managed predecessor |
-| silent by deadline | exact `true` | compatible Workbox predecessor |
-| valid managed response | exact `true` | conflicting evidence; reject |
-| malformed response from either probe | any | reject |
-| missing, timed-out, or non-`true` Workbox response without managed success | any | reject |
+| Managed probe                                                              | Workbox probe     | Result                         |
+| -------------------------------------------------------------------------- | ----------------- | ------------------------------ |
+| valid managed response                                                     | missing or silent | managed predecessor            |
+| silent by deadline                                                         | exact `true`      | compatible Workbox predecessor |
+| valid managed response                                                     | exact `true`      | conflicting evidence; reject   |
+| malformed response from either probe                                       | any               | reject                         |
+| missing, timed-out, or non-`true` Workbox response without managed success | any               | reject                         |
 
 Silence from the managed probe is expected for a compatible Workbox predecessor and is not by itself a classification failure.
 
 Install classification:
 
-| Controller state | Active predecessor evidence | Result |
-| --- | --- | --- |
-| valid | any | preserve state unchanged; ordinary managed retry/upgrade |
-| invalid | any | reject installation |
-| absent | no active worker | genuine first registration |
-| absent | managed predecessor | reject as managed-state loss |
-| absent | compatible Workbox predecessor | supported one-time Workbox bootstrap |
-| absent | conflicting, malformed, timed-out, or unknown evidence | reject installation |
+| Controller state | Active predecessor evidence                            | Result                                                   |
+| ---------------- | ------------------------------------------------------ | -------------------------------------------------------- |
+| valid            | any                                                    | preserve state unchanged; ordinary managed retry/upgrade |
+| invalid          | any                                                    | reject installation                                      |
+| absent           | no active worker                                       | genuine first registration                               |
+| absent           | managed predecessor                                    | reject as managed-state loss                             |
+| absent           | compatible Workbox predecessor                         | supported one-time Workbox bootstrap                     |
+| absent           | conflicting, malformed, timed-out, or unknown evidence | reject installation                                      |
 
 Stale caches never authorize bootstrap. The managed controller must not answer the Workbox `CACHE_URLS` probe.
 
@@ -208,17 +208,17 @@ These contracts may evolve only additively while older releases remain supported
 - Automatic never retries the exact failed release;
 - Manual may explicitly retry the exact failed release.
 
-| Event | Result |
-| --- | --- |
-| newer discovery with no candidate | `available(new)` |
-| newer discovery over `available` or eligible `failed` | `available(new)` |
-| Automatic prepares the final matching `available` candidate | `ready` |
-| Manual installs matching `available` or `failed` | `ready` |
-| Manual cancels `ready` | `available` |
-| qualifying clean launch with `ready` | `activating`, active unchanged |
-| matching durable `BOOT_OK` | candidate becomes active; candidate cleared |
-| matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed` |
-| stale or mismatched completion | no-op |
+| Event                                                       | Result                                       |
+| ----------------------------------------------------------- | -------------------------------------------- |
+| newer discovery with no candidate                           | `available(new)`                             |
+| newer discovery over `available` or eligible `failed`       | `available(new)`                             |
+| Automatic prepares the final matching `available` candidate | `ready`                                      |
+| Manual installs matching `available` or `failed`            | `ready`                                      |
+| Manual cancels `ready`                                      | `available`                                  |
+| qualifying clean launch with `ready`                        | `activating`, active unchanged               |
+| matching durable `BOOT_OK`                                  | candidate becomes active; candidate cleared  |
+| matching `BOOT_FAILED` or expiration                        | active unchanged; candidate becomes `failed` |
+| stale or mismatched completion                              | no-op                                        |
 
 Every long completion re-reads state and persists only when mode, release number, and phase still match its target.
 
@@ -242,12 +242,12 @@ This promise is not persisted and is not a scheduler, manager, or generic coordi
 
 Mode behavior:
 
-| Fresh state | Automatic | Manual |
-| --- | --- | --- |
-| no candidate | discover; persist newer as `available`; prepare it to `ready` | discover; persist newer as `available`; do not prepare |
-| `available(B)` | discover latest first; replace with newer C when found; prepare the final available candidate | discover strictly newer; otherwise keep B available |
-| `failed(B)` | discover strictly newer; never retry B; prepare a newer result | discover strictly newer; never retry B automatically |
-| `ready` or `activating` | no-op | no-op |
+| Fresh state             | Automatic                                                                                     | Manual                                                 |
+| ----------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| no candidate            | discover; persist newer as `available`; prepare it to `ready`                                 | discover; persist newer as `available`; do not prepare |
+| `available(B)`          | discover latest first; replace with newer C when found; prepare the final available candidate | discover strictly newer; otherwise keep B available    |
+| `failed(B)`             | discover strictly newer; never retry B; prepare a newer result                                | discover strictly newer; never retry B automatically   |
+| `ready` or `activating` | no-op                                                                                         | no-op                                                  |
 
 For Automatic `available(B)`, failed latest discovery does not discard B, does not advance `lastSuccessfulCheckAt`, and may fall back to preparing the already known B. This preserves offline/partial-metadata recovery while preferring current latest whenever discovery succeeds.
 
