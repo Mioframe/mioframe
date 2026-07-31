@@ -1,140 +1,137 @@
 ---
 name: material-component-architecture
-description: 'Use after a current complete Material family DESIGN.md exists to create or refresh that family ARCHITECTURE.md as the demand-scoped Mioframe–Vue–renderer implementation plan, without editing production code or migrating consumers.'
+description: 'Use after a current complete family DESIGN.md exists to create or refresh the demand-scoped ARCHITECTURE.md without editing production code or migrating consumers.'
 ---
 
 # Material component architecture
 
-Resolve one Material component implementation architecture from an accepted official design artifact.
+Resolve one deterministic implementation architecture from the accepted official design artifact and return control to the orchestrator.
 
-This stage keeps research, architecture, coding, migration, review, and workflow closure separate. It produces a complete coding handoff and returns control to the orchestrator.
+This stage owns demand selection, public contract, ownership, renderer strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or final workflow verification.
 
-## Input contract
+## Input gate
 
-The only required input is the Material component name.
-
-Resolve the canonical family and require:
+Require:
 
 ```text
 src/shared/ui/material/components/<family>/DESIGN.md
 ```
 
-The design status must be `current`. If it is missing, stale, blocked, incomplete, demand-scoped, or renderer-shaped, stop and route to `material-component-design`.
+The design artifact must contain all required control fields and satisfy its `current` success gate.
 
-## Output artifact
+If official design is missing, stale, blocked, incomplete, demand-scoped, or renderer-shaped, write the architecture artifact as blocked when possible, set `Required return stage: design`, and return.
 
-Write exactly one primary artifact:
+## Worker boundary
+
+Run in a fresh isolated worker context.
+
+Use task-relevant readable workspace files, applicable rules, exact renderer package artifacts, and documented project commands. Do not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
+
+Treat existing code, tests, stories, and README files as implementation evidence, not architecture authority.
+
+## Output
+
+Write exactly:
 
 ```text
 src/shared/ui/material/components/<family>/ARCHITECTURE.md
 ```
 
-Do not edit production code, tests, stories, snapshots, public exports, tokens, consumers, or migration files in this stage.
+The artifact begins with exact control fields:
+
+```text
+Status: ready | stale | blocked
+DESIGN.md reference: <path and source revision>
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return stage: none | design | architecture
+Implementation readiness: ready | blocked
+Dependency queue: none | <ordered family and required gate entries>
+```
+
+Do not append prose to enum values.
 
 ## Read first
 
 - applicable `AGENTS.md` files;
-- `src/shared/ui/material/docs/design-document.md`;
-- `src/shared/ui/material/docs/architecture.md`;
-- `src/shared/ui/material/docs/component-workflow.md`;
-- `src/shared/ui/material/docs/component-adapter.md`;
-- `src/shared/ui/material/docs/component-tokens.md`;
-- current family `DESIGN.md`;
-- current and legacy consumers;
-- current implementation, tests, and stories when they exist;
-- exact lockfile-resolved renderer package entry point and public artifacts;
-- relevant defect, token catalogue, testing, and verification rules.
+- family `DESIGN.md`;
+- `docs/architecture.md`;
+- `docs/component-workflow.md`;
+- `docs/component-adapter.md`;
+- `docs/component-tokens.md`;
+- current scenarios and consumers;
+- current implementation and proof where present;
+- exact lockfile-resolved renderer public artifacts;
+- relevant testing, defect, and verification rules.
 
-Treat existing code and README files as implementation evidence, not architecture authority.
+## Required decisions
 
-## Required architecture decisions
-
-`ARCHITECTURE.md` must resolve:
+Resolve:
 
 1. goal and non-goals;
-2. current product and approved library scenarios;
-3. selected and deferred official surface, with exact `DESIGN.md` references;
-4. required official dependencies and ordered dependency closure;
+2. confirmed product and approved library scenarios, including failure paths;
+3. selected and deferred official surface with exact `DESIGN.md` references;
+4. official dependency closure and ordered `Dependency queue`;
 5. ownership of parent composition, dependency behavior, feature state, renderer behavior, and gaps;
-6. complete public Vue API: props, defaults, values, slots, emits, refs, native mappings, state precedence, and restoration;
-7. selected public component-token surface and exact official token paths;
-8. contextual state/part trace through renderer input and fallback;
-9. exact lockfile-resolved renderer coverage: `direct`, `partial`, `missing`, `divergent`, or `not-applicable`;
-10. wrapper corrections, renderer fixes, blocked behavior, and controlled workaround decisions;
-11. implementation passes and files/modules expected to change;
-12. proof ownership and `TEST IMPACT`, split into implementation-scoped and migration-scoped focused proof;
-13. consumer migration inventory, obsolete owners to remove, and migration pass order;
+6. complete public Vue API: props, defaults, values, slots, emits, refs, native mappings, precedence, and restoration;
+7. selected public component-token contract and exact official paths;
+8. contextual state/part trace through renderer inputs and fallbacks;
+9. renderer coverage: `direct`, `partial`, `missing`, `divergent`, or `not-applicable`;
+10. one owner for every gap: wrapper correction, controlled renderer workaround, renderer fix, or blocked;
+11. deterministic implementation passes and expected files;
+12. `TEST IMPACT`, split into implementation-owned and migration-owned proof;
+13. complete consumer inventory, obsolete owners, and migration pass order;
 14. acceptance criteria, preserved behavior, risks, and forbidden approaches;
-15. implementation readiness: `ready` or `blocked`.
+15. comparison with the simplest viable alternative;
+16. implementation readiness.
 
-Do not assign the top-level final workflow verification to implementation, migration, or review. `material-component` runs that single read-only gate after all affected artifacts and independent reviews are current.
+No coding decision may remain for the implementation worker.
 
-## Dependency gate
+## Dependency rules
 
-A parent architecture is not `ready` while a required official dependency lacks:
+A required official dependency is a first-class family.
 
-- a current complete `DESIGN.md`;
-- a ready `ARCHITECTURE.md`;
-- an explicit public handoff and ownership boundary.
+Record each dependency in `Dependency queue` with the exact gate the parent requires. Do not implement the dependency in this worker.
 
-Record the dependency queue and return control to the orchestrator. Do not implement the dependency inside the parent architecture worker and do not execute another stage in the same worker context.
+A parent architecture cannot be `ready` until required dependency design and architecture are ready and the public handoff is explicit.
 
-## Public API and token rules
+## Public boundary
 
-- Derive public semantics only from `DESIGN.md`, current confirmed demand, and Vue mechanics.
-- Do not derive public API or token names from renderer or legacy Mioframe vocabulary.
-- Select the minimum complete surface for confirmed scenarios, including every required state and rendered part.
-- Do not add adjacent renderer, native, or token surface merely for symmetry or hypothetical reuse.
-- For every contextual token record:
+- Derive public semantics from `DESIGN.md`, confirmed demand, and Vue mechanics.
+- Do not derive public API or token names from renderer or legacy vocabulary.
+- Select the minimum complete surface for current scenarios.
+- Keep renderer imports, tags, types, events, and CSS inputs private.
+- Define precedence and restoration for every selected state combination.
+- Do not add adjacent surface for symmetry or future flexibility.
+
+For every contextual token record:
 
 ```text
 DESIGN.md official path
   → public Mioframe token
-  → direct renderer input
+  → renderer input
   → renderer fallback
-  → expected rendered consumer result
+  → expected rendered result
   → proof owner
 ```
 
-- Separate standalone dependency defaults from parent-composed overrides.
-- Keep all renderer imports, types, events, tags, and CSS inputs private.
+## Proof ownership
 
-## Gap routing
+Architecture assigns only stage-scoped proof:
 
-Choose one owner for each selected gap:
+- implementation owns component, renderer-boundary, token, browser, visual, and component-risk proof;
+- migration owns consumer, product-scenario, legacy-removal, and impact-metadata proof;
+- review independently evaluates the complete result and stage evidence.
 
-- `wrapper-correction`;
-- `temporary-renderer-workaround` under the workspace gate;
-- `renderer-fix`;
-- `blocked`.
+The top-level `material-component` orchestrator owns the one final read-only workflow verification after current review. Do not assign it to implementation, migration, review, a dependency, or an unspecified later stage.
 
-Do not leave the coding worker to choose between unresolved approaches.
+For ordinary component work, the expected outer command is `pnpm verify`. Select `pnpm verify:release` only when the task itself changes release-sensitive infrastructure under the verification skill.
 
-## Verification ownership
+## Required sections
 
-`TEST IMPACT` must identify faithful proof owners without moving final workflow closure into a stage:
-
-- implementation owns focused component, renderer-boundary, token, browser, visual, and risk-specific proof for component-owned changes;
-- migration owns focused consumer, legacy-removal, product-scenario, and impact-metadata proof;
-- review independently evaluates the complete result and stage evidence;
-- the top-level `material-component` orchestrator owns the one final read-only workflow verification after the current review.
-
-For ordinary Material component work, the final workflow command is `pnpm verify`. Do not classify component work as release-sensitive merely because it will be merged or released. `pnpm verify:release` is selected only when the task itself changes release-sensitive infrastructure under the project verification rules.
-
-`ARCHITECTURE.md` may state final-workflow-verification impact facts needed by the verifier, but it must not assign execution to migration, review, a dependency family, or “whichever stage closes the family”.
-
-## Artifact structure
-
-`ARCHITECTURE.md` must contain:
+After the control fields include:
 
 ```text
-# <Component> architecture
-
-Status: ready | blocked | stale
-DESIGN.md reference:
-Design snapshot/revision:
-Architecture date:
-
 ## Goal
 ## Non-goals
 ## Current scenarios
@@ -154,53 +151,51 @@ Architecture date:
 ## Implementation readiness
 ```
 
-Every selected, deferred, or restrictive decision references `DESIGN.md`. Every implementation pass is deterministic enough for a coding worker.
+## Completion
 
-## Completion gate
+Use `Status: ready` only when:
 
-Report `ready` only when:
-
-- the complete design source is current;
-- all product and library scenarios are confirmed;
-- dependencies and owners are resolved;
-- public API, tokens, renderer mapping, gaps, stage proof, and migration are explicit;
+- design is current and complete;
+- scenarios, dependencies, owners, API, tokens, renderer mapping, gaps, proof, and migration are explicit;
+- the simplest viable design is selected;
 - final workflow verification ownership remains with the orchestrator;
-- the simplest viable design was compared and selected;
-- no coding decision remains open.
+- no implementation decision remains open;
+- `Remaining blockers: none`;
+- `Required return stage: none`;
+- `Implementation readiness: ready`.
 
-Do not continue into implementation from this worker. Return control to the orchestrator.
+If design must change, set return stage `design`. If architecture itself is unresolved, set return stage `architecture`.
+
+Return to the orchestrator after writing the artifact. Do not execute implementation in the same context.
 
 ## Report
 
 ```text
 MATERIAL ARCHITECTURE RESULT
-Input artifact:
-Resolved official component:
+Input component:
 Canonical family:
-DESIGN.md path and status:
+DESIGN.md status:
 ARCHITECTURE.md path:
-Selected scenarios:
-Selected Material surface:
-Deferred surface:
-Dependencies and stage statuses:
+Selected and deferred surface:
+Dependencies and required gates:
 Public Vue API:
 Selected public tokens:
 Renderer coverage and gaps:
 Implementation passes:
 Migration scope:
 Stage proof ownership:
-Final workflow verification owner: material-component orchestrator
-Unresolved blockers: none | <details>
-Architecture status: ready | blocked | stale
-Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
+Remaining blockers: none | <details>
+Required return stage: none | design | architecture
+Architecture status: ready | stale | blocked
+Implementation readiness: ready | blocked
+Status: complete | blocked
 ```
 
 ## Forbidden
 
-- Editing `DESIGN.md` to fit current demand.
-- Editing production code, tests, stories, snapshots, tokens, exports, or consumers.
-- Mixing implementation progress or migration results into `ARCHITECTURE.md`.
-- Leaving public API, ownership, renderer strategy, proof, or migration choices to the coding worker.
-- Assigning the top-level final workflow verification to implementation, migration, review, a dependency, or an unspecified later stage.
-- Treating family README or current code as the architecture artifact.
-- Running implementation or migration in the same worker context.
+- Editing official design, production code, tests, stories, tokens, exports, or consumers.
+- Leaving architecture choices to coding workers.
+- Assigning final workflow verification to a stage worker.
+- Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
+- Depending on Git or PR state.
+- Running implementation or migration in this context.
