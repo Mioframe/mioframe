@@ -31,12 +31,6 @@ If an earlier artifact is missing or stale, review may record the blocker but mu
 
 Review the current readable family files, consumers, tests, records, and verification evidence.
 
-## Workspace boundary
-
-Use only readable files, file-oriented tools, and documented project commands.
-
-Do not inspect hidden workspace metadata or unrelated environment internals. If required verification evidence is unavailable because a project command cannot execute, record the exact migration or verification blocker without diagnosing the environment.
-
 ## Output
 
 Write exactly one primary artifact:
@@ -115,8 +109,6 @@ A family is review-complete only when:
 - no replaced logic or false claim remains;
 - required verification passes.
 
-This stage determines component compliance only. External delivery decisions are outside its scope.
-
 ## Report
 
 ```text
@@ -142,4 +134,3 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Reviewing only the latest changed files instead of the full resulting family.
 - Marking the family compliant while ownership, API, dependencies, shared UI impact, required proof, or operator acceptance is unresolved.
 - Creating a new implementation path inside the review stage.
-- Inspecting hidden workspace metadata or unrelated environment internals.
