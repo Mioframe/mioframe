@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use with only a Material component name to autonomously orchestrate design → architecture → implementation → migration → review through fresh isolated workers until completion or a genuine external blocker.'
+description: 'Use with only a Material component name to autonomously orchestrate design → architecture → implementation → migration → review through fresh isolated workers until completion or a genuine blocker.'
 ---
 
 # Material component
@@ -30,7 +30,7 @@ The operator supplies the component name once. The orchestrator is responsible f
 - validating each stage artifact before continuing;
 - processing official Material dependencies automatically;
 - routing findings backward to the earliest owning stage;
-- continuing until the family is complete or a genuine external blocker remains.
+- continuing until the family is complete or a genuine blocker remains.
 
 Do not stop merely because one stage completed. Do not require the operator to launch the same component command repeatedly.
 
@@ -47,29 +47,26 @@ The orchestrator owns only state-machine control:
 
 The orchestrator must not perform official-source research, architecture decisions, code edits, consumer migration, stage-owned verification interpretation, or final review itself.
 
-Every stage must run in a fresh worker context. Continuing the next stage in the same reasoning context is forbidden. If the environment cannot create the required worker, stop with an orchestration blocker rather than simulating separation inside one agent.
+Every stage must run in a fresh worker context. Continuing the next stage in the same reasoning context is forbidden. If the required worker cannot be created, report the workflow as blocked rather than simulating separation inside one agent.
 
 A worker handoff contains only:
 
 - the resolved official component and canonical family;
 - the selected stage skill;
 - applicable workspace rules;
-- current readable workspace files;
+- current task-relevant workspace files;
 - paths to required canonical upstream artifacts;
-- exact genuine blocker or return-stage information already recorded in artifacts.
+- exact blocker or return-stage information already recorded in artifacts.
 
-Repository files and stage artifacts are the handoff. Do not pass hidden reasoning, conversational conclusions, or an ad hoc implementation brief from another worker.
+Workspace files and stage artifacts are the handoff. Do not pass hidden reasoning, conversational conclusions, or an ad hoc implementation brief from another worker.
 
 The review worker must be independent from workers that authored or corrected architecture, implementation, or migration.
 
-## Workspace boundary
+## Worker scope
 
-The orchestrator and stage workers use only readable files, file-oriented tools, and documented project commands.
+The orchestrator and stage workers use only task-relevant readable files, file-oriented tools, and documented project commands.
 
-- Do not inspect hidden workspace metadata or unrelated environment internals.
-- Do not ask the operator to choose environment-repair procedures.
-- When a project command fails before its relevant check, complete otherwise safe stage work, record the exact command failure in the owning artifact, and report the remaining verification blocker.
-- A tooling failure outside project files is not by itself a design, architecture, implementation, migration, or review-input blocker.
+When a project command fails before reaching its relevant check, complete otherwise safe stage work, record the exact visible command failure in the owning artifact, and report verification as blocked only when it remains the final gate.
 
 ## Stage isolation inside one operator run
 
@@ -147,18 +144,18 @@ When the current family depends on another official Material component:
 
 Dependencies remain first-class families with their own artifacts. Do not combine parent and dependency reasoning in one worker context, and do not require a separate operator command.
 
-## Genuine stop conditions
+## Stop conditions
 
-Stop the outer operator invocation only when one of these remains after available workspace mechanisms and project-tool fallbacks are exhausted:
+Stop the outer operator invocation only when one of these remains after available project mechanisms and source fallbacks are exhausted:
 
 - required official source content is genuinely unavailable or incomplete;
-- required permissions, source tools, or fresh-worker orchestration are unavailable;
+- required source tools or fresh-worker orchestration are unavailable;
 - official evidence and workspace constraints leave a material architecture choice unresolved;
 - required operator visual/motion acceptance is the only remaining gate;
 - a required project verification command cannot execute or complete;
 - safety policy requires operator input.
 
-A cache threshold, failed refresh helper, completed stage, ordinary code/test finding, or missing repeated command is not by itself an external blocker.
+A cache threshold, failed refresh helper, completed stage, ordinary code/test finding, or missing repeated command is not by itself a blocker.
 
 Use `architect-handoff` only for a real unresolved decision outside the deterministic Material workflow, such as cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior that official design and workspace evidence cannot resolve.
 
@@ -183,7 +180,7 @@ Code changes:
 Consumer changes:
 Verification:
 Operator acceptance: accepted | required | not-applicable
-Remaining blocker: none | <genuine external blocker>
+Remaining blocker: none | <genuine blocker>
 Overall family status: complete | blocked
 Next operator action: none | <single required action>
 ```
@@ -204,4 +201,3 @@ Include the full report from every stage worker executed during the run. Do not 
 - Asking the coding stage to invent architecture.
 - Asking the operator to rerun the same component command merely to advance the state machine.
 - Marking the component complete from automated checks alone.
-- Performing external administration or publication work.
