@@ -111,12 +111,12 @@ The parent must not render the dependency’s raw m3e element, set private varia
 
 Follow `component-tokens.md` and `token-api.md`.
 
-| Token layer | Owner |
-| --- | --- |
-| complete official component token catalogue | family `DESIGN.md` |
-| selected runtime component token contract | family `ARCHITECTURE.md` |
+| Token layer                                     | Owner                            |
+| ----------------------------------------------- | -------------------------------- |
+| complete official component token catalogue     | family `DESIGN.md`               |
+| selected runtime component token contract       | family `ARCHITECTURE.md`         |
 | executable selected tokens and private mappings | `components/<family>/tokens.css` |
-| supported public catalogue | `docs/token-api.md` |
+| supported public catalogue                      | `docs/token-api.md`              |
 
 Every supported public token has one semantic owner and one catalogue entry.
 
