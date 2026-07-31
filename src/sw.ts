@@ -36,10 +36,7 @@ import {
 } from './shared/service/appUpdate/workerChannel';
 import { handleAssetFetch, handleNavigationFetch } from './shared/service/appUpdate/workerFetch';
 import { runInstall } from './shared/service/appUpdate/workerInstall';
-import {
-  broadcastStateChanged,
-  handleWorkerMessage,
-} from './shared/service/appUpdate/workerMessages';
+import { handleWorkerMessage } from './shared/service/appUpdate/workerMessages';
 
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
@@ -116,7 +113,14 @@ self.addEventListener('fetch', (event) => {
         buildNavigationExclusionClientIds(event),
         enqueue,
         preparationCoordinator,
-      ),
+      ).then((result) => {
+        // `runLifetimeWork` (an expired-activation rollback broadcast to
+        // every *other* same-channel window) is tracked under this fetch
+        // event's own lifetime here, in the same tick the response becomes
+        // available to the browser — never as untracked background work.
+        if (result.runLifetimeWork) event.waitUntil(result.runLifetimeWork());
+        return result.response;
+      }),
     );
     // Deduplicated once per worker lifetime, and attached to this event's
     // lifetime via `waitUntil` — never awaited as part of the navigation
@@ -124,20 +128,20 @@ self.addEventListener('fetch', (event) => {
     // any release download/hashing it triggers) can never delay this or any
     // other navigation, but the worker is also not eligible for termination
     // while it is still running. Runs in both update modes; only Automatic
-    // mode goes on to prepare and approve a newer release. No foreground
-    // requester is waiting on this call, so a state change it causes is
-    // reported through one same-channel invalidation broadcast instead —
-    // an already-open window refreshes its own snapshot via `GET_SNAPSHOT`.
+    // mode goes on to prepare a newer release. No foreground requester is
+    // waiting on this call, so every state change it causes is reported
+    // through its own same-channel invalidation broadcast instead — an
+    // already-open window refreshes its own snapshot via `GET_SNAPSHOT`.
     event.waitUntil(
-      scheduledDiscoveryCheckScheduler.scheduleOnce(async () => {
-        const changed = await runScheduledDiscoveryCheck(
+      scheduledDiscoveryCheckScheduler.scheduleOnce(() =>
+        runScheduledDiscoveryCheck(
           channel,
           channelBasePath,
+          channelOrigin,
           enqueue,
           preparationCoordinator,
-        );
-        if (changed) await broadcastStateChanged(channelBasePath, channelOrigin);
-      }),
+        ),
+      ),
     );
     return;
   }

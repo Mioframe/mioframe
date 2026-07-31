@@ -14,7 +14,12 @@ vi.mock('idb-keyval', () => ({
 const validState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
-  activeRelease: { releaseId: '11111111-1111-4111-8111-111111111111', releaseSequence: 1 },
+  activeRelease: {
+    releaseNumber: 1,
+    appVersion: '1.0.0',
+    buildId: 'build-a',
+    buildDate: '2026-07-24T00:00:00.000Z',
+  },
 };
 
 describe('parseControllerState', () => {
@@ -91,15 +96,15 @@ describe('readControllerState / writeControllerState', () => {
     );
   });
 
-  it('refuses to persist a state with a malformed releaseId, and never calls idb-keyval set', async () => {
+  it('refuses to persist a state with a non-positive-safe-integer releaseNumber, and never calls idb-keyval set', async () => {
     const { writeControllerState } = await import('./controllerState');
-    // `releaseId` is typed as plain `string`, so a non-canonical-UUID value
-    // is structurally valid `UpdateControllerState` as far as the static
-    // type is concerned — only the canonical schema's own format check
-    // catches it, exactly the write-boundary gap this hardening closes.
+    // `releaseNumber` is typed as plain `number`, so an out-of-range value is
+    // structurally valid `UpdateControllerState` as far as the static type is
+    // concerned — only the canonical schema's own check catches it, exactly
+    // the write-boundary gap this hardening closes.
     const invalidState: UpdateControllerState = {
       ...validState,
-      activeRelease: { releaseId: 'not-a-canonical-uuid', releaseSequence: 1 },
+      activeRelease: { ...validState.activeRelease, releaseNumber: 0 },
     };
 
     await expect(writeControllerState('develop', invalidState)).rejects.toThrow(
@@ -108,26 +113,16 @@ describe('readControllerState / writeControllerState', () => {
     expect(setMock).not.toHaveBeenCalled();
   });
 
-  it('refuses to persist approvedRelease and activation coexisting, even though each field is individually well-formed', async () => {
+  it('refuses to persist a candidate that is not strictly newer than activeRelease, even though each field is individually well-formed', async () => {
     const { writeControllerState } = await import('./controllerState');
     const conflictingState: UpdateControllerState = {
       ...validState,
-      approvedRelease: {
-        releaseId: '22222222-2222-4222-8222-222222222222',
-        releaseSequence: 2,
-        appVersion: '1.1.0',
-        buildId: 'build-b',
-        buildDate: '2026-07-24T00:00:00.000Z',
-      },
-      activation: {
-        targetRelease: {
-          releaseId: '33333333-3333-4333-8333-333333333333',
-          releaseSequence: 3,
-          appVersion: '1.2.0',
-          buildId: 'build-c',
-          buildDate: '2026-07-24T00:00:00.000Z',
+      candidate: {
+        phase: 'available',
+        release: {
+          ...validState.activeRelease,
+          releaseNumber: validState.activeRelease.releaseNumber,
         },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
       },
     };
 

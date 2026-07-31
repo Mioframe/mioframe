@@ -1,8 +1,5 @@
 import {
   CONTROLLER_STATE_SCHEMA_VERSION,
-  collectReleaseReferences,
-  hasReleaseIdentityConflict,
-  type ReleaseRef,
   type ReleaseSummary,
   type UpdateControllerState,
   type UpdateMode,
@@ -18,7 +15,7 @@ import {
  * @returns The initial `UpdateControllerState`.
  */
 export function buildInitialControllerState(
-  activeRelease: ReleaseRef,
+  activeRelease: ReleaseSummary,
   mode: UpdateMode = 'automatic',
 ): UpdateControllerState {
   return {
@@ -28,13 +25,10 @@ export function buildInitialControllerState(
   };
 }
 
-const isNewerSequence = (candidate: ReleaseRef, known: ReleaseRef): boolean =>
-  candidate.releaseSequence > known.releaseSequence;
+/** Outcome of {@link applyDiscovery}. */
+export type CheckForUpdatesOutcome = 'updated' | 'ignored-stale' | 'skipped';
 
-/** Outcome of {@link applyCheckForUpdates}. */
-export type CheckForUpdatesOutcome = 'updated' | 'ignored-stale' | 'rejected-conflict';
-
-/** Result of {@link applyCheckForUpdates}: the outcome and the resulting state. */
+/** Result of {@link applyDiscovery}: the outcome and the resulting state. */
 export type CheckForUpdatesResult = {
   /** Which of the three discovery outcomes occurred. */
   outcome: CheckForUpdatesOutcome;
@@ -43,342 +37,228 @@ export type CheckForUpdatesResult = {
 };
 
 /**
- * Applies a successful `CHECK_FOR_UPDATES` discovery result.
+ * Applies a successful discovery result (`CHECK_FOR_UPDATES`, or the
+ * background navigation scheduler).
  *
- * Never changes `activeRelease`. Never prepares or approves anything: that
- * remains an orchestration decision made from the resulting `latestRelease`.
- * A strictly newer discovery than a previously recorded failed release also
- * clears that failure record, since it can no longer affect Automatic
- * approval or the UI (an obsolete failure the user has already moved past).
+ * Never changes `activeRelease`. Never prepares anything: that remains an
+ * orchestration decision made from the resulting candidate.
  *
- * `discovered` is checked against every release reference currently present
- * in `state` (not only `latestRelease`/`activeRelease`), rejecting both a
- * same-sequence-different-id and a same-id-different-sequence conflict.
+ * `ready` and `activating` candidates are pinned and can never be
+ * superseded — this function is a true no-op for them, including
+ * `lastSuccessfulCheckAt`, mirroring "discovery is skipped" for those phases.
+ * `available` and `failed` candidates may be replaced by a strictly newer
+ * discovered release, uniformly, regardless of mode: retry/replacement
+ * policy for a `failed` candidate is entirely a consequence of this "strictly
+ * newer" rule — an equal `discovered` (an exact automatic retry of the
+ * failed release) is always ignored here, while an explicit Manual retry of
+ * the exact failed release happens through {@link completeManualInstall}, not
+ * discovery. Whether discovery runs at all for a Manual `failed` candidate is
+ * an orchestration-level gate applied before this function is called.
  * @param state - Current controller state.
  * @param discovered - The validated release summary for the discovered release.
  * @param checkedAt - ISO timestamp of this successful check.
  * @returns The check outcome and resulting state.
  */
-export function applyCheckForUpdates(
+export function applyDiscovery(
   state: UpdateControllerState,
   discovered: ReleaseSummary,
   checkedAt: string,
 ): CheckForUpdatesResult {
-  const known = state.latestRelease ?? state.activeRelease;
-
-  if (hasReleaseIdentityConflict([discovered, ...collectReleaseReferences(state)])) {
-    // Invalid publication metadata: fails closed by leaving `state`
-    // completely untouched, including `lastSuccessfulCheckAt` — this must
-    // never look like an ordinary successful check to the orchestration or
-    // the UI (see the update-check orchestration's `check-failed` mapping).
-    return { outcome: 'rejected-conflict', state };
+  const { candidate } = state;
+  if (candidate?.phase === 'ready' || candidate?.phase === 'activating') {
+    return { outcome: 'skipped', state };
   }
-  // Anything not strictly newer is ignored — including the exact same
-  // release already known (e.g. the very first check ever, discovering
-  // only the release the worker already installed): that must never mark
-  // `latestRelease` as if something new had been found.
-  if (!isNewerSequence(discovered, known)) {
+
+  const known = candidate?.release ?? state.activeRelease;
+  if (discovered.releaseNumber <= known.releaseNumber) {
     return { outcome: 'ignored-stale', state: { ...state, lastSuccessfulCheckAt: checkedAt } };
   }
-
-  const clearsObsoleteFailure =
-    state.failedActivationRelease !== undefined &&
-    isNewerSequence(discovered, state.failedActivationRelease);
-  const { failedActivationRelease: _failedActivationRelease, ...withoutObsoleteFailure } = state;
 
   return {
     outcome: 'updated',
     state: {
-      ...(clearsObsoleteFailure ? withoutObsoleteFailure : state),
-      latestRelease: discovered,
+      ...state,
+      candidate: { phase: 'available', release: discovered },
       lastSuccessfulCheckAt: checkedAt,
     },
   };
 }
 
 /**
- * Records a Manual `INSTALL_ON_NEXT_LAUNCH` approval for one exact,
- * already-fully-prepared release. Always refers to the exact release the
- * caller resolved and prepared; never re-derived from a newer discovery. An
- * explicit Manual action may approve the exact release recorded as
- * previously failed — unlike the Automatic path, this is a deliberate user
- * retry — but never a release that is not strictly newer than
- * `state.activeRelease`.
- *
- * A no-op outside Manual mode: this is the sole owner of the invariant that
- * `INSTALL_ON_NEXT_LAUNCH` can never approve anything while in Automatic
- * mode, including when the caller's own mode check ran before this release
- * finished preparing and the mode changed in the meantime.
- *
- * A no-op while an activation is already in progress: `approvedRelease` and
- * `activation` are mutually exclusive ownership states, and no release may
- * be approved until the current clean-launch attempt resolves.
- *
- * A no-op when `prepared` conflicts with any release reference currently
- * present in `state` (`activeRelease`, `latestRelease`, `approvedRelease`,
- * `activation.targetRelease`, or `failedActivationRelease`): a
- * same-sequence-different-id or same-id-different-sequence identity can
- * never be approved. An exact retry of the recorded failed release (same
- * `releaseId` and `releaseSequence`) is not a conflict and remains allowed.
- * @param state - Current controller state.
- * @param prepared - The exact release summary the user approved and that was fully prepared.
- * @returns The resulting state.
- */
-export function approveManualRelease(
-  state: UpdateControllerState,
-  prepared: ReleaseSummary,
-): UpdateControllerState {
-  if (state.mode !== 'manual') return state;
-  if (state.activation) return state;
-  if (!isNewerSequence(prepared, state.activeRelease)) return state;
-  if (hasReleaseIdentityConflict([prepared, ...collectReleaseReferences(state)])) return state;
-  return { ...state, approvedRelease: prepared };
-}
-
-/**
- * Records an Automatic-mode approval once `prepared` has been fully
- * committed locally. Only ever moves `approvedRelease` forward, never
- * approves a release that is not strictly newer than `state.activeRelease`,
- * and never approves the exact release currently recorded as having failed
- * its boot.
- *
- * A no-op while an activation is already in progress: `approvedRelease` and
- * `activation` are mutually exclusive ownership states, and no release may
- * be approved until the current clean-launch attempt resolves.
- *
- * A no-op outside Automatic mode. This is the sole owner of that invariant:
- * orchestration always re-reads state fresh before calling this, but this
- * transition must enforce it itself regardless of caller correctness, since
- * a stale long-running `SET_MODE automatic` request must never be able to
- * approve a release after a later request has durably switched to Manual.
- *
- * A no-op when `prepared` conflicts with any release reference currently
- * present in `state` (`activeRelease`, `latestRelease`, `approvedRelease`,
- * `activation.targetRelease`, or `failedActivationRelease`): a
- * same-sequence-different-id or same-id-different-sequence identity can
- * never be approved, even when it would otherwise pass the forward-only
- * sequence rules above.
- * @param state - Current controller state.
- * @param prepared - The release summary that finished background preparation.
- * @returns The resulting state, unchanged if `prepared` is not a forward improvement.
- */
-export function approveAutomaticRelease(
-  state: UpdateControllerState,
-  prepared: ReleaseSummary,
-): UpdateControllerState {
-  if (state.mode !== 'automatic') return state;
-  if (state.activation) return state;
-  if (!isNewerSequence(prepared, state.activeRelease)) return state;
-  if (state.failedActivationRelease?.releaseId === prepared.releaseId) return state;
-  if (state.approvedRelease && prepared.releaseSequence <= state.approvedRelease.releaseSequence) {
-    return state;
-  }
-  if (hasReleaseIdentityConflict([prepared, ...collectReleaseReferences(state)])) return state;
-  return { ...state, approvedRelease: prepared };
-}
-
-/**
- * Resolves whether `state.latestRelease` currently requires Automatic
- * preparation, independent of whether the discovery that produced this state
- * actually changed `latestRelease` — a temporarily failed preparation of an
- * already-known `latestRelease` must remain retryable by a later check of
- * the exact same release, not only by a newer discovery
- * ({@link CheckForUpdatesOutcome} `'updated'`).
- *
- * Returns the target to prepare when all of these hold: mode is Automatic;
- * `latestRelease` is strictly newer than `activeRelease`; it is not already
- * `approvedRelease`; no activation is in progress; and it is not the
- * recorded `failedActivationRelease`. Returns `undefined` otherwise.
+ * Resolves the candidate that currently requires Automatic preparation, if
+ * any: mode is Automatic and the candidate is `available`.
  * @param state - Current controller state.
  * @returns The release to prepare, or `undefined` when none is required.
  */
 export function resolveAutomaticPreparationTarget(
   state: UpdateControllerState,
 ): ReleaseSummary | undefined {
-  const {
-    mode,
-    latestRelease,
-    activeRelease,
-    approvedRelease,
-    activation,
-    failedActivationRelease,
-  } = state;
-  if (mode !== 'automatic' || !latestRelease || activation) return undefined;
-  if (!isNewerSequence(latestRelease, activeRelease)) return undefined;
-  if (approvedRelease?.releaseId === latestRelease.releaseId) return undefined;
-  if (failedActivationRelease?.releaseId === latestRelease.releaseId) return undefined;
-  return latestRelease;
+  return state.mode === 'automatic' && state.candidate?.phase === 'available'
+    ? state.candidate.release
+    : undefined;
 }
 
 /**
- * Cancels a scheduled Manual update. Cancellation belongs only to Manual
- * mode — an Automatic approval is a no-op here, even if a client sends this
- * command directly, so a user cannot leave Automatic mode approved for a
- * release and then cancel it out from under themselves. Also a no-op once
- * activation has already started: an in-progress activation is not a
- * "scheduled" update anymore.
+ * Applies a completed Automatic background preparation. Only ever moves
+ * `available(B)` to `ready(B)`, and only when fresh state still has
+ * Automatic mode and the exact same candidate release number and `available`
+ * phase — a stale completion (mode changed, candidate replaced, or candidate
+ * already advanced) is a true no-op.
  * @param state - Current controller state.
- * @returns The resulting state.
+ * @param preparedReleaseNumber - The exact release number that finished preparing.
+ * @returns The resulting state, unchanged (same reference) when stale.
+ */
+export function completeAutomaticPreparation(
+  state: UpdateControllerState,
+  preparedReleaseNumber: number,
+): UpdateControllerState {
+  const { candidate } = state;
+  if (
+    state.mode !== 'automatic' ||
+    candidate?.phase !== 'available' ||
+    candidate.release.releaseNumber !== preparedReleaseNumber
+  ) {
+    return state;
+  }
+  return { ...state, candidate: { phase: 'ready', release: candidate.release } };
+}
+
+/**
+ * Applies a completed Manual install (`INSTALL_ON_NEXT_LAUNCH`). Moves
+ * `available(B)` or `failed(B)` to `ready(B)`, only when fresh state still
+ * has Manual mode and the exact same candidate release number and an allowed
+ * phase — a stale completion is a true no-op.
+ * @param state - Current controller state.
+ * @param preparedReleaseNumber - The exact release number that finished preparing.
+ * @returns The resulting state, unchanged (same reference) when stale.
+ */
+export function completeManualInstall(
+  state: UpdateControllerState,
+  preparedReleaseNumber: number,
+): UpdateControllerState {
+  const { candidate } = state;
+  if (
+    state.mode !== 'manual' ||
+    !candidate ||
+    (candidate.phase !== 'available' && candidate.phase !== 'failed') ||
+    candidate.release.releaseNumber !== preparedReleaseNumber
+  ) {
+    return state;
+  }
+  return { ...state, candidate: { phase: 'ready', release: candidate.release } };
+}
+
+/**
+ * Cancels a scheduled Manual update: `ready(B)` returns to `available(B)`.
+ * Cancellation belongs only to Manual mode — an Automatic `ready` candidate
+ * is a no-op here, so a user cannot leave Automatic mode `ready` for a
+ * release and then cancel it out from under themselves.
+ * @param state - Current controller state.
+ * @returns The resulting state, unchanged (same reference) when not applicable.
  */
 export function cancelScheduledUpdate(state: UpdateControllerState): UpdateControllerState {
-  if (state.mode !== 'manual' || state.activation || !state.approvedRelease) return state;
-  const { approvedRelease: _approvedRelease, ...rest } = state;
-  return rest;
+  if (state.mode !== 'manual' || state.candidate?.phase !== 'ready') return state;
+  return { ...state, candidate: { phase: 'available', release: state.candidate.release } };
 }
 
 /**
- * Switches to Manual mode. Clears an Automatic approval that has not yet
- * entered activation; an in-progress activation and its own approved target
- * are left untouched.
- *
- * A true no-op, returning `state` unchanged (same reference), when `mode` is
- * already Manual — so a repeated `SET_MODE manual` command never causes a
- * needless persist, cleanup, or broadcast.
+ * Changes only `mode`. Never clears, approves, or prepares the candidate,
+ * and never waits for network or cache work — those are orchestration-level
+ * follow-ups triggered by the caller after this returns, not part of this
+ * transition. A true no-op, returning `state` unchanged (same reference),
+ * when `mode` already matches, so a repeated `SET_MODE` command never causes
+ * a needless persist or broadcast.
  * @param state - Current controller state.
+ * @param mode - The requested mode.
  * @returns The resulting state.
  */
-export function switchToManualMode(state: UpdateControllerState): UpdateControllerState {
-  if (state.mode === 'manual') return state;
-  if (!state.activation && state.approvedRelease) {
-    const { approvedRelease: _approvedRelease, ...rest } = state;
-    return { ...rest, mode: 'manual' };
-  }
-  return { ...state, mode: 'manual' };
+export function setMode(state: UpdateControllerState, mode: UpdateMode): UpdateControllerState {
+  if (state.mode === mode) return state;
+  return { ...state, mode };
 }
 
 /**
- * Switches to Automatic mode. When a `preparedRelease` is already available
- * (the latest known release, fully prepared by the caller as part of this
- * switch), approves it through the same forward-only rule as
- * {@link approveAutomaticRelease}.
- *
- * A true no-op, returning `state` unchanged (same reference), when `mode` is
- * already Automatic and either no `preparedRelease` is given, or
- * {@link approveAutomaticRelease} itself would not change the approval — so a
- * repeated `SET_MODE automatic` command with nothing new to approve never
- * causes a needless persist, cleanup, or broadcast. Switching mode away from
- * Manual is always a real change, even when nothing ends up approved.
- * @param state - Current controller state.
- * @param preparedRelease - The latest known release summary, if already fully prepared.
- * @returns The resulting state.
- */
-export function switchToAutomaticMode(
-  state: UpdateControllerState,
-  preparedRelease?: ReleaseSummary,
-): UpdateControllerState {
-  if (state.mode === 'automatic') {
-    return preparedRelease ? approveAutomaticRelease(state, preparedRelease) : state;
-  }
-  const withMode: UpdateControllerState = { ...state, mode: 'automatic' };
-  return preparedRelease ? approveAutomaticRelease(withMode, preparedRelease) : withMode;
-}
-
-/**
- * Starts a clean-launch activation of `state.approvedRelease`. `activeRelease`
- * is left unchanged — it only ever changes on a later `BOOT_OK` commit. A
- * no-op when an activation already exists, so concurrent qualifying
- * navigations can call this without creating conflicting activations. Also a
- * no-op when there is no approval to activate: the target is derived only
- * from `state.approvedRelease`, so a release different from the approved one
- * can never be activated.
- *
- * Removes `approvedRelease`: it and `activation` are mutually exclusive
- * ownership states — once a release is selected for the current
- * clean-launch attempt, it is no longer merely "prepared and waiting".
- *
- * Belt-and-suspenders hardening on top of {@link approveManualRelease}'s and
- * {@link approveAutomaticRelease}'s own invariants, reusing the same
- * canonical invariant helpers rather than a separate identity
- * implementation: also a no-op when `approvedRelease` is not strictly newer
- * than `activeRelease`, or when activating it would conflict with any
- * release reference currently present in `state` — both of which the
- * canonical controller-state schema also enforces on every persisted read.
+ * Starts a clean-launch activation. Consumes only the current `ready`
+ * candidate — activation never accepts an independent target argument.
+ * `activeRelease` is left unchanged; it only ever changes on a later
+ * `BOOT_OK` commit. A no-op when the candidate is not `ready`, so concurrent
+ * qualifying navigations can call this without creating conflicting
+ * activations.
  * @param state - Current controller state.
  * @param deadlineAt - ISO timestamp of the boot-confirmation deadline.
- * @returns The resulting state.
+ * @returns The resulting state, unchanged (same reference) when not applicable.
  */
 export function startActivation(
   state: UpdateControllerState,
   deadlineAt: string,
 ): UpdateControllerState {
-  if (state.activation || !state.approvedRelease) return state;
-  const { approvedRelease } = state;
-  if (!isNewerSequence(approvedRelease, state.activeRelease)) return state;
-  if (hasReleaseIdentityConflict([approvedRelease, ...collectReleaseReferences(state)])) {
-    return state;
-  }
-  const { approvedRelease: _approvedRelease, ...rest } = state;
+  if (state.candidate?.phase !== 'ready') return state;
   return {
-    ...rest,
-    activation: { targetRelease: approvedRelease, deadlineAt },
+    ...state,
+    candidate: { phase: 'activating', release: state.candidate.release, deadlineAt },
   };
 }
 
 /**
- * Commits a successful `BOOT_OK` for the current activation's target.
- * Ignored (no-op) when there is no matching in-progress activation for
- * `confirmedReleaseId`, so a wrong-release or late confirmation cannot
- * corrupt an already-resolved state. Clears a matching recorded failure — a
- * successful retry clears the failure it retried.
+ * Commits a successful `BOOT_OK` for the current activation. Ignored (no-op)
+ * when there is no matching in-progress `activating` candidate for
+ * `confirmedReleaseNumber`, so a wrong-release or late confirmation cannot
+ * corrupt an already-resolved state.
  * @param state - Current controller state.
- * @param confirmedReleaseId - The release id reported as successfully booted.
- * @returns The resulting state.
+ * @param confirmedReleaseNumber - The release number reported as successfully booted.
+ * @returns The resulting state, unchanged (same reference) when not applicable.
  */
 export function commitActivation(
   state: UpdateControllerState,
-  confirmedReleaseId: string,
+  confirmedReleaseNumber: number,
 ): UpdateControllerState {
-  const { activation } = state;
-  if (!activation || activation.targetRelease.releaseId !== confirmedReleaseId) return state;
-
-  const {
-    activation: _activation,
-    approvedRelease: _approvedRelease,
-    failedActivationRelease,
-    ...rest
-  } = state;
-  const clearsFailure = failedActivationRelease?.releaseId === activation.targetRelease.releaseId;
-
-  return {
-    ...rest,
-    activeRelease: activation.targetRelease,
-    ...(clearsFailure ? {} : { failedActivationRelease }),
-  };
+  const { candidate } = state;
+  if (
+    candidate?.phase !== 'activating' ||
+    candidate.release.releaseNumber !== confirmedReleaseNumber
+  ) {
+    return state;
+  }
+  const { candidate: _candidate, ...rest } = state;
+  return { ...rest, activeRelease: candidate.release };
 }
 
 /**
  * Rolls back the current activation, leaving `activeRelease` unchanged (it
  * was never changed by starting the activation), and records the target as
- * the single failed release. Ignored (no-op) when there is no matching
- * in-progress activation for `failedReleaseId`, so a wrong-release or late
- * failure report cannot corrupt an already-resolved state.
+ * `failed`. Ignored (no-op) when there is no matching in-progress
+ * `activating` candidate for `failedReleaseNumber`, so a wrong-release or
+ * late failure report cannot corrupt an already-resolved state. Used both
+ * for a durable `BOOT_FAILED` acknowledgement and for expired-activation
+ * recovery.
  * @param state - Current controller state.
- * @param failedReleaseId - The release id whose activation failed to boot.
- * @returns The resulting state.
+ * @param failedReleaseNumber - The release number whose activation failed to boot.
+ * @returns The resulting state, unchanged (same reference) when not applicable.
  */
 export function rollbackActivation(
   state: UpdateControllerState,
-  failedReleaseId: string,
+  failedReleaseNumber: number,
 ): UpdateControllerState {
-  const { activation } = state;
-  if (!activation || activation.targetRelease.releaseId !== failedReleaseId) return state;
-
-  const { activation: _activation, approvedRelease: _approvedRelease, ...rest } = state;
-  return {
-    ...rest,
-    failedActivationRelease: activation.targetRelease,
-  };
+  const { candidate } = state;
+  if (
+    candidate?.phase !== 'activating' ||
+    candidate.release.releaseNumber !== failedReleaseNumber
+  ) {
+    return state;
+  }
+  return { ...state, candidate: { phase: 'failed', release: candidate.release } };
 }
 
 /**
- * Returns `true` when the current activation's boot-confirmation deadline
- * has passed as of `now`. `false` when there is no activation at all.
+ * Returns `true` when the current `activating` candidate's boot-confirmation
+ * deadline has passed as of `now`. `false` when the candidate is not
+ * `activating`.
  * @param state - Current controller state.
- * @param now - ISO timestamp to evaluate against `activation.deadlineAt`.
+ * @param now - ISO timestamp to evaluate against the candidate's `deadlineAt`.
  * @returns Whether the current activation is expired.
  */
 export function isActivationExpired(state: UpdateControllerState, now: string): boolean {
-  return state.activation !== undefined && now >= state.activation.deadlineAt;
+  return state.candidate?.phase === 'activating' && now >= state.candidate.deadlineAt;
 }
 
 /** Same-channel window-liveness facts a clean-launch decision needs. */
@@ -389,22 +269,21 @@ export type CleanLaunchInputs = {
 
 /**
  * Decides whether a qualifying navigation should start a brand-new clean
- * launch activation of `state.approvedRelease`.
+ * launch activation of the current `ready` candidate.
  *
- * `false` whenever an activation already exists (every qualifying
- * navigation is already served its target without starting another one),
- * there is nothing approved to activate, or another same-channel window is
- * still live. Has no concept of "reload": it only ever consumes
- * `otherLiveClientCount`, never a request type, navigation history, or
- * client identity. Whether a reload of the sole remaining window happens to
- * produce `otherLiveClientCount === 0` depends on the caller's exclusion set
- * (`clientId`/`resultingClientId` only, see `sw.ts`) and on browser-specific
- * timing; this function neither guarantees nor forbids that outcome. The
- * only cross-browser guaranteed activation trigger is closing every
- * same-channel window and then opening a new one. Caller is responsible for
- * scoping `otherLiveClientCount` to the current channel only (excluding
- * other channels, branches, and PR previews) and for excluding this
- * navigation's own client identities.
+ * `false` whenever the candidate is not `ready` (every qualifying navigation
+ * while already `activating` is served its target without starting another
+ * one), or another same-channel window is still live. Has no concept of
+ * "reload": it only ever consumes `otherLiveClientCount`, never a request
+ * type, navigation history, or client identity. Whether a reload of the sole
+ * remaining window happens to produce `otherLiveClientCount === 0` depends on
+ * the caller's exclusion set (`clientId`/`resultingClientId` only, see
+ * `sw.ts`) and on browser-specific timing; this function neither guarantees
+ * nor forbids that outcome. The only cross-browser guaranteed activation
+ * trigger is closing every same-channel window and then opening a new one.
+ * Caller is responsible for scoping `otherLiveClientCount` to the current
+ * channel only (excluding other channels, branches, and PR previews) and for
+ * excluding this navigation's own client identities.
  * @param state - Current controller state.
  * @param inputs - Same-channel window-liveness facts for this navigation.
  * @returns Whether to start a new activation.
@@ -413,6 +292,6 @@ export function shouldStartActivation(
   state: UpdateControllerState,
   inputs: CleanLaunchInputs,
 ): boolean {
-  if (state.activation || !state.approvedRelease) return false;
+  if (state.candidate?.phase !== 'ready') return false;
   return inputs.otherLiveClientCount === 0;
 }

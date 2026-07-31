@@ -66,7 +66,6 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
         workDir,
         distDir,
         channel: 'stable',
-        basePath: '/',
         appVersion,
         buildId,
       });

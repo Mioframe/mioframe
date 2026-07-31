@@ -5,7 +5,7 @@ import {
   buildReleaseCacheName,
   checkReleaseAvailability,
   computeCacheNamesToDelete,
-  computeProtectedReleaseIds,
+  computeProtectedReleaseNumbers,
   isReleaseAvailable,
   isReleaseFilePath,
   readReleaseDescriptorMarker,
@@ -23,16 +23,14 @@ const cachesKeysMock = vi.fn();
 const cachesDeleteMock = vi.fn();
 vi.stubGlobal('caches', { keys: cachesKeysMock, delete: cachesDeleteMock });
 
-const RELEASE_ID = '11111111-1111-4111-8111-111111111111';
+const RELEASE_NUMBER = 1;
 
 const descriptor: ReleaseDescriptor = {
   schemaVersion: 1,
-  releaseId: RELEASE_ID,
-  releaseSequence: 1,
+  releaseNumber: RELEASE_NUMBER,
   appVersion: '1.0.0',
   buildId: 'sha1',
   buildDate: '2026-07-24T00:00:00.000Z',
-  indexUrl: `/updates/releases/${RELEASE_ID}/index.html`,
   indexSha256: '0'.repeat(64),
   indexByteSize: 100,
   files: [
@@ -40,6 +38,13 @@ const descriptor: ReleaseDescriptor = {
     { path: 'assets/vendor.js', sha256: '1'.repeat(64), byteSize: 20 },
   ],
 };
+
+const releaseSummary = (releaseNumber: number) => ({
+  releaseNumber,
+  appVersion: '1.0.0',
+  buildId: `build-${releaseNumber}`,
+  buildDate: '2026-07-24T00:00:00.000Z',
+});
 
 describe('buildManagedCacheNamespace', () => {
   it('produces distinct namespaces for stable and develop', () => {
@@ -49,8 +54,8 @@ describe('buildManagedCacheNamespace', () => {
 
 describe('buildReleaseCacheName', () => {
   it('produces distinct names namespaced by channel', () => {
-    expect(buildReleaseCacheName('stable', RELEASE_ID)).not.toBe(
-      buildReleaseCacheName('develop', RELEASE_ID),
+    expect(buildReleaseCacheName('stable', RELEASE_NUMBER)).not.toBe(
+      buildReleaseCacheName('develop', RELEASE_NUMBER),
     );
   });
 });
@@ -58,34 +63,17 @@ describe('buildReleaseCacheName', () => {
 describe('isReleaseAvailable', () => {
   it('is true when the release identity matches and every file is present', () => {
     const present = new Set(descriptor.files.map((file) => file.path));
-    expect(
-      isReleaseAvailable(descriptor, { releaseId: RELEASE_ID, releaseSequence: 1 }, present),
-    ).toBe(true);
+    expect(isReleaseAvailable(descriptor, RELEASE_NUMBER, present)).toBe(true);
   });
 
   it('is false when a listed file is missing', () => {
     const present = new Set(['assets/app.js']);
-    expect(
-      isReleaseAvailable(descriptor, { releaseId: RELEASE_ID, releaseSequence: 1 }, present),
-    ).toBe(false);
+    expect(isReleaseAvailable(descriptor, RELEASE_NUMBER, present)).toBe(false);
   });
 
-  it('is false when the expected release id does not match the descriptor', () => {
+  it('is false when the expected release number does not match the descriptor', () => {
     const present = new Set(descriptor.files.map((file) => file.path));
-    expect(
-      isReleaseAvailable(
-        descriptor,
-        { releaseId: '22222222-2222-4222-8222-222222222222', releaseSequence: 1 },
-        present,
-      ),
-    ).toBe(false);
-  });
-
-  it('is false when the expected release sequence does not match the descriptor', () => {
-    const present = new Set(descriptor.files.map((file) => file.path));
-    expect(
-      isReleaseAvailable(descriptor, { releaseId: RELEASE_ID, releaseSequence: 2 }, present),
-    ).toBe(false);
+    expect(isReleaseAvailable(descriptor, 2, present)).toBe(false);
   });
 });
 
@@ -100,48 +88,43 @@ describe('isReleaseFilePath', () => {
   });
 });
 
-describe('computeProtectedReleaseIds', () => {
+describe('computeProtectedReleaseNumbers', () => {
   it('always protects the active release', () => {
-    const ids = computeProtectedReleaseIds({
-      activeRelease: { releaseId: 'a', releaseSequence: 1 },
-    });
-    expect(ids).toEqual(new Set(['a']));
+    const numbers = computeProtectedReleaseNumbers({ activeRelease: releaseSummary(1) });
+    expect(numbers).toEqual(new Set([1]));
   });
 
-  it('protects latest, approved, activation target, and every in-flight preparation', () => {
-    const ids = computeProtectedReleaseIds({
-      activeRelease: { releaseId: 'a', releaseSequence: 1 },
-      latestRelease: { releaseId: 'b', releaseSequence: 2 },
-      approvedRelease: { releaseId: 'c', releaseSequence: 3 },
-      activation: {
-        targetRelease: {
-          releaseId: 'd',
-          releaseSequence: 4,
-          appVersion: '1.0.0',
-          buildId: 'build-d',
-          buildDate: '2026-07-24T00:00:00.000Z',
-        },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      },
-      inFlightReleaseIds: ['e', 'f'],
+  it('protects the candidate release and every in-flight preparation', () => {
+    const numbers = computeProtectedReleaseNumbers({
+      activeRelease: releaseSummary(1),
+      candidate: { phase: 'available', release: releaseSummary(2) },
+      inFlightReleaseNumbers: [3, 4],
     });
-    expect(ids).toEqual(new Set(['a', 'b', 'c', 'd', 'e', 'f']));
+    expect(numbers).toEqual(new Set([1, 2, 3, 4]));
+  });
+
+  it('protects nothing beyond activeRelease when there is no candidate', () => {
+    const numbers = computeProtectedReleaseNumbers({
+      activeRelease: releaseSummary(1),
+      inFlightReleaseNumbers: [],
+    });
+    expect(numbers).toEqual(new Set([1]));
   });
 });
 
 describe('computeCacheNamesToDelete', () => {
   it('deletes unprotected release caches but keeps protected ones', () => {
     const result = computeCacheNamesToDelete(
-      ['stable-release-a', 'stable-release-b'],
+      ['stable-release-1', 'stable-release-2'],
       'stable',
-      new Set(['a']),
+      new Set([1]),
     );
-    expect(result).toEqual(['stable-release-b']);
+    expect(result).toEqual(['stable-release-2']);
   });
 
   it('never touches caches outside this channel namespace', () => {
     const result = computeCacheNamesToDelete(
-      ['branch-develop-release-a', 'workbox-precache-v2-stable', 'stable-google-fonts'],
+      ['branch-develop-release-1', 'workbox-precache-v2-stable', 'stable-google-fonts'],
       'stable',
       new Set(),
     );
@@ -203,7 +186,6 @@ describe('release descriptor marker', () => {
 
 describe('checkReleaseAvailability', () => {
   const channelBasePath = '/';
-  const expectedRelease = { releaseId: RELEASE_ID, releaseSequence: 1 };
 
   function buildMockCache(
     descriptorMarker: Response | undefined,
@@ -225,27 +207,27 @@ describe('checkReleaseAvailability', () => {
 
   it('is false when no marker is present', async () => {
     const cache = buildMockCache(undefined, undefined, []);
-    expect(await checkReleaseAvailability(cache, expectedRelease, channelBasePath)).toBe(false);
+    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(false);
   });
 
   it('is true when the marker matches, the index marker is present, and every file is present', async () => {
     const marker = new Response(JSON.stringify(descriptor));
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
-    expect(await checkReleaseAvailability(cache, expectedRelease, channelBasePath)).toBe(true);
+    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(true);
   });
 
   it('is false when the archived index marker is missing, even if the descriptor marker and files are present', async () => {
     const marker = new Response(JSON.stringify(descriptor));
     const cache = buildMockCache(marker, undefined, ['/assets/app.js', '/assets/vendor.js']);
-    expect(await checkReleaseAvailability(cache, expectedRelease, channelBasePath)).toBe(false);
+    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(false);
   });
 
   it('is false, without throwing, when the descriptor marker is malformed JSON', async () => {
     const marker = new Response('not valid json{');
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
-    await expect(checkReleaseAvailability(cache, expectedRelease, channelBasePath)).resolves.toBe(
+    await expect(checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).resolves.toBe(
       false,
     );
   });
@@ -254,14 +236,14 @@ describe('checkReleaseAvailability', () => {
     const marker = new Response(JSON.stringify(descriptor));
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js']);
-    expect(await checkReleaseAvailability(cache, expectedRelease, channelBasePath)).toBe(false);
+    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(false);
   });
 
   it('ignores cached entries outside this channel base path', async () => {
     const marker = new Response(JSON.stringify(descriptor));
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
-    expect(await checkReleaseAvailability(cache, expectedRelease, channelBasePath)).toBe(true);
+    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(true);
   });
 });
 
@@ -302,89 +284,70 @@ describe('runReleaseCacheCleanup', () => {
   it('deletes unprotected release caches, keeping protected ones', async () => {
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
-      state: {
-        schemaVersion: 1,
-        mode: 'manual',
-        activeRelease: { releaseId: RELEASE_ID, releaseSequence: 1 },
-      },
+      state: { schemaVersion: 1, mode: 'manual', activeRelease: releaseSummary(1) },
     });
     cachesKeysMock.mockResolvedValue([
-      `stable-release-${RELEASE_ID}`,
-      'stable-release-release-old',
-      `branch-develop-release-${RELEASE_ID}`,
+      'stable-release-1',
+      'stable-release-99',
+      'branch-develop-release-1',
     ]);
 
     await runReleaseCacheCleanup('stable');
 
-    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-release-old');
-    expect(cachesDeleteMock).not.toHaveBeenCalledWith(`stable-release-${RELEASE_ID}`);
-    expect(cachesDeleteMock).not.toHaveBeenCalledWith(`branch-develop-release-${RELEASE_ID}`);
+    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-99');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-1');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('branch-develop-release-1');
   });
 
   it('never deletes a release cache still being prepared', async () => {
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
-      state: {
-        schemaVersion: 1,
-        mode: 'manual',
-        activeRelease: { releaseId: RELEASE_ID, releaseSequence: 1 },
-      },
+      state: { schemaVersion: 1, mode: 'manual', activeRelease: releaseSummary(1) },
     });
-    cachesKeysMock.mockResolvedValue(['stable-release-in-flight']);
+    cachesKeysMock.mockResolvedValue(['stable-release-2']);
 
-    await runReleaseCacheCleanup('stable', ['in-flight']);
+    await runReleaseCacheCleanup('stable', [2]);
 
     expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 
-  it('protects a completed latest release that has left in-flight preparation but is not yet approved', async () => {
-    // B has finished preparation (no longer in inFlightReleaseIds) but the
-    // caller has not yet persisted approvedRelease B: latestRelease is B's
-    // only remaining owner until approval lands.
+  it('protects a candidate release regardless of phase', async () => {
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
       state: {
         schemaVersion: 1,
         mode: 'manual',
-        activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-        latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+        activeRelease: releaseSummary(1),
+        candidate: { phase: 'available', release: releaseSummary(2) },
       },
     });
-    cachesKeysMock.mockResolvedValue([
-      'stable-release-release-a',
-      'stable-release-release-b',
-      'stable-release-release-x',
-    ]);
+    cachesKeysMock.mockResolvedValue(['stable-release-1', 'stable-release-2', 'stable-release-99']);
 
     await runReleaseCacheCleanup('stable');
 
-    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-a');
-    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-b');
-    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-release-x');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-1');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-2');
+    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-99');
   });
 
-  it('lets a superseded latest release become removable once a newer discovery replaces it', async () => {
-    // C has replaced B as latestRelease; B is no longer referenced by any
-    // owner, so protecting latestRelease does not retain release history.
+  it('lets a superseded candidate release become removable once a newer discovery replaces it', async () => {
+    // C has replaced B as the candidate; B is no longer referenced by any
+    // owner, so protecting the candidate does not retain release history.
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
       state: {
         schemaVersion: 1,
         mode: 'manual',
-        activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
-        latestRelease: { releaseId: 'release-c', releaseSequence: 3 },
+        activeRelease: releaseSummary(1),
+        candidate: { phase: 'available', release: releaseSummary(3) },
       },
     });
-    cachesKeysMock.mockResolvedValue([
-      'stable-release-release-a',
-      'stable-release-release-b',
-      'stable-release-release-c',
-    ]);
+    cachesKeysMock.mockResolvedValue(['stable-release-1', 'stable-release-2', 'stable-release-3']);
 
     await runReleaseCacheCleanup('stable');
 
-    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-a');
-    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-release-c');
-    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-release-b');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-1');
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-3');
+    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-2');
   });
 });

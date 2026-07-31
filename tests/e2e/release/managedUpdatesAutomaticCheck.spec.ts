@@ -21,8 +21,8 @@ type ControllerStateReadResult =
       status: 'valid';
       state: {
         mode: 'automatic' | 'manual';
-        activeRelease: { releaseId: string; releaseSequence: number };
-        approvedRelease?: { releaseId: string; releaseSequence: number };
+        activeRelease: { releaseNumber: number };
+        candidate?: { phase: string; release: { releaseNumber: number } };
       };
     };
 
@@ -117,7 +117,8 @@ test('Automatic mode discovers and schedules a newer release from ordinary navig
         const result = await readControllerState(sessionAObserver);
         if (
           result.status === 'valid' &&
-          result.state.approvedRelease?.releaseId === releaseB.releaseId
+          result.state.candidate?.phase === 'ready' &&
+          result.state.candidate.release.releaseNumber === releaseB.releaseNumber
         ) {
           break;
         }
@@ -134,7 +135,7 @@ test('Automatic mode discovers and schedules a newer release from ordinary navig
       const sessionAStillActive = await readControllerState(sessionA);
       expect(sessionAStillActive.status).toBe('valid');
       if (sessionAStillActive.status === 'valid') {
-        expect(sessionAStillActive.state.activeRelease.releaseId).toBe(published.releaseId);
+        expect(sessionAStillActive.state.activeRelease.releaseNumber).toBe(published.releaseNumber);
       }
 
       // Close every A session; the next clean launch must activate B.
@@ -151,8 +152,8 @@ test('Automatic mode discovers and schedules a newer release from ordinary navig
       const committed = await readControllerState(sessionB);
       expect(committed.status).toBe('valid');
       if (committed.status === 'valid') {
-        expect(committed.state.activeRelease.releaseId).toBe(releaseB.releaseId);
-        expect(committed.state.approvedRelease).toBeUndefined();
+        expect(committed.state.activeRelease.releaseNumber).toBe(releaseB.releaseNumber);
+        expect(committed.state.candidate).toBeUndefined();
       }
 
       await sessionB.close();

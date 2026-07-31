@@ -2,12 +2,12 @@ export type ManagedReleaseChannel = 'stable' | 'develop';
 
 export type ManagedReleaseDescriptor = {
   schemaVersion: number;
-  releaseId: string;
-  releaseSequence: number;
+  releaseNumber: number;
   appVersion: string;
   buildId: string;
   buildDate: string;
-  indexUrl: string;
+  indexSha256: string;
+  indexByteSize: number;
   files: { path: string; sha256: string; byteSize: number }[];
 };
 

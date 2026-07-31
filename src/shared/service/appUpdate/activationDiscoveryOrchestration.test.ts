@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UpdateControllerState } from './contracts';
+import type { ReleaseDescriptor, ReleaseSummary, UpdateControllerState } from './contracts';
 import type { PreparationCoordinator } from './preparationCoordinator';
 
-// Proves the Pass 2 orchestration invariant across two real collaborating
-// modules (`updateDiscovery` and `workerMessages`), not just each module's
-// own isolated unit tests: a discovery that happens while an activation is
-// in progress must never be lost, but must also never disturb that
-// activation's single, exclusive commit/rollback outcome.
+// Proves the single-candidate serialization invariant across two real
+// collaborating modules (`updateDiscovery` and `workerMessages`), not just
+// each module's own isolated unit tests: while a candidate is `activating`,
+// it is pinned — discovery of a newer release is a true no-op, and only
+// once the activation resolves (commit or rollback) does the next release
+// become discoverable. This is the intentional deterministic sequencing the
+// architecture handoff calls out explicitly (B activating, C published -> C
+// is considered only after B commits or is cancelled).
 
 const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
@@ -32,33 +35,33 @@ const coordinator: PreparationCoordinator = {
 };
 
 const CHANNEL_ORIGIN = 'https://mioframe.example';
-const releaseA = { releaseId: 'release-a', releaseSequence: 1 };
-const releaseB = {
-  releaseId: 'release-b',
-  releaseSequence: 2,
+const releaseA: ReleaseSummary = {
+  releaseNumber: 1,
+  appVersion: '1.0.0',
+  buildId: 'build-a',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+const releaseB: ReleaseSummary = {
+  releaseNumber: 2,
   appVersion: '1.1.0',
   buildId: 'build-b',
   buildDate: '2026-07-24T00:00:00.000Z',
 };
-const releaseC = { releaseId: 'release-c', releaseSequence: 3 };
-const descriptorC = {
-  schemaVersion: 1 as const,
-  releaseId: releaseC.releaseId,
-  releaseSequence: releaseC.releaseSequence,
+const releaseC: ReleaseSummary = {
+  releaseNumber: 3,
   appVersion: '1.2.0',
   buildId: 'build-c',
   buildDate: '2026-07-24T00:00:00.000Z',
-  indexUrl: `/updates/releases/${releaseC.releaseId}/index.html`,
+};
+const descriptorC: ReleaseDescriptor = {
+  schemaVersion: 1,
+  releaseNumber: releaseC.releaseNumber,
+  appVersion: releaseC.appVersion,
+  buildId: releaseC.buildId,
+  buildDate: releaseC.buildDate,
   indexSha256: '0'.repeat(64),
   indexByteSize: 100,
   files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
-};
-const summaryC = {
-  releaseId: descriptorC.releaseId,
-  releaseSequence: descriptorC.releaseSequence,
-  appVersion: descriptorC.appVersion,
-  buildId: descriptorC.buildId,
-  buildDate: descriptorC.buildDate,
 };
 
 /**
@@ -81,7 +84,7 @@ const activatingB: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'automatic',
   activeRelease: releaseA,
-  activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
+  candidate: { phase: 'activating', release: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
 };
 
 describe('activation vs. discovery orchestration', () => {
@@ -94,62 +97,83 @@ describe('activation vs. discovery orchestration', () => {
     fetchReleaseDescriptorMock.mockResolvedValue(descriptorC);
   });
 
-  it('activation B, discover C, BOOT_OK(B): C becomes latestRelease without ever being prepared or approved, and commit does not lose it', async () => {
+  it('activating B pins the candidate: discovering C is a true no-op, never storing or preparing it', async () => {
     const getCurrent = mockPersistentState(activatingB);
-    fetchLatestReleasePointerMock.mockResolvedValue(releaseC);
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseC.releaseNumber });
 
-    const { runUpdateCheck } = await import('./updateDiscovery');
-    const discovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
+    const { runDiscovery } = await import('./updateDiscovery');
+    const discovered = await runDiscovery('stable', '/', enqueue);
 
-    expect(discovered.response.snapshot.latestRelease).toEqual(summaryC);
-    expect(discovered.response.snapshot.scheduledRelease).toBeUndefined();
+    expect(discovered.durablyChanged).toBe(false);
+    expect(discovered.response.snapshot.candidate).toEqual(activatingB.candidate);
+    // Discovery never even fetches while pinned: the fetch mocks above are
+    // configured but runDiscovery's own state check happens first in
+    // production via runScheduledDiscoveryCheck; here runDiscovery itself
+    // proves the pure no-op at the state layer.
     expect(prepareMock).not.toHaveBeenCalled();
-    expect(getCurrent().activation).toEqual(activatingB.activation);
+    expect(getCurrent().candidate).toEqual(activatingB.candidate);
+  });
 
+  it('the background scheduler skips discovery entirely for an activating candidate: no fetch at all', async () => {
+    mockPersistentState(activatingB);
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseC.releaseNumber });
+
+    const { runScheduledDiscoveryCheck } = await import('./updateDiscovery');
+    await runScheduledDiscoveryCheck('stable', '/', CHANNEL_ORIGIN, enqueue, coordinator);
+
+    expect(fetchLatestReleasePointerMock).not.toHaveBeenCalled();
+    expect(fetchReleaseDescriptorMock).not.toHaveBeenCalled();
+  });
+
+  it('BOOT_OK(B) commits and clears the candidate; C becomes discoverable only afterwards', async () => {
+    const getCurrent = mockPersistentState(activatingB);
     const { handleWorkerMessage } = await import('./workerMessages');
+
     const committed = await handleWorkerMessage(
       'stable',
       '/',
       CHANNEL_ORIGIN,
-      { protocolVersion: 1, type: 'BOOT_OK', releaseId: releaseB.releaseId },
+      { protocolVersion: 1, type: 'BOOT_OK', releaseNumber: releaseB.releaseNumber },
       enqueue,
       coordinator,
     );
 
     expect(committed.response).toMatchObject({ ack: 'committed' });
-    const final = getCurrent();
-    expect(final.activeRelease).toEqual(releaseB);
-    expect(final.activation).toBeUndefined();
-    expect(final.approvedRelease).toBeUndefined();
-    expect(final.latestRelease).toEqual(summaryC);
+    expect(getCurrent().activeRelease).toEqual(releaseB);
+    expect(getCurrent().candidate).toBeUndefined();
+
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseC.releaseNumber });
+    const { runDiscovery } = await import('./updateDiscovery');
+    const discovered = await runDiscovery('stable', '/', enqueue);
+
+    expect(discovered.candidateReplaced).toBe(true);
+    expect(getCurrent().candidate).toEqual({ phase: 'available', release: releaseC });
   });
 
-  it('activation B, discover C, BOOT_FAILED(B): C remains latestRelease, B is recorded as the single failure, and rollback does not lose C', async () => {
+  it('BOOT_FAILED(B) rolls back to failed(B), leaving active unchanged; C becomes discoverable only afterwards (Automatic mode)', async () => {
     const getCurrent = mockPersistentState(activatingB);
-    fetchLatestReleasePointerMock.mockResolvedValue(releaseC);
-
-    const { runUpdateCheck } = await import('./updateDiscovery');
-    const discovered = await runUpdateCheck('stable', '/', enqueue, coordinator);
-
-    expect(discovered.response.snapshot.latestRelease).toEqual(summaryC);
-    expect(prepareMock).not.toHaveBeenCalled();
-
     const { handleWorkerMessage } = await import('./workerMessages');
+
     const rolledBack = await handleWorkerMessage(
       'stable',
       '/',
       CHANNEL_ORIGIN,
-      { protocolVersion: 1, type: 'BOOT_FAILED', releaseId: releaseB.releaseId },
+      { protocolVersion: 1, type: 'BOOT_FAILED', releaseNumber: releaseB.releaseNumber },
       enqueue,
       coordinator,
     );
 
     expect(rolledBack.response).toMatchObject({ ack: 'rolled-back' });
-    const final = getCurrent();
-    expect(final.activeRelease).toEqual(releaseA);
-    expect(final.activation).toBeUndefined();
-    expect(final.approvedRelease).toBeUndefined();
-    expect(final.failedActivationRelease).toEqual(releaseB);
-    expect(final.latestRelease).toEqual(summaryC);
+    expect(getCurrent().activeRelease).toEqual(releaseA);
+    expect(getCurrent().candidate).toEqual({ phase: 'failed', release: releaseB });
+
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseC.releaseNumber });
+    const { runDiscovery } = await import('./updateDiscovery');
+    const discovered = await runDiscovery('stable', '/', enqueue);
+
+    // Automatic discovery may replace a failed candidate with a strictly
+    // newer release.
+    expect(discovered.candidateReplaced).toBe(true);
+    expect(getCurrent().candidate).toEqual({ phase: 'available', release: releaseC });
   });
 });

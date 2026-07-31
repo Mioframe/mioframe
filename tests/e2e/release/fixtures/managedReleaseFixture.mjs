@@ -264,7 +264,7 @@ export async function buildAndPublishManagedRelease({
   if (Object.keys(extraEnv).length > 0) {
     const distDir = await buildViteArtifact({ channel, basePath, extraEnv });
     try {
-      return publishManagedRelease({ workDir, distDir, channel, basePath, appVersion, buildId });
+      return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
     } finally {
       rmSync(distDir, { recursive: true, force: true });
     }
@@ -273,7 +273,7 @@ export async function buildAndPublishManagedRelease({
   const templateDir = await getManagedTemplate(channel);
   const distDir = materializeManagedRelease({ templateDir, basePath, buildId });
   try {
-    return publishManagedRelease({ workDir, distDir, channel, basePath, appVersion, buildId });
+    return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
   } finally {
     rmSync(distDir, { recursive: true, force: true });
   }
@@ -303,7 +303,7 @@ export async function buildAndPublishBrokenManagedRelease({
     try {
       const { relativePath } = locateEntryModule(distDir, basePath);
       writeFileSync(join(distDir, relativePath), 'throw new Error("simulated boot failure");');
-      return publishManagedRelease({ workDir, distDir, channel, basePath, appVersion, buildId });
+      return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
     } finally {
       rmSync(distDir, { recursive: true, force: true });
     }
@@ -312,7 +312,7 @@ export async function buildAndPublishBrokenManagedRelease({
   const templateDir = await getManagedTemplate(channel);
   const distDir = materializeManagedRelease({ templateDir, basePath, buildId, broken: true });
   try {
-    return publishManagedRelease({ workDir, distDir, channel, basePath, appVersion, buildId });
+    return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
   } finally {
     rmSync(distDir, { recursive: true, force: true });
   }

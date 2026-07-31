@@ -22,14 +22,19 @@ export const MAX_RELEASE_ARTIFACT_BYTES = 200_000_000;
 
 const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
-/**
- * Matches the canonical lowercase-hyphenated UUID shape produced by
- * `crypto.randomUUID()`. Mirrors `contracts.ts`'s `CANONICAL_UUID_PATTERN`.
- */
-const CANONICAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
 /** Channel-root-relative path prefix reserved for controller metadata — never a valid ordinary release file. */
 const RESERVED_UPDATES_PREFIX = 'updates/';
+
+/**
+ * Returns `true` when `value` is a positive safe integer, the sole identity
+ * and ordering value for a release. Mirrors `isPositiveSafeInteger` in
+ * `src/shared/service/appUpdate/contracts.ts`.
+ * @param value Candidate value.
+ * @returns Whether `value` is a positive safe integer.
+ */
+export function isPositiveSafeInteger(value) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
 
 /**
  * Returns `true` when `path` is a canonical channel-root-relative release
@@ -86,23 +91,17 @@ export function isValidReleaseDescriptor(candidate) {
   if (typeof candidate !== 'object' || candidate === null) return false;
   const {
     schemaVersion,
-    releaseId,
-    releaseSequence,
+    releaseNumber,
     appVersion,
     buildId,
     buildDate,
-    indexUrl,
     indexSha256,
     indexByteSize,
     files,
   } = candidate;
   return (
     schemaVersion === RELEASE_DESCRIPTOR_SCHEMA_VERSION &&
-    typeof releaseId === 'string' &&
-    CANONICAL_UUID_PATTERN.test(releaseId) &&
-    typeof releaseSequence === 'number' &&
-    Number.isInteger(releaseSequence) &&
-    releaseSequence > 0 &&
+    isPositiveSafeInteger(releaseNumber) &&
     typeof appVersion === 'string' &&
     appVersion.length > 0 &&
     typeof buildId === 'string' &&
@@ -110,8 +109,6 @@ export function isValidReleaseDescriptor(candidate) {
     typeof buildDate === 'string' &&
     !Number.isNaN(Date.parse(buildDate)) &&
     /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(buildDate) &&
-    typeof indexUrl === 'string' &&
-    indexUrl.length > 0 &&
     typeof indexSha256 === 'string' &&
     SHA256_HEX_PATTERN.test(indexSha256) &&
     typeof indexByteSize === 'number' &&
@@ -121,6 +118,19 @@ export function isValidReleaseDescriptor(candidate) {
     files.length > 0 &&
     files.every(isValidReleaseFile) &&
     hasUniqueFilePaths(files)
+  );
+}
+
+/**
+ * Structurally validates the published `updates/latest.json` pointer.
+ * @param candidate Value to validate.
+ * @returns Whether `candidate` is a valid latest-release pointer.
+ */
+export function isValidLatestPointer(candidate) {
+  return (
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    isPositiveSafeInteger(candidate.releaseNumber)
   );
 }
 
@@ -179,77 +189,22 @@ export function collectReleaseFiles(distDir) {
 }
 
 /**
- * Allocates the next forward release sequence from every currently retained
- * sequence number.
- * @param existingSequences Every `releaseSequence` already retained for this channel.
- * @returns The next sequence, starting at `1` when none are retained yet.
- */
-export function allocateReleaseSequence(existingSequences) {
-  return existingSequences.reduce((max, sequence) => Math.max(max, sequence), 0) + 1;
-}
-
-/**
- * Builds and validates a new `ReleaseDescriptor`.
- * @param params Descriptor fields.
- * @param params.releaseId Immutable release identifier.
- * @param params.releaseSequence Forward-ordering sequence, from {@link allocateReleaseSequence}.
- * @param params.appVersion `package.json` version this release was built from.
- * @param params.buildId CI build identity (e.g. commit SHA).
- * @param params.buildDate ISO 8601 UTC build timestamp.
- * @param params.indexUrl Channel-root-relative URL of this release's archived index.
- * @param params.indexSha256 Lowercase hex SHA-256 digest of the final archived `index.html` bytes, computed after boot-watchdog injection.
- * @param params.indexByteSize Exact byte size of the final archived `index.html`, computed after boot-watchdog injection.
- * @param params.files This release's file list, from {@link collectReleaseFiles}.
- * @returns The validated `ReleaseDescriptor`.
- */
-export function buildReleaseDescriptor({
-  releaseId,
-  releaseSequence,
-  appVersion,
-  buildId,
-  buildDate,
-  indexUrl,
-  indexSha256,
-  indexByteSize,
-  files,
-}) {
-  const descriptor = {
-    schemaVersion: RELEASE_DESCRIPTOR_SCHEMA_VERSION,
-    releaseId,
-    releaseSequence,
-    appVersion,
-    buildId,
-    buildDate,
-    indexUrl,
-    indexSha256,
-    indexByteSize,
-    files,
-  };
-  if (!isValidReleaseDescriptor(descriptor)) {
-    throw new Error(`Built an invalid release descriptor for release ${String(releaseId)}`);
-  }
-  return descriptor;
-}
-
-/**
  * Reads and validates every retained release descriptor for a channel.
- * Fails closed: any unreadable, structurally invalid, misplaced, or
- * conflicting descriptor aborts the whole read rather than silently
- * skipping it, since publishing on top of a corrupt retained tree is
- * unsafe. Validates that:
- * - the descriptor filename (`<releaseId>.json`) matches its own `releaseId`
- *   (which also makes two retained descriptors sharing a `releaseId` with a
- *   different `releaseSequence` structurally impossible: two files cannot
- *   both be named after the same `releaseId`);
- * - the release's archived index directory (`<releaseId>/index.html`) exists;
- * - no two retained descriptors share a `releaseSequence` with a different `releaseId`.
+ * Fails closed: any unreadable, structurally invalid, or misplaced
+ * descriptor aborts the whole read rather than silently skipping it, since
+ * publishing on top of a corrupt retained tree is unsafe. Validates that
+ * the descriptor filename (`<releaseNumber>.json`) matches its own
+ * `releaseNumber` (which also makes two retained descriptors sharing a
+ * `releaseNumber` structurally impossible: two files cannot both be named
+ * after the same number) and that the release's archived index directory
+ * (`<releaseNumber>/index.html`) exists.
  * @param releasesDir Channel's `updates/releases` directory.
  * @returns Every retained `ReleaseDescriptor`, or `[]` when the directory does not exist yet.
  */
 export function readRetainedReleaseDescriptors(releasesDir) {
   if (!existsSync(releasesDir)) return [];
 
-  const descriptors = readdirSync(releasesDir, { withFileTypes: true })
+  return readdirSync(releasesDir, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
     .map((entry) => {
       const filePath = join(releasesDir, entry.name);
@@ -264,48 +219,138 @@ export function readRetainedReleaseDescriptors(releasesDir) {
       if (!isValidReleaseDescriptor(parsed)) {
         throw new Error(`Retained release descriptor is structurally invalid: ${entry.name}`);
       }
-      const expectedFilename = `${parsed.releaseId}.json`;
+      const expectedFilename = `${parsed.releaseNumber}.json`;
       if (entry.name !== expectedFilename) {
         throw new Error(
-          `Retained release descriptor filename "${entry.name}" does not match its releaseId (expected "${expectedFilename}")`,
+          `Retained release descriptor filename "${entry.name}" does not match its releaseNumber (expected "${expectedFilename}")`,
         );
       }
-      if (!existsSync(join(releasesDir, parsed.releaseId, 'index.html'))) {
+      if (!existsSync(join(releasesDir, String(parsed.releaseNumber), 'index.html'))) {
         throw new Error(
-          `Retained release "${parsed.releaseId}" is missing its archived index directory`,
+          `Retained release "${parsed.releaseNumber}" is missing its archived index directory`,
         );
       }
       return parsed;
     });
-
-  const releaseIdBySequence = new Map();
-  for (const descriptor of descriptors) {
-    const conflictingId = releaseIdBySequence.get(descriptor.releaseSequence);
-    if (conflictingId !== undefined && conflictingId !== descriptor.releaseId) {
-      throw new Error(
-        `Retained releaseSequence ${descriptor.releaseSequence} is used by both "${conflictingId}" and "${descriptor.releaseId}"`,
-      );
-    }
-    releaseIdBySequence.set(descriptor.releaseSequence, descriptor.releaseId);
-  }
-
-  return descriptors;
 }
 
 /**
- * Validates that a freshly generated `releaseId` is not already retained for
- * this channel, so a UUID collision (or a broken injected generator) can
- * never overwrite an existing release's descriptor, archived index, or
- * files. Must be checked before any retained-tree write for the new release
- * begins.
- * @param existingDescriptors Every retained `ReleaseDescriptor` for this channel.
- * @param releaseId The freshly generated candidate release id.
- * @throws {Error} When `releaseId` is already retained.
+ * Reads and validates the published `updates/latest.json` pointer.
+ * Fails closed on unreadable, unparseable, or structurally invalid content.
+ * @param updatesDir Channel's `updates` directory.
+ * @returns The parsed latest pointer, or `undefined` when it does not exist yet.
  */
-export function assertReleaseIdNotRetained(existingDescriptors, releaseId) {
-  if (existingDescriptors.some((descriptor) => descriptor.releaseId === releaseId)) {
-    throw new Error(`Generated releaseId "${releaseId}" is already retained for this channel`);
+export function readLatestPointer(updatesDir) {
+  const path = join(updatesDir, 'latest.json');
+  if (!existsSync(path)) return undefined;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    throw new Error('Retained updates/latest.json is not valid JSON', { cause: error });
   }
+  if (!isValidLatestPointer(parsed)) {
+    throw new Error('Retained updates/latest.json is structurally invalid');
+  }
+  return parsed;
+}
+
+/**
+ * Validates the complete retained managed tree for one channel and
+ * allocates the next release number. Must be called, and must succeed,
+ * before the first write of a new publication begins.
+ *
+ * - no retained tree (no descriptors and no `latest.json`) allocates `1`;
+ * - a retained tree without a valid `latest.json`, or whose `latest.json`
+ *   does not point at the highest retained descriptor number, is rejected;
+ * - a `latest.json` present without any retained descriptor is rejected;
+ * - allocation overflowing `Number.MAX_SAFE_INTEGER` is rejected.
+ * @param releasesDir Channel's `updates/releases` directory.
+ * @param updatesDir Channel's `updates` directory.
+ * @returns The next release number and every currently retained descriptor.
+ * @throws {Error} When the retained tree is malformed, missing, conflicting, or non-monotonic.
+ */
+export function allocateNextReleaseNumber(releasesDir, updatesDir) {
+  const descriptors = readRetainedReleaseDescriptors(releasesDir);
+  const latest = readLatestPointer(updatesDir);
+
+  if (descriptors.length === 0 && latest === undefined) {
+    return { nextReleaseNumber: 1, descriptors };
+  }
+  if (latest === undefined) {
+    throw new Error('Retained releases exist but updates/latest.json is missing');
+  }
+  if (descriptors.length === 0) {
+    throw new Error('updates/latest.json exists but no release is retained');
+  }
+
+  const highest = descriptors.reduce((max, d) => Math.max(max, d.releaseNumber), 0);
+  if (latest.releaseNumber !== highest) {
+    throw new Error(
+      `updates/latest.json (${latest.releaseNumber}) does not point to the highest retained release (${highest})`,
+    );
+  }
+  if (highest >= Number.MAX_SAFE_INTEGER) {
+    throw new Error('Next release number would exceed Number.MAX_SAFE_INTEGER');
+  }
+
+  return { nextReleaseNumber: highest + 1, descriptors };
+}
+
+/**
+ * Validates that the allocated `releaseNumber` is not already retained for
+ * this channel — a defensive invariant check, since {@link allocateNextReleaseNumber}
+ * already computes a number one past every retained descriptor. Must be
+ * checked before any retained-tree write for the new release begins.
+ * @param releasesDir Channel's `updates/releases` directory.
+ * @param releaseNumber The allocated candidate release number.
+ * @throws {Error} When a descriptor or archive path for `releaseNumber` already exists.
+ */
+export function assertReleaseNumberNotRetained(releasesDir, releaseNumber) {
+  if (
+    existsSync(join(releasesDir, `${releaseNumber}.json`)) ||
+    existsSync(join(releasesDir, String(releaseNumber)))
+  ) {
+    throw new Error(`Release number ${releaseNumber} is already retained for this channel`);
+  }
+}
+
+/**
+ * Builds and validates a new `ReleaseDescriptor`.
+ * @param params Descriptor fields.
+ * @param params.releaseNumber Allocated release identity and ordering value, from {@link allocateNextReleaseNumber}.
+ * @param params.appVersion `package.json` version this release was built from.
+ * @param params.buildId CI build identity (e.g. commit SHA).
+ * @param params.buildDate ISO 8601 UTC build timestamp.
+ * @param params.indexSha256 Lowercase hex SHA-256 digest of the final archived `index.html` bytes, computed after boot-watchdog injection.
+ * @param params.indexByteSize Exact byte size of the final archived `index.html`, computed after boot-watchdog injection.
+ * @param params.files This release's file list, from {@link collectReleaseFiles}.
+ * @returns The validated `ReleaseDescriptor`.
+ */
+export function buildReleaseDescriptor({
+  releaseNumber,
+  appVersion,
+  buildId,
+  buildDate,
+  indexSha256,
+  indexByteSize,
+  files,
+}) {
+  const descriptor = {
+    schemaVersion: RELEASE_DESCRIPTOR_SCHEMA_VERSION,
+    releaseNumber,
+    appVersion,
+    buildId,
+    buildDate,
+    indexSha256,
+    indexByteSize,
+    files,
+  };
+  if (!isValidReleaseDescriptor(descriptor)) {
+    throw new Error(`Built an invalid release descriptor for release ${String(releaseNumber)}`);
+  }
+  return descriptor;
 }
 
 /**

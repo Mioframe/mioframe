@@ -44,11 +44,11 @@ afterEach(() => {
  * that answers `GET_ACTIVATION_STATUS` with `response`, then returns every
  * message the stubbed controller received via `postMessage` so a test can
  * assert on real runtime behavior rather than only the script's source text.
- * @param releaseId - The release id to build the watchdog script for.
+ * @param releaseNumber - The release number to build the watchdog script for.
  * @param response - The `GET_ACTIVATION_STATUS` response to simulate.
  * @returns The list of messages sent to the controller, live-updated as the script runs.
  */
-async function runWatchdogWithActivationStatusResponse(releaseId, response) {
+async function runWatchdogWithActivationStatusResponse(releaseNumber, response) {
   const postMessageCalls = [];
   const controller = {
     postMessage: (message, transfer) => {
@@ -67,7 +67,8 @@ async function runWatchdogWithActivationStatusResponse(releaseId, response) {
     },
   });
 
-  new Function(buildWatchdogScript(releaseId))();
+  // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+  new Function(buildWatchdogScript(releaseNumber))();
 
   // Flushes the `ready.then(...)` microtask, then the MessageChannel round trip.
   await Promise.resolve();
@@ -78,19 +79,13 @@ async function runWatchdogWithActivationStatusResponse(releaseId, response) {
 }
 
 describe('buildWatchdogScript', () => {
-  it('embeds the exact release id as a JSON string literal', () => {
-    const script = buildWatchdogScript('release-abc-123');
-    expect(script).toContain('var RELEASE_ID = "release-abc-123";');
-  });
-
-  it('safely escapes a release id containing special characters', () => {
-    const script = buildWatchdogScript('weird"id</script>');
-    expect(script).toContain(JSON.stringify('weird"id</script>'));
-    expect(script).not.toContain('</script>weird');
+  it('embeds the exact release number as a JSON literal', () => {
+    const script = buildWatchdogScript(123);
+    expect(script).toContain('var RELEASE_NUMBER = 123;');
   });
 
   it('references every required private protocol message type', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     expect(script).toContain("'BOOT_OK'");
     expect(script).toContain("'BOOT_FAILED'");
     expect(script).toContain("'GET_ACTIVATION_STATUS'");
@@ -98,34 +93,34 @@ describe('buildWatchdogScript', () => {
   });
 
   it('exposes exactly one narrow function for the app to report successful boot', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     expect(script).toContain('window.mioframeAppUpdateBootOk = function');
   });
 
   it('installs early error and unhandledrejection listeners', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     expect(script).toContain("window.addEventListener('error', onEarlyFatalError)");
     expect(script).toContain("window.addEventListener('unhandledrejection', onEarlyFatalError)");
   });
 
   it('sends BOOT_OK and BOOT_FAILED through an acknowledged MessageChannel request, not a bare postMessage', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     expect(script).toContain('function sendToController(message)');
     expect(script).toContain('new MessageChannel()');
-    expect(script).toContain('type: BOOT_OK, releaseId: RELEASE_ID');
+    expect(script).toContain('type: BOOT_OK,');
+    expect(script).toContain('releaseNumber: RELEASE_NUMBER,');
     expect(script).toContain('type: BOOT_FAILED,');
-    expect(script).toContain('releaseId: RELEASE_ID,');
   });
 
   it('stamps every outgoing message with the current protocol version', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     const occurrences = script.split('protocolVersion: PROTOCOL_VERSION').length - 1;
     // BOOT_OK, BOOT_FAILED, and GET_ACTIVATION_STATUS each send it.
     expect(occurrences).toBe(3);
   });
 
   it('only disarms on a BOOT_OK response acknowledging a committed outcome', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     const bootOkBody = script.slice(
       script.indexOf('window.mioframeAppUpdateBootOk = function'),
       script.indexOf('if (navigator.serviceWorker) {'),
@@ -139,7 +134,7 @@ describe('buildWatchdogScript', () => {
   });
 
   it('shows a recovery message and never reloads when rollback persistence itself fails', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     const reportBootFailedBody = script.slice(
       script.indexOf('function reportBootFailed'),
       script.indexOf('function onEarlyFatalError'),
@@ -150,7 +145,7 @@ describe('buildWatchdogScript', () => {
   });
 
   it('disarms outside activation: isActivationTarget === false sets settled, clears the deadline timer, and removes the early-error listeners', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     const activationStatusBody = script.slice(
       script.indexOf('channel.port1.onmessage = function (event) {'),
       script.indexOf('var msRemaining = parsed.deadlineAtMs'),
@@ -166,7 +161,7 @@ describe('buildWatchdogScript', () => {
   });
 
   it('reloads only on the controller rollback broadcast, not immediately on failure', () => {
-    const script = buildWatchdogScript('release-1');
+    const script = buildWatchdogScript(1);
     const reportBootFailedBody = script.slice(
       script.indexOf('function reportBootFailed'),
       script.indexOf('function onEarlyFatalError'),
@@ -178,12 +173,12 @@ describe('buildWatchdogScript', () => {
 
 describe('watchdog disarm outside activation', () => {
   it('permanently disarms when isActivationTarget is false: a later runtime error never reports BOOT_FAILED', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: false,
     });
     expect(calls).toEqual([
-      { protocolVersion: 1, type: 'GET_ACTIVATION_STATUS', releaseId: 'release-1' },
+      { protocolVersion: 1, type: 'GET_ACTIVATION_STATUS', releaseNumber: 1 },
     ]);
 
     window.dispatchEvent(new Event('error'));
@@ -195,7 +190,7 @@ describe('watchdog disarm outside activation', () => {
   });
 
   it('ignores an activation-status response with a missing or unsupported protocol version, never disarming', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       isActivationTarget: false,
     });
 
@@ -209,7 +204,7 @@ describe('watchdog disarm outside activation', () => {
 
   it('a true activation target remains armed: a later runtime error still reports BOOT_FAILED', async () => {
     const deadlineAt = new Date(Date.now() + 60_000).toISOString();
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: true,
       deadlineAt,
@@ -226,7 +221,7 @@ describe('watchdog disarm outside activation', () => {
 
 describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
   it('an invalid deadlineAt date string is ignored: never arms a timer or reports BOOT_FAILED merely from receiving it', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: true,
       deadlineAt: 'not-a-valid-date',
@@ -238,7 +233,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
   });
 
   it('a missing deadlineAt on a true activation target is ignored', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: true,
     });
@@ -249,7 +244,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
   });
 
   it('a numeric deadlineAt is ignored (must be a string)', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: true,
       deadlineAt: Date.now() - 1000,
@@ -261,7 +256,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
   });
 
   it('an object deadlineAt is ignored (must be a string)', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: true,
       deadlineAt: {},
@@ -273,7 +268,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
   });
 
   it('a null deadlineAt is ignored (must be a string)', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: true,
       deadlineAt: null,
@@ -286,7 +281,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
 
   it('a truthy non-boolean isActivationTarget is ignored, even with an otherwise-valid deadlineAt', async () => {
     const deadlineAt = new Date(Date.now() + 60_000).toISOString();
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: 1,
       deadlineAt,
@@ -298,7 +293,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
   });
 
   it('a false variant with unrelated deadline fields still disarms (additive v1 fields do not break parsing)', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: false,
       deadlineAt: 'not-a-valid-date',
@@ -314,7 +309,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
 
   it('a valid past deadline still triggers the existing boot-failure path immediately', async () => {
     const deadlineAt = new Date(Date.now() - 1000).toISOString();
-    const calls = await runWatchdogWithActivationStatusResponse('release-1', {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: true,
       deadlineAt,
@@ -330,7 +325,7 @@ describe('injectWatchdogScript', () => {
   it('inserts the watchdog script immediately before the main module entry', () => {
     const html =
       '<html><head></head><body><script type="module" src="/assets/app.js"></script></body></html>';
-    const result = injectWatchdogScript(html, 'release-1');
+    const result = injectWatchdogScript(html, 1);
 
     const watchdogIndex = result.indexOf('<script>(function ()');
     const mainEntryIndex = result.indexOf('<script type="module"');
@@ -338,15 +333,15 @@ describe('injectWatchdogScript', () => {
     expect(watchdogIndex).toBeLessThan(mainEntryIndex);
   });
 
-  it('embeds the given release id in the injected script', () => {
+  it('embeds the given release number in the injected script', () => {
     const html = '<script type="module" src="/assets/app.js"></script>';
-    const result = injectWatchdogScript(html, 'release-xyz');
-    expect(result).toContain('var RELEASE_ID = "release-xyz";');
+    const result = injectWatchdogScript(html, 42);
+    expect(result).toContain('var RELEASE_NUMBER = 42;');
   });
 
   it('throws when no main module entry script tag is found', () => {
-    expect(() =>
-      injectWatchdogScript('<html><body>no entry here</body></html>', 'release-1'),
-    ).toThrow('Could not find the main module script entry');
+    expect(() => injectWatchdogScript('<html><body>no entry here</body></html>', 1)).toThrow(
+      'Could not find the main module script entry',
+    );
   });
 });

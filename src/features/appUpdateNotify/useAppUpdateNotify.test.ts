@@ -1,27 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope } from 'vue';
 
+type Candidate =
+  | { phase: 'available' | 'ready' | 'failed'; release: { releaseNumber: number } }
+  | { phase: 'activating'; release: { releaseNumber: number }; deadlineAt: string }
+  | undefined;
+
 const mode = ref<'automatic' | 'manual'>('manual');
-const activeRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>({
-  releaseId: 'release-a',
-  releaseSequence: 1,
-});
-const latestRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>(undefined);
-const scheduledRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>(undefined);
-const activatingRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>(
-  undefined,
-);
-const failedRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>(undefined);
+const candidate = ref<Candidate>(undefined);
 
 vi.mock('@entity/appUpdate', () => ({
-  useAppUpdate: () => ({
-    mode,
-    activeRelease,
-    latestRelease,
-    scheduledRelease,
-    activatingRelease,
-    failedRelease,
-  }),
+  useAppUpdate: () => ({ mode, candidate }),
 }));
 
 const addSnackbarMock = vi.fn();
@@ -35,11 +24,7 @@ describe('useAppUpdateNotify', () => {
   beforeEach(() => {
     vi.resetModules();
     mode.value = 'manual';
-    activeRelease.value = { releaseId: 'release-a', releaseSequence: 1 };
-    latestRelease.value = undefined;
-    scheduledRelease.value = undefined;
-    activatingRelease.value = undefined;
-    failedRelease.value = undefined;
+    candidate.value = undefined;
     addSnackbarMock.mockClear();
   });
 
@@ -61,8 +46,8 @@ describe('useAppUpdateNotify', () => {
     return { onView, scope };
   };
 
-  it('shows one Snackbar when Manual mode discovers a newer, unscheduled release', async () => {
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+  it('shows one Snackbar for an available candidate in Manual mode', async () => {
+    candidate.value = { phase: 'available', release: { releaseNumber: 2 } };
     const { onView } = await run();
 
     expect(addSnackbarMock).toHaveBeenCalledTimes(1);
@@ -76,77 +61,69 @@ describe('useAppUpdateNotify', () => {
 
   it('shows nothing in Automatic mode', async () => {
     mode.value = 'automatic';
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+    candidate.value = { phase: 'available', release: { releaseNumber: 2 } };
     await run();
 
     expect(addSnackbarMock).not.toHaveBeenCalled();
   });
 
-  it('shows nothing when up to date (latest equals active)', async () => {
-    latestRelease.value = { releaseId: 'release-a', releaseSequence: 1 };
+  it('shows nothing when there is no candidate', async () => {
     await run();
 
     expect(addSnackbarMock).not.toHaveBeenCalled();
   });
 
-  it('shows nothing once the release is already scheduled', async () => {
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
-    scheduledRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+  it('shows nothing for a ready candidate', async () => {
+    candidate.value = { phase: 'ready', release: { releaseNumber: 2 } };
     await run();
 
     expect(addSnackbarMock).not.toHaveBeenCalled();
   });
 
-  it('does not repeat for a duplicate snapshot read of the same release id', async () => {
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+  it('shows nothing for an activating candidate', async () => {
+    candidate.value = {
+      phase: 'activating',
+      release: { releaseNumber: 2 },
+      deadlineAt: '2026-07-24T00:00:30.000Z',
+    };
+    await run();
+
+    expect(addSnackbarMock).not.toHaveBeenCalled();
+  });
+
+  it('shows nothing for a failed candidate', async () => {
+    candidate.value = { phase: 'failed', release: { releaseNumber: 2 } };
+    await run();
+
+    expect(addSnackbarMock).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat for a duplicate snapshot read of the same release number', async () => {
+    candidate.value = { phase: 'available', release: { releaseNumber: 2 } };
     await run();
     expect(addSnackbarMock).toHaveBeenCalledTimes(1);
 
-    // A duplicate refresh reassigns the same value (new object, same id) —
-    // as a real invalidation-triggered GET_SNAPSHOT refresh would.
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+    // A duplicate refresh reassigns the same value (new object, same
+    // number) — as a real invalidation-triggered GET_SNAPSHOT refresh would.
+    candidate.value = { phase: 'available', release: { releaseNumber: 2 } };
     await nextTick();
 
     expect(addSnackbarMock).toHaveBeenCalledTimes(1);
   });
 
-  it('may notify again for a strictly newer release id within the same session', async () => {
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+  it('may notify again for a strictly newer release number within the same session', async () => {
+    candidate.value = { phase: 'available', release: { releaseNumber: 2 } };
     await run();
     expect(addSnackbarMock).toHaveBeenCalledTimes(1);
 
-    latestRelease.value = { releaseId: 'release-c', releaseSequence: 3 };
+    candidate.value = { phase: 'available', release: { releaseNumber: 3 } };
     await nextTick();
 
     expect(addSnackbarMock).toHaveBeenCalledTimes(2);
   });
 
-  it('shows nothing while an activation exists', async () => {
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
-    activatingRelease.value = { releaseId: 'release-c', releaseSequence: 3 };
-    await run();
-
-    expect(addSnackbarMock).not.toHaveBeenCalled();
-  });
-
-  it('shows nothing when the discovered release is the recorded failedRelease', async () => {
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
-    failedRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
-    await run();
-
-    expect(addSnackbarMock).not.toHaveBeenCalled();
-  });
-
-  it('notifies for a genuinely newer release discovered after a different failedRelease', async () => {
-    failedRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
-    latestRelease.value = { releaseId: 'release-c', releaseSequence: 3 };
-    await run();
-
-    expect(addSnackbarMock).toHaveBeenCalledTimes(1);
-  });
-
   it('calls onView (owned by the caller) from the Snackbar action', async () => {
-    latestRelease.value = { releaseId: 'release-b', releaseSequence: 2 };
+    candidate.value = { phase: 'available', release: { releaseNumber: 2 } };
     const onView = vi.fn();
     await run(onView);
 

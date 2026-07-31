@@ -17,7 +17,7 @@ describe('useAppUpdateCheck', () => {
   });
 
   it('applies the check result to the entity and tracks isChecking', async () => {
-    const snapshot = { mode: 'manual', activeRelease: { releaseId: 'a', releaseSequence: 1 } };
+    const snapshot = { mode: 'manual', activeRelease: { releaseNumber: 1 } };
     checkForAppUpdatesMock.mockResolvedValue(snapshot);
     const { useAppUpdateCheck } = await import('./useAppUpdateCheck');
     const { checkForUpdates, isChecking } = useAppUpdateCheck();
@@ -43,7 +43,7 @@ describe('useAppUpdateCheck', () => {
 
     const first = checkForUpdates();
     const second = checkForUpdates();
-    resolveFirst({ mode: 'manual', activeRelease: { releaseId: 'a', releaseSequence: 1 } });
+    resolveFirst({ mode: 'manual', activeRelease: { releaseNumber: 1 } });
     await Promise.all([first, second]);
 
     expect(checkForAppUpdatesMock).toHaveBeenCalledTimes(1);

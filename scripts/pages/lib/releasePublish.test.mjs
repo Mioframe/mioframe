@@ -44,7 +44,6 @@ describe('publishManagedRelease', () => {
         workDir,
         distDir,
         channel: 'preview',
-        basePath: '/pr/1/',
         appVersion: '1.0.0',
         buildId: 'sha1',
       }),
@@ -61,7 +60,6 @@ describe('publishManagedRelease', () => {
         workDir,
         distDir,
         channel: 'stable',
-        basePath: '/',
         appVersion: '1.0.0',
         buildId: 'sha1',
       }),
@@ -82,7 +80,6 @@ describe('publishManagedRelease', () => {
         workDir,
         distDir,
         channel: 'develop',
-        basePath: '/branch/develop/',
         appVersion: '1.0.0',
         buildId: 'sha1',
       }),
@@ -97,14 +94,19 @@ describe('publishManagedRelease', () => {
       workDir,
       distDir,
       channel: 'stable',
-      basePath: '/',
       appVersion: '1.0.0',
       buildId: 'sha1',
       buildDate: '2026-07-24T00:00:00.000Z',
     });
 
-    const descriptorPath = join(workDir, 'updates', 'releases', `${first.releaseId}.json`);
-    const archivedIndexPath = join(workDir, 'updates', 'releases', first.releaseId, 'index.html');
+    const descriptorPath = join(workDir, 'updates', 'releases', `${first.releaseNumber}.json`);
+    const archivedIndexPath = join(
+      workDir,
+      'updates',
+      'releases',
+      String(first.releaseNumber),
+      'index.html',
+    );
     const assetPath = join(workDir, 'assets', 'app-1.js');
     const rootIndexPath = join(workDir, 'index.html');
     const latestPath = join(workDir, 'updates', 'latest.json');
@@ -125,7 +127,6 @@ describe('publishManagedRelease', () => {
         workDir,
         distDir,
         channel: 'stable',
-        basePath: '/',
         appVersion: '1.1.0',
         buildId: 'sha2',
       }),
@@ -146,33 +147,34 @@ describe('publishManagedRelease', () => {
       workDir,
       distDir,
       channel: 'stable',
-      basePath: '/',
       appVersion: '1.0.0',
       buildId: 'sha1',
       buildDate: '2026-07-24T00:00:00.000Z',
     });
 
-    expect(descriptor.releaseSequence).toBe(1);
-    expect(existsSync(join(workDir, 'updates', 'releases', `${descriptor.releaseId}.json`))).toBe(
-      true,
-    );
+    expect(descriptor.releaseNumber).toBe(1);
     expect(
-      existsSync(join(workDir, 'updates', 'releases', descriptor.releaseId, 'index.html')),
+      existsSync(join(workDir, 'updates', 'releases', `${descriptor.releaseNumber}.json`)),
+    ).toBe(true);
+    expect(
+      existsSync(
+        join(workDir, 'updates', 'releases', String(descriptor.releaseNumber), 'index.html'),
+      ),
     ).toBe(true);
     expect(existsSync(join(workDir, 'assets', 'app-1.js'))).toBe(true);
     expect(existsSync(join(workDir, 'index.html'))).toBe(true);
 
     const archivedIndexHtml = readFileSync(
-      join(workDir, 'updates', 'releases', descriptor.releaseId, 'index.html'),
+      join(workDir, 'updates', 'releases', String(descriptor.releaseNumber), 'index.html'),
       'utf8',
     );
-    expect(archivedIndexHtml).toContain(`var RELEASE_ID = "${descriptor.releaseId}";`);
+    expect(archivedIndexHtml).toContain(`var RELEASE_NUMBER = ${descriptor.releaseNumber};`);
     expect(archivedIndexHtml.indexOf('<script>(function ()')).toBeLessThan(
       archivedIndexHtml.indexOf('<script type="module"'),
     );
 
     const latest = JSON.parse(readFileSync(join(workDir, 'updates', 'latest.json'), 'utf8'));
-    expect(latest).toEqual({ releaseId: descriptor.releaseId, releaseSequence: 1 });
+    expect(latest).toEqual({ releaseNumber: 1 });
   });
 
   it('computes indexSha256 and indexByteSize from the final archived index bytes, after watchdog injection', () => {
@@ -182,14 +184,13 @@ describe('publishManagedRelease', () => {
       workDir,
       distDir,
       channel: 'stable',
-      basePath: '/',
       appVersion: '1.0.0',
       buildId: 'sha1',
       buildDate: '2026-07-24T00:00:00.000Z',
     });
 
     const archivedIndexBytes = readFileSync(
-      join(workDir, 'updates', 'releases', descriptor.releaseId, 'index.html'),
+      join(workDir, 'updates', 'releases', String(descriptor.releaseNumber), 'index.html'),
     );
     // If the hash/size had been computed before watchdog injection, this
     // would fail: the actual on-disk archived index already contains the
@@ -207,27 +208,32 @@ describe('publishManagedRelease', () => {
       workDir,
       distDir,
       channel: 'develop',
-      basePath: '/branch/develop/',
       appVersion: '1.0.0',
       buildId: 'sha1',
     });
 
     expect(
       existsSync(
-        join(workDir, 'branch', 'develop', 'updates', 'releases', `${descriptor.releaseId}.json`),
+        join(
+          workDir,
+          'branch',
+          'develop',
+          'updates',
+          'releases',
+          `${descriptor.releaseNumber}.json`,
+        ),
       ),
     ).toBe(true);
     expect(existsSync(join(workDir, 'branch', 'develop', 'assets', 'app-1.js'))).toBe(true);
     expect(existsSync(join(workDir, 'branch', 'develop', 'index.html'))).toBe(true);
   });
 
-  it('allocates increasing sequences across successive publishes and retains prior releases', () => {
+  it('allocates increasing release numbers across successive publishes and retains prior releases', () => {
     writeBasicDist(buildIndexHtml('<v1/>'));
     const first = publishManagedRelease({
       workDir,
       distDir,
       channel: 'stable',
-      basePath: '/',
       appVersion: '1.0.0',
       buildId: 'sha1',
     });
@@ -238,39 +244,40 @@ describe('publishManagedRelease', () => {
       workDir,
       distDir,
       channel: 'stable',
-      basePath: '/',
       appVersion: '1.1.0',
       buildId: 'sha2',
     });
 
-    expect(second.releaseSequence).toBe(first.releaseSequence + 1);
-    expect(existsSync(join(workDir, 'updates', 'releases', `${first.releaseId}.json`))).toBe(true);
+    expect(second.releaseNumber).toBe(first.releaseNumber + 1);
+    expect(existsSync(join(workDir, 'updates', 'releases', `${first.releaseNumber}.json`))).toBe(
+      true,
+    );
     expect(existsSync(join(workDir, 'assets', 'app-1.js'))).toBe(true);
     expect(existsSync(join(workDir, 'assets', 'app-2.js'))).toBe(true);
   });
 
-  it('throws on a generated releaseId that is already retained, without modifying the retained tree', () => {
+  it('throws when the allocated release number already has a stray archive directory, without modifying the retained tree', () => {
     writeBasicDist(buildIndexHtml('<v1/>'));
-    const first = publishManagedRelease({
+    publishManagedRelease({
       workDir,
       distDir,
       channel: 'stable',
-      basePath: '/',
       appVersion: '1.0.0',
       buildId: 'sha1',
       buildDate: '2026-07-24T00:00:00.000Z',
     });
 
-    const descriptorPath = join(workDir, 'updates', 'releases', `${first.releaseId}.json`);
-    const archivedIndexPath = join(workDir, 'updates', 'releases', first.releaseId, 'index.html');
-    const assetPath = join(workDir, 'assets', 'app-1.js');
-    const rootIndexPath = join(workDir, 'index.html');
-    const latestPath = join(workDir, 'updates', 'latest.json');
+    // Simulate a stray leftover archive directory for the number about to be
+    // allocated (e.g. a prior publish attempt that wrote the archive but
+    // crashed before writing the descriptor). It has no descriptor, so it is
+    // invisible to readRetainedReleaseDescriptors/allocateNextReleaseNumber,
+    // but must still be caught before any new write for that number begins.
+    mkdirSync(join(workDir, 'updates', 'releases', '2'), { recursive: true });
+    writeFileSync(join(workDir, 'updates', 'releases', '2', 'index.html'), '<stray/>');
 
+    const descriptorPath = join(workDir, 'updates', 'releases', '1.json');
+    const latestPath = join(workDir, 'updates', 'latest.json');
     const descriptorBefore = readFileSync(descriptorPath, 'utf8');
-    const archivedIndexBefore = readFileSync(archivedIndexPath, 'utf8');
-    const assetBefore = readFileSync(assetPath, 'utf8');
-    const rootIndexBefore = readFileSync(rootIndexPath, 'utf8');
     const latestBefore = readFileSync(latestPath, 'utf8');
 
     writeFileSync(join(distDir, 'index.html'), buildIndexHtml('<v2/>'));
@@ -281,23 +288,46 @@ describe('publishManagedRelease', () => {
         workDir,
         distDir,
         channel: 'stable',
-        basePath: '/',
         appVersion: '1.1.0',
         buildId: 'sha2',
-        generateReleaseId: () => first.releaseId,
       }),
-    ).toThrow(`Generated releaseId "${first.releaseId}" is already retained for this channel`);
+    ).toThrow('Release number 2 is already retained for this channel');
 
     expect(readFileSync(descriptorPath, 'utf8')).toBe(descriptorBefore);
-    expect(readFileSync(archivedIndexPath, 'utf8')).toBe(archivedIndexBefore);
-    expect(readFileSync(assetPath, 'utf8')).toBe(assetBefore);
-    expect(readFileSync(rootIndexPath, 'utf8')).toBe(rootIndexBefore);
     expect(readFileSync(latestPath, 'utf8')).toBe(latestBefore);
+    expect(existsSync(join(workDir, 'updates', 'releases', '2.json'))).toBe(false);
     expect(existsSync(join(workDir, 'assets', 'app-2.js'))).toBe(false);
     const sortAsc = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
     expect(readdirSync(join(workDir, 'updates', 'releases')).sort(sortAsc)).toEqual(
-      [first.releaseId, `${first.releaseId}.json`].sort(sortAsc),
+      ['1', '1.json', '2'].sort(sortAsc),
     );
+  });
+
+  it('throws on a corrupt retained tree (latest.json not pointing at the highest release), without writing any new state', () => {
+    writeBasicDist(buildIndexHtml('<v1/>'));
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      appVersion: '1.0.0',
+      buildId: 'sha1',
+    });
+    // Corrupt latest.json so it no longer points at the highest retained release.
+    writeFileSync(join(workDir, 'updates', 'latest.json'), JSON.stringify({ releaseNumber: 999 }));
+    const latestBefore = readFileSync(join(workDir, 'updates', 'latest.json'), 'utf8');
+
+    writeFileSync(join(distDir, 'index.html'), buildIndexHtml('<v2/>'));
+
+    expect(() =>
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'stable',
+        appVersion: '1.1.0',
+        buildId: 'sha2',
+      }),
+    ).toThrow('does not point to the highest retained release');
+    expect(readFileSync(join(workDir, 'updates', 'latest.json'), 'utf8')).toBe(latestBefore);
   });
 
   it('throws on an immutable collision without writing any new state', () => {
@@ -306,7 +336,6 @@ describe('publishManagedRelease', () => {
       workDir,
       distDir,
       channel: 'stable',
-      basePath: '/',
       appVersion: '1.0.0',
       buildId: 'sha1',
     });
@@ -321,7 +350,6 @@ describe('publishManagedRelease', () => {
         workDir,
         distDir,
         channel: 'stable',
-        basePath: '/',
         appVersion: '1.0.1',
         buildId: 'sha2',
       }),

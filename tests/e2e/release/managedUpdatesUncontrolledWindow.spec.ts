@@ -21,8 +21,8 @@ type ControllerStateReadResult =
   | {
       status: 'valid';
       state: {
-        activeRelease: { releaseId: string; releaseSequence: number };
-        approvedRelease?: { releaseId: string; releaseSequence: number };
+        activeRelease: { releaseNumber: number };
+        candidate?: { phase: string; release: { releaseNumber: number } };
       };
     };
 
@@ -124,14 +124,15 @@ test('an uncontrolled same-channel window blocks activation until it closes', as
 
       await sendProtocolRequest(controlledPage, { type: 'SET_MODE', mode: 'manual' });
       const checked = await sendProtocolRequest<{
-        snapshot: { latestRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(controlledPage, { type: 'CHECK_FOR_UPDATES' });
-      expect(checked.snapshot.latestRelease?.releaseId).toBe(releaseB.releaseId);
+      expect(checked.snapshot.candidate?.release.releaseNumber).toBe(releaseB.releaseNumber);
 
       const installed = await sendProtocolRequest<{
-        snapshot: { scheduledRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(controlledPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
-      expect(installed.snapshot.scheduledRelease?.releaseId).toBe(releaseB.releaseId);
+      expect(installed.snapshot.candidate?.phase).toBe('ready');
+      expect(installed.snapshot.candidate?.release.releaseNumber).toBe(releaseB.releaseNumber);
 
       // Close the controlled page while the original uncontrolled page A
       // remains open, then open another page: B must not start activation
@@ -146,8 +147,9 @@ test('an uncontrolled same-channel window blocks activation until it closes', as
       const stillBlocked = await readControllerState(stillBlockedPage);
       expect(stillBlocked.status).toBe('valid');
       if (stillBlocked.status === 'valid') {
-        expect(stillBlocked.state.activeRelease.releaseId).toBe(releaseA.releaseId);
-        expect(stillBlocked.state.approvedRelease?.releaseId).toBe(releaseB.releaseId);
+        expect(stillBlocked.state.activeRelease.releaseNumber).toBe(releaseA.releaseNumber);
+        expect(stillBlocked.state.candidate?.phase).toBe('ready');
+        expect(stillBlocked.state.candidate?.release.releaseNumber).toBe(releaseB.releaseNumber);
       }
       await stillBlockedPage.close();
 
@@ -164,7 +166,7 @@ test('an uncontrolled same-channel window blocks activation until it closes', as
         const result = await readControllerState(activatedPage);
         if (
           result.status === 'valid' &&
-          result.state.activeRelease.releaseId === releaseB.releaseId
+          result.state.activeRelease.releaseNumber === releaseB.releaseNumber
         ) {
           break;
         }

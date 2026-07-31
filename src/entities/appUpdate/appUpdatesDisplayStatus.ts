@@ -59,7 +59,7 @@ export function deriveAppUpdatesDisplayStatus({
     case 'update-available':
     case 'install-failed':
       return 'update-available';
-    case 'rolled-back':
+    case 'failed':
       return 'update-failed';
     case 'ready':
       return 'ready';

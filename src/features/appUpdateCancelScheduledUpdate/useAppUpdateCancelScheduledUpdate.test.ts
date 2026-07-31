@@ -12,7 +12,7 @@ vi.mock('@shared/serviceClient/appUpdate/client', () => ({
 
 describe('useAppUpdateCancelScheduledUpdate', () => {
   it('cancels the scheduled update and applies the result', async () => {
-    const snapshot = { mode: 'manual', activeRelease: { releaseId: 'a', releaseSequence: 1 } };
+    const snapshot = { mode: 'manual', activeRelease: { releaseNumber: 1 } };
     cancelScheduledAppUpdateMock.mockResolvedValue(snapshot);
     const { useAppUpdateCancelScheduledUpdate } =
       await import('./useAppUpdateCancelScheduledUpdate');

@@ -23,9 +23,11 @@ const CONTROLLER_STATE_DB_NAME = 'mioframe-update-controller-stable';
 
 type Snapshot = {
   mode: 'automatic' | 'manual';
-  activeRelease: { releaseId: string; releaseSequence: number };
-  latestRelease?: { releaseId: string; releaseSequence: number };
-  scheduledRelease?: { releaseId: string; releaseSequence: number };
+  activeRelease: { releaseNumber: number };
+  candidate?: {
+    phase: 'available' | 'ready' | 'activating' | 'failed';
+    release: { releaseNumber: number };
+  };
 };
 
 async function sendProtocolRequest<T>(page: Page, request: Record<string, unknown>): Promise<T> {
@@ -44,10 +46,10 @@ async function sendProtocolRequest<T>(page: Page, request: Record<string, unknow
   );
 }
 
-async function readActiveReleaseId(page: Page): Promise<string | undefined> {
+async function readActiveReleaseNumber(page: Page): Promise<number | undefined> {
   return page.evaluate(
     (dbName) =>
-      new Promise<string | undefined>((resolve) => {
+      new Promise<number | undefined>((resolve) => {
         const request = indexedDB.open(dbName);
         request.onsuccess = () => {
           const db = request.result;
@@ -55,7 +57,7 @@ async function readActiveReleaseId(page: Page): Promise<string | undefined> {
           const getRequest = tx.objectStore('controllerState').get('controllerState');
           getRequest.onsuccess = () => {
             db.close();
-            resolve(getRequest.result?.activeRelease?.releaseId);
+            resolve(getRequest.result?.activeRelease?.releaseNumber);
           };
         };
       }),
@@ -151,8 +153,10 @@ test('a controller-code update leaves the pinned application release, and an una
       const snapshotWhileWaiting = await sendProtocolRequest<{ snapshot: Snapshot }>(pageA, {
         type: 'GET_SNAPSHOT',
       });
-      expect(snapshotWhileWaiting.snapshot.activeRelease.releaseId).toBe(releaseA.releaseId);
-      expect(snapshotWhileWaiting.snapshot.scheduledRelease).toBeUndefined();
+      expect(snapshotWhileWaiting.snapshot.activeRelease.releaseNumber).toBe(
+        releaseA.releaseNumber,
+      );
+      expect(snapshotWhileWaiting.snapshot.candidate).toBeUndefined();
 
       // Close every window the old controller code controls; ordinary
       // browser lifecycle promotes the waiting worker once none remain.
@@ -180,7 +184,7 @@ test('a controller-code update leaves the pinned application release, and an una
       // The next launch still serves release A: the controller-code upgrade
       // never changed, or needed to re-verify, the pinned application
       // release.
-      expect(await readActiveReleaseId(pageAfterUpgrade)).toBe(releaseA.releaseId);
+      expect(await readActiveReleaseNumber(pageAfterUpgrade)).toBe(releaseA.releaseNumber);
 
       // Release B remains available (discoverable) but still unapproved —
       // proven only now, through the upgraded controller code, confirming
@@ -188,14 +192,14 @@ test('a controller-code update leaves the pinned application release, and an una
       const checked = await sendProtocolRequest<{ snapshot: Snapshot }>(pageAfterUpgrade, {
         type: 'CHECK_FOR_UPDATES',
       });
-      expect(checked.snapshot.latestRelease?.releaseId).toBe(releaseB.releaseId);
-      expect(checked.snapshot.scheduledRelease).toBeUndefined();
+      expect(checked.snapshot.candidate?.release.releaseNumber).toBe(releaseB.releaseNumber);
+      expect(checked.snapshot.candidate?.phase).toBe('available');
 
       // Offline launch still serves release A.
       await context.setOffline(true);
       await pageAfterUpgrade.reload();
       await expect(pageAfterUpgrade.getByText(/^browser storage$/i)).toBeVisible();
-      expect(await readActiveReleaseId(pageAfterUpgrade)).toBe(releaseA.releaseId);
+      expect(await readActiveReleaseNumber(pageAfterUpgrade)).toBe(releaseA.releaseNumber);
       await context.setOffline(false);
 
       await pageAfterUpgrade.close();

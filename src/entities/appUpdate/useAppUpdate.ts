@@ -12,7 +12,7 @@ export type AppUpdateStatus =
   | 'not-checked'
   | 'up-to-date'
   | 'update-available'
-  | 'rolled-back'
+  | 'failed'
   | 'ready'
   | 'activating'
   | 'install-failed'
@@ -25,26 +25,19 @@ function deriveAppUpdateStatus(
   if (!isAvailable) return 'unavailable';
   if (!snapshot) return 'not-checked';
   // Activation in progress takes priority over every other status,
-  // including a stale error, `ready`, `update-available`, and any
-  // rollback-derived failure presentation: the worker has already selected
-  // a release for this clean launch, and no other action is meaningful
-  // while that resolves.
-  if (snapshot.activatingRelease) return 'activating';
+  // including an ephemeral error: the worker has already selected a
+  // release for this clean launch, and no other action is meaningful while
+  // that resolves.
+  if (snapshot.candidate?.phase === 'activating') return 'activating';
   if (snapshot.error === 'install-failed') return 'install-failed';
   if (snapshot.error === 'check-failed') return 'check-failed';
-  if (snapshot.scheduledRelease) return 'ready';
-  if (
-    snapshot.latestRelease &&
-    snapshot.latestRelease.releaseId !== snapshot.activeRelease.releaseId
-  ) {
-    // A previously rolled-back release stays visible as its own status only
-    // while it is still the latest known release; a strictly newer
-    // discovery already clears `failedRelease` worker-side and is shown as
-    // an ordinary update instead.
-    if (snapshot.failedRelease?.releaseId === snapshot.latestRelease.releaseId) {
-      return 'rolled-back';
-    }
-    return 'update-available';
+  switch (snapshot.candidate?.phase) {
+    case 'ready':
+      return 'ready';
+    case 'available':
+      return 'update-available';
+    case 'failed':
+      return 'failed';
   }
   if (!snapshot.lastSuccessfulCheckAt) return 'not-checked';
   return 'up-to-date';
@@ -106,10 +99,7 @@ const setupAppUpdate = () => {
     status,
     mode: computed(() => snapshot.value?.mode),
     activeRelease: computed(() => snapshot.value?.activeRelease),
-    latestRelease: computed(() => snapshot.value?.latestRelease),
-    scheduledRelease: computed(() => snapshot.value?.scheduledRelease),
-    activatingRelease: computed(() => snapshot.value?.activatingRelease),
-    failedRelease: computed(() => snapshot.value?.failedRelease),
+    candidate: computed(() => snapshot.value?.candidate),
     lastSuccessfulCheckAt: computed(() => snapshot.value?.lastSuccessfulCheckAt),
     error: computed(() => snapshot.value?.error),
     refresh,

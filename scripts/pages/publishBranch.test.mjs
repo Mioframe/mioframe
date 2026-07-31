@@ -12,7 +12,7 @@ vi.mock('./lib/pagesFs.mjs', () => ({
   applyBranchPublish: vi.fn(),
 }));
 vi.mock('./lib/releasePublish.mjs', () => ({
-  publishManagedRelease: vi.fn(() => ({ releaseId: 'r1', releaseSequence: 1 })),
+  publishManagedRelease: vi.fn(() => ({ releaseNumber: 1 })),
 }));
 
 const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
@@ -149,7 +149,6 @@ describe('publishBranch validation (managed "develop" slug)', () => {
       expect.objectContaining({
         distDir,
         channel: 'develop',
-        basePath: '/branch/develop/',
         appVersion: '1.2.3',
         buildId: 'abc123',
       }),

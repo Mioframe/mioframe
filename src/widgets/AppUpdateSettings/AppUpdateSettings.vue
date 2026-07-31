@@ -15,15 +15,7 @@ import { MDButton } from '@shared/ui/Button';
 import { MDList, MDListItem } from '@shared/ui/Lists';
 import { MDSwitch } from '@shared/ui/Switch';
 
-const {
-  status,
-  mode,
-  activeRelease,
-  latestRelease,
-  scheduledRelease,
-  activatingRelease,
-  lastSuccessfulCheckAt,
-} = useAppUpdate();
+const { status, mode, candidate, lastSuccessfulCheckAt } = useAppUpdate();
 const { checkForUpdates, isChecking } = useAppUpdateCheck();
 const { setMode, isChangingMode } = useAppUpdateModeChange();
 const { installOnNextLaunch, isInstalling } = useAppUpdateInstallOnNextLaunch();
@@ -65,16 +57,13 @@ const isBusy = computed(
   () => isChecking.value || isInstalling.value || isChangingMode.value || isCancelling.value,
 );
 
-const availableRelease = computed(
-  () => scheduledRelease.value ?? activatingRelease.value ?? latestRelease.value,
-);
 const availableVersion = computed(() => {
-  if (displayStatus.value === 'activating') return undefined;
-  const release = availableRelease.value;
-  if (!release || release.releaseId === activeRelease.value?.releaseId) return undefined;
-  return release.appVersion;
+  if (!candidate.value || candidate.value.phase === 'activating') return undefined;
+  return candidate.value.release.appVersion;
 });
-const activatingVersion = computed(() => activatingRelease.value?.appVersion);
+const activatingVersion = computed(() =>
+  candidate.value?.phase === 'activating' ? candidate.value.release.appVersion : undefined,
+);
 
 const showInstallOnNextLaunch = computed(
   () => mode.value === 'manual' && displayStatus.value === 'update-available',
@@ -82,9 +71,14 @@ const showInstallOnNextLaunch = computed(
 const showRetryUpdate = computed(
   () => mode.value === 'manual' && displayStatus.value === 'update-failed',
 );
-const showCancel = computed(() => mode.value === 'manual' && scheduledRelease.value !== undefined);
+const showCancel = computed(() => mode.value === 'manual' && candidate.value?.phase === 'ready');
 const isCheckDisabled = computed(
-  () => isBusy.value || displayStatus.value === 'unavailable' || displayStatus.value === 'checking',
+  () =>
+    isBusy.value ||
+    displayStatus.value === 'unavailable' ||
+    displayStatus.value === 'checking' ||
+    displayStatus.value === 'ready' ||
+    displayStatus.value === 'activating',
 );
 const isAutomaticToggleDisabled = computed(
   () => isBusy.value || displayStatus.value === 'unavailable',

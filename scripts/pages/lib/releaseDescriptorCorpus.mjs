@@ -13,12 +13,10 @@ const SHA256_OF_EMPTY_STRING = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934c
 /** A structurally valid `ReleaseDescriptor`. */
 export const validReleaseDescriptor = {
   schemaVersion: 1,
-  releaseId: '018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f',
-  releaseSequence: 1,
+  releaseNumber: 1,
   appVersion: '1.2.3',
   buildId: 'abcdef0123456789',
   buildDate: '2026-07-24T00:00:00.000Z',
-  indexUrl: '/updates/releases/018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f/index.html',
   indexSha256: SHA256_OF_EMPTY_STRING,
   indexByteSize: 2048,
   files: [{ path: 'assets/app-3f2a1c.js', sha256: SHA256_OF_EMPTY_STRING, byteSize: 1024 }],
@@ -35,16 +33,20 @@ export const invalidReleaseDescriptors = [
     descriptor: { ...validReleaseDescriptor, schemaVersion: 999 },
   },
   {
-    name: 'non-integer releaseSequence',
-    descriptor: { ...validReleaseDescriptor, releaseSequence: 1.5 },
+    name: 'non-integer releaseNumber',
+    descriptor: { ...validReleaseDescriptor, releaseNumber: 1.5 },
   },
   {
-    name: 'non-positive releaseSequence',
-    descriptor: { ...validReleaseDescriptor, releaseSequence: 0 },
+    name: 'non-positive releaseNumber',
+    descriptor: { ...validReleaseDescriptor, releaseNumber: 0 },
   },
   {
-    name: 'empty releaseId',
-    descriptor: { ...validReleaseDescriptor, releaseId: '' },
+    name: 'unsafe releaseNumber (exceeds Number.MAX_SAFE_INTEGER)',
+    descriptor: { ...validReleaseDescriptor, releaseNumber: Number.MAX_SAFE_INTEGER + 1 },
+  },
+  {
+    name: 'string releaseNumber',
+    descriptor: { ...validReleaseDescriptor, releaseNumber: '1' },
   },
   {
     name: 'non-ISO buildDate',
@@ -91,7 +93,7 @@ export const invalidReleaseDescriptors = [
       ...validReleaseDescriptor,
       files: [
         {
-          path: 'updates/releases/018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f/index.html',
+          path: 'updates/releases/1/index.html',
           sha256: SHA256_OF_EMPTY_STRING,
           byteSize: 1,
         },
@@ -109,17 +111,6 @@ export const invalidReleaseDescriptors = [
           byteSize: 1,
         },
       ],
-    },
-  },
-  {
-    name: 'releaseId not in canonical UUID format',
-    descriptor: { ...validReleaseDescriptor, releaseId: 'release-a' },
-  },
-  {
-    name: 'uppercase releaseId (must be lowercase, not merely valid hex)',
-    descriptor: {
-      ...validReleaseDescriptor,
-      releaseId: validReleaseDescriptor.releaseId.toUpperCase(),
     },
   },
   {

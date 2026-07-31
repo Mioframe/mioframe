@@ -12,12 +12,12 @@ import {
 const BASE_PATH = '/';
 const CONTROLLER_STATE_DB_NAME = 'mioframe-update-controller-stable';
 
-async function readActiveReleaseId(
+async function readActiveReleaseNumber(
   page: import('@playwright/test').Page,
-): Promise<string | undefined> {
+): Promise<number | undefined> {
   return page.evaluate(
     (dbName) =>
-      new Promise<string | undefined>((resolve) => {
+      new Promise<number | undefined>((resolve) => {
         const request = indexedDB.open(dbName);
         request.onsuccess = () => {
           const db = request.result;
@@ -30,7 +30,7 @@ async function readActiveReleaseId(
           const getRequest = tx.objectStore('controllerState').get('controllerState');
           getRequest.onsuccess = () => {
             db.close();
-            resolve(getRequest.result?.activeRelease?.releaseId);
+            resolve(getRequest.result?.activeRelease?.releaseNumber);
           };
         };
       }),
@@ -39,29 +39,29 @@ async function readActiveReleaseId(
 }
 
 /**
- * Polls {@link readActiveReleaseId} until it resolves `expectedReleaseId`,
- * bounded by `timeoutMs`. A page becoming "controlled" only guarantees the
- * worker exists — persisting its own `activeRelease` into IndexedDB from
- * the worker's own execution context can very briefly lag behind that from
- * a different page's read, so a one-shot read right after observing
- * `controller !== null` is not reliable (see the same documented race in
- * `managedUpdatesDevelop.spec.ts`).
+ * Polls {@link readActiveReleaseNumber} until it resolves
+ * `expectedReleaseNumber`, bounded by `timeoutMs`. A page becoming
+ * "controlled" only guarantees the worker exists — persisting its own
+ * `activeRelease` into IndexedDB from the worker's own execution context can
+ * very briefly lag behind that from a different page's read, so a one-shot
+ * read right after observing `controller !== null` is not reliable (see the
+ * same documented race in `managedUpdatesDevelop.spec.ts`).
  * @param page - The page to read persisted controller state from.
- * @param expectedReleaseId - The release id to wait for `activeRelease` to become.
+ * @param expectedReleaseNumber - The release number to wait for `activeRelease` to become.
  * @param timeoutMs - Maximum time to poll before throwing.
  */
-async function waitForActiveReleaseId(
+async function waitForActiveReleaseNumber(
   page: import('@playwright/test').Page,
-  expectedReleaseId: string,
+  expectedReleaseNumber: number,
   timeoutMs = 15_000,
 ): Promise<void> {
   const start = Date.now();
   for (;;) {
-    const releaseId = await readActiveReleaseId(page);
-    if (releaseId === expectedReleaseId) return;
+    const releaseNumber = await readActiveReleaseNumber(page);
+    if (releaseNumber === expectedReleaseNumber) return;
     if (Date.now() - start > timeoutMs) {
       throw new Error(
-        `Timed out waiting for activeRelease to become "${expectedReleaseId}". Last: ${releaseId}`,
+        `Timed out waiting for activeRelease to become "${expectedReleaseNumber}". Last: ${releaseNumber}`,
       );
     }
     await page.waitForTimeout(200);
@@ -171,16 +171,16 @@ test('migrates from the frozen legacy generated Workbox worker to the managed co
       // complete and this assertion would fail or time out — the concrete
       // evidence the required workflow calls for either way.
       await freshPage.waitForFunction(
-        async (releaseId) => {
-          const cache = await caches.open(`stable-release-${releaseId}`);
+        async (releaseNumber) => {
+          const cache = await caches.open(`stable-release-${releaseNumber}`);
           const marker = await cache.match(
             'https://mioframe.internal/__release-descriptor-marker__',
           );
           if (!marker) return false;
           const descriptor = await marker.json();
-          return descriptor?.releaseId === releaseId;
+          return descriptor?.releaseNumber === releaseNumber;
         },
-        published.releaseId,
+        published.releaseNumber,
         { timeout: 60_000 },
       );
 
@@ -224,7 +224,7 @@ test('migrates from the frozen legacy generated Workbox worker to the managed co
       );
       await expect(verifyPage.getByText(/^browser storage$/i)).toBeVisible();
 
-      await waitForActiveReleaseId(verifyPage, published.releaseId);
+      await waitForActiveReleaseNumber(verifyPage, published.releaseNumber);
 
       // The migrated managed release must also serve fully offline.
       await context.setOffline(true);
@@ -351,7 +351,7 @@ test('a failed first managed install leaves the legacy worker active and operati
         undefined,
         { timeout: 30_000 },
       );
-      await waitForActiveReleaseId(verifyPage, valid.releaseId);
+      await waitForActiveReleaseNumber(verifyPage, valid.releaseNumber);
 
       await verifyPage.close();
       await context.close();

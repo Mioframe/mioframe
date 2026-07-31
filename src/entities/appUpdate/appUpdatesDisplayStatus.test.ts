@@ -40,8 +40,8 @@ describe('deriveAppUpdatesDisplayStatus', () => {
     expect(derive('install-failed')).toBe('update-available');
   });
 
-  it('maps rolled-back to update-failed', () => {
-    expect(derive('rolled-back')).toBe('update-failed');
+  it('maps failed to update-failed', () => {
+    expect(derive('failed')).toBe('update-failed');
   });
 
   it('splits check-failed into could-not-check when online', () => {

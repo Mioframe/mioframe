@@ -3,7 +3,7 @@ import type { AppUpdateErrorCode, AppUpdateSnapshot } from './protocol';
 
 /**
  * Builds the UI-facing {@link AppUpdateSnapshot} from persisted controller
- * state.
+ * state: a direct projection plus an ephemeral classified error.
  * @param state - Current controller state.
  * @param error - An error to report for this response, if any.
  * @returns The resulting snapshot.
@@ -15,10 +15,7 @@ export function buildAppUpdateSnapshot(
   return {
     mode: state.mode,
     activeRelease: state.activeRelease,
-    latestRelease: state.latestRelease,
-    scheduledRelease: state.approvedRelease,
-    activatingRelease: state.activation?.targetRelease,
-    failedRelease: state.failedActivationRelease,
+    candidate: state.candidate,
     lastSuccessfulCheckAt: state.lastSuccessfulCheckAt,
     error,
   };

@@ -88,7 +88,6 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
           workDir,
           distDir,
           channel: 'develop',
-          basePath: `/branch/${slug}/`,
           appVersion,
           buildId,
         });

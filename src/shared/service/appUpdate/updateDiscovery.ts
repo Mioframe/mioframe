@@ -2,70 +2,53 @@ import { toReleaseSummary, type ManagedChannel, type ReleaseDescriptor } from '.
 import { writeControllerState } from './controllerState';
 import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
-import {
-  withProtocolVersion,
-  type AppUpdateWorkerResponse,
-  type WorkerMessageResult,
-} from './protocol';
-import { runReleaseCacheCleanup } from './releaseCache';
+import { withProtocolVersion, type AppUpdateWorkerResponse } from './protocol';
 import { fetchLatestReleasePointer, fetchReleaseDescriptor } from './releasePreparation';
 import { buildAppUpdateSnapshot } from './snapshot';
 import { withState } from './stateLock';
 import {
-  applyCheckForUpdates,
-  approveAutomaticRelease,
+  applyDiscovery,
+  completeAutomaticPreparation,
   resolveAutomaticPreparationTarget,
 } from './stateTransitions';
+import { broadcastStateChanged, cleanupReleaseCache } from './workerBroadcast';
+
+/** Result of {@link runDiscovery}. */
+export type DiscoveryResult = {
+  /** The response to post back for whatever command triggered this discovery. */
+  response: AppUpdateWorkerResponse;
+  /** Whether the discovery transaction durably changed persisted state at all (a replaced candidate, or merely an updated `lastSuccessfulCheckAt`). */
+  durablyChanged: boolean;
+  /** Whether the persisted candidate was actually replaced by a newer discovered release — the only discovery outcome that can leave a previous candidate's cache unprotected. */
+  candidateReplaced: boolean;
+  /** The descriptor this discovery already fetched and validated, when discovery itself succeeded — reusable by a subsequent preparation of the exact same release. */
+  discoveredDescriptor?: ReleaseDescriptor;
+};
 
 /**
- * Runs one discovery check: fetches and validates `latest.json`, then
- * fetches and validates the exact referenced descriptor, records the
- * resulting release summary, and — only in Automatic mode — prepares and
- * approves whichever release {@link resolveAutomaticPreparationTarget}
- * currently selects, reusing the descriptor already fetched here when it
- * matches that target instead of fetching it again.
+ * Runs one discovery transaction: fetches and validates `latest.json`, then
+ * fetches and validates the exact referenced descriptor, and applies it
+ * through {@link applyDiscovery}. Owns discovery only — it never prepares or
+ * approves anything; that is a separate, deferred decision the caller makes
+ * from the resulting response (see {@link runAutomaticPreparationFollowUp}).
  *
- * The preparation decision is deliberately independent of whether *this*
- * discovery changed `latestRelease`: a `latestRelease` that was already
- * known but never got fully prepared (e.g. a prior temporary network,
- * hashing, or cache-write failure) is retried by any later successful check
- * that still resolves it as the current target — not only by a newer
- * discovery.
- *
- * A same-sequence conflicting identity (`applyCheckForUpdates`'s
- * `'rejected-conflict'` outcome) is invalid publication metadata and fails
- * closed: the complete previous state is preserved untouched and this
- * reports `check-failed`, exactly like an unreachable `latest.json`.
- *
- * Shared by the explicit `CHECK_FOR_UPDATES` protocol request and the
- * navigation-triggered scheduled discovery check ({@link runScheduledDiscoveryCheck}).
  * The short state lock (`enqueue`) only ever covers the read/decide/persist
- * steps; `latest.json`/descriptor discovery and release preparation
- * (network + hashing, deduplicated per release id by `coordinator`) always
- * run outside it, so neither this call nor any concurrent navigation is
- * ever blocked on the other. Re-validates the candidate against current
- * state after preparation, before approving it, so a stale completion (mode
- * switched to Manual, or superseded by a newer discovery, while preparing)
- * can never silently approve the wrong release.
+ * step; the `latest.json`/descriptor fetch always runs outside it, so
+ * neither this call nor any concurrent navigation is ever blocked on the
+ * other.
  *
- * `runLifetimeWork` carries only the Automatic-approval cache cleanup, when
- * an approval actually happened, and never starts it until invoked.
- * Same-channel broadcast ownership belongs to each caller:
- * {@link runScheduledDiscoveryCheck} owns the background invalidation
- * broadcast; the `CHECK_FOR_UPDATES` protocol handler owns the foreground
- * one.
+ * A failed fetch or a structurally invalid `latest.json`/descriptor reports
+ * `check-failed` against the untouched current state.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param enqueue - The channel's serialized operation queue.
- * @param coordinator - The channel's preparation coordinator.
- * @returns The resulting response snapshot, plus any cache-cleanup follow-up work.
+ * @returns The resulting response plus durable-change facts for the caller to act on.
  */
-export async function runUpdateCheck(
+export async function runDiscovery(
   channel: ManagedChannel,
   channelBasePath: string,
   enqueue: OperationQueue,
-  coordinator: PreparationCoordinator,
-): Promise<WorkerMessageResult<AppUpdateWorkerResponse>> {
+): Promise<DiscoveryResult> {
   let descriptor: ReleaseDescriptor;
   try {
     const pointer = await fetchLatestReleasePointer(channelBasePath);
@@ -76,108 +59,135 @@ export async function runUpdateCheck(
       response: withProtocolVersion({
         snapshot: buildAppUpdateSnapshot(currentState, 'check-failed'),
       }),
+      durablyChanged: false,
+      candidateReplaced: false,
     };
   }
   const discovered = toReleaseSummary(descriptor);
-
   const checkedAt = new Date().toISOString();
-  const afterDiscovery = await withState(channel, enqueue, async (state) => {
-    const checked = applyCheckForUpdates(state, discovered, checkedAt);
-    if (checked.state !== state) await writeControllerState(channel, checked.state);
-    return checked;
-  });
 
-  if (afterDiscovery.outcome === 'rejected-conflict') {
-    return {
-      response: withProtocolVersion({
-        snapshot: buildAppUpdateSnapshot(afterDiscovery.state, 'check-failed'),
-      }),
-    };
-  }
-
-  const target = resolveAutomaticPreparationTarget(afterDiscovery.state);
-  if (!target) {
-    // Nothing currently requires Automatic preparation: wrong mode, nothing
-    // newer than `activeRelease`, already approved, an activation is in
-    // progress, or it is the recorded failed release.
-    return {
-      response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(afterDiscovery.state) }),
-    };
-  }
-
-  // Reuse the descriptor this check already fetched and validated only when
-  // it is for the exact same release as `target`; otherwise `coordinator`
-  // fetches the exact descriptor for `target` itself.
-  const reusableDescriptor = target.releaseId === discovered.releaseId ? descriptor : undefined;
-
-  try {
-    await coordinator.prepare(channel, channelBasePath, target, reusableDescriptor);
-  } catch {
-    // Background preparation failure never blocks reporting the discovery
-    // itself: `latestRelease` stays recorded, and a later check retries
-    // preparation via `resolveAutomaticPreparationTarget` above.
-    return {
-      response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(afterDiscovery.state) }),
-    };
-  }
-
-  const { approved, approvalChanged } = await withState(channel, enqueue, async (state) => {
-    // Re-validate against the current state: the user may have switched to
-    // Manual, or a newer release may already have superseded this one,
-    // while preparation was in flight.
-    if (state.mode !== 'automatic' || state.latestRelease?.releaseId !== target.releaseId) {
-      return { approved: state, approvalChanged: false };
-    }
-    const next = approveAutomaticRelease(state, target);
-    if (next === state) {
-      return { approved: next, approvalChanged: false };
-    }
-    await writeControllerState(channel, next);
-    return { approved: next, approvalChanged: true };
+  const result = await withState(channel, enqueue, async (state) => {
+    const applied = applyDiscovery(state, discovered, checkedAt);
+    if (applied.state !== state) await writeControllerState(channel, applied.state);
+    return applied;
   });
 
   return {
-    response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(approved) }),
-    runLifetimeWork: approvalChanged
-      ? () =>
-          coordinator
-            .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
-            .catch(() => {})
-      : undefined,
+    response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(result.state) }),
+    durablyChanged: result.outcome !== 'skipped',
+    candidateReplaced: result.outcome === 'updated',
+    discoveredDescriptor: descriptor,
   };
 }
 
 /**
- * Runs the scheduled once-per-worker-lifetime discovery check, regardless of
- * update mode: fetches and validates `latest.json` and the exact
- * descriptor, and records the resulting release summary. Preparing and
- * approving a genuinely newer release remains an Automatic-only decision
- * {@link runUpdateCheck} makes internally — Manual mode always stops after
- * discovery, but still learns about, and reports, a newer release.
+ * Attempts Automatic preparation of whatever release currently requires it,
+ * re-read fresh at call time — never a target captured earlier by the
+ * caller — since this always runs as deferred follow-up work after some
+ * other command's response has already been posted. A no-op when nothing
+ * currently requires preparation (wrong mode, no candidate, or the
+ * candidate is not `available`).
  *
- * This is a thin adapter over {@link runUpdateCheck} for the scheduler (see
- * `scheduledDiscoveryCheckScheduler.ts`), which has no requester waiting on
- * a response. Never throws: a failure is silently swallowed and does not
- * affect the current session. Awaits `runUpdateCheck`'s cache-cleanup
- * follow-up work itself — this call already runs under the navigation
- * `fetch` event's own `waitUntil()` ownership (see `src/sw.ts`), not a
- * `message` event's.
+ * A transient preparation failure never persists or throws: a later
+ * eligible trigger retries. A stale completion (mode changed, or the
+ * candidate was replaced or already advanced while preparing) also never
+ * persists, but best-effort cleans up any cache the stale preparation may
+ * have just written, since that cache may no longer be protected.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
- * @returns `true` when the check actually changed snapshot-relevant state
- * (a successful check always at least records a new `lastSuccessfulCheckAt`)
- * and same-channel windows should be notified to refresh their own
- * snapshot; `false` for a failed check, which changes nothing.
+ * @param reusableDescriptor - An already fetched and validated descriptor to reuse when it matches the resolved target, so preparation can skip a redundant descriptor fetch.
+ */
+export async function runAutomaticPreparationFollowUp(
+  channel: ManagedChannel,
+  channelBasePath: string,
+  channelOrigin: string,
+  enqueue: OperationQueue,
+  coordinator: PreparationCoordinator,
+  reusableDescriptor?: ReleaseDescriptor,
+): Promise<void> {
+  const target = await withState(channel, enqueue, (state) =>
+    resolveAutomaticPreparationTarget(state),
+  );
+  if (!target) return;
+
+  const descriptorToReuse =
+    reusableDescriptor?.releaseNumber === target.releaseNumber ? reusableDescriptor : undefined;
+
+  try {
+    await coordinator.prepare(channel, channelBasePath, target, descriptorToReuse);
+  } catch {
+    return;
+  }
+
+  const { changed } = await withState(channel, enqueue, async (state) => {
+    const next = completeAutomaticPreparation(state, target.releaseNumber);
+    if (next === state) return { changed: false };
+    await writeControllerState(channel, next);
+    return { changed: true };
+  });
+
+  if (changed) {
+    await broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {});
+  } else {
+    await cleanupReleaseCache(channel, coordinator);
+  }
+}
+
+/**
+ * Runs the scheduled once-per-worker-lifetime background discovery check.
+ *
+ * Skipped entirely, without even fetching `latest.json`, when the candidate
+ * is `ready` or `activating` (pinned, discovery never reaches them) or when
+ * mode is Manual and the candidate is `failed` (preserving explicit Manual
+ * retry — an automatic background check must never silently replace a
+ * failure the user has not yet acted on, though a strictly newer release is
+ * still discoverable through this same path once mode allows it or the
+ * candidate advances).
+ *
+ * Otherwise runs discovery, then — in Automatic mode, when the resulting
+ * candidate is `available` — attempts preparation as a genuinely separate
+ * background transition. Broadcasts every durable state change: discovery's
+ * own change (if any), and preparation completion's own change (if any),
+ * as two independent invalidations when both occur. Never throws: a failure
+ * is silently swallowed and does not affect the current session.
+ * @param channel - Managed channel.
+ * @param channelBasePath - This worker's channel base path.
+ * @param channelOrigin - This worker's own origin.
+ * @param enqueue - The channel's serialized operation queue.
+ * @param coordinator - The channel's preparation coordinator.
  */
 export async function runScheduledDiscoveryCheck(
   channel: ManagedChannel,
   channelBasePath: string,
+  channelOrigin: string,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
-): Promise<boolean> {
-  const result = await runUpdateCheck(channel, channelBasePath, enqueue, coordinator);
-  if (result.runLifetimeWork) await result.runLifetimeWork();
-  return result.response.snapshot.error !== 'check-failed';
+): Promise<void> {
+  const initial = await withState(channel, enqueue, (state) => state);
+  const { candidate } = initial;
+  if (candidate?.phase === 'ready' || candidate?.phase === 'activating') return;
+  if (initial.mode === 'manual' && candidate?.phase === 'failed') return;
+
+  const discovery = await runDiscovery(channel, channelBasePath, enqueue);
+  if (discovery.candidateReplaced) await cleanupReleaseCache(channel, coordinator);
+  if (discovery.durablyChanged) {
+    await broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {});
+  }
+
+  const shouldPrepare =
+    discovery.response.snapshot.mode === 'automatic' &&
+    discovery.response.snapshot.candidate?.phase === 'available';
+  if (shouldPrepare) {
+    await runAutomaticPreparationFollowUp(
+      channel,
+      channelBasePath,
+      channelOrigin,
+      enqueue,
+      coordinator,
+      discovery.discoveredDescriptor,
+    );
+  }
 }

@@ -14,8 +14,8 @@ describe('useAppUpdateInstallOnNextLaunch', () => {
   it('schedules install-on-next-launch and applies the result', async () => {
     const snapshot = {
       mode: 'manual',
-      activeRelease: { releaseId: 'a', releaseSequence: 1 },
-      scheduledRelease: { releaseId: 'b', releaseSequence: 2 },
+      activeRelease: { releaseNumber: 1 },
+      candidate: { phase: 'ready', release: { releaseNumber: 2 } },
     };
     installAppUpdateOnNextLaunchMock.mockResolvedValue(snapshot);
     const { useAppUpdateInstallOnNextLaunch } = await import('./useAppUpdateInstallOnNextLaunch');

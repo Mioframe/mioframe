@@ -1,4 +1,4 @@
-import type { ManagedChannel } from './contracts';
+import { toReleaseSummary, type ManagedChannel } from './contracts';
 import { readControllerState, writeControllerState } from './controllerState';
 import {
   fetchLatestReleasePointer,
@@ -25,7 +25,7 @@ export async function prepareInitialManagedRelease(
   const latest = await fetchLatestReleasePointer(channelBasePath);
   const descriptor = await fetchReleaseDescriptor(channelBasePath, latest);
   await prepareRelease(channelBasePath, channel, descriptor);
-  await writeControllerState(channel, buildInitialControllerState(latest));
+  await writeControllerState(channel, buildInitialControllerState(toReleaseSummary(descriptor)));
 }
 
 /**

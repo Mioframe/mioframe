@@ -1,15 +1,17 @@
 import {
-  isValidDescriptorIndexUrl,
+  buildArchivedIndexPath,
+  buildLatestPointerPath,
+  buildReleaseDescriptorPath,
   zodLatestReleasePointer,
   zodReleaseDescriptor,
+  type LatestReleasePointer,
   type ManagedChannel,
   type ReleaseDescriptor,
-  type ReleaseRef,
+  type ReleaseSummary,
 } from './contracts';
 import {
   buildReleaseCacheName,
   checkReleaseAvailability,
-  readReleaseDescriptorMarker,
   writeReleaseDescriptorMarker,
   writeReleaseIndexMarker,
 } from './releaseCache';
@@ -44,6 +46,8 @@ async function mapWithConcurrency<T, R>(
       if (index >= items.length) return;
       const item = items[index];
       if (item === undefined) return;
+      // oxlint-disable-next-line no-await-in-loop -- intentional bounded-concurrency worker; each call must finish before this worker claims its next index.
+      // eslint-disable-next-line no-await-in-loop -- intentional bounded-concurrency worker; each call must finish before this worker claims its next index.
       results[index] = await fn(item);
     }
   }
@@ -68,11 +72,13 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 /**
  * Fetches and validates this channel's `latest.json` pointer.
  * @param channelBasePath - This worker's channel base path, e.g. `/` or `/branch/develop/`.
- * @returns The validated {@link ReleaseRef} pointer.
+ * @returns The validated {@link LatestReleasePointer}.
  * @throws When the fetch fails or the pointer is structurally invalid.
  */
-export async function fetchLatestReleasePointer(channelBasePath: string): Promise<ReleaseRef> {
-  const response = await fetch(`${channelBasePath}updates/latest.json`, { cache: 'no-store' });
+export async function fetchLatestReleasePointer(
+  channelBasePath: string,
+): Promise<LatestReleasePointer> {
+  const response = await fetch(buildLatestPointerPath(channelBasePath), { cache: 'no-store' });
   if (!response.ok) throw new Error(`Failed to fetch latest.json: ${response.status}`);
   const parsed = zodLatestReleasePointer.safeParse(await response.json());
   if (!parsed.success) throw new Error('latest.json is structurally invalid');
@@ -81,31 +87,24 @@ export async function fetchLatestReleasePointer(channelBasePath: string): Promis
 
 /**
  * Fetches and validates the exact descriptor for `release`, and confirms its
- * identity matches exactly (a same-sequence conflicting descriptor is
- * treated as invalid metadata, not silently accepted).
+ * identity matches exactly.
  * @param channelBasePath - This worker's channel base path.
- * @param release - The expected release identity, from `latest.json` or an explicit approval.
+ * @param release - The expected release identity, from `latest.json` or an existing candidate.
  * @returns The validated {@link ReleaseDescriptor}.
  * @throws When the fetch fails, the descriptor is invalid, or its identity does not match `release`.
  */
 export async function fetchReleaseDescriptor(
   channelBasePath: string,
-  release: ReleaseRef,
+  release: Pick<ReleaseSummary, 'releaseNumber'>,
 ): Promise<ReleaseDescriptor> {
-  const response = await fetch(`${channelBasePath}updates/releases/${release.releaseId}.json`, {
+  const response = await fetch(buildReleaseDescriptorPath(channelBasePath, release.releaseNumber), {
     cache: 'no-store',
   });
   if (!response.ok) throw new Error(`Failed to fetch release descriptor: ${response.status}`);
   const parsed = zodReleaseDescriptor.safeParse(await response.json());
   if (!parsed.success) throw new Error('Release descriptor is structurally invalid');
-  if (
-    parsed.data.releaseId !== release.releaseId ||
-    parsed.data.releaseSequence !== release.releaseSequence
-  ) {
+  if (parsed.data.releaseNumber !== release.releaseNumber) {
     throw new Error('Release descriptor identity does not match the expected release');
-  }
-  if (!isValidDescriptorIndexUrl(parsed.data, channelBasePath)) {
-    throw new Error('Release descriptor indexUrl does not match this channel and release');
   }
   return parsed.data;
 }
@@ -125,49 +124,28 @@ export async function fetchReleaseDescriptor(
  *
  * Otherwise, since the cache is already known incomplete or absent at this
  * point, it is deleted and recreated fresh before any file is written: a
- * failed attempt (download, hash, index fetch, or write failure) deletes
- * the incomplete cache again in its `catch`, so a repeated failure never
- * leaves stale partial content behind, and an already-good cache is never
- * at risk since this path is only reached once it has already been proven
- * not good. Downloads and hashing run with bounded concurrency
+ * failed attempt (download, hash, index fetch, or write failure) deletes the
+ * incomplete cache again in its `catch`, so a repeated failure never leaves
+ * stale partial content behind, and an already-good cache is never at risk
+ * since this path is only reached once it has already been proven not good.
+ * Downloads and hashing run with bounded concurrency
  * ({@link DOWNLOAD_CONCURRENCY_LIMIT}), not an unbounded `Promise.all` over
  * every file.
- *
- * Before deleting or replacing the cache, its commit marker (if any is still
- * readable) is checked for a release identity conflict: the cache is keyed
- * by `releaseId`, so a marker for the same `releaseId` but a different
- * `releaseSequence` means the same release id has been reused for a
- * different release — preparation fails without deleting or mutating the
- * cache. A missing or corrupt marker is not a conflict: it already proved
- * "not available" above and continues through the ordinary exact-release
- * restoration path.
  * @param channelBasePath - This worker's channel base path.
  * @param channel - Managed channel.
  * @param descriptor - The validated release descriptor to prepare.
- * @throws When any file fails to download or fails byte-size/hash validation, or when the existing cache's marker conflicts with `descriptor`'s identity.
+ * @throws When any file fails to download or fails byte-size/hash validation.
  */
 export async function prepareRelease(
   channelBasePath: string,
   channel: ManagedChannel,
   descriptor: ReleaseDescriptor,
 ): Promise<void> {
-  const cacheName = buildReleaseCacheName(channel, descriptor.releaseId);
-  const release = { releaseId: descriptor.releaseId, releaseSequence: descriptor.releaseSequence };
+  const cacheName = buildReleaseCacheName(channel, descriptor.releaseNumber);
 
   const existingCache = await caches.open(cacheName);
-  if (await checkReleaseAvailability(existingCache, release, channelBasePath)) {
+  if (await checkReleaseAvailability(existingCache, descriptor.releaseNumber, channelBasePath)) {
     return;
-  }
-
-  const existingMarker = await readReleaseDescriptorMarker(existingCache);
-  if (
-    existingMarker &&
-    existingMarker.releaseId === descriptor.releaseId &&
-    existingMarker.releaseSequence !== descriptor.releaseSequence
-  ) {
-    throw new Error(
-      `Release identity conflict: cache for releaseId "${descriptor.releaseId}" already holds releaseSequence ${existingMarker.releaseSequence}, cannot prepare releaseSequence ${descriptor.releaseSequence}`,
-    );
   }
 
   await caches.delete(cacheName);
@@ -192,16 +170,17 @@ export async function prepareRelease(
       );
     });
 
-    const indexResponse = await fetch(descriptor.indexUrl, { cache: 'no-store' });
+    const indexPath = buildArchivedIndexPath(channelBasePath, descriptor.releaseNumber);
+    const indexResponse = await fetch(indexPath, { cache: 'no-store' });
     if (!indexResponse.ok) {
-      throw new Error(`Failed to download archived index: ${descriptor.indexUrl}`);
+      throw new Error(`Failed to download archived index: ${indexPath}`);
     }
     const indexBytes = await indexResponse.arrayBuffer();
     if (indexBytes.byteLength !== descriptor.indexByteSize) {
-      throw new Error(`Byte size mismatch for archived index: ${descriptor.indexUrl}`);
+      throw new Error(`Byte size mismatch for archived index: ${indexPath}`);
     }
     if ((await sha256Hex(indexBytes)) !== descriptor.indexSha256) {
-      throw new Error(`SHA-256 mismatch for archived index: ${descriptor.indexUrl}`);
+      throw new Error(`SHA-256 mismatch for archived index: ${indexPath}`);
     }
     const indexHtml = new TextDecoder().decode(indexBytes);
     await writeReleaseIndexMarker(cache, indexHtml);

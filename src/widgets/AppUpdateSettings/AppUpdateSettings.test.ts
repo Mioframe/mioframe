@@ -3,21 +3,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
 import type { AppUpdateStatus } from '@entity/appUpdate';
 
+type Candidate =
+  | {
+      phase: 'available' | 'ready' | 'failed';
+      release: { releaseNumber: number; appVersion: string };
+    }
+  | {
+      phase: 'activating';
+      release: { releaseNumber: number; appVersion: string };
+      deadlineAt: string;
+    }
+  | undefined;
+
 const status = ref<AppUpdateStatus>('not-checked');
 const mode = ref<'automatic' | 'manual'>('manual');
-const activeRelease = ref<{ releaseId: string; releaseSequence: number } | undefined>({
-  releaseId: 'release-a',
-  releaseSequence: 1,
-});
-const latestReleaseRef = ref<
-  { releaseId: string; releaseSequence: number; appVersion: string } | undefined
->(undefined);
-const scheduledReleaseRef = ref<
-  { releaseId: string; releaseSequence: number; appVersion: string } | undefined
->(undefined);
-const activatingReleaseRef = ref<
-  { releaseId: string; releaseSequence: number; appVersion: string } | undefined
->(undefined);
+const activeRelease = ref<{ releaseNumber: number } | undefined>({ releaseNumber: 1 });
+const candidateRef = ref<Candidate>(undefined);
 const lastSuccessfulCheckAt = ref<string | undefined>(undefined);
 
 const checkForUpdatesMock = vi.fn();
@@ -37,9 +38,7 @@ vi.mock('@entity/appUpdate', async () => {
       status,
       mode,
       activeRelease,
-      latestRelease: latestReleaseRef,
-      scheduledRelease: scheduledReleaseRef,
-      activatingRelease: activatingReleaseRef,
+      candidate: candidateRef,
       lastSuccessfulCheckAt,
     }),
   };
@@ -172,10 +171,8 @@ describe('AppUpdateSettings', () => {
     vi.resetModules();
     status.value = 'not-checked';
     mode.value = 'manual';
-    activeRelease.value = { releaseId: 'release-a', releaseSequence: 1 };
-    latestReleaseRef.value = undefined;
-    scheduledReleaseRef.value = undefined;
-    activatingReleaseRef.value = undefined;
+    activeRelease.value = { releaseNumber: 1 };
+    candidateRef.value = undefined;
     lastSuccessfulCheckAt.value = undefined;
     isChecking.value = false;
     isChangingMode.value = false;
@@ -209,7 +206,7 @@ describe('AppUpdateSettings', () => {
   it('update-available (Manual): shows Install on next launch and calls installOnNextLaunch', async () => {
     status.value = 'update-available';
     mode.value = 'manual';
-    latestReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
+    candidateRef.value = { phase: 'available', release: { releaseNumber: 2, appVersion: '1.1.0' } };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update available');
@@ -224,7 +221,7 @@ describe('AppUpdateSettings', () => {
   it('update-available (Automatic): does not show Install on next launch', async () => {
     status.value = 'update-available';
     mode.value = 'automatic';
-    latestReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
+    candidateRef.value = { phase: 'available', release: { releaseNumber: 2, appVersion: '1.1.0' } };
     const { root, unmount } = await mountWidget();
 
     expect(getButtonByText(root, 'Install on next launch')).toBeNull();
@@ -232,7 +229,7 @@ describe('AppUpdateSettings', () => {
   });
 
   it('update-failed (Manual): shows Retry update and calls installOnNextLaunch', async () => {
-    status.value = 'rolled-back';
+    status.value = 'failed';
     mode.value = 'manual';
     const { root, unmount } = await mountWidget();
 
@@ -246,7 +243,7 @@ describe('AppUpdateSettings', () => {
   });
 
   it('update-failed (Automatic): does not show Retry update', async () => {
-    status.value = 'rolled-back';
+    status.value = 'failed';
     mode.value = 'automatic';
     const { root, unmount } = await mountWidget();
 
@@ -258,7 +255,7 @@ describe('AppUpdateSettings', () => {
   it('ready (Manual): shows Update ready, no Install on next launch, and a working Cancel action', async () => {
     status.value = 'ready';
     mode.value = 'manual';
-    scheduledReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
+    candidateRef.value = { phase: 'ready', release: { releaseNumber: 2, appVersion: '1.1.0' } };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update ready');
@@ -276,7 +273,7 @@ describe('AppUpdateSettings', () => {
   it('ready (Automatic): shows Update ready, no Install on next launch, no Cancel action, and stays Automatic', async () => {
     status.value = 'ready';
     mode.value = 'automatic';
-    scheduledReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
+    candidateRef.value = { phase: 'ready', release: { releaseNumber: 2, appVersion: '1.1.0' } };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update ready');
@@ -289,10 +286,10 @@ describe('AppUpdateSettings', () => {
   it('activating (Manual): shows the activating hint and version, never an available version, and never shows Install on next launch, Retry update, or Cancel', async () => {
     status.value = 'activating';
     mode.value = 'manual';
-    activatingReleaseRef.value = {
-      releaseId: 'release-b',
-      releaseSequence: 2,
-      appVersion: '1.1.0',
+    candidateRef.value = {
+      phase: 'activating',
+      release: { releaseNumber: 2, appVersion: '1.1.0' },
+      deadlineAt: '2026-07-24T00:00:30.000Z',
     };
     const { root, unmount } = await mountWidget();
 
@@ -308,10 +305,10 @@ describe('AppUpdateSettings', () => {
   it('activating (Automatic): shows the activating hint and version, never Update ready, an update-available action, or an available version', async () => {
     status.value = 'activating';
     mode.value = 'automatic';
-    activatingReleaseRef.value = {
-      releaseId: 'release-b',
-      releaseSequence: 2,
-      appVersion: '1.1.0',
+    candidateRef.value = {
+      phase: 'activating',
+      release: { releaseNumber: 2, appVersion: '1.1.0' },
+      deadlineAt: '2026-07-24T00:00:30.000Z',
     };
     const { root, unmount } = await mountWidget();
 
@@ -343,6 +340,15 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
+  it('disables the check action while ready or activating, since discovery is pinned behind the selected release', async () => {
+    status.value = 'ready';
+    candidateRef.value = { phase: 'ready', release: { releaseNumber: 2, appVersion: '1.1.0' } };
+    const { root, unmount } = await mountWidget();
+
+    expect(getButtonByText(root, 'Check for updates')?.getAttribute('disabled')).toBe('');
+    unmount();
+  });
+
   it('triggers an explicit check via the distinct Check for updates action', async () => {
     const { root, unmount } = await mountWidget();
 
@@ -364,11 +370,10 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
-  it('shows the running version from APP_VERSION, never a release identity', async () => {
+  it('shows the running version from APP_VERSION, never a raw release number', async () => {
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toMatch(/Running version: \S+/);
-    expect(root.textContent).not.toContain('release-a');
     unmount();
   });
 

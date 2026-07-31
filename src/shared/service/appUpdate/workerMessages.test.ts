@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UpdateControllerState } from './contracts';
+import type { ReleaseSummary, UpdateControllerState } from './contracts';
 import { createOperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 
@@ -16,14 +16,32 @@ vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
 vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() });
 
 const PROTOCOL_VERSION = 1 as const;
+const CHANNEL_ORIGIN = 'https://mioframe.example';
+
+const releaseA: ReleaseSummary = {
+  releaseNumber: 1,
+  appVersion: '1.0.0',
+  buildId: 'build-a',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+const releaseB: ReleaseSummary = {
+  releaseNumber: 2,
+  appVersion: '1.1.0',
+  buildId: 'build-b',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+const releaseC: ReleaseSummary = {
+  releaseNumber: 3,
+  appVersion: '1.2.0',
+  buildId: 'build-c',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
 
 const baseState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
-  activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+  activeRelease: releaseA,
 };
-
-const CHANNEL_ORIGIN = 'https://mioframe.example';
 
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();
 
@@ -37,14 +55,15 @@ function createFakeCoordinator(
   };
 }
 
-describe('handleWorkerMessage', () => {
-  beforeEach(() => {
-    readControllerStateMock.mockReset();
-    writeControllerStateMock.mockReset();
-    matchAllMock.mockClear();
-    readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
-  });
+beforeEach(() => {
+  readControllerStateMock.mockReset();
+  writeControllerStateMock.mockReset();
+  matchAllMock.mockClear();
+  matchAllMock.mockResolvedValue([]);
+  readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+});
 
+describe('handleWorkerMessage', () => {
   it('throws when persisted state is not valid', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
     const { handleWorkerMessage } = await import('./workerMessages');
@@ -80,67 +99,64 @@ describe('handleWorkerMessage', () => {
     expect(result.runLifetimeWork).toBeUndefined();
   });
 
-  it('CANCEL_SCHEDULED_UPDATE clears an approved release and persists it', async () => {
-    readControllerStateMock.mockResolvedValue({
-      status: 'valid',
-      state: { ...baseState, approvedRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+  describe('CANCEL_SCHEDULED_UPDATE', () => {
+    it('returns a Manual ready candidate to available and persists it', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, candidate: { phase: 'ready', release: releaseB } },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ candidate: { phase: 'available', release: releaseB } }),
+      });
+      expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
     });
-    const { handleWorkerMessage } = await import('./workerMessages');
 
-    const result = await handleWorkerMessage(
-      'stable',
-      '/',
-      CHANNEL_ORIGIN,
-      { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
-      enqueue,
-      createFakeCoordinator(),
-    );
+    it('is a no-op for an Automatic ready candidate, and writes nothing', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          mode: 'automatic',
+          candidate: { phase: 'ready', release: releaseB },
+        },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
 
-    expect(result.response).toEqual({
-      protocolVersion: PROTOCOL_VERSION,
-      snapshot: expect.objectContaining({ scheduledRelease: undefined }),
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({
+          mode: 'automatic',
+          candidate: { phase: 'ready', release: releaseB },
+        }),
+      });
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeUndefined();
     });
-    expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
-    const call = writeControllerStateMock.mock.calls[0];
-    if (!call) throw new Error('Expected writeControllerState to have been called');
-    const [writtenChannel, writtenState] = call;
-    expect(writtenChannel).toBe('stable');
-    expect(writtenState).not.toHaveProperty('approvedRelease');
-  });
-
-  it('CANCEL_SCHEDULED_UPDATE is a no-op for an Automatic approval, even sent directly, and writes nothing', async () => {
-    readControllerStateMock.mockResolvedValue({
-      status: 'valid',
-      state: {
-        ...baseState,
-        mode: 'automatic',
-        approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-      },
-    });
-    const { handleWorkerMessage } = await import('./workerMessages');
-
-    const result = await handleWorkerMessage(
-      'stable',
-      '/',
-      CHANNEL_ORIGIN,
-      { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
-      enqueue,
-      createFakeCoordinator(),
-    );
-
-    expect(result.response).toEqual({
-      protocolVersion: PROTOCOL_VERSION,
-      snapshot: expect.objectContaining({
-        mode: 'automatic',
-        scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
-      }),
-    });
-    expect(writeControllerStateMock).not.toHaveBeenCalled();
-    expect(result.runLifetimeWork).toBeUndefined();
   });
 
   describe('SET_MODE', () => {
-    it('to manual is a true no-op when already Manual: no write, no cleanup, no broadcast', async () => {
+    it('to manual is a true no-op when already Manual: no write, no follow-up', async () => {
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
@@ -160,42 +176,17 @@ describe('handleWorkerMessage', () => {
       expect(result.runLifetimeWork).toBeUndefined();
     });
 
-    it('to automatic is a true no-op when already Automatic with nothing new to approve: no write, no cleanup, no broadcast', async () => {
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: { ...baseState, mode: 'automatic' },
-      });
-      const coordinator = createFakeCoordinator();
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
-        enqueue,
-        coordinator,
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ mode: 'automatic' }),
-      });
-      expect(coordinator.prepare).not.toHaveBeenCalled();
-      expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result.runLifetimeWork).toBeUndefined();
-    });
-
-    it('to automatic with the latest release already approved does not fetch, prepare, write, or broadcast again', async () => {
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: {
-          ...baseState,
-          mode: 'automatic',
-          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+    it('to automatic persists the mode and responds immediately, without waiting for preparation', async () => {
+      let persisted: UpdateControllerState = {
+        ...baseState,
+        candidate: { phase: 'available', release: releaseB },
+      };
+      readControllerStateMock.mockImplementation(() => ({ status: 'valid', state: persisted }));
+      writeControllerStateMock.mockImplementation(
+        (_channel: string, state: UpdateControllerState) => {
+          persisted = state;
         },
-      });
+      );
       const coordinator = createFakeCoordinator();
       const { handleWorkerMessage } = await import('./workerMessages');
 
@@ -211,21 +202,54 @@ describe('handleWorkerMessage', () => {
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({
-          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          mode: 'automatic',
+          candidate: { phase: 'available', release: releaseB },
         }),
       });
+      // The mode switch is already durable, but preparation has not started
+      // yet: it only runs once runLifetimeWork is explicitly invoked.
+      expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
       expect(coordinator.prepare).not.toHaveBeenCalled();
-      expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result.runLifetimeWork).toBeUndefined();
+      expect(result.runLifetimeWork).toBeDefined();
+
+      await result.runLifetimeWork?.();
+      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', releaseB, undefined);
     });
 
-    it('to manual clears an unstarted approval and persists it', async () => {
+    it('to automatic when already automatic with an available candidate still schedules a deferred preparation retry', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
           ...baseState,
           mode: 'automatic',
-          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          candidate: { phase: 'available', release: releaseB },
+        },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeDefined();
+      await result.runLifetimeWork?.();
+      expect(coordinator.prepare).toHaveBeenCalledTimes(1);
+    });
+
+    it('to manual clears nothing: the candidate is untouched by a mode switch', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          mode: 'automatic',
+          candidate: { phase: 'ready', release: releaseB },
         },
       });
       const { handleWorkerMessage } = await import('./workerMessages');
@@ -241,93 +265,23 @@ describe('handleWorkerMessage', () => {
 
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ mode: 'manual', scheduledRelease: undefined }),
-      });
-    });
-
-    it('to automatic with nothing newer than active does not prepare anything', async () => {
-      const coordinator = createFakeCoordinator();
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
-        enqueue,
-        coordinator,
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ mode: 'automatic' }),
-      });
-      expect(coordinator.prepare).not.toHaveBeenCalled();
-    });
-
-    it('to automatic prepares and approves a newer known release', async () => {
-      // The first (locked) read is manual with the target already known; the
-      // second (locked) read reflects the mode persisted by the first
-      // transaction, before preparation started.
-      readControllerStateMock
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
-        })
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: {
-            ...baseState,
-            mode: 'automatic',
-            latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          },
-        });
-      const coordinator = createFakeCoordinator();
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
-        enqueue,
-        coordinator,
-      );
-
-      // The mode switch is persisted in the first transaction, before
-      // preparation ever starts.
-      expect(writeControllerStateMock).toHaveBeenNthCalledWith(
-        1,
-        'stable',
-        expect.objectContaining({ mode: 'automatic' }),
-      );
-      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', {
-        releaseId: 'release-b',
-        releaseSequence: 2,
-      });
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({
-          mode: 'automatic',
-          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          mode: 'manual',
+          candidate: { phase: 'ready', release: releaseB },
         }),
       });
-      // The final approval transaction persists once more, on top of the
-      // already-durable mode switch.
-      expect(writeControllerStateMock).toHaveBeenCalledTimes(2);
     });
 
-    it('to automatic during an active activation switches mode without preparing or approving', async () => {
-      const activation = {
-        targetRelease: { releaseId: 'release-c', releaseSequence: 3 },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      };
+    it('never triggers preparation for an activating or ready candidate', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
           ...baseState,
-          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          activation,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
         },
       });
       const coordinator = createFakeCoordinator();
@@ -342,75 +296,17 @@ describe('handleWorkerMessage', () => {
         coordinator,
       );
 
+      await result.runLifetimeWork?.();
       expect(coordinator.prepare).not.toHaveBeenCalled();
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ mode: 'automatic', scheduledRelease: undefined }),
-      });
     });
 
-    it('to automatic reports install-failed when preparation fails, keeping mode Automatic without approving', async () => {
-      readControllerStateMock
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
-        })
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: {
-            ...baseState,
-            mode: 'automatic',
-            latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          },
-        });
-      const coordinator = createFakeCoordinator({
-        prepare: vi.fn().mockRejectedValue(new Error('offline')),
-      });
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
-        enqueue,
-        coordinator,
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({
-          mode: 'automatic',
-          scheduledRelease: undefined,
-          error: 'install-failed',
-        }),
-      });
-      // Mode was persisted once by the first transaction; the failed
-      // preparation's final transaction persists nothing more, and never
-      // rolls the mode back to Manual.
-      expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
-    });
-
-    it('a stale long-running Automatic request cannot overwrite a later completed Manual choice', async () => {
-      // In-memory fake persisted state so both requests observe each
-      // other's durable writes exactly as the real IndexedDB-backed
-      // controllerState module would, unlike the other tests in this file's
-      // stateless per-call mocks.
+    it('a stale long-running Automatic preparation cannot overwrite a later completed Manual choice', async () => {
       let persisted: UpdateControllerState = {
         ...baseState,
-        mode: 'manual',
-        latestRelease: {
-          releaseId: 'release-b',
-          releaseSequence: 2,
-          appVersion: '1.1.0',
-          buildId: 'build-b',
-          buildDate: '2026-07-24T00:00:00.000Z',
-        },
+        mode: 'automatic',
+        candidate: { phase: 'available', release: releaseB },
       };
-      readControllerStateMock.mockImplementation(() => ({
-        status: 'valid',
-        state: persisted,
-      }));
+      readControllerStateMock.mockImplementation(() => ({ status: 'valid', state: persisted }));
       writeControllerStateMock.mockImplementation(
         (_channel: string, state: UpdateControllerState) => {
           persisted = state;
@@ -421,7 +317,7 @@ describe('handleWorkerMessage', () => {
       const prepareGate = new Promise<void>((resolve) => {
         resolvePrepare = resolve;
       });
-      const automaticCoordinator = createFakeCoordinator({
+      const coordinator = createFakeCoordinator({
         prepare: vi.fn().mockImplementation(async () => {
           await prepareGate;
         }),
@@ -430,24 +326,22 @@ describe('handleWorkerMessage', () => {
       const { handleWorkerMessage } = await import('./workerMessages');
       const realEnqueue = createOperationQueue();
 
-      // 1. The Automatic request's first transaction persists Automatic
-      // mode, then blocks in (unlocked) preparation.
-      const automaticPromise = handleWorkerMessage(
+      const automaticResult = await handleWorkerMessage(
         'stable',
         '/',
         CHANNEL_ORIGIN,
         { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         realEnqueue,
-        automaticCoordinator,
+        coordinator,
       );
+      const followUp = automaticResult.runLifetimeWork?.();
       await vi.waitFor(() => {
-        expect(persisted.mode).toBe('automatic');
+        expect(coordinator.prepare).toHaveBeenCalledTimes(1);
       });
-      // 2. Automatic preparation is paused (the gate has not been released yet).
-      expect(automaticCoordinator.prepare).toHaveBeenCalledTimes(1);
 
-      // 3. A Manual request completes fully while preparation is still paused.
-      const manualResult = await handleWorkerMessage(
+      // A later request durably switches to Manual while preparation is
+      // still gated.
+      await handleWorkerMessage(
         'stable',
         '/',
         CHANNEL_ORIGIN,
@@ -455,30 +349,18 @@ describe('handleWorkerMessage', () => {
         realEnqueue,
         createFakeCoordinator(),
       );
-      expect(manualResult.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ mode: 'manual' }),
-      });
       expect(persisted.mode).toBe('manual');
 
-      // 4. Automatic preparation resumes and finishes.
       resolvePrepare();
-      const automaticResult = await automaticPromise;
+      await followUp;
 
-      // 5. Final approval was skipped, 6. the final persisted mode remains
-      // Manual, and 7. the stale Automatic request's own response reflects
-      // Manual, not a resurrected Automatic approval.
-      expect(automaticResult.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ mode: 'manual', scheduledRelease: undefined }),
-      });
       expect(persisted.mode).toBe('manual');
-      expect(persisted).not.toHaveProperty('approvedRelease');
+      expect(persisted.candidate).toEqual({ phase: 'available', release: releaseB });
     });
   });
 
   describe('INSTALL_ON_NEXT_LAUNCH', () => {
-    it('reports unavailable when there is no known latest release', async () => {
+    it('reports unavailable when there is no candidate', async () => {
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
@@ -496,10 +378,10 @@ describe('handleWorkerMessage', () => {
       });
     });
 
-    it('prepares and approves the latest known release', async () => {
+    it('prepares the available candidate and moves it to ready', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
-        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+        state: { ...baseState, candidate: { phase: 'available', release: releaseB } },
       });
       const coordinator = createFakeCoordinator();
       const { handleWorkerMessage } = await import('./workerMessages');
@@ -513,22 +395,40 @@ describe('handleWorkerMessage', () => {
         coordinator,
       );
 
-      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', {
-        releaseId: 'release-b',
-        releaseSequence: 2,
-      });
+      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', releaseB);
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({
-          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        }),
+        snapshot: expect.objectContaining({ candidate: { phase: 'ready', release: releaseB } }),
       });
     });
 
-    it('reports install-failed when preparation fails', async () => {
+    it('retries an exact failed candidate (explicit Manual retry) and moves it to ready', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
-        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+        state: { ...baseState, candidate: { phase: 'failed', release: releaseB } },
+      });
+      const coordinator = createFakeCoordinator();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
+        enqueue,
+        coordinator,
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ candidate: { phase: 'ready', release: releaseB } }),
+      });
+    });
+
+    it('reports install-failed when preparation fails, leaving the candidate available', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, candidate: { phase: 'available', release: releaseB } },
       });
       const coordinator = createFakeCoordinator({
         prepare: vi.fn().mockRejectedValue(new Error('offline')),
@@ -546,21 +446,23 @@ describe('handleWorkerMessage', () => {
 
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
+        snapshot: expect.objectContaining({
+          candidate: { phase: 'available', release: releaseB },
+          error: 'install-failed',
+        }),
       });
     });
 
-    it('is a no-op, without preparing, while an activation is already in progress', async () => {
-      const activation = {
-        targetRelease: { releaseId: 'release-c', releaseSequence: 3 },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      };
+    it('is a no-op, without preparing, while the candidate is already activating', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
           ...baseState,
-          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          activation,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
         },
       });
       const coordinator = createFakeCoordinator();
@@ -576,78 +478,23 @@ describe('handleWorkerMessage', () => {
       );
 
       expect(coordinator.prepare).not.toHaveBeenCalled();
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ scheduledRelease: undefined }),
+      expect(result.response).toMatchObject({
+        snapshot: expect.objectContaining({
+          candidate: expect.objectContaining({ phase: 'activating' }),
+        }),
       });
     });
 
-    it('does not approve a release superseded by a newer discovery while preparing', async () => {
-      readControllerStateMock
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
-        })
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: { ...baseState, latestRelease: { releaseId: 'release-c', releaseSequence: 3 } },
-        });
-      const coordinator = createFakeCoordinator();
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
-        enqueue,
-        coordinator,
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
-      });
-    });
-
-    it('does not start preparation in Automatic mode', async () => {
+    it('does not prepare in Automatic mode', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
           ...baseState,
           mode: 'automatic',
-          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          candidate: { phase: 'available', release: releaseB },
         },
       });
       const coordinator = createFakeCoordinator();
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
-        enqueue,
-        coordinator,
-      );
-
-      expect(coordinator.prepare).not.toHaveBeenCalled();
-      expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: undefined }),
-      });
-    });
-
-    it('does not persist an approval reached in Automatic mode', async () => {
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: {
-          ...baseState,
-          mode: 'automatic',
-          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        },
-      });
       const { handleWorkerMessage } = await import('./workerMessages');
 
       await handleWorkerMessage(
@@ -656,89 +503,73 @@ describe('handleWorkerMessage', () => {
         CHANNEL_ORIGIN,
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
-        createFakeCoordinator(),
-      );
-
-      expect(writeControllerStateMock).not.toHaveBeenCalled();
-    });
-
-    it('prevents approval when the mode switches to Automatic while preparation is in flight', async () => {
-      readControllerStateMock
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
-        })
-        .mockResolvedValueOnce({
-          status: 'valid',
-          state: {
-            ...baseState,
-            mode: 'automatic',
-            latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          },
-        });
-      const coordinator = createFakeCoordinator();
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
-        enqueue,
         coordinator,
       );
 
-      expect(coordinator.prepare).toHaveBeenCalledTimes(1);
+      expect(coordinator.prepare).not.toHaveBeenCalled();
       expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: undefined }),
-      });
     });
 
-    it('retries and reschedules the exact release recorded as previously failed, when it is still newer than activeRelease', async () => {
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: {
-          ...baseState,
-          latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          failedActivationRelease: { releaseId: 'release-b', releaseSequence: 2 },
+    // Required deterministic race proof (2): Manual installation starts for
+    // B; discovery replaces available(B) with available(C); B preparation
+    // completes; B completion is a no-op and never schedules B.
+    it('never schedules B when discovery replaces it with C while B is preparing', async () => {
+      let persisted: UpdateControllerState = {
+        ...baseState,
+        candidate: { phase: 'available', release: releaseB },
+      };
+      readControllerStateMock.mockImplementation(() => ({ status: 'valid', state: persisted }));
+      writeControllerStateMock.mockImplementation(
+        (_channel: string, state: UpdateControllerState) => {
+          persisted = state;
         },
-      });
-      const coordinator = createFakeCoordinator();
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
-        enqueue,
-        coordinator,
       );
-
-      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', {
-        releaseId: 'release-b',
-        releaseSequence: 2,
+      let resolvePrepare: () => void = () => {};
+      const prepareGate = new Promise<void>((resolve) => {
+        resolvePrepare = resolve;
       });
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({
-          scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
+      const coordinator = createFakeCoordinator({
+        prepare: vi.fn().mockImplementation(async () => {
+          await prepareGate;
         }),
       });
+      const { handleWorkerMessage } = await import('./workerMessages');
+      const realEnqueue = createOperationQueue();
+
+      const installPromise = handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
+        realEnqueue,
+        coordinator,
+      );
+      await vi.waitFor(() => {
+        expect(coordinator.prepare).toHaveBeenCalledTimes(1);
+      });
+
+      // Discovery replaces available(B) with available(C) while B is preparing.
+      persisted = { ...persisted, candidate: { phase: 'available', release: releaseC } };
+
+      resolvePrepare();
+      const result = await installPromise;
+
+      expect(result.response).toMatchObject({
+        snapshot: expect.objectContaining({ error: 'install-failed' }),
+      });
+      expect(persisted.candidate).toEqual({ phase: 'available', release: releaseC });
     });
   });
 
   describe('BOOT_OK', () => {
-    it('commits the matching activation target and acknowledges committed', async () => {
+    it('commits the matching activating candidate and acknowledges committed', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
           ...baseState,
-          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          activation: {
-            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
             deadlineAt: '2026-07-24T00:00:30.000Z',
           },
         },
@@ -749,58 +580,30 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseB.releaseNumber,
+        },
         enqueue,
         createFakeCoordinator(),
       );
 
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({
-          activeRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        }),
+        snapshot: expect.objectContaining({ activeRelease: releaseB, candidate: undefined }),
         ack: 'committed',
       });
     });
 
-    it('clears a matching recorded failure on a successful retry', async () => {
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: {
-          ...baseState,
-          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          activation: {
-            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-            deadlineAt: '2026-07-24T00:00:30.000Z',
-          },
-          failedActivationRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        },
-      });
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
-        enqueue,
-        createFakeCoordinator(),
-      );
-
-      const call = writeControllerStateMock.mock.calls[0];
-      if (!call) throw new Error('Expected writeControllerState to have been called');
-      const [, writtenState] = call;
-      expect(writtenState).not.toHaveProperty('failedActivationRelease');
-    });
-
-    it('acknowledges ignored for a non-matching release id, without writing', async () => {
+    it('acknowledges ignored for a non-matching release number, without writing', async () => {
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'unknown' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseNumber: 999 },
         enqueue,
         createFakeCoordinator(),
       );
@@ -819,9 +622,9 @@ describe('handleWorkerMessage', () => {
         status: 'valid',
         state: {
           ...baseState,
-          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          activation: {
-            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
             deadlineAt: '2026-07-24T00:00:30.000Z',
           },
         },
@@ -833,7 +636,11 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseB.releaseNumber,
+        },
         enqueue,
         createFakeCoordinator(),
       );
@@ -851,16 +658,16 @@ describe('handleWorkerMessage', () => {
         status: 'valid',
         state: {
           ...baseState,
-          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          activation: {
-            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
             deadlineAt: '2026-07-24T00:00:30.000Z',
           },
         },
       });
       const postMessage = vi.fn();
       matchAllMock.mockResolvedValue([
-        { type: 'window', url: 'https://mioframe.example/settings', postMessage },
+        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
       ]);
       const { handleWorkerMessage } = await import('./workerMessages');
 
@@ -868,76 +675,43 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseB.releaseNumber,
+        },
         enqueue,
         createFakeCoordinator(),
       );
 
-      // The invalidation broadcast is `runLifetimeWork`: an existing UI
-      // reader refreshes to the committed active release only once it is
-      // invoked and awaited.
       await result.runLifetimeWork?.();
       expect(postMessage).toHaveBeenCalledWith({
         protocolVersion: PROTOCOL_VERSION,
         type: 'APP_UPDATE_STATE_CHANGED',
       });
     });
+  });
 
-    it('cleanup and broadcast failures never change the already-durable committed response', async () => {
+  describe('BOOT_FAILED', () => {
+    it('rolls back to a failed candidate, broadcasts to same-channel windows, and acknowledges rolled-back', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
           ...baseState,
-          approvedRelease: { releaseId: 'release-b', releaseSequence: 2 },
-          activation: {
-            targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
             deadlineAt: '2026-07-24T00:00:30.000Z',
           },
         },
       });
-      matchAllMock.mockRejectedValue(new Error('clients.matchAll unavailable'));
-      const { handleWorkerMessage } = await import('./workerMessages');
-      const failingCoordinator = createFakeCoordinator({
-        runCleanup: () => Promise.reject(new Error('cleanup failed')),
-      });
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseId: 'release-b' },
-        enqueue,
-        failingCoordinator,
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({
-          activeRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        }),
-        ack: 'committed',
-      });
-      await expect(result.runLifetimeWork?.()).resolves.toBeUndefined();
-    });
-  });
-
-  describe('BOOT_FAILED', () => {
-    it('rolls back, broadcasts to same-channel windows, and acknowledges rolled-back', async () => {
-      const activation = {
-        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      };
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: { ...baseState, approvedRelease: activation.targetRelease, activation },
-      });
       const postMessage = vi.fn();
       const foreignPostMessage = vi.fn();
       matchAllMock.mockResolvedValue([
-        { type: 'window', url: 'https://mioframe.example/settings', postMessage },
+        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
         {
           type: 'window',
-          url: 'https://mioframe.example/branch/develop/',
+          url: `${CHANNEL_ORIGIN}/branch/develop/`,
           postMessage: foreignPostMessage,
         },
       ]);
@@ -947,67 +721,40 @@ describe('handleWorkerMessage', () => {
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'release-b' },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_FAILED',
+          releaseNumber: releaseB.releaseNumber,
+        },
         enqueue,
         createFakeCoordinator(),
       );
 
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ activeRelease: baseState.activeRelease }),
+        snapshot: expect.objectContaining({
+          activeRelease: releaseA,
+          candidate: { phase: 'failed', release: releaseB },
+        }),
         ack: 'rolled-back',
       });
-      // The rollback broadcast is `runLifetimeWork`, owned by the same
-      // message event's lifetime as the already-resolved acknowledgement
-      // above; see `sw.test.ts` for the real response-before-broadcast
-      // ordering proof (`handleWorkerMessage` itself never posts the
-      // response).
       await result.runLifetimeWork?.();
       expect(postMessage).toHaveBeenCalledWith({
         protocolVersion: PROTOCOL_VERSION,
         type: 'APP_UPDATE_ROLLBACK',
-        releaseId: 'release-b',
+        releaseNumber: releaseB.releaseNumber,
       });
       expect(foreignPostMessage).not.toHaveBeenCalled();
     });
 
-    it('persists the failed release as the single failedActivationRelease record', async () => {
-      const activation = {
-        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      };
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: { ...baseState, approvedRelease: activation.targetRelease, activation },
-      });
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'release-b' },
-        enqueue,
-        createFakeCoordinator(),
-      );
-
-      const call = writeControllerStateMock.mock.calls[0];
-      if (!call) throw new Error('Expected writeControllerState to have been called');
-      const [, writtenState] = call;
-      expect(writtenState).toMatchObject({
-        activeRelease: baseState.activeRelease,
-        failedActivationRelease: activation.targetRelease,
-      });
-    });
-
-    it('acknowledges ignored for a non-matching release id, without writing or broadcasting', async () => {
+    it('acknowledges ignored for a non-matching release number, without writing or broadcasting', async () => {
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'unknown' },
+        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseNumber: 999 },
         enqueue,
         createFakeCoordinator(),
       );
@@ -1021,85 +768,20 @@ describe('handleWorkerMessage', () => {
       expect(writeControllerStateMock).not.toHaveBeenCalled();
       expect(result.runLifetimeWork).toBeUndefined();
     });
-
-    it('acknowledges error and does not broadcast when rollback persistence fails', async () => {
-      const activation = {
-        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      };
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: { ...baseState, approvedRelease: activation.targetRelease, activation },
-      });
-      writeControllerStateMock.mockRejectedValue(new Error('IndexedDB is unavailable'));
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseId: 'release-b' },
-        enqueue,
-        createFakeCoordinator(),
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.anything(),
-        ack: 'error',
-      });
-      expect(matchAllMock).not.toHaveBeenCalled();
-      expect(result.runLifetimeWork).toBeUndefined();
-    });
-  });
-
-  describe('broadcastStateChanged', () => {
-    it('reaches same-channel windows but not a foreign-channel window sharing this origin', async () => {
-      const postMessage = vi.fn();
-      const foreignPostMessage = vi.fn();
-      matchAllMock.mockResolvedValue([
-        { type: 'window', url: 'https://mioframe.example/settings', postMessage },
-        {
-          type: 'window',
-          url: 'https://mioframe.example/branch/develop/',
-          postMessage: foreignPostMessage,
-        },
-      ]);
-      const { broadcastStateChanged } = await import('./workerMessages');
-
-      await broadcastStateChanged('/', CHANNEL_ORIGIN);
-
-      expect(postMessage).toHaveBeenCalledWith({
-        protocolVersion: PROTOCOL_VERSION,
-        type: 'APP_UPDATE_STATE_CHANGED',
-      });
-      expect(foreignPostMessage).not.toHaveBeenCalled();
-    });
-
-    it('never carries a snapshot, only the invalidation type and protocol version', async () => {
-      const postMessage = vi.fn();
-      matchAllMock.mockResolvedValue([
-        { type: 'window', url: 'https://mioframe.example/', postMessage },
-      ]);
-      const { broadcastStateChanged } = await import('./workerMessages');
-
-      await broadcastStateChanged('/', CHANNEL_ORIGIN);
-
-      const call = postMessage.mock.calls[0];
-      if (!call) throw new Error('Expected postMessage to have been called');
-      expect(new Set(Object.keys(call[0]))).toEqual(new Set(['type', 'protocolVersion']));
-    });
   });
 
   describe('GET_ACTIVATION_STATUS', () => {
-    it('reports the target and deadline when this release is the activation target', async () => {
-      const activation = {
-        targetRelease: { releaseId: 'release-b', releaseSequence: 2 },
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      };
+    it('reports the target and deadline when this release is activating', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
-        state: { ...baseState, activation },
+        state: {
+          ...baseState,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
       });
       const { handleWorkerMessage } = await import('./workerMessages');
 
@@ -1110,7 +792,7 @@ describe('handleWorkerMessage', () => {
         {
           protocolVersion: PROTOCOL_VERSION,
           type: 'GET_ACTIVATION_STATUS',
-          releaseId: 'release-b',
+          releaseNumber: releaseB.releaseNumber,
         },
         enqueue,
         createFakeCoordinator(),
@@ -1121,7 +803,6 @@ describe('handleWorkerMessage', () => {
         isActivationTarget: true,
         deadlineAt: '2026-07-24T00:00:30.000Z',
       });
-      expect(result.runLifetimeWork).toBeUndefined();
     });
 
     it('reports false when this release is not the activation target', async () => {
@@ -1134,7 +815,7 @@ describe('handleWorkerMessage', () => {
         {
           protocolVersion: PROTOCOL_VERSION,
           type: 'GET_ACTIVATION_STATUS',
-          releaseId: 'release-a',
+          releaseNumber: releaseA.releaseNumber,
         },
         enqueue,
         createFakeCoordinator(),
@@ -1144,30 +825,6 @@ describe('handleWorkerMessage', () => {
         protocolVersion: PROTOCOL_VERSION,
         isActivationTarget: false,
       });
-      expect(result.runLifetimeWork).toBeUndefined();
-    });
-
-    it('reports false when there is no activation at all', async () => {
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        {
-          protocolVersion: PROTOCOL_VERSION,
-          type: 'GET_ACTIVATION_STATUS',
-          releaseId: 'release-b',
-        },
-        enqueue,
-        createFakeCoordinator(),
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        isActivationTarget: false,
-      });
-      expect(result.runLifetimeWork).toBeUndefined();
     });
   });
 });

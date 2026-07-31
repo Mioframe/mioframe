@@ -30,14 +30,14 @@ type ControllerStateReadResult =
       status: 'valid';
       state: {
         mode: 'automatic' | 'manual';
-        activeRelease: { releaseId: string; releaseSequence: number };
-        latestRelease?: { releaseId: string; releaseSequence: number };
-        approvedRelease?: { releaseId: string; releaseSequence: number };
-        activation?: {
-          targetRelease: { releaseId: string; releaseSequence: number };
-          deadlineAt: string;
-        };
-        failedActivationRelease?: { releaseId: string; releaseSequence: number };
+        activeRelease: { releaseNumber: number };
+        candidate?:
+          | { phase: 'available' | 'ready' | 'failed'; release: { releaseNumber: number } }
+          | {
+              phase: 'activating';
+              release: { releaseNumber: number };
+              deadlineAt: string;
+            };
       };
     }
   | { status: 'invalid' };
@@ -121,7 +121,7 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
   let workDir = '';
   let server: Awaited<ReturnType<typeof startManagedArtifactServer>>;
   let context: BrowserContext;
-  let scheduledReleaseId: string | undefined;
+  let scheduledReleaseNumber: number | undefined;
 
   test.beforeAll(async ({ browser }) => {
     workDir = mkdtempSync(join(tmpdir(), 'managed-release-work-'));
@@ -162,7 +162,7 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     expect(result.status).toBe('valid');
     if (result.status === 'valid') {
       expect(result.state.mode).toBe('automatic');
-      expect(result.state.activation).toBeUndefined();
+      expect(result.state.candidate).toBeUndefined();
     }
 
     await page.close();
@@ -183,19 +183,19 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
 
     await sendProtocolRequest(openPage, { type: 'SET_MODE', mode: 'manual' });
     const checked = await sendProtocolRequest<{
-      snapshot: { latestRelease?: { releaseId: string } };
+      snapshot: { candidate?: { phase: string } };
     }>(openPage, { type: 'CHECK_FOR_UPDATES' });
-    expect(checked.snapshot.latestRelease).toBeTruthy();
+    expect(checked.snapshot.candidate?.phase).toBe('available');
 
     const installed = await sendProtocolRequest<{
-      snapshot: { scheduledRelease?: { releaseId: string } };
+      snapshot: { candidate?: { phase: string } };
     }>(openPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
-    expect(installed.snapshot.scheduledRelease).toBeTruthy();
+    expect(installed.snapshot.candidate?.phase).toBe('ready');
 
     const activeBeforeClose = await readControllerState(openPage, CONTROLLER_DB_NAME);
     expect(activeBeforeClose.status).toBe('valid');
     if (activeBeforeClose.status === 'valid') {
-      expect(activeBeforeClose.state.activeRelease.releaseSequence).toBe(1);
+      expect(activeBeforeClose.state.activeRelease.releaseNumber).toBe(1);
     }
 
     // The open session must not be reloaded just because an update was scheduled.
@@ -210,15 +210,11 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
 
     const committed = await waitForControllerState(
       page,
-      (r) => r.status === 'valid' && r.state.activeRelease.releaseSequence === 2,
+      (r) => r.status === 'valid' && r.state.activeRelease.releaseNumber === 2,
     );
     expect(committed.status).toBe('valid');
     if (committed.status === 'valid') {
-      expect(committed.state.activation).toBeUndefined();
-      expect(committed.state.approvedRelease).toBeUndefined();
-      expect(committed.state.failedActivationRelease?.releaseId).not.toBe(
-        committed.state.activeRelease.releaseId,
-      );
+      expect(committed.state.candidate).toBeUndefined();
     }
 
     await page.close();
@@ -242,17 +238,33 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
 
     await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'automatic' });
     const checked = await sendProtocolRequest<{
-      snapshot: { scheduledRelease?: { releaseId: string; releaseSequence: number } };
+      snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
     }>(page, { type: 'CHECK_FOR_UPDATES' });
 
-    expect(checked.snapshot.scheduledRelease?.releaseSequence).toBe(3);
-    scheduledReleaseId = checked.snapshot.scheduledRelease?.releaseId;
+    // CHECK_FOR_UPDATES owns discovery only and responds before Automatic
+    // preparation starts (see the managed pinned application updates
+    // feature): the response itself only shows the newly discovered
+    // `available` candidate.
+    expect(checked.snapshot.candidate?.phase).toBe('available');
+    expect(checked.snapshot.candidate?.release.releaseNumber).toBe(3);
+
+    // Automatic preparation runs as deferred worker-owned follow-up work
+    // after the response; poll persisted state directly for it to complete.
+    const ready = await waitForControllerState(
+      page,
+      (r) =>
+        r.status === 'valid' &&
+        r.state.candidate?.phase === 'ready' &&
+        r.state.candidate.release.releaseNumber === 3,
+    );
+    scheduledReleaseNumber =
+      ready.status === 'valid' ? ready.state.candidate?.release.releaseNumber : undefined;
 
     await page.close();
   });
 
   test('a boot failure rolls back to the previous release and broadcasts reload', async () => {
-    expect(scheduledReleaseId).toBeTruthy();
+    expect(scheduledReleaseNumber).toBeTruthy();
     const page = await context.newPage();
 
     // Release C's own entry script (published broken by the previous test)
@@ -266,12 +278,12 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
 
     const rolledBack = await waitForControllerState(
       page,
-      (r) => r.status === 'valid' && r.state.activeRelease.releaseSequence === 2,
+      (r) => r.status === 'valid' && r.state.activeRelease.releaseNumber === 2,
     );
     expect(rolledBack.status).toBe('valid');
     if (rolledBack.status === 'valid') {
-      expect(rolledBack.state.activation).toBeUndefined();
-      expect(rolledBack.state.failedActivationRelease?.releaseId).toBe(scheduledReleaseId);
+      expect(rolledBack.state.candidate?.phase).toBe('failed');
+      expect(rolledBack.state.candidate?.release.releaseNumber).toBe(scheduledReleaseNumber);
     }
 
     await page.close();
@@ -283,10 +295,11 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     await waitForControlledPage(page);
 
     const checked = await sendProtocolRequest<{
-      snapshot: { scheduledRelease?: { releaseId: string } };
+      snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
     }>(page, { type: 'CHECK_FOR_UPDATES' });
 
-    expect(checked.snapshot.scheduledRelease).toBeUndefined();
+    expect(checked.snapshot.candidate?.phase).toBe('failed');
+    expect(checked.snapshot.candidate?.release.releaseNumber).toBe(scheduledReleaseNumber);
 
     await page.close();
   });
@@ -294,11 +307,10 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
   test('after an Automatic rollback, switching to Manual mode and retrying schedules the failed release again', async () => {
     // Continues directly from the previous two tests' real rollback: mode is
     // still Automatic, and the worker's own persisted state already records
-    // release C (`scheduledReleaseId`) as `failedActivationRelease` and the
-    // still-current `latestRelease` — exactly the "release B fails boot →
-    // rollback to A" precondition, reusing that real boot failure rather
-    // than reproducing it.
-    expect(scheduledReleaseId).toBeTruthy();
+    // release C (`scheduledReleaseNumber`) as the single `failed` candidate —
+    // exactly the "release B fails boot → rollback to A" precondition,
+    // reusing that real boot failure rather than reproducing it.
+    expect(scheduledReleaseNumber).toBeTruthy();
     const page = await context.newPage();
     await page.goto(server.url);
     await waitForControlledPage(page);
@@ -309,10 +321,11 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     // Retry update: the real `INSTALL_ON_NEXT_LAUNCH` request the widget's
     // "Retry update" action sends.
     const retried = await sendProtocolRequest<{
-      snapshot: { scheduledRelease?: { releaseId: string } };
+      snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
     }>(page, { type: 'INSTALL_ON_NEXT_LAUNCH' });
 
-    expect(retried.snapshot.scheduledRelease?.releaseId).toBe(scheduledReleaseId);
+    expect(retried.snapshot.candidate?.phase).toBe('ready');
+    expect(retried.snapshot.candidate?.release.releaseNumber).toBe(scheduledReleaseNumber);
 
     // Restore the schedule this test intentionally created, so later tests
     // in this shared lifecycle keep seeing the same pre-existing state this
@@ -352,8 +365,19 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     // Directly write an expired in-progress activation, simulating a browser
     // crash mid-activation on a prior launch. Direct IndexedDB mutation is
     // used here only because this is a dedicated crash-recovery test.
+    //
+    // The simulated target's release number is deliberately exactly
+    // `activeRelease.releaseNumber + 1` — the persisted-state invariant
+    // requires a candidate strictly newer than `activeRelease`, and, unlike
+    // the replaced multi-reference model's opaque release id, this
+    // architecture's candidate replacement is ordering-based: an
+    // arbitrarily large simulated number would permanently block every real
+    // release this shared lifecycle publishes afterward from ever being
+    // discovered as newer.
+    const simulatedTargetReleaseNumber =
+      before.status === 'valid' ? before.state.activeRelease.releaseNumber + 1 : -1;
     await setupPage.evaluate(
-      ({ dbName, active }) =>
+      ({ dbName, active, targetReleaseNumber }) =>
         new Promise<void>((resolve, reject) => {
           const request = indexedDB.open(dbName);
           request.onsuccess = () => {
@@ -364,10 +388,10 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
                 schemaVersion: 1,
                 mode: 'manual',
                 activeRelease: active,
-                activation: {
-                  targetRelease: {
-                    releaseId: '99999999-9999-4999-8999-999999999999',
-                    releaseSequence: 999,
+                candidate: {
+                  phase: 'activating',
+                  release: {
+                    releaseNumber: targetReleaseNumber,
                     appVersion: '9.9.9',
                     buildId: 'crash-recovery-simulated-target',
                     buildDate: '2000-01-01T00:00:00.000Z',
@@ -389,7 +413,11 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
             reject(new Error(request.error?.message ?? 'IndexedDB request failed'));
           };
         }),
-      { dbName: CONTROLLER_DB_NAME, active: activeRelease },
+      {
+        dbName: CONTROLLER_DB_NAME,
+        active: activeRelease,
+        targetReleaseNumber: simulatedTargetReleaseNumber,
+      },
     );
     await setupPage.close();
 
@@ -403,7 +431,8 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     const recovered = await readControllerState(page, CONTROLLER_DB_NAME);
     expect(recovered.status).toBe('valid');
     if (recovered.status === 'valid') {
-      expect(recovered.state.activation).toBeUndefined();
+      expect(recovered.state.candidate?.phase).toBe('failed');
+      expect(recovered.state.candidate?.release.releaseNumber).toBe(simulatedTargetReleaseNumber);
       expect(recovered.state.activeRelease).toEqual(activeRelease);
     }
 
@@ -412,49 +441,56 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
 
   test('a second live same-channel window blocks the clean launch a lone navigation would otherwise start', async () => {
     const setupPage = await context.newPage();
-    await setupPage.goto(server.url);
-    await waitForControlledPage(setupPage);
-    const before = await readControllerState(setupPage, CONTROLLER_DB_NAME);
-    expect(before.status).toBe('valid');
-    const activeReleaseId =
-      before.status === 'valid' ? before.state.activeRelease.releaseId : undefined;
-    expect(activeReleaseId).toBeTruthy();
-
     const secondWindow = await context.newPage();
-    await secondWindow.goto(server.url);
-    await waitForControlledPage(secondWindow);
+    // Every later test in this shared lifecycle depends on no live window
+    // surviving a failed assertion here — close both defensively even if an
+    // assertion below throws.
+    try {
+      await setupPage.goto(server.url);
+      await waitForControlledPage(setupPage);
+      const before = await readControllerState(setupPage, CONTROLLER_DB_NAME);
+      expect(before.status).toBe('valid');
+      const activeReleaseNumber =
+        before.status === 'valid' ? before.state.activeRelease.releaseNumber : undefined;
+      expect(activeReleaseNumber).toBeTruthy();
 
-    const releaseD = await buildAndPublishManagedRelease({
-      channel: 'stable',
-      basePath: BASE_PATH,
-      appVersion: '1.4.0',
-      buildId: 'second-window-blocks-release-d',
-      workDir,
-    });
+      await secondWindow.goto(server.url);
+      await waitForControlledPage(secondWindow);
 
-    const checked = await sendProtocolRequest<{
-      snapshot: { latestRelease?: { releaseId: string } };
-    }>(setupPage, { type: 'CHECK_FOR_UPDATES' });
-    expect(checked.snapshot.latestRelease?.releaseId).toBe(releaseD.releaseId);
-    const installed = await sendProtocolRequest<{
-      snapshot: { scheduledRelease?: { releaseId: string } };
-    }>(setupPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
-    expect(installed.snapshot.scheduledRelease?.releaseId).toBe(releaseD.releaseId);
+      const releaseD = await buildAndPublishManagedRelease({
+        channel: 'stable',
+        basePath: BASE_PATH,
+        appVersion: '1.4.0',
+        buildId: 'second-window-blocks-release-d',
+        workDir,
+      });
 
-    // secondWindow is still open and controlled: navigating setupPage must
-    // not activate release D.
-    await setupPage.reload();
-    await waitForControlledPage(setupPage);
-    await expect(setupPage.getByText(/^browser storage$/i)).toBeVisible();
-    const afterNavigation = await readControllerState(setupPage, CONTROLLER_DB_NAME);
-    expect(afterNavigation.status).toBe('valid');
-    if (afterNavigation.status === 'valid') {
-      expect(afterNavigation.state.activeRelease.releaseId).toBe(activeReleaseId);
-      expect(afterNavigation.state.approvedRelease?.releaseId).toBe(releaseD.releaseId);
+      const checked = await sendProtocolRequest<{
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
+      }>(setupPage, { type: 'CHECK_FOR_UPDATES' });
+      expect(checked.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
+      const installed = await sendProtocolRequest<{
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
+      }>(setupPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
+      expect(installed.snapshot.candidate?.phase).toBe('ready');
+      expect(installed.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
+
+      // secondWindow is still open and controlled: navigating setupPage must
+      // not activate release D.
+      await setupPage.reload();
+      await waitForControlledPage(setupPage);
+      await expect(setupPage.getByText(/^browser storage$/i)).toBeVisible();
+      const afterNavigation = await readControllerState(setupPage, CONTROLLER_DB_NAME);
+      expect(afterNavigation.status).toBe('valid');
+      if (afterNavigation.status === 'valid') {
+        expect(afterNavigation.state.activeRelease.releaseNumber).toBe(activeReleaseNumber);
+        expect(afterNavigation.state.candidate?.phase).toBe('ready');
+        expect(afterNavigation.state.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
+      }
+    } finally {
+      await setupPage.close();
+      await secondWindow.close();
     }
-
-    await setupPage.close();
-    await secondWindow.close();
   });
 
   test('a temporary Automatic preparation failure recovers on a later check of the same published release', async () => {
@@ -498,23 +534,42 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
 
     try {
       const failedCheck = await sendProtocolRequest<{
-        snapshot: {
-          latestRelease?: { releaseId: string };
-          scheduledRelease?: { releaseId: string };
-        };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(page, { type: 'CHECK_FOR_UPDATES' });
 
-      expect(failedCheck.snapshot.latestRelease?.releaseId).toBe(releaseRetry.releaseId);
-      expect(failedCheck.snapshot.scheduledRelease).toBeUndefined();
-      expect(abortedCount).toBe(1);
+      // CHECK_FOR_UPDATES owns discovery only and responds before Automatic
+      // preparation starts, so its own response only shows the newly
+      // discovered `available` candidate — the aborted request happens
+      // during the deferred preparation that follows, not during this call.
+      expect(failedCheck.snapshot.candidate?.phase).toBe('available');
+      expect(failedCheck.snapshot.candidate?.release.releaseNumber).toBe(
+        releaseRetry.releaseNumber,
+      );
+
+      await expect.poll(() => abortedCount, { timeout: 20_000 }).toBe(1);
+      const stillAvailable = await readControllerState(page, CONTROLLER_DB_NAME);
+      expect(stillAvailable.status).toBe('valid');
+      if (stillAvailable.status === 'valid') {
+        // The failed preparation attempt never persists or approves
+        // anything: the candidate remains `available`, retryable by a later
+        // eligible trigger.
+        expect(stillAvailable.state.candidate?.phase).toBe('available');
+      }
     } finally {
       await context.unroute(targetUrl);
     }
 
-    const retriedCheck = await sendProtocolRequest<{
-      snapshot: { scheduledRelease?: { releaseId: string } };
-    }>(page, { type: 'CHECK_FOR_UPDATES' });
-    expect(retriedCheck.snapshot.scheduledRelease?.releaseId).toBe(releaseRetry.releaseId);
+    // A later check of the same still-`available` candidate retries
+    // preparation; this time nothing is aborted and it succeeds.
+    await sendProtocolRequest(page, { type: 'CHECK_FOR_UPDATES' });
+    const retried = await waitForControllerState(
+      page,
+      (r) =>
+        r.status === 'valid' &&
+        r.state.candidate?.phase === 'ready' &&
+        r.state.candidate.release.releaseNumber === releaseRetry.releaseNumber,
+    );
+    expect(retried.status).toBe('valid');
 
     await page.close();
 
@@ -523,11 +578,12 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     await waitForControlledPage(activationPage);
     const committed = await waitForControllerState(
       activationPage,
-      (r) => r.status === 'valid' && r.state.activeRelease.releaseId === releaseRetry.releaseId,
+      (r) =>
+        r.status === 'valid' && r.state.activeRelease.releaseNumber === releaseRetry.releaseNumber,
     );
     expect(committed.status).toBe('valid');
     if (committed.status === 'valid') {
-      expect(committed.state.approvedRelease).toBeUndefined();
+      expect(committed.state.candidate).toBeUndefined();
     }
     await activationPage.close();
   });

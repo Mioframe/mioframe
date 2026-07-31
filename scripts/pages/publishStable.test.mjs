@@ -9,7 +9,7 @@ vi.mock('./lib/ghPagesBranch.mjs', () => ({
   }),
 }));
 vi.mock('./lib/releasePublish.mjs', () => ({
-  publishManagedRelease: vi.fn(() => ({ releaseId: 'r1', releaseSequence: 1 })),
+  publishManagedRelease: vi.fn(() => ({ releaseNumber: 1 })),
 }));
 
 const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
@@ -109,7 +109,6 @@ describe('publishStable target repository', () => {
       expect.objectContaining({
         distDir,
         channel: 'stable',
-        basePath: '/',
         appVersion: '1.2.3',
         buildId: 'abc123',
       }),

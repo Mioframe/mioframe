@@ -10,7 +10,12 @@ import {
 
 const snapshot = {
   mode: 'manual' as const,
-  activeRelease: { releaseId: '11111111-1111-4111-8111-111111111111', releaseSequence: 1 },
+  activeRelease: {
+    releaseNumber: 1,
+    appVersion: '1.0.0',
+    buildId: 'build-a',
+    buildDate: '2026-07-24T00:00:00.000Z',
+  },
 };
 
 /** A promise that never settles, standing in for a `ready` that never resolves. */
@@ -178,7 +183,7 @@ describe('subscribeToAppUpdateStateChanged', () => {
     const onStateChanged = vi.fn();
 
     subscribeToAppUpdateStateChanged(onStateChanged);
-    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_ROLLBACK', releaseId: 'release-a' });
+    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_ROLLBACK', releaseNumber: 1 });
 
     expect(onStateChanged).not.toHaveBeenCalled();
   });

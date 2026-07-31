@@ -145,13 +145,13 @@ test('activation is represented in the App updates UI, without a false update-av
       });
       await sendProtocolRequest(firstPage, { type: 'SET_MODE', mode: 'manual' });
       const checked = await sendProtocolRequest<{
-        snapshot: { latestRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(firstPage, { type: 'CHECK_FOR_UPDATES' });
-      expect(checked.snapshot.latestRelease).toBeTruthy();
+      expect(checked.snapshot.candidate?.phase).toBe('available');
       const installed = await sendProtocolRequest<{
-        snapshot: { scheduledRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(firstPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
-      expect(installed.snapshot.scheduledRelease).toBeTruthy();
+      expect(installed.snapshot.candidate?.phase).toBe('ready');
 
       // Close every Mioframe window: no same-channel window remains live.
       await firstPage.close();

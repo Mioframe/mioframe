@@ -14,7 +14,7 @@ import { APP_UPDATE_PROTOCOL_MESSAGE_TYPES, APP_UPDATE_PROTOCOL_VERSION } from '
 // same proven-equivalence pattern `contracts.test.ts` already uses for the
 // release descriptor validators.
 describe('watchdog/protocol parity', () => {
-  const script = buildWatchdogScript('release-1');
+  const script = buildWatchdogScript(1);
 
   it('uses the exact same protocol message-type literals as protocol.ts', () => {
     expect(script).toContain(`'${APP_UPDATE_PROTOCOL_MESSAGE_TYPES.BOOT_OK}'`);

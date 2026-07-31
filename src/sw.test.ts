@@ -11,10 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // surfaces.
 
 const handleWorkerMessageMock = vi.fn();
-const broadcastStateChangedMock = vi.fn();
 vi.mock('./shared/service/appUpdate/workerMessages', () => ({
   handleWorkerMessage: (...args: unknown[]) => handleWorkerMessageMock(...args),
-  broadcastStateChanged: (...args: unknown[]) => broadcastStateChangedMock(...args),
 }));
 
 const isSameChannelWindowClientMock = vi.fn((..._args: unknown[]) => true);
@@ -36,7 +34,7 @@ vi.mock('./shared/service/appUpdate/operationQueue', () => ({
 vi.mock('./shared/service/appUpdate/preparationCoordinator', () => ({
   createPreparationCoordinator: () => ({
     prepare: vi.fn(),
-    runCleanup: (cleanup: (ids: readonly string[]) => Promise<void>) => cleanup([]),
+    runCleanup: (cleanup: (ids: readonly number[]) => Promise<void>) => cleanup([]),
   }),
 }));
 
@@ -51,7 +49,7 @@ vi.mock('./shared/service/appUpdate/releaseCache', () => ({
 }));
 
 vi.mock('./shared/service/appUpdate/updateDiscovery', () => ({
-  runScheduledDiscoveryCheck: vi.fn().mockResolvedValue(false),
+  runScheduledDiscoveryCheck: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('./shared/service/appUpdate/workerFetch', () => ({
@@ -91,7 +89,10 @@ async function importSwAndGetMessageListener(): Promise<FakeMessageListener> {
   return listener;
 }
 
-/** A `Promise<void>` deferred until the test explicitly resolves it. */
+/**
+ * A `Promise<void>` deferred until the test explicitly resolves it.
+ * @returns The deferred promise and its resolver.
+ */
 function createDeferredVoid(): { promise: Promise<void>; resolve: () => void } {
   let resolve!: () => void;
   const promise = new Promise<void>((res) => {
@@ -134,7 +135,6 @@ describe('src/sw.ts message handler', () => {
   beforeEach(() => {
     vi.resetModules();
     handleWorkerMessageMock.mockReset();
-    broadcastStateChangedMock.mockReset();
     isSameChannelWindowClientMock.mockReset();
     isSameChannelWindowClientMock.mockReturnValue(true);
   });

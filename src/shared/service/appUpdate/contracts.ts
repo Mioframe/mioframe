@@ -10,30 +10,17 @@ export type ManagedChannel = 'stable' | 'develop';
 export const RELEASE_DESCRIPTOR_SCHEMA_VERSION = 1;
 
 /**
- * Matches the canonical lowercase-hyphenated UUID shape produced by
- * `crypto.randomUUID()` (the Node publisher's only source of `releaseId`).
- * Shared by every schema that carries a release identity, so a malformed
- * `latest.json` pointer or descriptor is rejected at the same boundary
- * rather than only at whichever consumer happens to compare strings later.
+ * Returns `true` when `value` is a positive safe integer — the sole identity
+ * and ordering value for a release. Mirrors `isPositiveSafeInteger` in
+ * `scripts/pages/lib/releaseDescriptor.mjs`.
+ * @param value - Candidate value.
+ * @returns Whether `value` is a positive safe integer.
  */
-const CANONICAL_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const isPositiveSafeInteger = (value: number): boolean =>
+  Number.isSafeInteger(value) && value > 0;
 
-/** A release identifier in the exact canonical UUID format the publisher produces. */
-const zodReleaseId = z.string().check(z.refine((value) => CANONICAL_UUID_PATTERN.test(value)));
-
-/**
- * Forward-ordering identity for one immutable application release.
- *
- * `releaseId` is the immutable release identifier; `releaseSequence` is used
- * only to order releases relative to each other, never to look up historical
- * releases.
- */
-export const zodReleaseRef = z.object({
-  releaseId: zodReleaseId,
-  releaseSequence: z.number().check(z.int(), z.positive()),
-});
-/** A {@link zodReleaseRef}-validated release identity. */
-export type ReleaseRef = z.infer<typeof zodReleaseRef>;
+/** A release identifier: one positive safe-integer, both identity and ordering value. */
+const zodReleaseNumber = z.number().check(z.refine(isPositiveSafeInteger));
 
 /** Channel-root-relative path prefix reserved for controller metadata (`latest.json`, descriptors, archived indexes) — never a valid ordinary release file. */
 const RESERVED_UPDATES_PREFIX = 'updates/';
@@ -43,8 +30,8 @@ const RESERVED_UPDATES_PREFIX = 'updates/';
  * file path: no leading slash, no `..` traversal segment, no query/hash
  * suffix, no percent-encoded path separator, and not under the reserved
  * `updates/` metadata prefix (which also excludes every release's own
- * archived index, always published under `updates/releases/<id>/`, from
- * ever being listed as one of its own ordinary release files).
+ * archived index, always published under `updates/releases/<releaseNumber>/`,
+ * from ever being listed as one of its own ordinary release files).
  * @param path - Candidate release file path.
  * @returns Whether `path` is canonical.
  */
@@ -87,12 +74,10 @@ const hasUniqueFilePaths = (files: readonly ReleaseFile[]): boolean =>
  */
 export const zodReleaseDescriptor = z.object({
   schemaVersion: z.literal(RELEASE_DESCRIPTOR_SCHEMA_VERSION),
-  releaseId: zodReleaseId,
-  releaseSequence: z.number().check(z.int(), z.positive()),
+  releaseNumber: zodReleaseNumber,
   appVersion: z.string().check(z.minLength(1)),
   buildId: z.string().check(z.minLength(1)),
   buildDate: z.iso.datetime(),
-  indexUrl: z.string().check(z.minLength(1)),
   /** Lowercase hex SHA-256 digest of the final archived `index.html` bytes, computed after boot-watchdog injection. */
   indexSha256: z.string().check(z.refine((value) => SHA256_HEX_PATTERN.test(value))),
   /** Exact byte size of the final archived `index.html`, computed after boot-watchdog injection. */
@@ -103,61 +88,53 @@ export const zodReleaseDescriptor = z.object({
 export type ReleaseDescriptor = z.infer<typeof zodReleaseDescriptor>;
 
 /**
- * Builds the exact `indexUrl` a valid descriptor for `releaseId` must carry
- * within `channelBasePath`. A descriptor is only usable within the channel
- * that published it — this is what makes a channel-root-relative
- * `indexUrl` from a different channel (or a hand-crafted absolute URL
- * pointing elsewhere) rejected rather than silently followed.
+ * Builds the channel-root-relative path of a release's published descriptor.
  * @param channelBasePath - The worker's own channel base path, e.g. `/` or `/branch/develop/`.
- * @param releaseId - The release's immutable identifier.
- * @returns The exact expected `indexUrl`.
+ * @param releaseNumber - The release's identity.
+ * @returns The descriptor's fetch path.
  */
-export const buildExpectedIndexUrl = (channelBasePath: string, releaseId: string): string =>
-  `${channelBasePath}updates/releases/${releaseId}/index.html`;
+export const buildReleaseDescriptorPath = (
+  channelBasePath: string,
+  releaseNumber: number,
+): string => `${channelBasePath}updates/releases/${releaseNumber}.json`;
 
 /**
- * Returns `true` when `descriptor.indexUrl` is exactly the archived index
- * this channel and release id must resolve to.
- * @param descriptor - A structurally validated release descriptor.
- * @param channelBasePath - The worker's own channel base path.
- * @returns Whether `descriptor.indexUrl` is valid for this channel and release.
+ * Builds the channel-root-relative path of a release's archived index
+ * document.
+ * @param channelBasePath - The worker's own channel base path, e.g. `/` or `/branch/develop/`.
+ * @param releaseNumber - The release's identity.
+ * @returns The archived index's fetch path.
  */
-export const isValidDescriptorIndexUrl = (
-  descriptor: Pick<ReleaseDescriptor, 'indexUrl' | 'releaseId'>,
-  channelBasePath: string,
-): boolean => descriptor.indexUrl === buildExpectedIndexUrl(channelBasePath, descriptor.releaseId);
+export const buildArchivedIndexPath = (channelBasePath: string, releaseNumber: number): string =>
+  `${channelBasePath}updates/releases/${releaseNumber}/index.html`;
+
+/**
+ * Builds the channel-root-relative path of the published `latest.json`
+ * pointer.
+ * @param channelBasePath - The worker's own channel base path, e.g. `/` or `/branch/develop/`.
+ * @returns The pointer's fetch path.
+ */
+export const buildLatestPointerPath = (channelBasePath: string): string =>
+  `${channelBasePath}updates/latest.json`;
 
 /**
  * The `latest.json` pointer published last during release publication.
- * Deliberately just a {@link ReleaseRef}: a worker must fetch and validate
- * the exact descriptor separately before trusting this pointer.
+ * Deliberately just the release number: a worker must fetch and validate the
+ * exact descriptor separately before trusting this pointer.
  */
-export const zodLatestReleasePointer = zodReleaseRef;
+export const zodLatestReleasePointer = z.object({ releaseNumber: zodReleaseNumber });
 /** A {@link zodLatestReleasePointer}-validated `latest.json` pointer. */
 export type LatestReleasePointer = z.infer<typeof zodLatestReleasePointer>;
 
 /**
- * Extracts the {@link ReleaseRef} identity carried by a validated
- * {@link ReleaseDescriptor}.
- * @param descriptor - A validated release descriptor.
- * @returns The release's `{ releaseId, releaseSequence }` identity.
- */
-export const toReleaseRef = (descriptor: ReleaseDescriptor): ReleaseRef => ({
-  releaseId: descriptor.releaseId,
-  releaseSequence: descriptor.releaseSequence,
-});
-
-/**
- * Release identity plus the display metadata a UI needs to show a candidate
- * release without reading worker cache internals: exact `appVersion`,
- * `buildId`, and `buildDate` from a successfully validated
- * {@link ReleaseDescriptor}. Never derived from a bare `latest.json` pointer
- * or guessed — only from a descriptor that has already passed
- * {@link zodReleaseDescriptor} and identity validation.
+ * Release identity plus the display metadata a UI needs to show a release
+ * without reading worker cache internals: exact `appVersion`, `buildId`, and
+ * `buildDate` from a successfully validated {@link ReleaseDescriptor}. Never
+ * derived from a bare `latest.json` pointer or guessed — only from a
+ * descriptor that has already passed {@link zodReleaseDescriptor} validation.
  */
 export const zodReleaseSummary = z.object({
-  releaseId: zodReleaseId,
-  releaseSequence: z.number().check(z.int(), z.positive()),
+  releaseNumber: zodReleaseNumber,
   appVersion: z.string().check(z.minLength(1)),
   buildId: z.string().check(z.minLength(1)),
   buildDate: z.iso.datetime(),
@@ -172,8 +149,7 @@ export type ReleaseSummary = z.infer<typeof zodReleaseSummary>;
  * @returns The release's identity and display metadata.
  */
 export const toReleaseSummary = (descriptor: ReleaseDescriptor): ReleaseSummary => ({
-  releaseId: descriptor.releaseId,
-  releaseSequence: descriptor.releaseSequence,
+  releaseNumber: descriptor.releaseNumber,
   appVersion: descriptor.appVersion,
   buildId: descriptor.buildId,
   buildDate: descriptor.buildDate,
@@ -192,114 +168,57 @@ export const zodUpdateMode = z.enum(['automatic', 'manual']);
 /** A {@link zodUpdateMode}-validated update mode. */
 export type UpdateMode = z.infer<typeof zodUpdateMode>;
 
-/**
- * An in-progress clean-launch activation: `targetRelease` is being served to
- * every same-channel window, pending `BOOT_OK`/`BOOT_FAILED` or the
- * `deadlineAt` boot-confirmation timeout. `activeRelease` is never changed by
- * starting an activation, so there is nothing to record here to reconstruct
- * a rollback target — that identity always remains `activeRelease` itself.
- */
-export const zodActivation = z.object({
-  targetRelease: zodReleaseSummary,
-  deadlineAt: z.iso.datetime(),
-});
-/** A {@link zodActivation}-validated in-progress activation. */
-export type Activation = z.infer<typeof zodActivation>;
+/** Every phase a persisted future-release candidate may be in. */
+export const UPDATE_CANDIDATE_PHASES = ['available', 'ready', 'activating', 'failed'] as const;
+/** One of {@link UPDATE_CANDIDATE_PHASES}. */
+export type UpdateCandidatePhase = (typeof UPDATE_CANDIDATE_PHASES)[number];
 
 /**
- * Returns `true` when two release identities violate the one-to-one
- * `releaseId`/`releaseSequence` invariant: the same `releaseSequence` with a
- * different `releaseId`, or the same `releaseId` with a different
- * `releaseSequence`. Two references with identical fields are not a
- * conflict.
- * @param a - First release identity.
- * @param b - Second release identity.
- * @returns Whether `a` and `b` conflict.
+ * The persisted controller's at-most-one future release candidate, as a
+ * discriminated union by `phase` so only one phase can ever be represented at
+ * once:
+ *
+ * - `available`: discovered, not yet prepared;
+ * - `ready`: fully prepared, waiting for a qualifying clean launch;
+ * - `activating`: currently being served for the active clean-launch attempt,
+ *   pending `BOOT_OK`/`BOOT_FAILED` or `deadlineAt` expiry — the only phase
+ *   carrying a boot-confirmation deadline;
+ * - `failed`: the most recent activation of this exact release rolled back.
  */
-const isReleaseIdentityConflict = (a: ReleaseRef, b: ReleaseRef): boolean =>
-  (a.releaseSequence === b.releaseSequence && a.releaseId !== b.releaseId) ||
-  (a.releaseId === b.releaseId && a.releaseSequence !== b.releaseSequence);
-
-/**
- * Returns `true` when any pair in `refs` violates the one-to-one release
- * identity invariant (see {@link isReleaseIdentityConflict}).
- * @param refs - Release identities to check pairwise.
- * @returns Whether any pair conflicts.
- */
-export const hasReleaseIdentityConflict = (refs: readonly ReleaseRef[]): boolean =>
-  refs.some((ref, index) =>
-    refs.slice(index + 1).some((other) => isReleaseIdentityConflict(ref, other)),
-  );
-
-/**
- * Collects every release reference currently present in persisted controller
- * state — `activeRelease`, `latestRelease`, `approvedRelease`,
- * `activation.targetRelease`, and `failedActivationRelease` — omitting
- * unset optional references. The single place both the persisted-state
- * schema and release discovery use to enforce the release identity
- * invariant across every reference.
- * @param state - Release references to collect from.
- * @returns Every present release reference.
- */
-export const collectReleaseReferences = (state: {
-  activeRelease: ReleaseRef;
-  latestRelease?: ReleaseRef | undefined;
-  approvedRelease?: ReleaseRef | undefined;
-  activation?: { targetRelease: ReleaseRef } | undefined;
-  failedActivationRelease?: ReleaseRef | undefined;
-}): ReleaseRef[] =>
-  [
-    state.activeRelease,
-    state.latestRelease,
-    state.approvedRelease,
-    state.activation?.targetRelease,
-    state.failedActivationRelease,
-  ].filter((ref): ref is ReleaseRef => ref !== undefined);
+export const zodUpdateCandidate = z.discriminatedUnion('phase', [
+  z.object({ phase: z.literal('available'), release: zodReleaseSummary }),
+  z.object({ phase: z.literal('ready'), release: zodReleaseSummary }),
+  z.object({
+    phase: z.literal('activating'),
+    release: zodReleaseSummary,
+    deadlineAt: z.iso.datetime(),
+  }),
+  z.object({ phase: z.literal('failed'), release: zodReleaseSummary }),
+]);
+/** A {@link zodUpdateCandidate}-validated future release candidate. */
+export type UpdateCandidate = z.infer<typeof zodUpdateCandidate>;
 
 /**
  * The service worker's complete persisted update-controller state: the only
- * source of truth for `activeRelease`, `approvedRelease`, and `activation`.
- * Deliberately excludes any client-specific, operation-token, or transient
- * check/preparation state (see the managed pinned application updates
- * feature's architecture decision).
- *
- * `approvedRelease` and `activation` are mutually exclusive ownership
- * states — a release is either prepared and waiting for a clean launch
- * (`approvedRelease`), or already selected for the current clean-launch
- * attempt (`activation`), never both at once.
+ * source of truth for `activeRelease` and the at-most-one future release
+ * `candidate`. Deliberately excludes any client-specific, operation-token, or
+ * transient check/preparation state (see the managed pinned application
+ * updates feature's architecture decision).
  */
 export const zodUpdateControllerState = z
   .object({
     schemaVersion: z.literal(CONTROLLER_STATE_SCHEMA_VERSION),
     mode: zodUpdateMode,
-    activeRelease: zodReleaseRef,
-    latestRelease: z.optional(zodReleaseSummary),
-    approvedRelease: z.optional(zodReleaseSummary),
-    activation: z.optional(zodActivation),
-    /** The single most recent release that failed clean-launch activation, if any. Only ever one record — not an unbounded history. */
-    failedActivationRelease: z.optional(zodReleaseSummary),
+    activeRelease: zodReleaseSummary,
+    candidate: z.optional(zodUpdateCandidate),
     lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
   })
   .check(
     z.refine(
-      (state) => !(state.approvedRelease && state.activation),
-      'approvedRelease and activation must not coexist',
-    ),
-    z.refine(
       (state) =>
-        !state.approvedRelease ||
-        state.approvedRelease.releaseSequence > state.activeRelease.releaseSequence,
-      'approvedRelease must be strictly newer than activeRelease',
-    ),
-    z.refine(
-      (state) =>
-        !state.activation ||
-        state.activation.targetRelease.releaseSequence > state.activeRelease.releaseSequence,
-      'activation.targetRelease must be strictly newer than activeRelease',
-    ),
-    z.refine(
-      (state) => !hasReleaseIdentityConflict(collectReleaseReferences(state)),
-      'every release reference must obey the one-to-one releaseId/releaseSequence invariant',
+        !state.candidate ||
+        state.candidate.release.releaseNumber > state.activeRelease.releaseNumber,
+      'candidate.release must be strictly newer than activeRelease',
     ),
   );
 /** A {@link zodUpdateControllerState}-validated persisted controller state. */

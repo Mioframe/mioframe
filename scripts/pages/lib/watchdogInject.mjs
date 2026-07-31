@@ -45,14 +45,14 @@ export const WATCHDOG_PROTOCOL_VERSION = 1;
 /**
  * Builds the watchdog's self-contained inline script source for one
  * release.
- * @param releaseId The exact archived release id this watchdog belongs to.
+ * @param releaseNumber The exact archived release number this watchdog belongs to.
  * @returns The watchdog's JavaScript source (without `<script>` tags).
  */
-export function buildWatchdogScript(releaseId) {
-  const releaseIdLiteral = JSON.stringify(releaseId);
+export function buildWatchdogScript(releaseNumber) {
+  const releaseNumberLiteral = JSON.stringify(releaseNumber);
 
   return `(function () {
-  var RELEASE_ID = ${releaseIdLiteral};
+  var RELEASE_NUMBER = ${releaseNumberLiteral};
   var PROTOCOL_VERSION = ${WATCHDOG_PROTOCOL_VERSION};
   var BOOT_OK = 'BOOT_OK';
   var BOOT_FAILED = 'BOOT_FAILED';
@@ -102,7 +102,7 @@ export function buildWatchdogScript(releaseId) {
     sendToController({
       protocolVersion: PROTOCOL_VERSION,
       type: BOOT_FAILED,
-      releaseId: RELEASE_ID,
+      releaseNumber: RELEASE_NUMBER,
     }).then(function (response) {
       var ack = response && response.protocolVersion === PROTOCOL_VERSION ? response.ack : null;
       if (ack === 'error') {
@@ -132,7 +132,11 @@ export function buildWatchdogScript(releaseId) {
   window.mioframeAppUpdateBootOk = function () {
     if (settled || bootOkReported) return;
     bootOkReported = true;
-    var request = { protocolVersion: PROTOCOL_VERSION, type: BOOT_OK, releaseId: RELEASE_ID };
+    var request = {
+      protocolVersion: PROTOCOL_VERSION,
+      type: BOOT_OK,
+      releaseNumber: RELEASE_NUMBER,
+    };
     sendToController(request).then(function (response) {
       var isCommitted =
         response && response.protocolVersion === PROTOCOL_VERSION && response.ack === 'committed';
@@ -195,7 +199,11 @@ export function buildWatchdogScript(releaseId) {
         deadlineTimer = setTimeout(reportBootFailed, msRemaining);
       };
       navigator.serviceWorker.controller.postMessage(
-        { protocolVersion: PROTOCOL_VERSION, type: GET_ACTIVATION_STATUS, releaseId: RELEASE_ID },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: GET_ACTIVATION_STATUS,
+          releaseNumber: RELEASE_NUMBER,
+        },
         [channel.port2],
       );
     });
@@ -206,7 +214,7 @@ export function buildWatchdogScript(releaseId) {
         data &&
         data.protocolVersion === PROTOCOL_VERSION &&
         data.type === ROLLBACK &&
-        data.releaseId === RELEASE_ID
+        data.releaseNumber === RELEASE_NUMBER
       ) {
         location.reload();
       }
@@ -219,17 +227,17 @@ export function buildWatchdogScript(releaseId) {
  * Injects the watchdog script into an archived `index.html` document, right
  * before the main module entry script tag.
  * @param html The archived release's built `index.html` content.
- * @param releaseId The exact archived release id this watchdog belongs to.
+ * @param releaseNumber The exact archived release number this watchdog belongs to.
  * @returns The `index.html` content with the watchdog script injected.
  * @throws {Error} When the main module entry script tag cannot be found.
  */
-export function injectWatchdogScript(html, releaseId) {
+export function injectWatchdogScript(html, releaseNumber) {
   const insertAt = html.indexOf(MAIN_MODULE_SCRIPT_MARKER);
   if (insertAt === -1) {
     throw new Error(
       'Could not find the main module script entry to inject the boot watchdog before',
     );
   }
-  const watchdogTag = `<script>${buildWatchdogScript(releaseId)}</script>`;
+  const watchdogTag = `<script>${buildWatchdogScript(releaseNumber)}</script>`;
   return html.slice(0, insertAt) + watchdogTag + html.slice(insertAt);
 }

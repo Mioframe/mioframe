@@ -131,7 +131,6 @@ describe('materialized releases publish through the real publisher without colli
         workDir,
         distDir,
         channel: 'stable',
-        basePath: '/',
         appVersion,
         buildId,
       });
@@ -144,11 +143,11 @@ describe('materialized releases publish through the real publisher without colli
     const descriptorA = publishFromTemplate({ buildId: 'release-a', appVersion: '1.0.0' });
     const descriptorB = publishFromTemplate({ buildId: 'release-b', appVersion: '1.1.0' });
 
-    expect(descriptorA.releaseId).not.toBe(descriptorB.releaseId);
+    expect(descriptorA.releaseNumber).not.toBe(descriptorB.releaseNumber);
     const retained = readRetainedReleaseDescriptors(join(workDir, 'updates', 'releases'));
-    const compareStrings = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-    expect(retained.map((descriptor) => descriptor.releaseId).sort(compareStrings)).toEqual(
-      [descriptorA.releaseId, descriptorB.releaseId].sort(compareStrings),
+    const compareNumbers = (a, b) => a - b;
+    expect(retained.map((descriptor) => descriptor.releaseNumber).sort(compareNumbers)).toEqual(
+      [descriptorA.releaseNumber, descriptorB.releaseNumber].sort(compareNumbers),
     );
   });
 

@@ -1,5 +1,10 @@
 import * as z from 'zod/v4-mini';
-import { zodReleaseRef, zodReleaseSummary, zodUpdateMode } from './contracts';
+import {
+  isPositiveSafeInteger,
+  zodReleaseSummary,
+  zodUpdateCandidate,
+  zodUpdateMode,
+} from './contracts';
 
 /** Stable public error codes the worker may report back to the UI. Defined next to this boundary. */
 export const APP_UPDATE_ERROR_CODES = ['check-failed', 'install-failed', 'unavailable'] as const;
@@ -44,22 +49,17 @@ export type BootAckOutcome = (typeof BOOT_ACK_OUTCOMES)[number];
 
 /**
  * The narrow, UI-facing read model the worker reports for every command
- * response. Never exposes cache names, descriptors, client ids, or other
- * controller internals.
+ * response: a direct projection of persisted state plus an ephemeral
+ * classified error. Never exposes cache names, descriptors, client ids, or
+ * other controller internals.
  */
 export const zodAppUpdateSnapshot = z.object({
   /** Current update mode. */
   mode: zodUpdateMode,
   /** The currently active release. */
-  activeRelease: zodReleaseRef,
-  /** The latest release discovered by a check, with display metadata, if any. */
-  latestRelease: z.optional(zodReleaseSummary),
-  /** An approved release waiting for the next clean launch, with display metadata, if any. */
-  scheduledRelease: z.optional(zodReleaseSummary),
-  /** The release currently being activated on a clean launch, with display metadata, if any. Derived only from `state.activation?.targetRelease` — never separately persisted. */
-  activatingRelease: z.optional(zodReleaseSummary),
-  /** The single most recent release that failed clean-launch activation and was rolled back, with display metadata, if any. Remains visible until cleared by a successful retry or superseded by a newer discovery. */
-  failedRelease: z.optional(zodReleaseSummary),
+  activeRelease: zodReleaseSummary,
+  /** The single future release candidate, if any. */
+  candidate: z.optional(zodUpdateCandidate),
   /** ISO timestamp of the last successful discovery check, if any. */
   lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
   /** An error to report for this response, if any. */
@@ -68,7 +68,7 @@ export const zodAppUpdateSnapshot = z.object({
 /** A {@link zodAppUpdateSnapshot}-validated UI-facing snapshot. */
 export type AppUpdateSnapshot = z.infer<typeof zodAppUpdateSnapshot>;
 
-const zodProtocolReleaseId = z.string().check(z.minLength(1));
+const zodProtocolReleaseNumber = z.number().check(z.refine(isPositiveSafeInteger));
 
 /** Private worker protocol request messages. Never imported by UI-facing layers directly. */
 export const zodAppUpdateWorkerRequest = z.discriminatedUnion('type', [
@@ -84,17 +84,17 @@ export const zodAppUpdateWorkerRequest = z.discriminatedUnion('type', [
   z.object({
     protocolVersion: zodProtocolVersion,
     type: z.literal(APP_UPDATE_PROTOCOL_MESSAGE_TYPES.BOOT_OK),
-    releaseId: zodProtocolReleaseId,
+    releaseNumber: zodProtocolReleaseNumber,
   }),
   z.object({
     protocolVersion: zodProtocolVersion,
     type: z.literal(APP_UPDATE_PROTOCOL_MESSAGE_TYPES.BOOT_FAILED),
-    releaseId: zodProtocolReleaseId,
+    releaseNumber: zodProtocolReleaseNumber,
   }),
   z.object({
     protocolVersion: zodProtocolVersion,
     type: z.literal(APP_UPDATE_PROTOCOL_MESSAGE_TYPES.GET_ACTIVATION_STATUS),
-    releaseId: zodProtocolReleaseId,
+    releaseNumber: zodProtocolReleaseNumber,
   }),
 ]);
 /** A {@link zodAppUpdateWorkerRequest}-validated private protocol request. */
@@ -161,8 +161,8 @@ export const zodAppUpdateRollbackBroadcast = z.object({
   protocolVersion: zodProtocolVersion,
   /** Discriminant tag for this broadcast message. */
   type: z.literal(APP_UPDATE_PROTOCOL_MESSAGE_TYPES.ROLLBACK_BROADCAST),
-  /** The release id that failed to boot and was rolled back. */
-  releaseId: zodProtocolReleaseId,
+  /** The release number that failed to boot and was rolled back. */
+  releaseNumber: zodProtocolReleaseNumber,
 });
 /** A {@link zodAppUpdateRollbackBroadcast}-validated rollback broadcast. */
 export type AppUpdateRollbackBroadcast = z.infer<typeof zodAppUpdateRollbackBroadcast>;

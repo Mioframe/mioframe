@@ -1,9 +1,10 @@
 import {
+  isPositiveSafeInteger,
   zodReleaseDescriptor,
-  type Activation,
   type ManagedChannel,
   type ReleaseDescriptor,
-  type ReleaseRef,
+  type ReleaseSummary,
+  type UpdateCandidate,
 } from './contracts';
 import { readControllerState } from './controllerState';
 
@@ -24,40 +25,37 @@ export const buildManagedCacheNamespace = (channel: ManagedChannel): string =>
 /**
  * Builds the one immutable Cache Storage name for a release.
  * @param channel - Managed channel.
- * @param releaseId - The release's immutable identifier.
+ * @param releaseNumber - The release's identity.
  * @returns The release's Cache Storage name.
  */
-export function buildReleaseCacheName(channel: ManagedChannel, releaseId: string): string {
-  return `${buildManagedCacheNamespace(channel)}-release-${releaseId}`;
+export function buildReleaseCacheName(channel: ManagedChannel, releaseNumber: number): string {
+  return `${buildManagedCacheNamespace(channel)}-release-${releaseNumber}`;
 }
 
-const releaseIdFromCacheName = (namespace: string, cacheName: string): string | undefined => {
+const releaseNumberFromCacheName = (namespace: string, cacheName: string): number | undefined => {
   const prefix = `${namespace}-release-`;
-  return cacheName.startsWith(prefix) ? cacheName.slice(prefix.length) : undefined;
+  if (!cacheName.startsWith(prefix)) return undefined;
+  const numeric = Number(cacheName.slice(prefix.length));
+  return isPositiveSafeInteger(numeric) ? numeric : undefined;
 };
 
 /**
- * Returns `true` when `descriptor` proves `expectedRelease` is fully
- * available: its `ReleaseRef` matches exactly and every listed file is
- * present. Callers only reach this once a release cache's descriptor marker
- * has already been read and parsed; an unparsable or missing marker means
- * "not available" without calling this function at all.
+ * Returns `true` when `descriptor` proves `expectedReleaseNumber` is fully
+ * available: its identity matches exactly and every listed file is present.
+ * Callers only reach this once a release cache's descriptor marker has
+ * already been read and parsed; an unparsable or missing marker means "not
+ * available" without calling this function at all.
  * @param descriptor - The release cache's parsed descriptor marker.
- * @param expectedRelease - The release the caller expects to be available.
+ * @param expectedReleaseNumber - The release the caller expects to be available.
  * @param presentPaths - Every file path currently present in the release cache.
- * @returns Whether `expectedRelease` is completely and correctly available.
+ * @returns Whether `expectedReleaseNumber` is completely and correctly available.
  */
 export function isReleaseAvailable(
   descriptor: ReleaseDescriptor,
-  expectedRelease: ReleaseRef,
+  expectedReleaseNumber: number,
   presentPaths: ReadonlySet<string>,
 ): boolean {
-  if (
-    descriptor.releaseId !== expectedRelease.releaseId ||
-    descriptor.releaseSequence !== expectedRelease.releaseSequence
-  ) {
-    return false;
-  }
+  if (descriptor.releaseNumber !== expectedReleaseNumber) return false;
   return descriptor.files.every((file) => presentPaths.has(file.path));
 }
 
@@ -79,106 +77,89 @@ export function isReleaseFilePath(descriptor: ReleaseDescriptor, relativePath: s
   return descriptor.files.some((file) => file.path === relativePath);
 }
 
-/** Inputs to {@link computeProtectedReleaseIds}: every release currently owned by persisted state or in-flight preparation. */
+/** Inputs to {@link computeProtectedReleaseNumbers}: every release currently owned by persisted state or in-flight preparation. */
 export type ProtectedReleaseInputs = {
   /** The currently active release. */
-  activeRelease: ReleaseRef;
-  /**
-   * The most recently discovered release, if any. Discovery persists this
-   * before preparation begins, and it stays the caller's only record of a
-   * release between the moment its preparation completes (leaving
-   * `inFlightReleaseIds`) and the moment the caller persists it as
-   * `approvedRelease`. Protecting it closes that ownership gap; a release
-   * that stays `latestRelease` (not yet superseded by a newer discovery)
-   * also remains available for an explicit Manual retry after a failed
-   * activation.
-   */
-  latestRelease?: ReleaseRef | undefined;
-  /** An approved-but-not-yet-activated release, if any. */
-  approvedRelease?: ReleaseRef | undefined;
-  /** The in-progress clean-launch activation, if any. */
-  activation?: Activation | undefined;
-  /** Every release id currently being prepared by the {@link PreparationCoordinator}. */
-  inFlightReleaseIds?: readonly string[] | undefined;
+  activeRelease: ReleaseSummary;
+  /** The single future release candidate, if any. */
+  candidate?: UpdateCandidate | undefined;
+  /** Every release number currently being prepared by the {@link PreparationCoordinator}. */
+  inFlightReleaseNumbers?: readonly number[] | undefined;
 };
 
 /**
- * Computes every release id that cleanup must never remove: the active
- * release, the most recently discovered release, an
- * approved-but-not-yet-activated release, an in-progress activation's
- * target, and every release currently being prepared.
+ * Computes every release number that cleanup must never remove: the active
+ * release, the single future candidate (if any), and every release currently
+ * being prepared.
  * @param inputs - Every release currently owned by persisted state or in-flight preparation.
- * @returns The set of protected release ids.
+ * @returns The set of protected release numbers.
  */
-export function computeProtectedReleaseIds(inputs: ProtectedReleaseInputs): Set<string> {
-  const protectedIds = new Set<string>([inputs.activeRelease.releaseId]);
-  if (inputs.latestRelease) protectedIds.add(inputs.latestRelease.releaseId);
-  if (inputs.approvedRelease) protectedIds.add(inputs.approvedRelease.releaseId);
-  if (inputs.activation) protectedIds.add(inputs.activation.targetRelease.releaseId);
-  for (const releaseId of inputs.inFlightReleaseIds ?? []) protectedIds.add(releaseId);
-  return protectedIds;
+export function computeProtectedReleaseNumbers(inputs: ProtectedReleaseInputs): Set<number> {
+  const protectedNumbers = new Set<number>([inputs.activeRelease.releaseNumber]);
+  if (inputs.candidate) protectedNumbers.add(inputs.candidate.release.releaseNumber);
+  for (const releaseNumber of inputs.inFlightReleaseNumbers ?? []) {
+    protectedNumbers.add(releaseNumber);
+  }
+  return protectedNumbers;
 }
 
 /**
  * Computes which of this channel's existing Cache Storage names cleanup
- * should delete: every release cache whose release id is not in
- * `protectedReleaseIds`. Cache names outside this channel's managed
+ * should delete: every release cache whose release number is not in
+ * `protectedReleaseNumbers`. Cache names outside this channel's managed
  * namespace are never touched.
  * @param existingCacheNames - Every Cache Storage name currently present (any namespace).
  * @param channel - Managed channel to clean up.
- * @param protectedReleaseIds - Release ids from {@link computeProtectedReleaseIds}.
+ * @param protectedReleaseNumbers - Release numbers from {@link computeProtectedReleaseNumbers}.
  * @returns The subset of `existingCacheNames` safe to delete.
  */
 export function computeCacheNamesToDelete(
   existingCacheNames: readonly string[],
   channel: ManagedChannel,
-  protectedReleaseIds: ReadonlySet<string>,
+  protectedReleaseNumbers: ReadonlySet<number>,
 ): string[] {
   const namespace = buildManagedCacheNamespace(channel);
 
   return existingCacheNames.filter((name) => {
-    const releaseId = releaseIdFromCacheName(namespace, name);
-    return releaseId !== undefined && !protectedReleaseIds.has(releaseId);
+    const releaseNumber = releaseNumberFromCacheName(namespace, name);
+    return releaseNumber !== undefined && !protectedReleaseNumbers.has(releaseNumber);
   });
 }
 
 /**
  * Deletes every release cache this channel no longer needs: any release
- * cache not currently protected by persisted state or in-flight
- * preparation. Protected owners are the active release, the most recently
- * discovered release, an approved-but-not-yet-activated release, an
- * in-progress clean-launch activation's target, and every release currently
- * being prepared (see {@link computeProtectedReleaseIds}).
+ * cache not currently protected by persisted state or in-flight preparation.
+ * Protected owners are the active release, the single future candidate (if
+ * any), and every release currently being prepared (see
+ * {@link computeProtectedReleaseNumbers}).
  *
  * A best-effort side effect run after a lifecycle transition that can
- * release cache ownership (commit, rollback, cancellation, a mode change
- * that clears an approval, an Automatic approved-target replacement, or
- * controller activation) — never awaited as part of that transition's own
- * response, so a cleanup failure can never make an already-persisted
- * transition appear to have failed. A no-op when persisted state is not
- * currently valid.
+ * release cache ownership (controller activation/startup maintenance,
+ * candidate replacement by a newer release, a successful `BOOT_OK`, or
+ * completion of a stale preparation) — never awaited as part of that
+ * transition's own response, so a cleanup failure can never make an
+ * already-persisted transition appear to have failed. A no-op when persisted
+ * state is not currently valid.
  * @param channel - Managed channel to clean up.
- * @param inFlightReleaseIds - Every release id currently being prepared by the {@link PreparationCoordinator}, so a concurrent cleanup never deletes a cache still being populated.
+ * @param inFlightReleaseNumbers - Every release number currently being prepared by the {@link PreparationCoordinator}, so a concurrent cleanup never deletes a cache still being populated.
  */
 export async function runReleaseCacheCleanup(
   channel: ManagedChannel,
-  inFlightReleaseIds: readonly string[] = [],
+  inFlightReleaseNumbers: readonly number[] = [],
 ): Promise<void> {
   const read = await readControllerState(channel);
   if (read.status !== 'valid') return;
 
-  const protectedReleaseIds = computeProtectedReleaseIds({
+  const protectedReleaseNumbers = computeProtectedReleaseNumbers({
     activeRelease: read.state.activeRelease,
-    latestRelease: read.state.latestRelease,
-    approvedRelease: read.state.approvedRelease,
-    activation: read.state.activation,
-    inFlightReleaseIds,
+    candidate: read.state.candidate,
+    inFlightReleaseNumbers,
   });
   const existingCacheNames = await caches.keys();
   const staleCacheNames = computeCacheNamesToDelete(
     existingCacheNames,
     channel,
-    protectedReleaseIds,
+    protectedReleaseNumbers,
   );
   await Promise.all(staleCacheNames.map((name) => caches.delete(name)));
 }
@@ -259,8 +240,8 @@ export async function readReleaseDescriptorMarker(
 }
 
 /**
- * Reads a release cache's commit marker and confirms `expectedRelease` is
- * completely available in it (see {@link isReleaseAvailable}): the
+ * Reads a release cache's commit marker and confirms `expectedReleaseNumber`
+ * is completely available in it (see {@link isReleaseAvailable}): the
  * descriptor marker parses and matches, the archived index marker is
  * present, and every listed file is present. No response may be served from
  * a release cache before this check succeeds.
@@ -270,13 +251,13 @@ export async function readReleaseDescriptorMarker(
  * individually under storage pressure — the descriptor marker surviving
  * does not guarantee every other entry did too.
  * @param cache - The release's Cache Storage cache.
- * @param expectedRelease - The release the caller expects to be available.
+ * @param expectedReleaseNumber - The release the caller expects to be available.
  * @param channelBasePath - This worker's channel base path, used to recover each cached request's relative file path.
- * @returns Whether `expectedRelease` is completely and correctly available in `cache`.
+ * @returns Whether `expectedReleaseNumber` is completely and correctly available in `cache`.
  */
 export async function checkReleaseAvailability(
   cache: Pick<Cache, 'match' | 'keys'>,
-  expectedRelease: ReleaseRef,
+  expectedReleaseNumber: number,
   channelBasePath: string,
 ): Promise<boolean> {
   const descriptor = await readReleaseDescriptorMarker(cache);
@@ -292,5 +273,5 @@ export async function checkReleaseAvailability(
       .filter((pathname) => pathname.startsWith(channelBasePath))
       .map((pathname) => pathname.slice(channelBasePath.length)),
   );
-  return isReleaseAvailable(descriptor, expectedRelease, presentPaths);
+  return isReleaseAvailable(descriptor, expectedReleaseNumber, presentPaths);
 }

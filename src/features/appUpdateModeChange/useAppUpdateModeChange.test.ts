@@ -12,7 +12,7 @@ vi.mock('@shared/serviceClient/appUpdate/client', () => ({
 
 describe('useAppUpdateModeChange', () => {
   it('sends the requested mode and applies the result', async () => {
-    const snapshot = { mode: 'automatic', activeRelease: { releaseId: 'a', releaseSequence: 1 } };
+    const snapshot = { mode: 'automatic', activeRelease: { releaseNumber: 1 } };
     setAppUpdateModeMock.mockResolvedValue(snapshot);
     const { useAppUpdateModeChange } = await import('./useAppUpdateModeChange');
     const { setMode, isChangingMode } = useAppUpdateModeChange();

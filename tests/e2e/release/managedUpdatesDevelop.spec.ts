@@ -49,8 +49,8 @@ async function readControllerStateDbNames(page: Page): Promise<string[]> {
 async function readActiveRelease(
   page: Page,
   dbName: string,
-): Promise<{ releaseId: string; releaseSequence: number } | undefined> {
-  return page.evaluate<{ releaseId: string; releaseSequence: number } | undefined, string>(
+): Promise<{ releaseNumber: number } | undefined> {
+  return page.evaluate<{ releaseNumber: number } | undefined, string>(
     (name) =>
       new Promise((resolve) => {
         const request = indexedDB.open(name);
@@ -105,7 +105,7 @@ async function waitForActiveRelease(
   page: Page,
   dbName: string,
   timeoutMs = 15_000,
-): Promise<{ releaseId: string; releaseSequence: number } | undefined> {
+): Promise<{ releaseNumber: number } | undefined> {
   const start = Date.now();
   for (;;) {
     const result = await readActiveRelease(page, dbName);
@@ -196,9 +196,8 @@ test.describe('managed pinned application updates: develop channel isolation', (
       developPage,
       'mioframe-update-controller-branch-develop',
     );
-    expect(stableActiveRelease?.releaseId).toBe(stableReleaseA.releaseId);
-    expect(developActiveRelease?.releaseId).toBe(developReleaseA.releaseId);
-    expect(stableActiveRelease?.releaseId).not.toBe(developActiveRelease?.releaseId);
+    expect(stableActiveRelease?.releaseNumber).toBe(stableReleaseA.releaseNumber);
+    expect(developActiveRelease?.releaseNumber).toBe(developReleaseA.releaseNumber);
 
     // Each page's own controller is scoped to its own channel — the stable
     // worker never controls the develop page or vice versa.
@@ -228,26 +227,25 @@ test.describe('managed pinned application updates: develop channel isolation', (
     await developPage.goto(`${server.url}branch/develop/`);
     await waitForControlledPage(developPage);
 
-    // Manual mode: a mere discovery check must record `latestRelease`
-    // without automatically preparing/approving it — and, just as
+    // Manual mode: a mere discovery check must record an `available`
+    // candidate without automatically preparing it to `ready` — and, just as
     // importantly for later tests sharing this worker's persisted state,
-    // must never leave a dangling `approvedRelease` behind that a later
-    // unrelated navigation could pick up as its own clean-launch target.
+    // must never leave a `ready` candidate behind that a later unrelated
+    // navigation could pick up as its own clean-launch target.
     await sendProtocolRequest(developPage, { type: 'SET_MODE', mode: 'manual' });
     const checkResult = await sendProtocolRequest<{
-      snapshot: { latestRelease?: unknown; scheduledRelease?: unknown };
+      snapshot: { candidate?: { phase: string } };
     }>(developPage, { type: 'CHECK_FOR_UPDATES' });
-    expect(checkResult.snapshot.latestRelease).toBeTruthy();
-    expect(checkResult.snapshot.scheduledRelease).toBeUndefined();
+    expect(checkResult.snapshot.candidate?.phase).toBe('available');
 
     const stablePage = await context.newPage();
     await stablePage.goto(server.url);
     await waitForControlledPage(stablePage);
 
     const stableSnapshot = await sendProtocolRequest<{
-      snapshot: { latestRelease?: unknown };
+      snapshot: { candidate?: unknown };
     }>(stablePage, { type: 'GET_SNAPSHOT' });
-    expect(stableSnapshot.snapshot.latestRelease).toBeUndefined();
+    expect(stableSnapshot.snapshot.candidate).toBeUndefined();
 
     await developPage.close();
     await stablePage.close();
@@ -278,9 +276,9 @@ test.describe('managed pinned application updates: develop channel isolation', (
     await sendProtocolRequest(setupDevelopPage, { type: 'CANCEL_SCHEDULED_UPDATE' });
     await sendProtocolRequest(setupDevelopPage, { type: 'SET_MODE', mode: 'manual' });
     const checked = await sendProtocolRequest<{
-      snapshot: { latestRelease?: { releaseId: string } };
+      snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
     }>(setupDevelopPage, { type: 'CHECK_FOR_UPDATES' });
-    expect(checked.snapshot.latestRelease).toBeTruthy();
+    expect(checked.snapshot.candidate?.phase).toBe('available');
     await sendProtocolRequest(setupDevelopPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
     await setupDevelopPage.close();
 
@@ -290,10 +288,10 @@ test.describe('managed pinned application updates: develop channel isolation', (
     await nextDevelopPage.goto(`${server.url}branch/develop/`);
     await waitForControlledPage(nextDevelopPage);
     const committed = await sendProtocolRequest<{
-      snapshot: { activeRelease: { releaseId: string } };
+      snapshot: { activeRelease: { releaseNumber: number } };
     }>(nextDevelopPage, { type: 'GET_SNAPSHOT' });
-    expect(committed.snapshot.activeRelease.releaseId).toBe(
-      checked.snapshot.latestRelease?.releaseId,
+    expect(committed.snapshot.activeRelease.releaseNumber).toBe(
+      checked.snapshot.candidate?.release.releaseNumber,
     );
 
     await stablePage.close();
@@ -339,7 +337,7 @@ test.describe('managed pinned application updates: develop channel isolation', (
     // database) from the untouched `stableWatchPage` rather than by
     // re-querying `developCrashPage` itself, since that page reloads once
     // it receives its own channel's rollback broadcast.
-    async function readDevelopScheduledRelease(): Promise<unknown> {
+    async function readDevelopCandidatePhase(): Promise<string | undefined> {
       return stableWatchPage.evaluate(
         () =>
           new Promise((resolve) => {
@@ -350,7 +348,7 @@ test.describe('managed pinned application updates: develop channel isolation', (
               const getRequest = tx.objectStore('controllerState').get('controllerState');
               getRequest.onsuccess = () => {
                 db.close();
-                resolve(getRequest.result?.approvedRelease);
+                resolve(getRequest.result?.candidate?.phase);
               };
             };
           }),
@@ -361,12 +359,12 @@ test.describe('managed pinned application updates: develop channel isolation', (
     await developCrashPage.goto(`${server.url}branch/develop/`);
 
     // Wait for develop's own real rollback to actually complete (the
-    // positive signal: its scheduled release is cleared), then confirm the
+    // positive signal: its candidate becomes `failed`), then confirm the
     // still-open stable page was never navigated by it — not a fixed sleep
     // guessing how long a broken channel takes to roll back.
     const start = Date.now();
     for (;;) {
-      if (!(await readDevelopScheduledRelease())) break;
+      if ((await readDevelopCandidatePhase()) === 'failed') break;
       if (Date.now() - start > 30_000) {
         throw new Error('Timed out waiting for the develop channel to roll back');
       }

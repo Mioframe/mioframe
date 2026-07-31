@@ -44,9 +44,11 @@ type ControllerStateReadResult =
       status: 'valid';
       state: {
         mode: 'automatic' | 'manual';
-        activeRelease: { releaseId: string; releaseSequence: number };
-        approvedRelease?: { releaseId: string; releaseSequence: number };
-        failedActivationRelease?: { releaseId: string; releaseSequence: number };
+        activeRelease: { releaseNumber: number };
+        candidate?: {
+          phase: 'available' | 'ready' | 'activating' | 'failed';
+          release: { releaseNumber: number };
+        };
       };
     };
 
@@ -100,18 +102,18 @@ async function waitForControlledPage(page: Page): Promise<void> {
 
 async function waitForActiveRelease(
   page: Page,
-  releaseId: string,
+  releaseNumber: number,
   timeoutMs = 30_000,
 ): Promise<ControllerStateReadResult> {
   const start = Date.now();
   for (;;) {
     const result = await readControllerState(page);
-    if (result.status === 'valid' && result.state.activeRelease.releaseId === releaseId) {
+    if (result.status === 'valid' && result.state.activeRelease.releaseNumber === releaseNumber) {
       return result;
     }
     if (Date.now() - start > timeoutMs) {
       throw new Error(
-        `Timed out waiting for active release ${releaseId}. Last: ${JSON.stringify(result)}`,
+        `Timed out waiting for active release ${releaseNumber}. Last: ${JSON.stringify(result)}`,
       );
     }
     // eslint-disable-next-line no-await-in-loop -- Sequential polling is the intent here.
@@ -208,13 +210,14 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
 
       await sendProtocolRequest(controlledPage, { type: 'SET_MODE', mode: 'manual' });
       const checkedB = await sendProtocolRequest<{
-        snapshot: { latestRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(controlledPage, { type: 'CHECK_FOR_UPDATES' });
-      expect(checkedB.snapshot.latestRelease?.releaseId).toBe(releaseB.releaseId);
+      expect(checkedB.snapshot.candidate?.release.releaseNumber).toBe(releaseB.releaseNumber);
       const installedB = await sendProtocolRequest<{
-        snapshot: { scheduledRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(controlledPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
-      expect(installedB.snapshot.scheduledRelease?.releaseId).toBe(releaseB.releaseId);
+      expect(installedB.snapshot.candidate?.phase).toBe('ready');
+      expect(installedB.snapshot.candidate?.release.releaseNumber).toBe(releaseB.releaseNumber);
 
       await controlledPage.close();
       const stillBlockedPage = await context.newPage();
@@ -225,8 +228,9 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       const stillBlocked = await readControllerState(stillBlockedPage);
       expect(stillBlocked.status).toBe('valid');
       if (stillBlocked.status === 'valid') {
-        expect(stillBlocked.state.activeRelease.releaseId).not.toBe(releaseB.releaseId);
-        expect(stillBlocked.state.approvedRelease?.releaseId).toBe(releaseB.releaseId);
+        expect(stillBlocked.state.activeRelease.releaseNumber).not.toBe(releaseB.releaseNumber);
+        expect(stillBlocked.state.candidate?.phase).toBe('ready');
+        expect(stillBlocked.state.candidate?.release.releaseNumber).toBe(releaseB.releaseNumber);
       }
       await stillBlockedPage.close();
 
@@ -238,9 +242,9 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       await windowOne.goto(server.url);
       await waitForControlledPage(windowOne);
       await expectAppReady(windowOne);
-      const committedB = await waitForActiveRelease(windowOne, releaseB.releaseId);
+      const committedB = await waitForActiveRelease(windowOne, releaseB.releaseNumber);
       if (committedB.status === 'valid') {
-        expect(committedB.state.approvedRelease).toBeUndefined();
+        expect(committedB.state.candidate).toBeUndefined();
       }
 
       // 3. Two controlled windows open: scheduling C and navigating one must
@@ -259,13 +263,14 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       });
 
       const checkedC = await sendProtocolRequest<{
-        snapshot: { latestRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(windowOne, { type: 'CHECK_FOR_UPDATES' });
-      expect(checkedC.snapshot.latestRelease?.releaseId).toBe(releaseC.releaseId);
+      expect(checkedC.snapshot.candidate?.release.releaseNumber).toBe(releaseC.releaseNumber);
       const installedC = await sendProtocolRequest<{
-        snapshot: { scheduledRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(windowOne, { type: 'INSTALL_ON_NEXT_LAUNCH' });
-      expect(installedC.snapshot.scheduledRelease?.releaseId).toBe(releaseC.releaseId);
+      expect(installedC.snapshot.candidate?.phase).toBe('ready');
+      expect(installedC.snapshot.candidate?.release.releaseNumber).toBe(releaseC.releaseNumber);
 
       await windowOne.reload();
       await waitForControlledPage(windowOne);
@@ -273,8 +278,9 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       const blockedC = await readControllerState(windowOne);
       expect(blockedC.status).toBe('valid');
       if (blockedC.status === 'valid') {
-        expect(blockedC.state.activeRelease.releaseId).toBe(releaseB.releaseId);
-        expect(blockedC.state.approvedRelease?.releaseId).toBe(releaseC.releaseId);
+        expect(blockedC.state.activeRelease.releaseNumber).toBe(releaseB.releaseNumber);
+        expect(blockedC.state.candidate?.phase).toBe('ready');
+        expect(blockedC.state.candidate?.release.releaseNumber).toBe(releaseC.releaseNumber);
       }
 
       // 4. Closing every window activates C.
@@ -285,9 +291,9 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       await windowThree.goto(server.url);
       await waitForControlledPage(windowThree);
       await expectAppReady(windowThree);
-      const committedC = await waitForActiveRelease(windowThree, releaseC.releaseId);
+      const committedC = await waitForActiveRelease(windowThree, releaseC.releaseNumber);
       if (committedC.status === 'valid') {
-        expect(committedC.state.approvedRelease).toBeUndefined();
+        expect(committedC.state.candidate).toBeUndefined();
       }
     } finally {
       await closeAll(openPages);
@@ -306,11 +312,11 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       await waitForControlledPage(openPage);
       const beforeSchedule = await readControllerState(openPage);
       expect(beforeSchedule.status).toBe('valid');
-      const previousActiveReleaseId =
+      const previousActiveReleaseNumber =
         beforeSchedule.status === 'valid'
-          ? beforeSchedule.state.activeRelease.releaseId
+          ? beforeSchedule.state.activeRelease.releaseNumber
           : undefined;
-      expect(previousActiveReleaseId).toBeTruthy();
+      expect(previousActiveReleaseNumber).toBeTruthy();
 
       // A real hash-validated release whose entry script throws
       // immediately, exactly like a build that passed CI but has a runtime
@@ -324,13 +330,14 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       });
 
       const checked = await sendProtocolRequest<{
-        snapshot: { latestRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(openPage, { type: 'CHECK_FOR_UPDATES' });
-      expect(checked.snapshot.latestRelease?.releaseId).toBe(releaseD.releaseId);
+      expect(checked.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
       const installed = await sendProtocolRequest<{
-        snapshot: { scheduledRelease?: { releaseId: string } };
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(openPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
-      expect(installed.snapshot.scheduledRelease?.releaseId).toBe(releaseD.releaseId);
+      expect(installed.snapshot.candidate?.phase).toBe('ready');
+      expect(installed.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
       await openPage.close();
 
       // Closing every window and opening a genuinely new one starts
@@ -344,9 +351,10 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       await failingPage.goto(server.url);
       await waitForControlledPage(failingPage);
 
-      const rolledBack = await waitForActiveRelease(failingPage, previousActiveReleaseId ?? '');
+      const rolledBack = await waitForActiveRelease(failingPage, previousActiveReleaseNumber ?? -1);
       if (rolledBack.status === 'valid') {
-        expect(rolledBack.state.failedActivationRelease?.releaseId).toBe(releaseD.releaseId);
+        expect(rolledBack.state.candidate?.phase).toBe('failed');
+        expect(rolledBack.state.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
       }
     } finally {
       await closeAll(openPages);

@@ -5,15 +5,33 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { invalidReleaseDescriptors, validReleaseDescriptor } from './releaseDescriptorCorpus.mjs';
 import {
-  allocateReleaseSequence,
+  allocateNextReleaseNumber,
+  assertReleaseNumberNotRetained,
   buildReleaseDescriptor,
   collectReleaseFiles,
   computeFileSha256,
+  isPositiveSafeInteger,
   isValidReleaseDescriptor,
+  readLatestPointer,
   readRetainedReleaseDescriptors,
   validateNoImmutableCollision,
   validateProjectedArtifactSize,
 } from './releaseDescriptor.mjs';
+
+describe('isPositiveSafeInteger', () => {
+  it('accepts a positive safe integer', () => {
+    expect(isPositiveSafeInteger(1)).toBe(true);
+    expect(isPositiveSafeInteger(Number.MAX_SAFE_INTEGER)).toBe(true);
+  });
+
+  it('rejects zero, negative, non-integer, unsafe, and non-number values', () => {
+    expect(isPositiveSafeInteger(0)).toBe(false);
+    expect(isPositiveSafeInteger(-1)).toBe(false);
+    expect(isPositiveSafeInteger(1.5)).toBe(false);
+    expect(isPositiveSafeInteger(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
+    expect(isPositiveSafeInteger('1')).toBe(false);
+  });
+});
 
 describe('isValidReleaseDescriptor', () => {
   it('accepts the shared valid fixture', () => {
@@ -25,25 +43,13 @@ describe('isValidReleaseDescriptor', () => {
   });
 });
 
-describe('allocateReleaseSequence', () => {
-  it('starts at 1 when nothing is retained', () => {
-    expect(allocateReleaseSequence([])).toBe(1);
-  });
-
-  it('allocates one past the highest retained sequence', () => {
-    expect(allocateReleaseSequence([1, 3, 2])).toBe(4);
-  });
-});
-
 describe('buildReleaseDescriptor', () => {
   it('builds a valid descriptor from its parts', () => {
     const descriptor = buildReleaseDescriptor({
-      releaseId: '018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f',
-      releaseSequence: 1,
+      releaseNumber: 1,
       appVersion: '1.0.0',
       buildId: 'abc123',
       buildDate: '2026-07-24T00:00:00.000Z',
-      indexUrl: '/updates/releases/018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e6f/index.html',
       indexSha256: '0'.repeat(64),
       indexByteSize: 100,
       files: [{ path: 'assets/a.js', sha256: '0'.repeat(64), byteSize: 10 }],
@@ -55,12 +61,10 @@ describe('buildReleaseDescriptor', () => {
   it('throws when the assembled descriptor is invalid', () => {
     expect(() =>
       buildReleaseDescriptor({
-        releaseId: 'release-1',
-        releaseSequence: 1,
+        releaseNumber: 0,
         appVersion: '1.0.0',
         buildId: 'abc123',
         buildDate: '2026-07-24T00:00:00.000Z',
-        indexUrl: '/updates/releases/release-1/index.html',
         files: [],
       }),
     ).toThrow('invalid release descriptor');
@@ -120,9 +124,15 @@ describe('readRetainedReleaseDescriptors', () => {
   });
 
   function writeRetainedRelease(descriptor) {
-    writeFileSync(join(releasesDir, `${descriptor.releaseId}.json`), JSON.stringify(descriptor));
-    mkdirSync(join(releasesDir, descriptor.releaseId), { recursive: true });
-    writeFileSync(join(releasesDir, descriptor.releaseId, 'index.html'), '<html></html>');
+    writeFileSync(
+      join(releasesDir, `${descriptor.releaseNumber}.json`),
+      JSON.stringify(descriptor),
+    );
+    mkdirSync(join(releasesDir, String(descriptor.releaseNumber)), { recursive: true });
+    writeFileSync(
+      join(releasesDir, String(descriptor.releaseNumber), 'index.html'),
+      '<html></html>',
+    );
   }
 
   it('reads and validates every retained descriptor', () => {
@@ -149,24 +159,37 @@ describe('readRetainedReleaseDescriptors', () => {
     expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('not valid JSON');
   });
 
-  it('fails closed when the descriptor filename does not match its releaseId', () => {
+  it('fails closed when the descriptor filename does not match its releaseNumber', () => {
     mkdirSync(releasesDir, { recursive: true });
     writeFileSync(join(releasesDir, 'r1.json'), JSON.stringify(validReleaseDescriptor));
-    mkdirSync(join(releasesDir, validReleaseDescriptor.releaseId), { recursive: true });
+    mkdirSync(join(releasesDir, String(validReleaseDescriptor.releaseNumber)), { recursive: true });
     writeFileSync(
-      join(releasesDir, validReleaseDescriptor.releaseId, 'index.html'),
+      join(releasesDir, String(validReleaseDescriptor.releaseNumber), 'index.html'),
       '<html></html>',
     );
 
     expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow(
-      'does not match its releaseId',
+      'does not match its releaseNumber',
+    );
+  });
+
+  it('fails closed on a duplicate release number under a different (padded) filename', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeRetainedRelease(validReleaseDescriptor);
+    writeFileSync(
+      join(releasesDir, '01.json'),
+      JSON.stringify({ ...validReleaseDescriptor, releaseNumber: 1 }),
+    );
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow(
+      'does not match its releaseNumber',
     );
   });
 
   it('fails closed when the archived index directory is missing', () => {
     mkdirSync(releasesDir, { recursive: true });
     writeFileSync(
-      join(releasesDir, `${String(validReleaseDescriptor.releaseId)}.json`),
+      join(releasesDir, `${String(validReleaseDescriptor.releaseNumber)}.json`),
       JSON.stringify(validReleaseDescriptor),
     );
 
@@ -174,16 +197,142 @@ describe('readRetainedReleaseDescriptors', () => {
       'missing its archived index directory',
     );
   });
+});
 
-  it('fails closed when two descriptors share a releaseSequence with different releaseIds', () => {
+describe('readLatestPointer', () => {
+  let updatesDir = '';
+
+  beforeEach(() => {
+    updatesDir = mkdtempSync(join(tmpdir(), 'release-updates-'));
+  });
+
+  afterEach(() => {
+    rmSync(updatesDir, { recursive: true, force: true });
+  });
+
+  it('returns undefined when latest.json does not exist yet', () => {
+    expect(readLatestPointer(updatesDir)).toBeUndefined();
+  });
+
+  it('reads a valid latest.json', () => {
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 3 }));
+    expect(readLatestPointer(updatesDir)).toEqual({ releaseNumber: 3 });
+  });
+
+  it('fails closed on unparseable JSON', () => {
+    writeFileSync(join(updatesDir, 'latest.json'), '{not json');
+    expect(() => readLatestPointer(updatesDir)).toThrow('not valid JSON');
+  });
+
+  it('fails closed on a structurally invalid pointer', () => {
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 0 }));
+    expect(() => readLatestPointer(updatesDir)).toThrow('structurally invalid');
+  });
+});
+
+describe('allocateNextReleaseNumber', () => {
+  let updatesDir = '';
+  let releasesDir = '';
+
+  beforeEach(() => {
+    updatesDir = mkdtempSync(join(tmpdir(), 'release-updates-'));
+    releasesDir = join(updatesDir, 'releases');
+  });
+
+  afterEach(() => {
+    rmSync(updatesDir, { recursive: true, force: true });
+  });
+
+  function writeRetainedRelease(releaseNumber) {
     mkdirSync(releasesDir, { recursive: true });
-    writeRetainedRelease(validReleaseDescriptor);
-    writeRetainedRelease({
-      ...validReleaseDescriptor,
-      releaseId: '018f5b3a-6b7a-7c9e-9c1a-0f2b3c4d5e70',
-    });
+    const descriptor = { ...validReleaseDescriptor, releaseNumber };
+    writeFileSync(join(releasesDir, `${releaseNumber}.json`), JSON.stringify(descriptor));
+    mkdirSync(join(releasesDir, String(releaseNumber)), { recursive: true });
+    writeFileSync(join(releasesDir, String(releaseNumber), 'index.html'), '<html></html>');
+  }
 
-    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('is used by both');
+  it('allocates 1 when no retained managed tree exists', () => {
+    expect(allocateNextReleaseNumber(releasesDir, updatesDir)).toEqual({
+      nextReleaseNumber: 1,
+      descriptors: [],
+    });
+  });
+
+  it('allocates one past the highest retained release when latest.json agrees', () => {
+    writeRetainedRelease(1);
+    writeRetainedRelease(2);
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
+
+    const { nextReleaseNumber } = allocateNextReleaseNumber(releasesDir, updatesDir);
+    expect(nextReleaseNumber).toBe(3);
+  });
+
+  it('rejects retained releases without a latest.json', () => {
+    writeRetainedRelease(1);
+
+    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
+      'updates/latest.json is missing',
+    );
+  });
+
+  it('rejects a latest.json without any retained release', () => {
+    mkdirSync(updatesDir, { recursive: true });
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 1 }));
+
+    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
+      'no release is retained',
+    );
+  });
+
+  it('rejects a latest.json that does not point at the highest retained release', () => {
+    writeRetainedRelease(1);
+    writeRetainedRelease(2);
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 1 }));
+
+    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
+      'does not point to the highest retained release',
+    );
+  });
+
+  it('rejects allocation that would overflow Number.MAX_SAFE_INTEGER', () => {
+    writeRetainedRelease(Number.MAX_SAFE_INTEGER);
+    writeFileSync(
+      join(updatesDir, 'latest.json'),
+      JSON.stringify({ releaseNumber: Number.MAX_SAFE_INTEGER }),
+    );
+
+    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
+      'exceed Number.MAX_SAFE_INTEGER',
+    );
+  });
+});
+
+describe('assertReleaseNumberNotRetained', () => {
+  let releasesDir = '';
+
+  beforeEach(() => {
+    releasesDir = join(mkdtempSync(join(tmpdir(), 'release-updates-')), 'releases');
+  });
+
+  afterEach(() => {
+    rmSync(releasesDir, { recursive: true, force: true });
+  });
+
+  it('does not throw when the number is unused', () => {
+    expect(() => assertReleaseNumberNotRetained(releasesDir, 1)).not.toThrow();
+  });
+
+  it('throws when a descriptor for the number already exists', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeFileSync(join(releasesDir, '1.json'), '{}');
+
+    expect(() => assertReleaseNumberNotRetained(releasesDir, 1)).toThrow('already retained');
+  });
+
+  it('throws when an archive directory for the number already exists', () => {
+    mkdirSync(join(releasesDir, '1'), { recursive: true });
+
+    expect(() => assertReleaseNumberNotRetained(releasesDir, 1)).toThrow('already retained');
   });
 });
 

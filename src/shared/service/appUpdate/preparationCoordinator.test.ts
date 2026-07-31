@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReleaseDescriptor, ReleaseRef } from './contracts';
+import type { ReleaseDescriptor, ReleaseSummary } from './contracts';
 
 const fetchReleaseDescriptorMock = vi.fn();
 const prepareReleaseMock = vi.fn();
@@ -9,18 +9,26 @@ vi.mock('./releasePreparation', () => ({
   prepareRelease: (...args: unknown[]) => prepareReleaseMock(...args),
 }));
 
-const releaseA: ReleaseRef = { releaseId: 'release-a', releaseSequence: 1 };
-const releaseB: ReleaseRef = { releaseId: 'release-b', releaseSequence: 2 };
+const releaseA: ReleaseSummary = {
+  releaseNumber: 1,
+  appVersion: '1.0.0',
+  buildId: 'build-a',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
+const releaseB: ReleaseSummary = {
+  releaseNumber: 2,
+  appVersion: '1.1.0',
+  buildId: 'build-b',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
 
-function buildDescriptor(release: ReleaseRef): ReleaseDescriptor {
+function buildDescriptor(release: ReleaseSummary): ReleaseDescriptor {
   return {
     schemaVersion: 1,
-    releaseId: release.releaseId,
-    releaseSequence: release.releaseSequence,
-    appVersion: '1.0.0',
-    buildId: 'build-1',
-    buildDate: '2026-07-24T00:00:00.000Z',
-    indexUrl: `/updates/releases/${release.releaseId}/index.html`,
+    releaseNumber: release.releaseNumber,
+    appVersion: release.appVersion,
+    buildId: release.buildId,
+    buildDate: release.buildDate,
     indexSha256: '0'.repeat(64),
     indexByteSize: 100,
     files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
@@ -48,7 +56,7 @@ describe('createPreparationCoordinator', () => {
     expect(prepareReleaseMock).toHaveBeenCalledWith('/', 'stable', descriptorA);
   });
 
-  it('deduplicates concurrent prepare calls for the same release id', async () => {
+  it('deduplicates concurrent prepare calls for the same release number', async () => {
     let resolveFetch: (value: ReleaseDescriptor) => void = () => {};
     fetchReleaseDescriptorMock.mockReturnValue(
       new Promise((resolve) => {
@@ -70,9 +78,9 @@ describe('createPreparationCoordinator', () => {
     expect(prepareReleaseMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does not deduplicate different release ids', async () => {
-    fetchReleaseDescriptorMock.mockImplementation((_base: string, target: ReleaseRef) =>
-      target.releaseId === releaseA.releaseId ? descriptorA : descriptorB,
+  it('does not deduplicate different release numbers', async () => {
+    fetchReleaseDescriptorMock.mockImplementation((_base: string, target: ReleaseSummary) =>
+      target.releaseNumber === releaseA.releaseNumber ? descriptorA : descriptorB,
     );
     prepareReleaseMock.mockResolvedValue(undefined);
     const { createPreparationCoordinator } = await import('./preparationCoordinator');
@@ -135,7 +143,11 @@ describe('createPreparationCoordinator', () => {
  * under-counting the hops in a `.then` chain.
  */
 async function flushMicrotasks(): Promise<void> {
-  for (let i = 0; i < 10; i += 1) await Promise.resolve();
+  for (let i = 0; i < 10; i += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- each hop must complete before scheduling the next microtask.
+    // eslint-disable-next-line no-await-in-loop -- each hop must complete before scheduling the next microtask.
+    await Promise.resolve();
+  }
 }
 
 /**
@@ -158,7 +170,7 @@ describe('createPreparationCoordinator: runCleanup arbitration', () => {
     prepareReleaseMock.mockReset();
   });
 
-  it('protects a preparation already in flight: cleanup receives its release id', async () => {
+  it('protects a preparation already in flight: cleanup receives its release number', async () => {
     const fetchGate = createDeferred<ReleaseDescriptor>();
     fetchReleaseDescriptorMock.mockReturnValue(fetchGate.promise);
     prepareReleaseMock.mockResolvedValue(undefined);
@@ -169,7 +181,7 @@ describe('createPreparationCoordinator: runCleanup arbitration', () => {
     const cleanup = vi.fn().mockResolvedValue(undefined);
     await coordinator.runCleanup(cleanup);
 
-    expect(cleanup).toHaveBeenCalledWith([releaseA.releaseId]);
+    expect(cleanup).toHaveBeenCalledWith([releaseA.releaseNumber]);
 
     fetchGate.resolve(descriptorA);
     await expect(prepareAttempt).resolves.toBe(descriptorA);
@@ -240,7 +252,7 @@ describe('createPreparationCoordinator: runCleanup arbitration', () => {
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
   });
 
-  it('still deduplicates concurrent callers for the same release id requested during cleanup', async () => {
+  it('still deduplicates concurrent callers for the same release number requested during cleanup', async () => {
     const cleanupGate = createDeferred();
     fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
     prepareReleaseMock.mockResolvedValue(undefined);
@@ -326,7 +338,7 @@ describe('createPreparationCoordinator: runCleanup arbitration', () => {
     cleanup1Gate.resolve();
     await run2;
 
-    expect(cleanup2).toHaveBeenCalledWith([releaseA.releaseId]);
+    expect(cleanup2).toHaveBeenCalledWith([releaseA.releaseNumber]);
     fetchGate.resolve(descriptorA);
     await expect(prepareAttempt).resolves.toBe(descriptorA);
   });

@@ -11,7 +11,12 @@ import {
   zodAppUpdateWorkerResponse,
 } from './protocol';
 
-const activeRelease = { releaseId: '11111111-1111-4111-8111-111111111111', releaseSequence: 1 };
+const activeRelease = {
+  releaseNumber: 1,
+  appVersion: '1.0.0',
+  buildId: 'build-a',
+  buildDate: '2026-07-24T00:00:00.000Z',
+};
 
 const validSnapshot = {
   mode: 'manual' as const,
@@ -35,13 +40,27 @@ describe('zodAppUpdateWorkerRequest', () => {
       { protocolVersion: 1, type: 'SET_MODE', mode: 'automatic' },
       { protocolVersion: 1, type: 'INSTALL_ON_NEXT_LAUNCH' },
       { protocolVersion: 1, type: 'CANCEL_SCHEDULED_UPDATE' },
-      { protocolVersion: 1, type: 'BOOT_OK', releaseId: 'release-a' },
-      { protocolVersion: 1, type: 'BOOT_FAILED', releaseId: 'release-a' },
-      { protocolVersion: 1, type: 'GET_ACTIVATION_STATUS', releaseId: 'release-a' },
+      { protocolVersion: 1, type: 'BOOT_OK', releaseNumber: 1 },
+      { protocolVersion: 1, type: 'BOOT_FAILED', releaseNumber: 1 },
+      { protocolVersion: 1, type: 'GET_ACTIVATION_STATUS', releaseNumber: 1 },
     ];
     for (const request of requests) {
       expect(zodAppUpdateWorkerRequest.safeParse(request).success).toBe(true);
     }
+  });
+
+  it('fails closed on a non-positive-safe-integer releaseNumber', () => {
+    expect(
+      zodAppUpdateWorkerRequest.safeParse({ protocolVersion: 1, type: 'BOOT_OK', releaseNumber: 0 })
+        .success,
+    ).toBe(false);
+    expect(
+      zodAppUpdateWorkerRequest.safeParse({
+        protocolVersion: 1,
+        type: 'BOOT_OK',
+        releaseNumber: 1.5,
+      }).success,
+    ).toBe(false);
   });
 
   it('fails closed on a missing protocolVersion', () => {
@@ -141,6 +160,27 @@ describe('zodAppUpdateSnapshot', () => {
   it('parses a minimal valid snapshot', () => {
     expect(zodAppUpdateSnapshot.safeParse(validSnapshot).success).toBe(true);
   });
+
+  it('parses a snapshot carrying every candidate phase', () => {
+    for (const phase of ['available', 'ready', 'failed'] as const) {
+      expect(
+        zodAppUpdateSnapshot.safeParse({
+          ...validSnapshot,
+          candidate: { phase, release: { ...activeRelease, releaseNumber: 2 } },
+        }).success,
+      ).toBe(true);
+    }
+    expect(
+      zodAppUpdateSnapshot.safeParse({
+        ...validSnapshot,
+        candidate: {
+          phase: 'activating',
+          release: { ...activeRelease, releaseNumber: 2 },
+          deadlineAt: '2026-07-24T00:00:30.000Z',
+        },
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe('zodActivationStatusResponse', () => {
@@ -171,7 +211,7 @@ describe('zodAppUpdateRollbackBroadcast', () => {
       zodAppUpdateRollbackBroadcast.safeParse({
         protocolVersion: 1,
         type: 'APP_UPDATE_ROLLBACK',
-        releaseId: 'release-a',
+        releaseNumber: 1,
       }).success,
     ).toBe(true);
   });
@@ -181,7 +221,7 @@ describe('zodAppUpdateRollbackBroadcast', () => {
       zodAppUpdateRollbackBroadcast.safeParse({
         protocolVersion: 2,
         type: 'APP_UPDATE_ROLLBACK',
-        releaseId: 'release-a',
+        releaseNumber: 1,
       }).success,
     ).toBe(false);
   });

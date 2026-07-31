@@ -9,7 +9,12 @@ vi.mock('./controllerState', () => ({
 const baseState: UpdateControllerState = {
   schemaVersion: 1,
   mode: 'manual',
-  activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+  activeRelease: {
+    releaseNumber: 1,
+    appVersion: '1.0.0',
+    buildId: 'build-a',
+    buildDate: '2026-07-24T00:00:00.000Z',
+  },
 };
 
 const enqueue = <T>(operation: () => Promise<T>): Promise<T> => operation();

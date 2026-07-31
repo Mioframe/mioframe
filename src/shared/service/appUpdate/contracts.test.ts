@@ -4,12 +4,26 @@ import {
   validReleaseDescriptor,
 } from '../../../../scripts/pages/lib/releaseDescriptorCorpus.mjs';
 import {
-  toReleaseRef,
+  isPositiveSafeInteger,
   toReleaseSummary,
   zodReleaseDescriptor,
   zodReleaseSummary,
   zodUpdateControllerState,
 } from './contracts';
+
+describe('isPositiveSafeInteger', () => {
+  it('accepts a positive safe integer', () => {
+    expect(isPositiveSafeInteger(1)).toBe(true);
+    expect(isPositiveSafeInteger(Number.MAX_SAFE_INTEGER)).toBe(true);
+  });
+
+  it('rejects zero, negative, non-integer, and unsafe values', () => {
+    expect(isPositiveSafeInteger(0)).toBe(false);
+    expect(isPositiveSafeInteger(-1)).toBe(false);
+    expect(isPositiveSafeInteger(1.5)).toBe(false);
+    expect(isPositiveSafeInteger(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
+  });
+});
 
 describe('zodReleaseDescriptor', () => {
   it('accepts the shared valid release descriptor fixture', () => {
@@ -21,23 +35,12 @@ describe('zodReleaseDescriptor', () => {
   });
 });
 
-describe('toReleaseRef', () => {
-  it('extracts only releaseId and releaseSequence', () => {
-    const parsed = zodReleaseDescriptor.parse(validReleaseDescriptor);
-    expect(toReleaseRef(parsed)).toEqual({
-      releaseId: parsed.releaseId,
-      releaseSequence: parsed.releaseSequence,
-    });
-  });
-});
-
 describe('toReleaseSummary', () => {
   it('extracts identity plus exact appVersion, buildId, and buildDate from a validated descriptor', () => {
     const parsed = zodReleaseDescriptor.parse(validReleaseDescriptor);
     const summary = toReleaseSummary(parsed);
     expect(summary).toEqual({
-      releaseId: parsed.releaseId,
-      releaseSequence: parsed.releaseSequence,
+      releaseNumber: parsed.releaseNumber,
       appVersion: parsed.appVersion,
       buildId: parsed.buildId,
       buildDate: parsed.buildDate,
@@ -54,30 +57,24 @@ describe('toReleaseSummary', () => {
   );
 });
 
-const RELEASE_A = '11111111-1111-4111-8111-111111111111';
-const RELEASE_B = '22222222-2222-4222-8222-222222222222';
-const RELEASE_C = '33333333-3333-4333-8333-333333333333';
-
-const validControllerState = {
-  schemaVersion: 1,
-  mode: 'manual',
-  activeRelease: { releaseId: RELEASE_A, releaseSequence: 1 },
+const releaseSummaryA = {
+  releaseNumber: 1,
+  appVersion: '1.0.0',
+  buildId: 'build-a',
+  buildDate: '2026-07-24T00:00:00.000Z',
 };
 
 const releaseSummaryB = {
-  releaseId: RELEASE_B,
-  releaseSequence: 2,
+  releaseNumber: 2,
   appVersion: '1.1.0',
   buildId: 'build-b',
   buildDate: '2026-07-24T00:00:00.000Z',
 };
 
-const releaseSummaryC = {
-  releaseId: RELEASE_C,
-  releaseSequence: 3,
-  appVersion: '1.2.0',
-  buildId: 'build-c',
-  buildDate: '2026-07-24T00:00:00.000Z',
+const validControllerState = {
+  schemaVersion: 1,
+  mode: 'manual',
+  activeRelease: releaseSummaryA,
 };
 
 describe('zodUpdateControllerState', () => {
@@ -85,48 +82,51 @@ describe('zodUpdateControllerState', () => {
     expect(zodUpdateControllerState.safeParse(validControllerState).success).toBe(true);
   });
 
-  it('accepts every optional field populated except the mutually exclusive approvedRelease/activation', () => {
-    const full = {
-      ...validControllerState,
-      mode: 'automatic',
-      latestRelease: releaseSummaryB,
-      activation: {
-        targetRelease: releaseSummaryB,
-        deadlineAt: '2026-07-24T00:00:30.000Z',
-      },
-      failedActivationRelease: releaseSummaryC,
-      lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
-    };
-    expect(zodUpdateControllerState.safeParse(full).success).toBe(true);
+  it('accepts every candidate phase', () => {
+    for (const candidate of [
+      { phase: 'available', release: releaseSummaryB },
+      { phase: 'ready', release: releaseSummaryB },
+      { phase: 'activating', release: releaseSummaryB, deadlineAt: '2026-07-24T00:00:30.000Z' },
+      { phase: 'failed', release: releaseSummaryB },
+    ]) {
+      expect(
+        zodUpdateControllerState.safeParse({ ...validControllerState, candidate }).success,
+      ).toBe(true);
+    }
   });
 
-  it('rejects a latestRelease missing display metadata (bare identity is no longer a valid summary)', () => {
+  it('accepts lastSuccessfulCheckAt alone, with no candidate', () => {
     expect(
       zodUpdateControllerState.safeParse({
         ...validControllerState,
-        latestRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
-      }).success,
-    ).toBe(false);
-  });
-
-  it('accepts approvedRelease alone, without an activation', () => {
-    expect(
-      zodUpdateControllerState.safeParse({
-        ...validControllerState,
-        approvedRelease: releaseSummaryB,
+        lastSuccessfulCheckAt: '2026-07-24T00:00:00.000Z',
       }).success,
     ).toBe(true);
   });
 
-  it('rejects approvedRelease and activation coexisting', () => {
+  it('rejects a candidate release missing display metadata (bare identity is no longer a valid summary)', () => {
     expect(
       zodUpdateControllerState.safeParse({
         ...validControllerState,
-        approvedRelease: releaseSummaryB,
-        activation: {
-          targetRelease: releaseSummaryB,
-          deadlineAt: '2026-07-24T00:00:30.000Z',
-        },
+        candidate: { phase: 'available', release: { releaseNumber: 2 } },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an activating candidate without a deadlineAt', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: { phase: 'activating', release: releaseSummaryB },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an unknown candidate phase', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: { phase: 'pending', release: releaseSummaryB },
       }).success,
     ).toBe(false);
   });
@@ -143,67 +143,30 @@ describe('zodUpdateControllerState', () => {
     ).toBe(false);
   });
 
-  it('rejects a structurally invalid activation', () => {
+  it('rejects a non-positive-safe-integer releaseNumber', () => {
     expect(
       zodUpdateControllerState.safeParse({
         ...validControllerState,
-        activation: { targetRelease: validControllerState.activeRelease },
+        activeRelease: { ...releaseSummaryA, releaseNumber: 0 },
       }).success,
     ).toBe(false);
   });
 
-  it('rejects a releaseId not in canonical UUID format', () => {
+  it('rejects a candidate not strictly newer than activeRelease', () => {
     expect(
       zodUpdateControllerState.safeParse({
         ...validControllerState,
-        activeRelease: { releaseId: 'release-a', releaseSequence: 1 },
+        activeRelease: releaseSummaryB,
+        candidate: { phase: 'available', release: releaseSummaryA },
       }).success,
     ).toBe(false);
   });
 
-  it('rejects approvedRelease not strictly newer than activeRelease', () => {
+  it('rejects a candidate with the same releaseNumber as activeRelease', () => {
     expect(
       zodUpdateControllerState.safeParse({
         ...validControllerState,
-        activeRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
-        approvedRelease: { ...releaseSummaryB, releaseId: RELEASE_A, releaseSequence: 2 },
-      }).success,
-    ).toBe(false);
-  });
-
-  it('rejects activation.targetRelease not strictly newer than activeRelease', () => {
-    expect(
-      zodUpdateControllerState.safeParse({
-        ...validControllerState,
-        activeRelease: { releaseId: RELEASE_B, releaseSequence: 2 },
-        activation: {
-          targetRelease: { ...releaseSummaryB, releaseId: RELEASE_A, releaseSequence: 1 },
-          deadlineAt: '2026-07-24T00:00:30.000Z',
-        },
-      }).success,
-    ).toBe(false);
-  });
-
-  it('rejects a same-sequence, different-releaseId conflict between two release references', () => {
-    expect(
-      zodUpdateControllerState.safeParse({
-        ...validControllerState,
-        latestRelease: {
-          ...releaseSummaryB,
-          releaseSequence: validControllerState.activeRelease.releaseSequence,
-        },
-      }).success,
-    ).toBe(false);
-  });
-
-  it('rejects a same-releaseId, different-releaseSequence conflict between two release references', () => {
-    expect(
-      zodUpdateControllerState.safeParse({
-        ...validControllerState,
-        failedActivationRelease: {
-          ...releaseSummaryB,
-          releaseId: validControllerState.activeRelease.releaseId,
-        },
+        candidate: { phase: 'available', release: releaseSummaryA },
       }).success,
     ).toBe(false);
   });
