@@ -19,7 +19,7 @@ The separation is mandatory. It keeps each reasoning step focused and creates du
 
 These are different boundaries:
 
-- **Operator invocation** — one `material-component <name>` command. It autonomously orchestrates the full workflow until completion or a genuine external blocker.
+- **Operator invocation** — one `material-component <name>` command. It autonomously orchestrates the full workflow until completion or a genuine blocker.
 - **Stage scope** — one focused execution of design, architecture, implementation, migration, or review in a fresh worker context. It owns one artifact and returns control to the orchestrator.
 
 One operator invocation may execute multiple stage workers sequentially. A stage worker must never absorb work owned by another stage. The operator supplies only the component name.
@@ -42,21 +42,17 @@ Every stage execution uses a new worker context. The worker receives only:
 - the component name and canonical family;
 - the selected stage skill;
 - applicable workspace rules;
-- readable workspace files;
+- task-relevant readable workspace files;
 - canonical upstream artifact paths;
 - explicit return-stage or blocker facts already recorded in artifacts.
 
 Hidden reasoning, conversational summaries, and unwritten conclusions are not inter-stage inputs. The review worker must not be the worker that authored or corrected `ARCHITECTURE.md`, production implementation, or `MIGRATION.md` for the reviewed result.
 
-If the environment cannot launch a fresh worker, the workflow is blocked on orchestration capability. It must not continue all stages in one context and claim isolation.
+If a fresh worker cannot be created, the workflow is blocked on orchestration capability. It must not continue all stages in one context and claim isolation.
 
-## Workspace boundary
+## Worker scope
 
-Coding workers operate only on readable files and documented project commands.
-
-- Hidden workspace metadata and unrelated environment internals are outside stage scope.
-- Environment-repair choices are never delegated to the operator by a coding worker.
-- If a project command fails before reaching its relevant check, complete otherwise safe stage-owned file work, record the exact command failure, and report verification as blocked only when it remains the final gate.
+Coding workers use task-relevant readable files and documented project commands. If a project command fails before reaching its relevant check, complete otherwise safe stage-owned file work, record the exact visible failure, and report verification as blocked only when it remains the final gate.
 
 ## Family artifacts
 
@@ -177,19 +173,19 @@ A source-cache freshness threshold triggers a refresh attempt; it does not autom
 
 A failed refresh helper is not itself a blocker when a complete official snapshot and token resource remain available and no newer revision is known.
 
-## Genuine external blockers
+## Stop conditions
 
 The outer orchestration may stop only for:
 
 - genuinely missing official content after all fallbacks;
-- unavailable required source tools or permissions;
+- unavailable required source tools;
 - unavailable fresh-worker orchestration capability;
 - an unresolved material architecture decision that official evidence and workspace rules cannot determine;
 - required operator visual/motion acceptance;
 - a required project verification command that cannot execute or complete after stage-owned edits are done;
 - safety-required operator input.
 
-A completed stage, ordinary failing test, code finding, cache age, or missing repeated command is not an external blocker.
+A completed stage, ordinary failing test, code finding, cache age, or missing repeated command is not by itself a blocker.
 
 ## Stage ownership rules
 
