@@ -203,4 +203,36 @@ describe('publishBranch validation (managed "develop" slug)', () => {
     );
     expect(applyBranchPublish).not.toHaveBeenCalled();
   });
+
+  // publishManagedRelease() resolves a latest-build no-op before ever
+  // requiring dist; the managed 'develop' entry point must not duplicate
+  // that check up front, unlike an ordinary unmanaged branch slug (see
+  // 'publishBranch validation (ordinary, non-managed slug)' above).
+  // publishManagedRelease is mocked to always succeed, so this proves
+  // publishBranch.mjs itself carries no early distDir existence gate for
+  // the managed slug, whatever the retained publication decision turns
+  // out to be.
+  it('accepts a missing/nonexistent distDir and delegates to publishManagedRelease()', async () => {
+    const missingDistDir = '/nonexistent/dist-12345';
+
+    await publishBranch(
+      [
+        '--dist',
+        missingDistDir,
+        '--slug',
+        'develop',
+        '--app-version',
+        '1.2.3',
+        '--build-id',
+        'abc123',
+        '--build-date',
+        '2026-07-24T00:00:00.000Z',
+      ],
+      { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
+    );
+
+    expect(publishManagedRelease).toHaveBeenCalledWith(
+      expect.objectContaining({ distDir: missingDistDir, channel: 'develop' }),
+    );
+  });
 });

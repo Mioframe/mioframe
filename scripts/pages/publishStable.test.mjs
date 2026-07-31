@@ -40,15 +40,6 @@ const requiredFlags = (dist) => [
 ];
 
 describe('publishStable argument validation', () => {
-  it('throws before git operations when distDir does not exist', async () => {
-    await expect(
-      publishStable(requiredFlags('/nonexistent/dist-12345'), {
-        GITHUB_TOKEN: 'token',
-        PAGES_REPOSITORY: 'owner/pages-repo',
-      }),
-    ).rejects.toThrow('dist directory does not exist');
-  });
-
   it('throws when --dist argument is missing', async () => {
     await expect(
       publishStable(['--app-version', '1.2.3', '--build-id', 'abc123'], {
@@ -137,6 +128,24 @@ describe('publishStable target repository', () => {
         buildId: 'abc123',
         buildDate: '2026-07-24T00:00:00.000Z',
       }),
+    );
+  });
+
+  // publishManagedRelease() resolves a latest-build no-op before ever
+  // requiring dist; the real entry point must not duplicate that check up
+  // front. publishManagedRelease is mocked to always succeed, so this
+  // proves publishStable.mjs itself carries no early distDir existence
+  // gate, whatever the retained publication decision turns out to be.
+  it('accepts a missing/nonexistent distDir and delegates to publishManagedRelease()', async () => {
+    const missingDistDir = '/nonexistent/dist-12345';
+
+    await publishStable(requiredFlags(missingDistDir), {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'owner/pages-repo',
+    });
+
+    expect(publishManagedRelease).toHaveBeenCalledWith(
+      expect.objectContaining({ distDir: missingDistDir, channel: 'stable' }),
     );
   });
 });

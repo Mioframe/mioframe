@@ -257,26 +257,29 @@ export function readLatestPointer(updatesDir) {
 }
 
 /**
- * Validates the complete retained managed tree for one channel and
- * allocates the next release number. Must be called, and must succeed,
- * before the first write of a new publication begins.
+ * Reads and validates the complete retained managed tree for one channel,
+ * without allocating a next release number. Must be called, and must
+ * succeed, before resolving a publication decision.
  *
- * - no retained tree (no descriptors and no `latest.json`) allocates `1`;
- * - a retained tree without a valid `latest.json`, or whose `latest.json`
- *   does not point at the highest retained descriptor number, is rejected;
- * - a `latest.json` present without any retained descriptor is rejected;
- * - allocation overflowing `Number.MAX_SAFE_INTEGER` is rejected.
+ * - no retained tree (no descriptors and no `latest.json`) is valid and empty;
+ * - retained descriptors without a valid `latest.json`, or a `latest.json`
+ *   without any retained descriptor, is rejected;
+ * - retained release numbers must form the exact contiguous sequence
+ *   `1, 2, ..., N`: a sequence starting above `1`, or containing a gap, is
+ *   rejected;
+ * - `latest.json` must point at the final contiguous descriptor (`N`).
  * @param releasesDir Channel's `updates/releases` directory.
  * @param updatesDir Channel's `updates` directory.
- * @returns The next release number and every currently retained descriptor.
- * @throws {Error} When the retained tree is malformed, missing, conflicting, or non-monotonic.
+ * @returns Every retained descriptor (sorted by `releaseNumber`) and the
+ * highest retained release number (`undefined` for an empty tree).
+ * @throws {Error} When the retained tree is malformed, missing, conflicting, or non-contiguous.
  */
-export function allocateNextReleaseNumber(releasesDir, updatesDir) {
+export function readRetainedTree(releasesDir, updatesDir) {
   const descriptors = readRetainedReleaseDescriptors(releasesDir);
   const latest = readLatestPointer(updatesDir);
 
   if (descriptors.length === 0 && latest === undefined) {
-    return { nextReleaseNumber: 1, descriptors };
+    return { descriptors: [], latestReleaseNumber: undefined };
   }
   if (latest === undefined) {
     throw new Error('Retained releases exist but updates/latest.json is missing');
@@ -285,22 +288,34 @@ export function allocateNextReleaseNumber(releasesDir, updatesDir) {
     throw new Error('updates/latest.json exists but no release is retained');
   }
 
-  const highest = descriptors.reduce((max, d) => Math.max(max, d.releaseNumber), 0);
+  const sorted = [...descriptors].sort((a, b) => a.releaseNumber - b.releaseNumber);
+  if (sorted[0].releaseNumber !== 1) {
+    throw new Error(
+      `Retained release sequence must start at release 1, but starts at release ${sorted[0].releaseNumber}`,
+    );
+  }
+  for (let index = 1; index < sorted.length; index += 1) {
+    const expected = sorted[index - 1].releaseNumber + 1;
+    if (sorted[index].releaseNumber !== expected) {
+      throw new Error(
+        `Retained release sequence has a gap: release ${sorted[index - 1].releaseNumber} is followed by release ${sorted[index].releaseNumber}, expected release ${expected}`,
+      );
+    }
+  }
+
+  const highest = sorted[sorted.length - 1].releaseNumber;
   if (latest.releaseNumber !== highest) {
     throw new Error(
       `updates/latest.json (${latest.releaseNumber}) does not point to the highest retained release (${highest})`,
     );
   }
-  if (highest >= Number.MAX_SAFE_INTEGER) {
-    throw new Error('Next release number would exceed Number.MAX_SAFE_INTEGER');
-  }
 
-  return { nextReleaseNumber: highest + 1, descriptors };
+  return { descriptors: sorted, latestReleaseNumber: highest };
 }
 
 /**
  * Validates that the allocated `releaseNumber` is not already retained for
- * this channel — a defensive invariant check, since {@link allocateNextReleaseNumber}
+ * this channel — a defensive invariant check, since {@link resolvePublicationPlan}
  * already computes a number one past every retained descriptor. Must be
  * checked before any retained-tree write for the new release begins.
  * @param releasesDir Channel's `updates/releases` directory.
@@ -338,50 +353,73 @@ export function assertUniqueRetainedBuildIds(descriptors) {
 
 /**
  * Resolves the channel-local idempotent publication decision for `buildId`
- * against the complete retained release tree (see the managed pinned
- * application updates architecture, "Release identity and publication").
- * Validates the complete retained tree — release-number monotonicity via
- * {@link allocateNextReleaseNumber} and unique retained `buildId` values via
- * {@link assertUniqueRetainedBuildIds} — before returning a decision.
- * Callers must not inspect `dist`, or perform any publication write, before
- * this resolves.
+ * against an already-validated retained tree (see {@link readRetainedTree}
+ * and the managed pinned application updates architecture, "Release
+ * identity and publication"). Pure: performs no I/O, so a next-release-number
+ * overflow at `Number.MAX_SAFE_INTEGER` can be exercised directly without
+ * constructing an infeasible retained tree.
  *
- * - no retained descriptor has this `buildId` -> `{ kind: 'publish', nextReleaseNumber, descriptors }`;
+ * - `descriptors` is empty -> `{ kind: 'publish', nextReleaseNumber: 1, descriptors: [] }`;
+ * - no retained descriptor has this `buildId` -> `{ kind: 'publish', nextReleaseNumber, descriptors }`, where `nextReleaseNumber` is `latestReleaseNumber + 1`;
  * - this `buildId` equals the unique latest descriptor's `buildId` -> `{ kind: 'no-op', descriptor }`; the caller must perform zero writes;
  * - this `buildId` exists on a non-latest retained descriptor -> throws before any write;
- * - the retained tree carries a duplicate `buildId` across releases -> throws before any write, even when `buildId` matches none of them.
+ * - `latestReleaseNumber + 1` would exceed `Number.MAX_SAFE_INTEGER` for a genuinely new `buildId` -> throws before any write.
+ * @param descriptors Every retained `ReleaseDescriptor` for this channel, from {@link readRetainedTree}.
+ * @param latestReleaseNumber The highest retained release number, from {@link readRetainedTree} (`undefined` for an empty tree).
+ * @param buildId The exact source commit SHA for the build being published.
+ * @returns The resolved publication decision.
+ * @throws {Error} When `buildId` is retained on a non-latest release, or a new release's number would overflow.
+ */
+export function resolvePublicationDecision(descriptors, latestReleaseNumber, buildId) {
+  if (descriptors.length === 0) {
+    return { kind: 'publish', nextReleaseNumber: 1, descriptors };
+  }
+
+  const latestDescriptor = descriptors.find((d) => d.releaseNumber === latestReleaseNumber);
+  const matching = descriptors.find((d) => d.buildId === buildId);
+
+  if (matching !== undefined) {
+    if (matching.releaseNumber === latestReleaseNumber) {
+      return { kind: 'no-op', descriptor: latestDescriptor };
+    }
+    throw new Error(
+      `buildId "${buildId}" is already retained on release ${matching.releaseNumber}, which is not the latest release (${latestReleaseNumber})`,
+    );
+  }
+
+  const nextReleaseNumber = latestReleaseNumber + 1;
+  if (!isPositiveSafeInteger(nextReleaseNumber)) {
+    throw new Error('Next release number would exceed Number.MAX_SAFE_INTEGER');
+  }
+  return { kind: 'publish', nextReleaseNumber, descriptors };
+}
+
+/**
+ * Reads, validates, and resolves the channel-local idempotent publication
+ * decision for `buildId` against the complete retained release tree (see
+ * the managed pinned application updates architecture, "Release identity
+ * and publication"). Validates the complete retained tree — via
+ * {@link readRetainedTree} and unique retained `buildId` values via
+ * {@link assertUniqueRetainedBuildIds} — and resolves whether `buildId` is
+ * absent, latest, or non-latest before ever allocating a next release
+ * number or requiring any write. Callers must not inspect `dist`, or
+ * perform any publication write, before this resolves.
  * @param releasesDir Channel's `updates/releases` directory.
  * @param updatesDir Channel's `updates` directory.
  * @param buildId The exact source commit SHA for the build being published.
- * @returns The resolved publication decision.
+ * @returns The resolved publication decision. See {@link resolvePublicationDecision}.
  * @throws {Error} When the retained tree is malformed, or `buildId` is retained on a non-latest release or duplicated.
  */
 export function resolvePublicationPlan(releasesDir, updatesDir, buildId) {
-  const { nextReleaseNumber, descriptors } = allocateNextReleaseNumber(releasesDir, updatesDir);
+  const { descriptors, latestReleaseNumber } = readRetainedTree(releasesDir, updatesDir);
   assertUniqueRetainedBuildIds(descriptors);
-
-  if (descriptors.length === 0) {
-    return { kind: 'publish', nextReleaseNumber, descriptors };
-  }
-
-  const latestDescriptor = descriptors.find((d) => d.releaseNumber === nextReleaseNumber - 1);
-  const matching = descriptors.find((d) => d.buildId === buildId);
-
-  if (matching === undefined) {
-    return { kind: 'publish', nextReleaseNumber, descriptors };
-  }
-  if (matching.releaseNumber === latestDescriptor.releaseNumber) {
-    return { kind: 'no-op', descriptor: latestDescriptor };
-  }
-  throw new Error(
-    `buildId "${buildId}" is already retained on release ${matching.releaseNumber}, which is not the latest release (${latestDescriptor.releaseNumber})`,
-  );
+  return resolvePublicationDecision(descriptors, latestReleaseNumber, buildId);
 }
 
 /**
  * Builds and validates a new `ReleaseDescriptor`.
  * @param params Descriptor fields.
- * @param params.releaseNumber Allocated release identity and ordering value, from {@link allocateNextReleaseNumber}.
+ * @param params.releaseNumber Allocated release identity and ordering value, from {@link resolvePublicationPlan}.
  * @param params.appVersion `package.json` version this release was built from.
  * @param params.buildId CI build identity (e.g. commit SHA).
  * @param params.buildDate ISO 8601 UTC build timestamp.

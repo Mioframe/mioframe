@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { invalidReleaseDescriptors, validReleaseDescriptor } from './releaseDescriptorCorpus.mjs';
 import {
-  allocateNextReleaseNumber,
   assertReleaseNumberNotRetained,
   assertUniqueRetainedBuildIds,
   buildReleaseDescriptor,
@@ -15,6 +14,8 @@ import {
   isValidReleaseDescriptor,
   readLatestPointer,
   readRetainedReleaseDescriptors,
+  readRetainedTree,
+  resolvePublicationDecision,
   resolvePublicationPlan,
   validateNoImmutableCollision,
   validateProjectedArtifactSize,
@@ -232,7 +233,7 @@ describe('readLatestPointer', () => {
   });
 });
 
-describe('allocateNextReleaseNumber', () => {
+describe('readRetainedTree', () => {
   let updatesDir = '';
   let releasesDir = '';
 
@@ -253,26 +254,35 @@ describe('allocateNextReleaseNumber', () => {
     writeFileSync(join(releasesDir, String(releaseNumber), 'index.html'), '<html></html>');
   }
 
-  it('allocates 1 when no retained managed tree exists', () => {
-    expect(allocateNextReleaseNumber(releasesDir, updatesDir)).toEqual({
-      nextReleaseNumber: 1,
+  it('returns an empty tree when no retained managed tree exists', () => {
+    expect(readRetainedTree(releasesDir, updatesDir)).toEqual({
       descriptors: [],
+      latestReleaseNumber: undefined,
     });
   });
 
-  it('allocates one past the highest retained release when latest.json agrees', () => {
+  it('reports the highest retained release when latest.json agrees on a contiguous sequence', () => {
     writeRetainedRelease(1);
     writeRetainedRelease(2);
     writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
 
-    const { nextReleaseNumber } = allocateNextReleaseNumber(releasesDir, updatesDir);
-    expect(nextReleaseNumber).toBe(3);
+    const { latestReleaseNumber } = readRetainedTree(releasesDir, updatesDir);
+    expect(latestReleaseNumber).toBe(2);
+  });
+
+  it('accepts a longer contiguous sequence [1, 2, 3]', () => {
+    writeRetainedRelease(1);
+    writeRetainedRelease(2);
+    writeRetainedRelease(3);
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 3 }));
+
+    expect(readRetainedTree(releasesDir, updatesDir).latestReleaseNumber).toBe(3);
   });
 
   it('rejects retained releases without a latest.json', () => {
     writeRetainedRelease(1);
 
-    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
+    expect(() => readRetainedTree(releasesDir, updatesDir)).toThrow(
       'updates/latest.json is missing',
     );
   });
@@ -281,9 +291,7 @@ describe('allocateNextReleaseNumber', () => {
     mkdirSync(updatesDir, { recursive: true });
     writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 1 }));
 
-    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
-      'no release is retained',
-    );
+    expect(() => readRetainedTree(releasesDir, updatesDir)).toThrow('no release is retained');
   });
 
   it('rejects a latest.json that does not point at the highest retained release', () => {
@@ -291,20 +299,38 @@ describe('allocateNextReleaseNumber', () => {
     writeRetainedRelease(2);
     writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 1 }));
 
-    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
+    expect(() => readRetainedTree(releasesDir, updatesDir)).toThrow(
       'does not point to the highest retained release',
     );
   });
 
-  it('rejects allocation that would overflow Number.MAX_SAFE_INTEGER', () => {
-    writeRetainedRelease(Number.MAX_SAFE_INTEGER);
-    writeFileSync(
-      join(updatesDir, 'latest.json'),
-      JSON.stringify({ releaseNumber: Number.MAX_SAFE_INTEGER }),
-    );
+  it('rejects a retained sequence beginning above 1: [2]', () => {
+    writeRetainedRelease(2);
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
 
-    expect(() => allocateNextReleaseNumber(releasesDir, updatesDir)).toThrow(
-      'exceed Number.MAX_SAFE_INTEGER',
+    expect(() => readRetainedTree(releasesDir, updatesDir)).toThrow(
+      'must start at release 1, but starts at release 2',
+    );
+  });
+
+  it('rejects a retained sequence with a gap: [1, 3]', () => {
+    writeRetainedRelease(1);
+    writeRetainedRelease(3);
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 3 }));
+
+    expect(() => readRetainedTree(releasesDir, updatesDir)).toThrow(
+      'release 1 is followed by release 3, expected release 2',
+    );
+  });
+
+  it('rejects a retained sequence with a gap: [1, 2, 4]', () => {
+    writeRetainedRelease(1);
+    writeRetainedRelease(2);
+    writeRetainedRelease(4);
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 4 }));
+
+    expect(() => readRetainedTree(releasesDir, updatesDir)).toThrow(
+      'release 2 is followed by release 4, expected release 3',
     );
   });
 });
@@ -356,6 +382,48 @@ describe('assertUniqueRetainedBuildIds', () => {
         { ...validReleaseDescriptor, releaseNumber: 2, buildId: 'sha1' },
       ]),
     ).toThrow('share the same buildId');
+  });
+});
+
+describe('resolvePublicationDecision', () => {
+  it('resolves publish with releaseNumber 1 for an empty retained tree', () => {
+    expect(resolvePublicationDecision([], undefined, 'sha1')).toEqual({
+      kind: 'publish',
+      nextReleaseNumber: 1,
+      descriptors: [],
+    });
+  });
+
+  it('resolves a zero-write no-op when the retained latest release is at Number.MAX_SAFE_INTEGER', () => {
+    const descriptors = [
+      { ...validReleaseDescriptor, releaseNumber: Number.MAX_SAFE_INTEGER, buildId: 'sha1' },
+    ];
+
+    expect(resolvePublicationDecision(descriptors, Number.MAX_SAFE_INTEGER, 'sha1')).toEqual({
+      kind: 'no-op',
+      descriptor: descriptors[0],
+    });
+  });
+
+  it('rejects a genuinely new buildId when the next release number would exceed Number.MAX_SAFE_INTEGER', () => {
+    const descriptors = [
+      { ...validReleaseDescriptor, releaseNumber: Number.MAX_SAFE_INTEGER, buildId: 'sha1' },
+    ];
+
+    expect(() =>
+      resolvePublicationDecision(descriptors, Number.MAX_SAFE_INTEGER, 'sha-new'),
+    ).toThrow('exceed Number.MAX_SAFE_INTEGER');
+  });
+
+  it('rejects when buildId is retained on a non-latest release', () => {
+    const descriptors = [
+      { ...validReleaseDescriptor, releaseNumber: 1, buildId: 'sha1' },
+      { ...validReleaseDescriptor, releaseNumber: 2, buildId: 'sha2' },
+    ];
+
+    expect(() => resolvePublicationDecision(descriptors, 2, 'sha1')).toThrow(
+      'is already retained on release 1, which is not the latest release (2)',
+    );
   });
 });
 

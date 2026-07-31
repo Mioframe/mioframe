@@ -69,7 +69,11 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
     );
   }
 
-  if (!existsSync(distDir)) {
+  // The managed 'develop' slug delegates retained-tree planning to
+  // publishManagedRelease(), which resolves a latest-build no-op before ever
+  // requiring dist; only an ordinary unmanaged branch slug needs dist to
+  // exist up front.
+  if (!isManaged && !existsSync(distDir)) {
     throw new Error(`dist directory does not exist: ${distDir}`);
   }
 

@@ -23,7 +23,6 @@
  *                        which is the reserved Actions default pointing at the source repository)
  */
 
-import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
@@ -47,9 +46,6 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
     throw new Error(
       'Usage: publishStable.mjs --dist <dist-dir> --app-version <version> --build-id <id> --build-date <canonical-utc-committer-iso>',
     );
-  }
-  if (!existsSync(distDir)) {
-    throw new Error(`dist directory does not exist: ${distDir}`);
   }
 
   const outputDir = readFlag(argv, '--output-dir');

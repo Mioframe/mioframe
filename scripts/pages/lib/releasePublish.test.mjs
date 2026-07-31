@@ -10,8 +10,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as releaseDescriptor from './releaseDescriptor.mjs';
 import { publishManagedRelease } from './releasePublish.mjs';
 
 let workDir = '';
@@ -544,6 +545,119 @@ describe('publishManagedRelease', () => {
         }),
       ).toThrow('share the same buildId');
       expect(existsSync(join(workDir, 'updates', 'releases', '3.json'))).toBe(false);
+    });
+  });
+
+  describe('release-number exhaustion (Number.MAX_SAFE_INTEGER)', () => {
+    // A retained tree actually reaching Number.MAX_SAFE_INTEGER cannot be
+    // constructed on disk; resolvePublicationPlan is spied to return the
+    // exact decision readRetainedTree/resolvePublicationDecision would
+    // produce for such a tree (proven directly, with real arithmetic, in
+    // releaseDescriptor.test.mjs). These tests instead prove that
+    // publishManagedRelease's own orchestration honors that decision:
+    // zero writes and no dist inspection for the no-op, and zero writes
+    // before propagating the overflow rejection.
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('resolves a latest-build no-op without inspecting or requiring dist when the retained latest release is at Number.MAX_SAFE_INTEGER', () => {
+      const descriptor = {
+        schemaVersion: 1,
+        releaseNumber: Number.MAX_SAFE_INTEGER,
+        appVersion: '1.0.0',
+        buildId: 'sha1',
+        buildDate: '2026-07-24T00:00:00.000Z',
+        indexSha256: '0'.repeat(64),
+        indexByteSize: 100,
+        files: [{ path: 'assets/a.js', sha256: '0'.repeat(64), byteSize: 10 }],
+      };
+      vi.spyOn(releaseDescriptor, 'resolvePublicationPlan').mockReturnValue({
+        kind: 'no-op',
+        descriptor,
+      });
+
+      const result = publishManagedRelease({
+        workDir,
+        distDir: join(distDir, 'does-not-exist'),
+        channel: 'stable',
+        appVersion: '1.0.0',
+        buildId: 'sha1',
+        buildDate: '2026-07-24T00:00:00.000Z',
+      });
+
+      expect(result).toEqual(descriptor);
+      expect(existsSync(join(workDir, 'updates'))).toBe(false);
+      expect(existsSync(join(workDir, 'assets'))).toBe(false);
+    });
+
+    it('rejects a genuinely new buildId before any write when the next release number would exceed Number.MAX_SAFE_INTEGER', () => {
+      writeBasicDist();
+      vi.spyOn(releaseDescriptor, 'resolvePublicationPlan').mockImplementation(() => {
+        throw new Error('Next release number would exceed Number.MAX_SAFE_INTEGER');
+      });
+
+      expect(() =>
+        publishManagedRelease({
+          workDir,
+          distDir,
+          channel: 'stable',
+          appVersion: '1.0.0',
+          buildId: 'sha-new',
+          buildDate: '2026-07-24T00:00:00.000Z',
+        }),
+      ).toThrow('exceed Number.MAX_SAFE_INTEGER');
+      expect(existsSync(join(workDir, 'updates'))).toBe(false);
+      expect(existsSync(join(workDir, 'assets'))).toBe(false);
+    });
+  });
+
+  describe('retained-tree sequence corruption', () => {
+    it('rejects a retained sequence gap without writing any new state', () => {
+      writeBasicDist(buildIndexHtml('<v1/>'));
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'stable',
+        appVersion: '1.0.0',
+        buildId: 'sha1',
+        buildDate: '2026-07-24T00:00:00.000Z',
+      });
+
+      // Simulate a corrupted retained tree with a gap: releases 1 and 3
+      // retained, release 2 missing, latest.json pointing at 3.
+      mkdirSync(join(workDir, 'updates', 'releases', '3'), { recursive: true });
+      writeFileSync(join(workDir, 'updates', 'releases', '3', 'index.html'), '<html>3</html>');
+      writeFileSync(
+        join(workDir, 'updates', 'releases', '3.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          releaseNumber: 3,
+          appVersion: '1.0.0',
+          buildId: 'sha3',
+          buildDate: '2026-07-25T00:00:00.000Z',
+          indexSha256: 'a'.repeat(64),
+          indexByteSize: 10,
+          files: [{ path: 'assets/app-1.js', sha256: 'a'.repeat(64), byteSize: 1 }],
+        }),
+      );
+      writeFileSync(join(workDir, 'updates', 'latest.json'), JSON.stringify({ releaseNumber: 3 }));
+      const latestBefore = readFileSync(join(workDir, 'updates', 'latest.json'), 'utf8');
+
+      writeFileSync(join(distDir, 'index.html'), buildIndexHtml('<v2/>'));
+
+      expect(() =>
+        publishManagedRelease({
+          workDir,
+          distDir,
+          channel: 'stable',
+          appVersion: '1.1.0',
+          buildId: 'sha2',
+          buildDate: '2026-07-26T00:00:00.000Z',
+        }),
+      ).toThrow('release 1 is followed by release 3, expected release 2');
+      expect(readFileSync(join(workDir, 'updates', 'latest.json'), 'utf8')).toBe(latestBefore);
+      expect(existsSync(join(workDir, 'updates', 'releases', '4.json'))).toBe(false);
     });
   });
 });
