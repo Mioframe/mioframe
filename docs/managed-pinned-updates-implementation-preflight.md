@@ -8,89 +8,111 @@ The existing PR implementation is reusable evidence, not a compatibility contrac
 
 ## Owner map
 
-| Owner                       | Files / responsibility                                                                                        |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Publication                 | `scripts/pages/lib/releaseDescriptor.mjs`, `releasePublish.mjs`, stable/develop publishers                    |
-| PWA registration identity   | `config/plugins/pwa.ts`, app registration/bootstrap wiring                                                    |
-| Persisted lifecycle         | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts`                      |
-| Worker runtime              | `src/shared/service/appUpdate/**`, `src/sw.ts`                                                                |
-| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**`            |
-| User actions/composition    | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane`                                           |
-| Verification                | colocated deterministic/component tests, `src/sw*.test.ts`, existing app/release E2E, `managed-updates` label |
+| Owner | Files / responsibility |
+| --- | --- |
+| Release contract | Node publisher validators, runtime descriptor schemas, shared descriptor corpus, migration pointer |
+| Publication | `scripts/pages/lib/releasePublish.mjs`, stable/develop publishers, retained archive and bridge artifacts |
+| Persisted lifecycle | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts` |
+| Bridge packaging/runtime | PWA build configuration, frozen `sw.js` bridge source, bridge registration replacement and tests |
+| Managed worker runtime | `src/shared/service/appUpdate/**`, `src/sw.ts` or renamed managed worker entry |
+| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**` |
+| User actions/composition | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane` |
+| Verification | colocated deterministic/component tests, worker wiring tests, existing app/release E2E, `managed-updates` label |
 
-Preserve `OperationQueue`, `PreparationCoordinator`, exact-release integrity/restoration, watchdog, channel isolation, response-before-follow-up wiring, existing FSD ownership, and existing scenario owners.
+Preserve `OperationQueue`, `PreparationCoordinator`, exact-release integrity/restoration, watchdog, channel isolation, response-before-follow-up ordering, existing FSD ownership, and existing scenario owners.
 
 Delete old identity-conflict helpers, multi-reference transitions, snapshot reconciliation, and tests that protect only the replaced model.
 
 ## Pass order
 
-Each pass is a separate coding-agent task. Architecture is fixed between passes. Do not start the next pass until the previous pass has focused verification and architect review.
+Each pass is a separate coding-agent task. Architecture is fixed between passes. Do not start the next pass until the previous pass is internally complete, repository-consistent, focused verification has passed, and architect review is complete.
 
-### Pass 1 — publication identity and legacy baseline
+No pass may intentionally leave publisher and runtime descriptor contracts incompatible for a later agent to repair.
 
-Replace UUID + sequence with positive safe-integer `releaseNumber` in publisher schemas, retained-tree validation, layout, corpus, fixtures, and publisher tests.
+### Pass 1 — atomic release contract, publication, and pure state
 
-For the first managed publication over legacy, archive the exact pre-overwrite deployment as release `1`, publish the managed build as release `2`, write immutable `legacy-migration.json`, and keep `latest.json` last. A new channel without a prior deployment starts at release `1` without migration metadata.
+Change the complete release identity contract atomically:
 
-Required result: exact rollback baseline, append-only remote archive, monotonic allocation, overflow/pre-write failure safety, `latest.json` last.
+- replace UUID + sequence with positive safe-integer `releaseNumber` in both Node publisher validation and runtime schemas;
+- update the shared descriptor corpus and both parity owners in the same pass;
+- add immutable legacy migration pointer validation;
+- archive the exact pre-overwrite legacy deployment as release `1` and publish the first managed build as release `2`;
+- preserve the frozen bridge artifact and write migration metadata before `latest.json`;
+- replace persisted lifecycle state with active + one discriminated candidate;
+- update pure transitions, snapshot/protocol release payload types, cache names, preparation identity, controller persistence, and watchdog release-number literals sufficiently to keep the repository type-safe and contract-consistent;
+- remove old identity conflict helpers and old-model pure tests.
 
-### Pass 2 — runtime contracts and pure state
+Required result:
 
-Replace runtime descriptor/state/snapshot/protocol contracts and pure transitions with active + one candidate. Adapt cache names, preparation, controller persistence, migration-pointer schemas, and baseline types.
+- publisher and runtime accept exactly the same descriptor format through the shared corpus;
+- no production or active-test `releaseId` / `releaseSequence` contract remains;
+- exact rollback baseline, append-only archive, monotonic allocation, overflow/pre-write safety, and `latest.json`-last are proven;
+- complete single-candidate pure transition matrix is proven;
+- no orchestration, bridge lifecycle, or UI behavior is invented in this pass.
 
-Required result: no old production fields or aliases; complete transition matrix protected by deterministic tests.
+### Pass 2 — migration bridge and managed worker runtime
 
-### Pass 3 — script identity, install, orchestration, fetch, and watchdog
+Implement the reachable two-stage controller path:
 
-Change managed stable/develop registration from legacy `sw.js` to `managed-sw.js` while keeping the same scope. Classify the active predecessor by exact normalized `registration.active.scriptURL`; inspect frozen legacy cache/navigation evidence only after the active URL matches legacy `sw.js`.
+- retain legacy/future migration URL `sw.js` as the byte-stable migration bridge;
+- build/register final controller as `managed-sw.js` at the same scope;
+- make the normal managed app registration target `managed-sw.js`;
+- implement bridge install validation, baseline preparation, initial state write, exact baseline navigation/assets, exact `registerSW.js` replacement, and read-only bridge probe;
+- implement managed-controller probe and final install classification;
+- reject active bridge/managed predecessor with absent or invalid state;
+- rewrite discovery, Manual → Automatic reconciliation, mode/install orchestration, fetch routing, activation recovery, broadcasts, cleanup triggers, and watchdog handling;
+- keep bridge behavior migration-only.
 
-Implement first-registration / proven legacy migration / managed-upgrade behavior. Legacy migration persists archived baseline active and latest available. Managed active plus missing state rejects even with stale legacy caches.
+Required result:
 
-Rewrite discovery, Manual → Automatic reconciliation, mode/install orchestration, fetch routing, activation recovery, broadcasts, cleanup triggers, watchdog release-number payloads, and the distinct 5-second watchdog request timeout.
+- an old cache-first Workbox shell reaches the bridge through native `sw.js` update checks;
+- a bridge-controlled baseline page explicitly registers `managed-sw.js` without racing the legacy registration script;
+- final managed install accepts only a positively identified bridge or previous managed predecessor with valid state;
+- long work remains outside the queue, stale completions are no-ops, Automatic has an explicit trigger, current recovery navigation is excluded from rollback reload, and non-release requests never enter managed handling.
 
-Required result: unambiguous controller identity, long work outside the queue, stale completions as no-ops, explicit Automatic trigger, recovery-navigation exclusion, early non-release pass-through.
+### Pass 3 — client, entity, features, and UI
 
-### Pass 4 — client, entity, features, and UI
-
-Introduce explicit client results: success, timeout, unavailable. Apply 10-second short UI transport and 120-second long UI transport. Timeout clears busy but preserves last snapshot/capability.
+Introduce explicit client results: success, timeout, unavailable. Apply 10-second short UI transport and 120-second long UI transport. Timeout clears busy but preserves the last valid snapshot and capability.
 
 Project one candidate through client/entity/UI while preserving feature entry points and FSD ownership.
 
 Required result: truthful candidate status/actions, finite busy behavior, timeout is not capability loss, Manual-only available notification, widget-local connectivity.
 
-### Pass 5 — complete scenario proof
+### Pass 4 — complete scenario proof
 
 Rewrite existing fixtures and release/browser specs in place. Remove obsolete old-model scenarios; do not create parallel v2 suites.
 
-Required result: new-channel first install, distinct-script legacy migration with rollback baseline, managed active plus stale legacy cache rejection, missing-state managed upgrade rejection, Automatic follow-up, Manual, activation, rollback, retry, restoration, isolation, uncontrolled windows, cross-engine lifecycle, and data compatibility all have proof.
+Required result: new-channel first install, native legacy → bridge discovery, archived baseline rollback, bridge → managed registration, final managed handoff, managed missing-state rejection, Automatic follow-up, Manual, activation, rollback, retry, restoration, isolation, uncontrolled windows, cross-engine lifecycle, and data compatibility all have proof.
 
 ## TEST IMPACT
 
-**Changed contracts:** publication identity/layout; legacy baseline archive; service-worker filename/registration identity; install classification; state/transitions; protocol/snapshot; Automatic reconciliation; client outcomes/timeouts; fetch ownership; cache protection; UI candidate projection; rollback data compatibility.
+**Changed contracts:** publication identity/layout; shared descriptor parity; legacy baseline archive; frozen bridge artifact; service-worker migration chain; controller-kind probes; install classification; persisted state/transitions; protocol/snapshot; Automatic reconciliation; client outcomes/timeouts; fetch ownership; cache protection; UI candidate projection; rollback data compatibility.
 
 **Primary proof owners:**
 
-- publisher/runtime/state/protocol/cache/script-identity/client deterministic tests;
-- `config/plugins/pwa.test.ts` and registration/bootstrap tests;
-- `src/sw.test.ts` and `src/sw.rollbackOrdering.test.ts`;
+- publisher/runtime/shared-corpus/state/protocol/cache deterministic tests;
+- PWA packaging and bridge byte-stability tests;
+- bridge and final managed worker wiring tests;
 - app-update entity/feature/widget component tests;
 - `tests/e2e/appUpdatesNavigation.spec.ts`;
 - existing `tests/e2e/release/managedUpdates*.spec.ts` and fixtures;
-- watchdog parity and descriptor corpus tests.
+- watchdog parity tests.
 
 **Required new proof:**
 
+- publisher/runtime descriptor parity after one atomic pass;
 - safe-integer allocation and overflow rejection before writes;
 - exact legacy deployment as release `1`, managed build as release `2`, migration pointer before latest;
-- append-only archive and immutable migration pointer;
-- same-scope registration changes from legacy `sw.js` to managed `managed-sw.js`;
-- exact active script URL distinguishes first registration, legacy migration, managed upgrade, and unknown predecessor;
-- active managed + absent/invalid + stale legacy cache rejects installation;
-- legacy baseline stays active and managed release requires `BOOT_OK`;
+- append-only archive, immutable migration pointer, and byte-stable retained bridge;
+- legacy cached shell continues registering `sw.js`, while native update discovers the bridge;
+- bridge replacement registration script registers `managed-sw.js` at the same scope;
+- bridge writes active baseline plus available candidate and never activates the candidate;
+- final controller positively identifies bridge/managed predecessor;
+- bridge/managed predecessor plus absent or invalid state rejects installation;
 - complete candidate transitions and supersession policy;
 - Manual → Automatic follow-up for available, failed, none, ready, activating;
 - explicit timeout clears busy while preserving snapshot/capability; late broadcast refreshes;
-- watchdog 5-second request timeout distinct from UI and activation deadlines;
+- controller-kind and watchdog 5-second timeouts remain distinct from UI and activation deadlines;
 - stale mode/number/phase completion matrix;
 - early non-release pass-through without state/cache access;
 - expired-navigation rollback exclusion;
@@ -105,7 +127,9 @@ Task-specific measurements: none.
 
 After each pass, run the smallest repository-managed focused verification for changed contracts and report the exact result.
 
-After Pass 5:
+Pass 1 must include all affected Node and runtime parity/type/unit owners in one successful focused verification. A green publisher-only suite is insufficient.
+
+After Pass 4:
 
 ```text
 pnpm verify --full --only managed-updates
@@ -116,7 +140,7 @@ GitHub CI or raw underlying commands do not replace the final gate.
 
 ## Readiness
 
-Owners, compatibility, pass boundaries, proof ownership, and verification are resolved.
+Owners, atomic contract boundary, bridge lifecycle, pass boundaries, proof ownership, and verification are resolved.
 
 Unresolved blockers: none.
 
