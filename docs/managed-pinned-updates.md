@@ -35,13 +35,13 @@ An irreversible migration requires a separate fail-closed architecture that firs
 
 ## Ownership and sources of truth
 
-| Owner | Responsibility |
-| --- | --- |
-| Publisher | Append-only immutable release archive, one-time legacy migration metadata, and `latest.json` |
-| Controller worker | Persisted update state, transitions, preparation, fetch routing, activation, rollback, local cache ownership, broadcasts |
-| Service client and features | Transport outcomes, finite busy state, existing user actions |
-| Entity/widget/pane | Snapshot projection, product composition, and truthful UI copy |
-| Browser | Controller-worker `install` / `waiting` / `activate` lifecycle |
+| Owner                       | Responsibility                                                                                                           |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Publisher                   | Append-only immutable release archive, one-time legacy migration metadata, and `latest.json`                             |
+| Controller worker           | Persisted update state, transitions, preparation, fetch routing, activation, rollback, local cache ownership, broadcasts |
+| Service client and features | Transport outcomes, finite busy state, existing user actions                                                             |
+| Entity/widget/pane          | Snapshot projection, product composition, and truthful UI copy                                                           |
+| Browser                     | Controller-worker `install` / `waiting` / `activate` lifecycle                                                           |
 
 Sources of truth:
 
@@ -205,19 +205,19 @@ Releases are applied serially:
 - Automatic may replace `failed` with a newer release but never retries the exact failed release;
 - Manual may explicitly retry the exact failed release.
 
-| State / event | Result |
-| --- | --- |
-| no candidate + newer discovery | `available(new)` |
-| `available(B)` + newer C | `available(C)` |
-| eligible `failed(B)` + newer C | `available(C)` |
-| `SET_MODE` | change mode only |
-| Automatic `available(B)` + fresh successful preparation | `ready(B)` |
-| Manual `available(B)` or `failed(B)` + fresh successful install | `ready(B)` |
-| Manual `ready(B)` + cancel | `available(B)` |
-| `ready(B)` + qualifying clean launch | `activating(B, deadline)`; active unchanged |
-| matching durable `BOOT_OK(B)` | active becomes B; candidate cleared |
-| matching durable `BOOT_FAILED(B)` or expired activation | active unchanged; `failed(B)` |
-| stale/wrong completion or acknowledgement | no-op |
+| State / event                                                   | Result                                      |
+| --------------------------------------------------------------- | ------------------------------------------- |
+| no candidate + newer discovery                                  | `available(new)`                            |
+| `available(B)` + newer C                                        | `available(C)`                              |
+| eligible `failed(B)` + newer C                                  | `available(C)`                              |
+| `SET_MODE`                                                      | change mode only                            |
+| Automatic `available(B)` + fresh successful preparation         | `ready(B)`                                  |
+| Manual `available(B)` or `failed(B)` + fresh successful install | `ready(B)`                                  |
+| Manual `ready(B)` + cancel                                      | `available(B)`                              |
+| `ready(B)` + qualifying clean launch                            | `activating(B, deadline)`; active unchanged |
+| matching durable `BOOT_OK(B)`                                   | active becomes B; candidate cleared         |
+| matching durable `BOOT_FAILED(B)` or expired activation         | active unchanged; `failed(B)`               |
+| stale/wrong completion or acknowledgement                       | no-op                                       |
 
 Every long completion re-reads state and may persist only when mode, candidate number, and phase still match its original target. Every no-op transition returns the original state object.
 
@@ -227,12 +227,12 @@ Every long completion re-reads state and may persist only when mode, candidate n
 
 After a successful Manual → Automatic change, deferred work is attached to the same message event after the response:
 
-| Fresh state after response | Deferred Automatic reconciliation |
-| --- | --- |
-| `available(B)` | prepare exact B; persist `ready(B)` only if mode/number/phase still match |
-| `failed(B)` | discover a strictly newer release; never retry B; prepare the newer available candidate if one is persisted |
-| no candidate | discover now; prepare the resulting available candidate if one is persisted |
-| `ready` or `activating` | no follow-up beyond the mode change |
+| Fresh state after response | Deferred Automatic reconciliation                                                                           |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `available(B)`             | prepare exact B; persist `ready(B)` only if mode/number/phase still match                                   |
+| `failed(B)`                | discover a strictly newer release; never retry B; prepare the newer available candidate if one is persisted |
+| no candidate               | discover now; prepare the resulting available candidate if one is persisted                                 |
+| `ready` or `activating`    | no follow-up beyond the mode change                                                                         |
 
 This reconciliation is an explicit trigger and does not depend on the once-per-worker navigation scheduler having not run yet. Discovery and preparation remain outside `OperationQueue`; each later durable transition emits its own invalidation.
 
@@ -294,10 +294,10 @@ Cross-origin requests, `updates/**`, manifest, icons, APIs, fonts, and every oth
 
 For owned requests:
 
-| State | Result |
-| --- | --- |
+| State             | Result                                        |
+| ----------------- | --------------------------------------------- |
 | absent or invalid | controlled `503`; no live-deployment fallback |
-| valid | serve the selected exact release |
+| valid             | serve the selected exact release              |
 
 Selected release is the candidate only while `activating`; otherwise it is active. Missing or corrupt selected cache is restored only from its exact immutable archive, or returns `503`.
 
@@ -341,28 +341,28 @@ A timeout preserves this snapshot. Feature-local busy/error state changes must n
 
 ## Acceptance matrix
 
-| Scenario | Required result |
-| --- | --- |
-| New-channel first registration | verified latest becomes initial baseline before worker install succeeds |
-| First managed publication over legacy | exact pre-overwrite deployment archived as baseline 1; new build published as candidate release 2 |
-| Proven legacy migration | archived legacy baseline becomes active; latest remains candidate and requires `BOOT_OK` |
-| Managed active + missing state + stale legacy cache | managed probe identifies upgrade; installation rejected |
-| Unknown/ambiguous active worker + absent state | installation rejected |
-| Managed upgrade + valid state | state preserved unchanged |
-| Managed upgrade + absent/invalid state | installation rejected |
-| Active runtime + absent/invalid state | owned navigation/assets return `503` |
-| Manual → Automatic with available | response first, then exact candidate preparation |
-| Manual → Automatic with failed/no candidate | response first, then discovery; exact failed candidate is not retried |
-| Long-request timeout | busy clears; last snapshot/capability remain; late broadcast may refresh |
-| Manual deferral | active continues indefinitely; remote archive remains available |
-| Automatic preparation failure | Automatic and `available` remain; later eligible trigger retries |
-| Mode change during preparation | stale completion cannot overwrite current mode/candidate |
-| Ready/activating B, C published | B remains selected; C is considered later |
-| Candidate boot succeeds | durable commit before invalidation and cleanup |
-| Candidate boot fails/expires | previous active remains; candidate becomes failed |
-| Missing selected cache | exact restoration or `503`, never live deployment |
-| Stable/develop | state, caches, clients, and broadcasts never cross channels |
-| Rollback data compatibility | previous active can still read data written by the newer supported release |
+| Scenario                                            | Required result                                                                                   |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| New-channel first registration                      | verified latest becomes initial baseline before worker install succeeds                           |
+| First managed publication over legacy               | exact pre-overwrite deployment archived as baseline 1; new build published as candidate release 2 |
+| Proven legacy migration                             | archived legacy baseline becomes active; latest remains candidate and requires `BOOT_OK`          |
+| Managed active + missing state + stale legacy cache | managed probe identifies upgrade; installation rejected                                           |
+| Unknown/ambiguous active worker + absent state      | installation rejected                                                                             |
+| Managed upgrade + valid state                       | state preserved unchanged                                                                         |
+| Managed upgrade + absent/invalid state              | installation rejected                                                                             |
+| Active runtime + absent/invalid state               | owned navigation/assets return `503`                                                              |
+| Manual → Automatic with available                   | response first, then exact candidate preparation                                                  |
+| Manual → Automatic with failed/no candidate         | response first, then discovery; exact failed candidate is not retried                             |
+| Long-request timeout                                | busy clears; last snapshot/capability remain; late broadcast may refresh                          |
+| Manual deferral                                     | active continues indefinitely; remote archive remains available                                   |
+| Automatic preparation failure                       | Automatic and `available` remain; later eligible trigger retries                                  |
+| Mode change during preparation                      | stale completion cannot overwrite current mode/candidate                                          |
+| Ready/activating B, C published                     | B remains selected; C is considered later                                                         |
+| Candidate boot succeeds                             | durable commit before invalidation and cleanup                                                    |
+| Candidate boot fails/expires                        | previous active remains; candidate becomes failed                                                 |
+| Missing selected cache                              | exact restoration or `503`, never live deployment                                                 |
+| Stable/develop                                      | state, caches, clients, and broadcasts never cross channels                                       |
+| Rollback data compatibility                         | previous active can still read data written by the newer supported release                        |
 
 ## Required proof and verification
 
