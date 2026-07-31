@@ -7,8 +7,7 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 - Use `material-component <name>` as the normal operator-facing entrypoint for one official Material family.
 - Read `docs/component-workflow.md` as the single complete state-machine contract.
 - Use the five stage skills only through the stage selected by that workflow.
-- Use `material-foundation` for a cross-family foundation contract.
-- Use `architect-handoff` only for unresolved cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior outside one deterministic family architecture.
+- Use `architect-handoff` for unresolved cross-family foundation ownership, renderer strategy, global theme ownership, public token architecture, or product behavior outside one deterministic family architecture.
 
 Do not reproduce the full workflow in this file, README files, architecture docs, or roadmap.
 
