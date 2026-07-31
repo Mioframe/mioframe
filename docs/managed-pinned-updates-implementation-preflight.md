@@ -6,121 +6,157 @@ Authoritative architecture: [`docs/managed-pinned-updates.md`](./managed-pinned-
 
 Existing code and tests are reusable evidence, not compatibility contracts. The feature has not shipped; old descriptor, state, snapshot, protocol, and watchdog formats are removed rather than migrated.
 
+The seven stages below are sequential review checkpoints inside one draft PR. They are not independently mergeable product increments. Each stage must leave all changed owners, repository type checking, and its focused verification green before the next stage begins.
+
 ## Owner map
 
-| Owner                        | Responsibility                                                                                                                           |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Release contract/publication | Node publisher validator, runtime schema, shared corpus, deterministic build inputs, retained archive, idempotent publish, `latest.json` |
-| Pure lifecycle               | `contracts.ts`, `controllerState.ts`, `stateTransitions.ts`, snapshot/protocol release payloads                                          |
-| Worker runtime               | PWA config, `src/sw.ts`, predecessor probes, reconciliation, preparation, fetch, activation                                              |
-| Client/UI                    | service client, entity projection, existing features, settings/widget/pane                                                               |
-| Verification                 | colocated tests, real worker wiring, existing managed-update E2E and verify metadata                                                     |
+| Owner | Responsibility |
+| --- | --- |
+| Release publication | deterministic source identity, Node descriptor validation, archive, idempotent publish, `latest.json` |
+| Pure controller contracts | runtime descriptor validation, state, protocol, snapshot, watchdog literals, transitions |
+| Bootstrap and serving | same-path migration, initial state, active-release fetch, exact restoration |
+| Discovery and preparation | Manual/Automatic reconciliation, latest-first policy, in-flight joining, preparation coordination |
+| Activation and rollback | clean launch, activation deadline, `BOOT_OK`, failure rollback, broadcasts, cleanup |
+| Client and UI | transport outcomes, entity projection, features, settings, notifications |
+| Verification | colocated tests, real worker wiring, release E2E, verify metadata |
 
-Reuse `OperationQueue`, `PreparationCoordinator`, exact-release restoration, marker-last release caches, watchdog, channel isolation, response-before-follow-up ordering, and existing FSD owners.
+Reuse `OperationQueue`, `PreparationCoordinator`, marker-last release caches, exact-release restoration, watchdog, channel isolation, response-before-follow-up ordering, and existing FSD owners.
 
-Minimum design: one `/sw.js`, one active plus optional candidate, no bridge, persistent bootstrap marker, scheduler, or generic manager. Reconciliation owns one module-local promise and one rerun boolean. `PreparationCoordinator` remains preparation/cleanup-only.
+Minimum design: one `/sw.js`, one active plus optional candidate, one IndexedDB state record, no bridge, persistent bootstrap marker, scheduler, registry, or generic manager.
 
-## Pass order
+## Stage order
 
-### Pass 1 — atomic release contract, deterministic publication, and pure state
+### Stage 1 — deterministic publication and release identity
 
-- replace UUID plus sequence with positive safe-integer `releaseNumber` in publisher and runtime together;
-- establish the release-1 descriptor/state/protocol/snapshot/watchdog baseline and remove unshipped old formats;
-- set managed `buildId` to the exact source commit SHA;
-- derive one canonical UTC commit timestamp and pass it as managed `buildDate` to Vite `__BUILD_DATE__`, descriptor generation, and `deployment.json`;
-- implement channel-local `buildId` idempotency before release-number allocation:
-  - unseen `buildId` allocates next release;
-  - same unique latest `buildId` plus exact channel-owned publication bytes is a zero-write no-op;
-  - same latest `buildId` plus any differing byte/field rejects before writes;
-  - repeated non-latest or duplicate retained `buildId` rejects before writes;
-- update shared descriptor corpus, archive layout, cache identity, watchdog literals, state/snapshot/protocol types, and pure transitions atomically;
-- keep `latest.json` as the final write and leave publisher/runtime parity, type checking, and focused unit verification green.
+**Final artifact:** a publisher that can safely allocate and publish immutable managed releases without creating a second release for a workflow rerun of the same source commit.
 
-### Pass 2 — same-path bootstrap and worker runtime
+- use positive safe-integer `releaseNumber` in the Node publication contract and archive layout;
+- set `buildId` to the exact source commit SHA;
+- derive the canonical UTC committer timestamp once and pass it as managed `buildDate` to Vite `__BUILD_DATE__`, descriptor generation, and `deployment.json`;
+- validate the complete retained tree and unique retained `buildId` values before allocation or writes;
+- implement the minimal channel-local rule:
+  - absent `buildId` → allocate and publish;
+  - unique latest `buildId` → return retained descriptor and perform zero writes;
+  - non-latest or duplicate retained `buildId` → reject before writes;
+- do not reconstruct or compare a previous release output on the no-op path;
+- preserve immutable collision checks for new releases and `latest.json` as the final write;
+- keep worker/runtime behavior unchanged in this stage except for compile-only adaptations strictly required by the Node contract.
 
-- keep stable/develop managed worker at `/sw.js`;
-- implement the exact concurrent managed/Workbox 5-second probe matrix;
-- preserve valid state, reject invalid state, reject active-managed plus absent state, and support interrupted-install retry;
-- trigger reconciliation on every owned top-level navigation, explicit Check, and successful mode changes after the response;
-- implement one module-local shared promise plus one `rerunRequested` boolean:
-  - a trigger during a pass joins the promise and requests a fresh-state rerun;
-  - the promise resolves only after a pass completes with no pending rerun;
-  - explicit Check receives the final snapshot;
-- prove Manual discovery in flight followed by Automatic reaches newest `ready` without another navigation;
-- prove Automatic preparation in flight followed by Manual cannot persist automatic `ready`;
-- keep network/discovery outside `OperationQueue` and `PreparationCoordinator` limited to preparation/cleanup;
-- implement Manual discovery without preparation and latest-first Automatic behavior with known-candidate fallback after failed discovery;
-- implement clean-launch activation, fetch routing, restoration, broadcasts, watchdog handling, and cleanup;
-- do not add a bridge, marker, manager, polling, persisted operation state, or once-per-worker latch.
+### Stage 2 — pure controller contracts and state
 
-### Pass 3 — client, entity, features, and UI
+**Final artifact:** one explicit release-1 runtime contract with a complete deterministic transition matrix and publisher/runtime descriptor parity.
+
+- establish runtime descriptor validation matching the Stage 1 Node descriptor corpus;
+- replace the unshipped UUID/multi-reference lifecycle with one active release and one discriminated candidate;
+- establish protocol, snapshot, watchdog literals, cache identity, and release summaries for the release-1 baseline;
+- implement the complete pure transition table for discovery, preparation, Manual Install/Cancel/retry, clean-launch activation, `BOOT_OK`, failure/expiration, and stale completion;
+- remove old unshipped formats instead of preserving or migrating them;
+- keep one mutation owner: `stateTransitions.ts`.
+
+### Stage 3 — bootstrap and active-release serving
+
+**Final artifact:** a managed `/sw.js` can safely replace compatible Workbox, initialize release 1, and serve or restore only the selected active release.
+
+- keep stable/develop at the same channel-scoped `/sw.js`;
+- implement the exact concurrent managed/Workbox probe outcome matrix;
+- preserve valid state, reject invalid state, reject active-managed plus absent state, and allow only genuine first registration or compatible Workbox bootstrap;
+- fully prepare release 1 before persisting initial Automatic state;
+- prove interrupted install after state persistence retries safely without a marker;
+- implement active-release navigation/assets fetch ownership and exact immutable restoration;
+- return controlled `503` for owned requests with absent/invalid state or unavailable exact release;
+- do not implement discovery, candidate preparation, activation, or rollback in this stage beyond compile-safe boundaries.
+
+### Stage 4 — discovery and preparation
+
+**Final artifact:** Manual and Automatic modes produce the correct `available` or `ready` candidate without redundant network passes or new orchestration abstractions.
+
+- trigger reconciliation from owned top-level navigation, explicit Check, and successful mode changes;
+- own exactly one module-local `inFlightPromise` and one `rerunRequested` boolean;
+- navigation and explicit Check join an in-flight operation without requesting another pass;
+- a mode change during an in-flight pass joins and requests one fresh-state rerun;
+- explicit Check receives the final shared snapshot;
+- implement Manual discovery without background preparation;
+- implement latest-first Automatic behavior, including replacing stale `available(B)` with newer C before preparation;
+- when latest discovery fails, allow fallback preparation of known B without advancing `lastSuccessfulCheckAt`;
+- keep network/discovery outside `OperationQueue` and keep `PreparationCoordinator` limited to preparation deduplication and cleanup arbitration;
+- prove both mode-change races without another navigation.
+
+### Stage 5 — activation and rollback
+
+**Final artifact:** a prepared candidate activates only on a qualifying clean launch and either commits after verified boot or returns to the previous release.
+
+- implement controlled and uncontrolled same-channel window checks;
+- treat reload of the sole remaining window as a new clean launch without browser-specific classification;
+- serialize only the short `ready → activating` transition through `OperationQueue`;
+- serve the activating candidate while preserving the previous active release in state;
+- emit `BOOT_OK` only after root mount, initial routing, and first render;
+- implement activation deadline, matching `BOOT_FAILED`, expiration, stale acknowledgement handling, and exact rollback;
+- preserve response-before-follow-up ordering, broadcasts, protected-release cleanup, and controller compatibility obligations.
+
+### Stage 6 — client, entity, features, and UI
+
+**Final artifact:** existing product entry points expose the managed lifecycle without duplicating worker state or losing capability on transport timeout.
 
 - add explicit `success | timeout | unavailable` outcomes;
-- apply 10-second short and 120-second long UI deadlines;
+- apply 10-second short and 120-second Check/Install deadlines;
 - preserve the last valid snapshot and capability on timeout;
-- project one candidate and preserve existing feature entry points/FSD ownership;
-- show Manual `available` notifications from worker-owned discovery.
+- project one candidate through the existing entity owner;
+- preserve feature actions and FSD dependency direction;
+- show Manual `available` notifications and settings state without adding polling or local lifecycle truth.
 
-### Pass 4 — complete scenario proof
+### Stage 7 — complete scenario proof
 
-Rewrite existing fixtures/specs in place and prove publication reruns, Workbox bootstrap, interrupted install retry, delayed release-1 recovery, latest-first Automatic, reconciliation reruns, Manual discovery, controller compatibility from release 1 onward, clean launch, first managed rollback, restoration, isolation, uncontrolled windows, and cross-engine lifecycle.
+**Final artifact:** the full PR is proven across publisher, worker, client, UI, and browser lifecycle and is eligible for final architecture review.
 
-Do not begin the next pass before focused repository verification and architect review of the previous pass.
+- rewrite existing fixtures/specs in place rather than creating parallel legacy suites;
+- prove publication rerun no-op, retained-tree rejection, Workbox bootstrap, interrupted install retry, delayed release-1 recovery, latest-first Automatic, mode-change races, Manual discovery, clean launch, first managed rollback, restoration, isolation, uncontrolled windows, and cross-engine lifecycle;
+- prove controller and user-data compatibility for every still-supported published release;
+- update verify impact metadata only where durable source/spec ownership changed;
+- run final managed-update and release gates.
+
+Do not begin the next stage before focused repository-managed verification and architect review of the current stage.
 
 ## TEST IMPACT
 
-**Changed contracts:** release identity/layout; deterministic build inputs; source-commit publication idempotency; release-1 compatibility baseline; descriptor parity; persisted lifecycle; predecessor compatibility; reconciliation rerun ownership; latest-first Automatic; Manual discovery; controller backward compatibility; clean-launch activation; `BOOT_OK`; client outcomes; UI candidate projection; rollback data compatibility.
+**Stage 1:** Node publisher/archive tests, stable/develop workflow inputs, deterministic metadata, latest rerun zero-write proof, non-latest/duplicate rejection, new-release collision and latest-last ordering.
 
-**Primary proof owners:**
+**Stage 2:** shared descriptor corpus parity, state/schema/protocol/snapshot/watchdog contract tests, complete pure transition matrix and mutation coverage.
 
-- publisher/runtime/shared-corpus/state/protocol/cache deterministic tests;
-- stable/develop workflow and managed build-input tests;
-- frozen Workbox artifact and probe tests;
-- real `src/sw.ts` install/fetch/reconciliation/activation tests;
-- boot-watchdog parity and app-bootstrap tests;
-- app-update client/entity/feature/widget component tests;
-- `tests/e2e/appUpdatesNavigation.spec.ts`;
-- existing `tests/e2e/release/managedUpdates*.spec.ts` and fixtures.
+**Stage 3:** frozen Workbox artifact probes, install classification, initial-state crash consistency, active fetch pass-through/ownership, exact restoration and controlled `503`.
 
-**Required proof:**
+**Stage 4:** reconciliation unit/wiring tests, join-only navigation/Check behavior, mode-change-only rerun, latest-first replacement, failed-discovery fallback, Manual discovery, coordinator integration.
 
-- publisher/runtime descriptor parity, safe allocation, overflow/pre-write rejection, append-only archive, and `latest.json` last;
-- stable/develop managed workflows pass the same commit SHA and canonical commit timestamp to build, metadata, and publisher;
-- two identical publications of the latest commit produce one release and the second performs zero writes;
-- the same latest commit with changed build/index/assets/controller/deployment bytes rejects before writes;
-- a repeated non-latest commit and duplicate retained build identity reject before writes;
-- a new commit with identical application bytes may allocate a new release;
-- unshipped formats are absent and release 1 defines the managed compatibility baseline;
-- complete single-candidate transition matrix;
-- exact Workbox probe outcomes and managed-state-loss rejection;
-- interrupted bootstrap retries without selecting another release;
-- failed release-1 discovery repeats on later navigation;
-- Automatic `available(B)` selects newer C before preparation; failed discovery may prepare B without advancing `lastSuccessfulCheckAt`;
-- one shared promise and rerun boolean converge to fresh mode/state after concurrent triggers;
-- Manual → Automatic during discovery reaches newest `ready` without an additional trigger;
-- Automatic → Manual during preparation does not persist automatic `ready`;
-- Manual discovery persists `available` without preparation;
-- controller upgrades serve every still-supported published app/watchdog/protocol/state contract;
-- controlled/uncontrolled same-channel windows, sole-window reload, concurrent activation, channel isolation, and `BOOT_OK` boundary are proven;
-- release 2 proves commit, failed-boot rollback, and exact restoration;
-- timeout clears busy without losing snapshot/capability;
-- stale completion, fetch pass-through, cache protection, and data compatibility are covered.
+**Stage 5:** clean-launch client enumeration, concurrent activation, watchdog boundary, commit/rollback/expiration/stale acknowledgement, broadcasts and protected cleanup.
 
-Update `scripts/verify.mjs`, `scripts/lib/e2eRisk.mjs`, or other impact metadata only when durable source/spec ownership changes. Keep one mutation owner: rewritten `stateTransitions.ts`.
+**Stage 6:** app-update client, entity, feature, widget, settings, notifications, finite busy state and timeout preservation.
+
+**Stage 7:** `tests/e2e/appUpdatesNavigation.spec.ts`, existing `tests/e2e/release/managedUpdates*.spec.ts`, cross-engine lifecycle, isolation, data compatibility, final verification.
 
 ## Verification
 
-After each pass, run the smallest repository-managed focused verification for every changed owner and report exact results. Pass 1 must include Node/runtime descriptor parity, publisher idempotency, managed workflow/build-input tests, type checking, and pure lifecycle tests.
+After every stage, run the smallest repository-managed focused verification for every changed owner and report exact results. Type checking must remain green after every stage.
 
-After Pass 4:
+After Stage 7:
 
 ```text
 pnpm verify --full --only managed-updates
 pnpm verify:release
 ```
 
-GitHub CI or raw underlying commands do not replace the final gate.
+GitHub CI or raw underlying commands do not replace the final release gate.
+
+## Forbidden
+
+- asking the coding agent to redesign ownership or choose unresolved alternatives;
+- merging or marking the PR ready before Stage 7 and complete review;
+- full-output reconstruction or byte comparison for a repeated latest `buildId`;
+- rerun requests from concurrent navigation or explicit Check;
+- bridge, second worker path, persistent bootstrap marker, polling, retry scheduler, operation journal, release registry, or generic manager;
+- moving discovery into `PreparationCoordinator` or long work into `OperationQueue`;
+- more than one candidate or superseding `ready`/`activating`;
+- preserving unshipped old formats;
+- `skipWaiting()`, `clients.claim()`, live-deployment fallback for owned requests, browser-specific reload logic, irreversible data migration, or shared Material/global-style changes.
 
 Unresolved blockers: none.
 
-Verdict: **ready for Pass 1 task only**.
+Verdict: **ready for Stage 1 task only**.
