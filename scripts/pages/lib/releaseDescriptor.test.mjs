@@ -7,6 +7,7 @@ import { invalidReleaseDescriptors, validReleaseDescriptor } from './releaseDesc
 import {
   allocateNextReleaseNumber,
   assertReleaseNumberNotRetained,
+  assertUniqueRetainedBuildIds,
   buildReleaseDescriptor,
   collectReleaseFiles,
   computeFileSha256,
@@ -14,6 +15,7 @@ import {
   isValidReleaseDescriptor,
   readLatestPointer,
   readRetainedReleaseDescriptors,
+  resolvePublicationPlan,
   validateNoImmutableCollision,
   validateProjectedArtifactSize,
 } from './releaseDescriptor.mjs';
@@ -333,6 +335,98 @@ describe('assertReleaseNumberNotRetained', () => {
     mkdirSync(join(releasesDir, '1'), { recursive: true });
 
     expect(() => assertReleaseNumberNotRetained(releasesDir, 1)).toThrow('already retained');
+  });
+});
+
+describe('assertUniqueRetainedBuildIds', () => {
+  it('does not throw for an empty or all-unique retained tree', () => {
+    expect(() => assertUniqueRetainedBuildIds([])).not.toThrow();
+    expect(() =>
+      assertUniqueRetainedBuildIds([
+        { ...validReleaseDescriptor, releaseNumber: 1, buildId: 'sha1' },
+        { ...validReleaseDescriptor, releaseNumber: 2, buildId: 'sha2' },
+      ]),
+    ).not.toThrow();
+  });
+
+  it('throws when two retained descriptors share the same buildId', () => {
+    expect(() =>
+      assertUniqueRetainedBuildIds([
+        { ...validReleaseDescriptor, releaseNumber: 1, buildId: 'sha1' },
+        { ...validReleaseDescriptor, releaseNumber: 2, buildId: 'sha1' },
+      ]),
+    ).toThrow('share the same buildId');
+  });
+});
+
+describe('resolvePublicationPlan', () => {
+  let updatesDir = '';
+  let releasesDir = '';
+
+  beforeEach(() => {
+    updatesDir = mkdtempSync(join(tmpdir(), 'release-updates-'));
+    releasesDir = join(updatesDir, 'releases');
+  });
+
+  afterEach(() => {
+    rmSync(updatesDir, { recursive: true, force: true });
+  });
+
+  function writeRetainedRelease(releaseNumber, buildId) {
+    mkdirSync(releasesDir, { recursive: true });
+    const descriptor = { ...validReleaseDescriptor, releaseNumber, buildId };
+    writeFileSync(join(releasesDir, `${releaseNumber}.json`), JSON.stringify(descriptor));
+    mkdirSync(join(releasesDir, String(releaseNumber)), { recursive: true });
+    writeFileSync(join(releasesDir, String(releaseNumber), 'index.html'), '<html></html>');
+  }
+
+  it('resolves publish with releaseNumber 1 for an empty retained tree', () => {
+    expect(resolvePublicationPlan(releasesDir, updatesDir, 'sha1')).toEqual({
+      kind: 'publish',
+      nextReleaseNumber: 1,
+      descriptors: [],
+    });
+  });
+
+  it('resolves publish when buildId is absent from every retained descriptor', () => {
+    writeRetainedRelease(1, 'sha1');
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 1 }));
+
+    const plan = resolvePublicationPlan(releasesDir, updatesDir, 'sha2');
+    expect(plan.kind).toBe('publish');
+    expect(plan.nextReleaseNumber).toBe(2);
+  });
+
+  it('resolves a zero-write no-op when buildId equals the unique latest descriptor buildId', () => {
+    writeRetainedRelease(1, 'sha1');
+    writeRetainedRelease(2, 'sha2');
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
+
+    const plan = resolvePublicationPlan(releasesDir, updatesDir, 'sha2');
+    expect(plan).toEqual({
+      kind: 'no-op',
+      descriptor: { ...validReleaseDescriptor, releaseNumber: 2, buildId: 'sha2' },
+    });
+  });
+
+  it('rejects when buildId is retained on a non-latest release', () => {
+    writeRetainedRelease(1, 'sha1');
+    writeRetainedRelease(2, 'sha2');
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
+
+    expect(() => resolvePublicationPlan(releasesDir, updatesDir, 'sha1')).toThrow(
+      'is already retained on release 1, which is not the latest release (2)',
+    );
+  });
+
+  it('rejects when the retained tree has a duplicate buildId, even when the incoming buildId matches neither', () => {
+    writeRetainedRelease(1, 'sha1');
+    writeRetainedRelease(2, 'sha1');
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
+
+    expect(() => resolvePublicationPlan(releasesDir, updatesDir, 'sha3')).toThrow(
+      'share the same buildId',
+    );
   });
 });
 

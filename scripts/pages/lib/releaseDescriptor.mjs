@@ -317,6 +317,68 @@ export function assertReleaseNumberNotRetained(releasesDir, releaseNumber) {
 }
 
 /**
+ * Validates that no two retained descriptors share the same `buildId`. Part
+ * of the complete retained-tree validation required before allocation or
+ * writes.
+ * @param descriptors Every retained `ReleaseDescriptor` for this channel.
+ * @throws {Error} When two retained descriptors share the same `buildId`.
+ */
+export function assertUniqueRetainedBuildIds(descriptors) {
+  const releaseNumberByBuildId = new Map();
+  for (const descriptor of descriptors) {
+    const owner = releaseNumberByBuildId.get(descriptor.buildId);
+    if (owner !== undefined) {
+      throw new Error(
+        `Retained releases ${owner} and ${descriptor.releaseNumber} share the same buildId "${descriptor.buildId}"`,
+      );
+    }
+    releaseNumberByBuildId.set(descriptor.buildId, descriptor.releaseNumber);
+  }
+}
+
+/**
+ * Resolves the channel-local idempotent publication decision for `buildId`
+ * against the complete retained release tree (see the managed pinned
+ * application updates architecture, "Release identity and publication").
+ * Validates the complete retained tree — release-number monotonicity via
+ * {@link allocateNextReleaseNumber} and unique retained `buildId` values via
+ * {@link assertUniqueRetainedBuildIds} — before returning a decision.
+ * Callers must not inspect `dist`, or perform any publication write, before
+ * this resolves.
+ *
+ * - no retained descriptor has this `buildId` -> `{ kind: 'publish', nextReleaseNumber, descriptors }`;
+ * - this `buildId` equals the unique latest descriptor's `buildId` -> `{ kind: 'no-op', descriptor }`; the caller must perform zero writes;
+ * - this `buildId` exists on a non-latest retained descriptor -> throws before any write;
+ * - the retained tree carries a duplicate `buildId` across releases -> throws before any write, even when `buildId` matches none of them.
+ * @param releasesDir Channel's `updates/releases` directory.
+ * @param updatesDir Channel's `updates` directory.
+ * @param buildId The exact source commit SHA for the build being published.
+ * @returns The resolved publication decision.
+ * @throws {Error} When the retained tree is malformed, or `buildId` is retained on a non-latest release or duplicated.
+ */
+export function resolvePublicationPlan(releasesDir, updatesDir, buildId) {
+  const { nextReleaseNumber, descriptors } = allocateNextReleaseNumber(releasesDir, updatesDir);
+  assertUniqueRetainedBuildIds(descriptors);
+
+  if (descriptors.length === 0) {
+    return { kind: 'publish', nextReleaseNumber, descriptors };
+  }
+
+  const latestDescriptor = descriptors.find((d) => d.releaseNumber === nextReleaseNumber - 1);
+  const matching = descriptors.find((d) => d.buildId === buildId);
+
+  if (matching === undefined) {
+    return { kind: 'publish', nextReleaseNumber, descriptors };
+  }
+  if (matching.releaseNumber === latestDescriptor.releaseNumber) {
+    return { kind: 'no-op', descriptor: latestDescriptor };
+  }
+  throw new Error(
+    `buildId "${buildId}" is already retained on release ${matching.releaseNumber}, which is not the latest release (${latestDescriptor.releaseNumber})`,
+  );
+}
+
+/**
  * Builds and validates a new `ReleaseDescriptor`.
  * @param params Descriptor fields.
  * @param params.releaseNumber Allocated release identity and ordering value, from {@link allocateNextReleaseNumber}.

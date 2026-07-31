@@ -57,9 +57,16 @@ export default defineConfig(({ mode, isPreview }) => {
         release: buildId || undefined,
       });
 
+  // Managed stable/develop publication derives one canonical UTC committer
+  // timestamp per deployment job and passes it here explicitly, so the same
+  // value reaches Vite, release descriptor generation, and deployment.json
+  // (see docs/managed-pinned-updates.md, "Deterministic build inputs").
+  // Every other build (dev, PR preview, manual branch, Storybook) has no
+  // such canonical value and keeps using the actual build wall-clock time.
+  const explicitBuildDate = env.VITE_BUILD_DATE || process.env.VITE_BUILD_DATE;
   const buildDate = isStorybookBuild
     ? toolingConfig.storybook.deterministicBuildDate
-    : new Date().toISOString();
+    : explicitBuildDate || new Date().toISOString();
   const dependencyNames = Object.keys({
     ...dependencies,
     ...devDependencies,

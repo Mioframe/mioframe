@@ -14,7 +14,8 @@
  *
  * Usage:
  *   node scripts/pages/publishStable.mjs --dist ./dist --app-version 1.2.3 \
- *     --build-id <sha> [--output-dir ./pages-staging]
+ *     --build-id <sha> --build-date <canonical-utc-committer-iso> \
+ *     [--output-dir ./pages-staging]
  *
  * Required env:
  *   GITHUB_TOKEN      - token with contents:write on the target Pages repository
@@ -41,9 +42,10 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
   const distDir = readFlag(argv, '--dist');
   const appVersion = readFlag(argv, '--app-version');
   const buildId = readFlag(argv, '--build-id');
-  if (!distDir || !appVersion || !buildId) {
+  const buildDate = readFlag(argv, '--build-date');
+  if (!distDir || !appVersion || !buildId || !buildDate) {
     throw new Error(
-      'Usage: publishStable.mjs --dist <dist-dir> --app-version <version> --build-id <id>',
+      'Usage: publishStable.mjs --dist <dist-dir> --app-version <version> --build-id <id> --build-date <canonical-utc-committer-iso>',
     );
   }
   if (!existsSync(distDir)) {
@@ -68,6 +70,7 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
         channel: 'stable',
         appVersion,
         buildId,
+        buildDate,
       });
     },
   });

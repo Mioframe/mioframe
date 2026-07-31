@@ -9,15 +9,16 @@
  * The `develop` slug is the one managed channel among branch deploys (see
  * the managed pinned application updates feature): it publishes a new
  * immutable release into its retained `updates/`/`assets/` archive and
- * requires `--app-version` and `--build-id`. Every other branch slug keeps
- * publishing as an ordinary, unmanaged branch slot.
+ * requires `--app-version`, `--build-id`, and `--build-date`. Every other
+ * branch slug keeps publishing as an ordinary, unmanaged branch slot.
  *
  * When --output-dir is provided, the final staging content is also copied
  * there so the caller can upload it as a GitHub Pages artifact.
  *
  * Usage:
  *   node scripts/pages/publishBranch.mjs --dist ./dist --slug develop \
- *     --app-version 1.2.3 --build-id <sha> [--output-dir ./pages-staging]
+ *     --app-version 1.2.3 --build-id <sha> --build-date <canonical-utc-committer-iso> \
+ *     [--output-dir ./pages-staging]
  *   node scripts/pages/publishBranch.mjs --dist ./dist --slug my-branch [--output-dir ./pages-staging]
  *
  * Required env:
@@ -61,9 +62,10 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
 
   const appVersion = readFlag(argv, '--app-version');
   const buildId = readFlag(argv, '--build-id');
-  if (isManaged && (!appVersion || !buildId)) {
+  const buildDate = readFlag(argv, '--build-date');
+  if (isManaged && (!appVersion || !buildId || !buildDate)) {
     throw new Error(
-      'Usage: publishBranch.mjs --dist <dist-dir> --slug develop --app-version <version> --build-id <id>',
+      'Usage: publishBranch.mjs --dist <dist-dir> --slug develop --app-version <version> --build-id <id> --build-date <canonical-utc-committer-iso>',
     );
   }
 
@@ -90,6 +92,7 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
           channel: 'develop',
           appVersion,
           buildId,
+          buildDate,
         });
       } else {
         applyBranchPublish(workDir, distDir, slug);

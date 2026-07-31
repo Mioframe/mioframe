@@ -249,6 +249,7 @@ export function materializeManagedRelease({ templateDir, basePath, buildId, brok
  * @param options.appVersion `package.json`-style version to record for this release.
  * @param options.buildId Build identity to record for this release.
  * @param options.workDir The retained-release work directory to publish into.
+ * @param [options.buildDate] Build timestamp to record for this release; defaults to the current time (this fixture's `buildId` is already a synthetic test-only identity, not a real commit SHA).
  * @param [options.extraEnv] Additional Vite build environment variables; when given, this release falls outside the three cached templates and triggers its own uncached `vite build`.
  * @returns The published `ReleaseDescriptor`.
  * @throws When the `vite build` step fails.
@@ -259,12 +260,13 @@ export async function buildAndPublishManagedRelease({
   appVersion,
   buildId,
   workDir,
+  buildDate = new Date().toISOString(),
   extraEnv = {},
 }) {
   if (Object.keys(extraEnv).length > 0) {
     const distDir = await buildViteArtifact({ channel, basePath, extraEnv });
     try {
-      return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
+      return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId, buildDate });
     } finally {
       rmSync(distDir, { recursive: true, force: true });
     }
@@ -273,7 +275,7 @@ export async function buildAndPublishManagedRelease({
   const templateDir = await getManagedTemplate(channel);
   const distDir = materializeManagedRelease({ templateDir, basePath, buildId });
   try {
-    return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
+    return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId, buildDate });
   } finally {
     rmSync(distDir, { recursive: true, force: true });
   }
@@ -296,6 +298,7 @@ export async function buildAndPublishBrokenManagedRelease({
   appVersion,
   buildId,
   workDir,
+  buildDate = new Date().toISOString(),
   extraEnv = {},
 }) {
   if (Object.keys(extraEnv).length > 0) {
@@ -303,7 +306,7 @@ export async function buildAndPublishBrokenManagedRelease({
     try {
       const { relativePath } = locateEntryModule(distDir, basePath);
       writeFileSync(join(distDir, relativePath), 'throw new Error("simulated boot failure");');
-      return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
+      return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId, buildDate });
     } finally {
       rmSync(distDir, { recursive: true, force: true });
     }
@@ -312,7 +315,7 @@ export async function buildAndPublishBrokenManagedRelease({
   const templateDir = await getManagedTemplate(channel);
   const distDir = materializeManagedRelease({ templateDir, basePath, buildId, broken: true });
   try {
-    return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId });
+    return publishManagedRelease({ workDir, distDir, channel, appVersion, buildId, buildDate });
   } finally {
     rmSync(distDir, { recursive: true, force: true });
   }

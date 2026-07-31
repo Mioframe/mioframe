@@ -123,25 +123,72 @@ describe('publishBranch validation (ordinary, non-managed slug)', () => {
 describe('publishBranch validation (managed "develop" slug)', () => {
   it('throws when --app-version is missing', async () => {
     await expect(
-      publishBranch(['--dist', distDir, '--slug', 'develop', '--build-id', 'abc123'], {
-        GITHUB_TOKEN: 'token',
-        PAGES_REPOSITORY: 'owner/pages-repo',
-      }),
+      publishBranch(
+        [
+          '--dist',
+          distDir,
+          '--slug',
+          'develop',
+          '--build-id',
+          'abc123',
+          '--build-date',
+          '2026-07-24T00:00:00.000Z',
+        ],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
     ).rejects.toThrow('Usage:');
   });
 
   it('throws when --build-id is missing', async () => {
     await expect(
-      publishBranch(['--dist', distDir, '--slug', 'develop', '--app-version', '1.2.3'], {
-        GITHUB_TOKEN: 'token',
-        PAGES_REPOSITORY: 'owner/pages-repo',
-      }),
+      publishBranch(
+        [
+          '--dist',
+          distDir,
+          '--slug',
+          'develop',
+          '--app-version',
+          '1.2.3',
+          '--build-date',
+          '2026-07-24T00:00:00.000Z',
+        ],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
     ).rejects.toThrow('Usage:');
   });
 
-  it('publishes a managed develop release with the given app version and build id', async () => {
+  it('throws when --build-date is missing', async () => {
+    await expect(
+      publishBranch(
+        ['--dist', distDir, '--slug', 'develop', '--app-version', '1.2.3', '--build-id', 'abc123'],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
+    ).rejects.toThrow('Usage:');
+  });
+
+  it('publishes a managed develop release with the given app version, build id, and build date', async () => {
     await publishBranch(
-      ['--dist', distDir, '--slug', 'develop', '--app-version', '1.2.3', '--build-id', 'abc123'],
+      [
+        '--dist',
+        distDir,
+        '--slug',
+        'develop',
+        '--app-version',
+        '1.2.3',
+        '--build-id',
+        'abc123',
+        '--build-date',
+        '2026-07-24T00:00:00.000Z',
+      ],
       { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
     );
 
@@ -151,6 +198,7 @@ describe('publishBranch validation (managed "develop" slug)', () => {
         channel: 'develop',
         appVersion: '1.2.3',
         buildId: 'abc123',
+        buildDate: '2026-07-24T00:00:00.000Z',
       }),
     );
     expect(applyBranchPublish).not.toHaveBeenCalled();

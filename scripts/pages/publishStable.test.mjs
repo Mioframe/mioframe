@@ -28,7 +28,16 @@ afterEach(() => {
   rmSync(distDir, { recursive: true, force: true });
 });
 
-const requiredFlags = (dist) => ['--dist', dist, '--app-version', '1.2.3', '--build-id', 'abc123'];
+const requiredFlags = (dist) => [
+  '--dist',
+  dist,
+  '--app-version',
+  '1.2.3',
+  '--build-id',
+  'abc123',
+  '--build-date',
+  '2026-07-24T00:00:00.000Z',
+];
 
 describe('publishStable argument validation', () => {
   it('throws before git operations when distDir does not exist', async () => {
@@ -51,16 +60,31 @@ describe('publishStable argument validation', () => {
 
   it('throws when --app-version is missing', async () => {
     await expect(
-      publishStable(['--dist', distDir, '--build-id', 'abc123'], {
-        GITHUB_TOKEN: 'token',
-        PAGES_REPOSITORY: 'owner/pages-repo',
-      }),
+      publishStable(
+        ['--dist', distDir, '--build-id', 'abc123', '--build-date', '2026-07-24T00:00:00.000Z'],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
     ).rejects.toThrow('Usage:');
   });
 
   it('throws when --build-id is missing', async () => {
     await expect(
-      publishStable(['--dist', distDir, '--app-version', '1.2.3'], {
+      publishStable(
+        ['--dist', distDir, '--app-version', '1.2.3', '--build-date', '2026-07-24T00:00:00.000Z'],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
+    ).rejects.toThrow('Usage:');
+  });
+
+  it('throws when --build-date is missing', async () => {
+    await expect(
+      publishStable(['--dist', distDir, '--app-version', '1.2.3', '--build-id', 'abc123'], {
         GITHUB_TOKEN: 'token',
         PAGES_REPOSITORY: 'owner/pages-repo',
       }),
@@ -111,6 +135,7 @@ describe('publishStable target repository', () => {
         channel: 'stable',
         appVersion: '1.2.3',
         buildId: 'abc123',
+        buildDate: '2026-07-24T00:00:00.000Z',
       }),
     );
   });

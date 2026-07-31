@@ -133,6 +133,7 @@ describe('materialized releases publish through the real publisher without colli
         channel: 'stable',
         appVersion,
         buildId,
+        buildDate: '2026-07-24T00:00:00.000Z',
       });
     } finally {
       rmSync(distDir, { recursive: true, force: true });
