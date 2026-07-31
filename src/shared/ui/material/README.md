@@ -2,57 +2,11 @@
 
 `src/shared/ui/material` is the canonical owner of Mioframe’s project-facing Material Vue API, supported Material token API, private renderer integration, and Material-specific documentation.
 
-```text
-official Material documentation
-  → complete family DESIGN.md
-  → ready family ARCHITECTURE.md
-  → canonical component implementation
-  → application consumer migration
-  → independent review
-```
+Official Material 3 Expressive defines the public model. `@m3e/web` is the preferred private renderer, not an API authority.
 
-Official Material defines the complete public model. `@m3e/web` is a private implementation detail.
+## Public entrypoint
 
-Canonical documents:
-
-- [`docs/architecture.md`](./docs/architecture.md);
-- [`docs/component-workflow.md`](./docs/component-workflow.md);
-- [`docs/design-document.md`](./docs/design-document.md);
-- [`docs/component-adapter.md`](./docs/component-adapter.md);
-- [`docs/component-tokens.md`](./docs/component-tokens.md);
-- [`docs/token-api.md`](./docs/token-api.md);
-- [`docs/m3e-defects.md`](./docs/m3e-defects.md);
-- [`docs/roadmap.md`](./docs/roadmap.md) — sole owner of current milestone status and next action.
-
-## Family artifacts
-
-Every official component family owns:
-
-```text
-components/<family>/DESIGN.md
-components/<family>/ARCHITECTURE.md
-components/<family>/IMPLEMENTATION.md
-components/<family>/MIGRATION.md
-components/<family>/REVIEW.md
-components/<family>/README.md
-```
-
-Artifact roles:
-
-- `DESIGN.md` — complete normalized official Material contract;
-- `ARCHITECTURE.md` — demand-scoped Mioframe/Vue/renderer plan;
-- `IMPLEMENTATION.md` — component implementation and proof handoff;
-- `MIGRATION.md` — consumer migration and legacy removal;
-- `REVIEW.md` — independent final compliance review;
-- `README.md` — short navigation index only.
-
-A missing, stale, blocked, or incomplete earlier artifact blocks later stage execution. Current code, renderer artifacts, stories, tests, and family README are not substitutes.
-
-`material-component <name>` accepts only the component name and autonomously orchestrates isolated stages in order. A thin orchestrator launches a fresh worker for each stage, validates workspace artifacts, and discards that worker context before launching the next one. The operator does not relaunch the command after every stage. If fresh-worker orchestration is unavailable, the workflow is blocked rather than executed in one context. See `docs/component-workflow.md`.
-
-## Public component API
-
-Consumers import curated Vue components:
+Consumers use the curated root API:
 
 ```ts
 import { MDButton, MDLoadingIndicator } from '@shared/ui/material';
@@ -60,71 +14,74 @@ import { MDButton, MDLoadingIndicator } from '@shared/ui/material';
 
 A public `MD*` component:
 
-- uses official Material terminology selected by its ready architecture;
-- exposes only current demand plus the minimum coherent surface;
-- keeps deferred official capability expandable without renderer-shaped API;
-- exposes no raw renderer tags, types, events, or CSS inputs;
-- contains no non-Material behavior without an explicit architecture decision.
+- uses official Material terminology selected by its ready family architecture;
+- exposes only confirmed current demand plus the minimum coherent Material surface;
+- keeps renderer tags, attributes, events, types, and private CSS inputs out of consumers;
+- contains no product behavior or undocumented Material extension without an explicit architecture decision.
 
-Vue props, emits, slots, refs, native mappings, and explicit dependency composition may represent Material semantics without adding product semantics.
-
-## Public token API
-
-The complete official component-token catalogue belongs in family `DESIGN.md`. Runtime selection belongs in family `ARCHITECTURE.md`.
-
-Supported runtime namespaces are:
-
-- selected `--md-ref-*` and `--md-sys-*` declarations under foundation/theme;
-- selected official `--md-comp-*` declarations under the owning family.
-
-`docs/token-api.md` is the supported consumer catalogue. Canonical CSS files are executable declarations.
+## Family layout
 
 ```text
-foundation/tokens.css
-  → renderer-independent reference/system foundations
-
-foundation/theme.css
-  → standard palette and light/dark system-color assignments
-
-components/<family>/tokens.css
-  → architecture-selected family component tokens
-  → private renderer mappings
+components/<family>/
+  DESIGN.md
+  ARCHITECTURE.md
+  IMPLEMENTATION.md
+  MIGRATION.md
+  REVIEW.md
+  README.md
+  <runtime, tests, stories, tokens>
 ```
 
-`--app-*` belongs outside Material. `--m3e-*` and `--md-private-*` remain private. Mioframe does not reproduce every renderer default or every official component token in runtime CSS.
+The five stage artifacts are durable handoffs. A family `README.md` is only a short navigation index and must not own mutable status or next action.
+
+The complete staged execution contract belongs only to [`docs/component-workflow.md`](./docs/component-workflow.md). The normal operator entrypoint is one `material-component <name>` invocation; the operator does not repeat it after every stage.
+
+## Ownership
+
+Material owns:
+
+- canonical Vue adapters and exports;
+- selected official component tokens;
+- renderer-independent Material foundation and theme declarations;
+- private family-local renderer mappings;
+- approved wrapper corrections and controlled renderer workarounds;
+- component tests, stories, visual/browser proof, and stable defect records.
+
+Material does not own:
+
+- product/domain behavior, operation state, persistence, routing, or errors;
+- application-owned `--app-*` tokens;
+- generic shared UI that is not an official Material component;
+- renderer internals, private shadow DOM, or copied renderer interaction systems.
 
 ## Renderer boundary
 
-Allowed inside this directory:
+Outside this directory, code must not:
 
-- all five family stage artifacts;
-- public Material-first Vue adapters;
-- foundation and standard theme declarations;
-- selected family component tokens;
-- family-local renderer imports and private mappings;
-- package-derived renderer typing;
-- approved wrapper corrections and controlled host-level workarounds;
-- tests, stories, visual proof, defect records, and curated exports.
+- import `@m3e/web`;
+- render `m3e-*` elements;
+- consume renderer element types or events;
+- depend on `--m3e-*` variables;
+- inspect renderer DOM.
 
-Not allowed:
+Inside an owning family, prefer documented renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
 
-- product/domain behavior or application-owned tokens;
-- renderer API exported to consumers;
-- private shadow-DOM access or copied renderer internals;
-- duplicate renderer geometry, state-layer, ripple, focus, elevation, accessibility, or motion systems;
-- global component-token ownership, duplicate public token owners, token DSLs, or exhaustive runtime Material/renderer copies;
-- silent legacy non-Material extensions.
+## Token boundary
 
-Workspace checks reject direct renderer imports and raw renderer Vue elements outside this directory. `config/vueCustomElements.ts` is the exact compiler allow-list.
+- `DESIGN.md` captures the complete official component-token catalogue.
+- `ARCHITECTURE.md` selects the minimum complete runtime token set required by confirmed scenarios.
+- foundation owns supported `--md-ref-*` and `--md-sys-*` tokens;
+- each family owns only its selected `--md-comp-<family>-*` tokens;
+- `docs/token-api.md` is the supported public catalogue;
+- `--m3e-*` and `--md-private-*` stay private;
+- `--app-*` stays outside Material.
 
-## Typing, proof, and completion
+Do not create a token registry, token DSL, compatibility alias layer, duplicate owner, or exhaustive renderer/Material token copy without a demonstrated current requirement and separate architecture decision.
 
-Public types come from the selected Material architecture. Private mapping and Vue custom-element glue derive from exact package-exported renderer types.
+## Proof and visual feedback
 
-Architecture selects proof before implementation. Component tests own Vue mapping, browser tests own native/accessibility behavior, visual regression owns stable pixel presentation, migration tests own product scenarios, and review checks the full result.
+Architecture selects proof owners before implementation. Component tests own Vue contracts, browser tests own native and accessibility behavior, visual regression owns stable presentation, migration proof owns product scenarios, and independent review checks the complete result.
 
-Renderer-owned appearance is not inferred from source inspection, token presence, events, host state, or a story alone.
+Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete reported defect routes to the owning stage.
 
-Final verification uses the project command selected by root policy. Operator visual/motion acceptance is a separate gate and must not be fabricated by workers.
-
-See `docs/roadmap.md` for current milestone state and next action.
+See [`docs/roadmap.md`](./docs/roadmap.md) for current program status and next action.
