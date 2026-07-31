@@ -52,13 +52,13 @@ An irreversible migration requires a separate fail-closed architecture that firs
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| Publisher | Append-only immutable managed release archive and `latest.json` |
-| Controller worker | Bootstrap classification, persisted lifecycle, preparation, fetch routing, activation, rollback, local cache ownership, broadcasts |
-| Service client/features | Explicit transport outcomes, finite busy state, existing user actions |
-| Entity/widget/pane | Snapshot projection, product composition, truthful UI copy |
-| Browser | Service-worker `install` / `waiting` / `activate` lifecycle |
+| Owner                   | Responsibility                                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Publisher               | Append-only immutable managed release archive and `latest.json`                                                                    |
+| Controller worker       | Bootstrap classification, persisted lifecycle, preparation, fetch routing, activation, rollback, local cache ownership, broadcasts |
+| Service client/features | Explicit transport outcomes, finite busy state, existing user actions                                                              |
+| Entity/widget/pane      | Snapshot projection, product composition, truthful UI copy                                                                         |
+| Browser                 | Service-worker `install` / `waiting` / `activate` lifecycle                                                                        |
 
 Sources of truth:
 
@@ -81,7 +81,7 @@ type ReleaseNumber = number;
 It must satisfy:
 
 ```ts
-Number.isSafeInteger(value) && value > 0
+Number.isSafeInteger(value) && value > 0;
 ```
 
 Published layout:
@@ -217,10 +217,10 @@ An active managed worker must never observe legitimate absent state.
 
 For worker-owned navigation or release assets:
 
-| State | Result |
-| --- | --- |
+| State             | Result                                        |
+| ----------------- | --------------------------------------------- |
 | absent or invalid | controlled `503`; no live deployment fallback |
-| valid | serve the exact selected managed release |
+| valid             | serve the exact selected managed release      |
 
 ## Candidate policy and transitions
 
@@ -233,19 +233,19 @@ Releases are applied serially:
 - Automatic may replace `failed` with a newer release but never retries the exact failed release;
 - Manual may explicitly retry the exact failed release.
 
-| State / event | Result |
-| --- | --- |
-| no candidate + newer discovery | `available(new)` |
-| `available(B)` + newer C | `available(C)` |
-| eligible `failed(B)` + newer C | `available(C)` |
-| `SET_MODE` | change mode only |
-| Automatic `available(B)` + fresh successful preparation | `ready(B)` |
-| Manual `available(B)` or `failed(B)` + fresh successful install | `ready(B)` |
-| Manual `ready(B)` + cancel | `available(B)` |
-| `ready(B)` + qualifying clean launch | `activating(B, deadline)`; active unchanged |
-| matching durable `BOOT_OK(B)` | active becomes B; candidate cleared |
-| matching durable `BOOT_FAILED(B)` or expiration | active unchanged; `failed(B)` |
-| stale or wrong completion/acknowledgement | no-op |
+| State / event                                                   | Result                                      |
+| --------------------------------------------------------------- | ------------------------------------------- |
+| no candidate + newer discovery                                  | `available(new)`                            |
+| `available(B)` + newer C                                        | `available(C)`                              |
+| eligible `failed(B)` + newer C                                  | `available(C)`                              |
+| `SET_MODE`                                                      | change mode only                            |
+| Automatic `available(B)` + fresh successful preparation         | `ready(B)`                                  |
+| Manual `available(B)` or `failed(B)` + fresh successful install | `ready(B)`                                  |
+| Manual `ready(B)` + cancel                                      | `available(B)`                              |
+| `ready(B)` + qualifying clean launch                            | `activating(B, deadline)`; active unchanged |
+| matching durable `BOOT_OK(B)`                                   | active becomes B; candidate cleared         |
+| matching durable `BOOT_FAILED(B)` or expiration                 | active unchanged; `failed(B)`               |
+| stale or wrong completion/acknowledgement                       | no-op                                       |
 
 Every long completion re-reads state and persists only when mode, candidate number, and phase still match. Every pure no-op returns the original state object.
 
@@ -253,12 +253,12 @@ Every long completion re-reads state and persists only when mode, candidate numb
 
 One worker-owned reconciliation operation uses these rules:
 
-| Fresh Automatic state | Deferred work |
-| --- | --- |
-| `available(B)` | prepare exact B; persist `ready(B)` only after fresh mode/number/phase check |
-| `failed(B)` | discover strictly newer; never retry B; prepare a newly persisted available candidate |
-| no candidate | discover now; prepare a resulting available candidate |
-| `ready` or `activating` | no work |
+| Fresh Automatic state   | Deferred work                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `available(B)`          | prepare exact B; persist `ready(B)` only after fresh mode/number/phase check          |
+| `failed(B)`             | discover strictly newer; never retry B; prepare a newly persisted available candidate |
+| no candidate            | discover now; prepare a resulting available candidate                                 |
+| `ready` or `activating` | no work                                                                               |
 
 It is triggered:
 
@@ -353,25 +353,25 @@ Entity status directly projects `candidate.phase`. Existing actions remain Check
 
 ## Acceptance matrix
 
-| Scenario | Required result |
-| --- | --- |
-| New registration | verified latest becomes initial managed baseline |
-| Supported legacy Workbox transition | verified latest becomes initial managed baseline; no rollback to Workbox |
-| Bootstrap failure | old Workbox worker remains active |
-| Managed marker + absent state | installation rejected |
-| Valid managed state + missing marker | marker repaired; state preserved |
-| Managed upgrade + invalid state | installation rejected |
-| Active runtime + absent/invalid state | owned navigation/assets return `503` |
-| First later managed release | normal candidate activation and rollback guarantees apply |
-| Manual → Automatic + available | response first, then exact candidate preparation |
-| Manual → Automatic + failed/none | response first, then discovery; exact failed candidate not retried |
-| Long-request timeout | busy clears; snapshot/capability remain; late broadcast may refresh |
-| Ready/activating B, C published | B remains selected |
-| Candidate boot succeeds | durable commit before invalidation and cleanup |
-| Candidate boot fails/expires | previous managed active remains; candidate becomes failed |
-| Missing selected cache | exact restoration or `503`, never live deployment |
-| Stable/develop | state, caches, clients, and broadcasts never cross channels |
-| Rollback data compatibility | previous supported managed active can read data written by newer supported release |
+| Scenario                              | Required result                                                                    |
+| ------------------------------------- | ---------------------------------------------------------------------------------- |
+| New registration                      | verified latest becomes initial managed baseline                                   |
+| Supported legacy Workbox transition   | verified latest becomes initial managed baseline; no rollback to Workbox           |
+| Bootstrap failure                     | old Workbox worker remains active                                                  |
+| Managed marker + absent state         | installation rejected                                                              |
+| Valid managed state + missing marker  | marker repaired; state preserved                                                   |
+| Managed upgrade + invalid state       | installation rejected                                                              |
+| Active runtime + absent/invalid state | owned navigation/assets return `503`                                               |
+| First later managed release           | normal candidate activation and rollback guarantees apply                          |
+| Manual → Automatic + available        | response first, then exact candidate preparation                                   |
+| Manual → Automatic + failed/none      | response first, then discovery; exact failed candidate not retried                 |
+| Long-request timeout                  | busy clears; snapshot/capability remain; late broadcast may refresh                |
+| Ready/activating B, C published       | B remains selected                                                                 |
+| Candidate boot succeeds               | durable commit before invalidation and cleanup                                     |
+| Candidate boot fails/expires          | previous managed active remains; candidate becomes failed                          |
+| Missing selected cache                | exact restoration or `503`, never live deployment                                  |
+| Stable/develop                        | state, caches, clients, and broadcasts never cross channels                        |
+| Rollback data compatibility           | previous supported managed active can read data written by newer supported release |
 
 ## Required proof
 
