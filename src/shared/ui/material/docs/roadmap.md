@@ -1,157 +1,99 @@
 # Mioframe Material migration roadmap
 
-This file owns current milestone order, component-stage status, technical blockers, and next operator action. Durable rules live in `component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, and `m3e-defects.md`.
+This file is the only owner of current Material milestone status, family-stage status, technical blockers, and next operator action. Durable rules live in the other canonical documents.
 
 ## Current state
 
 Last updated: 2026-07-31
 
-Current milestone: `M0/M1 — stabilize the autonomous staged workflow and close the Loading Indicator/Button pilot`
+Current milestone: `M0/M1 — prove the autonomous staged workflow through the Loading Indicator/Button pilot`
 
 Status: `in-progress`
 
-Runtime implementation ownership: `complete`; no runtime redesign is currently required.
+Runtime implementation status: the current Loading Indicator and Button runtime corrections are implemented; no runtime redesign is presently identified.
 
-Workflow architecture ownership: `corrected`; both pilot families' architecture and downstream artifacts predate the corrected verification ownership and must be refreshed through their owning stages.
+Workflow-rule status: the durable workflow has been corrected to use:
 
-## Accepted operator workflow
+- one operator invocation;
+- fresh isolated workers for five reasoning stages;
+- fixed artifact control fields;
+- mechanical orchestrator routing;
+- explicit dependency queues;
+- implementation preflight before coding and consumer edits;
+- Git/PR-independent worker evidence;
+- one final post-review workflow verification;
+- operator visual/motion feedback as a defect-reporting channel.
 
-The operator runs one command with only a component name:
+The workflow is not considered proven until the pilot completes through one `material-component Button` invocation.
 
-```text
-material-component <name>
-```
+## Pilot artifact state
 
-The command autonomously orchestrates:
+Artifacts written before the fixed control-field contract are mechanically invalid when required fields are absent. They must be refreshed by their owning stage; the orchestrator must not infer semantic status from prose.
 
-```text
-fresh design worker
-  → DESIGN.md
-fresh architecture worker
-  → ARCHITECTURE.md
-fresh implementation worker
-  → code/tests/stories/tokens + IMPLEMENTATION.md
-fresh migration worker
-  → consumers/legacy removal + MIGRATION.md
-fresh independent review worker
-  → REVIEW.md
-orchestrator
-  → one final read-only workflow verification
-```
-
-Each reasoning worker owns one stage and one durable handoff, then terminates. The thin orchestrator selects the earliest invalid stage, launches the next fresh worker, validates workspace outputs, processes dependencies, routes corrections backward, and continues the same operator invocation until completion or a genuine blocker.
-
-The operator does not repeat the command between successful stages. Dependencies pass through the same five artifact stages as first-class families and are processed automatically before the parent resumes.
-
-If a fresh worker cannot be created, the workflow is blocked on orchestration capability. Running all stages in one context is not an accepted fallback.
-
-Family `README.md` files are static indexes only. They do not own mutable stage status or next action.
-
-## Verification ownership
-
-Stage workers run only verifier-managed focused proof for their owned changes:
-
-- architecture selects implementation-scoped and migration-scoped proof owners;
-- implementation owns component and renderer-boundary proof;
-- migration owns consumer, scenario, legacy-removal, and impact-metadata proof;
-- review independently evaluates the full result and stage evidence.
-
-After every affected family has a current independent `REVIEW.md`, the `material-component` orchestrator runs exactly one final read-only workflow gate.
-
-For ordinary Material component work:
+### Loading Indicator
 
 ```text
-pnpm verify
+DESIGN.md          current
+ARCHITECTURE.md    refresh required
+IMPLEMENTATION.md  refresh required after architecture
+MIGRATION.md       refresh required after implementation
+REVIEW.md          fresh independent review required
 ```
 
-`pnpm verify:release` is used only when the task itself changes release-sensitive infrastructure and the project verification rules classify it accordingly. Component code is not release-sensitive merely because it will eventually be merged or released.
+Reason: architecture and downstream artifacts use the superseded verification ownership and predate the normalized control-field contract.
 
-A pending top-level final command is not a family blocker, accepted risk, deferred migration/review action, or next operator action. A final-verification failure is routed to the earliest owning stage; any workspace correction requires a fresh independent review before the same final command is rerun.
-
-An `ARCHITECTURE.md` that assigns the top-level command to migration, review, a dependency, “whichever stage closes the family”, or a release gate without release-sensitive infrastructure is stale. Every downstream artifact that relies on that architecture is stale as well, even when runtime code remains correct.
-
-## Operator visual/motion channel
-
-Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement completion gate.
-
-- Absence of an operator-reported defect does not block completion.
-- No explicit positive confirmation is required.
-- A concrete reported defect is a real blocker and routes to its owning stage through the same correction loop.
-
-## Loading Indicator state
-
-Current recorded artifacts under the corrected rules:
-
-```text
-components/loadingIndicator/DESIGN.md          current
-components/loadingIndicator/ARCHITECTURE.md    stale
-components/loadingIndicator/IMPLEMENTATION.md  stale
-components/loadingIndicator/MIGRATION.md       stale
-components/loadingIndicator/REVIEW.md          stale
-```
-
-Runtime implementation and focused proof are complete. The attrs-projection correction uses render-time allow-listed `$attrs` projection without cached `computed()` dependency, and the scoped-CSS explanation has been corrected.
-
-`ARCHITECTURE.md` still assigns the single final current-head command to migration. `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` rely on that superseded ownership, and migration/review record the command's absence as family work or risk. A fresh architecture worker must correct only verification ownership and stage proof assignment; downstream workers must then revalidate and refresh their artifacts. No public API, token, renderer mapping, or runtime behavior change is expected.
+Expected runtime change: none unless a stage worker finds a concrete discrepancy.
 
 Operator visual status: `no-reported-defect`.
 
-## Button state
-
-Current recorded artifacts under the corrected rules:
+### Button
 
 ```text
-components/button/DESIGN.md          current
-components/button/ARCHITECTURE.md    stale
-components/button/IMPLEMENTATION.md  stale
-components/button/MIGRATION.md       stale
-components/button/REVIEW.md          stale
+DESIGN.md          current
+ARCHITECTURE.md    refresh required
+IMPLEMENTATION.md  refresh required after architecture
+MIGRATION.md       refresh required after implementation
+REVIEW.md          fresh independent review required
 ```
 
-Runtime implementation and focused proof are complete. The attrs-projection correction uses render-time allow-listed `$attrs` projection, and the dynamic add/remove/re-add test now reuses one module-level `DynamicAttrsWrapper`, removing the review-reported `vue/one-component-per-file` warnings.
+Reason: architecture and downstream artifacts use the superseded verification ownership and predate the normalized control-field contract. The existing review also predates the final test-wrapper warning correction.
 
-`ARCHITECTURE.md` still assigns the top-level final gate to migration and incorrectly selects `pnpm verify:release` for ordinary component work. Its downstream artifacts therefore require refresh. The current `REVIEW.md` also predates the final test-harness correction and still records the resolved warning as a minor issue. No public API, seven-token contract, renderer mapping, or runtime behavior change is expected.
+Expected runtime change: none unless a stage worker finds a concrete discrepancy.
 
 Operator visual status: `no-reported-defect`.
 
-## Required autonomous closure
+## Exit criteria
 
-One invocation must be sufficient:
+The pilot is complete only when:
 
-```text
-material-component Button
-```
-
-The orchestrator must:
-
-1. process the Loading Indicator dependency from its stale architecture stage;
-2. refresh Loading Indicator implementation and migration handoffs against the corrected architecture, without changing runtime code unless a real discrepancy is found;
-3. run a fresh independent Loading Indicator review;
-4. resume Button from its stale architecture stage;
-5. refresh Button implementation and migration handoffs against the corrected architecture, without changing runtime code unless a real discrepancy is found;
-6. run a fresh independent Button review on the current test code;
-7. run one final `pnpm verify` after all affected reviews are current;
-8. route any real verifier failure to its owning stage and repeat correction, review, and final verification without another operator command;
-9. finish with no remaining blocker when all gates pass.
-
-If the command skips an architecture artifact that conflicts with current workflow rules, stops merely because one stage completed, leaves a downstream artifact current after its upstream architecture changed, asks for a repeated operator invocation, delegates the final workflow command to migration/review, or records the pending final command as a family risk, that is a workflow defect rather than expected operator work.
+- the Loading Indicator dependency reaches successful fixed artifact gates;
+- Button reaches successful fixed artifact gates;
+- each reasoning stage used a fresh isolated worker;
+- orchestrator routing used fixed fields rather than semantic re-review;
+- no worker depended on Git, PR, commit, or external check state;
+- implementation and migration preflight were recorded where edits or revalidation required them;
+- review uses `compliant-with-listed-risks` only for genuine bounded accepted risks;
+- one final `pnpm verify` passes after the current reviews;
+- no operator-reported visual/motion defect remains unresolved.
 
 ## Milestones
 
-| ID  | Milestone                                      | Status        | Depends on | Exit gate                                                                                                                                     |
-| --- | ---------------------------------------------- | ------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| M0  | autonomous staged renderer workflow/foundation | `implemented` | none       | thin orchestrator; isolated stage ownership; dependency queue; correction routing; one post-review final workflow verification                |
-| M1a | `MDLoadingIndicator` staged dependency family  | `stale`       | M0         | five current family artifacts; accepted standalone/composed ownership; required stage proof; no unresolved operator-reported defect           |
-| M1  | `MDButton` staged action family                | `stale`       | M1a        | five current family artifacts; accepted tokens and consumers; independent review; no unresolved operator-reported defect; final verify passes |
-| M2  | `MDSwitch` stateful pilot                      | `planned`     | M1         | complete autonomous workflow; controlled state/event order; renderer-gap ownership; verification                                              |
-| M3  | sequential component migration                 | `planned`     | M2         | dependencies first; explicit ownership; isolated stages; independent review                                                                   |
+| ID | Milestone | Status | Exit gate |
+| --- | --- | --- | --- |
+| M0 | workflow architecture and rules | `implemented-unproven` | one pilot invocation completes through fixed fields and final verification |
+| M1a | Loading Indicator dependency family | `refresh-required` | five successful current artifacts and no unresolved reported defect |
+| M1 | Button action family | `refresh-required` | dependency closure, five successful current artifacts, final verification |
+| M2 | Switch stateful pilot | `planned` | controlled state/event contract through the proven workflow |
+| M3 | sequential component migration | `planned` | dependency-first autonomous family migrations |
 
 ## Next operator action
 
-Run:
+Run once:
 
 ```text
 material-component Button
 ```
 
-No separate Loading Indicator command, manual family-artifact patch, positive visual acknowledgement, local `verify:release`, dependency pin, renderer-version registry, shared adapter abstraction, or repeated stage command is required.
+The invocation must refresh the Loading Indicator dependency first, resume Button, run fresh independent reviews, and finish with one final `pnpm verify` without another operator command.
+
+No manual family-artifact patch, separate dependency command, positive visual acknowledgement, local `verify:release`, dependency pin, worker registry, artifact hash system, or generic adapter framework is required.
