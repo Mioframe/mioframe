@@ -35,9 +35,9 @@ For one official Material family, deterministic architecture is a current comple
 
 If this skill is skipped, implementation preflight must name the deterministic workflow, authoritative sources, ready artifacts, and reason no unresolved architecture decision remains.
 
-## Workspace boundary
+## Input scope
 
-Use only readable workspace files, file-oriented tools, and documented project commands. Hidden workspace metadata, unrelated environment internals, and external administration are not architecture inputs.
+Use task-relevant readable workspace files, applicable rules, and documented project commands as architecture evidence.
 
 ## Token budget
 
