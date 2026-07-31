@@ -58,12 +58,6 @@ Do not migrate application consumers or remove legacy consumer-facing owners in 
 
 The coding worker must not reselect demand, redesign the API, change ownership, or choose another gap strategy.
 
-## Workspace boundary
-
-Use only readable files, file-oriented tools, and documented project commands.
-
-Do not inspect hidden workspace metadata or unrelated environment internals. If a project command fails before reaching its relevant check, complete otherwise safe implementation work and record the exact command failure as remaining verification.
-
 ## Implementation rules
 
 - Implement only the selected surface in `ARCHITECTURE.md`.
@@ -170,4 +164,3 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Updating visual baselines without inspection.
 - Treating automated checks as migration or review completion.
 - Running the migration or review stage in the same worker context.
-- Inspecting hidden workspace metadata or unrelated environment internals.
