@@ -27,13 +27,13 @@ material-component-review
 
 Read `docs/component-workflow.md` first.
 
-The operator supplies the component name once. The orchestrator executes every internally actionable stage through isolated workers, validates each handoff, processes dependencies, routes corrections backward, and continues until completion or a genuine external blocker.
+The operator supplies the component name once. The orchestrator executes every internally actionable stage through isolated workers, validates each handoff, processes dependencies, routes corrections backward, and continues until completion or a genuine blocker.
 
 One stage scope owns one reasoning focus and one artifact. Every stage runs in a fresh worker context. The orchestrator may select, launch, validate, and route; it must not perform design research, architecture decisions, implementation, migration, or review itself.
 
-A stage worker receives only the component name, readable workspace files, applicable rules, and paths to canonical upstream artifacts. Hidden reasoning, conversational summaries, and prose from another worker are not valid handoffs. The review worker must be independent from workers that authored architecture, implementation, or migration.
+A stage worker receives only the component name, task-relevant readable workspace files, applicable rules, and paths to canonical upstream artifacts. Hidden reasoning, conversational summaries, and prose from another worker are not valid handoffs. The review worker must be independent from workers that authored architecture, implementation, or migration.
 
-If the environment cannot create a fresh worker, stop the outer workflow as an orchestration blocker. Do not simulate isolation inside one agent context and do not require repeated operator commands.
+If a fresh worker cannot be created, stop the workflow as an orchestration blocker. Do not simulate isolation inside one agent context and do not require repeated operator commands.
 
 The orchestrator always selects the earliest missing, stale, blocked, incomplete, or invalid stage. Later code does not permit skipping an earlier stage.
 
@@ -71,7 +71,7 @@ The installed lockfile-resolved `@m3e/web` artifact and observable browser behav
 
 Answers only what official Material defines. It includes complete variants, configurations, anatomy, states, behavior, guidance, accessibility, geometry, motion, related components, and component-token catalogue, whether or not Mioframe uses them.
 
-It contains no current demand, Vue API, renderer mapping, code, tests, migration, proof, or delivery status.
+It contains no current demand, Vue API, renderer mapping, code, tests, migration, proof, implementation progress, or roadmap status.
 
 A source freshness threshold triggers a refresh attempt but does not by itself make a complete snapshot stale. `stale` requires evidence of newer official content. `blocked` requires genuinely missing or incomplete official content after available fallbacks.
 
@@ -144,11 +144,11 @@ Final verification uses the exact task scope required by root `AGENTS.md` and th
 
 A component remains incomplete until all five stage artifacts are current, final verification passes, and required operator visual/motion acceptance is recorded. Automated checks alone are not architecture approval.
 
-## Genuine external blockers
+## Stop conditions
 
-The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable required source tools or permissions, inability to create the required fresh worker, an unresolved material architecture decision, a required project verification command that cannot execute, required operator visual/motion acceptance, or safety-required input.
+The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable required source tools, inability to create the required fresh worker, an unresolved material architecture decision, a required project verification command that cannot execute, required operator visual/motion acceptance, or safety-required input.
 
-A completed stage, failed refresh helper, cache age, ordinary code/test finding, or missing repeated operator command is not an external blocker.
+A completed stage, failed refresh helper, cache age, ordinary code/test finding, or missing repeated operator command is not by itself a blocker.
 
 ## Boundary
 
