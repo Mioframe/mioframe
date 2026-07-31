@@ -1,173 +1,183 @@
 ---
 name: material-component-implementation
-description: 'Use only after a current family DESIGN.md and ready ARCHITECTURE.md exist to implement the canonical MD* adapter, family tokens, tests, stories, exports, and renderer integration without migrating product consumers or changing architecture.'
+description: 'Use after current DESIGN.md and ready ARCHITECTURE.md exist to implement the canonical family component, tokens, tests, stories, exports, and renderer integration without migrating consumers or changing architecture.'
 ---
 
 # Material component implementation
 
-Implement one Material family strictly from its accepted architecture handoff.
+Implement one Material family strictly from its accepted architecture and return control to the orchestrator.
 
-This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture invention, product-consumer migration, independent review, or the top-level final workflow verification.
+This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture changes, product-consumer migration, independent review, or final workflow verification.
 
 ## Input gate
 
-Require:
+Require successful control fields in:
 
 ```text
 src/shared/ui/material/components/<family>/DESIGN.md
 src/shared/ui/material/components/<family>/ARCHITECTURE.md
 ```
 
-The design status must be `current`; the architecture status must be `ready` and reference that design revision.
+Design must be `current`. Architecture must be `ready`, reference that design, have no blockers or return stage, and declare `Implementation readiness: ready`.
 
-Stop and route backward when:
+If an input is invalid, write or refresh `IMPLEMENTATION.md` as blocked, record the earliest `Required return stage`, and return without production edits.
 
-- `DESIGN.md` is missing, stale, blocked, or incomplete;
-- `ARCHITECTURE.md` is missing, stale, blocked, inconsistent with design, or leaves a coding decision open;
-- a required dependency implementation is incomplete;
-- implementation evidence invalidates an architecture assumption.
+## Worker boundary
 
-Do not silently revise architecture while coding.
+Run in a fresh isolated worker context.
+
+Use task-relevant readable workspace files, applicable rules, canonical upstream artifacts, exact renderer package artifacts, and documented project commands. Do not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
+
+Do not redesign the API, ownership, dependencies, token selection, renderer strategy, gap strategy, or proof ownership while coding.
+
+## Mandatory preflight
+
+Before production edits, run `implementation-preflight` using current `DESIGN.md` and ready `ARCHITECTURE.md` as the deterministic authoring contract.
+
+Preflight must resolve:
+
+- exact files and ordered implementation passes;
+- implementation-owned `TEST IMPACT`;
+- focused verifier labels and scopes;
+- preserved public contracts and consumers that must not change;
+- architecture or dependency blocker, if one exists.
+
+Do not use preflight to reopen accepted architecture.
 
 ## Output
 
-Primary implementation result:
+Primary output may include:
 
 - canonical Vue adapter code;
 - family-local renderer typing and mappings;
-- selected family tokens and catalogue entries;
-- family-owned tests, stories, browser/visual proof, and defect records;
+- selected family tokens and public catalogue entries;
+- component tests, stories, browser/visual proof, and defect records;
 - canonical exports;
-- removal of obsolete code owned by the same family only;
-- one durable record:
+- removal of obsolete code owned by the same family.
+
+Write exactly one implementation handoff:
 
 ```text
 src/shared/ui/material/components/<family>/IMPLEMENTATION.md
 ```
 
-Do not migrate application consumers or remove legacy consumer-facing owners in this stage. That belongs to `material-component-migration`.
+Its control fields are:
 
-## Read first
+```text
+Status: complete | partial | stale | blocked
+DESIGN.md reference: <path>
+ARCHITECTURE.md reference: <path>
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return stage: none | design | architecture | implementation
+Architecture deviations: none | <exact deviations>
+Migration readiness: ready | blocked
+```
 
-- applicable `AGENTS.md` files;
-- family `DESIGN.md` and `ARCHITECTURE.md`;
-- Material token, renderer-boundary, testing, workflow, and verification rules;
-- exact lockfile-resolved renderer public artifacts;
-- existing family code, tests, stories, tokens, exports, and defect records;
-- required dependency implementation records.
-
-The coding worker must not reselect demand, redesign the API, change ownership, or choose another gap strategy.
+Do not append prose to enum values.
 
 ## Implementation rules
 
-- Implement only the selected surface in `ARCHITECTURE.md`.
-- Use official Material terminology and Vue mechanics exactly as specified.
-- Keep public types independent from the renderer and derive private glue from package-exported types.
-- Keep renderer imports, tags, events, types, and CSS inputs inside the canonical family.
-- Use only approved wrapper corrections and exact-version workarounds.
-- Do not access private shadow DOM or recreate renderer-owned state, ripple, focus, geometry, accessibility, elevation, or motion systems.
-- Implement all selected state precedence and restoration paths.
+- Implement only the selected architecture surface.
+- Use official Material terminology and Vue mechanics specified by architecture.
+- Keep public types independent from the renderer.
+- Derive private glue from package-exported renderer types.
+- Keep renderer imports, tags, events, types, and private CSS inputs inside the owning family.
+- Use only architecture-approved wrapper corrections and controlled workarounds.
+- Do not access private shadow DOM or recreate renderer-owned state, ripple, focus, geometry, accessibility, elevation, or motion.
+- Implement every selected state precedence and restoration path.
 - Complete official dependencies independently before parent composition.
-- Add no compatibility alias unless the architecture explicitly requires one.
-- When the canonical adapter's only root is a raw `m3e-*` custom element, set `inheritAttrs: false` and implement exactly the host-attribute allow-list selected by the family's ready `ARCHITECTURE.md` (see `docs/component-adapter.md`, "Host-attribute boundary"). Do not mutate the Vue `$attrs` object, and do not forward `on*` listeners except events the component's public API explicitly declares. Adapter-owned/internal properties always win over a consumer-supplied conflicting value.
+- Add no compatibility alias unless architecture explicitly requires it.
 
-## Token implementation
+When the only root is a raw `m3e-*` custom element:
 
-- Implement only tokens selected by `ARCHITECTURE.md` from the complete `DESIGN.md` catalogue.
+- set `inheritAttrs: false`;
+- forward exactly the architecture-approved positive allow-list;
+- do not mutate Vue `$attrs`;
+- do not forward undeclared `on*` listeners;
+- ensure adapter-owned properties win over consumer conflicts.
+
+## Token rules
+
+- Implement only tokens selected by architecture from the complete design catalogue.
 - Keep one family owner and update `docs/token-api.md` atomically with declarations.
 - Preserve exact official state/part naming.
-- Implement every renderer input and fallback required by the accepted state/part trace.
+- Implement every required renderer input and fallback.
 - Do not publish unconsumed parts or mirror renderer defaults for completeness.
-- Prove computed rendered results where the architecture requires contextual appearance.
+- Prove computed rendered results where architecture selects contextual appearance.
 
-## Proof ownership
+## Focused proof
 
-Implement the implementation-owned portion of `TEST IMPACT` from `ARCHITECTURE.md` through faithful owners:
+Implement the implementation-owned `TEST IMPACT` through the lowest faithful owners, which may include:
 
 - colocated Vue contract tests;
 - package-derived type-check;
 - browser native/accessibility behavior;
-- component-owned visual baselines for stable presentation;
+- component-owned visual baselines;
 - renderer-boundary and token agreement checks;
-- dependency standalone proof and parent handoff proof;
-- risk-specific tests explicitly selected by architecture.
+- dependency standalone and parent-handoff proof;
+- risk-specific tests selected by architecture.
 
-Visual tests may prepare deterministic states and capture pixels, but behavioral success criteria remain in behavior tests.
+Visual tests capture deterministic presentation; behavior tests own interaction success criteria.
 
-Do not run or defer the top-level final workflow verification from this stage. The orchestrator runs it after migration and the current independent review.
+Run only verifier-managed focused implementation checks. Do not run or defer the top-level final workflow verification.
 
-## Implementation record
+## Semantic routing
 
-`IMPLEMENTATION.md` is a concise handoff, not duplicated architecture or code documentation:
+If implementation evidence invalidates official design or accepted architecture:
 
-```text
-# <Component> implementation
+- do not patch around it;
+- set the earliest `Required return stage` to `design` or `architecture`;
+- record the exact blocker;
+- stop production edits and return.
 
-Status: complete | partial | blocked | stale
-DESIGN.md reference:
-ARCHITECTURE.md reference:
-Implementation workspace state: <canonical files and artifact statuses reviewed>
+If a component-owned implementation or proof issue remains, use return stage `implementation`.
 
-## Implemented passes
-## Public API implemented
-## Tokens and renderer mappings implemented
-## Dependencies completed
-## Proof completed
-## Implementation-stage verification
-## Architecture deviations
-## Remaining implementation blockers
-## Migration readiness
-```
+## Completion
 
-`Architecture deviations` must be `none` for a complete result. If a deviation is required, stop and return to `material-component-architecture`.
+Use `Status: complete` only when:
 
-## Verification
+- every architecture implementation pass is complete;
+- code, tokens, mappings, defects, tests, stories, and exports agree;
+- focused implementation verification passes;
+- `Architecture deviations: none`;
+- `Remaining blockers: none`;
+- `Required return stage: none`;
+- `Migration readiness: ready`.
 
-Run focused verifier-managed feedback and the exact implementation-stage scope selected by architecture and root verification policy.
+A warning introduced by current work, missing required proof, or failed focused check is not an accepted risk and cannot produce `complete`.
 
-Do not claim full component completion: consumer migration, independent review, operator-reported visual/motion status, and the top-level final workflow verification remain outside this stage.
-
-Absence of the not-yet-run top-level final workflow verification is not an implementation blocker, accepted risk, or deferred implementation action.
-
-## Completion gate
-
-Implementation is `complete` only when:
-
-- every architecture implementation pass is done;
-- family and dependency code is canonical and exported;
-- selected tokens, mappings, defects, tests, stories, and proof agree;
-- no architecture deviation exists;
-- focused implementation-stage verification passes, or its exact project-command blocker is recorded after implementation work is complete;
-- the public component is ready for consumer migration.
+Do not migrate product consumers in this stage.
 
 ## Report
 
 ```text
 MATERIAL IMPLEMENTATION RESULT
-Input artifact:
-Resolved component/family:
-DESIGN.md status:
-ARCHITECTURE.md status:
+Input component:
+Canonical family:
+Input artifact statuses:
 IMPLEMENTATION.md path:
+Preflight result:
 Implemented passes:
 Public API implemented:
 Tokens and mappings implemented:
 Dependencies completed:
-Proof completed:
+Focused proof completed:
 Implementation-stage verification:
 Architecture deviations: none | <details>
+Remaining blockers: none | <details>
+Required return stage: none | design | architecture | implementation
 Migration readiness: ready | blocked
-Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
+Status: complete | blocked
 ```
 
 ## Forbidden
 
-- Researching or rewriting the official design contract.
-- Inventing or changing architecture during implementation.
-- Migrating product consumers or deleting consumer-facing legacy ownership.
-- Expanding API, tokens, abstractions, or renderer support beyond `ARCHITECTURE.md`.
+- Changing architecture while coding.
+- Migrating product consumers or removing consumer-facing legacy ownership.
+- Expanding API, tokens, abstractions, or renderer support beyond architecture.
 - Updating visual baselines without inspection.
-- Treating automated checks as migration or review completion.
-- Running the migration or review stage in the same worker context.
-- Running, deferring, or claiming ownership of the top-level final workflow verification.
-- Recording a not-yet-run top-level final gate as an implementation blocker, finding, risk, or next action.
+- Running migration or review in this context.
+- Running, deferring, or claiming ownership of final workflow verification.
+- Recording the pending final command as a blocker, risk, or next action.
+- Depending on Git or PR state.
