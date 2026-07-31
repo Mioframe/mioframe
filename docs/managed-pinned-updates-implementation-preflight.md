@@ -75,17 +75,17 @@ The complete acceptance matrix remains in the handoff. Preflight-specific comple
 
 ## 6. Risk matrix
 
-| Risk | Required control |
-| --- | --- |
-| Partial rewrite leaves two state models | Replace contracts first, then remove all old-field consumers before integration verification |
-| Publisher/runtime validator drift | Keep the existing shared fixture corpus and parity tests, rewritten for `releaseNumber` |
-| Unsafe numeric ordering | Positive safe-integer validation plus overflow rejection before publication writes |
-| Stale preparation mutates new user intent | Fresh exact mode/number/phase checks inside the short queue transaction |
-| Fetch handler re-enters metadata/API requests | Route ownership in `src/sw.ts` before `respondWith` and before state read |
-| Cleanup deletes selected or in-flight cache | Protected set = active + candidate + coordinator in-flight numbers |
-| Rollback reloads the recovering navigation | Exclusion-aware rollback broadcast for expired-navigation recovery |
-| Browser lifecycle regression | Preserve cross-engine close-all-and-reopen release E2E proof |
-| Rewrite hides obsolete tests instead of removing them | Review final test names/assertions against the new state machine, not only green execution |
+| Risk                                                  | Required control                                                                             |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Partial rewrite leaves two state models               | Replace contracts first, then remove all old-field consumers before integration verification |
+| Publisher/runtime validator drift                     | Keep the existing shared fixture corpus and parity tests, rewritten for `releaseNumber`      |
+| Unsafe numeric ordering                               | Positive safe-integer validation plus overflow rejection before publication writes           |
+| Stale preparation mutates new user intent             | Fresh exact mode/number/phase checks inside the short queue transaction                      |
+| Fetch handler re-enters metadata/API requests         | Route ownership in `src/sw.ts` before `respondWith` and before state read                    |
+| Cleanup deletes selected or in-flight cache           | Protected set = active + candidate + coordinator in-flight numbers                           |
+| Rollback reloads the recovering navigation            | Exclusion-aware rollback broadcast for expired-navigation recovery                           |
+| Browser lifecycle regression                          | Preserve cross-engine close-all-and-reopen release E2E proof                                 |
+| Rewrite hides obsolete tests instead of removing them | Review final test names/assertions against the new state machine, not only green execution   |
 
 ## 7. Breadth and implementation passes
 
