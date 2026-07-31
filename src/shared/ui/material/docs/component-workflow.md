@@ -2,244 +2,281 @@
 
 ## Decision
 
-Every official Material family progresses through isolated reasoning stages followed by one workflow-level verification:
+Every official Material family progresses through five isolated reasoning stages followed by one workflow-level verification:
 
 ```text
 official Material sources
   → DESIGN.md
   → ARCHITECTURE.md
-  → implementation code + IMPLEMENTATION.md
+  → implementation + IMPLEMENTATION.md
   → consumer migration + MIGRATION.md
   → independent REVIEW.md
   → final workflow verification
 ```
 
-The separation is mandatory. It keeps each reasoning step focused and creates durable handoffs that later stages validate instead of reconstructing. Final workflow verification is orchestration closure, not a sixth reasoning stage and not another artifact owner.
+The operator invokes `material-component <name>` once. The orchestrator continues through every internally actionable stage until completion or a genuine blocker.
 
-## Operator invocation and stage scope
+This document is the single complete owner of the Material state machine. Other rules and README files link here and must not reproduce the full routing algorithm.
 
-These are different boundaries:
+## Execution boundaries
 
-- **Operator invocation** — one `material-component <name>` command. It autonomously orchestrates the full workflow, including the final read-only verification, until completion or a genuine blocker.
-- **Stage scope** — one focused execution of design, architecture, implementation, migration, or review in a fresh worker context. It owns one artifact and returns control to the orchestrator.
+### Orchestrator
 
-One operator invocation may execute multiple stage workers sequentially. A stage worker must never absorb work owned by another stage. The operator supplies only the component name.
+The orchestrator is mechanical. It may only:
 
-## Worker isolation
+- resolve the canonical family name;
+- read the fixed control fields defined below;
+- select the stage named by those fields and the fixed stage order;
+- launch a fresh isolated worker for that stage;
+- process an explicit dependency queue written by architecture;
+- retain invocation-local knowledge of which earlier stages changed;
+- run the one final read-only verification command;
+- pass exact verifier output to a fresh review worker for routing when the command fails;
+- stop at completion or a recorded genuine blocker.
 
-The outer orchestrator may only:
+The orchestrator does not determine whether design facts, architecture, code, consumers, tests, or findings are semantically correct. It does not inspect implementation drift, rediscover consumers, conduct migration audit, choose an owning stage from prose, or repeat independent review itself.
 
-- resolve the family;
-- inspect canonical artifact statuses, contents, upstream references, and readable workspace files;
-- select the earliest invalid stage;
-- launch a fresh stage worker;
-- validate the resulting artifact and report against current applicable rules;
-- route dependencies, corrections, completion, or a genuine blocker;
-- run and interpret the one final workflow verification after all affected artifacts and the independent review are current.
+### Stage workers
 
-It must not perform official research, architecture decisions, implementation, migration, or review itself. Executing final workflow verification is an orchestration responsibility and does not make the orchestrator a stage worker.
+Design, architecture, implementation, migration, and review each run in a fresh isolated worker context and own their semantic decisions.
 
-Every stage execution uses a new worker context. The worker receives only:
+Each worker:
 
-- the component name and canonical family;
-- the selected stage skill;
-- applicable workspace rules;
-- task-relevant readable workspace files;
-- canonical upstream artifact paths;
-- explicit return-stage or blocker facts already recorded in artifacts or final-verification output.
+- reads its stage skill, applicable `AGENTS.md`, canonical upstream artifacts, and task-relevant workspace files;
+- validates the semantic correctness of its own inputs and output;
+- writes exactly its owned artifact and owned runtime changes;
+- records fixed control fields;
+- returns control to the orchestrator.
 
-Hidden reasoning, conversational summaries, and unwritten conclusions are not inter-stage inputs. The review worker must not be the worker that authored or corrected `ARCHITECTURE.md`, production implementation, or `MIGRATION.md` for the reviewed result.
+A later stage does not repair an earlier stage. It records `Required return stage` and stops.
 
-If a fresh worker cannot be created, the workflow is blocked on orchestration capability. It must not continue all stages in one context and claim isolation.
+The review worker is independent from workers that authored or corrected architecture, implementation, or migration for the reviewed result.
 
-## Worker scope
+### Runtime independence
 
-Coding workers use task-relevant readable files and documented project commands. Each implementation or migration worker runs only the focused and stage-scoped proof required for its owned changes. Review evaluates those results and may independently rerun focused evidence where needed.
+Rules define required isolation, not vendor-specific syntax. Use the current runtime’s supported subagent or clean-context mechanism. Do not require Claude-, Codex-, or another vendor-specific frontmatter.
 
-No stage worker owns or defers the top-level final workflow verification. The orchestrator runs it only after the current independent review. Absence of that not-yet-run command is expected during stages and is not a stage blocker or accepted risk.
+If the runtime cannot create a fresh isolated worker, the workflow is blocked. Do not simulate isolation by continuing in one reasoning context.
 
-If a project command fails before reaching its relevant check, complete otherwise safe stage-owned file work, record the exact visible failure, and report verification as blocked only when it remains required for that stage or for final workflow closure.
+Workers use readable workspace files and documented project commands only. They must not depend on:
 
-## Family artifacts
+- Git history, diff, index, branch, or worktree state;
+- commit identifiers;
+- pull-request metadata or review threads;
+- GitHub checks or another external publication system.
 
-```text
-src/shared/ui/material/components/<family>/
-  DESIGN.md
-  ARCHITECTURE.md
-  IMPLEMENTATION.md
-  MIGRATION.md
-  REVIEW.md
-  README.md
-```
+Those facts are outside the coding workflow and must not appear in family artifacts.
 
-`README.md` is only a short family index. It must not duplicate mutable stage status, milestone status, or next action.
+## Fixed control fields
 
-A status label is not authoritative by itself. Every artifact must also be consistent with its current upstream artifacts, readable workspace state, applicable `AGENTS.md`, the current stage skill, and canonical workflow documentation.
+Control fields use exact standalone enum values. Explanatory prose must not be appended to a status line.
+
+An existing artifact missing any required control field or using an invalid value is mechanically invalid and routes to its owning stage. No parser framework, registry, digest, hash, or workflow database is required.
 
 ### DESIGN.md
 
-Answers only:
-
 ```text
-What does official Material define?
+Status: current | stale | blocked
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return stage: none | design
 ```
 
-Owner: `material-component-design`.
-
-Contains the complete official component contract and token catalogue. Contains no Mioframe demand, Vue API, renderer mapping, code, tests, migration, or status decisions.
-
-Gate: status `current` and content consistent with current official-source rules.
+Success gate: `Status: current`, `Remaining blockers: none`, `Required return stage: none`.
 
 ### ARCHITECTURE.md
 
-Answers:
-
 ```text
-What must Mioframe implement now, who owns it, how does the renderer participate,
-and how will implementation, proof, migration, and workflow closure be performed?
+Status: ready | stale | blocked
+DESIGN.md reference: <path and source revision>
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return stage: none | design | architecture
+Implementation readiness: ready | blocked
+Dependency queue: none | <ordered family and required gate entries>
 ```
 
-Owner: `material-component-architecture`.
-
-Consumes the complete `DESIGN.md`, current scenarios, workspace ownership, exact renderer evidence, and current workflow/verification ownership. Resolves public API, selected tokens, dependencies, gaps, implementation passes, stage proof, migration, and final-workflow-verification ownership. Makes no production edits.
-
-Gate: status `ready`, references the current design, no unresolved coding decision, and no decision forbidden by current workspace or architecture rules. An architecture that delegates the top-level final workflow verification to implementation, migration, review, a dependency, or an unspecified later stage is stale even when labeled `ready`.
+Success gate: `Status: ready`, no blockers, no return stage, implementation readiness `ready`, and every explicit dependency entry at its required gate.
 
 ### IMPLEMENTATION.md
 
-Answers:
-
 ```text
-Was the accepted component architecture implemented and proven at the component owner?
+Status: complete | partial | stale | blocked
+DESIGN.md reference: <path>
+ARCHITECTURE.md reference: <path>
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return stage: none | design | architecture | implementation
+Architecture deviations: none | <exact deviations>
+Migration readiness: ready | blocked
 ```
 
-Owner: `material-component-implementation`.
-
-The primary output is code, tokens, tests, stories, exports, and defect records. `IMPLEMENTATION.md` records completed passes, proof, focused implementation verification, deviations, and migration readiness.
-
-Gate: status `complete`, references the current architecture, architecture deviations `none`, migration readiness `ready`, and content consistent with current implementation rules. An upstream architecture change makes implementation stale until a fresh implementation worker revalidates code and refreshes the artifact, even when no runtime edit is needed.
+Success gate: `Status: complete`, no blockers, no return stage, no architecture deviations, migration readiness `ready`.
 
 ### MIGRATION.md
 
-Answers:
-
 ```text
-Were all approved consumers migrated, scenarios preserved, and replaced legacy ownership removed?
+Status: complete | partial | stale | blocked
+DESIGN.md reference: <path>
+ARCHITECTURE.md reference: <path>
+IMPLEMENTATION.md reference: <path>
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return stage: none | design | architecture | implementation | migration
+Review readiness: ready | blocked
 ```
 
-Owner: `material-component-migration`.
-
-Contains consumer inventory, migrated paths, preserved behavior and failure cases, removed ownership, proof, and migration-scoped verification.
-
-Gate: status `complete`, references current architecture and implementation artifacts, and review readiness `ready`. A not-yet-run top-level final workflow verification is not part of this gate. An upstream architecture or implementation change makes migration stale until a fresh migration worker revalidates consumers and refreshes the artifact.
+Success gate: `Status: complete`, no blockers, no return stage, review readiness `ready`.
 
 ### REVIEW.md
 
-Answers:
-
 ```text
-Does the full resulting family comply with official design, accepted architecture,
-workspace rules, consumer scenarios, proof, and stage gates?
+Verdict: compliant | compliant-with-listed-risks | blocked
+Required return stage: none | design | architecture | implementation | migration
+Completion status: complete | blocked
+Final workflow verification readiness: ready | blocked
+Operator visual status: no-reported-defect | defect-reported | not-applicable
+Blockers: none | <exact blockers>
+Major issues: none | <exact issues>
+Minor issues: none | <exact issues>
+Accepted risks: none | <exact accepted risks>
 ```
 
-Owner: `material-component-review`.
+Success gate:
 
-Review is independent and read-only except for `REVIEW.md`. Findings return work to the earliest owning stage. The orchestrator launches a fresh correction worker and later a new independent review worker.
+- verdict `compliant` or `compliant-with-listed-risks`;
+- required return stage `none`;
+- completion status `complete`;
+- final workflow verification readiness `ready`;
+- no blockers, major issues, or minor issues;
+- no unresolved operator-reported defect.
 
-Gate: verdict `compliant` or `compliant-with-listed-risks`, references the current complete upstream artifacts and workspace, no unresolved concrete operator-reported visual/motion defect, all required focused/stage proof complete, and final-workflow-verification readiness recorded. Absence of an operator-reported defect satisfies this gate; no positive operator acknowledgement is required. The pending top-level final workflow command is not a review finding or risk.
+`compliant-with-listed-risks` is allowed only when all mandatory work, proof, and stage verification are complete and the listed items are real accepted non-blocking limitations such as bounded platform coverage, a controlled renderer workaround, or documented upstream uncertainty.
 
-Any workspace, upstream-artifact, or applicable-rule change after review makes `REVIEW.md` stale and requires a fresh independent review.
+It must not represent an unrun required check, stale or missing artifact, warning introduced by current work, unresolved finding, unknown consumer state, or deferred required work.
 
-## Autonomous state machine
+## Mechanical state machine
 
-The orchestrator repeatedly selects the earliest condition that applies:
+The orchestrator performs these steps without semantic interpretation:
 
-1. missing, stale, blocked, incomplete, or rule-invalid `DESIGN.md` → design;
-2. missing, stale, blocked, not-ready, upstream-invalid, or rule-invalid `ARCHITECTURE.md` → architecture;
-3. missing, partial, blocked, stale, predating current architecture, rule-invalid `IMPLEMENTATION.md`, or implementation drift → implementation;
-4. missing, partial, blocked, stale, predating current architecture/implementation `MIGRATION.md`, remaining consumer/legacy work, unresolved migration-scoped proof, or top-level-verification ownership leakage → migration;
-5. missing, stale, blocked `REVIEW.md`, review predating workspace/upstream/rule changes, inconsistency with current readable artifacts/code, or actionable findings → review;
-6. all affected family artifact gates current → final workflow verification;
-7. final workflow verification passed on the unchanged current workspace → complete.
+1. Resolve the requested family.
+2. For `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` in order:
+   - if the artifact is missing, lacks required control fields, or has an invalid enum value, run its owning stage;
+   - if `Required return stage` is not `none`, run exactly that stage;
+   - if the artifact does not meet its fixed success gate, run its owning stage.
+3. When architecture has a non-empty dependency queue, process each named dependency through its explicitly required gate before resuming the parent.
+4. When a stage worker changes or refreshes an artifact, mark every later stage pending in the current invocation and execute those later stages in order, regardless of their previous labels.
+5. When review reaches its success gate for the parent and every affected dependency, run one final workflow verification.
+6. Complete only when that command passes on the unchanged workspace.
 
-Whenever an earlier stage is stale or changes, every downstream artifact is stale regardless of its self-declared status. The orchestrator must refresh stages in order and must not jump directly to the last visibly incorrect artifact.
+The orchestrator validates field presence and exact enum values only. Semantic validation belongs to stage workers.
 
-For every selected reasoning stage, the orchestrator launches a fresh worker, validates workspace outputs, and discards that worker context before selecting the next stage.
+## Routing by stage workers
 
-An implementation or review finding that invalidates architecture routes back to architecture. A design omission routes back to design. Ordinary correction work does not require a new operator command, but it always uses a new worker context.
+A worker that discovers an earlier-stage defect writes the earliest owner to `Required return stage`, records the exact blocker or issue, and returns.
 
-If final workflow verification fails, the orchestrator uses the visible verifier output to route the defect to the earliest owning stage. Any resulting workspace change invalidates every affected downstream artifact, including `REVIEW.md`, so the workflow must refresh them in order and complete a fresh independent review before rerunning the same final gate. A routable failure is correction work, not a deferred family risk and not a reason to ask for another operator command.
+The orchestrator then launches a fresh worker for that exact stage. It does not reinterpret the finding.
+
+Examples:
+
+- missing official fact → design;
+- unresolved API, ownership, dependency, renderer strategy, token selection, or proof plan → architecture;
+- component code, token declaration, renderer mapping, export, or component-owned test defect → implementation;
+- consumer, legacy-removal, product-scenario, or migration-proof defect → migration.
+
+After an earlier stage changes, every downstream stage runs again in order. This is a fixed ordering rule, not a semantic inference.
+
+## Durable rule changes
+
+When a durable workflow or stage rule invalidates existing family artifacts, the rule change must also make the earliest affected stage explicit in `roadmap.md` and, when practical, set the affected artifact’s control fields to `stale`.
+
+The orchestrator does not infer semantic invalidation by comparing prose across rules. Artifacts created before this control-field contract are invalid mechanically because required fields are absent and therefore return to their owning stages.
 
 ## Dependency queue
 
-A parent family pauses when it requires another official Material component.
+Architecture alone identifies official component dependencies and writes the ordered `Dependency queue`.
 
-The dependency passes the same five artifact stages as a first-class family. The orchestrator processes dependency stages automatically through separate fresh workers and then resumes the parent. Parent and dependency work remain separate contexts and artifacts.
+The orchestrator:
 
-Parent architecture cannot be `ready` until dependency design and architecture are current. Parent implementation cannot complete before dependency implementation is current. Parent migration and review cannot complete while the required dependency artifact gates are incomplete or stale.
+- reads only those explicit entries;
+- pauses the parent;
+- processes each dependency as its own family through fresh workers;
+- resumes the parent after the required dependency gate;
+- runs no separate final workflow verification for the dependency.
 
-Do not run a separate top-level final workflow verification after each dependency. Run one final gate after the parent and every affected dependency have current artifacts and reviews, so the complete resulting workspace is verified once.
+One final command verifies the parent and every affected dependency together.
 
-## Source refresh and design status
+## Implementation preflight
 
-A source-cache freshness threshold triggers a refresh attempt; it does not automatically make a complete snapshot stale.
+Before production edits, the implementation worker runs `implementation-preflight` using the current `DESIGN.md` and ready `ARCHITECTURE.md` as the deterministic contract.
 
-- `current` — all required official content is represented from the newest successfully acquired official revision and there is no evidence of a newer material revision.
-- `stale` — affirmative evidence shows official content or its material revision changed after the recorded snapshot.
-- `blocked` — required official content remains missing, contradictory, or incompletely extracted after all available source and cache fallbacks.
+Before consumer edits, the migration worker runs `implementation-preflight` using the accepted migration plan and complete `IMPLEMENTATION.md`.
 
-A failed refresh helper is not itself a blocker when a complete official snapshot and token resource remain available and no newer revision is known.
+Preflight resolves exact files, pass order, `TEST IMPACT`, and focused verifier scopes. It does not reopen architecture decisions.
+
+## Stage verification
+
+Implementation and migration run only verifier-managed focused proof for their owned changes. Review inspects the resulting evidence and may rerun focused checks where required for independent evaluation.
+
+The pending top-level final command is not a stage blocker, issue, accepted risk, or next action.
 
 ## Final workflow verification
 
-The top-level `material-component` orchestrator owns exactly one final read-only completion gate after all affected `REVIEW.md` artifacts are current.
+After current successful reviews, the orchestrator runs exactly one read-only final command selected by root policy and the `verification` skill.
 
-- Ordinary Material component work uses `pnpm verify`.
-- `pnpm verify:release` is used only when the task itself changes release-sensitive infrastructure and the project verification skill classifies it accordingly.
-- Implementation and migration workers run focused verifier-managed checks for their scopes.
-- Review inspects the complete family and stage evidence but does not run or require the top-level final gate.
-- The final gate validates the complete current workspace, including the review artifacts.
-- A passing final command does not replace architecture or review.
-- Any later workspace edit invalidates the result and requires the earliest owning stage, every affected downstream artifact, a fresh independent review, and the final command again.
+For ordinary Material component work:
 
-Do not record a pending final workflow command inside `IMPLEMENTATION.md`, `MIGRATION.md`, `REVIEW.md`, or `roadmap.md` as a family blocker, accepted risk, deferred stage action, or next operator action.
+```text
+pnpm verify
+```
+
+Use `pnpm verify:release` only when the task itself changes release-sensitive infrastructure and the verification skill classifies it accordingly. Component code is not release-sensitive merely because it will later be released.
+
+### Failure routing
+
+The orchestrator does not classify verifier output.
+
+When final verification fails:
+
+1. preserve the exact command and visible output;
+2. launch a fresh independent `material-component-review` worker with that output as additional evidence;
+3. let review update `REVIEW.md` with an exact `Required return stage`, or record a genuine command blocker with return stage `none`;
+4. follow the resulting control fields mechanically;
+5. after any workspace change, rerun every downstream stage and a fresh independent review;
+6. rerun the same final command.
+
+A routable verification failure is correction work, not a listed risk and not a reason to request another operator invocation.
+
+## Operator visual/motion channel
+
+Operator visual/motion inspection is an external defect-reporting channel.
+
+- Absence of a reported defect is `no-reported-defect` and is not a blocker.
+- No positive acceptance record is required.
+- A concrete reported defect is `defect-reported`, blocks completion, and is routed by a fresh review worker to its owning stage.
+- Automated checks must not claim subjective visual or motion correctness.
 
 ## Stop conditions
 
-The outer orchestration may stop only for:
+The outer invocation stops only when a fixed control field records one of these genuine blockers:
 
-- genuinely missing official content after all fallbacks;
-- unavailable required source tools;
-- unavailable fresh-worker orchestration capability;
-- an unresolved material architecture decision that official evidence and workspace rules cannot determine;
-- a concrete unresolved operator-reported visual/motion defect;
-- a required stage-scoped or final workflow verification command that cannot execute or complete after applicable correction mechanisms are exhausted;
-- safety-required operator input.
+- required official content remains unavailable after source fallbacks;
+- required source or project tools are unavailable;
+- fresh-worker isolation cannot be created;
+- architecture records an unresolved material decision;
+- a required stage or final project command cannot execute or complete after applicable mechanisms are exhausted;
+- a concrete operator-reported defect remains unresolved;
+- safety requires operator input.
 
-A completed stage, ordinary failing test, code finding, cache age, missing repeated command, absence of an operator-reported defect, stale downstream artifact, pending final verification before review closure, or a routable final-verification failure is not by itself a blocker.
-
-## Stage ownership rules
-
-- A stage worker must not perform work owned by a later stage.
-- A later stage must not rewrite an earlier artifact to make current work easier.
-- When new evidence or current rules invalidate an earlier artifact, return control to the orchestrator and route backward through a fresh worker.
-- Every downstream artifact becomes stale when an upstream artifact changes or becomes invalid.
-- Do not duplicate the complete content of an earlier artifact in later records; reference exact sections.
-- Stage artifacts use explicit statuses and canonical upstream artifact references so staleness is detectable from workspace files.
-- The orchestrator validates artifact content against current rules; it must not trust self-declared status alone.
-- `roadmap.md` remains the only owner of project-wide milestone order and current next action.
-- Final workflow verification state belongs to the orchestrator report, not to a family stage artifact.
+A completed stage, ordinary finding, failed refresh helper, cache age, pending later stage, missing repeated command, or routable verifier failure is not itself a stop condition.
 
 ## Completion
 
-A Material component is not complete because code and focused checks pass. Completion requires:
+A family is complete only when:
 
-- current complete official design;
-- ready architecture consistent with current workflow rules;
-- complete implementation revalidated against that architecture with no deviations;
-- complete consumer migration and legacy removal revalidated against current upstream artifacts;
-- independent review by a fresh worker against the current workspace and rules;
-- no unresolved concrete operator-reported visual/motion defect;
-- the one final workflow verification required by root policy passing on the unchanged current workspace.
+- all five artifacts meet their fixed success gates;
+- required dependencies meet their explicit gates;
+- no operator-reported defect remains unresolved;
+- the one final workflow verification passes on the unchanged workspace.
 
-Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: absence of a reported defect satisfies the visual condition and requires no explicit confirmation.
+The orchestrator’s final report owns the final command and result. Family artifacts record readiness, not the post-review command result.
