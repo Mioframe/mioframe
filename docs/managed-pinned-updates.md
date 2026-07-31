@@ -46,13 +46,13 @@ A failed managed `install` leaves Workbox active. After release 1 activates, rol
 
 ## Ownership and sources of truth
 
-| Owner | Responsibility |
-| --- | --- |
-| Publisher | deterministic source identity, append-only release archive, idempotent publication, `latest.json` |
-| Controller worker | bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback |
-| Service client/features | typed transport outcomes, finite busy state, user actions |
-| Entity/widget/pane | snapshot projection and product composition |
-| Browser | service-worker lifecycle and registration replacement |
+| Owner                   | Responsibility                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| Publisher               | deterministic source identity, append-only release archive, idempotent publication, `latest.json`   |
+| Controller worker       | bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback |
+| Service client/features | typed transport outcomes, finite busy state, user actions                                           |
+| Entity/widget/pane      | snapshot projection and product composition                                                         |
+| Browser                 | service-worker lifecycle and registration replacement                                               |
 
 Sources of truth:
 
@@ -157,16 +157,16 @@ Invariants:
 
 `available` and eligible `failed` may be replaced only by a strictly newer discovery. `ready` and `activating` are pinned and never superseded. Automatic never retries the exact failed release; Manual may explicitly retry it.
 
-| Event | Final state |
-| --- | --- |
-| Newer discovery | `candidate = available(new)` |
-| Automatic preparation succeeds | matching `available → ready` |
-| Manual Install succeeds | matching `available/failed → ready` |
-| Manual Cancel | matching `ready → available` |
-| Qualifying clean launch | matching `ready → activating(deadlineAt)`; active unchanged |
-| Matching durable `BOOT_OK` | candidate becomes active; candidate cleared |
-| Matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed` |
-| Stale or mismatched completion | no state change |
+| Event                                | Final state                                                 |
+| ------------------------------------ | ----------------------------------------------------------- |
+| Newer discovery                      | `candidate = available(new)`                                |
+| Automatic preparation succeeds       | matching `available → ready`                                |
+| Manual Install succeeds              | matching `available/failed → ready`                         |
+| Manual Cancel                        | matching `ready → available`                                |
+| Qualifying clean launch              | matching `ready → activating(deadlineAt)`; active unchanged |
+| Matching durable `BOOT_OK`           | candidate becomes active; candidate cleared                 |
+| Matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed`                |
+| Stale or mismatched completion       | no state change                                             |
 
 Every long completion re-reads state and persists only when mode, release number, and phase still match its target.
 
@@ -186,24 +186,24 @@ type ManagedControllerProbeResponse = {
 
 The Workbox probe sends standard `CACHE_URLS` with `payload.urlsToCache = []`; compatible generated Workbox returns exact `true` without a cache write. It proves compatibility, not unique historical Mioframe identity. Frozen legacy artifacts prove all known pre-managed Mioframe workers satisfy it.
 
-| Managed probe | Workbox probe | Result |
-| --- | --- | --- |
-| valid managed response | missing or silent | managed predecessor |
-| silent by deadline | exact `true` | compatible Workbox predecessor |
-| valid managed response | exact `true` | conflict; reject |
-| malformed response from either probe | any | reject |
-| no managed success and Workbox missing, timed out, or non-`true` | any | reject |
+| Managed probe                                                    | Workbox probe     | Result                         |
+| ---------------------------------------------------------------- | ----------------- | ------------------------------ |
+| valid managed response                                           | missing or silent | managed predecessor            |
+| silent by deadline                                               | exact `true`      | compatible Workbox predecessor |
+| valid managed response                                           | exact `true`      | conflict; reject               |
+| malformed response from either probe                             | any               | reject                         |
+| no managed success and Workbox missing, timed out, or non-`true` | any               | reject                         |
 
 Install classification:
 
-| State | Predecessor | Result |
-| --- | --- | --- |
-| valid | any | preserve unchanged; ordinary retry/upgrade |
-| invalid | any | reject |
-| absent | no active worker | genuine first registration |
-| absent | managed predecessor | reject as managed-state loss |
-| absent | compatible Workbox | supported one-time bootstrap |
-| absent | unknown/conflicting/malformed/nonresponsive | reject |
+| State   | Predecessor                                 | Result                                     |
+| ------- | ------------------------------------------- | ------------------------------------------ |
+| valid   | any                                         | preserve unchanged; ordinary retry/upgrade |
+| invalid | any                                         | reject                                     |
+| absent  | no active worker                            | genuine first registration                 |
+| absent  | managed predecessor                         | reject as managed-state loss               |
+| absent  | compatible Workbox                          | supported one-time bootstrap               |
+| absent  | unknown/conflicting/malformed/nonresponsive | reject                                     |
 
 Stale caches never authorize bootstrap. The managed controller never answers Workbox `CACHE_URLS`.
 
@@ -281,12 +281,12 @@ This guarantees:
 
 Mode behavior per fresh pass:
 
-| State | Automatic | Manual |
-| --- | --- | --- |
-| no candidate | discover; persist newer `available`; prepare to `ready` | discover; persist newer `available`; do not prepare |
-| `available(B)` | discover latest first; replace with newer C; prepare final candidate | discover strictly newer; otherwise keep B |
-| `failed(B)` | discover strictly newer; never retry B; prepare newer result | discover strictly newer; never retry B automatically |
-| `ready` or `activating` | no-op | no-op |
+| State                   | Automatic                                                            | Manual                                               |
+| ----------------------- | -------------------------------------------------------------------- | ---------------------------------------------------- |
+| no candidate            | discover; persist newer `available`; prepare to `ready`              | discover; persist newer `available`; do not prepare  |
+| `available(B)`          | discover latest first; replace with newer C; prepare final candidate | discover strictly newer; otherwise keep B            |
+| `failed(B)`             | discover strictly newer; never retry B; prepare newer result         | discover strictly newer; never retry B automatically |
+| `ready` or `activating` | no-op                                                                | no-op                                                |
 
 For Automatic `available(B)`, failed discovery retains B, does not advance `lastSuccessfulCheckAt`, and may prepare B as an offline or metadata-failure fallback.
 

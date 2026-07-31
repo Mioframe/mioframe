@@ -10,15 +10,15 @@ The seven stages below are sequential review checkpoints inside one draft PR. Th
 
 ## Owner map
 
-| Owner | Responsibility |
-| --- | --- |
-| Release publication | deterministic source identity, Node descriptor validation, archive, idempotent publish, `latest.json` |
-| Pure controller contracts | runtime descriptor validation, state, protocol, snapshot, watchdog literals, transitions |
-| Bootstrap and serving | same-path migration, initial state, active-release fetch, exact restoration |
-| Discovery and preparation | Manual/Automatic reconciliation, latest-first policy, in-flight joining, preparation coordination |
-| Activation and rollback | clean launch, activation deadline, `BOOT_OK`, failure rollback, broadcasts, cleanup |
-| Client and UI | transport outcomes, entity projection, features, settings, notifications |
-| Verification | colocated tests, real worker wiring, release E2E, verify metadata |
+| Owner                     | Responsibility                                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Release publication       | deterministic source identity, Node descriptor validation, archive, idempotent publish, `latest.json` |
+| Pure controller contracts | runtime descriptor validation, state, protocol, snapshot, watchdog literals, transitions              |
+| Bootstrap and serving     | same-path migration, initial state, active-release fetch, exact restoration                           |
+| Discovery and preparation | Manual/Automatic reconciliation, latest-first policy, in-flight joining, preparation coordination     |
+| Activation and rollback   | clean launch, activation deadline, `BOOT_OK`, failure rollback, broadcasts, cleanup                   |
+| Client and UI             | transport outcomes, entity projection, features, settings, notifications                              |
+| Verification              | colocated tests, real worker wiring, release E2E, verify metadata                                     |
 
 Reuse `OperationQueue`, `PreparationCoordinator`, marker-last release caches, exact-release restoration, watchdog, channel isolation, response-before-follow-up ordering, and existing FSD owners.
 
