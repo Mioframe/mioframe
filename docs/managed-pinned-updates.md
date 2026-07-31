@@ -10,7 +10,7 @@ Stable (`/`) and develop (`/branch/develop/`) provide Automatic and Manual manag
 
 After the initial transition from legacy Workbox, the system guarantees:
 
-- an active application release changes only through candidate activation followed by durable `BOOT_OK`;
+- an application release changes only through candidate activation followed by durable `BOOT_OK`;
 - failed activation keeps the previous managed release selected;
 - owned navigation and release assets use only the selected immutable archive;
 - controller-worker upgrades do not silently change the selected application release;
@@ -21,7 +21,7 @@ Manual branches keep generated Workbox behavior. PR previews remain non-PWA.
 
 ## Accepted initial-transition boundary
 
-The pre-managed Workbox application has no managed rollback contract. The one-time transition is therefore an explicit exception:
+The pre-managed Workbox application has no managed rollback contract. The one-time transition is an explicit exception:
 
 ```text
 legacy Workbox /sw.js
@@ -29,9 +29,9 @@ legacy Workbox /sw.js
 → full rollback guarantees begin with managed release 2
 ```
 
-Release 1 is a dedicated transition release. It contains the managed-update infrastructure without unrelated product changes or irreversible data changes.
+Release 1 is a dedicated transition release containing the managed-update infrastructure without unrelated product changes or irreversible data changes.
 
-A failed managed `install` leaves the legacy Workbox worker active. After release 1 activates, rollback to Workbox is not supported. If release 1 cannot finish application boot, every later owned top-level navigation re-runs reconciliation; once a corrected release is published, the worker can discover and prepare it without relying on application JavaScript.
+A failed managed `install` leaves the legacy Workbox worker active. After release 1 activates, rollback to Workbox is not supported. If release 1 cannot finish application boot, every later owned top-level navigation runs reconciliation again; a corrected release published later remains discoverable without application JavaScript.
 
 ## Non-goals
 
@@ -40,19 +40,19 @@ A failed managed `install` leaves the legacy Workbox worker active. After releas
 - forcing open sessions to update;
 - browser-specific reload detection;
 - persisted polling, operation IDs, progress state, cancellation, retry counters, or backoff;
-- generic RPC, release manager, cache registry, compatibility adapter, migration bridge, or second worker path;
+- generic RPC, release manager, cache registry, compatibility adapter, migration bridge, second worker path, or persistent bootstrap marker;
 - remote archive pruning;
 - irreversible user-data migration.
 
 ## Ownership and sources of truth
 
-| Owner                   | Responsibility                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------------- |
-| Publisher               | Append-only release archive and `latest.json`                                                     |
-| Controller worker       | Bootstrap classification, state, reconciliation, preparation, fetch, activation, rollback, caches |
-| Service client/features | Explicit transport outcomes, finite busy state, user actions                                      |
-| Entity/widget/pane      | Snapshot projection and product composition                                                       |
-| Browser                 | Service-worker `install` / `waiting` / `activate` lifecycle and registration replacement          |
+| Owner                   | Responsibility                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| Publisher               | Append-only release archive and `latest.json`                                                       |
+| Controller worker       | Bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback |
+| Service client/features | Explicit transport outcomes, finite busy state, user actions                                        |
+| Entity/widget/pane      | Snapshot projection and product composition                                                         |
+| Browser                 | Service-worker lifecycle and registration replacement                                                |
 
 Sources of truth:
 
@@ -131,9 +131,9 @@ Invariants:
 
 ## Same-path bootstrap classification
 
-Legacy and managed controllers both use `<channelBasePath>sw.js`. This preserves the browser-native update path for installed Workbox registrations.
+Legacy and managed controllers both use `<channelBasePath>sw.js`, preserving the browser-native update path for installed Workbox registrations.
 
-When controller state is absent and an active predecessor exists, the installing worker runs two concurrent read-only probes with a shared 5-second deadline:
+When controller state is absent and an active predecessor exists, the installing worker sends two concurrent read-only probes with one 5-second deadline:
 
 ```ts
 type ManagedControllerProbeResponse = {
@@ -144,22 +144,34 @@ type ManagedControllerProbeResponse = {
 ```
 
 - **Managed probe:** a Mioframe managed controller returns the exact response above.
-- **Compatible Workbox probe:** send Workbox's standard `CACHE_URLS` message with `payload.urlsToCache = []`; a compatible generated Workbox router returns exactly `true`, and the empty list performs no cache write.
+- **Compatible Workbox probe:** Workbox's standard `CACHE_URLS` message is sent with `payload.urlsToCache = []`; a compatible generated Workbox router returns exactly `true`, and the empty list performs no cache write.
 
-The runtime contract does not claim that this probe uniquely identifies one historical Mioframe build. It positively identifies a compatible Workbox predecessor at the expected same-origin script URL and registration scope. Frozen stable/develop legacy artifacts prove that every known pre-managed Mioframe Workbox build satisfies this compatibility contract.
+The Workbox probe proves runtime compatibility, not unique historical Mioframe identity. Frozen stable/develop legacy artifacts prove that every known pre-managed Mioframe worker satisfies this contract.
+
+Probe interpretation is normative:
+
+| Managed probe | Workbox probe | Result |
+| --- | --- | --- |
+| valid managed response | missing or silent | managed predecessor |
+| silent by deadline | exact `true` | compatible Workbox predecessor |
+| valid managed response | exact `true` | conflicting evidence; reject |
+| malformed response from either probe | any | reject |
+| missing, timed-out, or non-`true` Workbox response without managed success | reject | reject |
+
+Silence from the managed probe is expected for a compatible Workbox predecessor and is not by itself a classification failure.
 
 Install classification:
 
-| Controller state | Active predecessor evidence                             | Result                                                   |
-| ---------------- | ------------------------------------------------------- | -------------------------------------------------------- |
-| valid            | any                                                     | preserve state unchanged; ordinary managed retry/upgrade |
-| invalid          | any                                                     | reject installation                                      |
-| absent           | no active worker                                        | genuine first registration                               |
-| absent           | valid managed probe                                     | reject as managed-state loss                             |
-| absent           | no managed response + exact compatible Workbox response | supported one-time Workbox bootstrap                     |
-| absent           | timeout, conflicting, malformed, or unknown response    | reject installation                                      |
+| Controller state | Active predecessor evidence | Result |
+| --- | --- | --- |
+| valid | any | preserve state unchanged; ordinary managed retry/upgrade |
+| invalid | any | reject installation |
+| absent | no active worker | genuine first registration |
+| absent | managed predecessor | reject as managed-state loss |
+| absent | compatible Workbox predecessor | supported one-time Workbox bootstrap |
+| absent | conflicting, malformed, timed-out, or unknown evidence | reject installation |
 
-Stale caches never authorize bootstrap. Positive evidence must come from the active predecessor. The managed controller must not answer the Workbox `CACHE_URLS` identity probe.
+Stale caches never authorize bootstrap. The managed controller must not answer the Workbox `CACHE_URLS` probe.
 
 Allowed bootstrap performs:
 
@@ -171,23 +183,23 @@ fetch and validate latest descriptor
 → allow install to complete
 ```
 
-If state persistence succeeds but installation is interrupted, a later install sees valid state and preserves it. No persistent bootstrap marker is required.
+If state persistence succeeds but installation is interrupted, a later install sees valid state and preserves it. No persistent bootstrap marker is required. The managed worker never calls `skipWaiting()` or `clients.claim()`.
 
-The managed worker never calls `skipWaiting()` or `clients.claim()`.
+## Managed compatibility baseline
 
-## Controller compatibility invariant
+Pass 1 establishes the release-1 managed contracts. The existing unshipped PR descriptor, state, protocol, snapshot, and watchdog formats are replaced, not preserved or migrated.
 
-`sw.js` updates independently of the selected application release. Therefore every newly published controller worker must remain compatible with every application release that can still appear as active or candidate in valid controller state.
+Compatibility obligations begin with the first published managed release. From that point, every newly published `sw.js` must remain compatible with every application release that can still appear as active or candidate in valid controller state.
 
 Compatibility includes:
 
 - persisted-state schema and meaning;
 - application-to-worker protocol messages and acknowledgements;
-- boot watchdog requests and rollback broadcasts;
+- boot-watchdog requests and rollback broadcasts;
 - snapshot fields consumed by supported application releases;
 - cache and archived-release lookup rules.
 
-These contracts may evolve only additively while older releases remain supported. An incompatible controller, protocol, watchdog, snapshot, or state-schema change requires a separate fail-closed migration that first removes incompatible releases from the supported pin/rollback set.
+These contracts may evolve only additively while older releases remain supported. An incompatible change requires a separate fail-closed migration that first removes incompatible releases from the supported pin/rollback set.
 
 ## Candidate policy
 
@@ -196,42 +208,52 @@ These contracts may evolve only additively while older releases remain supported
 - Automatic never retries the exact failed release;
 - Manual may explicitly retry the exact failed release.
 
-| Event                                                 | Result                                       |
-| ----------------------------------------------------- | -------------------------------------------- |
-| newer discovery with no candidate                     | `available(new)`                             |
-| newer discovery over `available` or eligible `failed` | `available(new)`                             |
-| Automatic prepares matching `available`               | `ready`                                      |
-| Manual installs matching `available` or `failed`      | `ready`                                      |
-| Manual cancels `ready`                                | `available`                                  |
-| qualifying clean launch with `ready`                  | `activating`, active unchanged               |
-| matching durable `BOOT_OK`                            | candidate becomes active; candidate cleared  |
-| matching `BOOT_FAILED` or expiration                  | active unchanged; candidate becomes `failed` |
-| stale or mismatched completion                        | no-op                                        |
+| Event | Result |
+| --- | --- |
+| newer discovery with no candidate | `available(new)` |
+| newer discovery over `available` or eligible `failed` | `available(new)` |
+| Automatic prepares the final matching `available` candidate | `ready` |
+| Manual installs matching `available` or `failed` | `ready` |
+| Manual cancels `ready` | `available` |
+| qualifying clean launch with `ready` | `activating`, active unchanged |
+| matching durable `BOOT_OK` | candidate becomes active; candidate cleared |
+| matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed` |
+| stale or mismatched completion | no-op |
 
 Every long completion re-reads state and persists only when mode, release number, and phase still match its target.
 
 ## Reconciliation and update discovery
 
-One worker-owned reconciliation operation is triggered:
+One worker-owned reconciliation function is triggered:
 
 - after a successful Manual → Automatic change, after the response;
-- by every same-channel owned top-level navigation under that fetch event's `waitUntil`, without delaying the navigation response;
+- by every same-channel owned top-level navigation under that fetch event's `waitUntil`, without delaying navigation;
 - by explicit Check for updates.
 
-There is no once-per-worker lifetime latch. Concurrent triggers coalesce only while the same reconciliation operation is in flight.
+There is no once-per-worker lifetime latch. The reconciliation module owns exactly one worker-local in-flight promise:
+
+```text
+no in-flight promise → start reconciliation
+in-flight promise → join the same promise
+completion → clear the slot
+```
+
+This promise is not persisted and is not a scheduler, manager, or generic coordinator. Every triggering event attaches the shared promise to its own lifetime. Explicit Check for updates joins an already running background reconciliation and returns its resulting valid snapshot instead of an immediate stale snapshot.
 
 Mode behavior:
 
-| Fresh state             | Automatic                                                      | Manual                                                 |
-| ----------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
-| no candidate            | discover; persist newer as `available`; prepare it to `ready`  | discover; persist newer as `available`; do not prepare |
-| `available(B)`          | prepare exact B                                                | discover strictly newer; otherwise keep B available    |
-| `failed(B)`             | discover strictly newer; never retry B; prepare a newer result | discover strictly newer; never retry B automatically   |
-| `ready` or `activating` | no-op                                                          | no-op                                                  |
+| Fresh state | Automatic | Manual |
+| --- | --- | --- |
+| no candidate | discover; persist newer as `available`; prepare it to `ready` | discover; persist newer as `available`; do not prepare |
+| `available(B)` | discover latest first; replace with newer C when found; prepare the final available candidate | discover strictly newer; otherwise keep B available |
+| `failed(B)` | discover strictly newer; never retry B; prepare a newer result | discover strictly newer; never retry B automatically |
+| `ready` or `activating` | no-op | no-op |
 
-Manual mode therefore discovers and notifies about updates automatically but never downloads/prepares them without an explicit install action. Explicit Manual retry may prepare the exact failed candidate.
+For Automatic `available(B)`, failed latest discovery does not discard B, does not advance `lastSuccessfulCheckAt`, and may fall back to preparing the already known B. This preserves offline/partial-metadata recovery while preferring current latest whenever discovery succeeds.
 
-Network, hashing, discovery, preparation, and cleanup remain outside `OperationQueue`. Existing coordination deduplicates only concurrent work; no persisted scheduler or polling state is added.
+Manual mode discovers and notifies about updates automatically but never downloads/prepares them without an explicit install action. Explicit Manual retry may prepare the exact failed candidate.
+
+Network, hashing, discovery, preparation, and cleanup remain outside `OperationQueue`. `PreparationCoordinator` continues to own only preparation deduplication and cleanup arbitration; it does not own reconciliation. No persisted scheduler or polling state is added.
 
 ## Clean launch and activation
 
@@ -262,10 +284,12 @@ Failure before this point leaves the candidate uncommitted and is handled by the
 
 ## Transport, ordering, fetch, and caches
 
-Only two worker-local orchestration mechanisms remain:
+The only reusable worker-local orchestration components are:
 
 - `OperationQueue` for short read/decide/persist transactions;
 - `PreparationCoordinator` for preparation deduplication and cleanup arbitration.
+
+The reconciliation function's single in-flight promise is a local implementation guard, not a third orchestration abstraction.
 
 Timeouts:
 
@@ -306,15 +330,18 @@ Required scenarios:
 
 - new registration creates verified release 1 baseline;
 - every frozen known Workbox artifact satisfies the compatible predecessor probe;
-- unknown, conflicting, or nonresponsive predecessors fail closed;
+- managed silence plus Workbox `true` succeeds; Workbox silence, malformed responses, and dual-positive conflict reject;
 - active managed predecessor plus absent state fails closed even with stale Workbox caches;
 - interrupted bootstrap retries from valid state without selecting another release;
 - release 1 checks again on every later navigation and discovers a corrected release published after an earlier unsuccessful check;
-- Manual launch discovery creates `available` without preparation; Automatic discovery prepares to `ready`;
+- Automatic `available(B)` replaces it with published C before preparation; failed discovery may prepare B without recording a successful check;
+- concurrent reconciliation shares one promise; explicit Check joins it and receives the resulting snapshot;
+- Manual launch discovery creates `available` without preparation;
+- controller compatibility obligations start at published release 1, not the unshipped replaced formats;
 - controller upgrades remain compatible with pinned older releases and their watchdog/protocol contracts;
 - clean-launch window rules and concurrent navigation serialization are proven;
 - `BOOT_OK` occurs only after mount, initial routing, and first render;
-- release 2 proves activation, durable `BOOT_OK`, failure rollback, and exact restoration;
+- release 2 proves activation, durable `BOOT_OK`, failed-boot rollback, and exact restoration;
 - timeout, stale completion, isolation, uncontrolled-window, and cross-engine scenarios pass;
 - previous supported managed release can read data after rollback.
 
@@ -331,11 +358,14 @@ pnpm verify:release
 
 - migration bridge, second worker path, persistent bootstrap marker, or rollback to Workbox;
 - UUID plus sequence or old multi-reference state;
+- preserving or migrating the unshipped replaced PR formats;
 - bootstrap from stale caches or absent state without positive predecessor evidence;
+- treating managed-probe silence as failure when Workbox returns exact `true`;
 - claiming that the Workbox probe uniquely identifies a historical Mioframe build;
 - once-per-worker reconciliation suppression;
+- generic reconciliation manager or extending `PreparationCoordinator` into discovery ownership;
 - Manual background preparation;
-- incompatible controller/protocol/watchdog/state changes while older releases remain supported;
+- incompatible controller/protocol/watchdog/state changes while older published releases remain supported;
 - long work under `OperationQueue`;
 - superseding `ready` or `activating`;
 - live-deployment fallback for owned requests;
@@ -349,7 +379,7 @@ pnpm verify:release
 
 ## Implementation readiness
 
-Product boundary, compatible legacy bootstrap, repeatable recovery, Manual discovery, clean-launch semantics, controller compatibility, boot-success boundary, state, ownership, failure behavior, proof, and verification are resolved.
+Product boundary, compatible legacy bootstrap, probe outcomes, repeatable recovery, latest-first Automatic behavior, reconciliation ownership, Manual discovery, clean-launch semantics, managed compatibility baseline, boot-success boundary, state, failure behavior, proof, and verification are resolved.
 
 Unresolved blockers: none.
 
