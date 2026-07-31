@@ -1,32 +1,31 @@
 ---
 name: material-component-design
-description: 'Use with only an official Material component name to create or refresh that family DESIGN.md as a complete source-backed snapshot of the official Material 3 Expressive documentation, without Mioframe demand, renderer, architecture, implementation, or migration decisions.'
+description: 'Use with an official Material component name to create or refresh the complete source-backed family DESIGN.md without Mioframe demand, renderer, architecture, implementation, migration, or review decisions.'
 ---
 
 # Material component design
 
-Create or refresh one family `DESIGN.md` before architecture or implementation.
+Create or refresh one family `DESIGN.md` and return control to the outer orchestrator.
 
-This is one internal stage scope. When invoked by `material-component`, complete the artifact and return control to the outer orchestrator; do not require another operator command.
+This stage owns official Material source normalization only.
 
-## Input contract
+## Input
 
 The only required input is the Material component name.
 
-Accept official names and workspace aliases such as:
+Resolve the official component and canonical family path from official and readable workspace evidence. Ask for clarification only when the name genuinely maps to multiple distinct official components.
 
-```text
-Button
-MDButton
-Loading indicator
-MDLoadingIndicator
-```
+## Worker boundary
 
-Resolve the official component and canonical family path from workspace and official evidence. Ask for clarification only when the name genuinely maps to multiple distinct official Material components.
+Run in a fresh isolated worker context.
 
-## Output artifact
+Use official source tools, task-relevant readable workspace files, applicable rules, and documented project commands. Do not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
 
-Write exactly one primary artifact:
+Do not read family implementation, tests, renderer package, consumers, migration, review, or roadmap before the official source ledger is complete. Those sources can bias the design toward current demand.
+
+## Output
+
+Write exactly:
 
 ```text
 src/shared/ui/material/components/<family>/DESIGN.md
@@ -34,145 +33,103 @@ src/shared/ui/material/components/<family>/DESIGN.md
 
 Follow `src/shared/ui/material/docs/design-document.md`.
 
-The artifact is a complete normalized official-design snapshot. It is not an implementation brief, architecture plan, adapter matrix, renderer audit, migration report, or review result.
+The artifact begins with exact control fields:
 
-## Read first
+```text
+Status: current | stale | blocked
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return stage: none | design
+```
 
-- applicable parent `AGENTS.md` files;
-- `src/shared/ui/material/AGENTS.md`;
-- `src/shared/ui/material/docs/design-document.md`;
-- the existing family `DESIGN.md`, when present;
-- the official Material source cache/index and exact applicable component pages.
+Do not append prose to an enum value.
 
-Do not read the current family README, architecture, implementation, stories, tests, renderer package, current consumers, migration record, review, or roadmap before the official design ledger is complete. Those sources can bias a complete official snapshot toward the currently implemented subset.
-
-## Autonomous official source pass
+## Official source pass
 
 Inspect every applicable official source, including:
 
-- overview;
-- specs;
-- guidelines;
-- accessibility;
+- overview, specifications, guidelines, and accessibility;
+- expressive update notes;
 - complete token tables;
-- expressive-update notes;
 - related components and delegated foundation guidance;
 - adaptive/platform guidance when present.
 
-Use the available source chain autonomously:
+Use available fallbacks in order:
 
 1. current official Material source service;
 2. official cache refresh and route index;
-3. direct official routes when available;
-4. newest complete workspace or source-cache snapshot;
-5. resolved official token resources associated with that snapshot.
+3. direct official routes;
+4. newest complete source-cache or workspace snapshot;
+5. associated official token resources.
 
-Do not stop after the first failed refresh helper. Continue through all available fallbacks.
-
-Record exact source routes, titles, capture date, source/cache revision, refresh attempts, and fallback selected.
-
-A freshness threshold only triggers a refresh attempt. It does not make a complete snapshot stale by itself.
+A failed refresh helper is not itself a blocker when a complete newest-known official snapshot exists and no newer material revision is known.
 
 Use statuses exactly:
 
-- `current` — complete newest successfully acquired official revision; no evidence a newer material revision exists;
-- `stale` — affirmative evidence exists that official content or source revision changed after the snapshot;
-- `blocked` — required content remains unavailable or incomplete after all available fallbacks.
+- `current` — complete newest successfully acquired official revision, with no evidence of a newer material revision;
+- `stale` — affirmative evidence shows official content changed after the snapshot;
+- `blocked` — required content remains missing or incomplete after all available fallbacks.
 
-If complete cached pages and token resource are available and no newer revision is known, a failed route-index or refresh request must be recorded as a tooling limitation while the document remains `current`.
+## Required content
 
-## Completeness rules
+Capture the complete official component contract, including unused capability:
 
-The document must describe the complete official component contract, including capability not currently supported by Mioframe.
-
-Cover:
-
-- identity and intended use;
-- differences from adjacent components and earlier Material versions;
+- identity, intended use, and adjacent-component distinctions;
 - anatomy and content roles;
-- all variants and configurations;
-- all sizes, shapes, defaults, and valid combinations;
-- complete geometry, spacing, target, typography, elevation, and motion specifications;
+- every variant, configuration, size, shape, default, and valid combination;
+- geometry, spacing, target, typography, elevation, and motion;
 - every documented state and state combination;
-- behavior, selection, activation, dismissal, progress, or navigation semantics;
-- usage guidance and do/don't rules;
+- behavior and usage guidance;
 - accessibility and input behavior;
 - complete official component-token catalogue;
-- source conflicts, unresolved values, and unavailable guidance;
-- official dependencies and related components.
+- official dependencies and related components;
+- source conflicts, missing values, and unavailable guidance.
 
-Do not omit a variant, state, part, size, token, measurement, or guidance rule because no current Mioframe consumer needs it.
+For every official token preserve exact official path, display name, aliases, documented values, and unresolved values.
 
-## Token extraction
+## Separation
 
-For every official component token, preserve:
+`DESIGN.md` contains no:
 
-- exact official path;
-- official display name;
-- system and reference aliases;
-- documented values for light, dark, high contrast, and other published modes;
-- unresolved or absent values exactly as unresolved or absent.
+- Mioframe demand or `implement-now`/`defer` decisions;
+- Vue API;
+- renderer mapping, defect, or workaround;
+- implementation path;
+- test or verification plan;
+- migration, review, roadmap, Git, or PR status.
 
-Do not rename tokens into Mioframe CSS names and do not select a supported subset. Selection belongs to `material-component-architecture`.
+## Completion
 
-## Separation rules
+`Status: current` is valid only when the full official surface is represented, all required sources and tokens are accounted for, and no Mioframe or renderer decision leaked into the artifact.
 
-`DESIGN.md` must not contain:
+If official content remains incomplete, use `Status: blocked`, record exact blockers, and set `Required return stage: design`.
 
-- current product demand;
-- `implement-now`, `defer`, or migration decisions;
-- Vue API design;
-- renderer API, mappings, fallback chains, defects, or workarounds;
-- implementation paths;
-- tests or verification plans;
-- implementation or roadmap status.
-
-Use structured paraphrase for prose. Preserve exact names, paths, measurements, token values, and source references. Do not copy entire official pages verbatim.
-
-## Review
-
-Before reporting complete, verify that:
-
-1. every applicable official page is represented;
-2. the document includes the full official surface, not only a selected subset;
-3. all component tokens from official specs are present;
-4. no Mioframe or renderer decision leaked into the artifact;
-5. source conflicts and extraction gaps are explicit;
-6. status follows the lifecycle rules above.
-
-After writing the artifact, return control to the `material-component` orchestrator. Do not personally execute architecture inside this stage scope. The outer orchestrator may start architecture immediately in a fresh scope when design status is `current`.
+Return to the orchestrator after writing the artifact. Do not execute architecture in the same context.
 
 ## Report
 
 ```text
 MATERIAL DESIGN RESULT
-Input artifact:
+Input component:
 Resolved official component:
 Canonical family:
 DESIGN.md path:
 Official routes inspected:
-Source snapshot date:
-Source/cache revision:
+Source snapshot and revision:
 Refresh attempts and fallback:
-Complete variants/configurations:
-Complete states/behavior:
-Complete geometry/specs:
-Complete accessibility guidance:
 Official token rows captured:
 Source conflicts or extraction gaps: none | <details>
 Document status: current | stale | blocked
-Next internal stage: architecture | design correction required
-Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
+Remaining blockers: none | <details>
+Required return stage: none | design
+Status: complete | blocked
 ```
 
 ## Forbidden
 
-- Producing only a summary or demand-scoped subset.
-- Using family README as the official design source.
-- Deriving official facts from current code, stories, tests, renderer artifacts, or consumers.
-- Mixing architecture, implementation, renderer, migration, verification, or review decisions into `DESIGN.md`.
+- Producing a demand-scoped summary.
+- Deriving official facts from current code, renderer artifacts, stories, tests, or consumers.
+- Mixing later-stage decisions into `DESIGN.md`.
 - Omitting unused official capability.
-- Treating links to official pages as a substitute for the complete local description.
-- Guessing missing measurements, tokens, defaults, or behavior.
-- Stopping solely because a refresh helper failed while a complete newest-known snapshot is available.
-- Asking the operator to rerun the same component command to reach architecture.
+- Guessing missing facts.
+- Asking the operator to rerun the same component command.
