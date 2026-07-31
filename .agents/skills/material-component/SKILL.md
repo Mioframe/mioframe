@@ -123,19 +123,20 @@ REVIEW.md
 Repeat:
 
 1. Select the earliest invalid stage:
-   - `DESIGN.md` missing, stale, blocked, incomplete, demand-scoped, or renderer-shaped → design;
-   - `ARCHITECTURE.md` missing, stale, blocked, not ready, or inconsistent with current design → architecture;
-   - `IMPLEMENTATION.md` missing, partial, blocked, stale, architecture-deviating, or implementation drift exists → implementation;
-   - `MIGRATION.md` missing, partial, blocked, stale, consumers remain, legacy ownership remains, or migration-scoped proof is unresolved → migration;
-   - `REVIEW.md` missing, stale, blocked, predates later workspace changes, or actionable findings remain → review.
-2. Launch a fresh worker with only the selected stage handoff and execute only that stage skill.
-3. Validate the artifact, declared status, upstream references, and report from workspace files rather than trusting prose alone.
-4. On success, return to step 1 immediately and launch a new worker for the next invalid stage.
-5. When a stage identifies an earlier-stage defect, route backward to a fresh worker for the owning stage and resume the loop.
-6. When review returns actionable findings, launch the owning correction worker and later a new independent review worker.
-7. When all affected family artifacts and gates are current, run the one final workflow verification required by root policy. For an ordinary Material component workflow this is `pnpm verify`.
-8. If final workflow verification passes, complete the operator invocation.
-9. If it fails, use the visible verifier output to identify the earliest owning stage, launch a fresh correction worker, require a new independent review after any workspace change, and rerun the same final workflow verification. Do not record the failure as a deferred family risk or ask the operator to restart the command.
+   - `DESIGN.md` missing, stale, blocked, incomplete, demand-scoped, renderer-shaped, or inconsistent with current official-source rules → design;
+   - `ARCHITECTURE.md` missing, stale, blocked, not ready, inconsistent with current design, inconsistent with applicable workspace/workflow rules, or assigning ownership forbidden by the current architecture skill → architecture;
+   - `IMPLEMENTATION.md` missing, partial, blocked, stale, predating the current architecture, architecture-deviating, inconsistent with current implementation rules, or implementation drift exists → implementation;
+   - `MIGRATION.md` missing, partial, blocked, stale, predating the current architecture/implementation, consumers remain, legacy ownership remains, migration-scoped proof is unresolved, or it claims ownership of the top-level final workflow verification → migration;
+   - `REVIEW.md` missing, stale, blocked, predating later workspace, artifact, or applicable-rule changes, inconsistent with the current review skill, or actionable findings remain → review.
+2. Treat every downstream artifact as stale whenever an earlier stage is stale or changes, regardless of the downstream artifact's self-declared status. Do not skip directly to a later artifact refresh.
+3. Launch a fresh worker with only the selected stage handoff and execute only that stage skill.
+4. Validate the artifact, declared status, upstream references, applicable current rules, and report from workspace files rather than trusting prose or status labels alone.
+5. On success, return to step 1 immediately and launch a new worker for the next invalid stage.
+6. When a stage identifies an earlier-stage defect, route backward to a fresh worker for the owning stage and resume the loop.
+7. When review returns actionable findings, launch the owning correction worker and later a new independent review worker.
+8. When all affected family artifacts and gates are current, run the one final workflow verification required by root policy. For an ordinary Material component workflow this is `pnpm verify`.
+9. If final workflow verification passes, complete the operator invocation.
+10. If it fails, use the visible verifier output to identify the earliest owning stage, launch a fresh correction worker, require every invalidated downstream artifact and a new independent review after any workspace change, and rerun the same final workflow verification. Do not record the failure as a deferred family risk or ask the operator to restart the command.
 
 After two correction rounds that still reveal ownership errors, unresolved scenarios, architectural drift, or growing workaround logic, return to architecture rather than continuing local patches.
 
@@ -163,7 +164,7 @@ Final workflow verification belongs to this orchestrator, not to implementation,
 - Ordinary Material component work uses `pnpm verify`.
 - Use `pnpm verify:release` only when the task itself changes release-sensitive infrastructure and the verification skill classifies it accordingly; component code does not become release-sensitive merely because it will eventually be merged or released.
 - A passing final gate proves verification closure only. It does not replace architecture or independent review.
-- Any workspace edit after the final gate invalidates that result and requires the owning stage, a fresh independent review, and the final gate again.
+- Any workspace edit after the final gate invalidates that result and requires the owning stage, every invalidated downstream artifact, a fresh independent review, and the final gate again.
 
 ## Stop conditions
 
@@ -176,7 +177,7 @@ Stop the outer operator invocation only when one of these remains after availabl
 - a required stage-scoped or final workflow verification command cannot execute or complete;
 - safety policy requires operator input.
 
-A cache threshold, failed refresh helper, completed stage, ordinary code/test finding, missing repeated command, absence of an operator-reported defect, or a routable final-verification failure is not by itself a blocker. Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: do not stop merely because the operator has not explicitly confirmed acceptance.
+A cache threshold, failed refresh helper, completed stage, ordinary code/test finding, missing repeated command, absence of an operator-reported defect, stale downstream artifact, or a routable final-verification failure is not by itself a blocker. Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: do not stop merely because the operator has not explicitly confirmed acceptance.
 
 Use `architect-handoff` only for a real unresolved decision outside the deterministic Material workflow, such as cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior that official design and workspace evidence cannot resolve.
 
@@ -219,6 +220,8 @@ Include the full report from every stage worker executed during the run. Do not 
 - Running the final workflow verification before the current independent review.
 - Reusing a final verification result after any workspace edit.
 - Treating a routable final-verification failure as a deferred risk instead of correcting its owning stage.
+- Keeping a downstream artifact current after its upstream artifact or applicable rules changed.
+- Trusting a stage artifact's self-declared status without validating its content against current rules and upstream artifacts.
 - Reusing the same agent context for consecutive stages.
 - Letting the architecture, implementation, or migration worker perform the independent review.
 - Passing hidden reasoning or non-canonical prose as an inter-stage handoff.
