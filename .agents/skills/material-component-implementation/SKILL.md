@@ -123,7 +123,7 @@ Implementation workspace state: <canonical files and artifact statuses reviewed>
 
 Run focused feedback during implementation and the exact implementation-stage scope required by root verification policy.
 
-Do not claim full component completion: product migration, final verification, operator visual acceptance, and independent review belong to later stages.
+Do not claim full component completion: product migration, final verification, operator-reported visual/motion status, and independent review belong to later stages.
 
 ## Completion gate
 

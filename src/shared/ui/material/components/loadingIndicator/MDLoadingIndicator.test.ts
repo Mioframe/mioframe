@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { defineComponent, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import MDLoadingIndicator from './MDLoadingIndicator.vue';
 
@@ -321,6 +322,47 @@ describe('MDLoadingIndicator adapter', () => {
       expect(updatedIndicator.attributes('style')).toContain(
         '--md-comp-loading-indicator-active-indicator-color: #6750a4',
       );
+    });
+
+    it('projects an allow-listed attribute and a data-* key from render-time attrs across add/remove/re-add, and keeps rejecting a dynamically added forbidden attribute/listener', async () => {
+      const onClick = vi.fn();
+      const dynamicAttrs = ref<Record<string, unknown>>({});
+      const Wrapper = defineComponent({
+        components: { MDLoadingIndicator },
+        setup: () => ({ dynamicAttrs }),
+        template: '<MDLoadingIndicator label="Loading" v-bind="dynamicAttrs" />',
+      });
+      const wrapper = mount(Wrapper);
+      const getIndicator = () => wrapper.get('m3e-loading-indicator');
+
+      expect(getIndicator().attributes('id')).toBeUndefined();
+
+      dynamicAttrs.value = { id: 'first-id' };
+      await wrapper.vm.$nextTick();
+      expect(getIndicator().attributes('id')).toBe('first-id');
+
+      dynamicAttrs.value = {};
+      await wrapper.vm.$nextTick();
+      expect(getIndicator().attributes('id')).toBeUndefined();
+
+      dynamicAttrs.value = { id: 'second-id' };
+      await wrapper.vm.$nextTick();
+      expect(getIndicator().attributes('id')).toBe('second-id');
+
+      expect(getIndicator().attributes('data-testid')).toBeUndefined();
+      dynamicAttrs.value = { id: 'second-id', 'data-testid': 'library-loading-indicator' };
+      await wrapper.vm.$nextTick();
+      expect(getIndicator().attributes('data-testid')).toBe('library-loading-indicator');
+
+      dynamicAttrs.value = { id: 'second-id' };
+      await wrapper.vm.$nextTick();
+      expect(getIndicator().attributes('data-testid')).toBeUndefined();
+
+      dynamicAttrs.value = { id: 'second-id', onClick, role: 'alert' };
+      await wrapper.vm.$nextTick();
+      expect(getIndicator().attributes('role')).toBeUndefined();
+      await getIndicator().trigger('click');
+      expect(onClick).not.toHaveBeenCalled();
     });
   });
 });

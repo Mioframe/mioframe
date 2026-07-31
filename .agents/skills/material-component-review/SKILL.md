@@ -25,7 +25,7 @@ Expected statuses:
 - design `current`;
 - architecture `ready`;
 - implementation `complete`;
-- migration `complete` or explicitly blocked only on operator acceptance.
+- migration `complete`.
 
 If an earlier artifact is missing or stale, review may record the blocker but must not reconstruct or replace that stage.
 
@@ -49,9 +49,9 @@ Do not modify production code, tests, stories, snapshots, tokens, architecture, 
 4. Review all current consumers and legacy-removal claims from `MIGRATION.md`.
 5. Inspect public API, token names/defaults, state precedence, renderer boundaries, dependencies, accessibility, browser/mobile behavior, motion, visual presentation, defects, and error paths.
 6. Check faithful proof ownership and required verification evidence.
-7. Confirm operator visual/motion acceptance where required.
+7. Check for a concrete operator-reported visual/motion defect. Absence of a report is not a blocker and requires no positive acknowledgement; a concrete report is a real finding.
 
-Automated checks prove only their covered contracts; they are not architecture or Material approval.
+Automated checks prove only their covered contracts; they are not architecture or Material approval. They also cannot establish subjective visual/motion correctness — do not claim they did.
 
 ## Finding ownership
 
@@ -61,7 +61,9 @@ Route each finding to one stage:
 - unresolved or incorrect demand, API, ownership, dependency, renderer, token, proof, or migration plan → `material-component-architecture`;
 - code, component-owned proof, mapping, token declaration, defect, or export mismatch → `material-component-implementation`;
 - consumer, legacy-removal, product-scenario, or final-verification gap → `material-component-migration`;
-- manual visual/motion decision only → operator review gate.
+- a concrete operator-reported visual/motion defect → its owning stage (design, architecture, implementation, or migration, by the same criteria above), not back to the operator.
+
+A subjective visual/motion judgment that no operator has reported a defect against is not a finding and does not route anywhere; automated proof cannot substitute for it, but its absence is not a blocker either.
 
 Do not patch findings during review and do not scatter one underlying issue across multiple stages.
 
@@ -76,7 +78,7 @@ DESIGN.md status:
 ARCHITECTURE.md status:
 IMPLEMENTATION.md status:
 MIGRATION.md status:
-Operator visual status: accepted | required | not-applicable | blocked
+Operator visual status: no-reported-defect | defect-reported | not-applicable
 Verdict: compliant | compliant-with-listed-risks | blocked
 
 ## Goal and scenarios reviewed
@@ -105,9 +107,10 @@ A family is review-complete only when:
 - ownership and dependency direction are correct;
 - public contracts are stable and official;
 - shared UI blast radius is closed;
-- required automated and manual proof is complete;
+- required automated proof is complete;
 - no replaced logic or false claim remains;
-- required verification passes.
+- required verification passes;
+- no concrete operator-reported visual/motion defect remains unresolved. Absence of an operator report satisfies this condition.
 
 ## Report
 
@@ -121,7 +124,7 @@ Operator visual status:
 Blockers:
 Major issues:
 Minor issues:
-Required return stage: none | design | architecture | implementation | migration | operator
+Required return stage: none | design | architecture | implementation | migration
 Review verdict:
 Completion status: complete | blocked
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
@@ -130,7 +133,9 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 ## Forbidden
 
 - Fixing code or rewriting earlier artifacts during review.
-- Treating screenshots or automated checks as Material correctness by themselves.
+- Treating screenshots or automated checks as Material correctness by themselves, or as proof of subjective visual/motion quality.
 - Reviewing only the latest changed files instead of the full resulting family.
-- Marking the family compliant while ownership, API, dependencies, shared UI impact, required proof, or operator acceptance is unresolved.
+- Marking the family compliant while ownership, API, dependencies, shared UI impact, required proof, or a concrete operator-reported visual/motion defect is unresolved.
+- Blocking or withholding a compliant verdict merely because the operator has not explicitly confirmed acceptance.
+- Fabricating a blocker, or marking operator status `defect-reported`, without an actual reported defect.
 - Creating a new implementation path inside the review stage.

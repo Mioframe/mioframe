@@ -151,11 +151,11 @@ Stop the outer operator invocation only when one of these remains after availabl
 - required official source content is genuinely unavailable or incomplete;
 - required source tools or fresh-worker orchestration are unavailable;
 - official evidence and workspace constraints leave a material architecture choice unresolved;
-- required operator visual/motion acceptance is the only remaining gate;
+- a concrete operator-reported visual/motion defect remains unresolved;
 - a required project verification command cannot execute or complete;
 - safety policy requires operator input.
 
-A cache threshold, failed refresh helper, completed stage, ordinary code/test finding, or missing repeated command is not by itself a blocker.
+A cache threshold, failed refresh helper, completed stage, ordinary code/test finding, missing repeated command, or absence of an operator-reported defect is not by itself a blocker. Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: do not stop merely because the operator has not explicitly confirmed acceptance.
 
 Use `architect-handoff` only for a real unresolved decision outside the deterministic Material workflow, such as cross-family ownership, renderer strategy, global theme ownership, public token architecture, or product behavior that official design and workspace evidence cannot resolve.
 
@@ -179,7 +179,7 @@ REVIEW.md status:
 Code changes:
 Consumer changes:
 Verification:
-Operator acceptance: accepted | required | not-applicable
+Operator visual status: no-reported-defect | defect-reported | not-applicable
 Remaining blocker: none | <genuine blocker>
 Overall family status: complete | blocked
 Next operator action: none | <single required action>

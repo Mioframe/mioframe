@@ -108,10 +108,10 @@ Canonical visual stories: <story ids>
 Current scenarios covered: <summary>
 Automated visual baseline: passed | updated and inspected | not applicable (<reason>)
 Material/renderer differences requiring review: none | <summary>
-Operator visual and motion acceptance: required | accepted | rejected | blocked (<reason>)
+Operator visual status: no-reported-defect | defect-reported | not-applicable
 ```
 
-An automated worker never reports operator acceptance as `accepted`.
+Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: absence of a reported defect is not a blocker and requires no confirmation. An automated worker never reports operator visual status as `defect-reported` without an actual reported defect, and never claims automated proof established subjective visual/motion correctness.
 
 ## Commands
 

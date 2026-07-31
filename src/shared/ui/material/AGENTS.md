@@ -95,7 +95,7 @@ Migration does not redesign the component.
 
 ### REVIEW.md
 
-Independently compares the full result with official design, accepted architecture, implementation, consumers, workspace rules, proof, verification, and operator visual/motion acceptance. Review does not fix code; it returns findings to the orchestrator for routing to the earliest owning stage.
+Independently compares the full result with official design, accepted architecture, implementation, consumers, workspace rules, proof, verification, and operator-reported visual/motion status. Review does not fix code; it returns findings to the orchestrator for routing to the earliest owning stage.
 
 ## Public API and ownership
 
@@ -142,13 +142,15 @@ For contextual tokens, browser proof asserts the computed rendered result for ea
 
 Final verification uses the exact task scope required by root `AGENTS.md` and the `verification` skill.
 
-A component remains incomplete until all five stage artifacts are current, final verification passes, and required operator visual/motion acceptance is recorded. Automated checks alone are not architecture approval.
+A component remains incomplete until all five stage artifacts are current and final verification passes. Automated checks alone are not architecture approval.
+
+Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement completion gate. Absence of an operator-reported defect does not block completion and requires no explicit confirmation. A concrete operator-reported defect is a real blocker and routes to its owning stage, opening a new correction cycle even after otherwise-recorded completion.
 
 ## Stop conditions
 
-The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable required source tools, inability to create the required fresh worker, an unresolved material architecture decision, a required project verification command that cannot execute, required operator visual/motion acceptance, or safety-required input.
+The orchestrator may stop only for genuinely unavailable official content after all fallbacks, unavailable required source tools, inability to create the required fresh worker, an unresolved material architecture decision, a required project verification command that cannot execute, a concrete unresolved operator-reported visual/motion defect, or safety-required input.
 
-A completed stage, failed refresh helper, cache age, ordinary code/test finding, or missing repeated operator command is not by itself a blocker.
+A completed stage, failed refresh helper, cache age, ordinary code/test finding, missing repeated operator command, or absence of an operator-reported defect is not by itself a blocker.
 
 ## Boundary
 

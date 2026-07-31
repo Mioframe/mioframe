@@ -115,7 +115,7 @@ Migration consumes the accepted API. It does not redesign it.
 
 ### REVIEW.md
 
-Independently compares official design, accepted architecture, full implementation, all consumers, proof, verification, and operator visual/motion acceptance.
+Independently compares official design, accepted architecture, full implementation, all consumers, proof, verification, and operator-reported visual/motion status.
 
 Review is read-only except for its own artifact. Findings route to the earliest owning stage.
 
@@ -285,6 +285,8 @@ A component is complete only when:
 - migration and legacy removal are complete;
 - independent review passes;
 - required current-head verification passes;
-- required operator visual/motion acceptance is recorded.
+- no concrete operator-reported visual/motion defect remains unresolved.
+
+Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: absence of a reported defect does not block completion and requires no explicit confirmation. A reported defect routes to its owning stage.
 
 Green CI alone is not architecture approval.

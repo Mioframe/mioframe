@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { mount } from '@vue/test-utils';
-import { defineComponent, ref } from 'vue';
+import { defineComponent } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import MDButton from './MDButton.vue';
 
@@ -9,6 +9,15 @@ const mountButton = (props: Record<string, unknown> = {}) =>
 
 const getElementProperty = (element: Element, property: string): unknown =>
   Reflect.get(element, property);
+
+/** Shared reactive-attrs test harness: mounts MDButton behind a parent whose `v-bind` object can change. */
+const DynamicAttrsWrapper = defineComponent({
+  components: { MDButton },
+  props: {
+    attrs: { default: () => ({}), type: Object },
+  },
+  template: '<MDButton label="Save" v-bind="attrs" />',
+});
 
 describe('MDButton adapter', () => {
   it('owns only the selected text Button color tokens and maps them privately', () => {
@@ -151,18 +160,11 @@ describe('MDButton adapter', () => {
     });
 
     it('stays reactive to allowed forwarded attribute changes', async () => {
-      const id = ref('initial-id');
-      const Wrapper = defineComponent({
-        components: { MDButton },
-        setup: () => ({ id }),
-        template: '<MDButton label="Save" :id="id" />',
-      });
-      const wrapper = mount(Wrapper);
+      const wrapper = mount(DynamicAttrsWrapper, { props: { attrs: { id: 'initial-id' } } });
       const button = wrapper.get('m3e-button');
       expect(button.attributes('id')).toBe('initial-id');
 
-      id.value = 'updated-id';
-      await wrapper.vm.$nextTick();
+      await wrapper.setProps({ attrs: { id: 'updated-id' } });
       expect(button.attributes('id')).toBe('updated-id');
     });
 
@@ -198,6 +200,36 @@ describe('MDButton adapter', () => {
       button.element.dispatchEvent(new Event('beforeinput'));
       await wrapper.vm.$nextTick();
 
+      expect(onBeforeinput).not.toHaveBeenCalled();
+    });
+
+    it('projects an allow-listed attribute and a data-* key from render-time attrs across add/remove/re-add, and keeps rejecting a dynamically added forbidden attribute/listener', async () => {
+      const onBeforeinput = vi.fn();
+      const wrapper = mount(DynamicAttrsWrapper, { props: { attrs: {} } });
+      const getButton = () => wrapper.get('m3e-button');
+
+      expect(getButton().attributes('id')).toBeUndefined();
+
+      await wrapper.setProps({ attrs: { id: 'first-id' } });
+      expect(getButton().attributes('id')).toBe('first-id');
+
+      await wrapper.setProps({ attrs: {} });
+      expect(getButton().attributes('id')).toBeUndefined();
+
+      await wrapper.setProps({ attrs: { id: 'second-id' } });
+      expect(getButton().attributes('id')).toBe('second-id');
+
+      expect(getButton().attributes('data-testid')).toBeUndefined();
+      await wrapper.setProps({ attrs: { 'data-testid': 'save-button', id: 'second-id' } });
+      expect(getButton().attributes('data-testid')).toBe('save-button');
+
+      await wrapper.setProps({ attrs: { id: 'second-id' } });
+      expect(getButton().attributes('data-testid')).toBeUndefined();
+
+      await wrapper.setProps({ attrs: { id: 'second-id', onBeforeinput, toggle: true } });
+      expect(getElementProperty(getButton().element, 'toggle')).toBe(false);
+      getButton().element.dispatchEvent(new Event('beforeinput'));
+      await wrapper.vm.$nextTick();
       expect(onBeforeinput).not.toHaveBeenCalled();
     });
   });

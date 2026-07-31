@@ -215,7 +215,7 @@ Expected implementation-stage files are limited to the family runtime/proof file
   - Additional proof: Button visual baseline for composed appearance.
   - Existing proof: `MDButton.test.ts`, `md-button-family.spec.ts`, and `md-button.spec.ts`.
   - New/updated proof: confirm `aria-hidden="true"` and the `--md-comp-loading-indicator-active-indicator-color: currentColor` override still reach the renderer host after `inheritAttrs: false` is introduced; otherwise none unless the audit finds a handoff gap.
-  - Risk or platform matrix: mouse/keyboard/native Button behavior remains Button-owned; Loading indicator motion requires operator acceptance.
+  - Risk or platform matrix: mouse/keyboard/native Button behavior remains Button-owned; Loading indicator motion is subject to operator visual/motion inspection as an external defect-reporting channel, not a positive-acknowledgement gate.
   - Persistent impact metadata: Button-owned mappings remain authoritative for the parent scenario.
 - Contract/scenario: renderer boundary and exact-version workaround containment.
   - Primary proof owner: renderer-boundary/type-check tests plus defect record inspection.
@@ -235,7 +235,7 @@ Focused implementation feedback uses verify-managed unit, type-check, Storybook 
 4. Confirm no product consumer directly uses Loading indicator and that provider/browser waits continue to use feature-owned pending text, disabled guards, and live status rather than misleading short-wait Loading indicator presentation.
 5. Confirm no raw `m3e-loading-indicator`, renderer type, or private renderer token exists outside `src/shared/ui/material`.
 6. Remove only obsolete Loading-indicator-specific legacy ownership if found; leave unrelated generic loading UI and test stubs unchanged.
-7. Run the one final read-only current-head verification gate and write `MIGRATION.md`. Record operator visual/motion acceptance as required rather than fabricating it.
+7. Run the one final read-only current-head verification gate and write `MIGRATION.md`. Record the actual operator visual status (no-reported-defect, defect-reported, or not-applicable) rather than fabricating one.
 
 ## Acceptance criteria
 
@@ -250,7 +250,7 @@ Focused implementation feedback uses verify-managed unit, type-check, Storybook 
 - Button composition preserves its own semantics, interaction, disabled/re-entry ownership, and icon restoration; its `aria-hidden="true"` handoff continues to work through the allow-list.
 - No current consumer or failure path is lost, no raw renderer detail leaks, proof and impact metadata agree, and final verification passes.
 - Public API is unchanged by this correction; no visual or motion behavior intentionally changes.
-- Standalone and Button-composed appearance/motion receive explicit operator acceptance before the family is review-complete.
+- No concrete operator-reported visual/motion defect remains unresolved for standalone or Button-composed appearance/motion before the family is review-complete. Absence of a reported defect satisfies this criterion.
 
 ## Risks
 

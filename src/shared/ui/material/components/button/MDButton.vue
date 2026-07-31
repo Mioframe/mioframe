@@ -97,8 +97,13 @@ const attrs = useAttrs();
  * rather than mutating it. Every other attribute or listener (renderer-private `toggle`,
  * `selected`, `shape`, `variant`, or an arbitrary listener such as `beforeinput`) is
  * intentionally not forwarded.
+ *
+ * Called directly from the template (not `computed()`): Vue guarantees `useAttrs()` reflects
+ * the latest attrs during render, but does not guarantee that object is a supported reactive
+ * `computed()` dependency, so this recomputes from the live `attrs` object on every render.
+ * @returns The allow-listed subset of the current host attributes.
  */
-const forwardedAttrs = computed(() => {
+const getForwardedAttrs = (): Record<string, unknown> => {
   const forwarded: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(attrs)) {
     if (
@@ -115,14 +120,14 @@ const forwardedAttrs = computed(() => {
     }
   }
   return forwarded;
-});
+};
 </script>
 
 <template>
   <!-- eslint-disable vue/attribute-hyphenation -- The m3e Boolean must be bound as a camel-case property; its dashed attribute would treat false as present. -->
   <!-- eslint-disable-next-line vue/no-undef-components -- m3e-button is selected by config/vueCustomElements.ts. -->
   <m3e-button
-    v-bind="forwardedAttrs"
+    v-bind="getForwardedAttrs()"
     :class="['md-button', attrs.class]"
     :style="attrs.style"
     :aria-busy="isLoading ? 'true' : undefined"

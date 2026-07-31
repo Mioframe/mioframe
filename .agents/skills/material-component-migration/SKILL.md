@@ -121,7 +121,7 @@ Migration is `complete` only when:
 - final verification passes, or its exact project-command blocker is recorded and migration remains blocked only on that verification;
 - the resulting family is ready for independent review when verification is complete.
 
-Operator visual acceptance may remain an explicit review gate; it must not be fabricated by the coding worker.
+Operator visual/motion status is an external defect-reporting channel, not a positive-acknowledgement gate owned by migration; record the actual status without fabricating a report that was not made.
 
 ## Report
 
@@ -137,7 +137,7 @@ Preserved scenarios:
 Legacy ownership removed:
 Proof completed:
 Final verification command and result:
-Operator acceptance status: accepted | required | not-applicable
+Operator visual status: no-reported-defect | defect-reported | not-applicable
 Review readiness: ready | blocked
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 ```

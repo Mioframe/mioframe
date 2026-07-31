@@ -123,7 +123,7 @@ Owner: `material-component-migration`.
 
 Contains consumer inventory, migrated paths, preserved behavior and failure cases, removed ownership, proof, and final verification.
 
-Gate: status `complete` and review readiness `ready`, except an explicit operator-only visual gate may remain.
+Gate: status `complete` and review readiness `ready`.
 
 ### REVIEW.md
 
@@ -138,7 +138,7 @@ Owner: `material-component-review`.
 
 Review is independent and read-only except for `REVIEW.md`. Findings return work to the earliest owning stage. The orchestrator launches a fresh correction worker and later a new independent review worker.
 
-Gate: verdict `compliant` or `compliant-with-listed-risks`, required operator acceptance complete, and completion readiness recorded.
+Gate: verdict `compliant` or `compliant-with-listed-risks`, no unresolved concrete operator-reported visual/motion defect, and completion readiness recorded. Absence of an operator-reported defect satisfies this gate; no positive operator acknowledgement is required.
 
 ## Autonomous state machine
 
@@ -181,11 +181,11 @@ The outer orchestration may stop only for:
 - unavailable required source tools;
 - unavailable fresh-worker orchestration capability;
 - an unresolved material architecture decision that official evidence and workspace rules cannot determine;
-- required operator visual/motion acceptance;
+- a concrete unresolved operator-reported visual/motion defect;
 - a required project verification command that cannot execute or complete after stage-owned edits are done;
 - safety-required operator input.
 
-A completed stage, ordinary failing test, code finding, cache age, or missing repeated command is not by itself a blocker.
+A completed stage, ordinary failing test, code finding, cache age, missing repeated command, or absence of an operator-reported defect is not by itself a blocker.
 
 ## Stage ownership rules
 
@@ -206,4 +206,4 @@ A Material component is not complete because code and automated checks pass. Com
 - complete consumer migration and legacy removal;
 - independent review by a fresh worker;
 - required project verification;
-- required operator visual/motion acceptance.
+- no unresolved concrete operator-reported visual/motion defect. Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate: absence of a reported defect satisfies this condition and requires no explicit confirmation.

@@ -260,7 +260,7 @@ Expected implementation-stage files are limited to Button runtime/types/tokens/e
   - Additional proof: Button visual baseline and Loading Indicator dependency proof.
   - Existing proof: `MDButton.test.ts`, Button Storybook behavior/visual specs, Loading Indicator complete implementation.
   - New/updated proof: only missing parent-handoff cases; do not duplicate standalone dependency proof.
-  - Risk/platform matrix: loading motion and contrast need operator acceptance; browser/provider waits remain product-owned text/status scenarios.
+  - Risk/platform matrix: loading motion and contrast are subject to operator visual/motion inspection as an external defect-reporting channel, not a positive-acknowledgement gate; browser/provider waits remain product-owned text/status scenarios.
   - Persistent impact metadata: Button mapping owns composed story; Loading Indicator mapping owns standalone family.
 - Contract/scenario: stable appearance for selected variants/sizes/states, themes, target overlay, and contextual Snackbar action.
   - Primary proof owner: bounded visual specs under `tests/e2e/visual/shared-ui`.
@@ -288,7 +288,7 @@ Focused implementation feedback uses verify-managed unit/component, type-check, 
 5. Update `MDSnackbar` to use the seven selected contextual tokens for inverse-primary label/state-layer states. Do not add an icon token for its separately owned Icon Button.
 6. Confirm short library loading uses the accepted composition only where applicable. Keep browser/provider/user-controlled waits on feature-owned pending text, disabled conflicting actions, and live status; do not migrate them to Button loading.
 7. Remove obsolete Button-specific legacy ownership, old public token names, deep imports, raw renderer usage, undeclared-attribute reliance outside the allow-list, and replaced tests/styles. Do not remove unrelated native or other Material-family components.
-8. Run focused product proof, then the one final read-only current-head `pnpm verify:release`; write `MIGRATION.md` with inventory, host-attribute audit results, removals, preserved scenarios, exact verification, and operator acceptance status.
+8. Run focused product proof, then the one final read-only current-head `pnpm verify:release`; write `MIGRATION.md` with inventory, host-attribute audit results, removals, preserved scenarios, exact verification, and operator visual status.
 
 ## Acceptance criteria
 
@@ -300,7 +300,7 @@ Focused implementation feedback uses verify-managed unit/component, type-check, 
 - No obsolete five-token provisional names, compatibility aliases, contextual Button icon token, raw renderer detail, or descendant color cascade remains.
 - `MDButton.vue` sets `inheritAttrs: false` and contains no unrestricted `v-bind="$attrs"`; exactly the accepted host-attribute allow-list (see [Host-attribute boundary](#host-attribute-boundary)) is forwarded to `m3e-button`, with `class`/`style` merged rather than replaced; no unknown attribute or listener can activate private m3e capabilities (`toggle`, `selected`, `shape`, renderer `variant`, `contained`, `beforeinput`, or others).
 - Current valid consumer scenarios are preserved after the allow-list migration audit; the public Vue API (props/emits/slots) is unchanged by this correction; no visual or motion behavior intentionally changes.
-- Component, real-browser, contextual, visual, and product proofs agree; final verification passes; operator visual/motion acceptance is explicitly recorded before review completion.
+- Component, real-browser, contextual, visual, and product proofs agree; final verification passes; no concrete operator-reported visual/motion defect remains unresolved before review completion. Absence of a reported defect satisfies this criterion.
 
 ## Risks
 
@@ -318,7 +318,7 @@ Focused implementation feedback uses verify-managed unit/component, type-check, 
 - Add host pseudo-class timing/shape overrides, wrapper press state, ripple/state-layer clones, shadow-DOM access, descendant cascades, `!important`, or timing hacks.
 - Make `loading` disable the Button, swallow clicks, own operation state, or replace feature-owned browser/provider wait status.
 - Publish icon tokens without a confirmed contextual icon consumer, retain old `hover`/`focus` aliases, or derive public names from m3e.
-- Treat unit tests, stories, host custom properties, snapshots, green verification, or implementation evidence as substitutes for rendered-anatomy proof and operator visual/motion acceptance.
+- Treat unit tests, stories, host custom properties, snapshots, green verification, or implementation evidence as substitutes for rendered-anatomy proof or as proof of subjective visual/motion quality.
 - Migrate Icon Button, FAB, navigation, menu, or native HTML families as part of Button merely because they render a `<button>`.
 - Use unrestricted `v-bind="$attrs"` fallthrough, omit `inheritAttrs: false` on the single `m3e-button` root, or forward any attribute or listener outside the accepted [Host-attribute boundary](#host-attribute-boundary) allow-list.
 - Introduce a generic wrapper, adapter base class, registry, schema, directive, or composable framework to implement host-attribute filtering; keep it local to `MDButton.vue`, per `src/shared/ui/material/AGENTS.md`.

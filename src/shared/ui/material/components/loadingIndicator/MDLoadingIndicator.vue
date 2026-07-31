@@ -92,8 +92,13 @@ const attrs = useAttrs();
  * mutating it. Every other attribute or listener (raw renderer `variant`,
  * `contained`, `role`, value ARIA, `tabindex`, `aria-label`, or an arbitrary
  * listener) is intentionally not forwarded.
+ *
+ * Called directly from the template (not `computed()`): Vue guarantees `useAttrs()` reflects
+ * the latest attrs during render, but does not guarantee that object is a supported reactive
+ * `computed()` dependency, so this recomputes from the live `attrs` object on every render.
+ * @returns The allow-listed subset of the current host attributes.
  */
-const forwardedAttrs = computed(() => {
+const getForwardedAttrs = (): Record<string, unknown> => {
   const forwarded: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(attrs)) {
     if (key === 'id' || key === 'title' || key === 'aria-hidden' || key === 'aria-describedby') {
@@ -103,13 +108,13 @@ const forwardedAttrs = computed(() => {
     }
   }
   return forwarded;
-});
+};
 </script>
 
 <template>
   <!-- eslint-disable-next-line vue/no-undef-components -- m3e-loading-indicator is selected by config/vueCustomElements.ts. -->
   <m3e-loading-indicator
-    v-bind="forwardedAttrs"
+    v-bind="getForwardedAttrs()"
     :class="['md-loading-indicator', attrs.class]"
     :aria-label="props.label"
     :style="[attrs.style, style]"

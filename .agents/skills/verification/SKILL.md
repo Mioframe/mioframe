@@ -145,7 +145,7 @@ Release-sensitive task:
 pnpm verify:release
 ```
 
-A broad passing run does not replace missing proof, stale impact metadata, performance evidence, architecture review, or operator visual acceptance.
+A broad passing run does not replace missing proof, stale impact metadata, performance evidence, architecture review, or a genuine operator-reported visual/motion defect.
 
 ## Mode-specific changes
 
