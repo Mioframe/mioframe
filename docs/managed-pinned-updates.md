@@ -46,13 +46,13 @@ A failed `install` leaves the legacy worker active. After release 1 activates, t
 
 ## Ownership and sources of truth
 
-| Owner                   | Responsibility                                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Publisher               | Append-only release archive and `latest.json`                                                                  |
-| Controller worker       | Bootstrap classification, state, preparation, fetch routing, activation, rollback, caches, broadcasts         |
-| Service client/features | Explicit transport outcomes, finite busy state, user actions                                                   |
-| Entity/widget/pane      | Snapshot projection and product composition                                                                    |
-| Browser                 | Service-worker `install` / `waiting` / `activate` lifecycle                                                    |
+| Owner                   | Responsibility                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| Publisher               | Append-only release archive and `latest.json`                                                         |
+| Controller worker       | Bootstrap classification, state, preparation, fetch routing, activation, rollback, caches, broadcasts |
+| Service client/features | Explicit transport outcomes, finite busy state, user actions                                          |
+| Entity/widget/pane      | Snapshot projection and product composition                                                           |
+| Browser                 | Service-worker `install` / `waiting` / `activate` lifecycle                                           |
 
 Sources of truth:
 
@@ -150,14 +150,14 @@ The supported legacy family is every stable/develop worker produced by the exact
 
 Install classification:
 
-| Controller state | Active predecessor evidence | Result |
-| ---------------- | --------------------------- | ------ |
-| valid            | any                         | preserve state unchanged; ordinary managed retry/upgrade |
-| invalid          | any                         | reject installation |
-| absent           | no active worker            | genuine first registration |
-| absent           | valid managed probe         | reject as managed-state loss |
-| absent           | valid Workbox probe plus exact supported structural evidence | supported one-time Workbox bootstrap |
-| absent           | timeout, conflict, malformed, unknown, or incomplete evidence | reject installation |
+| Controller state | Active predecessor evidence                                   | Result                                                   |
+| ---------------- | ------------------------------------------------------------- | -------------------------------------------------------- |
+| valid            | any                                                           | preserve state unchanged; ordinary managed retry/upgrade |
+| invalid          | any                                                           | reject installation                                      |
+| absent           | no active worker                                              | genuine first registration                               |
+| absent           | valid managed probe                                           | reject as managed-state loss                             |
+| absent           | valid Workbox probe plus exact supported structural evidence  | supported one-time Workbox bootstrap                     |
+| absent           | timeout, conflict, malformed, unknown, or incomplete evidence | reject installation                                      |
 
 Stale caches alone never authorize bootstrap; positive evidence must come from the active predecessor. The managed controller must not implement or answer the Workbox `CACHE_URLS` probe.
 
@@ -182,17 +182,17 @@ The managed worker never calls `skipWaiting()` or `clients.claim()`.
 - Automatic never retries the exact failed release;
 - Manual may explicitly retry the exact failed release.
 
-| Event | Result |
-| ----- | ------ |
-| newer discovery with no candidate | `available(new)` |
-| newer discovery over `available` or eligible `failed` | `available(new)` |
-| Automatic prepares matching `available` | `ready` |
-| Manual installs matching `available` or `failed` | `ready` |
-| Manual cancels `ready` | `available` |
-| clean launch with `ready` | `activating`, active unchanged |
-| matching durable `BOOT_OK` | candidate becomes active; candidate cleared |
-| matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed` |
-| stale or mismatched completion | no-op |
+| Event                                                 | Result                                       |
+| ----------------------------------------------------- | -------------------------------------------- |
+| newer discovery with no candidate                     | `available(new)`                             |
+| newer discovery over `available` or eligible `failed` | `available(new)`                             |
+| Automatic prepares matching `available`               | `ready`                                      |
+| Manual installs matching `available` or `failed`      | `ready`                                      |
+| Manual cancels `ready`                                | `available`                                  |
+| clean launch with `ready`                             | `activating`, active unchanged               |
+| matching durable `BOOT_OK`                            | candidate becomes active; candidate cleared  |
+| matching `BOOT_FAILED` or expiration                  | active unchanged; candidate becomes `failed` |
+| stale or mismatched completion                        | no-op                                        |
 
 Every long completion re-reads state and may persist only when mode, release number, and phase still match its target.
 
@@ -200,12 +200,12 @@ Every long completion re-reads state and may persist only when mode, release num
 
 One worker-owned operation applies these rules:
 
-| Fresh Automatic state | Work |
-| --------------------- | ---- |
-| `available(B)` | prepare exact B, then conditionally persist `ready(B)` |
-| `failed(B)` | discover strictly newer; never retry B |
-| no candidate | discover and prepare a resulting available candidate |
-| `ready` or `activating` | no-op |
+| Fresh Automatic state   | Work                                                   |
+| ----------------------- | ------------------------------------------------------ |
+| `available(B)`          | prepare exact B, then conditionally persist `ready(B)` |
+| `failed(B)`             | discover strictly newer; never retry B                 |
+| no candidate            | discover and prepare a resulting available candidate   |
+| `ready` or `activating` | no-op                                                  |
 
 It runs:
 

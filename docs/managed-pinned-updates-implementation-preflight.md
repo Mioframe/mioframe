@@ -8,13 +8,13 @@ Existing code and tests are reusable evidence, not compatibility contracts. The 
 
 ## Owner map
 
-| Owner | Responsibility |
-| ----- | -------------- |
-| Release contract/publication | Node publisher validator, runtime schema, shared corpus, retained archive, `latest.json` |
-| Pure lifecycle | `contracts.ts`, `controllerState.ts`, `stateTransitions.ts`, snapshot/protocol release payloads |
-| Worker runtime | PWA config, `src/sw.ts`, install probes, preparation, fetch, activation, cleanup |
-| Client/UI | service client, entity projection, existing features, settings/widget/pane |
-| Verification | colocated tests, real worker wiring, existing managed-update E2E and verify metadata |
+| Owner                        | Responsibility                                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- |
+| Release contract/publication | Node publisher validator, runtime schema, shared corpus, retained archive, `latest.json`        |
+| Pure lifecycle               | `contracts.ts`, `controllerState.ts`, `stateTransitions.ts`, snapshot/protocol release payloads |
+| Worker runtime               | PWA config, `src/sw.ts`, install probes, preparation, fetch, activation, cleanup                |
+| Client/UI                    | service client, entity projection, existing features, settings/widget/pane                      |
+| Verification                 | colocated tests, real worker wiring, existing managed-update E2E and verify metadata            |
 
 Reuse `OperationQueue`, `PreparationCoordinator`, exact-release restoration, marker-last release caches, watchdog, channel isolation, response-before-follow-up ordering, and existing FSD owners.
 
