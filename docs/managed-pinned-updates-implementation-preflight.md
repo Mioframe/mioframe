@@ -8,15 +8,15 @@ The existing PR implementation is reusable evidence, not a compatibility contrac
 
 ## Owner map
 
-| Owner                       | Files / responsibility                                                                                          |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Release contract            | Node publisher validator, runtime descriptor schema, shared descriptor corpus                                   |
-| Publication                 | `scripts/pages/lib/releasePublish.mjs`, stable/develop publishers, retained managed archive                     |
-| Persisted lifecycle         | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts`                        |
-| Worker runtime              | PWA configuration, `src/sw.ts`, `src/shared/service/appUpdate/**`                                               |
-| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**`              |
-| User actions/composition    | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane`                                             |
-| Verification                | colocated deterministic/component tests, worker wiring tests, existing app/release E2E, `managed-updates` label |
+| Owner | Files / responsibility |
+| --- | --- |
+| Release contract | Node publisher validator, runtime descriptor schema, shared descriptor corpus |
+| Publication | `scripts/pages/lib/releasePublish.mjs`, stable/develop publishers, retained managed archive |
+| Persisted lifecycle | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts` |
+| Worker runtime | PWA configuration, `src/sw.ts`, `src/shared/service/appUpdate/**` |
+| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**` |
+| User actions/composition | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane` |
+| Verification | colocated deterministic/component tests, worker wiring tests, existing app/release E2E, `managed-updates` label |
 
 Preserve `OperationQueue`, `PreparationCoordinator`, exact-release integrity/restoration, watchdog, channel isolation, response-before-follow-up ordering, existing FSD ownership, and existing scenario owners.
 
@@ -56,7 +56,7 @@ Implement:
 
 - the independent per-channel managed-controller marker;
 - install ordering: exact preparation → controller state → marker → install success;
-- valid-state marker repair;
+- valid-state marker repair without changing release selection;
 - fail-closed marker + absent-state behavior;
 - genuine first registration bootstrap;
 - supported legacy Workbox bootstrap from exact known precache, deployment, navigation fallback, and registration-shell evidence;
@@ -75,6 +75,7 @@ Required result:
 - bootstrap failure leaves Workbox active;
 - successful bootstrap selects verified latest as initial managed baseline without claiming rollback to Workbox;
 - marker prevents later absent state from being treated as a first bootstrap;
+- valid state remains authoritative when marker repair is needed;
 - long work remains outside the queue;
 - stale completions are no-ops;
 - current recovery navigation is excluded from rollback reload;
@@ -98,7 +99,7 @@ Required result: truthful candidate status/actions, finite busy behavior, timeou
 
 Rewrite existing fixtures and release/browser specs in place. Remove obsolete old-model and bridge scenarios; do not create parallel v2 suites.
 
-Required result: new registration, native Workbox-to-managed same-path bootstrap, bootstrap failure, marker fail-closed behavior, first later managed candidate, Automatic/Manual flows, activation, rollback, retry, restoration, isolation, uncontrolled windows, cross-engine lifecycle, and data compatibility all have proof.
+Required result: new registration, native Workbox-to-managed same-path bootstrap, bootstrap failure, marker fail-closed behavior, marker repair, first later managed candidate, Automatic/Manual flows, activation, rollback, retry, restoration, isolation, uncontrolled windows, cross-engine lifecycle, and data compatibility all have proof.
 
 ## TEST IMPACT
 
