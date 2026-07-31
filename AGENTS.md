@@ -12,13 +12,11 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - `src/shared/ui/material/docs/component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
-## Agent workspace boundary
+## Task scope
 
-- Work only with readable workspace files, file-oriented tools, and project commands documented by the workspace.
-- Do not inspect hidden workspace metadata, tool implementation state, or unrelated environment internals.
-- Do not load internal verifier-migration, delivery, publication, or environment-administration documentation unless the task explicitly targets that system.
-- Do not perform actions outside the workspace or ask the operator to choose environment-repair procedures.
-- When a project command fails before reaching its relevant check, record the exact command and failure, continue safe file work where possible, and do not diagnose or repair the execution environment unless the task explicitly targets that infrastructure.
+- Work only with task-relevant readable workspace files, file-oriented tools, and documented project commands.
+- Load only the project rules and documentation required by the current task.
+- When a project command fails before reaching its relevant check, record the exact visible failure, continue safe file work where possible, and report the remaining verification.
 
 ## Architecture and implementation workflow
 
@@ -111,7 +109,7 @@ For the Material workflow, the thin orchestrator selects, launches, validates, a
 - Use `pnpm verify` as the ordinary final gate. Use `pnpm verify:release` only when the verification skill classifies the task as requiring full release-sensitive proof.
 - Preserve the exact verifier command and scope when retrying a failed check.
 - Do not start duplicate expensive checks. Use the verifier status and resume commands when another run is active.
-- If a required project command cannot execute because the environment is unavailable, report the exact failure and remaining verification without investigating hidden environment internals.
+- When a required project command cannot complete, report the exact visible failure and remaining verification.
 - Do not claim completion while required proof is missing or failing.
 
 Final response after edits must include:
