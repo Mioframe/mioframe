@@ -8,16 +8,16 @@ The existing PR implementation is reusable evidence, not a compatibility contrac
 
 ## Owner map
 
-| Owner                       | Files / responsibility                                                                                          |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Release contract            | Node publisher validators, runtime descriptor schemas, shared descriptor corpus, migration pointer              |
-| Publication                 | `scripts/pages/lib/releasePublish.mjs`, stable/develop publishers, retained archive and bridge artifacts        |
-| Persisted lifecycle         | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts`                        |
-| Bridge packaging/runtime    | PWA build configuration, frozen `sw.js` bridge source, bridge registration replacement and tests                |
-| Managed worker runtime      | `src/shared/service/appUpdate/**`, `src/sw.ts` or renamed managed worker entry                                  |
-| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**`              |
-| User actions/composition    | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane`                                             |
-| Verification                | colocated deterministic/component tests, worker wiring tests, existing app/release E2E, `managed-updates` label |
+| Owner | Files / responsibility |
+| --- | --- |
+| Release contract | Node publisher validators, runtime descriptor schemas, shared descriptor corpus, migration pointer |
+| Publication | `scripts/pages/lib/releasePublish.mjs`, stable/develop publishers, retained archive and bridge artifacts |
+| Persisted lifecycle | `src/shared/service/appUpdate/contracts.ts`, `controllerState.ts`, `stateTransitions.ts` |
+| Bridge packaging/runtime | PWA build configuration, frozen `sw.js` bridge source, bridge registration replacement and tests |
+| Managed worker runtime | `src/shared/service/appUpdate/**`, `src/sw.ts` or renamed managed worker entry |
+| Client transport/read model | `protocol.ts`, `snapshot.ts`, `src/shared/serviceClient/appUpdate/**`, `src/entities/appUpdate/**` |
+| User actions/composition | existing app-update features, `AppUpdateSettings`, `AppUpdatesPane` |
+| Verification | colocated deterministic/component tests, worker wiring tests, existing app/release E2E, `managed-updates` label |
 
 Preserve `OperationQueue`, `PreparationCoordinator`, exact-release integrity/restoration, watchdog, channel isolation, response-before-follow-up ordering, existing FSD ownership, and existing scenario owners.
 
@@ -54,21 +54,29 @@ Required result:
 
 Implement the reachable two-stage controller path:
 
-- retain legacy/future migration URL `sw.js` as the byte-stable migration bridge;
+- retain legacy/future migration URL `sw.js` as the byte-stable per-channel migration bridge;
 - build/register final controller as `managed-sw.js` at the same scope;
 - make the normal managed app registration target `managed-sw.js`;
-- implement bridge install validation, baseline preparation, initial state write, exact baseline navigation/assets, exact `registerSW.js` replacement, and read-only bridge probe;
+- implement bridge install validation, exact baseline preparation, final-side-effect state write, exact baseline navigation/assets, exact `registerSW.js` replacement, and read-only bridge probe;
 - implement managed-controller probe and final install classification;
 - reject active bridge/managed predecessor with absent or invalid state;
-- rewrite discovery, Manual → Automatic reconciliation, mode/install orchestration, fetch routing, activation recovery, broadcasts, cleanup triggers, and watchdog handling;
+- rewrite discovery, Automatic reconciliation, mode/install orchestration, fetch routing, activation recovery, broadcasts, cleanup triggers, and watchdog handling;
 - keep bridge behavior migration-only.
+
+Automatic reconciliation must use one shared operation and two explicit triggers:
+
+- after successful Manual → Automatic, after the response;
+- once per managed worker instance from the first eligible owned navigation, under that fetch event's `waitUntil`, without delaying navigation.
+
+For fresh Automatic state it must prepare `available`, discover newer for `failed`/none, and no-op for `ready`/`activating`. The navigation trigger is required for bridge-created `automatic + available` state and for managed worker restarts.
 
 Required result:
 
 - an old cache-first Workbox shell reaches the bridge through native `sw.js` update checks;
 - a bridge-controlled baseline page explicitly registers `managed-sw.js` without racing the legacy registration script;
 - final managed install accepts only a positively identified bridge or previous managed predecessor with valid state;
-- long work remains outside the queue, stale completions are no-ops, Automatic has an explicit trigger, current recovery navigation is excluded from rollback reload, and non-release requests never enter managed handling.
+- bridge handoff candidate is prepared by first-navigation Automatic reconciliation without requiring a mode change;
+- long work remains outside the queue, stale completions are no-ops, current recovery navigation is excluded from rollback reload, and non-release requests never enter managed handling.
 
 ### Pass 3 — client, entity, features, and UI
 
@@ -82,11 +90,11 @@ Required result: truthful candidate status/actions, finite busy behavior, timeou
 
 Rewrite existing fixtures and release/browser specs in place. Remove obsolete old-model scenarios; do not create parallel v2 suites.
 
-Required result: new-channel first install, native legacy → bridge discovery, archived baseline rollback, bridge → managed registration, final managed handoff, managed missing-state rejection, Automatic follow-up, Manual, activation, rollback, retry, restoration, isolation, uncontrolled windows, cross-engine lifecycle, and data compatibility all have proof.
+Required result: new-channel first install, native legacy → bridge discovery, archived baseline rollback, bridge → managed registration, final managed handoff, first-navigation Automatic reconciliation, managed missing-state rejection, Automatic follow-up, Manual, activation, rollback, retry, restoration, isolation, uncontrolled windows, cross-engine lifecycle, and data compatibility all have proof.
 
 ## TEST IMPACT
 
-**Changed contracts:** publication identity/layout; shared descriptor parity; legacy baseline archive; frozen bridge artifact; service-worker migration chain; controller-kind probes; install classification; persisted state/transitions; protocol/snapshot; Automatic reconciliation; client outcomes/timeouts; fetch ownership; cache protection; UI candidate projection; rollback data compatibility.
+**Changed contracts:** publication identity/layout; shared descriptor parity; legacy baseline archive; frozen bridge artifact; service-worker migration chain; controller-kind probes; install classification; persisted state/transitions; protocol/snapshot; Automatic reconciliation triggers; client outcomes/timeouts; fetch ownership; cache protection; UI candidate projection; rollback data compatibility.
 
 **Primary proof owners:**
 
@@ -106,11 +114,12 @@ Required result: new-channel first install, native legacy → bridge discovery, 
 - append-only archive, immutable migration pointer, and byte-stable retained bridge;
 - legacy cached shell continues registering `sw.js`, while native update discovers the bridge;
 - bridge replacement registration script registers `managed-sw.js` at the same scope;
-- bridge writes active baseline plus available candidate and never activates the candidate;
+- bridge writes active baseline plus available candidate as its final required install side effect and never activates the candidate;
 - final controller positively identifies bridge/managed predecessor;
 - bridge/managed predecessor plus absent or invalid state rejects installation;
 - complete candidate transitions and supersession policy;
-- Manual → Automatic follow-up for available, failed, none, ready, activating;
+- Manual → Automatic reconciliation for available, failed, none, ready, activating;
+- first-navigation reconciliation prepares bridge-created Automatic available candidate and is once-per-worker deduplicated;
 - explicit timeout clears busy while preserving snapshot/capability; late broadcast refreshes;
 - controller-kind and watchdog 5-second timeouts remain distinct from UI and activation deadlines;
 - stale mode/number/phase completion matrix;
@@ -140,7 +149,7 @@ GitHub CI or raw underlying commands do not replace the final gate.
 
 ## Readiness
 
-Owners, atomic contract boundary, bridge lifecycle, pass boundaries, proof ownership, and verification are resolved.
+Owners, atomic contract boundary, bridge lifecycle, Automatic triggers, pass boundaries, proof ownership, and verification are resolved.
 
 Unresolved blockers: none.
 
