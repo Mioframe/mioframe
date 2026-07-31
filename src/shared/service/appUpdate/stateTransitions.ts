@@ -146,6 +146,12 @@ export function approveManualRelease(
  * `activation` are mutually exclusive ownership states, and no release may
  * be approved until the current clean-launch attempt resolves.
  *
+ * A no-op outside Automatic mode. This is the sole owner of that invariant:
+ * orchestration always re-reads state fresh before calling this, but this
+ * transition must enforce it itself regardless of caller correctness, since
+ * a stale long-running `SET_MODE automatic` request must never be able to
+ * approve a release after a later request has durably switched to Manual.
+ *
  * A no-op when `prepared` conflicts with any release reference currently
  * present in `state` (`activeRelease`, `latestRelease`, `approvedRelease`,
  * `activation.targetRelease`, or `failedActivationRelease`): a
@@ -160,6 +166,7 @@ export function approveAutomaticRelease(
   state: UpdateControllerState,
   prepared: ReleaseSummary,
 ): UpdateControllerState {
+  if (state.mode !== 'automatic') return state;
   if (state.activation) return state;
   if (!isNewerSequence(prepared, state.activeRelease)) return state;
   if (state.failedActivationRelease?.releaseId === prepared.releaseId) return state;

@@ -51,6 +51,94 @@ describe('publishManagedRelease', () => {
     ).toThrow('Unsupported managed channel');
   });
 
+  it('rejects a stable publication whose dist contains a reserved updates directory, before any target-tree write', () => {
+    writeBasicDist(buildIndexHtml('<stable/>'));
+    mkdirSync(join(distDir, 'updates'), { recursive: true });
+    writeFileSync(join(distDir, 'updates', 'latest.json'), '{}');
+
+    expect(() =>
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'stable',
+        basePath: '/',
+        appVersion: '1.0.0',
+        buildId: 'sha1',
+      }),
+    ).toThrow('dist/updates is a reserved managed-publication namespace');
+
+    expect(existsSync(join(workDir, 'updates'))).toBe(false);
+    expect(existsSync(join(workDir, 'assets'))).toBe(false);
+    expect(existsSync(join(workDir, 'index.html'))).toBe(false);
+  });
+
+  it('rejects a develop publication whose dist contains a reserved updates directory, before any target-tree write', () => {
+    writeBasicDist(buildIndexHtml('<develop/>'));
+    mkdirSync(join(distDir, 'updates'), { recursive: true });
+    writeFileSync(join(distDir, 'updates', 'latest.json'), '{}');
+
+    expect(() =>
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'develop',
+        basePath: '/branch/develop/',
+        appVersion: '1.0.0',
+        buildId: 'sha1',
+      }),
+    ).toThrow('dist/updates is a reserved managed-publication namespace');
+
+    expect(existsSync(join(workDir, 'branch', 'develop'))).toBe(false);
+  });
+
+  it('leaves an already-retained tree byte-for-byte unchanged when a later publish attempt has a reserved dist/updates directory', () => {
+    writeBasicDist(buildIndexHtml('<v1/>'));
+    const first = publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      basePath: '/',
+      appVersion: '1.0.0',
+      buildId: 'sha1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+
+    const descriptorPath = join(workDir, 'updates', 'releases', `${first.releaseId}.json`);
+    const archivedIndexPath = join(workDir, 'updates', 'releases', first.releaseId, 'index.html');
+    const assetPath = join(workDir, 'assets', 'app-1.js');
+    const rootIndexPath = join(workDir, 'index.html');
+    const latestPath = join(workDir, 'updates', 'latest.json');
+
+    const descriptorBefore = readFileSync(descriptorPath, 'utf8');
+    const archivedIndexBefore = readFileSync(archivedIndexPath, 'utf8');
+    const assetBefore = readFileSync(assetPath, 'utf8');
+    const rootIndexBefore = readFileSync(rootIndexPath, 'utf8');
+    const latestBefore = readFileSync(latestPath, 'utf8');
+
+    writeFileSync(join(distDir, 'index.html'), buildIndexHtml('<v2/>'));
+    writeFileSync(join(distDir, 'assets', 'app-2.js'), 'content-2');
+    mkdirSync(join(distDir, 'updates'), { recursive: true });
+    writeFileSync(join(distDir, 'updates', 'latest.json'), '{}');
+
+    expect(() =>
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'stable',
+        basePath: '/',
+        appVersion: '1.1.0',
+        buildId: 'sha2',
+      }),
+    ).toThrow('dist/updates is a reserved managed-publication namespace');
+
+    expect(readFileSync(descriptorPath, 'utf8')).toBe(descriptorBefore);
+    expect(readFileSync(archivedIndexPath, 'utf8')).toBe(archivedIndexBefore);
+    expect(readFileSync(assetPath, 'utf8')).toBe(assetBefore);
+    expect(readFileSync(rootIndexPath, 'utf8')).toBe(rootIndexBefore);
+    expect(readFileSync(latestPath, 'utf8')).toBe(latestBefore);
+    expect(existsSync(join(workDir, 'assets', 'app-2.js'))).toBe(false);
+  });
+
   it('publishes a first stable release: descriptor, archived index, assets, and latest.json', () => {
     writeBasicDist(buildIndexHtml('<stable/>'));
 

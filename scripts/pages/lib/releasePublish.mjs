@@ -4,11 +4,13 @@
  * ordinary deployment files on top.
  *
  * Publication order (see the managed pinned application updates feature):
- * inspect/validate the retained tree, allocate the sequence, inject the boot
- * watchdog into the archived index and hash its final bytes, build the
- * descriptor and archived index in memory, validate collisions and size,
- * copy immutable assets, write the archived index, write the descriptor,
- * update the channel's deployment files, and write `latest.json` last.
+ * reject a build whose `dist/updates` exists (a reserved managed-publication
+ * namespace), inspect/validate the retained tree, allocate the sequence,
+ * inject the boot watchdog into the archived index and hash its final bytes,
+ * build the descriptor and archived index in memory, validate collisions and
+ * size, copy immutable assets, write the archived index, write the
+ * descriptor, update the channel's deployment files, and write `latest.json`
+ * last.
  */
 
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -29,6 +31,25 @@ import { applyManagedBranchPublish, applyManagedStablePublish } from './pagesFs.
 import { injectWatchdogScript } from './watchdogInject.mjs';
 
 const MANAGED_CHANNELS = new Set(['stable', 'develop']);
+
+/**
+ * Rejects a build whose `dist/updates` exists, before any publication write
+ * begins. `updates/**` (the `latest.json` pointer, retained release
+ * descriptors, and archived indexes) is a namespace reserved exclusively for
+ * managed release publication itself; a build artifact that already
+ * contains one is invalid and must never be merged into, or silently
+ * excluded from, the retained tree — that could otherwise overwrite
+ * retained immutable release data with build output.
+ * @param distDir Built `dist` directory for this build.
+ * @throws {Error} When `<distDir>/updates` exists.
+ */
+function assertDistHasNoReservedUpdatesDir(distDir) {
+  if (existsSync(join(distDir, 'updates'))) {
+    throw new Error(
+      'dist/updates is a reserved managed-publication namespace and must not be present in a build artifact',
+    );
+  }
+}
 
 /**
  * @param workDir Pages staging working directory root.
@@ -67,6 +88,7 @@ export function publishManagedRelease({
   if (!MANAGED_CHANNELS.has(channel)) {
     throw new Error(`Unsupported managed channel: ${String(channel)}`);
   }
+  assertDistHasNoReservedUpdatesDir(distDir);
 
   const channelBase = resolveChannelBase(workDir, channel);
   const updatesDir = join(channelBase, 'updates');

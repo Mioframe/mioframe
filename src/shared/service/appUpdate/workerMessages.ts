@@ -21,6 +21,7 @@ import { runReleaseCacheCleanup } from './releaseCache';
 import { buildAppUpdateSnapshot } from './snapshot';
 import { withState } from './stateLock';
 import {
+  approveAutomaticRelease,
   approveManualRelease,
   cancelScheduledUpdate,
   commitActivation,
@@ -137,10 +138,23 @@ function combineLifetimeWork(
 
 /**
  * Switches to Automatic mode, preparing and approving the latest known
- * release first when needed. The short state lock only covers the initial
- * decision and the final persist; preparation runs unlocked through
- * `coordinator`, and the target is re-validated against current state
- * before being approved, exactly like {@link runUpdateCheck}.
+ * release first when needed.
+ *
+ * Runs as two short serialized transactions with unlocked preparation in
+ * between, so a long-running switch can never let a later, faster request
+ * (e.g. a Manual switch) be silently overwritten once it completes:
+ *
+ * 1. Reads current state, switches it to Automatic, and persists that mode
+ *    change immediately — before any preparation starts — then resolves
+ *    whether preparation is required from the now-current state.
+ * 2. Only if a target was resolved: preparation runs unlocked through
+ *    `coordinator`; once it settles, a second transaction re-reads state
+ *    fresh and attempts the approval through {@link approveAutomaticRelease}.
+ *    That transition is the sole owner of the mode invariant (see its own
+ *    doc): if mode is no longer Automatic (a later request switched to
+ *    Manual while this one was preparing), the approval is silently skipped
+ *    rather than resurrecting Automatic mode or the stale target. This
+ *    transaction never itself sets the mode.
  *
  * While an activation is already in progress, the mode still switches, but
  * never triggers preparation or approval of another release:
@@ -153,7 +167,7 @@ function combineLifetimeWork(
  * this is what makes a repeated `SET_MODE automatic` with the latest release
  * already approved fetch nothing, prepare nothing, write nothing, and
  * broadcast nothing. State is written, and follow-up work created, only when
- * the transition actually returns a different state object.
+ * a transition actually returns a different state object.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
@@ -168,31 +182,23 @@ async function switchToAutomaticModeWithPrepare(
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
 ): Promise<WorkerMessageResult<AppUpdateWorkerResponse>> {
-  const decision = await withState(channel, enqueue, async (state) => {
-    const target = resolveAutomaticPreparationTarget({ ...state, mode: 'automatic' });
-    if (!target) {
-      const next = switchToAutomaticMode(state);
-      if (next === state) {
-        return {
-          done: true as const,
-          result: { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }) },
-        };
-      }
-      await writeControllerState(channel, next);
-      return {
-        done: true as const,
-        result: {
-          response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }),
-          runLifetimeWork: () =>
-            broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
-        },
-      };
-    }
-    return { done: false as const, target };
+  const afterModeSwitch = await withState(channel, enqueue, async (state) => {
+    const next = switchToAutomaticMode(state);
+    const changed = next !== state;
+    if (changed) await writeControllerState(channel, next);
+    return { state: next, changed, target: resolveAutomaticPreparationTarget(next) };
   });
-  if (decision.done) return decision.result;
 
-  const target = decision.target;
+  if (!afterModeSwitch.target) {
+    return {
+      response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(afterModeSwitch.state) }),
+      runLifetimeWork: afterModeSwitch.changed
+        ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
+        : undefined,
+    };
+  }
+
+  const target = afterModeSwitch.target;
   let error: AppUpdateErrorCode | undefined;
   try {
     await coordinator.prepare(channel, channelBasePath, target);
@@ -202,9 +208,9 @@ async function switchToAutomaticModeWithPrepare(
 
   return withState(channel, enqueue, async (state) => {
     const stillValid = !error && state.latestRelease?.releaseId === target.releaseId;
-    const next = switchToAutomaticMode(state, stillValid ? target : undefined);
+    const next = stillValid ? approveAutomaticRelease(state, target) : state;
     if (next === state) {
-      return { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next, error) }) };
+      return { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(state, error) }) };
     }
     await writeControllerState(channel, next);
     return {

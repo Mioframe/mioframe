@@ -116,6 +116,24 @@ describe('workerFetch', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it('returns the controlled unavailable response for invalid controller state, without ever calling network fetch', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'invalid' });
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      const response = await handleNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        CHANNEL_ORIGIN,
+        new Request('https://mioframe.example/'),
+        new Set<string>(),
+        enqueue,
+        createFakeCoordinator(),
+      );
+
+      expect(response.status).toBe(503);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('restores a missing release through the shared preparation coordinator', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
@@ -272,7 +290,7 @@ describe('workerFetch', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it('passes every request through to the network when controller state is not valid', async () => {
+    it('passes every request through to the network when controller state is absent', async () => {
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
       const { handleAssetFetch } = await import('./workerFetch');
 
@@ -280,6 +298,50 @@ describe('workerFetch', () => {
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
+      );
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns the controlled unavailable response for an assets/** path when controller state is invalid, without calling network fetch', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'invalid' });
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      const response = await handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
+      );
+
+      expect(response.status).toBe(503);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('still passes a manifest request through to the network when controller state is invalid', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'invalid' });
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      const response = await handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/manifest.webmanifest'),
+        createFakeCoordinator(),
+      );
+
+      expect(await response.text()).toBe('network response');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('still passes an API request through to the network when controller state is invalid', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'invalid' });
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      await handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/api/whoami'),
         createFakeCoordinator(),
       );
 

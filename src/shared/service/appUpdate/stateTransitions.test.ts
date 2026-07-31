@@ -244,43 +244,45 @@ describe('approveManualRelease', () => {
 });
 
 describe('approveAutomaticRelease', () => {
+  const automaticState: UpdateControllerState = { ...baseState, mode: 'automatic' };
+
   it('approves the first prepared release', () => {
-    const state = approveAutomaticRelease(baseState, releaseB);
+    const state = approveAutomaticRelease(automaticState, releaseB);
     expect(state.approvedRelease).toEqual(releaseB);
   });
 
   it('moves the approval forward to a newer prepared release', () => {
-    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const withApproved = { ...automaticState, approvedRelease: releaseB };
     const state = approveAutomaticRelease(withApproved, releaseC);
     expect(state.approvedRelease).toEqual(releaseC);
   });
 
   it('does not replace an equal-or-newer approved release', () => {
-    const withApproved = { ...baseState, approvedRelease: releaseC };
+    const withApproved = { ...automaticState, approvedRelease: releaseC };
     const state = approveAutomaticRelease(withApproved, releaseB);
     expect(state.approvedRelease).toEqual(releaseC);
   });
 
   it('never approves the exact release currently recorded as failed', () => {
-    const withFailure = { ...baseState, failedActivationRelease: releaseB };
+    const withFailure = { ...automaticState, failedActivationRelease: releaseB };
     const state = approveAutomaticRelease(withFailure, releaseB);
     expect(state.approvedRelease).toBeUndefined();
   });
 
   it('approves a newer distinct release even when a different one is recorded as failed', () => {
-    const withFailure = { ...baseState, failedActivationRelease: releaseB };
+    const withFailure = { ...automaticState, failedActivationRelease: releaseB };
     const state = approveAutomaticRelease(withFailure, releaseC);
     expect(state.approvedRelease).toEqual(releaseC);
   });
 
   it('does not approve the active release', () => {
-    const state = approveAutomaticRelease(baseState, releaseA);
-    expect(state).toBe(baseState);
+    const state = approveAutomaticRelease(automaticState, releaseA);
+    expect(state).toBe(automaticState);
     expect(state.approvedRelease).toBeUndefined();
   });
 
   it('does not approve an older release than activeRelease', () => {
-    const withNewerActive = { ...baseState, activeRelease: releaseB };
+    const withNewerActive = { ...automaticState, activeRelease: releaseB };
     const state = approveAutomaticRelease(withNewerActive, releaseA);
     expect(state).toBe(withNewerActive);
     expect(state.approvedRelease).toBeUndefined();
@@ -288,7 +290,7 @@ describe('approveAutomaticRelease', () => {
 
   it('is a no-op while an activation is already in progress', () => {
     const withActivation: UpdateControllerState = {
-      ...baseState,
+      ...automaticState,
       activation: { targetRelease: releaseB, deadlineAt: '2026-07-24T00:00:30.000Z' },
     };
     const state = approveAutomaticRelease(withActivation, releaseC);
@@ -296,7 +298,7 @@ describe('approveAutomaticRelease', () => {
   });
 
   it('rejects a same-sequence conflict against latestRelease', () => {
-    const withLatest = { ...baseState, latestRelease: releaseB };
+    const withLatest = { ...automaticState, latestRelease: releaseB };
     const conflicting = { ...releaseB, releaseId: 'release-b-imposter' };
     const state = approveAutomaticRelease(withLatest, conflicting);
     expect(state).toBe(withLatest);
@@ -304,10 +306,20 @@ describe('approveAutomaticRelease', () => {
   });
 
   it('rejects a same-releaseId, different-releaseSequence conflict against an existing approvedRelease', () => {
-    const withApproved = { ...baseState, approvedRelease: releaseB };
+    const withApproved = { ...automaticState, approvedRelease: releaseB };
     const conflicting = { ...releaseC, releaseId: releaseB.releaseId };
     const state = approveAutomaticRelease(withApproved, conflicting);
     expect(state).toBe(withApproved);
+  });
+
+  it('is a no-op outside Automatic mode, even when the caller mistakenly calls it directly with Manual state', () => {
+    // baseState is Manual mode: this is the transition's own fail-closed
+    // invariant, not merely an orchestration convention — a stale Automatic
+    // request must never be able to approve a release once a later request
+    // has durably switched to Manual.
+    const state = approveAutomaticRelease(baseState, releaseB);
+    expect(state).toBe(baseState);
+    expect(state.approvedRelease).toBeUndefined();
   });
 });
 

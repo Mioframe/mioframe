@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
   deriveAppUpdatesDisplayStatus,
   getAppUpdatesDisplayStatusText,
@@ -29,8 +29,27 @@ const { setMode, isChangingMode } = useAppUpdateModeChange();
 const { installOnNextLaunch, isInstalling } = useAppUpdateInstallOnNextLaunch();
 const { cancelScheduledUpdate, isCancelling } = useAppUpdateCancelScheduledUpdate();
 
-/** Read once per failed-check re-render, not continuously reactive: only the online state at the moment of the current status matters. */
+/** Reflects live browser connectivity, kept current by `online`/`offline` listeners rather than only sampled when the user presses Check. */
 const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine);
+
+const handleOnline = () => {
+  isOnline.value = true;
+};
+const handleOffline = () => {
+  isOnline.value = false;
+};
+
+onMounted(() => {
+  if (typeof window === 'undefined') return;
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+});
+
+onUnmounted(() => {
+  if (typeof window === 'undefined') return;
+  window.removeEventListener('online', handleOnline);
+  window.removeEventListener('offline', handleOffline);
+});
 
 const displayStatus = computed(() =>
   deriveAppUpdatesDisplayStatus({
@@ -57,7 +76,7 @@ const availableVersion = computed(() => {
 });
 const activatingVersion = computed(() => activatingRelease.value?.appVersion);
 
-const showUpdateNow = computed(
+const showInstallOnNextLaunch = computed(
   () => mode.value === 'manual' && displayStatus.value === 'update-available',
 );
 const showRetryUpdate = computed(
@@ -76,7 +95,7 @@ const formattedLastCheck = computed(() =>
 );
 const formattedBuildDate = computed(() => dayjs(APP_BUILD_DATE).format('lll'));
 
-const onUpdateNow = () => {
+const onInstallOnNextLaunch = () => {
   void installOnNextLaunch();
 };
 
@@ -85,7 +104,6 @@ const onCancel = () => {
 };
 
 const onCheckForUpdates = () => {
-  isOnline.value = typeof navigator === 'undefined' ? true : navigator.onLine;
   void checkForUpdates();
 };
 
@@ -112,11 +130,11 @@ const onToggleAutomaticUpdates = () => {
     </section>
 
     <MDButton
-      v-if="showUpdateNow"
-      class="app-update-settings__update-now"
-      label="Update now"
+      v-if="showInstallOnNextLaunch"
+      class="app-update-settings__install-on-next-launch"
+      label="Install on next launch"
       :disabled="isBusy"
-      @click="onUpdateNow"
+      @click="onInstallOnNextLaunch"
     />
 
     <MDButton
@@ -124,7 +142,7 @@ const onToggleAutomaticUpdates = () => {
       class="app-update-settings__retry-update"
       label="Retry update"
       :disabled="isBusy"
-      @click="onUpdateNow"
+      @click="onInstallOnNextLaunch"
     />
 
     <MDList tag="div">

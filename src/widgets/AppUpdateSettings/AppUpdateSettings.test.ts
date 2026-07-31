@@ -206,7 +206,7 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
-  it('update-available (Manual): shows Update now and calls installOnNextLaunch', async () => {
+  it('update-available (Manual): shows Install on next launch and calls installOnNextLaunch', async () => {
     status.value = 'update-available';
     mode.value = 'manual';
     latestReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
@@ -214,20 +214,20 @@ describe('AppUpdateSettings', () => {
 
     expect(root.textContent).toContain('Update available');
     expect(root.textContent).toContain('Available version: 1.1.0');
-    getButtonByText(root, 'Update now')?.click();
+    getButtonByText(root, 'Install on next launch')?.click();
     await nextTick();
 
     expect(installOnNextLaunchMock).toHaveBeenCalledTimes(1);
     unmount();
   });
 
-  it('update-available (Automatic): does not show Update now', async () => {
+  it('update-available (Automatic): does not show Install on next launch', async () => {
     status.value = 'update-available';
     mode.value = 'automatic';
     latestReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
     const { root, unmount } = await mountWidget();
 
-    expect(getButtonByText(root, 'Update now')).toBeNull();
+    expect(getButtonByText(root, 'Install on next launch')).toBeNull();
     unmount();
   });
 
@@ -237,7 +237,7 @@ describe('AppUpdateSettings', () => {
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update failed');
-    expect(getButtonByText(root, 'Update now')).toBeNull();
+    expect(getButtonByText(root, 'Install on next launch')).toBeNull();
     getButtonByText(root, 'Retry update')?.click();
     await nextTick();
 
@@ -255,7 +255,7 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
-  it('ready (Manual): shows Update ready, no Update now, and a working Cancel action', async () => {
+  it('ready (Manual): shows Update ready, no Install on next launch, and a working Cancel action', async () => {
     status.value = 'ready';
     mode.value = 'manual';
     scheduledReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
@@ -265,7 +265,7 @@ describe('AppUpdateSettings', () => {
     expect(root.textContent).toContain(
       'Close all Mioframe windows and reopen Mioframe to guarantee the update.',
     );
-    expect(getButtonByText(root, 'Update now')).toBeNull();
+    expect(getButtonByText(root, 'Install on next launch')).toBeNull();
     getButtonByText(root, 'Cancel scheduled update')?.click();
     await nextTick();
 
@@ -273,20 +273,20 @@ describe('AppUpdateSettings', () => {
     unmount();
   });
 
-  it('ready (Automatic): shows Update ready, no Update now, no Cancel action, and stays Automatic', async () => {
+  it('ready (Automatic): shows Update ready, no Install on next launch, no Cancel action, and stays Automatic', async () => {
     status.value = 'ready';
     mode.value = 'automatic';
     scheduledReleaseRef.value = { releaseId: 'release-b', releaseSequence: 2, appVersion: '1.1.0' };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update ready');
-    expect(getButtonByText(root, 'Update now')).toBeNull();
+    expect(getButtonByText(root, 'Install on next launch')).toBeNull();
     expect(getButtonByText(root, 'Cancel scheduled update')).toBeNull();
     expect(root.querySelector('[data-state="checked"]')).not.toBeNull();
     unmount();
   });
 
-  it('activating (Manual): shows the activating hint and version, never an available version, and never shows Update now, Retry update, or Cancel', async () => {
+  it('activating (Manual): shows the activating hint and version, never an available version, and never shows Install on next launch, Retry update, or Cancel', async () => {
     status.value = 'activating';
     mode.value = 'manual';
     activatingReleaseRef.value = {
@@ -299,7 +299,7 @@ describe('AppUpdateSettings', () => {
     expect(root.textContent).toContain('Activating the update now');
     expect(root.textContent).toContain('Activating version: 1.1.0');
     expect(root.textContent).not.toContain('Available version');
-    expect(getButtonByText(root, 'Update now')).toBeNull();
+    expect(getButtonByText(root, 'Install on next launch')).toBeNull();
     expect(getButtonByText(root, 'Retry update')).toBeNull();
     expect(getButtonByText(root, 'Cancel scheduled update')).toBeNull();
     unmount();
@@ -377,6 +377,81 @@ describe('AppUpdateSettings', () => {
 
     expect(root.textContent).not.toContain('Last checked:');
     unmount();
+  });
+
+  describe('connectivity presentation', () => {
+    it('reacts to an offline event by showing the offline failed-check state', async () => {
+      status.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Could not check for updates');
+
+      window.dispatchEvent(new Event('offline'));
+      await nextTick();
+
+      expect(root.textContent).toContain('Offline');
+      expect(root.textContent).not.toContain('Could not check for updates');
+      unmount();
+    });
+
+    it('reacts to an online event by reverting back to the could-not-check state', async () => {
+      status.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      window.dispatchEvent(new Event('offline'));
+      await nextTick();
+      expect(root.textContent).toContain('Offline');
+
+      window.dispatchEvent(new Event('online'));
+      await nextTick();
+
+      expect(root.textContent).toContain('Could not check for updates');
+      expect(root.textContent).not.toContain('Offline');
+      unmount();
+    });
+
+    it('removes its online/offline listeners on unmount', async () => {
+      const addSpy = vi.spyOn(window, 'addEventListener');
+      const removeSpy = vi.spyOn(window, 'removeEventListener');
+      const { unmount } = await mountWidget();
+
+      const addedTypes = addSpy.mock.calls.map(([type]) => type);
+      expect(addedTypes).toContain('online');
+      expect(addedTypes).toContain('offline');
+
+      unmount();
+
+      const removedTypes = removeSpy.mock.calls.map(([type]) => type);
+      expect(removedTypes).toContain('online');
+      expect(removedTypes).toContain('offline');
+
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    });
+
+    it('does not react to a post-unmount offline event, since its listener was already removed', async () => {
+      status.value = 'check-failed';
+      const { unmount } = await mountWidget();
+      unmount();
+
+      expect(() => window.dispatchEvent(new Event('offline'))).not.toThrow();
+    });
+
+    it('Check for updates still uses the current connectivity state instead of resetting it', async () => {
+      status.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      window.dispatchEvent(new Event('offline'));
+      await nextTick();
+      expect(root.textContent).toContain('Offline');
+
+      getButtonByText(root, 'Check for updates')?.click();
+      await nextTick();
+
+      expect(checkForUpdatesMock).toHaveBeenCalledTimes(1);
+      expect(root.textContent).toContain('Offline');
+      unmount();
+    });
   });
 });
 /* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

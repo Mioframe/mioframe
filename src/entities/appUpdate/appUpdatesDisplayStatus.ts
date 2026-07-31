@@ -25,7 +25,7 @@ export type AppUpdatesDisplayStatusInput = {
   status: AppUpdateStatus;
   /** Whether an explicit `Check for updates` action is currently in flight. */
   isChecking: boolean;
-  /** Whether an explicit `Update now` (or equivalent preparation) action is currently in flight. */
+  /** Whether an explicit `Install on next launch` (or equivalent preparation) action is currently in flight. */
   isPreparing: boolean;
   /** Whether the browser currently reports itself online. */
   isOnline: boolean;

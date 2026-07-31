@@ -135,7 +135,7 @@ test('activation is represented in the App updates UI, without a false update-av
 
       // Release A is active. Publish and schedule release B for Manual
       // install on next launch — the real INSTALL_ON_NEXT_LAUNCH request the
-      // App updates pane's "Update now" action sends.
+      // App updates pane's "Install on next launch" action sends.
       await buildAndPublishManagedRelease({
         channel: 'stable',
         basePath: BASE_PATH,

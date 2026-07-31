@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UpdateControllerState } from './contracts';
+import { createOperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 
 const readControllerStateMock = vi.fn();
@@ -265,10 +266,22 @@ describe('handleWorkerMessage', () => {
     });
 
     it('to automatic prepares and approves a newer known release', async () => {
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
-      });
+      // The first (locked) read is manual with the target already known; the
+      // second (locked) read reflects the mode persisted by the first
+      // transaction, before preparation started.
+      readControllerStateMock
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+        })
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: {
+            ...baseState,
+            mode: 'automatic',
+            latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          },
+        });
       const coordinator = createFakeCoordinator();
       const { handleWorkerMessage } = await import('./workerMessages');
 
@@ -281,6 +294,13 @@ describe('handleWorkerMessage', () => {
         coordinator,
       );
 
+      // The mode switch is persisted in the first transaction, before
+      // preparation ever starts.
+      expect(writeControllerStateMock).toHaveBeenNthCalledWith(
+        1,
+        'stable',
+        expect.objectContaining({ mode: 'automatic' }),
+      );
       expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', {
         releaseId: 'release-b',
         releaseSequence: 2,
@@ -288,9 +308,13 @@ describe('handleWorkerMessage', () => {
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.objectContaining({
+          mode: 'automatic',
           scheduledRelease: { releaseId: 'release-b', releaseSequence: 2 },
         }),
       });
+      // The final approval transaction persists once more, on top of the
+      // already-durable mode switch.
+      expect(writeControllerStateMock).toHaveBeenCalledTimes(2);
     });
 
     it('to automatic during an active activation switches mode without preparing or approving', async () => {
@@ -325,11 +349,20 @@ describe('handleWorkerMessage', () => {
       });
     });
 
-    it('to automatic reports install-failed when preparation fails, without approving', async () => {
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
-      });
+    it('to automatic reports install-failed when preparation fails, keeping mode Automatic without approving', async () => {
+      readControllerStateMock
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: { ...baseState, latestRelease: { releaseId: 'release-b', releaseSequence: 2 } },
+        })
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: {
+            ...baseState,
+            mode: 'automatic',
+            latestRelease: { releaseId: 'release-b', releaseSequence: 2 },
+          },
+        });
       const coordinator = createFakeCoordinator({
         prepare: vi.fn().mockRejectedValue(new Error('offline')),
       });
@@ -346,8 +379,101 @@ describe('handleWorkerMessage', () => {
 
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
-        snapshot: expect.objectContaining({ scheduledRelease: undefined, error: 'install-failed' }),
+        snapshot: expect.objectContaining({
+          mode: 'automatic',
+          scheduledRelease: undefined,
+          error: 'install-failed',
+        }),
       });
+      // Mode was persisted once by the first transaction; the failed
+      // preparation's final transaction persists nothing more, and never
+      // rolls the mode back to Manual.
+      expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('a stale long-running Automatic request cannot overwrite a later completed Manual choice', async () => {
+      // In-memory fake persisted state so both requests observe each
+      // other's durable writes exactly as the real IndexedDB-backed
+      // controllerState module would, unlike the other tests in this file's
+      // stateless per-call mocks.
+      let persisted: UpdateControllerState = {
+        ...baseState,
+        mode: 'manual',
+        latestRelease: {
+          releaseId: 'release-b',
+          releaseSequence: 2,
+          appVersion: '1.1.0',
+          buildId: 'build-b',
+          buildDate: '2026-07-24T00:00:00.000Z',
+        },
+      };
+      readControllerStateMock.mockImplementation(() => ({
+        status: 'valid',
+        state: persisted,
+      }));
+      writeControllerStateMock.mockImplementation(
+        (_channel: string, state: UpdateControllerState) => {
+          persisted = state;
+        },
+      );
+
+      let resolvePrepare: () => void = () => {};
+      const prepareGate = new Promise<void>((resolve) => {
+        resolvePrepare = resolve;
+      });
+      const automaticCoordinator = createFakeCoordinator({
+        prepare: vi.fn().mockImplementation(async () => {
+          await prepareGate;
+        }),
+      });
+
+      const { handleWorkerMessage } = await import('./workerMessages');
+      const realEnqueue = createOperationQueue();
+
+      // 1. The Automatic request's first transaction persists Automatic
+      // mode, then blocks in (unlocked) preparation.
+      const automaticPromise = handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
+        realEnqueue,
+        automaticCoordinator,
+      );
+      await vi.waitFor(() => {
+        expect(persisted.mode).toBe('automatic');
+      });
+      // 2. Automatic preparation is paused (the gate has not been released yet).
+      expect(automaticCoordinator.prepare).toHaveBeenCalledTimes(1);
+
+      // 3. A Manual request completes fully while preparation is still paused.
+      const manualResult = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'manual' },
+        realEnqueue,
+        createFakeCoordinator(),
+      );
+      expect(manualResult.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ mode: 'manual' }),
+      });
+      expect(persisted.mode).toBe('manual');
+
+      // 4. Automatic preparation resumes and finishes.
+      resolvePrepare();
+      const automaticResult = await automaticPromise;
+
+      // 5. Final approval was skipped, 6. the final persisted mode remains
+      // Manual, and 7. the stale Automatic request's own response reflects
+      // Manual, not a resurrected Automatic approval.
+      expect(automaticResult.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({ mode: 'manual', scheduledRelease: undefined }),
+      });
+      expect(persisted.mode).toBe('manual');
+      expect(persisted).not.toHaveProperty('approvedRelease');
     });
   });
 

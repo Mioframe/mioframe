@@ -25,6 +25,25 @@ import {
 const UNAVAILABLE_RESPONSE = () => new Response('Release unavailable', { status: 503 });
 
 /**
+ * Returns whether `request` falls under this worker's owned release-asset
+ * namespace, `<channelBasePath>assets/**`, purely from its URL path.
+ *
+ * Ownership must be decidable without ever reading a release descriptor: an
+ * `invalid` persisted controller state has no trustworthy release identity
+ * to look one up from, yet an owned asset path must still fail closed
+ * (never fall through to the live deployment) while every other same-origin
+ * path (manifest, PWA icons, APIs, fonts, `updates/**`) remains an ordinary
+ * network concern.
+ * @param request - The incoming request.
+ * @param channelBasePath - This worker's channel base path.
+ * @returns Whether `request` is one of this worker's owned release assets.
+ */
+function isManagedAssetRequest(request: Request, channelBasePath: string): boolean {
+  const relativePath = new URL(request.url).pathname.slice(channelBasePath.length);
+  return relativePath.startsWith('assets/');
+}
+
+/**
  * Lists every live window client, including a same-channel window this
  * worker does not yet control (no `clients.claim()` means a fresh
  * registration's first page stays uncontrolled) — such a page must still be
@@ -127,6 +146,17 @@ export async function serveRelease(
  * activation's target, if any, else the active release) when the path is
  * one of that release's own files; otherwise falls through to an ordinary
  * network fetch, never a synthetic release-cache response.
+ *
+ * Preserves the distinction {@link readControllerState} returns: `absent`
+ * (no managed state yet, e.g. before the first install completes) always
+ * allows the ordinary network bootstrap path, while `invalid` (a corrupted
+ * persisted record) must never substitute the live deployment for one of
+ * this worker's owned release assets — it fails closed with the controlled
+ * unavailable response instead, decided by {@link isManagedAssetRequest}
+ * rather than by reading a release descriptor that an invalid state cannot
+ * trustworthily provide. A non-asset path (manifest, PWA icon, API route,
+ * font, or anything else outside `assets/**`) remains an ordinary network
+ * concern even when state is invalid.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming request.
@@ -140,11 +170,26 @@ export async function handleAssetFetch(
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
   const read = await readControllerState(channel);
-  if (read.status !== 'valid') return fetch(request);
+  if (read.status === 'absent') return fetch(request);
+  if (read.status === 'invalid') {
+    return isManagedAssetRequest(request, channelBasePath)
+      ? UNAVAILABLE_RESPONSE()
+      : fetch(request);
+  }
   const target = read.state.activation?.targetRelease ?? read.state.activeRelease;
   const served = await serveRelease(channel, channelBasePath, target, request, false, coordinator);
   return served ?? fetch(request);
 }
+
+/** Result of the locked navigation decision in {@link handleNavigationFetch}. */
+type NavigationDecision = {
+  /** The release to serve, or `undefined` when there is no managed state yet (`absent`). */
+  target: ReleaseRef | undefined;
+  /** Whether persisted controller state was `invalid`: must fail closed, never fall through to network. */
+  invalid: boolean;
+  /** Whether this navigation rolled back an expired activation. */
+  didRollback: boolean;
+};
 
 /**
  * Handles a same-channel top-level navigation request.
@@ -154,6 +199,13 @@ export async function handleAssetFetch(
  * same-channel window remains, then starts a new activation when this
  * navigation qualifies as a clean launch, before resolving which release to
  * serve.
+ *
+ * Preserves the distinction {@link readControllerState} returns: `absent`
+ * always allows the ordinary network bootstrap path (first install has not
+ * completed yet, so there is no release identity to protect), while
+ * `invalid` fails closed with the controlled unavailable response — a
+ * corrupted persisted record must never substitute the live deployment for
+ * a pinned release.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
@@ -172,48 +224,53 @@ export async function handleNavigationFetch(
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
-  const { target, didRollback } = await enqueue(
-    async (): Promise<{ target: ReleaseRef | undefined; didRollback: boolean }> => {
-      const read = await readControllerState(channel);
-      if (read.status !== 'valid') return { target: undefined, didRollback: false };
-      let state = read.state;
-      const now = new Date().toISOString();
-      let rolledBackExpiredActivation = false;
+  const { target, invalid, didRollback } = await enqueue(async (): Promise<NavigationDecision> => {
+    const read = await readControllerState(channel);
+    if (read.status === 'absent') {
+      return { target: undefined, invalid: false, didRollback: false };
+    }
+    if (read.status === 'invalid') {
+      return { target: undefined, invalid: true, didRollback: false };
+    }
 
-      if (state.activation && isActivationExpired(state, now)) {
-        const otherLiveClientCount = countSameChannelWindowClients(
-          await getAllWindowClients(),
-          excludedClientIds,
-          channelBasePath,
-          channelOrigin,
-        );
-        if (otherLiveClientCount === 0) {
-          state = rollbackActivation(state, state.activation.targetRelease.releaseId);
-          await writeControllerState(channel, state);
-          rolledBackExpiredActivation = true;
-        }
+    let state = read.state;
+    const now = new Date().toISOString();
+    let rolledBackExpiredActivation = false;
+
+    if (state.activation && isActivationExpired(state, now)) {
+      const otherLiveClientCount = countSameChannelWindowClients(
+        await getAllWindowClients(),
+        excludedClientIds,
+        channelBasePath,
+        channelOrigin,
+      );
+      if (otherLiveClientCount === 0) {
+        state = rollbackActivation(state, state.activation.targetRelease.releaseId);
+        await writeControllerState(channel, state);
+        rolledBackExpiredActivation = true;
       }
+    }
 
-      if (!state.activation && state.approvedRelease) {
-        const otherLiveClientCount = countSameChannelWindowClients(
-          await getAllWindowClients(),
-          excludedClientIds,
-          channelBasePath,
-          channelOrigin,
-        );
-        if (shouldStartActivation(state, { otherLiveClientCount })) {
-          const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
-          state = startActivation(state, deadlineAt);
-          await writeControllerState(channel, state);
-        }
+    if (!state.activation && state.approvedRelease) {
+      const otherLiveClientCount = countSameChannelWindowClients(
+        await getAllWindowClients(),
+        excludedClientIds,
+        channelBasePath,
+        channelOrigin,
+      );
+      if (shouldStartActivation(state, { otherLiveClientCount })) {
+        const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
+        state = startActivation(state, deadlineAt);
+        await writeControllerState(channel, state);
       }
+    }
 
-      return {
-        target: state.activation?.targetRelease ?? state.activeRelease,
-        didRollback: rolledBackExpiredActivation,
-      };
-    },
-  );
+    return {
+      target: state.activation?.targetRelease ?? state.activeRelease,
+      invalid: false,
+      didRollback: rolledBackExpiredActivation,
+    };
+  });
 
   // Fire-and-forget: a crash-recovery rollback releases cache ownership of
   // the failed target, but cleanup (a full cache-storage scan) must never
@@ -223,6 +280,12 @@ export async function handleNavigationFetch(
       .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
       .catch(() => {});
   }
+
+  // A corrupted persisted record: unlike `absent`, a release identity was
+  // once known here and cannot be trusted anymore. Never substitutes the
+  // live deployment for it — fails closed instead, without even calling
+  // `fetch`.
+  if (invalid) return UNAVAILABLE_RESPONSE();
 
   // No managed state at all (e.g. an install that has not finished, or
   // failed, preparing the first managed release): there is no release
