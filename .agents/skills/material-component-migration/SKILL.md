@@ -51,12 +51,6 @@ Do not modify `DESIGN.md`. Do not redesign `ARCHITECTURE.md` or component intern
 - affected product tests, Storybook stories, visual baselines, and verification metadata;
 - shared-UI and testing rules.
 
-## Workspace boundary
-
-Use only readable files, file-oriented tools, and documented project commands.
-
-Do not inspect hidden workspace metadata or unrelated environment internals. If a project command fails before reaching its relevant check, complete otherwise safe migration work and record the exact command failure as remaining verification.
-
 ## Migration rules
 
 - Use only the canonical root-exported `MD*` API and selected public tokens.
@@ -157,4 +151,3 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Migrating unrelated Material families for cleanup.
 - Keeping replaced logic only to reduce migration work.
 - Running independent review in the same worker context.
-- Inspecting hidden workspace metadata or unrelated environment internals.
