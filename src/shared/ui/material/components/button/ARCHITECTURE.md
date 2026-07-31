@@ -3,7 +3,7 @@
 Status: ready  
 DESIGN.md reference: `./DESIGN.md` (`current`)  
 Design snapshot/revision: official Button tabs snapshot `2026-07-20T16:12:33.651Z`; token resource `2026-07-01_06-10-02`  
-Architecture date: 2026-07-30
+Architecture date: 2026-07-31 (host-attribute boundary correction; see [Host-attribute boundary](#host-attribute-boundary))
 
 ## Goal
 
@@ -71,7 +71,7 @@ Design basis: [Related official contracts](./DESIGN.md#related-official-contract
 
 ## Ownership
 
-- `button` owns the public Vue API, required label and leading-icon placement, native type mapping, Button busy semantics, decorative Loading Indicator placement and state handoff, selected public Button tokens, private renderer mapping, exports, and Button-owned proof.
+- `button` owns the public Vue API, required label and leading-icon placement, native type mapping, Button busy semantics, decorative Loading Indicator placement and state handoff, selected public Button tokens, private renderer mapping, the host-attribute allow-list that reaches `m3e-button` (see [Host-attribute boundary](#host-attribute-boundary)), exports, and Button-owned proof.
 - `MDLoadingIndicator` owns its public API, active shape, geometry, animation, standalone semantics, renderer workarounds, tokens, and standalone proof. Button supplies `size=24`, `aria-hidden="true"`, the action label, and a composition-local `currentColor` override only.
 - Product features and consumers own action logic, form submission, pending duration applicability, disabled and re-entry guards, status/error/result content, and contextual token values such as Snackbar inverse-primary.
 - Material foundation owns renderer-independent reference/system tokens and default theme values.
@@ -108,11 +108,71 @@ Emits:
 Refs, fallthrough, and native mapping:
 
 - The component exposes no methods or custom `defineExpose` contract. A Vue component ref resolves through the single custom-element root for existing focus/positioning consumers.
-- Global/native attributes and classes fall through to the single `m3e-button` host. Public renderer-specific attributes are not supported.
+- Only the accepted host-attribute allow-list forwards to the single `m3e-button` host (see [Host-attribute boundary](#host-attribute-boundary)); there is no unrestricted global-attribute or listener fallthrough. Public renderer-specific attributes are not supported.
 - `nativeType` maps to renderer `type`; `disabled` maps as a Boolean property; `color` maps to renderer variant; `size` maps directly; round shape and non-toggle mode are private constants.
 - The renderer host is the semantic interactive owner. Do not add a nested native Button or wrapper event synthesis.
 
 Design basis: [Anatomy and content](./DESIGN.md#anatomy-and-content), [Variants and configurations](./DESIGN.md#variants-and-configurations), and [Accessibility and input](./DESIGN.md#accessibility-and-input).
+
+## Host-attribute boundary
+
+`MDButton`'s single root is the raw `m3e-button` custom element with no wrapping element (required for the ref/focus/native-form behavior in [Current scenarios](#current-scenarios), item 7). Per `docs/component-adapter.md`'s "Host-attribute boundary" section, Vue's default automatic `$attrs`/listener fallthrough is not compatible with the accepted [Public Vue API](#public-vue-api): today, any undeclared consumer attribute or listener (for example `toggle`, `selected`, `shape`, renderer `variant`, `contained`, or `beforeinput`) reaches `m3e-button` unfiltered, exposing private renderer vocabulary as if it were public. This section closes that gap for the `button` family.
+
+Owner decision: `wrapper-correction`. This tightens ownership already recorded in [Public Vue API](#public-vue-api) (`label`, `disabled`, `nativeType` mapping) and [State precedence and restoration](#state-precedence-and-restoration) (`aria-busy` owned by `loading`); it selects no new demand and changes no public prop, emit, or slot.
+
+Mechanism: `MDButton.vue` sets `inheritAttrs: false` and explicitly forwards only the allow-list below onto `m3e-button`. No `v-bind="$attrs"` spread is used anywhere. The single `m3e-button` root is unchanged — `inheritAttrs: false` plus explicit forwarding is the mechanism, not a wrapping element.
+
+### Allowed forwarded host attributes
+
+| Host attribute     | Forwarding rule                                                         | Reason                                                                                                                                                                                  |
+| ------------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`            | forward, merged with the internal `md-button` class, never replacing it | Common host customization; consumer classes must not drop adapter-owned styling hooks.                                                                                                  |
+| `style`            | forward, merged with internal styles, never replacing them              | Same merge requirement as `class`.                                                                                                                                                      |
+| `id`               | forward as-is                                                           | Common host identity attribute already proven by existing tests.                                                                                                                        |
+| `title`            | forward as-is                                                           | Common host attribute already proven by existing tests.                                                                                                                                 |
+| `data-*`           | forward as-is (wildcard prefix)                                         | Common host attribute family used for test IDs and non-visual hooks.                                                                                                                    |
+| `aria-controls`    | forward as-is                                                           | Button-specific ARIA composition attribute needed when a Button is a disclosure/menu trigger (see [Current scenarios](#current-scenarios), item 7: overlay/menu/positioning consumers). |
+| `aria-describedby` | forward as-is                                                           | Button-specific ARIA composition attribute for consumer-supplied supplementary description.                                                                                             |
+| `aria-expanded`    | forward as-is                                                           | Button-specific ARIA composition attribute for consumer-owned disclosure/menu-trigger state.                                                                                            |
+| `aria-haspopup`    | forward as-is                                                           | Button-specific ARIA composition attribute for consumer-owned menu/dialog trigger semantics.                                                                                            |
+
+No other host attribute or listener is forwarded. This is the complete allow-list; it is not extended for symmetry with HTML globals or with `m3e-button`'s exposed surface. Extending it requires confirmed consumer demand and an explicit `ARCHITECTURE.md` update, per `docs/component-adapter.md`.
+
+### Explicitly adapter/renderer-owned — must not be forwarded via `$attrs`
+
+| Attribute/listener                                                    | Owner                                                   | Reason                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aria-label`                                                          | `label` prop                                            | `label` is the required visible-label and accessible-name source (see [Public Vue API](#public-vue-api) props table; [Anatomy and content](./DESIGN.md#anatomy-and-content)). An `$attrs`-forwarded `aria-label` could silently override the accessible name Button guarantees.          |
+| `aria-busy`                                                           | `loading` prop                                          | Set only by `loading`, per [State precedence and restoration](#state-precedence-and-restoration). A forwarded `aria-busy` could desynchronize from actual loading state.                                                                                                                 |
+| `aria-disabled`                                                       | `disabled` prop / renderer native disabled contract     | Button uses the renderer's true native `disabled` contract, not an ARIA-only overlay; see [Public Vue API](#public-vue-api) `disabled` row and [Accessibility and input](./DESIGN.md#accessibility-and-input).                                                                           |
+| `role`                                                                | renderer (m3e internal native `<button>` semantics)     | Native role ownership belongs to the renderer's internal accessibility implementation, per [Accessibility and native behavior](../../docs/component-adapter.md#accessibility-and-native-behavior).                                                                                       |
+| `tabindex`                                                            | renderer (native focus order via `disabled`)            | Focus order is a native/renderer concern already covered by the `disabled` mapping; an independent `tabindex` could desynchronize from native disabled/enabled focusability.                                                                                                             |
+| `aria-pressed`                                                        | deferred; not exposed                                   | Reserved for the deferred toggle/selected surface (see [Selected and deferred Material surface](#selected-and-deferred-material-surface), "Toggle selected/unselected states" = `defer`). Forwarding it now would expose selection semantics without a supported public toggle contract. |
+| arbitrary native form attributes (e.g. `name`, `value`, `formaction`) | deferred; not exposed                                   | See [Selected and deferred Material surface](#selected-and-deferred-material-surface), "Link/download/target/name/value and disabled-interactive" = `defer`.                                                                                                                             |
+| arbitrary DOM listeners other than `click`                            | adapter (`click` emit only)                             | Only the declared `click(event: MouseEvent)` emit/listener is honored (see [Public Vue API](#public-vue-api) Emits). An undeclared listener (for example `beforeinput`) must not attach to the renderer host.                                                                            |
+| `toggle`                                                              | adapter-owned private constant (`:toggle="false"`)      | Renderer-private vocabulary tied to the deferred toggle surface; must never be settable via consumer input.                                                                                                                                                                              |
+| `selected`                                                            | renderer-private; not exposed                           | Tied to the deferred toggle surface; must never be reachable via `$attrs`.                                                                                                                                                                                                               |
+| `shape`                                                               | adapter-owned private constant (`shape="rounded"`)      | Renderer-private vocabulary; round shape is the only selected shape (see [Selected and deferred Material surface](#selected-and-deferred-material-surface)).                                                                                                                             |
+| renderer `variant`                                                    | adapter-owned, mapped only from the public `color` prop | The renderer's own `variant` vocabulary must not be separately reachable; consumers use `color`.                                                                                                                                                                                         |
+| `contained`                                                           | renderer-private; not exposed                           | Not part of the accepted public surface; must never be reachable via `$attrs`.                                                                                                                                                                                                           |
+| `beforeinput` (and other renderer-private events)                     | renderer-private; not exposed                           | Renderer-internal event vocabulary must not be attachable through undeclared listener fallthrough.                                                                                                                                                                                       |
+
+### Ownership decisions
+
+- `disabled` and native `type` continue to map only through the already-declared `disabled`/`nativeType` props — no change.
+- `loading` remains the sole owner of `aria-busy` — no change.
+- `label` remains the sole owner of `aria-label`/accessible name — no change.
+- Consumer `class`/`style` merge with (never replace) the adapter's internal `md-button` class and internal styles.
+- The public Vue API (props/slots/emits) is unchanged by this correction — no new functionality is added. The declared `click(event: MouseEvent)` emit is unchanged.
+- The single `m3e-button` custom element remains the sole component root, required for ref/focus/native-form behavior; `inheritAttrs: false` plus explicit allow-list forwarding is the mechanism, not a wrapping element.
+
+### Proof ownership
+
+Component contract tests (`components/button/MDButton.test.ts`) prove: allowed `class`/`style`/`id`/`title`/`data-*`/approved-ARIA attributes reach `m3e-button`; consumer `class`/`style` merge with (not replace) internal `md-button` class/styles; `toggle`, `selected`, `shape`, renderer `variant`, unknown attributes, and a `beforeinput` listener do not reach or modify the renderer; explicit props (`color`, `size`, `disabled`, `nativeType`, `loading`) still map correctly; the `click` emit is unchanged; `loading`/`disabled` ownership is unchanged.
+
+Browser proof (the lowest faithful Storybook behavior spec) additionally demonstrates that undeclared dynamic inputs cannot change actual rendered custom-element state, at minimum for `toggle=false`, `shape=rounded`, and the variant selected by the public `color` prop. This proof inspects the observable rendered result, not private shadow DOM.
+
+Design basis: [Anatomy and content](./DESIGN.md#anatomy-and-content), [Accessibility and input](./DESIGN.md#accessibility-and-input), and `docs/component-adapter.md` "Host-attribute boundary".
 
 ## Public token contract
 
@@ -209,18 +269,26 @@ Expected implementation-stage files are limited to Button runtime/types/tokens/e
   - New/updated proof: baseline updates only for intentional accepted output after expected/actual/diff inspection.
   - Risk/platform matrix: configured desktop/mobile/theme projects; animation disabled only where the visual lane requires deterministic pixels.
   - Persistent impact metadata: mappings must include every changed family/story/context source and no spec paths as source prefixes.
+- Contract/scenario: host-attribute boundary — the accepted allow-list (see [Host-attribute boundary](#host-attribute-boundary)) reaches and merges onto `m3e-button`; every other undeclared attribute or listener is dropped and cannot reach or mutate renderer state.
+  - Primary proof owner: `components/button/MDButton.test.ts` component contract tests.
+  - Additional proof: Button Storybook behavior spec browser proof.
+  - Existing proof: none; the current tests assume unrestricted fallthrough and must be corrected alongside the implementation, not merely extended.
+  - New/updated proof: assert allowed `class`/`style`/`id`/`title`/`data-*`/approved-ARIA attributes reach the host, and that consumer `class`/`style` merge with (not replace) the internal `md-button` class/styles; assert `toggle`, `selected`, `shape`, renderer `variant`, an unknown attribute, and a `beforeinput` listener passed as undeclared inputs do not reach or change `m3e-button` property/attribute state; assert explicit props (`color`, `size`, `disabled`, `nativeType`, `loading`) still map correctly; assert the `click` emit and `loading`/`disabled` ownership are unchanged. Browser proof: lowest faithful Storybook behavior test proving that dynamic undeclared inputs cannot change actual rendered custom-element state for at minimum `toggle=false`, `shape=rounded`, and the variant selected by the public `color` prop, without inspecting private shadow DOM.
+  - Risk/platform matrix: `inheritAttrs: false` plus manual forwarding regressing to accidental `v-bind="$attrs"` reintroduction; Chromium custom-element property versus attribute behavior for rejected inputs.
+  - Persistent impact metadata: unit/component lane owns the family source and host-boundary contract; Storybook behavior mapping owns the browser-observable non-leak proof.
 
 Focused implementation feedback uses verify-managed unit/component, type-check, Storybook behavior, and visual lanes selected for changed files. Migration owns the one final read-only completion gate. Because this work affects release-owned production output/token styling and the repository roadmap requires it, the expected final gate is `pnpm verify:release`.
 
 ## Migration plan
 
 1. Inventory every `MDButton` import/instance, direct `@m3e/web/button` import, raw `m3e-button`, renderer type/token, legacy Button wrapper, and selected public token consumer outside the canonical family.
-2. Confirm current consumers fit the accepted `label`, `color`, `size`, `nativeType`, `disabled`, `loading`, `icon`, and `click` API. Migrate only approved official Button consumers; leave native HTML and distinct legacy Icon Button/FAB/navigation/menu primitives with their correct owners.
-3. Preserve each product scenario and failure path: dialog submit/cancel, sheet/card actions, repository recovery disabled guards and status text, diagnostics, navigation/overlay targets, PWA install, Snackbar action, and compact icon-leading actions.
-4. Update `MDSnackbar` to use the seven selected contextual tokens for inverse-primary label/state-layer states. Do not add an icon token for its separately owned Icon Button.
-5. Confirm short library loading uses the accepted composition only where applicable. Keep browser/provider/user-controlled waits on feature-owned pending text, disabled conflicting actions, and live status; do not migrate them to Button loading.
-6. Remove obsolete Button-specific legacy ownership, old public token names, deep imports, raw renderer usage, and replaced tests/styles. Do not remove unrelated native or other Material-family components.
-7. Run focused product proof, then the one final read-only current-head `pnpm verify:release`; write `MIGRATION.md` with inventory, removals, preserved scenarios, exact verification, and operator acceptance status.
+2. Audit every current Button consumer against the exact host-attribute allow-list in [Host-attribute boundary](#host-attribute-boundary): classes, inline public-token style overrides, test IDs (`data-*`), overlay/positioning IDs, approved ARIA composition attributes, Snackbar composition, and any composed Loading Indicator usage. Tightening fallthrough to this allow-list is a breaking change for any consumer currently relying on leaked renderer access through `$attrs`; the family cannot be marked migrated/complete until this audit is done. Do not change a consumer merely to preserve unsupported renderer access outside the allow-list — remove the unsupported usage instead.
+3. Confirm current consumers fit the accepted `label`, `color`, `size`, `nativeType`, `disabled`, `loading`, `icon`, and `click` API. Migrate only approved official Button consumers; leave native HTML and distinct legacy Icon Button/FAB/navigation/menu primitives with their correct owners.
+4. Preserve each product scenario and failure path: dialog submit/cancel, sheet/card actions, repository recovery disabled guards and status text, diagnostics, navigation/overlay targets, PWA install, Snackbar action, and compact icon-leading actions.
+5. Update `MDSnackbar` to use the seven selected contextual tokens for inverse-primary label/state-layer states. Do not add an icon token for its separately owned Icon Button.
+6. Confirm short library loading uses the accepted composition only where applicable. Keep browser/provider/user-controlled waits on feature-owned pending text, disabled conflicting actions, and live status; do not migrate them to Button loading.
+7. Remove obsolete Button-specific legacy ownership, old public token names, deep imports, raw renderer usage, undeclared-attribute reliance outside the allow-list, and replaced tests/styles. Do not remove unrelated native or other Material-family components.
+8. Run focused product proof, then the one final read-only current-head `pnpm verify:release`; write `MIGRATION.md` with inventory, host-attribute audit results, removals, preserved scenarios, exact verification, and operator acceptance status.
 
 ## Acceptance criteria
 
@@ -230,6 +298,8 @@ Focused implementation feedback uses verify-managed unit/component, type-check, 
 - Loading replaces and restores the icon, is decorative, sets Button busy semantics, remains 24 px/currentColor, and never implicitly disables activation.
 - The seven official text tokens are the only selected public Button tokens. Snackbar rendered label and state layer resolve to inverse-primary across resting/hover/focus/press, while ordinary text Buttons fall back to primary.
 - No obsolete five-token provisional names, compatibility aliases, contextual Button icon token, raw renderer detail, or descendant color cascade remains.
+- `MDButton.vue` sets `inheritAttrs: false` and contains no unrestricted `v-bind="$attrs"`; exactly the accepted host-attribute allow-list (see [Host-attribute boundary](#host-attribute-boundary)) is forwarded to `m3e-button`, with `class`/`style` merged rather than replaced; no unknown attribute or listener can activate private m3e capabilities (`toggle`, `selected`, `shape`, renderer `variant`, `contained`, `beforeinput`, or others).
+- Current valid consumer scenarios are preserved after the allow-list migration audit; the public Vue API (props/emits/slots) is unchanged by this correction; no visual or motion behavior intentionally changes.
 - Component, real-browser, contextual, visual, and product proofs agree; final verification passes; operator visual/motion acceptance is explicitly recorded before review completion.
 
 ## Risks
@@ -250,7 +320,9 @@ Focused implementation feedback uses verify-managed unit/component, type-check, 
 - Publish icon tokens without a confirmed contextual icon consumer, retain old `hover`/`focus` aliases, or derive public names from m3e.
 - Treat unit tests, stories, host custom properties, snapshots, green verification, or implementation evidence as substitutes for rendered-anatomy proof and operator visual/motion acceptance.
 - Migrate Icon Button, FAB, navigation, menu, or native HTML families as part of Button merely because they render a `<button>`.
+- Use unrestricted `v-bind="$attrs"` fallthrough, omit `inheritAttrs: false` on the single `m3e-button` root, or forward any attribute or listener outside the accepted [Host-attribute boundary](#host-attribute-boundary) allow-list.
+- Introduce a generic wrapper, adapter base class, registry, schema, directive, or composable framework to implement host-attribute filtering; keep it local to `MDButton.vue`, per `src/shared/ui/material/AGENTS.md`.
 
 ## Implementation readiness
 
-Ready. The Button design is current and complete; current product/library scenarios, selected/deferred surface, dependency closure, public API, seven-token contextual contract, exact renderer mapping, gap ownership, deterministic passes, proof ownership, migration inventory, acceptance criteria, risks, and forbidden approaches are resolved. No coding decision remains open.
+Ready. The Button design is current and complete; current product/library scenarios, selected/deferred surface, dependency closure, public API, host-attribute boundary, seven-token contextual contract, exact renderer mapping, gap ownership, deterministic passes, proof ownership, migration inventory, acceptance criteria, risks, and forbidden approaches are resolved. No coding decision remains open.

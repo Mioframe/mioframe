@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { defineComponent, ref } from 'vue';
+import { describe, expect, it, vi } from 'vitest';
 import MDButton from './MDButton.vue';
 
 const mountButton = (props: Record<string, unknown> = {}) =>
@@ -67,17 +68,12 @@ describe('MDButton adapter', () => {
     expect(getElementProperty(button.element, 'type')).toBe('submit');
   });
 
-  it('maps false Boolean values as properties and forwards global attributes', () => {
-    const button = mount(MDButton, {
-      attrs: { id: 'save-action', title: 'Save changes' },
-      props: { disabled: false, label: 'Save' },
-    }).get('m3e-button');
+  it('maps false Boolean values as properties', () => {
+    const button = mountButton({ disabled: false }).get('m3e-button');
 
     expect(getElementProperty(button.element, 'disabled')).toBe(false);
     expect(getElementProperty(button.element, 'toggle')).toBe(false);
     expect(button.attributes('disabled')).toBeUndefined();
-    expect(button.attributes('id')).toBe('save-action');
-    expect(button.attributes('title')).toBe('Save changes');
   });
 
   it('forwards the renderer click payload unchanged', async () => {
@@ -113,5 +109,96 @@ describe('MDButton adapter', () => {
     const button = mountButton({ disabled: true, loading: true }).get('m3e-button');
     expect(getElementProperty(button.element, 'disabled')).toBe(true);
     expect(button.attributes('aria-busy')).toBe('true');
+  });
+
+  describe('host-attribute boundary', () => {
+    it('forwards the allowed class/style/id/title/data-*/approved-ARIA attributes to the host', () => {
+      const wrapper = mount(MDButton, {
+        attrs: {
+          'aria-controls': 'menu-1',
+          'aria-describedby': 'help-1',
+          'aria-expanded': 'true',
+          'aria-haspopup': 'menu',
+          class: 'consumer-class',
+          'data-testid': 'save-button',
+          id: 'save-action',
+          style: { color: 'red' },
+          title: 'Save changes',
+        },
+        props: { label: 'Save' },
+      });
+      const button = wrapper.get('m3e-button');
+
+      expect(button.attributes('id')).toBe('save-action');
+      expect(button.attributes('title')).toBe('Save changes');
+      expect(button.attributes('data-testid')).toBe('save-button');
+      expect(button.attributes('aria-controls')).toBe('menu-1');
+      expect(button.attributes('aria-describedby')).toBe('help-1');
+      expect(button.attributes('aria-expanded')).toBe('true');
+      expect(button.attributes('aria-haspopup')).toBe('menu');
+    });
+
+    it('merges consumer class/style with the internal md-button class instead of replacing it', () => {
+      const wrapper = mount(MDButton, {
+        attrs: { class: 'consumer-class', style: { color: 'red' } },
+        props: { label: 'Save' },
+      });
+      const button = wrapper.get('m3e-button');
+
+      expect(button.classes()).toContain('md-button');
+      expect(button.classes()).toContain('consumer-class');
+      expect(button.attributes('style')).toContain('color: red');
+    });
+
+    it('stays reactive to allowed forwarded attribute changes', async () => {
+      const id = ref('initial-id');
+      const Wrapper = defineComponent({
+        components: { MDButton },
+        setup: () => ({ id }),
+        template: '<MDButton label="Save" :id="id" />',
+      });
+      const wrapper = mount(Wrapper);
+      const button = wrapper.get('m3e-button');
+      expect(button.attributes('id')).toBe('initial-id');
+
+      id.value = 'updated-id';
+      await wrapper.vm.$nextTick();
+      expect(button.attributes('id')).toBe('updated-id');
+    });
+
+    it('does not forward toggle, selected, shape, renderer type/variant, or an unknown attribute, and adapter-owned bindings win', () => {
+      const button = mount(MDButton, {
+        attrs: {
+          'bogus-consumer-flag': 'leak-attempt',
+          selected: true,
+          shape: 'square',
+          toggle: true,
+          type: 'submit',
+          variant: 'outlined',
+        },
+        props: { color: 'filled', label: 'Save', nativeType: 'button' },
+      }).get('m3e-button');
+
+      expect(getElementProperty(button.element, 'variant')).toBe('filled');
+      expect(getElementProperty(button.element, 'shape')).toBe('rounded');
+      expect(getElementProperty(button.element, 'toggle')).toBe(false);
+      expect(getElementProperty(button.element, 'selected')).toBe(false);
+      expect(getElementProperty(button.element, 'type')).toBe('button');
+      expect(button.attributes('bogus-consumer-flag')).toBeUndefined();
+    });
+
+    it('does not attach an undeclared beforeinput listener to the host', async () => {
+      const onBeforeinput = vi.fn();
+      const wrapper = mount(MDButton, {
+        attrs: { onBeforeinput },
+        props: { label: 'Save' },
+      });
+      const button = wrapper.get('m3e-button');
+
+      button.element.dispatchEvent(new Event('beforeinput'));
+      await wrapper.vm.$nextTick();
+
+      expect(onBeforeinput).not.toHaveBeenCalled();
+    });
   });
 });

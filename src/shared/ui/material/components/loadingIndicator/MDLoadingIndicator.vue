@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import '@m3e/web/loading-indicator';
-import { computed, onMounted, warn, watchEffect } from 'vue';
+// Documented transparent host/adaptor contract (ARCHITECTURE.md "Host-attribute
+// boundary"): `useAttrs` is read-only here and feeds the explicit, family-scoped
+// host-attribute allow-list below. It is never spread wholesale and is not a
+// default forwarding escape hatch.
+// eslint-disable-next-line no-restricted-imports -- see comment above.
+import { computed, onMounted, useAttrs, warn, watchEffect } from 'vue';
+
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
   defineProps<{
@@ -72,11 +79,41 @@ const style = computed(() => ({
   height: `${normalizedSize.value}px`,
   '--m3e-loading-indicator-size': `${activeIndicatorSize.value}px`,
 }));
+
+const attrs = useAttrs();
+
+/**
+ * Explicit host-attribute allow-list forwarded to the renderer root (see
+ * ARCHITECTURE.md "Host-attribute boundary"): `id`, `title`, `aria-hidden`,
+ * `aria-describedby`, and every `data-*` key are forwarded as-is. `class` and
+ * `style` are handled separately below so the adapter-owned class and the
+ * M3E-001/M3E-002 geometry style always win over a conflicting consumer
+ * value. `$attrs` is read-only; this builds a fresh object rather than
+ * mutating it. Every other attribute or listener (raw renderer `variant`,
+ * `contained`, `role`, value ARIA, `tabindex`, `aria-label`, or an arbitrary
+ * listener) is intentionally not forwarded.
+ */
+const forwardedAttrs = computed(() => {
+  const forwarded: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === 'id' || key === 'title' || key === 'aria-hidden' || key === 'aria-describedby') {
+      forwarded[key] = value;
+    } else if (key.startsWith('data-')) {
+      forwarded[key] = value;
+    }
+  }
+  return forwarded;
+});
 </script>
 
 <template>
   <!-- eslint-disable-next-line vue/no-undef-components -- m3e-loading-indicator is selected by config/vueCustomElements.ts. -->
-  <m3e-loading-indicator class="md-loading-indicator" :aria-label="props.label" :style="style" />
+  <m3e-loading-indicator
+    v-bind="forwardedAttrs"
+    :class="['md-loading-indicator', attrs.class]"
+    :aria-label="props.label"
+    :style="[attrs.style, style]"
+  />
 </template>
 
 <style scoped>

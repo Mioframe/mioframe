@@ -158,6 +158,55 @@ test('MDButton preserves form, loading accessibility, disabled, and public press
   await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
 });
 
+test('MDButton drops undeclared dynamic attrs and never exposes their renderer state', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--host-attribute-boundary');
+
+  const host = page.getByTestId('host-boundary-button');
+  const toggle = page.getByTestId('host-boundary-toggle');
+
+  const readRendererState = () =>
+    host.evaluate<
+      { selected: boolean; shape: string; toggle: boolean; variant: string },
+      HTMLElement & { variant: string; shape: string; toggle: boolean; selected: boolean }
+    >((button) => ({
+      selected: button.selected,
+      shape: button.shape,
+      toggle: button.toggle,
+      variant: button.variant,
+    }));
+
+  await expect(host).toBeVisible();
+  expect(await readRendererState()).toEqual({
+    selected: false,
+    shape: 'rounded',
+    toggle: false,
+    variant: 'filled',
+  });
+  await expect(host).not.toHaveAttribute('bogus-consumer-flag');
+
+  // The fixture flips the attempted override values on every click; the rendered custom-element
+  // state must stay pinned to the adapter-owned defaults across every dynamic update, not just
+  // on first render.
+  await toggle.click();
+  expect(await readRendererState()).toEqual({
+    selected: false,
+    shape: 'rounded',
+    toggle: false,
+    variant: 'filled',
+  });
+  await expect(host).not.toHaveAttribute('bogus-consumer-flag');
+
+  await toggle.click();
+  expect(await readRendererState()).toEqual({
+    selected: false,
+    shape: 'rounded',
+    toggle: false,
+    variant: 'filled',
+  });
+});
+
 test('MDButton preserves normal native click bubbling to ancestor listeners', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--behavior-contracts');
 

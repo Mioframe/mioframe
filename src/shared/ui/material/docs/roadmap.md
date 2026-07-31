@@ -61,9 +61,9 @@ components/loadingIndicator/MIGRATION.md       complete
 components/loadingIndicator/REVIEW.md          blocked on operator review
 ```
 
-The selected uncontained implementation, public size/color API, Button composition boundary, renderer workarounds M3E-001/M3E-002, automated proof, and consumer inventory are complete. No technical correction is currently required.
+The selected uncontained implementation, public size/color API, Button composition boundary, renderer workarounds M3E-001/M3E-002, automated proof, and consumer inventory are complete. The host-attribute-boundary correction (`inheritAttrs: false` plus the explicit architecture-approved allow-list) is also complete and independently re-reviewed as compliant, with no functional finding remaining. No further technical correction is currently required.
 
-Remaining Loading Indicator gate: operator visual/motion acceptance.
+Remaining Loading Indicator gate: operator visual/motion acceptance — a pre-existing gap that predates and is unresolved by the host-attribute-boundary correction.
 
 ## Button state
 
@@ -74,7 +74,7 @@ components/button/DESIGN.md          current
 components/button/ARCHITECTURE.md    ready
 components/button/IMPLEMENTATION.md  complete
 components/button/MIGRATION.md       complete
-components/button/REVIEW.md          compliant-with-listed-risks; operator review required
+components/button/REVIEW.md          compliant; operator review required
 ```
 
 The accepted public Button token surface is exactly:
@@ -101,6 +101,17 @@ The two findings from the previous independent review are resolved and independe
 The resulting workspace passed the required project verification. The fresh independent Button review found no remaining technical issue and returned `compliant-with-listed-risks`, with operator visual/motion acceptance as the only family gate.
 
 These corrections did not change `DESIGN.md`, `ARCHITECTURE.md`, the public Button API, the accepted seven-token contract, or the current token catalogue.
+
+## Completed host-attribute-boundary correction round
+
+Both `MDButton` and `MDLoadingIndicator` previously rendered a raw `m3e-*` custom-element root with Vue's default unrestricted `$attrs` fallthrough, letting consumers reach private renderer vocabulary (`toggle`, `selected`, `shape`, renderer `variant`, `contained`, `beforeinput`, and unowned ARIA/native state). The correction adds `defineOptions({ inheritAttrs: false })` plus an explicit architecture-approved host-attribute allow-list to both adapters. `docs/component-adapter.md` and `.agents/skills/material-component-implementation/SKILL.md` record the resulting durable "Host-attribute boundary" rule. Both families' `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` are updated.
+
+The correction is independently re-reviewed for both families:
+
+1. Button: `REVIEW.md` verdict `compliant`, no blockers, no major or minor findings.
+2. Loading Indicator: the host-attribute-boundary correction itself is independently verified compliant with no functional finding. The family remains `blocked` only on the pre-existing operator visual/motion acceptance gate, which predates this correction, is unrelated to it, and is not resolved by it.
+
+This correction changed no visual, motion, token, or public-API surface for either family.
 
 ## Milestones
 

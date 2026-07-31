@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { ref } from 'vue';
 import MDLoadingIndicator from './MDLoadingIndicator.vue';
 
 const meta = {
@@ -33,6 +34,41 @@ export const SizeMatrix: Story = {
           <MDLoadingIndicator label="Size 40" :size="40" />
           <MDLoadingIndicator label="Default size 48" />
         </div>
+      </div>
+    `,
+  }),
+};
+
+export const AttributeBoundary: Story = {
+  render: () => ({
+    components: { MDLoadingIndicator },
+    setup() {
+      const undeclaredActive = ref(false);
+      const clickCount = ref(0);
+      const toggleUndeclared = () => {
+        undeclaredActive.value = !undeclaredActive.value;
+      };
+      const onClick = () => {
+        clickCount.value += 1;
+      };
+      return { clickCount, onClick, toggleUndeclared, undeclaredActive };
+    },
+    template: `
+      <div data-testid="md-loading-indicator-attribute-boundary">
+        <button type="button" data-testid="toggle-undeclared-attrs" @click="toggleUndeclared">
+          Toggle undeclared attrs
+        </button>
+        <output data-testid="attribute-boundary-click-count">{{ clickCount }}</output>
+        <MDLoadingIndicator
+          label="Attribute boundary"
+          :aria-valuemax="undeclaredActive ? 83 : undefined"
+          :aria-valuemin="undeclaredActive ? 17 : undefined"
+          :aria-valuenow="undeclaredActive ? 63 : undefined"
+          :contained="undeclaredActive ? true : undefined"
+          :role="undeclaredActive ? 'alert' : undefined"
+          :variant="undeclaredActive ? 'contained' : undefined"
+          @click="onClick"
+        />
       </div>
     `,
   }),

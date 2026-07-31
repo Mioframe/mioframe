@@ -3,7 +3,7 @@
 Status: ready  
 DESIGN.md reference: `./DESIGN.md` (`Status: current`, design document date 2026-07-30)  
 Design snapshot/revision: Material MCP capture `2026-07-20T16:16:49.323Z`; token artifact `dsdb-resource:raw/dsdb/2026-07-01_06-10-02/designSystems_20543ce18892f7d9_components_68895be451a51c31.json`  
-Architecture date: 2026-07-30
+Architecture date: 2026-07-31 (host-attribute boundary correction; see [Host-attribute boundary](#host-attribute-boundary))
 
 ## Goal
 
@@ -84,11 +84,60 @@ Props:
 - Slots: none.
 - Emits: none.
 - Exposed refs or methods: none.
-- Attribute fallthrough: native/global attributes, including `aria-hidden`, classes, and public-token inline styles, fall through to the single renderer host.
+- Attribute fallthrough: only the accepted host-attribute allow-list forwards to the single renderer host (see [Host-attribute boundary](#host-attribute-boundary)); there is no unrestricted global-attribute or listener fallthrough. `aria-hidden` and public-token inline styles remain reachable through the allow-list; other undeclared attributes and listeners are not.
 - Native semantic mapping: the installed renderer supplies `role="progressbar"`; the wrapper supplies the required accessible label.
 - The API intentionally has no `variant`, `contained`, `value`, `loading`, `active`, `disabled`, or motion prop.
 
 Design references: [Geometry and responsive layout](./DESIGN.md#geometry-and-responsive-layout) and [Accessibility](./DESIGN.md#accessibility).
+
+## Host-attribute boundary
+
+`MDLoadingIndicator`'s single root is the raw `m3e-loading-indicator` custom element with no wrapping element. The current adapter relies on Vue's default automatic `$attrs`/listener fallthrough (no `inheritAttrs: false`, no explicit forwarding). Per `docs/component-adapter.md`'s "Host-attribute boundary" section, that default is not compatible with the accepted [Public Vue API](#public-vue-api): today, any undeclared consumer attribute or listener (for example raw renderer `variant`, a `contained` state attribute, `role`, `aria-valuenow`/`aria-valuemin`/`aria-valuemax`, or an arbitrary DOM listener) reaches `m3e-loading-indicator` unfiltered, exposing private renderer vocabulary and letting a consumer override the `label`-owned accessible name. This section closes that gap for the `loadingIndicator` family.
+
+Owner decision: `wrapper-correction`. This tightens ownership already recorded in [Public Vue API](#public-vue-api) (`label` as the sole `aria-label`/accessible-name source) and in the `style` computed property and its M3E-002/M3E-001 workaround comments in `MDLoadingIndicator.vue` (overall width/height and the private `--m3e-loading-indicator-size` geometry contract); it selects no new demand and changes no public prop, emit, or slot.
+
+Mechanism: `MDLoadingIndicator.vue` must set `inheritAttrs: false` and explicitly forward only the allow-list below onto `m3e-loading-indicator`. No `v-bind="$attrs"` spread is used anywhere. The single `m3e-loading-indicator` root is unchanged — `inheritAttrs: false` plus explicit forwarding is the mechanism, not a wrapping element.
+
+### Allowed forwarded host attributes
+
+| Host attribute     | Forwarding rule                                                                                                                                                                                                                                                                                                                                                                                                                                             | Reason                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`            | forward, merged with the internal `md-loading-indicator` class, never replacing it                                                                                                                                                                                                                                                                                                                                                                          | Common host customization; consumer classes must not drop the adapter-owned styling hook.                                                                                                                                                                                                                                                                                                                      |
+| `style`            | forward, merged with the internal `width`/`height`/`--m3e-loading-indicator-size` style object; internal geometry values always win over a conflicting consumer `width`, `height`, or `--m3e-loading-indicator-size` key so the M3E-001/M3E-002 workaround cannot be silently overridden; a consumer's public Material token overrides (for example `--md-comp-loading-indicator-active-indicator-color`) are on different keys and must still pass through | Same merge requirement as `class`, plus the geometry contract in [State precedence and restoration](#state-precedence-and-restoration); Button composition already relies on `--md-comp-loading-indicator-active-indicator-color: currentColor` passing through (`.md-button__loading-indicator` in `MDButton.vue`).                                                                                           |
+| `id`               | forward as-is                                                                                                                                                                                                                                                                                                                                                                                                                                               | Common host identity attribute.                                                                                                                                                                                                                                                                                                                                                                                |
+| `title`            | forward as-is                                                                                                                                                                                                                                                                                                                                                                                                                                               | Common host attribute.                                                                                                                                                                                                                                                                                                                                                                                         |
+| `data-*`           | forward as-is (wildcard prefix)                                                                                                                                                                                                                                                                                                                                                                                                                             | Common host attribute family used for test IDs and non-visual hooks.                                                                                                                                                                                                                                                                                                                                           |
+| `aria-hidden`      | forward as-is                                                                                                                                                                                                                                                                                                                                                                                                                                               | Required by [Current scenarios](#current-scenarios), item 2 and [State precedence and restoration](#state-precedence-and-restoration): Button composition sets `aria-hidden="true"` on the nested `MDLoadingIndicator` to suppress its standalone progressbar semantics while Button owns the accessible action label and `aria-busy`. This attribute must remain in the allowed list for exactly that reason. |
+| `aria-describedby` | forward as-is                                                                                                                                                                                                                                                                                                                                                                                                                                               | Loading-Indicator-specific ARIA composition attribute for consumer-supplied supplementary description, consistent with the common ARIA-composition allowance used elsewhere in the Material library (for example Button's `aria-describedby`).                                                                                                                                                                 |
+
+No other host attribute or listener is forwarded. This is the complete allow-list; it is not extended for symmetry with HTML globals or with `m3e-loading-indicator`'s exposed surface. Extending it requires confirmed consumer demand and an explicit `ARCHITECTURE.md` update, per `docs/component-adapter.md`.
+
+### Explicitly adapter/renderer-owned — must not be forwarded via `$attrs`
+
+| Attribute/listener                                             | Owner                                                     | Reason                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `aria-label`                                                   | `label` prop                                              | `label` is the required accessible-purpose source (see [Public Vue API](#public-vue-api) props table; [Accessibility](./DESIGN.md#accessibility)). An `$attrs`-forwarded `aria-label` could silently override the accessible name the component guarantees.                                             |
+| `role`                                                         | renderer (m3e progressbar role mixin)                     | Native role ownership belongs to the renderer's internal accessibility implementation, per [Accessibility and native behavior](../../docs/component-adapter.md#accessibility-and-native-behavior) and [Renderer mapping and gaps](#renderer-mapping-and-gaps).                                          |
+| `aria-valuenow`, `aria-valuemin`, `aria-valuemax`              | not applicable; not exposed                               | Loading indicator is indeterminate only; value ARIA belongs to the deferred, different progress-indicator family (see [Non-goals](#non-goals) and [Selected and deferred Material surface](#selected-and-deferred-material-surface)). Must never be reachable via `$attrs`.                             |
+| `tabindex`                                                     | renderer (native, not independently owned by the wrapper) | The component has no wrapper-owned focus/interaction contract; an independent `tabindex` could desynchronize from the renderer's own native behavior.                                                                                                                                                   |
+| arbitrary renderer state (raw renderer `variant`, `contained`) | renderer-private; not exposed                             | `variant="uncontained"` is a private renderer default (see [Renderer mapping and gaps](#renderer-mapping-and-gaps)); the contained configuration is explicitly deferred (see [Selected and deferred Material surface](#selected-and-deferred-material-surface)). Neither may be reachable via `$attrs`. |
+| arbitrary DOM listeners                                        | not exposed                                               | This component declares no public events (see [Public Vue API](#public-vue-api) Emits: none). An undeclared listener must not attach to the renderer host.                                                                                                                                              |
+
+### Ownership decisions
+
+- `label` remains the sole owner of `aria-label`/accessible name — no change.
+- Consumer `class`/`style` must merge with (not replace) the adapter's internal `md-loading-indicator` class and the internal `width`/`height`/`--m3e-loading-indicator-size` style object already computed in `MDLoadingIndicator.vue`; internal geometry styles always win over conflicting consumer style keys for those same properties, while consumer public Material token overrides (for example `--md-comp-loading-indicator-active-indicator-color`) must still pass through, since Button composition already relies on this for `.md-button__loading-indicator { --md-comp-loading-indicator-active-indicator-color: currentColor; }`.
+- Button composition may continue to set `aria-hidden="true"` on the nested `<MDLoadingIndicator>` — `aria-hidden` remains in the allowed list for exactly that reason.
+- The public Vue API (`label`, `size` props) is unchanged by this correction — no new functionality is added; this is a boundary-tightening correction only.
+- The single `m3e-loading-indicator` custom element remains the sole component root; `inheritAttrs: false` plus explicit allow-list forwarding is the mechanism, not a wrapping element.
+
+### Proof ownership
+
+Component contract tests (`components/loadingIndicator/MDLoadingIndicator.test.ts`) prove: allowed `class`/`style`/`id`/`title`/`data-*`/`aria-hidden`/`aria-describedby` reach `m3e-loading-indicator`; `aria-hidden` specifically works for Button composition; consumer styles merge with the internal width/height/`--m3e-loading-indicator-size` styles without breaking the M3E-001/M3E-002 workaround; a consumer public Material token override (`--md-comp-loading-indicator-active-indicator-color`) still reaches the host; raw renderer `variant`, a `contained` state attribute, `role` overrides, value ARIA (`aria-valuenow`/`aria-valuemin`/`aria-valuemax`), unknown attributes, and an arbitrary listener do not reach or modify the renderer; `label` remains the effective accessible-purpose source.
+
+Browser proof (the lowest faithful Storybook behavior spec) additionally demonstrates that undeclared dynamic inputs cannot change actual rendered custom-element state, consistent with the equivalent proof selected for the button family's undeclared-input rejection. This proof inspects the observable rendered result, not private shadow DOM.
+
+Design basis: [Accessibility](./DESIGN.md#accessibility), [Geometry and responsive layout](./DESIGN.md#geometry-and-responsive-layout), and `docs/component-adapter.md` "Host-attribute boundary".
 
 ## Public token contract
 
@@ -123,28 +172,37 @@ The M3E-001/M3E-002 workarounds are family-local, exact-version revalidated, hos
 - `size` normalization is deterministic: non-finite → 48; otherwise clamp to `[24, 240]`; valid values pass through.
 - Overall host width and height always derive from normalized `size`; private active size always derives from normalized size at the official `38 / 48` ratio.
 - A caller's public active-color token overrides the family default. Without an override, standalone color restores to `--md-sys-color-primary`.
-- `aria-hidden="true"` supplied by a composing parent suppresses the child's standalone semantics; the parent remains responsible for an accessible status/action contract.
+- `aria-hidden="true"` supplied by a composing parent suppresses the child's standalone semantics; the parent remains responsible for an accessible status/action contract. This attribute reaches the host through the [Host-attribute boundary](#host-attribute-boundary) allow-list, not through unrestricted `$attrs` fallthrough.
 - Mount, prop updates, disconnect, and reconnect do not create wrapper-owned animation state. The renderer owns starting, stopping, and restoring motion.
 
 ## Implementation passes
 
 1. Audit the existing Vue adapter, renderer declaration, selected custom-element registration, exports, family token, and token catalogue against this handoff; correct only mismatches.
-2. Revalidate M3E-001 and M3E-002 against the installed `2.6.3` public types and artifact; update defect stage references and retain only the accepted mappings.
-3. Audit component contract, Storybook behavior, visual stories/baselines, renderer-boundary checks, and impact metadata against `TEST IMPACT`; add or correct proof only where missing.
-4. Audit Button composition strictly as the dependency handoff consumer; do not redesign Button or migrate product consumers.
-5. Write `IMPLEMENTATION.md` with exact proof and focused verification results. Architecture deviations must be `none`.
+2. Set `inheritAttrs: false` on `MDLoadingIndicator.vue` and replace default fallthrough with explicit forwarding of exactly the [Host-attribute boundary](#host-attribute-boundary) allow-list (`class`, `style`, `id`, `title`, `data-*`, `aria-hidden`, `aria-describedby`), merging `class`/`style` with the existing internal class and `width`/`height`/`--m3e-loading-indicator-size` style object so internal geometry always wins over a conflicting consumer key.
+3. Revalidate M3E-001 and M3E-002 against the installed `2.6.3` public types and artifact; update defect stage references and retain only the accepted mappings.
+4. Audit component contract, Storybook behavior, visual stories/baselines, renderer-boundary checks, and impact metadata against `TEST IMPACT`, including the new host-attribute allow-list/rejection proof; add or correct proof only where missing.
+5. Audit Button composition strictly as the dependency handoff consumer, confirming `aria-hidden="true"` still reaches the renderer through the allow-list and the `currentColor` token override still passes through the merged `style`; do not redesign Button or migrate product consumers.
+6. Write `IMPLEMENTATION.md` with exact proof and focused verification results. Architecture deviations must be `none`.
 
 Expected implementation-stage files are limited to the family runtime/proof files, `m3eLoadingIndicator.d.ts`, Material exports/custom-element selection if mismatched, `docs/token-api.md`, `docs/m3e-defects.md`, relevant proof/impact mappings, and `IMPLEMENTATION.md`.
 
 ## TEST IMPACT
 
-- Contract/scenario: public label, attribute fallthrough, and overall-size normalization/mapping.
+- Contract/scenario: public label and overall-size normalization/mapping.
   - Primary proof owner: `MDLoadingIndicator.test.ts` component contract tests.
   - Additional proof: Storybook browser accessibility-tree and host bounding-box checks.
   - Existing proof: current component tests and `tests/e2e/storybook/md-loading-indicator.spec.ts`.
   - New/updated proof: only if the audit finds a missing public-state or property-update case.
   - Risk or platform matrix: real Chromium browser for custom-element semantics and geometry.
   - Persistent impact metadata: Storybook behavior mapping must include family production/story/token sources and owned support.
+- Contract/scenario: [Host-attribute boundary](#host-attribute-boundary) — `inheritAttrs: false` plus explicit allow-list forwarding, unknown-attribute/listener rejection, and style merge.
+  - Primary proof owner: `MDLoadingIndicator.test.ts` component contract tests.
+  - Required assertions: allowed `class`/`style`/`id`/`title`/`data-*`/`aria-hidden`/`aria-describedby` reach `m3e-loading-indicator`; `aria-hidden` specifically works for the Button composition scenario; consumer styles merge with the internal width/height/`--m3e-loading-indicator-size` styles without breaking the M3E-001/M3E-002 workaround (internal geometry keys win on conflict); a consumer public Material token override (`--md-comp-loading-indicator-active-indicator-color`) still reaches the host; raw renderer `variant`, a `contained` state attribute, `role` overrides, value ARIA (`aria-valuenow`/`aria-valuemin`/`aria-valuemax`), unknown attributes, and an arbitrary listener do not reach or modify the renderer; `label` remains the effective accessible-purpose source.
+  - Additional proof: the lowest faithful Storybook behavior spec (`tests/e2e/storybook/md-loading-indicator.spec.ts`) demonstrating undeclared dynamic inputs cannot change actual rendered custom-element state, consistent with the equivalent proof selected for the button family's undeclared-input rejection; this proof must not inspect private shadow DOM.
+  - Existing proof: none — this is a new boundary; the current adapter has no `inheritAttrs: false` or allow-list.
+  - New/updated proof: full new coverage for allow-list forwarding, style-merge precedence, and unknown attribute/listener rejection is required before implementation can be marked complete.
+  - Risk or platform matrix: real Chromium browser for observable rendered custom-element state (not just host attribute snapshot).
+  - Persistent impact metadata: `MDLoadingIndicator.test.ts` and the Storybook behavior mapping must both own this contract.
 - Contract/scenario: standalone primary color, public override, and legacy-surface isolation.
   - Primary proof owner: Storybook browser computed-style checks at the custom-element host plus visual screenshots of the rendered active anatomy.
   - Additional proof: token declaration/catalogue agreement tests.
@@ -152,11 +210,11 @@ Expected implementation-stage files are limited to the family runtime/proof file
   - New/updated proof: none unless mapping or baseline drift is found; inspect expected, actual, and diff before any baseline update.
   - Risk or platform matrix: light theme and legacy Material surface; manual visual/motion acceptance remains separate.
   - Persistent impact metadata: visual and Storybook behavior mappings must own the family and relevant Button composition story.
-- Contract/scenario: Button composition uses decorative semantics, 24 px geometry, `currentColor`, and leaves activation blocking to consumers.
+- Contract/scenario: Button composition uses decorative semantics via the `aria-hidden` allow-list entry, 24 px geometry, `currentColor` passed through the merged `style`, and leaves activation blocking to consumers.
   - Primary proof owner: Button component contract and Storybook behavior tests.
   - Additional proof: Button visual baseline for composed appearance.
   - Existing proof: `MDButton.test.ts`, `md-button-family.spec.ts`, and `md-button.spec.ts`.
-  - New/updated proof: none unless the audit finds a handoff gap.
+  - New/updated proof: confirm `aria-hidden="true"` and the `--md-comp-loading-indicator-active-indicator-color: currentColor` override still reach the renderer host after `inheritAttrs: false` is introduced; otherwise none unless the audit finds a handoff gap.
   - Risk or platform matrix: mouse/keyboard/native Button behavior remains Button-owned; Loading indicator motion requires operator acceptance.
   - Persistent impact metadata: Button-owned mappings remain authoritative for the parent scenario.
 - Contract/scenario: renderer boundary and exact-version workaround containment.
@@ -172,21 +230,26 @@ Focused implementation feedback uses verify-managed unit, type-check, Storybook 
 ## Migration plan
 
 1. Inventory all direct and indirect imports, raw renderer usage, tokens, and similarly named non-Material test stubs.
-2. Confirm `MDButton` consumes the canonical family-local public API and public token only; record its decorative semantic and color/geometry handoff.
-3. Confirm no product consumer directly uses Loading indicator and that provider/browser waits continue to use feature-owned pending text, disabled guards, and live status rather than misleading short-wait Loading indicator presentation.
-4. Confirm no raw `m3e-loading-indicator`, renderer type, or private renderer token exists outside `src/shared/ui/material`.
-5. Remove only obsolete Loading-indicator-specific legacy ownership if found; leave unrelated generic loading UI and test stubs unchanged.
-6. Run the one final read-only current-head verification gate and write `MIGRATION.md`. Record operator visual/motion acceptance as required rather than fabricating it.
+2. Audit every current Loading Indicator consumer, including `MDButton`'s internal composition, against the exact [Host-attribute boundary](#host-attribute-boundary) allow-list (`class`, `style`, `id`, `title`, `data-*`, `aria-hidden`, `aria-describedby`). Confirm each consumer's actual usage fits inside the allow-list before the family can be marked migrated/complete; no consumer should be changed merely to preserve unsupported renderer access (raw `variant`, `contained`, `role`, value ARIA, or arbitrary listeners) that the boundary now removes.
+3. Confirm `MDButton` consumes the canonical family-local public API and public token only; record its decorative semantic and color/geometry handoff, including that its `aria-hidden="true"` and `currentColor` override continue to reach the renderer solely through the allow-list.
+4. Confirm no product consumer directly uses Loading indicator and that provider/browser waits continue to use feature-owned pending text, disabled guards, and live status rather than misleading short-wait Loading indicator presentation.
+5. Confirm no raw `m3e-loading-indicator`, renderer type, or private renderer token exists outside `src/shared/ui/material`.
+6. Remove only obsolete Loading-indicator-specific legacy ownership if found; leave unrelated generic loading UI and test stubs unchanged.
+7. Run the one final read-only current-head verification gate and write `MIGRATION.md`. Record operator visual/motion acceptance as required rather than fabricating it.
 
 ## Acceptance criteria
 
 - Standalone `MDLoadingIndicator` exposes only the accepted Vue API and root export.
-- Browser semantics resolve to a named progressbar unless a composing parent explicitly hides the child.
+- `MDLoadingIndicator.vue` sets `inheritAttrs: false`; no unrestricted `v-bind="$attrs"` spread exists anywhere in the component.
+- Exactly the [Host-attribute boundary](#host-attribute-boundary) allow-list (`class`, `style`, `id`, `title`, `data-*`, `aria-hidden`, `aria-describedby`) is forwarded to `m3e-loading-indicator`; no other attribute or listener can reach the renderer host.
+- An unknown attribute or listener cannot activate private m3e capabilities (raw `variant`, `contained` state, `role`, value ARIA, or arbitrary events).
+- Browser semantics resolve to a named progressbar unless a composing parent explicitly hides the child via the allowed `aria-hidden`.
 - Overall geometry is 48 by default, clamps to 24-240, and retains the 38/48 active-size relationship without renderer vocabulary leaking publicly.
-- Standalone color resolves to Material primary, a public override is effective, and Button composition resolves the same token to `currentColor`.
-- The renderer owns internal anatomy and motion; M3E-001/M3E-002 remain exact, local, and removable.
-- Button composition preserves its own semantics, interaction, disabled/re-entry ownership, and icon restoration.
+- Standalone color resolves to Material primary, a public override is effective, and Button composition resolves the same token to `currentColor` through the merged `style`.
+- The renderer owns internal anatomy and motion; M3E-001/M3E-002 remain exact, local, and removable, and the merged consumer `style` cannot override their internal geometry keys.
+- Button composition preserves its own semantics, interaction, disabled/re-entry ownership, and icon restoration; its `aria-hidden="true"` handoff continues to work through the allow-list.
 - No current consumer or failure path is lost, no raw renderer detail leaks, proof and impact metadata agree, and final verification passes.
+- Public API is unchanged by this correction; no visual or motion behavior intentionally changes.
 - Standalone and Button-composed appearance/motion receive explicit operator acceptance before the family is review-complete.
 
 ## Risks
@@ -199,6 +262,8 @@ Focused implementation feedback uses verify-managed unit, type-check, Storybook 
 ## Forbidden
 
 - Expose m3e variants, element types, tags, attributes, events, CSS variables, or private animation state.
+- Use unrestricted `v-bind="$attrs"` fallthrough, a generic wrapper/adapter framework, or a broader allow-list than the one selected above without confirmed consumer demand and an explicit `ARCHITECTURE.md` update.
+- Let a consumer-supplied `class` or `style` replace (rather than merge with) the internal `md-loading-indicator` class or the internal width/height/`--m3e-loading-indicator-size` style object.
 - Inspect or style renderer shadow DOM, recreate its shapes/motion, or add timing hacks.
 - Add contained, pull-to-refresh, determinate, disabled, or operation-state API without a new architecture revision.
 - Treat `loading` as activation blocking or move feature pending/error state into this family.
@@ -207,4 +272,4 @@ Focused implementation feedback uses verify-managed unit, type-check, Storybook 
 
 ## Implementation readiness
 
-Ready. The current design is complete and current; selected demand, dependencies, public API, token, renderer mappings, gap owners, implementation passes, migration inventory, proof ownership, acceptance criteria, and forbidden approaches are resolved. No coding decision remains open.
+Ready. The current design is complete and current; selected demand, dependencies, public API, token, renderer mappings, gap owners, the [Host-attribute boundary](#host-attribute-boundary) allow-list and its Button-composition handoff, implementation passes, migration inventory, proof ownership, acceptance criteria, and forbidden approaches are resolved. No coding decision remains open.

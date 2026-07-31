@@ -5,9 +5,16 @@ import type {
   ButtonVariant as RendererButtonVariant,
   M3eButtonElement,
 } from '@m3e/web/button';
-import { computed, defineComponent, h } from 'vue';
+// Documented transparent host/adaptor contract (ARCHITECTURE.md "Host-attribute
+// boundary"): `useAttrs` is read-only here and feeds the explicit, family-scoped
+// host-attribute allow-list below. It is never spread wholesale and is not a
+// default forwarding escape hatch.
+// eslint-disable-next-line no-restricted-imports -- see comment above.
+import { computed, defineComponent, h, useAttrs } from 'vue';
 import { MDLoadingIndicator } from '../loadingIndicator';
 import './tokens.css';
+
+defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
   defineProps<{
@@ -78,13 +85,46 @@ const loadingIndicatorSize = computed<number>(
 const onClick = (event: MouseEvent) => {
   emit('click', event);
 };
+
+const attrs = useAttrs();
+
+/**
+ * Explicit host-attribute allow-list forwarded to the renderer root (see ARCHITECTURE.md
+ * "Host-attribute boundary"): `id`, `title`, `aria-controls`, `aria-describedby`,
+ * `aria-expanded`, `aria-haspopup`, and every `data-*` key are forwarded as-is. `class` and
+ * `style` are merged separately in the template so the adapter-owned `md-button` class always
+ * wins over a conflicting consumer value. `$attrs` is read-only; this builds a fresh object
+ * rather than mutating it. Every other attribute or listener (renderer-private `toggle`,
+ * `selected`, `shape`, `variant`, or an arbitrary listener such as `beforeinput`) is
+ * intentionally not forwarded.
+ */
+const forwardedAttrs = computed(() => {
+  const forwarded: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(attrs)) {
+    if (
+      key === 'id' ||
+      key === 'title' ||
+      key === 'aria-controls' ||
+      key === 'aria-describedby' ||
+      key === 'aria-expanded' ||
+      key === 'aria-haspopup'
+    ) {
+      forwarded[key] = value;
+    } else if (key.startsWith('data-')) {
+      forwarded[key] = value;
+    }
+  }
+  return forwarded;
+});
 </script>
 
 <template>
   <!-- eslint-disable vue/attribute-hyphenation -- The m3e Boolean must be bound as a camel-case property; its dashed attribute would treat false as present. -->
   <!-- eslint-disable-next-line vue/no-undef-components -- m3e-button is selected by config/vueCustomElements.ts. -->
   <m3e-button
-    class="md-button"
+    v-bind="forwardedAttrs"
+    :class="['md-button', attrs.class]"
+    :style="attrs.style"
     :aria-busy="isLoading ? 'true' : undefined"
     :disabled="props.disabled"
     shape="rounded"

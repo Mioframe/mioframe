@@ -69,6 +69,7 @@ The coding worker must not reselect demand, redesign the API, change ownership, 
 - Implement all selected state precedence and restoration paths.
 - Complete official dependencies independently before parent composition.
 - Add no compatibility alias unless the architecture explicitly requires one.
+- When the canonical adapter's only root is a raw `m3e-*` custom element, set `inheritAttrs: false` and implement exactly the host-attribute allow-list selected by the family's ready `ARCHITECTURE.md` (see `docs/component-adapter.md`, "Host-attribute boundary"). Do not mutate the Vue `$attrs` object, and do not forward `on*` listeners except events the component's public API explicitly declares. Adapter-owned/internal properties always win over a consumer-supplied conflicting value.
 
 ## Token implementation
 

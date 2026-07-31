@@ -1,70 +1,77 @@
 # Button review
 
-Reviewed workspace state: current Button `DESIGN.md`/`ARCHITECTURE.md`/`IMPLEMENTATION.md`/`MIGRATION.md`; `MDButton.vue`, `tokens.css`, `MDButton.test.ts`; `tests/e2e/visual/shared-ui/md-button.spec.ts`; `tests/e2e/storybook/md-button-family.spec.ts`; `src/shared/ui/AppBar/MDAppBar.vue`; `src/shared/ui/Snackbar/MDSnackbar.vue`; `docs/token-api.md`; `docs/roadmap.md`; the `src/shared/ui/material` `AGENTS.md` chain; and current `.verify/logs/*` (23:20–23:44, 2026-07-30) inspected directly, independent of the prior review and the two correction workers' self-reports.
+Reviewed workspace state: current uncommitted working-tree state of `DESIGN.md`/`ARCHITECTURE.md`/`IMPLEMENTATION.md`/`MIGRATION.md`; `MDButton.vue`, `MDButton.test.ts`, `MDButton.stories.ts` (full file contents read directly, not summarized); `tests/e2e/storybook/md-button-family.spec.ts` (host-attribute-boundary browser test read in full); `src/shared/ui/material/docs/component-adapter.md` "Host-attribute boundary" section; `src/shared/ui/material/AGENTS.md`; consumer files `src/shared/ui/Snackbar/MDSnackbar.vue`, `src/shared/ui/NavigationPath/MDNavigationPathSegmentButton.vue`, `src/features/databaseFilterEdit/DatabaseFilterAddButton.vue`, `src/widgets/RepositoryExplorerWidget/RepositoryExplorerWidget.vue`; a repository-wide grep for undeclared attributes/listeners near every `<MDButton` usage; `package.json`'s `@m3e/web` entry; `git diff` of every changed file in this correction; and fresh re-runs (this review, 2026-07-31) of `pnpm verify --only unit-tests`, `pnpm verify --only type-check`, and `pnpm verify --only storybook-behavior` for the touched files, independent of the implementation/migration workers' self-reports and independent of the prior `REVIEW.md` (which predates this correction and did not review it).
 Review date: 2026-07-31
 DESIGN.md status: `current`
 ARCHITECTURE.md status: `ready`
 IMPLEMENTATION.md status: `complete`
 MIGRATION.md status: `complete`
-Operator visual status: required
-Verdict: compliant-with-listed-risks
+Operator visual status: not-applicable (this correction changes no visual/motion behavior; no new rendered appearance requires acceptance)
+Verdict: compliant
 
 ## Goal and scenarios reviewed
 
-This is a re-review after the prior `REVIEW.md` (2026-07-30, verdict `blocked`) found two correction items and routed them to `implementation`. Both correction claims are independently re-verified below from the actual files, not accepted on the correction workers' prose. The full demand-scoped Button family remains in scope: filled/outlined/text color, extra-small/small size, required label with optional leading icon, native button/submit, disabled behavior, loading composition via `MDLoadingIndicator`, 48×48dp target, keyboard/pointer/focus/press/reduced-motion behavior, the seven-token Snackbar contextual contract, and current product consumers.
+This review independently re-examines the host-attribute-boundary correction: `MDButton` previously rendered a single raw `m3e-button` root with Vue's default `inheritAttrs: true`, so any undeclared consumer attribute or listener (`toggle`, `selected`, `shape`, renderer `variant`, `contained`, `beforeinput`, or private ARIA state) reached the renderer unfiltered. The correction adds `inheritAttrs: false` plus an explicit host-attribute allow-list to `MDButton.vue`. The prior existing `REVIEW.md` in this directory (dated 2026-07-31, verdict `compliant-with-listed-risks`) reviewed a _different_, earlier correction round (a visual-spec assertion fix and an `MDAppBar` `--md-content-color` removal) and does not mention `inheritAttrs`, `useAttrs`, or the host-attribute allow-list anywhere — it precedes this correction and is superseded by this review for the host-attribute-boundary scope. All prior findings it recorded remain independently unaffected by this correction (not re-litigated here).
+
+Scope reviewed: `MDButton.vue`'s host-attribute filtering mechanism; `MDButton.test.ts`'s and `md-button-family.spec.ts`'s proof that the filter is real (not merely asserted against a props object); the exact allow-list content against `ARCHITECTURE.md`'s "Host-attribute boundary" section and `docs/component-adapter.md`'s workspace-wide rule; `MIGRATION.md`'s consumer audit; and public-API/token/version stability.
 
 ## Official design compliance
 
-No design change occurred in this correction round. `DESIGN.md` still records all four official Button tabs and the complete token resource with a documented refresh attempt and no evidence of a newer revision. No design correction is required.
+No design change occurred in this correction. `DESIGN.md` is unchanged and remains `current`. The host-attribute boundary is a Vue-adapter implementation detail with no official Material counterpart; nothing here required a `DESIGN.md` update.
 
 ## Architecture compliance
 
-No architecture change occurred in this correction round. `ARCHITECTURE.md` remains `ready`, still selects the narrowest current surface, keeps `m3e-button` as the single semantic/native host, and traces the seven contextual text tokens end to end. No architecture correction is required.
+`ARCHITECTURE.md`'s "Host-attribute boundary" section (added this round, architecture date 2026-07-31) is internally consistent with `docs/component-adapter.md`'s newly added workspace-wide "Host-attribute boundary" rule (verified via `git diff`): the family allow-list (`class`, `style`, `id`, `title`, `data-*`, plus `aria-controls`/`aria-describedby`/`aria-expanded`/`aria-haspopup`) extends the documented minimum common set with a stated, scenario-4-grounded reason (overlay/menu-trigger composition, Current scenarios item 7) rather than an unexplained broadening. The "Explicitly adapter/renderer-owned" table enumerates every attribute named in the task's forbidden list (`toggle`, `selected`, `shape`, renderer `variant`, `contained`, `beforeinput`) plus `aria-label`, `aria-busy`, `aria-disabled`, `role`, `tabindex`, `aria-pressed`, and native form attributes, each with an explicit owner and reason. Owner decision `wrapper-correction` is accurate: no new prop/emit/slot was selected, and the mechanism (`inheritAttrs: false` + explicit forwarding on the single existing `m3e-button` root) matches "Mechanism" exactly — no wrapping element was introduced. No architecture-owned finding remains.
 
 ## Implementation compliance
 
-Correction 1 re-verified directly against the file, not the implementation worker's report:
+Independently re-read `MDButton.vue` in full (not diffed against the workers' prose) and confirmed, line by line:
 
-- `tests/e2e/visual/shared-ui/md-button.spec.ts` contains zero `toBeFocused()` (or any other behavioral) assertions. Both focus-adjacent tests (`...focus baseline` at line ~125 and the real-interaction focus-feedback test at line ~56) drive only a deterministic `page.keyboard.press('Tab')`, with an explicit comment attributing focus-success proof to the Storybook behavior lane, then capture the settled screenshot with `animations: 'disabled'`. This matches the required visual-lane scope: establish state, capture appearance, assert nothing behavioral.
-- `MDButton.vue`, `tokens.css`, and `MDButton.test.ts` are unchanged in substance from the prior accepted implementation: the seven official contextual tokens are declared exactly as architected (verified verbatim in `tokens.css`), no leftover `hover`/`focus`-named public token or contextual icon token remains, the single `m3e-button` host receives the private renderer mappings, and `MDButton.test.ts` covers false-Boolean property mapping, `aria-busy` toggling on `loading`, and disabled-while-loading precedence exactly as `IMPLEMENTATION.md` claims.
+- `defineOptions({ inheritAttrs: false })` is present (line 17). No `v-bind="$attrs"` appears anywhere in the file — `git diff` confirms the _only_ template-level attrs binding added is `v-bind="forwardedAttrs"`, a locally computed, explicitly filtered object, not the raw `$attrs` proxy.
+- `forwardedAttrs` (lines 101–118) is a positive allow-list: it iterates `Object.entries(attrs)` and forwards a key only if it is exactly `id`, `title`, `aria-controls`, `aria-describedby`, `aria-expanded`, `aria-haspopup`, or starts with `data-`. This is a strict allow-list, not a denylist — every attribute/listener not named (`toggle`, `selected`, `shape`, `variant`, `contained`, `role`, `tabindex`, `aria-label`, `aria-busy`, `aria-disabled`, `aria-pressed`, `onBeforeinput`, or any other undeclared key) is excluded by construction, not merely by omission from a test list. `class`/`style` are read directly from `attrs` in the template (`:class="['md-button', attrs.class]"`, `:style="attrs.style"`) rather than through the loop, and are additive/never-replacing by construction of the `:class` array form (`'md-button'` always present; `attrs.style` has no adapter-owned inline style to be replaced, since the adapter's own presentation is entirely scoped-CSS class-based).
+- Explicit adapter bindings (`:disabled`, `shape="rounded"`, `:size`, `:toggle="false"`, `:type`, `:variant`, `:aria-busy`, `@click`) are declared _after_ `v-bind="forwardedAttrs"` in template source order, so they win on any (currently nonexistent, by allow-list construction) key collision — matching `ARCHITECTURE.md`'s stated precedence.
+- Listeners: because the loop only ever copies the six named attribute keys (never any `onXxx`-shaped key), no undeclared listener — including `beforeinput` — can ever be attached to the host through this mechanism. The declared `click(event: MouseEvent)` emit is untouched by `git diff`.
+- `loading`/`disabled` ownership (`aria-busy`, native `disabled`) bindings are byte-identical to the pre-correction file except for position in the diff; `git diff` shows no change to their logic.
+- Public API: `git diff` on `MDButton.vue` shows only the `inheritAttrs`/`useAttrs`/`forwardedAttrs` addition and the template's `v-bind`/`:class`/`:style` replacement of the previous static `class="md-button"`. No prop, slot, or emit was added, removed, or retyped.
+- `package.json`'s `@m3e/web` entry is unchanged (`^2.6.3`, confirmed via `git diff -- package.json` returning no output).
+- No `!important` was introduced (grepped the family directory; the only hit is `ARCHITECTURE.md` prose listing it as forbidden).
+- No generic adapter framework, wrapper, base class, registry, schema, or composable was introduced: the filter is a single inline `computed()` local to `MDButton.vue`, matching `docs/component-adapter.md`'s explicit prohibition and `ARCHITECTURE.md`'s "Forbidden" section.
+
+**Test-file critical read (per task instruction):** `MDButton.test.ts`'s host-attribute-boundary suite does not merely assert against a props bag — every assertion reads the actual mounted `m3e-button` custom element via `Reflect.get(element, property)` (`getElementProperty`) or Vue Test Utils' `.attributes()`/`.classes()` against the real DOM node returned by `wrapper.get('m3e-button')`. The "does not forward toggle, selected, shape, renderer type/variant, or an unknown attribute" test passes `selected`, `shape`, `toggle`, `type`, `variant`, and an unrelated unknown attribute all simultaneously as `attrs` and then reads the _live element property_ (not a re-serialized prop), confirming `variant: 'filled'`, `shape: 'rounded'`, `toggle: false`, `selected: false`, `type: 'button'` — i.e., adapter-owned values, not attacker-attempted ones. The `beforeinput` test dispatches a real `Event('beforeinput')` on the actual host element and asserts the spy was never called, which proves no listener was attached (a props-object assertion could not prove this). This is genuine DOM-level proof, not a shortcut.
+
+Browser proof (`tests/e2e/storybook/md-button-family.spec.ts`, `'MDButton drops undeclared dynamic attrs and never exposes their renderer state'`, lines 161–208) independently re-read: it opens the real Storybook-rendered story, reads `variant`/`shape`/`toggle`/`selected` directly off the live custom element via `page.evaluate`, and re-asserts after two dynamic attempted-override updates driven by a real button click — exceeding `ARCHITECTURE.md`'s stated minimum (`toggle`, `shape`, `variant`) by also covering `selected` and an unknown attribute, and by proving the state stays pinned across live updates rather than only at initial render.
 
 No implementation-owned finding remains.
 
 ## Migration and legacy removal
 
-Correction 2 re-verified directly:
+`MIGRATION.md`'s consumer inventory and host-attribute allow-list audit were independently spot-checked, not accepted on its prose:
 
-- `src/shared/ui/AppBar/MDAppBar.vue`'s `&__trailing-elements` rule (lines 59–63) declares only `display`, `gap`, and `margin-right`; the `--md-content-color` declaration is gone, and no replacement generic descendant color bridge was added.
-- An independent repository-wide search for `--md-content-color` found no remaining reference anywhere that depends on inheritance from `MDAppBar__trailing-elements`: every other declaration/consumption of that property (MDCard, MDChipBase, MDSwitch, MDMenuItemBase, MDNavigationRailButton/BarButton, MDSnackbar, MDBottomSheet\*, MDTable, MDSplitLayout, `ripple.css`, `RepositoryExplorerWidget`, `VfsActivityStatusChip`, etc.) sets or reads the property on its own subtree, not by inheriting AppBar's removed value. The 8 pane-level files that use the `trailingElements` slot (`HomePane`, `DocumentViewPane`, `SettingsPane`, `HelpArticlePane`, `HelpIndexPane`, `DataStoragePrivacyPane`, `RepoExplorerPane`, `AboutMioframePane`) each render `MDIconButton`, `MDContextMenuButton`, `RepositoryExplorerEntryManageButton`, or `MDAssistChip`/`VfsActivityStatusChip` content that sets its own color chain, matching `MIGRATION.md`'s claim.
-- `MDSnackbar.vue`'s `&__action` rule sets exactly the seven selected contextual tokens (four label-text states, three state-layer states) to `--md-sys-color-inverse-primary`, matching the architected trace.
+- `src/shared/ui/Snackbar/MDSnackbar.vue`: `<MDButton v-if="actionLabel" color="text" class="md-snackbar__action" :label="actionLabel" @click="onClickAction" />` — confirmed: only `color`/`label` (declared props), `@click` (declared emit), and `class` (allow-listed, merged). Matches the claim exactly.
+- `src/shared/ui/NavigationPath/MDNavigationPathSegmentButton.vue`: `<MDButton :label="label" color="text" class="md-navigation-path-segment-button" @click="onClick" />` — same pattern, matches the claim.
+- `src/features/databaseFilterEdit/DatabaseFilterAddButton.vue`: `<MDButton v-if="parentPropertyId" ref="addButton" :label="label" size="extra-small" color="outlined" @click="onClickAdd">` with an `icon` slot — only declared props/slot/emit plus a Vue component `ref` (not `$attrs`-mediated; resolves through the component root regardless of the allow-list, as `MIGRATION.md` correctly states). Matches the claim.
+- `src/widgets/RepositoryExplorerWidget/RepositoryExplorerWidget.vue`: four `<MDButton>` usages, all only `label`/`color`/`disabled`/`@click` — matches the claim.
+- Independent repository-wide grep for `aria-label|role=|tabindex|beforeinput|toggle|selected|shape=|variant=|@keydown|@focus|@blur|@input` within 15 lines after every `<MDButton` usage found exactly the two hits `MIGRATION.md` itself calls out as unrelated (an `aria-label` on a sibling `<MDMenu>` element and a `role`/`aria-label` pair on a sibling element in `OverlayLifecycleRegressionStory.vue`, neither attached to `MDButton` itself). This independently confirms `MIGRATION.md`'s "no matches outside the one unrelated `aria-label`" claim rather than merely repeating it.
+
+No consumer file appears in `git diff` for this correction (confirmed via `git diff --stat`), consistent with `MIGRATION.md`'s claim that no consumer required a code change. The audit is credible.
 
 No migration-owned finding remains.
 
-## Documentation consistency
-
-`docs/token-api.md` (`populated`) lists exactly the seven accepted Button tokens with no provisional names or aliases, consistent with `tokens.css`. `docs/roadmap.md` (last updated 2026-07-30, correction round) accurately records both findings as resolved, records the real `pnpm verify` result, and correctly names "launch a new independent review worker" as the only remaining step before the operator visual/motion gate — consistent with what this review is doing. No documentation correction is required.
-
 ## Proof and verification
 
-`.verify/logs/*` (all timestamped 2026-07-30, 23:20:xx–23:44:14, a single contiguous run) were read directly and match `MIGRATION.md`'s recorded final verification exactly:
+Re-ran the following myself, from a clean invocation, rather than trusting `IMPLEMENTATION.md`/`MIGRATION.md`'s recorded results:
 
-- `format.log`, `oxlint.log`, `type-check.log`: clean.
-- `eslint.log`: 0 errors, 1 pre-existing `scripts/agentEnvironment.mjs:394` `jsdoc/require-jsdoc` warning, unrelated to Button.
-- `unit-tests.log`: 259 passed (25 files).
-- `e2e.log`: 110 passed (10.5m).
-- `storybook-behavior.log`: 34 passed (1.5m), including the `MDButton focus indicator follows real keyboard focus...` test (`--focus-indicator-target` story) and the `MDButton renders contextual text label colors in every selected state` test (`--contextual-text-tokens` story), both of which assert `toBeFocused()` directly against the actual file — confirming Storybook behavior proof independently owns keyboard-focus success for both the plain and contextual-text scenarios, so no coverage gap was introduced by removing the visual-lane assertions.
-- `visual.log`: 219 passed (6.5m).
-- `mutation.log`: final score 85.95 ≥ break threshold 60.
+- `pnpm verify --only unit-tests --files src/shared/ui/material/components/button/MDButton.vue src/shared/ui/material/components/button/MDButton.test.ts` — **passed** (13/13 tests, including all 5 host-attribute-boundary cases; log confirms `.verify/logs/unit-tests.log`, run at 13:25:57).
+- `pnpm verify --only type-check` — **passed**.
+- `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/button/MDButton.vue src/shared/ui/material/components/button/MDButton.stories.ts tests/e2e/storybook/md-button-family.spec.ts` — **passed** (15/15 tests in the full button-family spec + smoke test, including `'MDButton drops undeclared dynamic attrs and never exposes their renderer state'`; log confirms `.verify/logs/storybook-behavior.log`).
 
-`pnpm verify:status` currently reports `idle` (no run in progress), consistent with this being a completed, settled result rather than a stale or partial one. No rerun was necessary; this review did not start a new verification run.
+All three independently reproduce the results `IMPLEMENTATION.md` and `MIGRATION.md` recorded; nothing was taken on trust.
 
-Automated proof does not substitute for operator assessment of appearance and renderer-owned motion.
+`docs/token-api.md` is untouched by this correction (not in `git diff`) and remains consistent with the unrelated, already-complete seven-token contextual contract — out of scope for this pass and not re-verified here beyond confirming it was not touched.
 
 ## Blockers
 
-None remaining from the two prior technical findings — both are resolved and independently re-verified above.
-
-1. Record operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar contextual states, and the other affected color-ownership surfaces. This is the sole remaining gate; it requires a human visual/motion judgment this review cannot grant.
+None.
 
 ## Major issues
 
@@ -76,23 +83,20 @@ None.
 
 ## Accepted risks
 
-- Official Web Expressive availability is documented as unavailable, so the installed renderer remains accepted only for the selected subset backed by observable browser proof.
-- Rapid successive activation remains a subjective motion risk because official guidance provides no normative Web timing parameters.
-- The newest complete official snapshot is older than the nominal refresh threshold; refresh tooling found no evidence of a newer revision.
-- Loading Indicator retains dependency-owned exact-version workarounds M3E-001 and M3E-002, which require revalidation on a renderer update.
+- The allow-list is a manually maintained positive list local to `MDButton.vue`; any future edit that reintroduces `v-bind="$attrs"` or removes `inheritAttrs: false` would silently reopen the leak. `ARCHITECTURE.md`'s "Risks" section already names this ("regressing to accidental `v-bind=\"$attrs\"` reintroduction") and the existing `MDButton.test.ts`/browser-proof suite would catch such a regression on the next run; no independent lint rule enforces it structurally. This is an accepted, already-documented risk, not a new finding.
+- This correction's browser proof covers `toggle`, `shape`, `variant`, `selected`, and one unknown attribute at the rendered custom-element level, but not every named forbidden attribute (e.g. `contained`, `aria-pressed`) individually in the browser lane. This is acceptable: the forwarding mechanism is a positive allow-list enumerated by exact key match, so every non-listed key (including `contained`/`aria-pressed`) is excluded by the same code path already proven for the tested keys, not by a separate per-key check that could diverge. `ARCHITECTURE.md`'s own proof-ownership section only requires the minimum (`toggle`, `shape`, `variant`) at the browser layer, which is met and exceeded.
 
 ## Items not required
 
-- No change to `DESIGN.md`, `ARCHITECTURE.md`, the public Button API, or the accepted seven-token set.
-- No toggle, additional colors/sizes/shapes, trailing-icon, link, form-data, or disabled-interactive API.
-- No Button-owned operation state, status messaging, disabled guard, or re-entry guard.
-- No renderer compatibility layer, interaction clone, descendant cascade, private shadow-DOM contract, or contextual icon token.
-- No migration of Icon Button, FAB, navigation, menu, or ordinary native HTML controls.
+- No change to `DESIGN.md`, `ARCHITECTURE.md`'s selected/deferred surface, the public Button Vue API (props/slots/emits), or the seven-token contextual contract.
+- No `@m3e/web` version change.
+- No consumer code change (none needed; audit confirms every current consumer already fits the allow-list).
+- No new operator visual/motion acceptance is required by this correction: it changes no rendered appearance, color, geometry, or motion — only which non-visual attributes/listeners can reach the host.
 
 ## Required return stage
 
-None. Both prior findings are resolved and independently confirmed against actual workspace state; no new technical finding requires returning to design, architecture, implementation, or migration.
+None. No design, architecture, implementation, or migration finding requires routing back.
 
 ## Completion status
 
-Technically complete. The only remaining gate is operator visual/motion acceptance for Button, standalone and Button-composed Loading Indicator, Snackbar contextual states, and the other affected color-ownership surfaces — a manual judgment this review stage does not own and cannot grant.
+Complete. `MDButton.vue` sets `inheritAttrs: false` with no unrestricted `v-bind="$attrs"`; exactly the architecture-approved allow-list (`class`, `style`, `id`, `title`, `data-*`, `aria-controls`, `aria-describedby`, `aria-expanded`, `aria-haspopup`) is forwarded, verified by direct code inspection (a positive allow-list, not a denylist) and independently re-run component-contract and Storybook-behavior proof at the real rendered custom-element level; `toggle`, `selected`, `shape`, renderer `variant`, `contained`, and `beforeinput` cannot reach or affect `m3e-button` regardless of consumer input; `class`/`style` merge rather than replace; the `click(MouseEvent)` emit and `loading`/`disabled` ownership are unchanged; the public API is unchanged; no `!important` or generic adapter framework was introduced; the `@m3e/web` version range is unchanged; and the migration's consumer audit is independently confirmed accurate against the actual consumer source files. No operator visual/motion acceptance gate applies to this non-visual correction.

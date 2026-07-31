@@ -130,6 +130,48 @@ export const BehaviorContracts: Story = {
   }),
 };
 
+export const HostAttributeBoundary: Story = {
+  render: () => ({
+    components: { MDButton },
+    setup() {
+      const attemptedOverrides = ref<Record<string, unknown>>({
+        'bogus-consumer-flag': 'leak-attempt',
+        selected: true,
+        shape: 'square',
+        toggle: true,
+        variant: 'outlined',
+      });
+      const toggleAttemptedOverrides = () => {
+        attemptedOverrides.value = {
+          ...attemptedOverrides.value,
+          selected: !attemptedOverrides.value.selected,
+          shape: attemptedOverrides.value.shape === 'square' ? 'circle' : 'square',
+          toggle: !attemptedOverrides.value.toggle,
+          variant: attemptedOverrides.value.variant === 'outlined' ? 'text' : 'outlined',
+        };
+      };
+      return { attemptedOverrides, toggleAttemptedOverrides };
+    },
+    template: `
+      <div data-testid="md-button-host-attribute-boundary">
+        <MDButton
+          data-testid="host-boundary-button"
+          label="Boundary action"
+          color="filled"
+          v-bind="attemptedOverrides"
+        />
+        <button
+          data-testid="host-boundary-toggle"
+          type="button"
+          @click="toggleAttemptedOverrides"
+        >
+          Toggle attempted overrides
+        </button>
+      </div>
+    `,
+  }),
+};
+
 export const RealInteractionFeedback: Story = {
   tags: ['visual'],
   render: () => ({

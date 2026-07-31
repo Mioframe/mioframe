@@ -77,6 +77,18 @@ If public states coexist, architecture defines precedence and restoration.
 
 Visual loading/busy presentation and activation blocking are independent contracts unless architecture explicitly combines them.
 
+## Host-attribute boundary
+
+Applies to any canonical adapter whose single root is a raw `m3e-*` custom element with no wrapping element.
+
+- Such an adapter MUST set `inheritAttrs: false` and explicitly forward only an architecture-approved allow-list of host-level attributes onto the renderer root. Vue's default automatic `$attrs`/listener fallthrough is not compatible with "Public Vue API" above: an undeclared attribute or listener that reaches `m3e-*` becomes private renderer vocabulary exposed to consumers, whether or not it is documented as a public prop.
+- The allow-list is family-scoped and lives in that family's `ARCHITECTURE.md`. A minimum common allow-list applies to every family unless architecture explicitly narrows it further: `class`, `style`, `id`, `title`, `data-*`. Do not invent a broader HTML-global allow-list here; any attribute beyond what a family's `ARCHITECTURE.md` selects requires confirmed consumer demand and a separate explicit architecture update.
+- Consumer-supplied `class` and `style` must be merged with adapter-owned internal classes/styles, never replace them.
+- Any attribute or listener outside the explicit allow-list must be ignored by the renderer host: it must not reach the custom element as a property, attribute, or event handler.
+- This is a local, per-adapter filtering responsibility, consistent with the renderer-boundary and no-generic-adapter-framework stance in `src/shared/ui/material/AGENTS.md`. Do not introduce a generic wrapper, adapter base class, registry, schema, directive, or composable framework to implement it.
+- Proof ownership follows "Verification contract" below: component contract tests own the attrs-merge and unknown-attribute/listener-rejection behavior; browser proof (the lowest faithful Storybook behavior test) must additionally demonstrate that undeclared inputs cannot alter actual rendered custom-element state — not merely that they are absent from a snapshot or host attribute list. See "Accessibility and native behavior" above for how required ARIA/native state still reaches the renderer host through the allow-list or explicit props, not through unrestricted fallthrough.
+- Tightening fallthrough to an explicit allow-list is a breaking change for any consumer currently relying on leaked renderer access through `$attrs`. `material-component-migration` must audit every current consumer against the new allow-list before the family can be marked migrated/complete.
+
 ## Dependency contract
 
 An official dependency remains independently owned even when used only inside a parent.

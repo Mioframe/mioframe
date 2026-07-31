@@ -72,3 +72,43 @@ test('MDLoadingIndicator keeps its standalone primary presentation inside a lega
   );
   await expect(page.getByTestId('legacy-surface-text')).toHaveCSS('color', 'rgb(179, 38, 30)');
 });
+
+test('MDLoadingIndicator rejects undeclared dynamic host attributes and listeners at the actual rendered custom element', async ({
+  page,
+}) => {
+  await openStory(
+    page,
+    'material-3-components-loading-indicator-mdloadingindicator--attribute-boundary',
+  );
+
+  // The story's undeclared dynamic values (aria-valuenow=63, aria-valuemin=17,
+  // aria-valuemax=83) are chosen to differ from any value the renderer sets on
+  // its own (observed defaults are aria-valuemin="0", aria-valuemax="100", no
+  // aria-valuenow); a rejected forward is proven by these sentinel values never
+  // appearing, not merely by attribute absence.
+  const indicator = page.getByRole('progressbar', { name: 'Attribute boundary' });
+  await expect(indicator).toBeVisible();
+  await expect(indicator).not.toHaveAttribute('aria-valuenow', '63');
+  await expect(indicator).not.toHaveAttribute('aria-valuemin', '17');
+  await expect(indicator).not.toHaveAttribute('aria-valuemax', '83');
+  await expect(indicator).not.toHaveAttribute('contained');
+  await expect(indicator).not.toHaveAttribute('variant', 'contained');
+
+  // Toggle the undeclared dynamic inputs on: this proves the rejection holds
+  // for reactive updates, not merely the initial render.
+  await page.getByTestId('toggle-undeclared-attrs').click();
+
+  // The element remains the same named progressbar; an undeclared `role`
+  // override never took effect.
+  await expect(page.getByRole('progressbar', { name: 'Attribute boundary' })).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(indicator).not.toHaveAttribute('aria-valuenow', '63');
+  await expect(indicator).not.toHaveAttribute('aria-valuemin', '17');
+  await expect(indicator).not.toHaveAttribute('aria-valuemax', '83');
+  await expect(indicator).not.toHaveAttribute('contained');
+  await expect(indicator).not.toHaveAttribute('variant', 'contained');
+
+  // An undeclared listener passed via attrs never attaches to the renderer host.
+  await indicator.click({ force: true });
+  await expect(page.getByTestId('attribute-boundary-click-count')).toHaveText('0');
+});
