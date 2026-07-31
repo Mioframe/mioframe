@@ -31,12 +31,6 @@ src/shared/ui/material/components/<family>/ARCHITECTURE.md
 
 Do not edit production code, tests, stories, snapshots, public exports, tokens, consumers, or migration files in this stage.
 
-## Workspace boundary
-
-Use only readable workspace files, file-oriented tools, official source tools, and documented project commands.
-
-Do not inspect hidden workspace metadata, unrelated environment internals, or external delivery state.
-
 ## Read first
 
 - applicable `AGENTS.md` files;
