@@ -7,7 +7,7 @@ description: 'Use only after a Material family implementation is complete to mig
 
 Migrate one completed Material family into the application.
 
-This stage owns product-consumer adoption and removal of replaced legacy ownership. It does not own official research, architecture, or component API redesign.
+This stage owns product-consumer adoption, removal of replaced legacy ownership, and migration-scoped proof. It does not own official research, architecture, component API redesign, independent review, or the top-level final workflow verification.
 
 ## Input gate
 
@@ -77,7 +77,7 @@ A representative happy-path migration is not sufficient when consumers use diffe
 
 ## Proof
 
-Verify:
+Verify through focused verifier-managed checks appropriate to the migration-owned changes:
 
 - all listed consumers compile against the canonical API;
 - product behavior and failure paths remain correct;
@@ -87,7 +87,9 @@ Verify:
 - affected browser, visual, accessibility, mobile, and release risks are covered according to architecture;
 - impact metadata maps changed source and proof correctly.
 
-Run the exact final verification gate required by root policy after all migration and documentation changes.
+Run only migration-scoped focused proof in this worker. The top-level `material-component` orchestrator runs the single final read-only workflow gate after an up-to-date independent `REVIEW.md` exists.
+
+Absence of the top-level final workflow verification is not a migration blocker, finding, accepted risk, or deferred migration action.
 
 ## Migration record
 
@@ -105,7 +107,7 @@ Migration workspace state: <consumer/runtime/artifact state reviewed>
 ## Preserved scenarios and failure paths
 ## Legacy ownership removed
 ## Proof completed
-## Final verification
+## Migration-stage verification
 ## Remaining migration blockers
 ## Review readiness
 ```
@@ -118,8 +120,10 @@ Migration is `complete` only when:
 - all materially distinct scenarios and failure paths are verified;
 - obsolete target ownership is removed without aliases unless architecture requires them;
 - no renderer detail leaks into consumers;
-- final verification passes, or its exact project-command blocker is recorded and migration remains blocked only on that verification;
-- the resulting family is ready for independent review when verification is complete.
+- migration-scoped focused verification passes, or its exact project-command blocker is recorded and migration remains blocked only on that stage-owned proof;
+- the resulting family is ready for independent review.
+
+Do not keep migration `partial` or `blocked` merely because the orchestrator has not yet run the final workflow verification.
 
 Operator visual/motion status is an external defect-reporting channel, not a positive-acknowledgement gate owned by migration; record the actual status without fabricating a report that was not made.
 
@@ -136,7 +140,7 @@ Consumers migrated:
 Preserved scenarios:
 Legacy ownership removed:
 Proof completed:
-Final verification command and result:
+Migration-stage verification:
 Operator visual status: no-reported-defect | defect-reported | not-applicable
 Review readiness: ready | blocked
 Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
@@ -151,3 +155,5 @@ Status: complete | partial (<exact remainder>) | blocked (<exact reason>)
 - Migrating unrelated Material families for cleanup.
 - Keeping replaced logic only to reduce migration work.
 - Running independent review in the same worker context.
+- Running, deferring, or claiming ownership of the top-level final workflow verification.
+- Recording a not-yet-run top-level final gate as a migration blocker, finding, risk, or next action.
