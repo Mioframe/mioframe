@@ -85,25 +85,25 @@ Button records the exact current Loading Indicator review revision. Navigation P
 
 One `material-component Button` invocation produced the current revision-linked Loading Indicator and Button artifacts and ran the outer `pnpm verify` command.
 
-| Scenario | Result | Durable evidence |
-| --- | --- | --- |
-| Loading Indicator full dependency pipeline | passed | five current revision-linked artifacts; compliant review `2026-08-01T11:50:04.390Z` |
-| Button dependency queue and review linkage | passed | Button architecture queue `none`; exact Loading Indicator review revision recorded |
-| Button implementation and migration | passed | complete implementation and migration artifacts with exact upstream revisions |
-| Independent Button family review | passed | compliant review `2026-08-01T12:50:00.000Z` |
-| Metadata-only design refresh | passed | Loading Indicator artifact revision changed while contract revision and downstream revisions remained current |
-| Earlier-stage correction and fresh review | passed | Loading Indicator design-format correction cleared through a fresh compliant review |
-| Dependency-review propagation | passed | Button architecture reran and recorded the refreshed Loading Indicator review revision |
-| Navigation Path ownership correction | passed | obsolete padding declaration removed; focused browser proof added |
-| Focused unit, type, browser, and visual proof | passed | stage artifacts record passing focused commands; visual lane passed 219 references without baseline updates |
-| Final `pnpm verify` | blocked externally | unrelated `shared-reorder` Storybook timeout in `reorderDocumentViewportFallback.spec.ts`; Material smoke and family proof passed |
-| External final-verifier ownership | corrected | compliant family reviews remain unchanged; outer result owns the external blocker |
-| Same-stage self-route rejection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
-| Terminal `partial` rejection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
-| Terminal `stale` rejection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
-| Synthetic dependency-cycle detection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
-| Invocation-local state discard and recovery | partially evidenced | dependency and revision propagation are durable; no explicit interruption ledger is committed |
-| Fresh-worker isolation count | not durably evidenced | artifacts are stage-separated; no compact committed execution ledger proves worker identities/count |
+| Scenario                                      | Result                | Durable evidence                                                                                                                  |
+| --------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Loading Indicator full dependency pipeline    | passed                | five current revision-linked artifacts; compliant review `2026-08-01T11:50:04.390Z`                                               |
+| Button dependency queue and review linkage    | passed                | Button architecture queue `none`; exact Loading Indicator review revision recorded                                                |
+| Button implementation and migration           | passed                | complete implementation and migration artifacts with exact upstream revisions                                                     |
+| Independent Button family review              | passed                | compliant review `2026-08-01T12:50:00.000Z`                                                                                       |
+| Metadata-only design refresh                  | passed                | Loading Indicator artifact revision changed while contract revision and downstream revisions remained current                     |
+| Earlier-stage correction and fresh review     | passed                | Loading Indicator design-format correction cleared through a fresh compliant review                                               |
+| Dependency-review propagation                 | passed                | Button architecture reran and recorded the refreshed Loading Indicator review revision                                            |
+| Navigation Path ownership correction          | passed                | obsolete padding declaration removed; focused browser proof added                                                                 |
+| Focused unit, type, browser, and visual proof | passed                | stage artifacts record passing focused commands; visual lane passed 219 references without baseline updates                       |
+| Final `pnpm verify`                           | blocked externally    | unrelated `shared-reorder` Storybook timeout in `reorderDocumentViewportFallback.spec.ts`; Material smoke and family proof passed |
+| External final-verifier ownership             | corrected             | compliant family reviews remain unchanged; outer result owns the external blocker                                                 |
+| Same-stage self-route rejection               | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case                                               |
+| Terminal `partial` rejection                  | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case                                               |
+| Terminal `stale` rejection                    | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case                                               |
+| Synthetic dependency-cycle detection          | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case                                               |
+| Invocation-local state discard and recovery   | partially evidenced   | dependency and revision propagation are durable; no explicit interruption ledger is committed                                     |
+| Fresh-worker isolation count                  | not durably evidenced | artifacts are stage-separated; no compact committed execution ledger proves worker identities/count                               |
 
 ## Current blocker
 
@@ -129,14 +129,14 @@ Synthetic workflow checks must not inject a production defect or persist invalid
 
 ## Milestones
 
-| ID | Milestone | Status | Exit gate |
-| --- | --- | --- | --- |
-| M0 | workflow architecture and rules | `implemented` | corrected ownership and terminal-state rules remain consistent through final pilot closure |
-| M1a | Loading Indicator dependency family | `complete` | five current artifacts, compliant review, no unresolved reported defect |
-| M1 | Button action family | `family-complete` | exact dependency linkage, five current artifacts, compliant review |
-| M1b | outer pilot verification | `externally-blocked` | focused shared-reorder rerun and original `pnpm verify` pass; compact synthetic ledger committed |
-| M2 | Switch stateful pilot | `planned` | controlled state/event contract and no-consumer/default-scenario behavior through workflow |
-| M3 | sequential component migration | `planned` | dependency-first autonomous family migrations |
+| ID  | Milestone                           | Status               | Exit gate                                                                                        |
+| --- | ----------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------ |
+| M0  | workflow architecture and rules     | `implemented`        | corrected ownership and terminal-state rules remain consistent through final pilot closure       |
+| M1a | Loading Indicator dependency family | `complete`           | five current artifacts, compliant review, no unresolved reported defect                          |
+| M1  | Button action family                | `family-complete`    | exact dependency linkage, five current artifacts, compliant review                               |
+| M1b | outer pilot verification            | `externally-blocked` | focused shared-reorder rerun and original `pnpm verify` pass; compact synthetic ledger committed |
+| M2  | Switch stateful pilot               | `planned`            | controlled state/event contract and no-consumer/default-scenario behavior through workflow       |
+| M3  | sequential component migration      | `planned`            | dependency-first autonomous family migrations                                                    |
 
 ## Next operator action
 
