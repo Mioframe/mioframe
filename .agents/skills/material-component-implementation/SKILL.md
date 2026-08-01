@@ -7,46 +7,31 @@ description: 'Use after current DESIGN.md and ready ARCHITECTURE.md exist to imp
 
 Implement one Material family strictly from its current architecture and return control to the orchestrator.
 
-This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture, product-consumer migration, independent review, or final workflow verification.
+This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture, consumer migration, independent review, or final workflow verification.
 
 ## Input gate
 
-Require successful current artifacts:
+Require successful current design and architecture artifacts.
 
-```text
-src/shared/ui/material/components/<family>/DESIGN.md
-src/shared/ui/material/components/<family>/ARCHITECTURE.md
-```
+Architecture must reference the exact current design contract revision, match the lockfile-resolved renderer revision, have dependency queue `none`, current dependency review revisions, and readiness `ready`.
 
-Architecture must reference the exact current design revision, match the lockfile-resolved renderer revision, have dependency queue `none`, and declare implementation readiness `ready`.
-
-If an input is invalid, write implementation as blocked, record the current architecture revision when available, set the exact earliest return family and stage, and return without production edits.
+If an input is invalid, write implementation as blocked, set the exact earlier-stage or other-family route, and return without production edits.
 
 ## Worker boundary
 
-Run in a fresh isolated worker context.
+Run in a fresh isolated context.
 
-Use task-relevant readable workspace files, applicable rules, canonical upstream artifacts, exact renderer package artifacts, and documented project commands. Do not depend on Git, PR, commit, or external-check state.
+Use task-relevant workspace files, applicable rules, canonical artifacts, exact renderer package artifacts, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
 Do not redesign API, ownership, dependencies, token selection, renderer strategy, gap strategy, or proof ownership while coding.
 
 ## Mandatory preflight
 
-Before production edits, run `implementation-preflight` using current design and architecture as the deterministic authoring contract.
+Before production edits, run `implementation-preflight` using current design and architecture.
 
-Preflight resolves:
-
-- exact files and ordered implementation passes;
-- implementation-owned `TEST IMPACT`;
-- focused verifier labels and scopes;
-- preserved public contracts and consumers that must not change;
-- an upstream or dependency blocker, if one exists.
-
-Do not use preflight to reopen accepted architecture.
+Preflight resolves exact files, ordered passes, implementation-owned `TEST IMPACT`, focused verifier scopes, preserved contracts, and upstream blockers. It does not reopen architecture.
 
 ## Output
-
-Primary output may include canonical Vue adapter code, family-local renderer typing and mappings, selected tokens and catalogue entries, component proof, stories, exports, defect records, and removal of obsolete code owned by the same family.
 
 Write exactly:
 
@@ -58,7 +43,7 @@ Control fields:
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-Status: complete | partial | stale | blocked
+Status: complete | stale | blocked
 ARCHITECTURE.md reference: <path>
 ARCHITECTURE.md revision: <exact Artifact revision>
 Revision summary: <one concise line>
@@ -69,7 +54,9 @@ Architecture deviations: none | <exact deviations>
 Migration readiness: ready | blocked
 ```
 
-Use a new artifact revision whenever implementation content or its proof record changes. Record the exact architecture revision used for the implementation.
+`stale` is an external pre-run marker. This worker may finish only with `complete` or `blocked`.
+
+Use a new artifact revision whenever implementation content or its proof record changes.
 
 Required headings:
 
@@ -94,55 +81,61 @@ Required headings:
 - Use only architecture-approved wrapper corrections and controlled workarounds.
 - Do not inspect private shadow DOM or recreate renderer-owned state, ripple, focus, geometry, accessibility, elevation, or motion.
 - Implement selected precedence and restoration paths.
-- Consume official dependencies only through their current canonical public APIs.
+- Consume dependencies only through current canonical public APIs.
 - Add no compatibility alias unless architecture requires it.
 
 When the only root is a raw `m3e-*` element:
 
 - set `inheritAttrs: false`;
-- forward only the architecture-approved positive allow-list;
+- forward only the approved positive allow-list;
 - do not mutate Vue `$attrs`;
 - do not forward undeclared `on*` listeners;
 - ensure adapter-owned bindings win over consumer conflicts.
 
 ## Token rules
 
-- Implement only tokens selected from design by architecture.
+- Implement only tokens selected by architecture.
 - Keep one family owner and update `docs/token-api.md` atomically with declarations.
 - Preserve exact official state/part naming.
 - Implement required renderer inputs and fallbacks.
 - Do not publish unconsumed parts or mirror renderer defaults for completeness.
-- Prove computed rendered results where architecture selects contextual appearance.
+- Prove computed rendered results where contextual appearance is selected.
 
 ## Focused proof
 
-Implement the component-owned `TEST IMPACT` through the lowest faithful owners, including contract, package-derived type, browser/accessibility, visual, renderer-boundary, token, dependency-composition, and risk-specific proof as applicable.
+Complete implementation-owned `TEST IMPACT` through faithful contract, type, browser/accessibility, visual, renderer-boundary, token, dependency-composition, and risk-specific proof as applicable.
 
 Run verifier-managed focused implementation checks only. Do not run or defer final workflow verification.
 
-## Semantic routing
+## Terminal-state rules
 
-If evidence invalidates official design, architecture, or a dependency family:
+### Success
 
-- do not patch around it;
-- set the exact earliest return family and stage;
-- record the blocker;
-- stop production edits and return.
+Return `Status: complete` only when every implementation pass and focused check is complete, the architecture revision is current, deviations and blockers are `none`, route is `none/none`, and migration readiness is `ready`.
 
-Use `self/implementation` for remaining component-owned implementation or proof defects.
+### Earlier-stage or cross-family correction
 
-## Completion
+Return `Status: blocked` with an exact route only when correction belongs to:
 
-Use status `complete` only when:
+- `self/design`;
+- `self/architecture`; or
+- another family’s design, architecture, implementation, or migration stage.
 
-- `ARCHITECTURE.md revision` equals the current architecture artifact revision;
-- every implementation pass is complete;
-- code, tokens, mappings, defects, proof, stories, and exports agree;
-- focused verification passes;
-- architecture deviations and blockers are `none`;
-- return target is `none`;
-- migration readiness is `ready`;
-- every required heading exists.
+### Current-stage defect
+
+A component-owned implementation, token, mapping, export, story, test, or focused-proof defect must be corrected in this worker.
+
+If it remains impossible after available implementation mechanisms are exhausted, return:
+
+```text
+Status: blocked
+Remaining blockers: <exact blocker>
+Required return family: none
+Required return stage: none
+Migration readiness: blocked
+```
+
+Do not return `self/implementation` and do not return `partial`.
 
 Do not migrate product consumers in this stage.
 
@@ -172,12 +165,13 @@ Status: complete | blocked
 
 ## Forbidden
 
+- Returning `partial` or terminal `stale`.
+- Returning `self/implementation`.
+- Leaving a current-stage fixable defect unresolved.
 - Changing architecture while coding.
 - Migrating product consumers.
 - Expanding API, tokens, abstractions, or renderer support beyond architecture.
 - Updating visual baselines without inspection.
-- Running migration or review in this context.
-- Running or claiming final workflow verification.
-- Reusing an artifact revision after content changed.
+- Running migration, review, or final workflow verification.
 - Recording the pending final command as a blocker or risk.
 - Depending on Git or PR state.
