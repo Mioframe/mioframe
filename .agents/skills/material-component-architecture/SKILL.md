@@ -11,23 +11,15 @@ This stage owns demand selection, public contract, ownership, dependencies, rend
 
 ## Input gate
 
-Require:
+Require current successful `DESIGN.md`.
 
-```text
-src/shared/ui/material/components/<family>/DESIGN.md
-```
-
-Design must satisfy its current success gate.
-
-If design is invalid, write architecture as blocked when possible, record the current design revision, set the return target to `self/design`, and return.
+If design is invalid, write architecture as blocked when possible, record the current design revision, route to `self/design`, and return.
 
 ## Worker boundary
 
-Run in a fresh isolated worker context.
+Run in a fresh isolated context. Use task-relevant workspace files, applicable rules, exact renderer package artifacts, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
-Use task-relevant readable workspace files, applicable rules, exact renderer package artifacts, and documented project commands. Do not depend on Git, PR, commit, or external-check state.
-
-Treat existing code, tests, stories, and README files as implementation evidence, not architecture authority.
+Treat code, tests, stories, and README files as implementation evidence, not architecture authority.
 
 ## Output
 
@@ -37,7 +29,7 @@ Write exactly:
 src/shared/ui/material/components/<family>/ARCHITECTURE.md
 ```
 
-The artifact begins with:
+Control fields:
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
@@ -52,60 +44,49 @@ Required return stage: none | design | architecture | implementation | migration
 Implementation readiness: ready | awaiting-dependencies | blocked
 Dependency families: none | <canonical-family>[; <canonical-family>...]
 Dependency queue: none | <canonical-family>[; <canonical-family>...]
+Dependency review revisions: none | <canonical-family>=<REVIEW Artifact revision>[; <canonical-family>=<REVIEW Artifact revision>...]
 ```
 
-Use a new artifact revision whenever architecture content changes or is revalidated after dependencies or renderer updates.
+Use a new artifact revision whenever architecture changes or is revalidated after design, dependency, or renderer updates.
 
-Dependency names are exact family path segments, unique, ordered, and separated by `; `.
-
-## Read first
-
-- applicable `AGENTS.md` files;
-- family `DESIGN.md`;
-- Material architecture, workflow, adapter, and token rules;
-- current approved scenarios and consumers;
-- current implementation and proof where present;
-- exact lockfile-resolved renderer public artifacts;
-- relevant testing, defect, and verification rules.
+Dependency entries are exact family path segments, unique, ordered, and separated by `; `.
 
 ## Scenario selection
 
 Use confirmed product scenarios when consumers exist.
 
-When no current consumer exists, the explicit `material-component <name>` invocation establishes one approved library scenario:
+When no current consumer exists, the explicit invocation establishes one approved library scenario:
 
 - implement the unambiguous official standalone default;
-- expose only the minimum coherent public API needed to render, accessibly name, and control that default;
-- include disabled behavior only when the official model supports it;
-- include mandatory states, semantics, accessibility, and faithful proof;
+- expose only the minimum coherent API needed to render, accessibly name, and control it;
+- include disabled behavior only when official Material supports it;
+- include mandatory states, semantics, accessibility, and proof;
 - defer optional variants, sizes, shapes, and configurations;
 - do not expose m3e capability merely because it exists;
 - do not invent product scenarios or create a product consumer.
 
-Block for operator input only when official sources define no standalone default or multiple materially different public models that cannot be resolved mechanically.
+Ask the operator only when official sources define no standalone default or multiple materially different public models.
 
 ## Required decisions
 
 Resolve:
 
 1. goal and non-goals;
-2. confirmed product scenarios or the approved no-consumer library scenario, including failure paths;
-3. selected and deferred official surface with exact design references;
-4. complete direct official dependency set and pending dependency queue;
-5. ownership of parent composition, dependency behavior, feature state, renderer behavior, and gaps;
-6. complete public Vue API: props, defaults, values, slots, emits, refs, native mappings, precedence, and restoration;
-7. selected public component-token contract and exact official paths;
-8. contextual state/part trace through renderer inputs and fallbacks;
-9. renderer coverage: `direct`, `partial`, `missing`, `divergent`, or `not-applicable`;
-10. one owner for every gap: wrapper correction, controlled workaround, renderer fix, or blocked;
-11. deterministic implementation passes and expected files;
-12. implementation-owned and migration-owned `TEST IMPACT`;
-13. consumer inventory, obsolete owners, and migration pass order;
-14. acceptance criteria, preserved behavior, risks, and forbidden approaches;
-15. comparison with the simplest viable alternative;
-16. implementation readiness.
+2. confirmed product scenarios or approved no-consumer library scenario;
+3. selected and deferred official surface;
+4. complete direct dependency set, pending queue, and current dependency review revisions;
+5. ownership of parent composition, dependency behavior, product state, renderer behavior, and gaps;
+6. complete public Vue API and precedence/restoration;
+7. selected public token contract;
+8. renderer mapping, fallbacks, and coverage;
+9. one owner for every renderer gap;
+10. deterministic implementation passes;
+11. implementation and migration `TEST IMPACT`;
+12. consumer inventory and migration pass order;
+13. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
+14. implementation readiness.
 
-No coding decision may remain for the implementation worker.
+No coding decision may remain for implementation.
 
 ## Dependency rules
 
@@ -113,52 +94,55 @@ A required official dependency is a first-class family.
 
 Record every direct dependency in `Dependency families`.
 
-Record in `Dependency queue` every dependency that does not currently have a successful current independent review. Do not use stage gates.
+For each dependency:
 
-When the queue is non-empty:
+- if it lacks a successful current independent review, put it in `Dependency queue`;
+- otherwise record its exact current `REVIEW.md` artifact revision in `Dependency review revisions`.
 
-- use `Status: ready`;
-- use `Implementation readiness: awaiting-dependencies`;
+Queue and revision entries must be disjoint and their union must equal dependency families.
+
+Do not use dependency stage gates.
+
+When queue is non-empty:
+
+- use status `ready`;
+- use readiness `awaiting-dependencies`;
 - keep blockers and return target `none`;
-- return control so the orchestrator can run every queued dependency through its complete pipeline to current review.
+- return so the orchestrator can run every queued dependency through its complete pipeline.
 
-After the queue is processed, architecture runs again. Revalidate public handoffs, preserve or recompute `Dependency families`, clear satisfied queue entries, and use readiness `ready` only when the queue is `none`.
+After dependencies are current, architecture runs again. Revalidate public handoffs, preserve or recompute dependency families, clear or recompute the queue, and record exact review revisions.
 
-Do not implement dependencies in this worker.
+A later change to any recorded dependency review revision invalidates parent architecture mechanically.
 
 ## Public boundary
 
 - Derive public semantics from design, approved scenarios, and Vue mechanics.
 - Do not derive public API or token names from renderer or legacy vocabulary.
 - Select the minimum complete current surface.
-- Keep renderer imports, tags, types, events, and CSS inputs private.
-- Define precedence and restoration for every selected state combination.
+- Keep renderer details private.
+- Define precedence and restoration for selected state combinations.
 - Do not add adjacent surface for symmetry or future flexibility.
 
-For every contextual token record:
+For contextual tokens record:
 
 ```text
-DESIGN.md official path
+DESIGN.md path
   → public Mioframe token
   → renderer input
   → renderer fallback
-  → expected rendered result
+  → expected result
   → proof owner
 ```
 
 ## Proof ownership
 
-Architecture assigns stage-scoped proof:
+Implementation owns component, renderer-boundary, token, browser, visual, and risk proof.
 
-- implementation owns component, renderer-boundary, token, browser, visual, and component-risk proof;
-- migration owns consumer, product-scenario, legacy-removal, and impact-metadata proof;
-- review independently evaluates the complete result.
+Migration owns consumers, product scenarios or explicit no-consumer proof, legacy removal, and impact metadata.
 
-The outer orchestrator owns one final read-only workflow verification.
+Review independently evaluates the complete result. The outer orchestrator owns final verification.
 
 ## Required sections
-
-After control fields include:
 
 ```text
 ## Goal
@@ -182,13 +166,13 @@ After control fields include:
 
 ## Completion
 
-Use implementation readiness `ready` only when design, renderer revision, scenarios, dependencies, owners, API, tokens, mappings, proof, and migration are explicit and the dependency queue is `none`.
+Use readiness `ready` only when design and renderer revisions are current, all decisions are explicit, dependency queue is `none`, every dependency review revision is recorded and current, and no implementation decision remains.
 
-Use `awaiting-dependencies` for a fully resolved parent architecture whose listed dependencies still require their complete pipelines.
+Use `awaiting-dependencies` for a fully resolved parent checkpoint whose dependencies still require complete pipelines.
 
-If design must change, route to `self/design`. If architecture itself remains unresolved, route to `self/architecture`.
+If design must change, route to `self/design`. If architecture remains unresolved, route to `self/architecture`.
 
-Return after writing the artifact. Do not execute implementation in this context.
+Return after writing the artifact. Do not implement in this context.
 
 ## Report
 
@@ -203,6 +187,7 @@ Renderer revision:
 Selected and deferred surface:
 Dependency families:
 Dependency queue:
+Dependency review revisions:
 Public Vue API:
 Selected public tokens:
 Renderer coverage and gaps:
@@ -216,17 +201,17 @@ Implementation readiness: ready | awaiting-dependencies | blocked
 Status: complete | blocked
 ```
 
-`awaiting-dependencies` is a complete architecture-stage result, not a blocker. The outer workflow continues with the queue.
+`awaiting-dependencies` is a complete architecture-stage result, not a blocker.
 
 ## Forbidden
 
-- Editing official design, production code, tests, stories, tokens, exports, or consumers.
+- Editing official design, production code, proof, exports, or consumers.
 - Leaving architecture choices to coding workers.
 - Using dependency stage gates.
+- Omitting or inventing dependency review revisions.
 - Inventing product demand when no consumer exists.
-- Copying the full renderer API for a new component.
-- Assigning final workflow verification to a stage worker.
+- Copying the full renderer API.
+- Assigning final verification to a stage worker.
 - Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
 - Reusing an artifact revision after content changed.
 - Depending on Git or PR state.
-- Running implementation or migration in this context.
