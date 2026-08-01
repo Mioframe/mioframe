@@ -105,13 +105,13 @@ The pilot is complete only when:
 
 ## Milestones
 
-| ID  | Milestone                           | Status                 | Exit gate                                                                  |
-| --- | ----------------------------------- | ---------------------- | -------------------------------------------------------------------------- |
+| ID  | Milestone                           | Status                 | Exit gate                                                                                |
+| --- | ----------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------- |
 | M0  | workflow architecture and rules     | `implemented-unproven` | one pilot invocation proves dependency, routing, refresh, ledger, and final verification |
-| M1a | Loading Indicator dependency family | `refresh-required`     | five successful current artifacts and no unresolved reported defect        |
-| M1  | Button action family                | `refresh-required`     | dependency closure, five successful current artifacts, final verification  |
-| M2  | Switch stateful pilot               | `planned`              | controlled state/event contract through the proven workflow                |
-| M3  | sequential component migration      | `planned`              | dependency-first autonomous family migrations                              |
+| M1a | Loading Indicator dependency family | `refresh-required`     | five successful current artifacts and no unresolved reported defect                      |
+| M1  | Button action family                | `refresh-required`     | dependency closure, five successful current artifacts, final verification                |
+| M2  | Switch stateful pilot               | `planned`              | controlled state/event contract through the proven workflow                              |
+| M3  | sequential component migration      | `planned`              | dependency-first autonomous family migrations                                            |
 
 ## Next operator action
 

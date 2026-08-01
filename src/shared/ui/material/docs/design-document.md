@@ -156,14 +156,14 @@ Do not replace complete coverage with a selected-surface summary or external lin
 
 ## Separation from later artifacts
 
-| Artifact            | Question answered                                         | Scope                                 |
-| ------------------- | --------------------------------------------------------- | ------------------------------------- |
-| `DESIGN.md`         | What does official Material define?                       | complete official component contract  |
-| `ARCHITECTURE.md`   | What must Mioframe implement now and how?                 | demand-scoped Material–Vue–m3e plan   |
-| `IMPLEMENTATION.md` | Was the accepted component architecture implemented?      | component code/proof handoff          |
-| `MIGRATION.md`      | Were consumers migrated and legacy ownership removed?     | application adoption                  |
-| `REVIEW.md`         | Does the complete result satisfy all contracts and gates? | independent review                    |
-| `README.md`         | Where are artifacts and runtime entry points?             | short index only                      |
+| Artifact            | Question answered                                         | Scope                                |
+| ------------------- | --------------------------------------------------------- | ------------------------------------ |
+| `DESIGN.md`         | What does official Material define?                       | complete official component contract |
+| `ARCHITECTURE.md`   | What must Mioframe implement now and how?                 | demand-scoped Material–Vue–m3e plan  |
+| `IMPLEMENTATION.md` | Was the accepted component architecture implemented?      | component code/proof handoff         |
+| `MIGRATION.md`      | Were consumers migrated and legacy ownership removed?     | application adoption                 |
+| `REVIEW.md`         | Does the complete result satisfy all contracts and gates? | independent review                   |
+| `README.md`         | Where are artifacts and runtime entry points?             | short index only                     |
 
 `DESIGN.md` must not contain:
 
