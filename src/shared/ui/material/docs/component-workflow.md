@@ -13,9 +13,9 @@ DESIGN.md
   → final workflow verification
 ```
 
-The operator invokes `material-component <name>` once. The orchestrator continues until completion or a genuine recorded blocker.
+The operator invokes `material-component <name>` once. The orchestrator continues until completion or one genuine recorded blocker.
 
-This document is the single complete owner of the state machine.
+This document is the single complete owner of the Material state machine.
 
 ## Boundaries
 
@@ -24,16 +24,15 @@ This document is the single complete owner of the state machine.
 The orchestrator may only:
 
 - resolve canonical family names;
-- validate exact fields, headings, dates, and revisions;
-- compare renderer revision with the lockfile;
-- compare recorded dependency review revisions with current dependency reviews;
-- select exact family/stage targets;
-- process an explicit dependency queue;
-- maintain an invocation-local active dependency path;
-- retain a compact execution ledger and active cross-family route origins;
+- validate exact fields, headings, dates, revisions, route invariants, and terminal-state invariants;
+- compare renderer and dependency-review revisions with current workspace facts;
+- process explicit dependency queues and correction routes;
+- maintain an invocation-local active dependency path and route stack;
+- retain a compact execution ledger;
 - launch fresh isolated workers;
 - run final verification;
-- pass exact verifier output to a fresh review-routing worker.
+- pass exact verifier output to a fresh review-routing worker;
+- stop on a genuine blocker or malformed worker result.
 
 It does not evaluate design, architecture, code, consumers, proof, dependencies, or verifier meaning.
 
@@ -41,11 +40,19 @@ It does not evaluate design, architecture, code, consumers, proof, dependencies,
 
 Design, architecture, implementation, migration, and review each run in a fresh isolated context and own their semantic decisions.
 
-Each worker writes only its owned artifact and owned runtime changes, records exact control fields and revisions, and returns a compact result.
+A worker must resolve every defect owned by its current stage with the available stage mechanisms before returning. It must not route back to the same family and same stage.
+
+A worker returns one terminal stage result:
+
+- successful;
+- blocked with an exact correction route to an earlier stage or another family;
+- genuinely blocked with no route.
+
+A worker must not finish with `stale`, `partial`, or another temporary state.
 
 Review is independent from workers that authored or corrected architecture, implementation, or migration.
 
-If fresh isolation is unavailable, the workflow is blocked. Workers do not depend on Git, PR, commit, branch, diff, or external-check state.
+If fresh isolation is unavailable, the workflow is genuinely blocked. Workers do not depend on Git, PR, commit, branch, diff, or external-check state.
 
 ## Common field grammar
 
@@ -57,23 +64,80 @@ Every artifact has:
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 ```
 
-The owning worker writes a new UTC artifact revision whenever the file is rewritten or refreshed. It must not reuse an artifact revision after content changes.
+The owning worker writes a new UTC artifact revision whenever the file is rewritten or refreshed. It must not reuse a revision after content changes.
 
-Routing fields use exactly one valid pair:
+Routing fields use exactly one pair:
 
 ```text
 Required return family: none
 Required return stage: none
 ```
 
+or:
+
 ```text
 Required return family: self | <canonical-family>
 Required return stage: design | architecture | implementation | migration
 ```
 
-`self` means the family owning the artifact. Mixed `none`/non-`none` pairs are invalid.
+Mixed `none` and non-`none` values are invalid.
 
-An artifact is mechanically invalid when a required field or heading is missing, a value or date is malformed, a field invariant fails, or an invalidating upstream revision does not match the current upstream artifact.
+### Route restrictions
+
+A same-family route must target a strictly earlier stage than the artifact that emits it:
+
+| Emitting stage   | Allowed same-family targets                    |
+| ---------------- | ---------------------------------------------- |
+| design           | none                                           |
+| architecture     | design                                         |
+| implementation   | design; architecture                           |
+| migration        | design; architecture; implementation           |
+| review           | design; architecture; implementation; migration |
+
+A route to another family may target design, architecture, implementation, or migration.
+
+These routes are invalid:
+
+```text
+design → self/design
+architecture → self/architecture
+implementation → self/implementation
+migration → self/migration
+```
+
+Review cannot route to review because review-owned output defects must be corrected in the current review worker.
+
+### Blocked-state semantics
+
+A valid blocked artifact has exactly one meaning:
+
+```text
+blocked + route non-none
+  → correction is possible in an earlier stage or another family
+
+blocked + route none/none
+  → genuine terminal blocker; stop the workflow
+```
+
+A successful artifact must have route `none/none` and no blockers.
+
+A worker that cannot complete its own stage after exhausting the available mechanisms records `blocked`, an exact blocker, and route `none/none`. It does not ask the orchestrator to rerun the same stage.
+
+### Mechanical invalidity
+
+An artifact is mechanically invalid when:
+
+- a required field or heading is missing;
+- a value or date is malformed;
+- revision or dependency invariants fail;
+- route fields are inconsistent;
+- a same-family route does not target a strictly earlier stage;
+- a successful state contains blockers or a route;
+- a blocked state contains neither an exact blocker nor a valid correction route;
+- an old terminal artifact contains `partial`;
+- an invalidating upstream revision differs from the current upstream artifact.
+
+Before a stage runs, an externally recorded `stale` state is a retry marker and causes the owning stage to run. After a worker runs, `stale` is not an allowed terminal result.
 
 No hash system, registry, parser framework, or workflow database is required.
 
@@ -88,15 +152,25 @@ Source checked at: YYYY-MM-DD
 Refresh check after: YYYY-MM-DD
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
-Required return family: none | self
-Required return stage: none | design
+Required return family: none
+Required return stage: none
 ```
 
-`Artifact revision` tracks any file update.
+The design worker may finish only with `current` or `blocked`.
 
-`Design contract revision` tracks only normalized official Material contract content. It changes when official facts, token tables, states, geometry, behavior, accessibility, or related official contracts change, or when a previously omitted official rule is added. It does not change when only source-check metadata changes.
+- `current` requires a non-`none` contract revision, valid dates, all headings, no blockers, and route `none/none`.
+- `blocked` always means the official contract cannot be completed with the available sources and fallbacks; it has an exact blocker and route `none/none`.
+- `stale` is only an external pre-run marker.
 
-For a successful first design, both revisions are created. For a blocked design with no complete prior contract, design contract revision may be `none`.
+`Artifact revision` tracks every file update. `Design contract revision` changes only when normalized official Material content changes.
+
+The refresh interval is fixed:
+
+```text
+Refresh check after = Source checked at + 30 calendar days
+```
+
+A metadata-only refresh writes a new artifact revision and dates while preserving the exact design contract revision. It does not invalidate downstream stages.
 
 Required headings:
 
@@ -113,33 +187,6 @@ Required headings:
 ## Source conflicts and unknowns
 ## Related official contracts
 ```
-
-Success requires status `current`, a non-`none` design contract revision, valid source dates, current date before `Refresh check after`, no blockers or route, and all headings.
-
-The refresh interval is fixed for all families:
-
-```text
-Refresh check after = Source checked at + 30 calendar days
-```
-
-A due refresh date runs design.
-
-An immediate refresh before that date occurs only when one of these durable signals exists:
-
-- design status is explicitly `stale`;
-- review routes to design because official contract evidence changed or was incomplete;
-- roadmap or another canonical workflow artifact records a known newer official source revision.
-
-The orchestrator does not browse sources merely to search for an unrecorded change before the fixed refresh date.
-
-If refresh finds no normalized official contract change:
-
-- write a new artifact revision;
-- update source revision and dates as applicable;
-- preserve the exact design contract revision;
-- do not invalidate downstream artifacts.
-
-If normalized official contract content changes, write a new design contract revision. Architecture then becomes mechanically stale.
 
 ## ARCHITECTURE.md
 
@@ -159,39 +206,22 @@ Dependency queue: none | <canonical-family>[; <canonical-family>...]
 Dependency review revisions: none | <canonical-family>=<REVIEW Artifact revision>[; <canonical-family>=<REVIEW Artifact revision>...]
 ```
 
-Dependency names are unique, ordered, exact family names separated by `; `.
+The architecture worker may finish only with `ready` or `blocked`.
 
-`Dependency families` records the complete direct dependency set.
+- `ready` may use readiness `ready` or `awaiting-dependencies` and has no blockers or route.
+- `blocked` may route to `self/design` or another family/stage when an upstream correction is required.
+- An unresolved architecture decision owned by the current architecture worker is terminal `blocked` with route `none/none`.
+- `stale` is only an external pre-run marker.
 
-`Dependency queue` records dependencies without successful current independent review.
-
-`Dependency review revisions` records the exact current `REVIEW.md` artifact revision for every dependency not in the queue. Entries use `family=revision` and follow dependency-family order.
-
-Field invariants:
+Dependency invariants:
 
 - queue and review-revision families are disjoint;
 - their union equals `Dependency families`;
-- when dependency families is `none`, both other fields are `none`;
-- every recorded review revision equals the current dependency review revision;
-- a changed dependency review revision runs parent architecture before any parent route or downstream stage is used;
-- self-dependency is forbidden;
-- dependencies that already exist in the active dependency path are forbidden.
+- every recorded review revision is current;
+- self-dependency and active-path ancestor dependency are forbidden;
+- a non-empty queue requires readiness `awaiting-dependencies` and route `none/none`.
 
-A non-empty queue requires:
-
-```text
-Status: ready
-Implementation readiness: awaiting-dependencies
-Remaining blockers: none
-Required return family: none
-Required return stage: none
-```
-
-Every queued dependency runs its complete pipeline through current review. Dependency stage gates are unsupported.
-
-After all queued dependencies are current, parent architecture runs again, validates public handoffs, preserves or recomputes dependency families, clears or recomputes the queue, and records exact dependency review revisions.
-
-The orchestrator derives `@m3e/web@<version>` from the root lockfile importer, stripping peer-resolution suffixes. A mismatch runs architecture.
+Every queued dependency runs its full pipeline through current independent review. Afterward parent architecture runs again and records current dependency review revisions.
 
 Required headings:
 
@@ -215,13 +245,11 @@ Required headings:
 ## Implementation readiness
 ```
 
-Success requires the current design contract revision, current renderer revision, no blockers or route, queue `none`, every dependency review revision current, readiness `ready`, and all headings.
-
 ## IMPLEMENTATION.md
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-Status: complete | partial | stale | blocked
+Status: complete | stale | blocked
 ARCHITECTURE.md reference: <path>
 ARCHITECTURE.md revision: <exact Artifact revision>
 Revision summary: <one concise line>
@@ -231,6 +259,13 @@ Required return stage: none | design | architecture | implementation | migration
 Architecture deviations: none | <exact deviations>
 Migration readiness: ready | blocked
 ```
+
+The implementation worker may finish only with `complete` or `blocked`.
+
+- `complete` requires the current architecture revision, completed proof, no deviations, no blockers, route `none/none`, and migration readiness `ready`.
+- `blocked` may route to `self/design`, `self/architecture`, or another family/stage when upstream correction is required.
+- A component-owned implementation or proof defect must be fixed in the current worker. If it remains impossible after available mechanisms are exhausted, return terminal `blocked` with route `none/none`.
+- `stale` is only an external pre-run marker.
 
 Required headings:
 
@@ -246,13 +281,11 @@ Required headings:
 ## Migration readiness
 ```
 
-Success requires exact current architecture revision, status `complete`, no blockers, route, or deviations, readiness `ready`, and all headings.
-
 ## MIGRATION.md
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-Status: complete | partial | stale | blocked
+Status: complete | stale | blocked
 IMPLEMENTATION.md reference: <path>
 IMPLEMENTATION.md revision: <exact Artifact revision>
 Revision summary: <one concise line>
@@ -261,6 +294,13 @@ Required return family: none | self | <canonical-family>
 Required return stage: none | design | architecture | implementation | migration
 Review readiness: ready | blocked
 ```
+
+The migration worker may finish only with `complete` or `blocked`.
+
+- `complete` requires the current implementation revision, completed consumer/no-consumer proof, no blockers, route `none/none`, and review readiness `ready`.
+- `blocked` may route to `self/design`, `self/architecture`, `self/implementation`, or another family/stage when upstream correction is required.
+- A migration-owned consumer, legacy-removal, product-scenario, impact-metadata, or proof defect must be fixed in the current worker. If it remains impossible after available mechanisms are exhausted, return terminal `blocked` with route `none/none`.
+- `stale` is only an external pre-run marker.
 
 Required headings:
 
@@ -275,9 +315,7 @@ Required headings:
 ## Review readiness
 ```
 
-Success requires exact current implementation revision, status `complete`, no blockers or route, readiness `ready`, and all headings.
-
-When no consumers or legacy owner exist, record `none` and `not applicable`; do not create a product consumer.
+When no consumer or legacy owner exists, record `none` and `not applicable`; do not create a product consumer.
 
 ## REVIEW.md
 
@@ -299,6 +337,11 @@ Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
 
+- A compliant verdict requires current revisions, no findings, route `none/none`, completion `complete`, and final-verification readiness `ready`.
+- `blocked` with a route assigns an exact earlier-stage or other-family correction.
+- A genuine unresolvable review or command-execution blocker uses route `none/none`.
+- Review-owned formatting or routing-output defects are fixed in the current review worker; review cannot route to review.
+
 Required headings:
 
 ```text
@@ -316,95 +359,70 @@ Required headings:
 ## Routing evidence
 ```
 
-Success requires the current design contract revision and exact current architecture, implementation, and migration revisions, compliant verdict, no route or findings, completion `complete`, final-verification readiness `ready`, no unresolved reported defect, and all headings.
-
 `compliant-with-listed-risks` is only for complete work with bounded non-blocking limitations. It cannot represent missing checks, stale artifacts, warnings, unresolved findings, unknown consumers, missing proof, or deferred required work.
 
 ## No-consumer scenario
 
-When no current consumer exists, the explicit invocation establishes one approved library scenario:
+When no current consumer exists, the invocation establishes one approved library scenario:
 
 - implement the unambiguous official standalone default;
 - expose only the API required to render and accessibly operate that default;
-- expose only mandatory official controllable state belonging to the selected default;
-- do not add `v-model`, selection, toggle, value, or open-state contracts unless that state is part of the selected official default;
-- include disabled behavior only when official Material supports it for that default;
-- include mandatory semantics, accessibility, states, and proof;
+- expose only mandatory controllable state belonging to that selected default;
+- do not add `v-model`, selection, toggle, value, or open-state contracts unless required by the selected official default;
 - defer optional variants, sizes, shapes, configurations, and state models;
-- do not expose m3e capability merely because it exists;
-- do not invent product demand or consumers.
-
-Ask the operator only when official sources define no standalone default or multiple materially different public models.
+- do not invent product demand or copy renderer capability.
 
 ## Mechanical algorithm
 
-For each family, process artifacts in stage order.
+For each artifact in stage order:
 
-1. Validate syntax, required headings, dates, renderer revision, invalidating upstream revisions, dependency review revisions, and dependency invariants.
-2. If invalid, run the owning stage before reading or following any existing route from that artifact.
-3. If valid and its return target is non-`none`, process that route.
-4. If valid but its success gate is not met, run its owning stage.
-5. A parent architecture with a valid pending dependency queue pauses the parent before implementation.
-6. Process every queued dependency left to right through successful current review.
-7. Rerun parent architecture after dependencies are current.
-8. Continue parent and every listed dependency through current review.
-9. Run one final workflow verification.
-10. Complete only when it passes on the unchanged workspace.
+1. **Validate mechanical structure.** If invalid or externally `stale`, run the owning stage once.
+2. **Validate the returned worker result.** If it is malformed, `stale`, `partial`, or routes to the same family and same stage, stop with a stage-contract blocker. Do not rerun that worker automatically.
+3. **Handle correction route.** If status/verdict is blocked and route is non-`none`, execute the exact route.
+4. **Handle terminal blocker.** If status/verdict is blocked and route is `none/none`, stop and report the exact genuine blocker.
+5. **Handle successful state.** If the success gate passes, continue.
+6. **Reject ambiguous state.** Any other validly parsed combination is a stage-contract blocker; do not infer a retry.
 
-A design artifact revision change with an unchanged design contract revision does not invalidate architecture or later stages.
+After architecture produces a non-empty dependency queue, process each dependency through current review, then rerun parent architecture.
 
-After an invalidating revision changes, downstream revision mismatch drives the next required stage. The same algorithm works after an interrupted session or new invocation.
+After an invalidating revision changes, downstream revision mismatch selects the next stage. A design artifact revision change alone does not invalidate downstream work when design contract revision is unchanged.
 
 ## Dependency cycle handling
 
-Maintain an invocation-local active dependency path beginning with the requested parent family.
+Maintain an active dependency path beginning with the requested family.
 
-Before entering a queued dependency:
+Before entering a queued dependency, detect whether it equals the current family or already exists in the active path.
 
-```text
-dependency == current family
-or
-dependency already exists in active dependency path
-```
+On a cycle:
 
-means a dependency cycle.
+1. stop descending;
+2. construct the exact path;
+3. run architecture once for the family that emitted the cyclic dependency;
+4. require architecture to remove the cycle or return terminal `blocked` with route `none/none`;
+5. validate the returned architecture result under the normal worker-result rules.
 
-On detection:
-
-1. stop descending into that dependency;
-2. construct the exact path, for example `button → loadingIndicator → button`;
-3. launch the architecture worker for the family that emitted the cyclic dependency;
-4. pass the exact detected path;
-5. require architecture to correct ownership/dependency closure or record a genuine blocker;
-6. resume through the normal durable state machine.
-
-The orchestrator detects repeated family names only. It does not decide how ownership must change.
+Architecture must not return `self/architecture` for an unresolved cycle.
 
 ## Cross-family correction
 
-For a valid cross-family route, record:
+For a valid cross-family route retain:
 
 ```text
 origin: <origin-family>/<origin-stage>
 target: <target-family>/<target-stage>
 ```
 
-Then:
+Run the target from the requested stage through current review. Then resume the origin family through normal durable validation from design forward, execute any earlier invalid stages, and always execute the stored origin stage fresh.
 
-1. run the target family from the requested stage through successful current review;
-2. resume the origin family through its normal durable state machine from design forward;
-3. run any earlier mechanically invalid stage and its downstream stages;
-4. always finish by executing the origin stage in a fresh worker, even when no earlier stage was invalid;
-5. require the fresh origin result to clear or replace its route;
-6. continue from that result.
+The fresh origin result must clear the route, replace it with a different valid route, or return a genuine blocker. The old route cannot execute again before this fresh origin result exists.
 
-Do not execute the old target again before a fresh origin-stage result exists.
+A valid same-family route always targets an earlier stage. Run that earlier stage and normal downstream stages, which naturally re-executes the emitting stage.
 
-A self-route runs the requested stage and downstream stages normally. Nested cross-family routes apply the same rule recursively and unwind the most recent origin first.
+Nested cross-family routes unwind the most recent origin first.
 
 ## Durable continuation
 
-Invalidating revision links are:
+Invalidating links are:
 
 ```text
 DESIGN contract revision → ARCHITECTURE
@@ -414,15 +432,7 @@ IMPLEMENTATION artifact revision → MIGRATION
 DESIGN contract + ARCHITECTURE + IMPLEMENTATION + MIGRATION revisions → REVIEW
 ```
 
-Design artifact revision alone is not an invalidator.
-
-Source refresh dates and renderer revision comparison are additional triggers. Invocation-local changed-stage memory is not required for correctness.
-
-## Preflight and stage verification
-
-Implementation and migration run `implementation-preflight` before owned edits and run only verifier-managed focused proof.
-
-Review evaluates stage evidence. The pending outer command is not a stage blocker or risk.
+Invocation-local changed-stage memory is not required for correctness.
 
 ## Compact execution ledger
 
@@ -431,7 +441,7 @@ Retain one record per worker execution:
 ```text
 family: <canonical-family>
 stage: design | architecture | implementation | migration | review
-result: complete | blocked
+result: complete | blocked | stage-contract-blocked
 artifact: <path>
 artifact revision: <exact Artifact revision>
 origin: none | <canonical-family>/<stage>
@@ -444,30 +454,22 @@ Do not copy worker reports or artifact prose into orchestrator context.
 
 ## Final workflow verification
 
-After current reviews, run one read-only command selected by root policy and `verification`.
+After current successful reviews, run one read-only command selected by root policy and `verification`.
 
-Ordinary component work uses:
+Ordinary Material work uses:
 
 ```text
 pnpm verify
 ```
 
-Use `pnpm verify:release` only for actual release-sensitive infrastructure changes.
-
-On failure, pass the exact command and output to a fresh review-routing worker. Follow its exact route through the self-route or cross-family rules, then rerun the same command after all affected reviews are current.
+On failure, pass the exact command and output to a fresh review-routing worker. Validate its result with the same terminal-state and route rules. Follow a valid correction route or stop on terminal `blocked`.
 
 ## Visual channel
 
-Operator visual/motion inspection is an external defect-reporting channel. Absence of a report is not a blocker and requires no positive acknowledgement. A concrete defect routes to its exact owning family and stage.
-
-## Stop conditions
-
-Stop only for a recorded unavailable required source/tool, unavailable fresh isolation, unresolved architecture decision, project command that cannot execute after applicable mechanisms, unresolved reported defect, or safety-required operator input.
-
-A metadata-only design refresh, renderer change, dependency review change, pending dependency, dependency cycle that can be routed to architecture, stale downstream revision, ordinary finding, routable correction, or missing repeated command is not itself a blocker.
+Operator visual/motion inspection is an external defect-reporting channel. Absence of a report is not a blocker. A concrete defect routes to its exact owning family and earlier stage.
 
 ## Completion
 
-The invocation is complete only when parent and dependency artifacts satisfy all success gates, invalidating revision links and dependency review revisions match, every dependency family has current review, no reported defect remains unresolved, and final verification passes.
+The invocation is complete only when parent and dependency artifacts satisfy all success gates, all invalidating revisions match, every dependency has current independent review, no reported defect remains unresolved, and final verification passes.
 
 The final report owns the compact ledger and final command result. Stage artifacts remain the durable source of truth.
