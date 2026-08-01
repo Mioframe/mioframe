@@ -26,10 +26,11 @@ The orchestrator may only:
 - resolve canonical family names;
 - validate exact fields, headings, dates, and revisions;
 - compare renderer revision with the lockfile;
+- compare recorded dependency review revisions with current dependency reviews;
 - select exact family/stage targets;
 - process an explicit dependency queue;
-- compare recorded dependency review revisions with current dependency reviews;
-- retain a compact execution ledger and active cross-family route origin;
+- maintain an invocation-local active dependency path;
+- retain a compact execution ledger and active cross-family route origins;
 - launch fresh isolated workers;
 - run final verification;
 - pass exact verifier output to a fresh review-routing worker.
@@ -56,7 +57,7 @@ Every artifact has:
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 ```
 
-The owning worker writes a new UTC revision whenever the artifact is rewritten or refreshed. It must not reuse a revision after content changes.
+The owning worker writes a new UTC artifact revision whenever the file is rewritten or refreshed. It must not reuse an artifact revision after content changes.
 
 Routing fields use exactly one valid pair:
 
@@ -72,7 +73,7 @@ Required return stage: design | architecture | implementation | migration
 
 `self` means the family owning the artifact. Mixed `none`/non-`none` pairs are invalid.
 
-An artifact is mechanically invalid when a required field or heading is missing, a value or date is malformed, a field invariant fails, or an upstream revision does not match the current upstream artifact.
+An artifact is mechanically invalid when a required field or heading is missing, a value or date is malformed, a field invariant fails, or an invalidating upstream revision does not match the current upstream artifact.
 
 No hash system, registry, parser framework, or workflow database is required.
 
@@ -80,6 +81,7 @@ No hash system, registry, parser framework, or workflow database is required.
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
+Design contract revision: none | YYYY-MM-DDTHH:mm:ss.sssZ
 Status: current | stale | blocked
 Source revision: <exact source/cache revision>
 Source checked at: YYYY-MM-DD
@@ -89,6 +91,12 @@ Remaining blockers: none | <exact blockers>
 Required return family: none | self
 Required return stage: none | design
 ```
+
+`Artifact revision` tracks any file update.
+
+`Design contract revision` tracks only normalized official Material contract content. It changes when official facts, token tables, states, geometry, behavior, accessibility, or related official contracts change, or when a previously omitted official rule is added. It does not change when only source-check metadata changes.
+
+For a successful first design, both revisions are created. For a blocked design with no complete prior contract, design contract revision may be `none`.
 
 Required headings:
 
@@ -106,9 +114,24 @@ Required headings:
 ## Related official contracts
 ```
 
-Success requires status `current`, valid revisions and dates, current date before `Refresh check after`, no blockers or route, and all headings.
+Success requires status `current`, a non-`none` design contract revision, valid source dates, current date before `Refresh check after`, no blockers or route, and all headings.
 
-A due refresh date runs design. Age alone does not make content stale.
+The refresh interval is fixed for all families:
+
+```text
+Refresh check after = Source checked at + 30 calendar days
+```
+
+A due refresh date runs design. A known newer official revision or explicit source-change evidence runs design immediately.
+
+If refresh finds no normalized official contract change:
+
+- write a new artifact revision;
+- update source revision and dates as applicable;
+- preserve the exact design contract revision;
+- do not invalidate downstream artifacts.
+
+If normalized official contract content changes, write a new design contract revision. Architecture then becomes mechanically stale.
 
 ## ARCHITECTURE.md
 
@@ -116,7 +139,7 @@ A due refresh date runs design. Age alone does not make content stale.
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 Status: ready | stale | blocked
 DESIGN.md reference: <path>
-DESIGN.md revision: <exact Artifact revision>
+DESIGN.md contract revision: <exact Design contract revision>
 Renderer revision: @m3e/web@<lockfile-resolved-version>
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
@@ -134,15 +157,17 @@ Dependency names are unique, ordered, exact family names separated by `; `.
 
 `Dependency queue` records dependencies without successful current independent review.
 
-`Dependency review revisions` records the exact current `REVIEW.md` artifact revision for every dependency not in the queue. Entries use `family=revision` and follow `Dependency families` order.
+`Dependency review revisions` records the exact current `REVIEW.md` artifact revision for every dependency not in the queue. Entries use `family=revision` and follow dependency-family order.
 
 Field invariants:
 
 - queue and review-revision families are disjoint;
 - their union equals `Dependency families`;
 - when dependency families is `none`, both other fields are `none`;
-- every recorded review revision equals the current dependency `REVIEW.md` revision;
-- a changed dependency review revision runs parent architecture before any parent route or downstream stage is used.
+- every recorded review revision equals the current dependency review revision;
+- a changed dependency review revision runs parent architecture before any parent route or downstream stage is used;
+- self-dependency is forbidden;
+- dependencies that already exist in the active dependency path are forbidden.
 
 A non-empty queue requires:
 
@@ -182,7 +207,7 @@ Required headings:
 ## Implementation readiness
 ```
 
-Success requires current design revision, current renderer revision, no blockers or route, queue `none`, every dependency review revision current, readiness `ready`, and all headings.
+Success requires the current design contract revision, current renderer revision, no blockers or route, queue `none`, every dependency review revision current, readiness `ready`, and all headings.
 
 ## IMPLEMENTATION.md
 
@@ -250,7 +275,7 @@ When no consumers or legacy owner exist, record `none` and `not applicable`; do 
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-DESIGN.md revision: <exact Artifact revision>
+DESIGN.md contract revision: <exact Design contract revision>
 ARCHITECTURE.md revision: <exact Artifact revision>
 IMPLEMENTATION.md revision: <exact Artifact revision>
 MIGRATION.md revision: <exact Artifact revision>
@@ -283,7 +308,7 @@ Required headings:
 ## Routing evidence
 ```
 
-Success requires all four exact current upstream revisions, compliant verdict, no route or findings, completion `complete`, final-verification readiness `ready`, no unresolved reported defect, and all headings.
+Success requires the current design contract revision and exact current architecture, implementation, and migration revisions, compliant verdict, no route or findings, completion `complete`, final-verification readiness `ready`, no unresolved reported defect, and all headings.
 
 `compliant-with-listed-risks` is only for complete work with bounded non-blocking limitations. It cannot represent missing checks, stale artifacts, warnings, unresolved findings, unknown consumers, missing proof, or deferred required work.
 
@@ -292,10 +317,12 @@ Success requires all four exact current upstream revisions, compliant verdict, n
 When no current consumer exists, the explicit invocation establishes one approved library scenario:
 
 - implement the unambiguous official standalone default;
-- expose the minimum coherent API needed to render, accessibly name, and control it;
-- include disabled behavior only when official Material supports it;
-- include mandatory states, semantics, accessibility, and proof;
-- defer optional variants, sizes, shapes, and configurations;
+- expose only the API required to render and accessibly operate that default;
+- expose only mandatory official controllable state belonging to the selected default;
+- do not add `v-model`, selection, toggle, value, or open-state contracts unless that state is part of the selected official default;
+- include disabled behavior only when official Material supports it for that default;
+- include mandatory semantics, accessibility, states, and proof;
+- defer optional variants, sizes, shapes, configurations, and state models;
 - do not expose m3e capability merely because it exists;
 - do not invent product demand or consumers.
 
@@ -305,7 +332,7 @@ Ask the operator only when official sources define no standalone default or mult
 
 For each family, process artifacts in stage order.
 
-1. Validate mechanical syntax, required headings, dates, renderer revision, upstream revision links, and dependency review revisions.
+1. Validate syntax, required headings, dates, renderer revision, invalidating upstream revisions, dependency review revisions, and dependency invariants.
 2. If invalid, run the owning stage before reading or following any existing route from that artifact.
 3. If valid and its return target is non-`none`, process that route.
 4. If valid but its success gate is not met, run its owning stage.
@@ -316,7 +343,34 @@ For each family, process artifacts in stage order.
 9. Run one final workflow verification.
 10. Complete only when it passes on the unchanged workspace.
 
-After any artifact receives a new revision, downstream revision mismatch drives the next required stage. The same algorithm works after an interrupted session or new invocation.
+A design artifact revision change with an unchanged design contract revision does not invalidate architecture or later stages.
+
+After an invalidating revision changes, downstream revision mismatch drives the next required stage. The same algorithm works after an interrupted session or new invocation.
+
+## Dependency cycle handling
+
+Maintain an invocation-local active dependency path beginning with the requested parent family.
+
+Before entering a queued dependency:
+
+```text
+dependency == current family
+or
+dependency already exists in active dependency path
+```
+
+means a dependency cycle.
+
+On detection:
+
+1. stop descending into that dependency;
+2. construct the exact path, for example `button → loadingIndicator → button`;
+3. launch the architecture worker for the family that emitted the cyclic dependency;
+4. pass the exact detected path;
+5. require architecture to correct ownership/dependency closure or record a genuine blocker;
+6. resume through the normal durable state machine.
+
+The orchestrator detects repeated family names only. It does not decide how ownership must change.
 
 ## Cross-family correction
 
@@ -330,27 +384,31 @@ target: <target-family>/<target-stage>
 Then:
 
 1. run the target family from the requested stage through successful current review;
-2. rerun the exact origin stage in a fresh worker;
-3. require origin to clear or replace its route from current evidence;
-4. continue from the new origin result.
+2. resume the origin family through its normal durable state machine from design forward;
+3. run any earlier mechanically invalid stage and its downstream stages;
+4. always finish by executing the origin stage in a fresh worker, even when no earlier stage was invalid;
+5. require the fresh origin result to clear or replace its route;
+6. continue from that result.
 
-Do not execute the old target again before origin reruns.
+Do not execute the old target again before a fresh origin-stage result exists.
 
 A self-route runs the requested stage and downstream stages normally. Nested cross-family routes apply the same rule recursively and unwind the most recent origin first.
 
 ## Durable continuation
 
-Revision links are the durable invalidation mechanism:
+Invalidating revision links are:
 
 ```text
-DESIGN revision → ARCHITECTURE
+DESIGN contract revision → ARCHITECTURE
 Dependency REVIEW revisions → parent ARCHITECTURE
-ARCHITECTURE revision → IMPLEMENTATION
-IMPLEMENTATION revision → MIGRATION
-all four revisions → REVIEW
+ARCHITECTURE artifact revision → IMPLEMENTATION
+IMPLEMENTATION artifact revision → MIGRATION
+DESIGN contract + ARCHITECTURE + IMPLEMENTATION + MIGRATION revisions → REVIEW
 ```
 
-Source refresh dates and renderer revision comparison are additional durable invalidators. Invocation-local changed-stage memory is not required for correctness.
+Design artifact revision alone is not an invalidator.
+
+Source refresh dates and renderer revision comparison are additional triggers. Invocation-local changed-stage memory is not required for correctness.
 
 ## Preflight and stage verification
 
@@ -370,6 +428,7 @@ artifact: <path>
 artifact revision: <exact Artifact revision>
 origin: none | <canonical-family>/<stage>
 target: none | <canonical-family>/<stage>
+dependency path: none | <family>[ → <family>...]
 verification: not-applicable | passed | failed | blocked
 ```
 
@@ -397,10 +456,10 @@ Operator visual/motion inspection is an external defect-reporting channel. Absen
 
 Stop only for a recorded unavailable required source/tool, unavailable fresh isolation, unresolved architecture decision, project command that cannot execute after applicable mechanisms, unresolved reported defect, or safety-required operator input.
 
-A due refresh, renderer change, dependency review change, pending dependency, stale downstream revision, ordinary finding, routable correction, or missing repeated command is not itself a blocker.
+A metadata-only design refresh, renderer change, dependency review change, pending dependency, dependency cycle that can be routed to architecture, stale downstream revision, ordinary finding, routable correction, or missing repeated command is not itself a blocker.
 
 ## Completion
 
-The invocation is complete only when parent and dependency artifacts satisfy all success gates, all revision links and dependency review revisions match, every dependency family has current review, no reported defect remains unresolved, and final verification passes.
+The invocation is complete only when parent and dependency artifacts satisfy all success gates, invalidating revision links and dependency review revisions match, every dependency family has current review, no reported defect remains unresolved, and final verification passes.
 
 The final report owns the compact ledger and final command result. Stage artifacts remain the durable source of truth.
