@@ -25,35 +25,39 @@ The complete execution state machine belongs to [`component-workflow.md`](./comp
 
 ## Sources of truth
 
-1. Official Material documentation defines the complete component and token contracts.
-2. `components/<family>/DESIGN.md` is the complete normalized official snapshot.
-3. Current product scenarios or the approved standalone library scenario select required behavior.
+1. Official Material documentation defines complete component and token contracts.
+2. `components/<family>/DESIGN.md` is the normalized official snapshot.
+3. Product scenarios or the approved standalone library scenario select required behavior.
 4. `components/<family>/ARCHITECTURE.md` is the demand-scoped implementation contract.
-5. Runtime code plus `IMPLEMENTATION.md` records component-owned implementation and proof.
-6. `MIGRATION.md` records consumer adoption, preserved scenarios, and legacy removal.
+5. Runtime code plus `IMPLEMENTATION.md` records component implementation and proof.
+6. `MIGRATION.md` records adoption, preserved scenarios, and legacy removal.
 7. `REVIEW.md` records independent compliance and final-verification readiness.
 8. Canonical CSS plus `docs/token-api.md` defines the supported public token surface.
-9. `docs/m3e-defects.md` owns confirmed renderer-defect lifecycle.
+9. `docs/m3e-defects.md` owns renderer-defect lifecycle.
 10. `docs/roadmap.md` alone owns mutable milestone status and next action.
 
 Existing code, tests, stories, screenshots, renderer demos, and legacy APIs are evidence, not public-contract authority.
 
 ## Durable family handoffs
 
-Every stage artifact owns an `Artifact revision`. Every downstream artifact records exact upstream revisions.
+Every stage artifact owns an `Artifact revision`. Downstream artifacts record exact upstream revisions.
 
 ```text
-DESIGN.md revision
-  → ARCHITECTURE.md
-ARCHITECTURE.md revision
-  → IMPLEMENTATION.md
-IMPLEMENTATION.md revision
-  → MIGRATION.md
-all four upstream revisions
-  → REVIEW.md
+DESIGN revision
+  → ARCHITECTURE
+Dependency REVIEW revisions
+  → parent ARCHITECTURE
+ARCHITECTURE revision
+  → IMPLEMENTATION
+IMPLEMENTATION revision
+  → MIGRATION
+all four family revisions
+  → REVIEW
 ```
 
 Revision linkage is the durable continuation mechanism after interruption or a new invocation. It is not a hash system or workflow database.
+
+A parent architecture also records the exact current review revision of each direct dependency. Updating a dependency therefore invalidates parent architecture mechanically before parent code or review is reused.
 
 ## Family ownership
 
@@ -75,7 +79,7 @@ Product layers retain product state, persistence, routing, errors, operation lif
 
 Architecture starts from complete design and classifies capability as:
 
-- `implement-now` — required by a confirmed product scenario, the approved standalone library scenario, or the minimum coherent API;
+- `implement-now` — required by a confirmed product scenario, approved standalone library scenario, or minimum coherent API;
 - `defer` — official capability not required now;
 - `not-material` — project behavior absent from official Material;
 - `source-conflict` — official evidence cannot support a reliable decision.
@@ -158,14 +162,19 @@ An official Material dependency is a first-class family with its own complete de
 
 Parent architecture records:
 
-- the complete direct `Dependency families` set;
-- a `Dependency queue` containing dependencies that do not yet have successful current review.
+- `Dependency families` — complete direct dependency set;
+- `Dependency queue` — dependencies that do not yet have current review;
+- `Dependency review revisions` — exact review revision for every dependency not in the queue.
 
-A queued dependency always runs its complete pipeline through current review. Stage-specific dependency gates are intentionally unsupported.
+Queue and revision entries are disjoint and their union equals dependency families.
 
-Parent architecture may be fully resolved while dependencies remain pending. It then uses `Status: ready`, a non-empty queue, and `Implementation readiness: awaiting-dependencies`. Parent implementation cannot start in that state.
+A queued dependency always runs its complete pipeline through current review. Stage-specific dependency gates are unsupported.
 
-After dependencies reach current review, parent architecture runs again, validates public handoffs, clears or recomputes the queue, and becomes implementation-ready only when the queue is `none`.
+Parent architecture may be resolved while dependencies remain pending. It then uses status `ready`, a non-empty queue, and readiness `awaiting-dependencies`. Parent implementation cannot start.
+
+After dependencies reach current review, parent architecture runs again, validates public handoffs, clears or recomputes the queue, and records exact dependency review revisions.
+
+A later dependency review revision change invalidates parent architecture and all parent downstream artifacts through normal revision linkage.
 
 Parent composition proof does not replace standalone dependency proof.
 
