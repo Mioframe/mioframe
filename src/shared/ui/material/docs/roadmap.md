@@ -23,19 +23,16 @@ Workflow-rule status: the durable workflow now defines:
 - metadata-only source refresh without downstream invalidation;
 - exact artifact revisions and invalidating upstream revision links;
 - exact dependency review revisions in parent architecture;
-- source-contract and renderer revision invalidation;
 - exact return family plus stage;
 - durable origin-family resume after cross-family correction;
-- dependency families plus a gate-free dependency queue;
-- full dependency pipelines through current independent review;
+- gate-free dependency queues and full dependency pipelines through current review;
 - active dependency-path cycle detection;
-- parent architecture rerun after dependency completion or dependency review change;
-- deterministic no-consumer standalone library scenario without speculative state APIs;
+- deterministic no-consumer standalone scenario without speculative state APIs;
 - implementation preflight before code and consumer edits;
 - Git/PR-independent worker evidence;
-- compact execution ledger instead of copied worker reports;
+- compact execution ledger;
 - one final post-review workflow verification;
-- operator visual/motion feedback as a defect-reporting channel.
+- visual/motion feedback as a defect-reporting channel.
 
 The workflow remains `implemented-unproven` until one real `material-component Button` invocation completes the pilot.
 
@@ -81,40 +78,36 @@ The single invocation must prove:
 
 1. both families receive normalized artifact revisions, design contract revisions, and source-refresh metadata;
 2. refresh interval is exactly 30 calendar days;
-3. a metadata-only design refresh changes artifact revision and dates, preserves design contract revision, and does not run downstream stages;
-4. Button architecture emits `Dependency families: loadingIndicator` and a gate-free pending queue;
-5. Loading Indicator runs through its complete pipeline to current independent review;
-6. Button architecture reruns, clears the queue, and records the exact Loading Indicator review revision;
-7. Button continues through implementation, migration, and independent review;
-8. when a real cross-family correction occurs, it records origin and target, completes the target family, then resumes the origin through durable validation and executes the origin stage fresh;
-9. a dependency-review change that invalidates Button architecture forces Button architecture and downstream stages before Button review clears a route;
-10. after an upstream artifact rewrite, invocation-local pending state is discarded and the next stage is reconstructed only from durable revision mismatches;
-11. a non-production workflow simulation of self- or ancestor-dependency is detected through the active path and routed to the emitting family architecture without writing a cyclic family artifact;
-12. implementation and migration run preflight where edits or revalidation require it;
-13. no worker depends on Git, PR, commit, or external-check state;
-14. the compact ledger records workers, revisions, origins, targets, dependency path, and correction routes without copying full reports;
-15. one final `pnpm verify` runs after current reviews;
-16. no second operator command is required.
+3. metadata-only design refresh changes artifact revision and dates, preserves design contract revision, and does not run downstream stages;
+4. Loading Indicator completes through its full pipeline to current review;
+5. Button architecture reruns, clears its queue, and records the exact Loading Indicator review revision;
+6. Button completes through current review;
+7. when a real cross-family correction occurs, target completion is followed by durable origin-family validation and a fresh origin-stage execution;
+8. a dependency-review change forces parent architecture and required downstream stages before parent review is reused;
+9. interrupted execution resumes only from durable revision mismatches;
+10. a non-production simulation of self- or ancestor-dependency is detected through the active path and routed to architecture without writing a cyclic artifact;
+11. implementation and migration preflight and focused verification are recorded;
+12. no worker depends on Git, PR, commit, or external-check state;
+13. one final `pnpm verify` passes without a second operator command.
 
-Do not inject a production defect or persist an invalid dependency cycle merely to exercise routing. The pilot may use an orchestrator-level simulation that supplies a synthetic active path and queue candidate to the mechanical cycle detector while leaving durable family artifacts unchanged.
+Do not inject a production defect or persist an invalid dependency cycle solely to exercise routing. The cycle check may use an orchestrator-level simulation with a synthetic active path and queue candidate while durable artifacts remain unchanged.
 
 ## Exit criteria
 
 The pilot is complete only when:
 
 - Loading Indicator and Button satisfy every current artifact gate;
-- metadata-only design refresh does not invalidate architecture or downstream work;
+- metadata-only refresh does not invalidate downstream work;
 - design contract change still invalidates architecture correctly;
 - dependencies complete through current review before parent implementation;
-- parent architecture records and validates exact dependency review revisions;
-- dependency cycles are detected and routed without recursive execution or persisted invalid artifacts;
-- any cross-family correction resumes the origin through durable validation and refreshes the origin stage;
-- durable revision links recover correctly after invocation-local state is discarded;
+- parent architecture records current dependency review revisions;
+- dependency cycles are detected without recursive execution or persisted invalid artifacts;
+- any cross-family correction resumes the origin through durable validation and a fresh origin-stage execution;
+- durable revision links recover after invocation-local state is discarded;
 - source and renderer revision fields match current workspace facts;
 - each reasoning stage uses a fresh isolated worker;
-- preflight and focused verification are recorded where applicable;
 - review uses `compliant-with-listed-risks` only for genuine bounded limitations;
-- one final `pnpm verify` passes after current reviews;
+- one final `pnpm verify` passes;
 - no operator-reported visual/motion defect remains unresolved.
 
 ## Milestones
