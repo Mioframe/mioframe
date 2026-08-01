@@ -125,9 +125,11 @@ Do not create mixed-owner token files, duplicate public owners, compatibility al
 
 An official Material dependency is a first-class family with its own artifacts, implementation, tokens, defects, proof, migration facts, and review.
 
-Parent architecture cannot become ready before required dependency design and architecture are ready. Later parent stages cannot complete before their required dependency gates.
+A parent architecture may be fully resolved while dependency work remains pending. It then uses `Status: ready`, a non-empty exact dependency queue, and `Implementation readiness: awaiting-dependencies`. Parent implementation cannot start in that state.
 
-Parent composition proof does not replace standalone dependency proof.
+The orchestrator processes the queue before retrying parent architecture. After requested dependency gates are reached, parent architecture runs again, validates public handoffs, clears or recomputes the queue, and becomes implementation-ready only when the queue is `none`.
+
+Later parent stages cannot complete before their required dependency gates. Parent composition proof does not replace standalone dependency proof.
 
 ## Proof and completion principles
 
