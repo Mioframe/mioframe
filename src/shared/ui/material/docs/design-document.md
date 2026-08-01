@@ -52,9 +52,12 @@ When refresh finds no normalized contract change:
 - update artifact revision;
 - update source revision and source-check dates as applicable;
 - preserve design contract revision exactly;
-- do not invalidate downstream stages.
+- do not invalidate downstream stages;
+- state `Normalized contract changed: no` in the stage result.
 
 Change design contract revision when official facts, token tables, geometry, states, behavior, motion, accessibility, related contracts, or normalized completeness change.
+
+A source identifier may change while normalized content remains equivalent. That is a metadata-only refresh and preserves design contract revision.
 
 ## Authority and source acquisition
 
