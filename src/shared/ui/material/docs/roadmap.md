@@ -116,7 +116,7 @@ The pilot is complete only when:
 | --- | ----------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------- |
 | M0  | workflow architecture and rules     | `implemented-unproven` | pilot proves refresh, dependency, cycle, correction, durable resume, review, and final verifier |
 | M1a | Loading Indicator dependency family | `refresh-required`     | five successful revision-linked artifacts and no unresolved reported defect                     |
-| M1  | Button action family                | `refresh-required`     | dependency review linkage, cycle safety, five current artifacts, final verification              |
+| M1  | Button action family                | `refresh-required`     | dependency review linkage, cycle safety, five current artifacts, final verification             |
 | M2  | Switch stateful pilot               | `planned`              | controlled state/event contract and no-consumer/default-scenario behavior through workflow      |
 | M3  | sequential component migration      | `planned`              | dependency-first autonomous family migrations                                                   |
 
