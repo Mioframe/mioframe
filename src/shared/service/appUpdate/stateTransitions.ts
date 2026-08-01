@@ -276,19 +276,22 @@ export type CleanLaunchInputs = {
  * Decides whether a qualifying navigation should start a brand-new clean
  * launch activation of the current `ready` candidate.
  *
- * `false` whenever the candidate is not `ready` (every qualifying navigation
- * while already `activating` is served its target without starting another
- * one), or another same-channel window is still live. Has no concept of
- * "reload": it only ever consumes `otherLiveClientCount`, never a request
- * type, navigation history, or client identity. Whether a reload of the sole
- * remaining window happens to produce `otherLiveClientCount === 0` depends on
- * the caller's exclusion set (`clientId`/`resultingClientId` only, see
- * `sw.ts`) and on browser-specific timing; this function neither guarantees
- * nor forbids that outcome. The only cross-browser guaranteed activation
- * trigger is closing every same-channel window and then opening a new one.
- * Caller is responsible for scoping `otherLiveClientCount` to the current
- * channel only (excluding other channels, branches, and PR previews) and for
- * excluding this navigation's own client identities.
+ * A pure decision over two already-resolved facts: the candidate's `ready`
+ * phase and `inputs.otherLiveClientCount`, the count of *other* same-channel
+ * window clients live right now. The caller has already excluded the
+ * navigation currently being evaluated from that count, along with every
+ * client outside this exact channel (other channels, branches, and PR
+ * previews). Zero other same-channel windows is a qualifying clean launch;
+ * one or more other same-channel windows blocks activation. `false`
+ * whenever the candidate is not `ready`: every qualifying navigation while
+ * already `activating` is served its target without starting another one.
+ *
+ * Has no concept of "reload": it only ever consumes `otherLiveClientCount`,
+ * never a request type, navigation history, or a URL heuristic — this pure
+ * function performs no browser reload classification at all. Caller is
+ * responsible for computing `otherLiveClientCount` (`clientId`/
+ * `resultingClientId` exclusion only, see `sw.ts`) and for scoping it to the
+ * current channel only.
  * @param state - Current controller state.
  * @param inputs - Same-channel window-liveness facts for this navigation.
  * @returns Whether to start a new activation.

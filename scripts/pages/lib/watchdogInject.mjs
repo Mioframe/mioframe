@@ -59,6 +59,10 @@ export function buildWatchdogScript(releaseNumber) {
   var GET_ACTIVATION_STATUS = 'GET_ACTIVATION_STATUS';
   var ROLLBACK = 'APP_UPDATE_ROLLBACK';
   var ACK_TIMEOUT_MS = ${WATCHDOG_ACK_TIMEOUT_MS};
+  var ACK_COMMITTED = 'committed';
+  var ACK_ROLLED_BACK = 'rolled-back';
+  var ACK_IGNORED = 'ignored';
+  var ACK_ERROR = 'error';
 
   var settled = false;
   var bootOkReported = false;
@@ -105,20 +109,28 @@ export function buildWatchdogScript(releaseNumber) {
       releaseNumber: RELEASE_NUMBER,
     }).then(function (response) {
       var ack = response && response.protocolVersion === PROTOCOL_VERSION ? response.ack : null;
-      if (ack === 'error') {
+      if (ack === ACK_ERROR) {
         settled = true;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
         showRecoveryMessage();
         return;
       }
-      if (ack !== 'rolled-back') {
-        // 'ignored', or no acknowledgement at all (timeout / no
+      if (ack === ACK_ROLLED_BACK) {
+        // The matching APP_UPDATE_ROLLBACK broadcast below performs the
+        // actual reload once it arrives; nothing else to do here.
+        return;
+      }
+      if (ack === ACK_IGNORED || ack === null) {
+        // No durable outcome recorded (an explicit ignore, a timeout, or no
         // controller): allow a later genuine failure to be reported again
         // instead of latching forever.
         bootFailedReported = false;
+        return;
       }
-      // 'rolled-back': the matching APP_UPDATE_ROLLBACK broadcast below
-      // performs the actual reload once it arrives; nothing else to do here.
+      // Any other unexpected acknowledgement value: fail closed the same
+      // way, so a malformed report can never latch this session out of ever
+      // reporting a failure again.
+      bootFailedReported = false;
     });
   }
 
@@ -139,7 +151,7 @@ export function buildWatchdogScript(releaseNumber) {
     };
     sendToController(request).then(function (response) {
       var isCommitted =
-        response && response.protocolVersion === PROTOCOL_VERSION && response.ack === 'committed';
+        response && response.protocolVersion === PROTOCOL_VERSION && response.ack === ACK_COMMITTED;
       if (isCommitted) {
         settled = true;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);

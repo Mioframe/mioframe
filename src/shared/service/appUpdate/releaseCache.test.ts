@@ -58,6 +58,23 @@ describe('buildReleaseCacheName', () => {
       buildReleaseCacheName('develop', RELEASE_NUMBER),
     );
   });
+
+  it('produces the exact canonical name for release 1', () => {
+    expect(buildReleaseCacheName('stable', 1)).toBe('stable-release-1');
+  });
+
+  it('produces the exact canonical name for Number.MAX_SAFE_INTEGER', () => {
+    expect(buildReleaseCacheName('stable', Number.MAX_SAFE_INTEGER)).toBe(
+      `stable-release-${Number.MAX_SAFE_INTEGER}`,
+    );
+  });
+
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    'throws before formatting a name for a non-canonical release number: %s',
+    (releaseNumber) => {
+      expect(() => buildReleaseCacheName('stable', releaseNumber)).toThrow();
+    },
+  );
 });
 
 describe('isReleaseAvailable', () => {

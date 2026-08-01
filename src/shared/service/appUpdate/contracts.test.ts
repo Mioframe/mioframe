@@ -184,3 +184,93 @@ describe('zodUpdateControllerState', () => {
     ).toBe(false);
   });
 });
+
+describe('zodUpdateControllerState — persisted strictness', () => {
+  it('rejects an unknown field on the root object rather than stripping it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        approvedRelease: releaseSummaryB,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an unknown legacy field on activeRelease rather than stripping it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        activeRelease: { ...releaseSummaryA, legacyReleaseId: 'old-id' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an unknown field directly on the candidate rather than stripping it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: { phase: 'ready', release: releaseSummaryB, approvedBy: 'admin' },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an unknown legacy sequence field on the candidate release rather than stripping it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: { phase: 'available', release: { ...releaseSummaryB, sequence: 2 } },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects deadlineAt on an available candidate rather than stripping it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: {
+          phase: 'available',
+          release: releaseSummaryB,
+          deadlineAt: '2026-07-24T00:00:30.000Z',
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects deadlineAt on a ready candidate rather than stripping it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: {
+          phase: 'ready',
+          release: releaseSummaryB,
+          deadlineAt: '2026-07-24T00:00:30.000Z',
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects deadlineAt on a failed candidate rather than stripping it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: {
+          phase: 'failed',
+          release: releaseSummaryB,
+          deadlineAt: '2026-07-24T00:00:30.000Z',
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a legacy UUID-shaped reference field on the candidate rather than migrating it', () => {
+    expect(
+      zodUpdateControllerState.safeParse({
+        ...validControllerState,
+        candidate: {
+          phase: 'available',
+          release: releaseSummaryB,
+          id: '550e8400-e29b-41d4-a716-446655440000',
+        },
+      }).success,
+    ).toBe(false);
+  });
+});

@@ -47,6 +47,20 @@ describe('parseControllerState', () => {
 });
 
 describe('buildControllerStateDbName', () => {
+  it('produces the exact stable database name', async () => {
+    const { buildControllerStateDbName } = await import('./controllerState');
+    // Asserted as a literal expected value, not derived from
+    // buildControllerStateDbName itself, so an accidental change to the
+    // production mapping cannot pass merely because the test recomputed the
+    // same (now-changed) value.
+    expect(buildControllerStateDbName('stable')).toBe('mioframe-update-controller-stable');
+  });
+
+  it('produces the exact develop database name', async () => {
+    const { buildControllerStateDbName } = await import('./controllerState');
+    expect(buildControllerStateDbName('develop')).toBe('mioframe-update-controller-branch-develop');
+  });
+
   it('produces distinct names for stable and develop', async () => {
     const { buildControllerStateDbName } = await import('./controllerState');
     expect(buildControllerStateDbName('stable')).not.toBe(buildControllerStateDbName('develop'));
@@ -127,6 +141,20 @@ describe('readControllerState / writeControllerState', () => {
     };
 
     await expect(writeControllerState('develop', conflictingState)).rejects.toThrow(
+      'Refusing to persist an invalid controller state',
+    );
+    expect(setMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses to persist a state with an unknown root field, and never calls idb-keyval set', async () => {
+    const { writeControllerState } = await import('./controllerState');
+    // `approvedRelease` is not part of `UpdateControllerState`'s static
+    // shape, so this can only be constructed by widening past the type —
+    // exactly the kind of stale or foreign persisted field the strict
+    // schema must reject rather than silently strip.
+    const invalidState = { ...validState, approvedRelease: validState.activeRelease };
+
+    await expect(writeControllerState('develop', invalidState)).rejects.toThrow(
       'Refusing to persist an invalid controller state',
     );
     expect(setMock).not.toHaveBeenCalled();

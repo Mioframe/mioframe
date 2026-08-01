@@ -27,8 +27,14 @@ export const buildManagedCacheNamespace = (channel: ManagedChannel): string =>
  * @param channel - Managed channel.
  * @param releaseNumber - The release's identity.
  * @returns The release's Cache Storage name.
+ * @throws When `releaseNumber` is not a positive safe integer — never
+ * coerced, truncated, rounded, clamped, normalized, or stringified into a
+ * cache name.
  */
 export function buildReleaseCacheName(channel: ManagedChannel, releaseNumber: number): string {
+  if (!isPositiveSafeInteger(releaseNumber)) {
+    throw new Error('Refusing to build a release cache name for a non-canonical release number');
+  }
   return `${buildManagedCacheNamespace(channel)}-release-${releaseNumber}`;
 }
 

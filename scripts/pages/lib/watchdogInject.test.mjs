@@ -125,10 +125,10 @@ describe('buildWatchdogScript', () => {
       script.indexOf('window.mioframeAppUpdateBootOk = function'),
       script.indexOf('if (navigator.serviceWorker) {'),
     );
-    expect(bootOkBody).toContain("response.ack === 'committed'");
+    expect(bootOkBody).toContain('response.ack === ACK_COMMITTED');
     // Disarming (clearing the deadline timer and removing the early-error
     // listeners) must be conditioned on that check, not unconditional.
-    expect(bootOkBody.indexOf("response.ack === 'committed'")).toBeLessThan(
+    expect(bootOkBody.indexOf('response.ack === ACK_COMMITTED')).toBeLessThan(
       bootOkBody.indexOf('clearTimeout(deadlineTimer)'),
     );
   });
@@ -139,7 +139,7 @@ describe('buildWatchdogScript', () => {
       script.indexOf('function reportBootFailed'),
       script.indexOf('function onEarlyFatalError'),
     );
-    expect(reportBootFailedBody).toContain("ack === 'error'");
+    expect(reportBootFailedBody).toContain('ack === ACK_ERROR');
     expect(reportBootFailedBody).toContain('showRecoveryMessage()');
     expect(reportBootFailedBody).not.toContain('location.reload');
   });

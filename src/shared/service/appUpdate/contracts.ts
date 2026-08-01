@@ -129,20 +129,41 @@ export const zodLatestReleasePointer = z.object({ releaseNumber: zodReleaseNumbe
 export type LatestReleasePointer = z.infer<typeof zodLatestReleasePointer>;
 
 /**
+ * Field shape shared by every release-summary schema, so the additive
+ * protocol schema and the strict persisted schema (see
+ * {@link zodPersistedReleaseSummary}) can never independently drift into two
+ * different meanings of "release summary".
+ */
+const releaseSummaryShape = {
+  releaseNumber: zodReleaseNumber,
+  appVersion: z.string().check(z.minLength(1)),
+  buildId: z.string().check(z.minLength(1)),
+  buildDate: z.iso.datetime(),
+};
+
+/**
  * Release identity plus the display metadata a UI needs to show a release
  * without reading worker cache internals: exact `appVersion`, `buildId`, and
  * `buildDate` from a successfully validated {@link ReleaseDescriptor}. Never
  * derived from a bare `latest.json` pointer or guessed — only from a
  * descriptor that has already passed {@link zodReleaseDescriptor} validation.
+ *
+ * Additive: this is also the private worker protocol's release-summary
+ * shape, which must remain able to gain optional fields for a pinned v1
+ * consumer. The persisted controller-state schema uses the strict
+ * {@link zodPersistedReleaseSummary} instead.
  */
-export const zodReleaseSummary = z.object({
-  releaseNumber: zodReleaseNumber,
-  appVersion: z.string().check(z.minLength(1)),
-  buildId: z.string().check(z.minLength(1)),
-  buildDate: z.iso.datetime(),
-});
+export const zodReleaseSummary = z.object(releaseSummaryShape);
 /** A {@link zodReleaseSummary}-validated release identity with display metadata. */
 export type ReleaseSummary = z.infer<typeof zodReleaseSummary>;
+
+/**
+ * Persisted-only strict composition of {@link releaseSummaryShape}: rejects
+ * any field beyond the four canonical ones, so a stale or foreign field on a
+ * durably persisted release summary fails closed instead of being silently
+ * stripped.
+ */
+const zodPersistedReleaseSummary = z.strictObject(releaseSummaryShape);
 
 /**
  * Extracts the {@link ReleaseSummary} — identity plus display metadata —
@@ -201,18 +222,43 @@ export const zodUpdateCandidate = z.discriminatedUnion('phase', [
 export type UpdateCandidate = z.infer<typeof zodUpdateCandidate>;
 
 /**
+ * Persisted-only strict composition of {@link zodUpdateCandidate}'s phase
+ * variants: every variant rejects any field beyond its own canonical set —
+ * in particular, `deadlineAt` is only ever accepted on `activating`, never
+ * silently stripped from `available`, `ready`, or `failed`.
+ */
+const zodPersistedUpdateCandidate = z.discriminatedUnion('phase', [
+  z.strictObject({ phase: z.literal('available'), release: zodPersistedReleaseSummary }),
+  z.strictObject({ phase: z.literal('ready'), release: zodPersistedReleaseSummary }),
+  z.strictObject({
+    phase: z.literal('activating'),
+    release: zodPersistedReleaseSummary,
+    deadlineAt: z.iso.datetime(),
+  }),
+  z.strictObject({ phase: z.literal('failed'), release: zodPersistedReleaseSummary }),
+]);
+
+/**
  * The service worker's complete persisted update-controller state: the only
  * source of truth for `activeRelease` and the at-most-one future release
  * `candidate`. Deliberately excludes any client-specific, operation-token, or
  * transient check/preparation state (see the managed pinned application
  * updates feature's architecture decision).
+ *
+ * Strict at every level (root, `activeRelease`, `candidate`, and the
+ * candidate's `release`): an unknown, obsolete, or foreign field on a
+ * durably persisted record must fail closed rather than being silently
+ * stripped, normalized, or migrated. This is deliberately narrower than the
+ * additive private worker protocol schemas (see {@link zodReleaseSummary},
+ * {@link zodUpdateCandidate}), which must stay able to gain optional fields
+ * for a pinned v1 consumer.
  */
 export const zodUpdateControllerState = z
-  .object({
+  .strictObject({
     schemaVersion: z.literal(CONTROLLER_STATE_SCHEMA_VERSION),
     mode: zodUpdateMode,
-    activeRelease: zodReleaseSummary,
-    candidate: z.optional(zodUpdateCandidate),
+    activeRelease: zodPersistedReleaseSummary,
+    candidate: z.optional(zodPersistedUpdateCandidate),
     lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
   })
   .check(

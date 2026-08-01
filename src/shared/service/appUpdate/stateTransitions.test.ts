@@ -211,11 +211,9 @@ describe('completeAutomaticPreparation', () => {
   });
 
   it('is a no-op (same reference) when there is no candidate at all', () => {
-    const state = completeAutomaticPreparation(
-      { ...baseState, mode: 'automatic' },
-      releaseB.releaseNumber,
-    );
-    expect(state).toEqual({ ...baseState, mode: 'automatic' });
+    const automaticNoCandidate: UpdateControllerState = { ...baseState, mode: 'automatic' };
+    const state = completeAutomaticPreparation(automaticNoCandidate, releaseB.releaseNumber);
+    expect(state).toBe(automaticNoCandidate);
   });
 });
 
@@ -265,8 +263,9 @@ describe('completeManualInstall', () => {
   });
 
   it('is a no-op (same reference) when there is no candidate at all', () => {
-    const state = completeManualInstall({ ...baseState, mode: 'manual' }, releaseB.releaseNumber);
-    expect(state).toEqual({ ...baseState, mode: 'manual' });
+    const manualNoCandidate: UpdateControllerState = { ...baseState, mode: 'manual' };
+    const state = completeManualInstall(manualNoCandidate, releaseB.releaseNumber);
+    expect(state).toBe(manualNoCandidate);
   });
 });
 
@@ -336,7 +335,7 @@ describe('shouldStartActivation', () => {
     candidate: { phase: 'ready', release: releaseB },
   };
 
-  it('starts when no other same-channel window is live', () => {
+  it('is a qualifying clean launch when the evaluated navigation is excluded by the caller and zero other same-channel windows remain', () => {
     expect(shouldStartActivation(withReady, { otherLiveClientCount: 0 })).toBe(true);
   });
 
