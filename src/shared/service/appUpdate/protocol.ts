@@ -183,13 +183,27 @@ export const zodAppUpdateStateChangedBroadcast = z.object({
 export type AppUpdateStateChangedBroadcast = z.infer<typeof zodAppUpdateStateChangedBroadcast>;
 
 /**
+ * The same-path bootstrap compatibility probe (Stage 3) an installing worker
+ * sends to `registration.active` to test whether it is itself a managed
+ * update controller. Handled by `src/sw.ts` before normal same-channel
+ * window request validation: the sender is another service worker instance,
+ * never a window client, so it must never be rejected by the window-client
+ * source check. Answering it reads no state, mutates no state, and touches
+ * no cache — see {@link zodManagedControllerProbeResponse} for the reply.
+ */
+export const zodManagedControllerProbeRequest = z.object({
+  protocolVersion: zodProtocolVersion,
+  type: z.literal('PROBE_MANAGED_UPDATE_CONTROLLER'),
+});
+/** A {@link zodManagedControllerProbeRequest}-validated predecessor probe request. */
+export type ManagedControllerProbeRequest = z.infer<typeof zodManagedControllerProbeRequest>;
+
+/**
  * The response a managed controller worker returns to the same-path
  * bootstrap compatibility probe (Stage 3): proves the responding
  * `registration.active` worker is itself a managed update controller for the
  * given channel, distinct from a compatible legacy Workbox `CACHE_URLS`
- * responder. Defined here as the release-1 predecessor-compatibility
- * contract only — Stage 2 implements no probing, install classification, or
- * Workbox messaging.
+ * responder.
  */
 export const zodManagedControllerProbeResponse = z.object({
   protocolVersion: zodProtocolVersion,

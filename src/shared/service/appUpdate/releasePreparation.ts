@@ -2,6 +2,7 @@ import {
   buildArchivedIndexPath,
   buildLatestPointerPath,
   buildReleaseDescriptorPath,
+  toReleaseSummary,
   zodLatestReleasePointer,
   zodReleaseDescriptor,
   type LatestReleasePointer,
@@ -144,7 +145,9 @@ export async function prepareRelease(
   const cacheName = buildReleaseCacheName(channel, descriptor.releaseNumber);
 
   const existingCache = await caches.open(cacheName);
-  if (await checkReleaseAvailability(existingCache, descriptor.releaseNumber, channelBasePath)) {
+  if (
+    await checkReleaseAvailability(existingCache, toReleaseSummary(descriptor), channelBasePath)
+  ) {
     return;
   }
 

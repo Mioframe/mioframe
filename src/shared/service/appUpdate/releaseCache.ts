@@ -1,5 +1,7 @@
 import {
   isPositiveSafeInteger,
+  releaseSummariesMatch,
+  toReleaseSummary,
   zodReleaseDescriptor,
   type ManagedChannel,
   type ReleaseDescriptor,
@@ -51,22 +53,25 @@ const releaseNumberFromCacheName = (namespace: string, cacheName: string): numbe
 };
 
 /**
- * Returns `true` when `descriptor` proves `expectedReleaseNumber` is fully
- * available: its identity matches exactly and every listed file is present.
- * Callers only reach this once a release cache's descriptor marker has
- * already been read and parsed; an unparsable or missing marker means "not
- * available" without calling this function at all.
+ * Returns `true` when `descriptor` proves `expected` is fully available: its
+ * complete release identity (`releaseNumber`, `appVersion`, `buildId`,
+ * `buildDate` — see {@link releaseSummariesMatch}) matches exactly and every
+ * listed file is present. A marker that merely shares `expected`'s release
+ * number is not enough — it must be the exact same release. Callers only
+ * reach this once a release cache's descriptor marker has already been read
+ * and parsed; an unparsable or missing marker means "not available" without
+ * calling this function at all.
  * @param descriptor - The release cache's parsed descriptor marker.
- * @param expectedReleaseNumber - The release the caller expects to be available.
+ * @param expected - The complete release summary the caller expects to be available.
  * @param presentPaths - Every file path currently present in the release cache.
- * @returns Whether `expectedReleaseNumber` is completely and correctly available.
+ * @returns Whether `expected` is completely and correctly available.
  */
 export function isReleaseAvailable(
   descriptor: ReleaseDescriptor,
-  expectedReleaseNumber: number,
+  expected: ReleaseSummary,
   presentPaths: ReadonlySet<string>,
 ): boolean {
-  if (descriptor.releaseNumber !== expectedReleaseNumber) return false;
+  if (!releaseSummariesMatch(toReleaseSummary(descriptor), expected)) return false;
   return descriptor.files.every((file) => presentPaths.has(file.path));
 }
 
@@ -251,24 +256,27 @@ export async function readReleaseDescriptorMarker(
 }
 
 /**
- * Reads a release cache's commit marker and confirms `expectedReleaseNumber`
- * is completely available in it (see {@link isReleaseAvailable}): the
- * descriptor marker parses and matches, the archived index marker is
- * present, and every listed file is present. No response may be served from
- * a release cache before this check succeeds.
+ * Reads a release cache's commit marker and confirms `expected` is
+ * completely available in it (see {@link isReleaseAvailable}): the
+ * descriptor marker parses and matches `expected`'s complete release
+ * identity, the archived index marker is present, and every listed file is
+ * present. A marker with the same `releaseNumber` but a different
+ * `appVersion`/`buildId`/`buildDate` is treated as unavailable, exactly like
+ * a missing marker. No response may be served from a release cache before
+ * this check succeeds.
  *
  * Independently re-checks the index marker rather than relying only on
  * preparation's write ordering, since Cache Storage entries may be evicted
  * individually under storage pressure — the descriptor marker surviving
  * does not guarantee every other entry did too.
  * @param cache - The release's Cache Storage cache.
- * @param expectedReleaseNumber - The release the caller expects to be available.
+ * @param expected - The complete release summary the caller expects to be available.
  * @param channelBasePath - This worker's channel base path, used to recover each cached request's relative file path.
- * @returns Whether `expectedReleaseNumber` is completely and correctly available in `cache`.
+ * @returns Whether `expected` is completely and correctly available in `cache`.
  */
 export async function checkReleaseAvailability(
   cache: Pick<Cache, 'match' | 'keys'>,
-  expectedReleaseNumber: number,
+  expected: ReleaseSummary,
   channelBasePath: string,
 ): Promise<boolean> {
   const descriptor = await readReleaseDescriptorMarker(cache);
@@ -284,5 +292,5 @@ export async function checkReleaseAvailability(
       .filter((pathname) => pathname.startsWith(channelBasePath))
       .map((pathname) => pathname.slice(channelBasePath.length)),
   );
-  return isReleaseAvailable(descriptor, expectedReleaseNumber, presentPaths);
+  return isReleaseAvailable(descriptor, expected, presentPaths);
 }

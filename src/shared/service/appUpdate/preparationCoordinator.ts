@@ -1,4 +1,10 @@
-import type { ManagedChannel, ReleaseDescriptor, ReleaseSummary } from './contracts';
+import {
+  releaseSummariesMatch,
+  toReleaseSummary,
+  type ManagedChannel,
+  type ReleaseDescriptor,
+  type ReleaseSummary,
+} from './contracts';
 import { fetchReleaseDescriptor, prepareRelease } from './releasePreparation';
 
 /**
@@ -93,8 +99,23 @@ export function createPreparationCoordinator(): PreparationCoordinator {
         // exact release number — this attempt must not touch that cache
         // until all of them have fully settled, win or lose.
         await tailToAwait;
-        const descriptor =
-          reusableDescriptor ?? (await fetchReleaseDescriptor(channelBasePath, target));
+        let descriptor = reusableDescriptor;
+        if (!descriptor) {
+          const fetched = await fetchReleaseDescriptor(channelBasePath, target);
+          // `fetchReleaseDescriptor` only proves `releaseNumber` matches
+          // (the bootstrap-only guarantee available from a bare
+          // `latest.json` pointer). Every other caller — restoration in
+          // particular — already knows the complete expected release
+          // identity, so a same-number descriptor that diverges on
+          // `appVersion`/`buildId`/`buildDate` must never be accepted or
+          // cached as `target`; see `releaseSummariesMatch`.
+          if (!releaseSummariesMatch(toReleaseSummary(fetched), target)) {
+            throw new Error(
+              'Fetched release descriptor does not match the expected release identity',
+            );
+          }
+          descriptor = fetched;
+        }
         await prepareRelease(channelBasePath, channel, descriptor);
         return descriptor;
       })();

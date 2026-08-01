@@ -179,6 +179,24 @@ export const toReleaseSummary = (descriptor: ReleaseDescriptor): ReleaseSummary 
 });
 
 /**
+ * The single owner of exact release-identity comparison: `true` only when
+ * every one of `releaseNumber`, `appVersion`, `buildId`, and `buildDate`
+ * matches. A shared `releaseNumber` alone never proves identity — a cache
+ * marker or restoration descriptor that matches by number but diverges on
+ * any other field must be treated as unavailable/rejected, never served or
+ * silently accepted. Every cache-availability and restoration-identity check
+ * reuses this comparator instead of duplicating a four-field comparison.
+ * @param a - A release summary.
+ * @param b - The release summary to compare it against.
+ * @returns Whether `a` and `b` identify the exact same release.
+ */
+export const releaseSummariesMatch = (a: ReleaseSummary, b: ReleaseSummary): boolean =>
+  a.releaseNumber === b.releaseNumber &&
+  a.appVersion === b.appVersion &&
+  a.buildId === b.buildId &&
+  a.buildDate === b.buildDate;
+
+/**
  * Persisted controller-state wire-format version. Bump when the persisted
  * shape changes incompatibly; an unreadable or unsupported version must fail
  * closed rather than silently reset to a default state (see

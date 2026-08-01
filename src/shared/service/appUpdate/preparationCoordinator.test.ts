@@ -134,6 +134,37 @@ describe('createPreparationCoordinator', () => {
     expect(result).toBe(descriptorA);
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects, without preparing, a fetched descriptor whose complete identity does not exactly match the target — a shared releaseNumber alone is not enough', async () => {
+    // `fetchReleaseDescriptor` only proves `releaseNumber` matches; a
+    // restoration target already knows the complete expected identity
+    // (releaseNumber, appVersion, buildId, buildDate), and a same-number
+    // descriptor that diverges on any other field must never be accepted.
+    fetchReleaseDescriptorMock.mockResolvedValue({ ...descriptorA, buildId: 'different-build' });
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    await expect(coordinator.prepare('stable', '/', releaseA)).rejects.toThrow(
+      'does not match the expected release identity',
+    );
+    expect(prepareReleaseMock).not.toHaveBeenCalled();
+  });
+
+  it('allows a fresh retry after an identity-mismatch rejection', async () => {
+    fetchReleaseDescriptorMock
+      .mockResolvedValueOnce({ ...descriptorA, buildId: 'different-build' })
+      .mockResolvedValueOnce(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    await expect(coordinator.prepare('stable', '/', releaseA)).rejects.toThrow();
+    const retried = await coordinator.prepare('stable', '/', releaseA);
+
+    expect(retried).toBe(descriptorA);
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 /**

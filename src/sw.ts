@@ -14,6 +14,10 @@ declare const self: ServiceWorkerGlobalScope;
  * `clients.claim()`). It must never identify itself as, or embed, a
  * particular application release — only its own channel (derived at runtime
  * from its registration scope, not build-embedded).
+ *
+ * Stage 3 implements bootstrap classification and active-release-only
+ * serving; discovery/preparation (Stage 4) and clean-launch
+ * activation/rollback (Stage 5) are not yet wired from this file.
  */
 
 import {
@@ -25,10 +29,9 @@ import { createPreparationCoordinator } from './shared/service/appUpdate/prepara
 import {
   withProtocolVersion,
   zodAppUpdateWorkerRequest,
+  zodManagedControllerProbeRequest,
 } from './shared/service/appUpdate/protocol';
 import { runReleaseCacheCleanup } from './shared/service/appUpdate/releaseCache';
-import { createScheduledDiscoveryCheckScheduler } from './shared/service/appUpdate/scheduledDiscoveryCheckScheduler';
-import { runScheduledDiscoveryCheck } from './shared/service/appUpdate/updateDiscovery';
 import {
   buildManagedChannelBasePath,
   deriveManagedChannel,
@@ -43,10 +46,17 @@ const channelBasePath = buildManagedChannelBasePath(channel);
 const channelOrigin = deriveManagedChannelOrigin(self.registration.scope);
 const enqueue = createOperationQueue();
 const preparationCoordinator = createPreparationCoordinator();
-const scheduledDiscoveryCheckScheduler = createScheduledDiscoveryCheckScheduler();
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(enqueue(() => runInstall(channel, channelBasePath)));
+  // Deliberately outside `enqueue`/`OperationQueue`: predecessor probing,
+  // the `latest.json`/descriptor fetch, file downloads, hashing, and cache
+  // preparation are long-running network/cache work, never a short
+  // serialized state transition. `self.registration.active` is read
+  // synchronously here, at the moment this listener runs, so it reflects
+  // this exact install attempt's own predecessor.
+  event.waitUntil(
+    runInstall(channel, channelBasePath, self.registration.active, preparationCoordinator),
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -60,25 +70,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-/**
- * Builds the set of client ids that belong to this navigation itself, so the
- * clean-launch window count never counts a navigation against its own
- * outcome: the requesting client if any (`clientId`) and the id already
- * reserved for the resulting document (`resultingClientId`) — the two
- * navigation-identity fields `lib.webworker.d.ts` actually declares.
- * Deliberately never reads `FetchEvent.replacesClientId`: it is not part of
- * that standard surface, and this project does not read undeclared
- * properties via `Reflect.get` to recover it. Uses identity, never URL, so a
- * distinct window that happens to share this navigation's URL is still
- * counted.
- * @param event - The navigation `FetchEvent`.
- * @returns The set of this navigation's own client ids.
- */
-function buildNavigationExclusionClientIds(event: FetchEvent): ReadonlySet<string> {
-  const ids = [event.clientId, event.resultingClientId];
-  return new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0));
-}
-
 self.addEventListener('fetch', (event) => {
   // For the stable channel (`channelBasePath` is `/`), a bare `startsWith`
   // check would match every path on the origin, including `/branch/**` and
@@ -91,60 +82,34 @@ self.addEventListener('fetch', (event) => {
   // worker controls, not which of their requests reach `fetch`).
   if (!isSameChannelPath(event.request.url, channelBasePath, channelOrigin)) return;
 
+  const pathname = new URL(event.request.url).pathname;
+
   // `updates/**` (the `latest.json` pointer, release descriptors, and
   // archived indexes) is metadata this worker fetches for its own
   // bookkeeping — never one of a release's cached asset files — and must
   // never be routed back through this same fetch handler. Once this worker
   // is active and controlling, its own internal `fetch()` calls for these
-  // URLs are otherwise self-intercepted here too, and `handleAssetFetch`
-  // would incorrectly serve a synthetic 404 for them (they are never part
-  // of `descriptor.files`), breaking every re-check after the first install.
-  if (new URL(event.request.url).pathname.startsWith(`${channelBasePath}updates/`)) {
-    return;
-  }
+  // URLs are otherwise self-intercepted here too, and treating it as an
+  // owned asset path would incorrectly serve a synthetic 404 for it (it is
+  // never part of `descriptor.files`), breaking every re-check after the
+  // first install.
+  if (pathname.startsWith(`${channelBasePath}updates/`)) return;
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      handleNavigationFetch(
-        channel,
-        channelBasePath,
-        channelOrigin,
-        event.request,
-        buildNavigationExclusionClientIds(event),
-        enqueue,
-        preparationCoordinator,
-      ).then((result) => {
-        // `runLifetimeWork` (an expired-activation rollback broadcast to
-        // every *other* same-channel window) is tracked under this fetch
-        // event's own lifetime here, in the same tick the response becomes
-        // available to the browser — never as untracked background work.
-        if (result.runLifetimeWork) event.waitUntil(result.runLifetimeWork());
-        return result.response;
-      }),
-    );
-    // Deduplicated once per worker lifetime, and attached to this event's
-    // lifetime via `waitUntil` — never awaited as part of the navigation
-    // response, so a background discovery check (and, in Automatic mode,
-    // any release download/hashing it triggers) can never delay this or any
-    // other navigation, but the worker is also not eligible for termination
-    // while it is still running. Runs in both update modes; only Automatic
-    // mode goes on to prepare a newer release. No foreground requester is
-    // waiting on this call, so every state change it causes is reported
-    // through its own same-channel invalidation broadcast instead — an
-    // already-open window refreshes its own snapshot via `GET_SNAPSHOT`.
-    event.waitUntil(
-      scheduledDiscoveryCheckScheduler.scheduleOnce(() =>
-        runScheduledDiscoveryCheck(
-          channel,
-          channelBasePath,
-          channelOrigin,
-          enqueue,
-          preparationCoordinator,
-        ),
-      ),
+      handleNavigationFetch(channel, channelBasePath, event.request, preparationCoordinator),
     );
     return;
   }
+
+  // This worker owns only same-channel `<channelBasePath>assets/**`. Every
+  // other same-origin, same-channel request (manifest, PWA icons outside
+  // `assets/**`, API routes, fonts, or anything else) is not this worker's
+  // concern at all: returning without calling `respondWith()` leaves it to
+  // ordinary browser network behavior, never a synthetic release-cache
+  // response.
+  const relativePath = pathname.slice(channelBasePath.length);
+  if (!relativePath.startsWith('assets/')) return;
 
   event.respondWith(
     handleAssetFetch(channel, channelBasePath, event.request, preparationCoordinator),
@@ -152,6 +117,21 @@ self.addEventListener('fetch', (event) => {
 });
 
 self.addEventListener('message', (event) => {
+  // The same-path bootstrap compatibility probe (Stage 3): its sender is
+  // another service worker instance installing on top of this one
+  // (`registration.active.postMessage()`), never a window client, so it
+  // must be answered before the same-channel *window* client check below
+  // would otherwise silently reject it. Reads no state, mutates no state,
+  // touches no cache — a fixed, unconditional reply naming only this
+  // worker's own channel.
+  const probeRequest = zodManagedControllerProbeRequest.safeParse(event.data);
+  if (probeRequest.success) {
+    event.ports[0]?.postMessage(
+      withProtocolVersion({ kind: 'managed-update-controller' as const, channel }),
+    );
+    return;
+  }
+
   // Only a same-channel window may issue a private protocol request: a
   // foreign-channel same-origin page that obtained this worker's
   // registration through `getRegistrations()` rather than its own

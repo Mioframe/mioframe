@@ -9,6 +9,7 @@ import {
   zodAppUpdateWorkerFailureResponse,
   zodAppUpdateWorkerRequest,
   zodAppUpdateWorkerResponse,
+  zodManagedControllerProbeRequest,
   zodManagedControllerProbeResponse,
 } from './protocol';
 
@@ -242,6 +243,38 @@ describe('zodAppUpdateStateChangedBroadcast', () => {
     expect(
       zodAppUpdateStateChangedBroadcast.safeParse({ type: 'APP_UPDATE_STATE_CHANGED' }).success,
     ).toBe(false);
+  });
+});
+
+describe('zodManagedControllerProbeRequest', () => {
+  it('parses the exact v1 probe request', () => {
+    expect(
+      zodManagedControllerProbeRequest.safeParse({
+        protocolVersion: 1,
+        type: 'PROBE_MANAGED_UPDATE_CONTROLLER',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('fails closed on a missing or wrong protocolVersion', () => {
+    expect(
+      zodManagedControllerProbeRequest.safeParse({ type: 'PROBE_MANAGED_UPDATE_CONTROLLER' })
+        .success,
+    ).toBe(false);
+    expect(
+      zodManagedControllerProbeRequest.safeParse({
+        protocolVersion: 2,
+        type: 'PROBE_MANAGED_UPDATE_CONTROLLER',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('fails closed on a wrong or missing type', () => {
+    expect(
+      zodManagedControllerProbeRequest.safeParse({ protocolVersion: 1, type: 'CACHE_URLS' })
+        .success,
+    ).toBe(false);
+    expect(zodManagedControllerProbeRequest.safeParse({ protocolVersion: 1 }).success).toBe(false);
   });
 });
 

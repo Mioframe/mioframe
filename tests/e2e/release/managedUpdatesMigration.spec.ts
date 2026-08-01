@@ -74,15 +74,18 @@ async function waitForActiveReleaseNumber(
 // storage, while the already-open old-worker session keeps working.
 //
 // The managed controller worker uses the browser's ordinary Service Worker
-// lifecycle for its own code: it never inspects `registration.active`, never
-// distinguishes a legacy Workbox worker from an older managed one, and never
-// calls `skipWaiting()`. When persisted managed state is absent, `install`
-// unconditionally fetches, validates, and fully prepares the channel's
-// first managed release — including while a legacy Workbox worker still
-// controls the page that triggered registration — then finishes; ordinary
-// browser lifecycle promotes it to "waiting", and only promotes it further
-// to "active" once every previously-controlled window closes. See the
-// managed pinned application updates feature.
+// lifecycle for its own code — it never calls `skipWaiting()`. When
+// persisted managed state is absent, `install` sends the exact concurrent
+// managed/Workbox predecessor probes to `registration.active` (this frozen
+// legacy `generateSW` worker answers the standard Workbox `CACHE_URLS`
+// probe with exact `true`, proving compatibility); only once that probe
+// classifies the predecessor as a genuine first registration or a
+// compatible Workbox worker does `install` fetch, validate, and fully
+// prepare the channel's first managed release — including while the legacy
+// Workbox worker still controls the page that triggered registration — then
+// finish; ordinary browser lifecycle promotes it to "waiting", and only
+// promotes it further to "active" once every previously-controlled window
+// closes. See the managed pinned application updates feature.
 //
 // Wired into the `managed-updates` release-only verify label; a failure
 // here fails `pnpm verify:release`.

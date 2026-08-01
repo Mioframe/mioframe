@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReleaseDescriptor } from './contracts';
+import { toReleaseSummary, type ReleaseDescriptor } from './contracts';
 import {
   buildManagedCacheNamespace,
   buildReleaseCacheName,
@@ -78,19 +78,30 @@ describe('buildReleaseCacheName', () => {
 });
 
 describe('isReleaseAvailable', () => {
-  it('is true when the release identity matches and every file is present', () => {
+  const descriptorSummary = toReleaseSummary(descriptor);
+
+  it('is true when the complete release identity matches and every file is present', () => {
     const present = new Set(descriptor.files.map((file) => file.path));
-    expect(isReleaseAvailable(descriptor, RELEASE_NUMBER, present)).toBe(true);
+    expect(isReleaseAvailable(descriptor, descriptorSummary, present)).toBe(true);
   });
 
   it('is false when a listed file is missing', () => {
     const present = new Set(['assets/app.js']);
-    expect(isReleaseAvailable(descriptor, RELEASE_NUMBER, present)).toBe(false);
+    expect(isReleaseAvailable(descriptor, descriptorSummary, present)).toBe(false);
   });
 
   it('is false when the expected release number does not match the descriptor', () => {
     const present = new Set(descriptor.files.map((file) => file.path));
-    expect(isReleaseAvailable(descriptor, 2, present)).toBe(false);
+    expect(
+      isReleaseAvailable(descriptor, { ...descriptorSummary, releaseNumber: 2 }, present),
+    ).toBe(false);
+  });
+
+  it('is false when the expected release number matches but another identity field diverges (buildId)', () => {
+    const present = new Set(descriptor.files.map((file) => file.path));
+    // Same releaseNumber as the descriptor, but a different buildId: must
+    // never be treated as the same release merely by number.
+    expect(isReleaseAvailable(descriptor, releaseSummary(RELEASE_NUMBER), present)).toBe(false);
   });
 });
 
@@ -239,6 +250,7 @@ describe('release descriptor marker', () => {
 
 describe('checkReleaseAvailability', () => {
   const channelBasePath = '/';
+  const descriptorSummary = toReleaseSummary(descriptor);
 
   function buildMockCache(
     descriptorMarker: Response | undefined,
@@ -260,27 +272,27 @@ describe('checkReleaseAvailability', () => {
 
   it('is false when no marker is present', async () => {
     const cache = buildMockCache(undefined, undefined, []);
-    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(false);
+    expect(await checkReleaseAvailability(cache, descriptorSummary, channelBasePath)).toBe(false);
   });
 
   it('is true when the marker matches, the index marker is present, and every file is present', async () => {
     const marker = new Response(JSON.stringify(descriptor));
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
-    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(true);
+    expect(await checkReleaseAvailability(cache, descriptorSummary, channelBasePath)).toBe(true);
   });
 
   it('is false when the archived index marker is missing, even if the descriptor marker and files are present', async () => {
     const marker = new Response(JSON.stringify(descriptor));
     const cache = buildMockCache(marker, undefined, ['/assets/app.js', '/assets/vendor.js']);
-    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(false);
+    expect(await checkReleaseAvailability(cache, descriptorSummary, channelBasePath)).toBe(false);
   });
 
   it('is false, without throwing, when the descriptor marker is malformed JSON', async () => {
     const marker = new Response('not valid json{');
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
-    await expect(checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).resolves.toBe(
+    await expect(checkReleaseAvailability(cache, descriptorSummary, channelBasePath)).resolves.toBe(
       false,
     );
   });
@@ -289,14 +301,23 @@ describe('checkReleaseAvailability', () => {
     const marker = new Response(JSON.stringify(descriptor));
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js']);
-    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(false);
+    expect(await checkReleaseAvailability(cache, descriptorSummary, channelBasePath)).toBe(false);
   });
 
   it('ignores cached entries outside this channel base path', async () => {
     const marker = new Response(JSON.stringify(descriptor));
     const indexMarker = new Response('<html>archived</html>');
     const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
-    expect(await checkReleaseAvailability(cache, RELEASE_NUMBER, channelBasePath)).toBe(true);
+    expect(await checkReleaseAvailability(cache, descriptorSummary, channelBasePath)).toBe(true);
+  });
+
+  it('is false when the marker shares the expected releaseNumber but diverges on another identity field', async () => {
+    const marker = new Response(JSON.stringify(descriptor));
+    const indexMarker = new Response('<html>archived</html>');
+    const cache = buildMockCache(marker, indexMarker, ['/assets/app.js', '/assets/vendor.js']);
+    expect(
+      await checkReleaseAvailability(cache, releaseSummary(RELEASE_NUMBER), channelBasePath),
+    ).toBe(false);
   });
 });
 

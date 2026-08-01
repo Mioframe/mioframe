@@ -1,23 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // `src/sw.ts` wires the browser's real `ServiceWorkerGlobalScope` API
-// (`self.addEventListener`, `event.waitUntil`, `event.ports`) to the
-// managed-update domain modules. This file isolates exactly that wiring —
-// every domain module is mocked — to prove the `message` handler's
-// event-lifetime contract: `handleWorkerMessage()`'s response is posted
-// immediately, `runLifetimeWork` is invoked and awaited only afterwards
-// under the same `waitUntil()`, a malformed or foreign-channel request never
-// reaches the handler at all, and a `runLifetimeWork` rejection never
-// surfaces.
+// (`self.addEventListener`, `event.waitUntil`, `event.respondWith`,
+// `event.ports`) to the managed-update domain modules. This file isolates
+// exactly that wiring — every domain module is mocked — to prove: the
+// `message` handler's event-lifetime contract; the Stage 3 same-path
+// predecessor probe is answered before normal same-channel window request
+// validation and never touches state, cache, or Workbox's own protocol;
+// `install` work runs outside `OperationQueue`; and `fetch` routing
+// (navigation vs. owned `assets/**` vs. everything else) is decided purely
+// from the request's URL, never delegated to `workerFetch.ts`.
 
 const handleWorkerMessageMock = vi.fn();
 vi.mock('./shared/service/appUpdate/workerMessages', () => ({
   handleWorkerMessage: (...args: unknown[]) => handleWorkerMessageMock(...args),
 }));
 
+const isSameChannelPathMock = vi.fn((..._args: unknown[]) => true);
 const isSameChannelWindowClientMock = vi.fn((..._args: unknown[]) => true);
 vi.mock('./shared/service/appUpdate/cleanLaunch', () => ({
-  isSameChannelPath: () => true,
+  isSameChannelPath: (...args: unknown[]) => isSameChannelPathMock(...args),
   isSameChannelWindowClient: (...args: unknown[]) => isSameChannelWindowClientMock(...args),
 }));
 
@@ -27,63 +29,68 @@ vi.mock('./shared/service/appUpdate/workerChannel', () => ({
   deriveManagedChannelOrigin: () => 'https://mioframe.example',
 }));
 
+const enqueueMock = vi.fn((operation: () => Promise<unknown>) => operation());
 vi.mock('./shared/service/appUpdate/operationQueue', () => ({
-  createOperationQueue: () => (operation: () => Promise<unknown>) => operation(),
+  createOperationQueue: () => enqueueMock,
 }));
 
+const preparationCoordinatorFake = {
+  prepare: vi.fn(),
+  runCleanup: (cleanup: (ids: readonly number[]) => Promise<void>) => cleanup([]),
+};
 vi.mock('./shared/service/appUpdate/preparationCoordinator', () => ({
-  createPreparationCoordinator: () => ({
-    prepare: vi.fn(),
-    runCleanup: (cleanup: (ids: readonly number[]) => Promise<void>) => cleanup([]),
-  }),
-}));
-
-vi.mock('./shared/service/appUpdate/scheduledDiscoveryCheckScheduler', () => ({
-  createScheduledDiscoveryCheckScheduler: () => ({
-    scheduleOnce: (fn: () => Promise<void>) => fn(),
-  }),
+  createPreparationCoordinator: () => preparationCoordinatorFake,
 }));
 
 vi.mock('./shared/service/appUpdate/releaseCache', () => ({
   runReleaseCacheCleanup: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('./shared/service/appUpdate/updateDiscovery', () => ({
-  runScheduledDiscoveryCheck: vi.fn().mockResolvedValue(undefined),
-}));
-
+const handleAssetFetchMock = vi.fn();
+const handleNavigationFetchMock = vi.fn();
 vi.mock('./shared/service/appUpdate/workerFetch', () => ({
-  handleAssetFetch: vi.fn(),
-  handleNavigationFetch: vi.fn(),
+  handleAssetFetch: (...args: unknown[]) => handleAssetFetchMock(...args),
+  handleNavigationFetch: (...args: unknown[]) => handleNavigationFetchMock(...args),
 }));
 
+const runInstallMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('./shared/service/appUpdate/workerInstall', () => ({
-  runInstall: vi.fn().mockResolvedValue(undefined),
+  runInstall: (...args: unknown[]) => runInstallMock(...args),
 }));
 
-type FakeMessageListener = (event: {
-  data: unknown;
-  source: unknown;
-  ports: Array<{ postMessage: (message: unknown) => void }>;
+type FakeEvent = {
+  data?: unknown;
+  source?: unknown;
+  ports?: Array<{ postMessage: (message: unknown) => void }>;
+  request?: Request;
   waitUntil: (promise: Promise<unknown>) => void;
-}) => void;
+  respondWith?: (promise: unknown) => void;
+};
+type FakeListener = (event: FakeEvent) => void;
+
+const FAKE_ACTIVE = { fake: 'registration.active' };
 
 /**
  * Stubs `self` well enough for `src/sw.ts`'s module-level setup to run,
- * imports it fresh, and returns its registered `message` event listener.
- * @returns The listener `src/sw.ts` registered via `self.addEventListener('message', ...)`.
+ * imports it fresh, and returns every event listener it registered.
+ * @returns The listeners `src/sw.ts` registered via `self.addEventListener()`, keyed by event type.
  */
-async function importSwAndGetMessageListener(): Promise<FakeMessageListener> {
-  const listeners = new Map<string, FakeMessageListener>();
+async function importSwAndGetListeners(): Promise<Map<string, FakeListener>> {
+  const listeners = new Map<string, FakeListener>();
   vi.stubGlobal('self', {
-    registration: { scope: 'https://mioframe.example/' },
+    registration: { scope: 'https://mioframe.example/', active: FAKE_ACTIVE },
     clients: { matchAll: vi.fn().mockResolvedValue([]) },
-    addEventListener: (type: string, listener: FakeMessageListener) => {
+    addEventListener: (type: string, listener: FakeListener) => {
       listeners.set(type, listener);
     },
   });
 
   await import('./sw');
+  return listeners;
+}
+
+async function importSwAndGetMessageListener(): Promise<FakeListener> {
+  const listeners = await importSwAndGetListeners();
   const listener = listeners.get('message');
   if (!listener) throw new Error('Expected a message listener to have been registered');
   return listener;
@@ -130,19 +137,27 @@ async function flushMicrotasks(times = 5): Promise<void> {
 }
 
 const VALID_REQUEST = { protocolVersion: 1, type: 'GET_SNAPSHOT' };
+const PROBE_REQUEST = { protocolVersion: 1, type: 'PROBE_MANAGED_UPDATE_CONTROLLER' };
+
+beforeEach(() => {
+  vi.resetModules();
+  handleWorkerMessageMock.mockReset();
+  isSameChannelPathMock.mockReset();
+  isSameChannelPathMock.mockReturnValue(true);
+  isSameChannelWindowClientMock.mockReset();
+  isSameChannelWindowClientMock.mockReturnValue(true);
+  enqueueMock.mockClear();
+  handleAssetFetchMock.mockReset();
+  handleNavigationFetchMock.mockReset();
+  runInstallMock.mockReset();
+  runInstallMock.mockResolvedValue(undefined);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('src/sw.ts message handler', () => {
-  beforeEach(() => {
-    vi.resetModules();
-    handleWorkerMessageMock.mockReset();
-    isSameChannelWindowClientMock.mockReset();
-    isSameChannelWindowClientMock.mockReturnValue(true);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it('posts the response immediately, then keeps the event alive until runLifetimeWork completes', async () => {
     const listener = await importSwAndGetMessageListener();
     const deferredLifetimeWork = createDeferredVoid();
@@ -325,5 +340,219 @@ describe('src/sw.ts message handler', () => {
     expect(postMessage).not.toHaveBeenCalledWith(
       expect.objectContaining({ error: 'Controller state is unavailable' }),
     );
+  });
+});
+
+describe('src/sw.ts Stage 3 predecessor probe handling', () => {
+  it("answers the exact managed probe with the exact response, naming this worker's own channel", async () => {
+    const listener = await importSwAndGetMessageListener();
+    const postMessage = vi.fn();
+
+    listener({ data: PROBE_REQUEST, source: {}, ports: [{ postMessage }], waitUntil: vi.fn() });
+    await flushMicrotasks();
+
+    expect(postMessage).toHaveBeenCalledWith({
+      protocolVersion: 1,
+      kind: 'managed-update-controller',
+      channel: 'stable',
+    });
+  });
+
+  it('answers the probe before the same-channel window-client check: a non-window sender (another service worker) is still answered', async () => {
+    isSameChannelWindowClientMock.mockReturnValue(false);
+    const listener = await importSwAndGetMessageListener();
+    const postMessage = vi.fn();
+
+    listener({ data: PROBE_REQUEST, source: {}, ports: [{ postMessage }], waitUntil: vi.fn() });
+    await flushMicrotasks();
+
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'managed-update-controller' }),
+    );
+    expect(isSameChannelWindowClientMock).not.toHaveBeenCalled();
+  });
+
+  it('reads no state and mutates nothing: normal protocol routing is never reached for a probe', async () => {
+    const listener = await importSwAndGetMessageListener();
+    const postMessage = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({ data: PROBE_REQUEST, source: {}, ports: [{ postMessage }], waitUntil });
+    await flushMicrotasks();
+
+    expect(handleWorkerMessageMock).not.toHaveBeenCalled();
+    expect(waitUntil).not.toHaveBeenCalled();
+  });
+
+  it('never answers a Workbox CACHE_URLS probe: no reply, no protocol routing', async () => {
+    const listener = await importSwAndGetMessageListener();
+    const postMessage = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: { type: 'CACHE_URLS', payload: { urlsToCache: [] } },
+      source: {},
+      ports: [{ postMessage }],
+      waitUntil,
+    });
+    await flushMicrotasks();
+
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(handleWorkerMessageMock).not.toHaveBeenCalled();
+    expect(waitUntil).not.toHaveBeenCalled();
+  });
+
+  it('normal application protocol requests still route through the same-channel window-client check unchanged', async () => {
+    isSameChannelWindowClientMock.mockReturnValue(false);
+    const listener = await importSwAndGetMessageListener();
+    const postMessage = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({ data: VALID_REQUEST, source: {}, ports: [{ postMessage }], waitUntil });
+    await flushMicrotasks();
+
+    expect(isSameChannelWindowClientMock).toHaveBeenCalled();
+    expect(handleWorkerMessageMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('src/sw.ts install wiring', () => {
+  it('runs install work directly, never wrapped in OperationQueue, passing self.registration.active through', async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('install');
+    if (!listener) throw new Error('Expected an install listener to have been registered');
+    const waitUntil = vi.fn();
+
+    listener({ waitUntil });
+
+    expect(runInstallMock).toHaveBeenCalledWith(
+      'stable',
+      '/',
+      FAKE_ACTIVE,
+      preparationCoordinatorFake,
+    );
+    expect(enqueueMock).not.toHaveBeenCalled();
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('src/sw.ts fetch routing', () => {
+  function createFakeFetchEvent(
+    url: string,
+    mode: 'navigate' | 'same-origin' = 'same-origin',
+  ): {
+    event: FakeEvent;
+    respondWith: ReturnType<typeof vi.fn>;
+    waitUntil: ReturnType<typeof vi.fn>;
+  } {
+    const respondWith = vi.fn();
+    const waitUntil = vi.fn();
+    // The Fetch API's public `Request` constructor rejects `mode: 'navigate'`
+    // (it is reserved for browser-triggered navigations), so a real
+    // navigation request is simulated by overriding the read-only `mode`
+    // getter on an ordinary constructed instance instead.
+    const request = new Request(url);
+    if (mode === 'navigate') Object.defineProperty(request, 'mode', { value: 'navigate' });
+    return { event: { request, respondWith, waitUntil }, respondWith, waitUntil };
+  }
+
+  it('intercepts a same-channel top-level navigation', async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, respondWith } = createFakeFetchEvent('https://mioframe.example/', 'navigate');
+
+    listener(event);
+
+    expect(respondWith).toHaveBeenCalledTimes(1);
+    expect(handleNavigationFetchMock).toHaveBeenCalledWith(
+      'stable',
+      '/',
+      event.request,
+      preparationCoordinatorFake,
+    );
+  });
+
+  it('navigation never schedules extra background work beyond respondWith', async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, waitUntil } = createFakeFetchEvent('https://mioframe.example/', 'navigate');
+
+    listener(event);
+
+    expect(waitUntil).not.toHaveBeenCalled();
+  });
+
+  it('intercepts a same-channel assets/** request', async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, respondWith } = createFakeFetchEvent('https://mioframe.example/assets/app.js');
+
+    listener(event);
+
+    expect(respondWith).toHaveBeenCalledTimes(1);
+    expect(handleAssetFetchMock).toHaveBeenCalledWith(
+      'stable',
+      '/',
+      event.request,
+      preparationCoordinatorFake,
+    );
+  });
+
+  it("does not intercept updates/** (the worker's own metadata fetches)", async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, respondWith } = createFakeFetchEvent(
+      'https://mioframe.example/updates/latest.json',
+    );
+
+    listener(event);
+
+    expect(respondWith).not.toHaveBeenCalled();
+    expect(handleAssetFetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not intercept a non-asset same-channel request (manifest)', async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, respondWith } = createFakeFetchEvent(
+      'https://mioframe.example/manifest.webmanifest',
+    );
+
+    listener(event);
+
+    expect(respondWith).not.toHaveBeenCalled();
+    expect(handleAssetFetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does not intercept a non-asset same-channel API request', async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, respondWith } = createFakeFetchEvent('https://mioframe.example/api/whoami');
+
+    listener(event);
+
+    expect(respondWith).not.toHaveBeenCalled();
+  });
+
+  it('does not intercept a foreign-channel path', async () => {
+    isSameChannelPathMock.mockReturnValue(false);
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, respondWith } = createFakeFetchEvent(
+      'https://mioframe.example/branch/develop/',
+      'navigate',
+    );
+
+    listener(event);
+
+    expect(respondWith).not.toHaveBeenCalled();
+    expect(handleNavigationFetchMock).not.toHaveBeenCalled();
   });
 });

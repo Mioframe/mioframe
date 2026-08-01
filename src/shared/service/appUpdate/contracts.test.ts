@@ -5,6 +5,7 @@ import {
 } from '../../../../scripts/pages/lib/releaseDescriptorCorpus.mjs';
 import {
   isPositiveSafeInteger,
+  releaseSummariesMatch,
   toReleaseSummary,
   zodManagedChannel,
   zodReleaseDescriptor,
@@ -83,6 +84,31 @@ const releaseSummaryB = {
   buildId: 'build-b',
   buildDate: '2026-07-24T00:00:00.000Z',
 };
+
+describe('releaseSummariesMatch', () => {
+  it('is true for two structurally identical summaries', () => {
+    expect(releaseSummariesMatch(releaseSummaryA, { ...releaseSummaryA })).toBe(true);
+  });
+
+  it('is false for two entirely different releases', () => {
+    expect(releaseSummariesMatch(releaseSummaryA, releaseSummaryB)).toBe(false);
+  });
+
+  it.each(['appVersion', 'buildId', 'buildDate'] as const)(
+    'is false when releaseNumber matches but %s diverges — a shared number alone never proves identity',
+    (field) => {
+      expect(
+        releaseSummariesMatch(releaseSummaryA, { ...releaseSummaryA, [field]: 'different' }),
+      ).toBe(false);
+    },
+  );
+
+  it('is false when every other field matches but releaseNumber diverges', () => {
+    expect(releaseSummariesMatch(releaseSummaryA, { ...releaseSummaryA, releaseNumber: 99 })).toBe(
+      false,
+    );
+  });
+});
 
 const validControllerState = {
   schemaVersion: 1,

@@ -1,52 +1,89 @@
+/// <reference lib="webworker" />
+
 import { toReleaseSummary, type ManagedChannel } from './contracts';
 import { readControllerState, writeControllerState } from './controllerState';
-import {
-  fetchLatestReleasePointer,
-  fetchReleaseDescriptor,
-  prepareRelease,
-} from './releasePreparation';
+import { probePredecessor, type PredecessorLike } from './predecessorProbe';
+import type { PreparationCoordinator } from './preparationCoordinator';
+import { fetchLatestReleasePointer, fetchReleaseDescriptor } from './releasePreparation';
 import { buildInitialControllerState } from './stateTransitions';
 
 /**
  * Fetches, fully prepares, and persists this channel's very first managed
- * release, for a genuinely fresh installation (persisted state `'absent'`).
- * Persists state only once preparation fully succeeds — a failure here
- * never leaves partial managed state, and (since this runs inside the
- * `install` event) leaves the browser to reject this installation and keep
- * any previous worker active.
+ * release, for an allowed bootstrap (persisted state `'absent'` and either
+ * no active predecessor or a compatible Workbox predecessor). Persists state
+ * only once preparation fully succeeds — a failure here never leaves
+ * partial managed state, and (since this runs inside the `install` event)
+ * leaves the browser to reject this installation and keep any previous
+ * worker active. Runs through the shared {@link PreparationCoordinator} so
+ * this never duplicates a concurrent preparation of the same release number,
+ * and passes the already-validated descriptor so preparation does not fetch
+ * it twice.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
+ * @param coordinator - The channel's preparation coordinator.
  * @throws When discovery or preparation fails.
  */
 export async function prepareInitialManagedRelease(
   channel: ManagedChannel,
   channelBasePath: string,
+  coordinator: PreparationCoordinator,
 ): Promise<void> {
   const latest = await fetchLatestReleasePointer(channelBasePath);
   const descriptor = await fetchReleaseDescriptor(channelBasePath, latest);
-  await prepareRelease(channelBasePath, channel, descriptor);
-  await writeControllerState(channel, buildInitialControllerState(toReleaseSummary(descriptor)));
+  const activeRelease = toReleaseSummary(descriptor);
+  await coordinator.prepare(channel, channelBasePath, activeRelease, descriptor);
+  await writeControllerState(channel, buildInitialControllerState(activeRelease));
 }
 
 /**
- * Runs this worker instance's complete `install`-time decision: an invalid
- * persisted state rejects installation outright; an absent state prepares
- * and persists the very first managed release; an existing valid state is
- * preserved completely unchanged — no discovery, no active-release change,
- * no approval, and no cache restoration. A controller-code upgrade must
- * never change, or need to re-verify, which application release is
- * selected; missing cache restoration for an existing installation remains
- * the ordinary selected-release fetch responsibility (see `workerFetch.ts`).
+ * Runs this worker instance's complete `install`-time decision (Stage 3):
+ *
+ * - valid persisted state is preserved completely unchanged — no predecessor
+ *   probe, no network, no state write; a controller-code upgrade must never
+ *   change, or need to re-verify, which application release is selected;
+ * - invalid persisted state rejects installation outright, before probing
+ *   or any network/cache work — an invalid record is never repaired;
+ * - absent state with no active predecessor (`active` is `null`) is a
+ *   genuine first registration and bootstraps unconditionally;
+ * - absent state with an active predecessor sends the exact concurrent
+ *   managed/Workbox probes (see {@link probePredecessor}): a managed
+ *   predecessor means state loss and rejects installation; a compatible
+ *   Workbox predecessor allows the one-time bootstrap; any conflicting,
+ *   malformed, unknown, or silent outcome rejects installation.
+ *
+ * Stale caches never authorize a bootstrap decision — only this exact
+ * predecessor-probe outcome does.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
- * @throws When persisted state is invalid, or fresh-install preparation fails.
+ * @param active - `self.registration.active` at install time, or `null` for a genuinely fresh registration.
+ * @param coordinator - The channel's preparation coordinator.
+ * @throws When persisted state is invalid, the predecessor is not an allowed bootstrap source, or fresh-install preparation fails.
  */
-export async function runInstall(channel: ManagedChannel, channelBasePath: string): Promise<void> {
+export async function runInstall(
+  channel: ManagedChannel,
+  channelBasePath: string,
+  active: PredecessorLike | null,
+  coordinator: PreparationCoordinator,
+): Promise<void> {
   const read = await readControllerState(channel);
   if (read.status === 'invalid') {
     throw new Error('Persisted controller state is invalid; refusing to install a new controller');
   }
-  if (read.status === 'absent') {
-    await prepareInitialManagedRelease(channel, channelBasePath);
+  if (read.status === 'valid') return;
+
+  if (active) {
+    const outcome = await probePredecessor(active, channel);
+    if (outcome === 'managed') {
+      throw new Error(
+        'A managed predecessor answered with absent local state; refusing to install (managed-state loss)',
+      );
+    }
+    if (outcome === 'reject') {
+      throw new Error(
+        'Predecessor is not a genuine first registration or a compatible Workbox worker; refusing to install',
+      );
+    }
   }
+
+  await prepareInitialManagedRelease(channel, channelBasePath, coordinator);
 }
