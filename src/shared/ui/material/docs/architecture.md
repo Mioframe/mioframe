@@ -20,23 +20,40 @@ The complete execution state machine belongs to [`component-workflow.md`](./comp
 - use m3e without leaking renderer vocabulary or ownership;
 - implement the minimum complete surface required by confirmed scenarios;
 - keep component implementation separate from product-consumer migration;
-- independently review the complete resulting family;
+- independently review every complete family;
 - avoid speculative abstractions and duplicate owners.
 
 ## Sources of truth
 
 1. Official Material documentation defines the complete component and token contracts.
-2. `components/<family>/DESIGN.md` is the complete normalized local official snapshot.
-3. Current Mioframe scenarios and workspace rules select required behavior.
+2. `components/<family>/DESIGN.md` is the complete normalized official snapshot.
+3. Current product scenarios or the approved standalone library scenario select required behavior.
 4. `components/<family>/ARCHITECTURE.md` is the demand-scoped implementation contract.
 5. Runtime code plus `IMPLEMENTATION.md` records component-owned implementation and proof.
 6. `MIGRATION.md` records consumer adoption, preserved scenarios, and legacy removal.
-7. `REVIEW.md` records independent compliance and final-workflow-verification readiness.
+7. `REVIEW.md` records independent compliance and final-verification readiness.
 8. Canonical CSS plus `docs/token-api.md` defines the supported public token surface.
 9. `docs/m3e-defects.md` owns confirmed renderer-defect lifecycle.
 10. `docs/roadmap.md` alone owns mutable milestone status and next action.
 
-Existing code, tests, stories, screenshots, renderer demos, and legacy APIs are evidence to inspect, not public-contract authority.
+Existing code, tests, stories, screenshots, renderer demos, and legacy APIs are evidence, not public-contract authority.
+
+## Durable family handoffs
+
+Every stage artifact owns an `Artifact revision`. Every downstream artifact records exact upstream revisions.
+
+```text
+DESIGN.md revision
+  → ARCHITECTURE.md
+ARCHITECTURE.md revision
+  → IMPLEMENTATION.md
+IMPLEMENTATION.md revision
+  → MIGRATION.md
+all four upstream revisions
+  → REVIEW.md
+```
+
+Revision linkage is the durable continuation mechanism after interruption or a new invocation. It is not a hash system or workflow database.
 
 ## Family ownership
 
@@ -56,14 +73,28 @@ Product layers retain product state, persistence, routing, errors, operation lif
 
 ## Demand-scoped public surface
 
-Architecture starts from the complete `DESIGN.md` and classifies official capability as:
+Architecture starts from complete design and classifies capability as:
 
-- `implement-now` — required by a current scenario or minimum coherent API;
+- `implement-now` — required by a confirmed product scenario, the approved standalone library scenario, or the minimum coherent API;
 - `defer` — official capability not required now;
 - `not-material` — project behavior absent from official Material;
 - `source-conflict` — official evidence cannot support a reliable decision.
 
-Deferred capability remains documented in `DESIGN.md` but is not copied into runtime API for symmetry or hypothetical reuse.
+Deferred capability remains in design but is not copied into runtime API for symmetry or hypothetical reuse.
+
+## New family without consumers
+
+When no current consumer exists, the explicit `material-component <name>` invocation establishes one approved library scenario:
+
+- render the unambiguous official standalone default;
+- expose only the public inputs needed to render, accessibly name, and control that default;
+- include disabled behavior only when official Material defines it;
+- include required states, semantics, accessibility, and faithful proof;
+- defer optional variants, sizes, shapes, and configurations;
+- do not copy m3e capabilities or invent product scenarios;
+- do not create a product consumer merely to justify the family.
+
+Operator input is required only when official documentation provides no standalone default or multiple materially different public models that cannot be resolved mechanically.
 
 ## Public Vue boundary
 
@@ -97,14 +128,14 @@ Inside an owning family:
 - do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion;
 - do not create a generic adapter framework without demonstrated repeated need.
 
-A temporary renderer workaround is exact-version, host-level, owner-local, removable, recorded in family architecture and `m3e-defects.md`, and revalidated on dependency updates.
+A temporary renderer workaround is exact-version, host-level, owner-local, removable, recorded in family architecture and `m3e-defects.md`, and revalidated whenever the lockfile-resolved renderer revision changes.
 
 ## Token boundary
 
 Runtime owners are:
 
 - foundation for selected `--md-ref-*` and `--md-sys-*` tokens;
-- each family for its selected `--md-comp-<family>-*` tokens;
+- each family for selected `--md-comp-<family>-*` tokens;
 - application code outside Material for `--app-*`;
 - renderer internals for `--m3e-*` and `--md-private-*`.
 
@@ -123,25 +154,32 @@ Do not create mixed-owner token files, duplicate public owners, compatibility al
 
 ## Dependency closure
 
-An official Material dependency is a first-class family with its own artifacts, implementation, tokens, defects, proof, migration facts, and review.
+An official Material dependency is a first-class family with its own complete design, architecture, implementation, migration, proof, and independent review.
 
-A parent architecture may be fully resolved while dependency work remains pending. It then uses `Status: ready`, a non-empty exact dependency queue, and `Implementation readiness: awaiting-dependencies`. Parent implementation cannot start in that state.
+Parent architecture records:
 
-The orchestrator processes the queue before retrying parent architecture. After requested dependency gates are reached, parent architecture runs again, validates public handoffs, clears or recomputes the queue, and becomes implementation-ready only when the queue is `none`.
+- the complete direct `Dependency families` set;
+- a `Dependency queue` containing dependencies that do not yet have successful current review.
 
-Later parent stages cannot complete before their required dependency gates. Parent composition proof does not replace standalone dependency proof.
+A queued dependency always runs its complete pipeline through current review. Stage-specific dependency gates are intentionally unsupported.
+
+Parent architecture may be fully resolved while dependencies remain pending. It then uses `Status: ready`, a non-empty queue, and `Implementation readiness: awaiting-dependencies`. Parent implementation cannot start in that state.
+
+After dependencies reach current review, parent architecture runs again, validates public handoffs, clears or recomputes the queue, and becomes implementation-ready only when the queue is `none`.
+
+Parent composition proof does not replace standalone dependency proof.
 
 ## Proof and completion principles
 
 Architecture selects faithful proof owners before implementation:
 
 - implementation proves component-owned contracts;
-- migration proves product scenarios and legacy removal;
+- migration proves product scenarios or the explicit no-consumer case and legacy removal;
 - review independently checks the complete result;
-- the outer workflow runs one final read-only project verification after current review.
+- the outer workflow runs one final read-only project verification after current reviews.
 
 Renderer-owned appearance requires browser or visual proof. Source inspection, host state, token presence, or a story alone is insufficient.
 
-Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete defect routes to its owning stage.
+Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete defect routes to its owning family and stage.
 
 A passing verification command proves only its covered checks and does not replace architecture or independent review.
