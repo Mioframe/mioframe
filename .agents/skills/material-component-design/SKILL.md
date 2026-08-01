@@ -5,23 +5,23 @@ description: 'Use with an official Material component name to create or refresh 
 
 # Material component design
 
-Create or refresh one family `DESIGN.md` and return control to the outer orchestrator.
+Create or refresh one family `DESIGN.md` and return control to the orchestrator.
 
-This stage owns official Material source normalization and source-refresh metadata only.
+This stage owns official Material source normalization only.
 
 ## Input
 
 The only required input is the Material component name.
 
-Resolve the official component and canonical family path from official and readable workspace evidence. Ask for clarification only when the name genuinely maps to multiple distinct official components.
+Resolve the official component and canonical family from official and readable workspace evidence. Ask for clarification only when the name maps to multiple materially different official components.
 
 ## Worker boundary
 
 Run in a fresh isolated worker context.
 
-Use official source tools, task-relevant readable workspace files, applicable rules, and documented project commands. Do not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
+Use official source tools, task-relevant readable workspace files, applicable rules, and documented project commands. Do not depend on Git, PR, commit, or external-check state.
 
-Do not read family implementation, tests, renderer package, consumers, migration, review, or roadmap before the official source ledger is complete. Those sources can bias the design toward current demand.
+Do not read family implementation, renderer package, consumers, migration, review, or roadmap before the official source ledger is complete.
 
 ## Output
 
@@ -33,9 +33,10 @@ src/shared/ui/material/components/<family>/DESIGN.md
 
 Follow `src/shared/ui/material/docs/design-document.md`.
 
-The artifact begins with exact control fields:
+The artifact begins with:
 
 ```text
+Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 Status: current | stale | blocked
 Source revision: <exact source/cache revision>
 Source checked at: YYYY-MM-DD
@@ -46,15 +47,9 @@ Required return family: none | self
 Required return stage: none | design
 ```
 
-Do not append prose to an enum or routing value.
+Use a new UTC artifact revision whenever the document is written or refreshed. Do not reuse the previous revision after any content change.
 
-`Source checked at` is the date this worker completed the full source-check pass, including fallback evaluation. `Source revision` remains the exact newest complete source/cache revision actually used. Set `Refresh check after` to seven calendar days after `Source checked at`.
-
-A failed refresh helper does not prevent advancing `Source checked at` when the worker completed all fallbacks, retained a complete newest-known snapshot, and found no affirmative evidence of a newer material revision.
-
-## Required headings
-
-Use these exact top-level sections after the control fields:
+Required headings:
 
 ```text
 ## Source ledger
@@ -70,17 +65,9 @@ Use these exact top-level sections after the control fields:
 ## Related official contracts
 ```
 
-Each section must be present even when its content is explicitly `none` or official guidance is unavailable.
-
 ## Official source pass
 
-Inspect every applicable official source, including:
-
-- overview, specifications, guidelines, and accessibility;
-- expressive update notes;
-- complete token tables;
-- related components and delegated foundation guidance;
-- adaptive/platform guidance when present.
+Inspect every applicable official source, including overview, specifications, guidelines, accessibility, expressive updates, complete token tables, delegated foundations, related components, and adaptive/platform guidance.
 
 Use available fallbacks in order:
 
@@ -94,11 +81,11 @@ A failed refresh helper is not itself a blocker when a complete newest-known off
 
 Use statuses exactly:
 
-- `current` — complete newest successfully acquired official revision, with no evidence of a newer material revision;
+- `current` — complete newest successfully acquired official revision with no evidence of a newer material revision;
 - `stale` — affirmative evidence shows official content changed after the snapshot;
-- `blocked` — required content remains missing or incomplete after all available fallbacks.
+- `blocked` — required content remains missing or incomplete after all fallbacks.
 
-Age alone does not make a complete design stale. The refresh date exists so the orchestrator periodically launches this worker to repeat the source check.
+Set `Refresh check after` to the next date on which ordinary `material-component` use must attempt a source refresh. Age triggers a refresh attempt; it does not itself make the content stale.
 
 ## Required content
 
@@ -119,35 +106,15 @@ For every official token preserve exact official path, display name, aliases, do
 
 ## Separation
 
-`DESIGN.md` contains no:
-
-- Mioframe demand or `implement-now`/`defer` decisions;
-- Vue API;
-- renderer mapping, defect, workaround, or renderer revision;
-- implementation path;
-- test or verification plan;
-- migration, review, roadmap, Git, or PR status.
+`DESIGN.md` contains no Mioframe demand, selected surface, Vue API, renderer mapping, defect, workaround, implementation path, proof plan, migration, review, roadmap, Git, or PR status.
 
 ## Completion
 
-`Status: current` is valid only when:
+`Status: current` is valid only when the complete official surface is represented, required sources and tokens are accounted for, all required headings exist, and no Mioframe or renderer decision leaked into the artifact.
 
-- the full official surface is represented;
-- all required sources and tokens are accounted for;
-- every required heading exists;
-- source revision and dates are exact;
-- no Mioframe or renderer decision leaked into the artifact;
-- blockers are `none`;
-- both return fields are `none`.
+If official content remains incomplete, use `Status: blocked`, record exact blockers, and set the return target to `self/design`.
 
-If official content remains incomplete, use `Status: blocked`, record exact blockers, and set:
-
-```text
-Required return family: self
-Required return stage: design
-```
-
-Return to the orchestrator after writing the artifact. Do not execute architecture in the same context.
+Return after writing the artifact. Do not execute architecture in the same context.
 
 ## Report
 
@@ -157,12 +124,11 @@ Input component:
 Resolved official component:
 Canonical family:
 DESIGN.md path:
+Artifact revision:
+Official routes inspected:
 Source revision:
 Source checked at:
 Refresh check after:
-Official routes inspected:
-Refresh attempts and fallback:
-Official token rows captured:
 Source conflicts or extraction gaps: none | <details>
 Document status: current | stale | blocked
 Remaining blockers: none | <details>
@@ -176,7 +142,7 @@ Status: complete | blocked
 - Producing a demand-scoped summary.
 - Deriving official facts from current code, renderer artifacts, stories, tests, or consumers.
 - Mixing later-stage decisions into `DESIGN.md`.
-- Omitting required headings or unused official capability.
+- Omitting unused official capability.
 - Guessing missing facts.
-- Depending on Git or PR state.
+- Reusing an artifact revision after content changed.
 - Asking the operator to rerun the same component command.
