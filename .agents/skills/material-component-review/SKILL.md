@@ -7,45 +7,37 @@ description: 'Use after design, architecture, implementation, and migration arti
 
 Perform the independent semantic review of one complete Material family and return control to the orchestrator.
 
-This stage owns compliance judgment and exact return-family/stage routing. It does not implement fixes and does not own final workflow verification.
+This stage owns compliance judgment and exact family/stage routing. It does not implement fixes or own final workflow verification.
 
 ## Modes
 
 ### Full independent review
 
-Use after any upstream family artifact changed or when `REVIEW.md` is missing or invalid. Review the complete current family and all migrated consumers, not only the latest patch.
+Use after any upstream artifact changed, when review is missing or invalid, or when review is rerun as the origin stage after a cross-family correction.
+
+Review the complete current family and all migrated consumers, not only the latest change.
 
 ### Final-verifier routing review
 
-Use when the orchestrator provides the exact failed final verification command, visible output, and current parent/dependency family context.
+Use when the orchestrator provides the exact failed final command and visible output.
 
-Determine the exact owning family and earliest stage, update fixed review fields, and return. If no family stage can correct a genuine environment/project-command failure, record that blocker with both return fields `none`.
+Determine the exact owning family and earliest stage, update review control fields, and return. If no family stage can correct a genuine command-execution blocker, record it with both return fields `none`.
 
 ## Input gate
 
-Require mechanically valid and successful:
+Require successful current design, architecture, implementation, and migration artifacts.
 
-```text
-components/<family>/DESIGN.md
-components/<family>/ARCHITECTURE.md
-components/<family>/IMPLEMENTATION.md
-components/<family>/MIGRATION.md
-```
-
-Expected gates:
-
-- design current and not refresh-due;
-- architecture ready, current renderer revision, queue `none`, implementation readiness `ready`;
-- implementation complete with no deviations;
-- migration complete and review readiness `ready`.
+Each artifact must reference the exact current upstream revision. Architecture dependencies must have successful current reviews.
 
 If an upstream artifact is invalid, do not reconstruct it. Record the exact earliest return family and stage and block completion.
 
 ## Worker boundary
 
-Run in a fresh isolated worker context independent from workers that authored or corrected architecture, implementation, or migration.
+Run in a fresh isolated context independent from workers that authored or corrected architecture, implementation, or migration.
 
-Use task-relevant readable workspace files, canonical artifacts, official design evidence, current code/consumers/tests, exact renderer revision, and documented project commands. Do not depend on Git history/log, diff/index/branch/worktree state, commit identifiers, pull-request metadata/review comments, or external publication checks.
+Use task-relevant readable workspace files, canonical artifacts, official design evidence, current code, consumers, tests, and documented project commands. Do not depend on Git, PR, commit, or external-check state.
+
+Do not write branch, commit, or PR facts into review.
 
 ## Output
 
@@ -58,6 +50,11 @@ src/shared/ui/material/components/<family>/REVIEW.md
 Control fields:
 
 ```text
+Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
+DESIGN.md revision: <exact Artifact revision>
+ARCHITECTURE.md revision: <exact Artifact revision>
+IMPLEMENTATION.md revision: <exact Artifact revision>
+MIGRATION.md revision: <exact Artifact revision>
 Verdict: compliant | compliant-with-listed-risks | blocked
 Required return family: none | self | <canonical-family>
 Required return stage: none | design | architecture | implementation | migration
@@ -69,6 +66,8 @@ Major issues: none | <exact issues>
 Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
+
+Use a new artifact revision whenever review content or routing changes. Record the exact four upstream revisions reviewed.
 
 Required headings:
 
@@ -87,18 +86,16 @@ Required headings:
 ## Routing evidence
 ```
 
-Do not append prose to enum or routing values. Use every heading and explicit `none` where applicable.
-
 ## Full review order
 
-1. Validate design completeness, required structure, source revision, and refresh lifecycle.
-2. Compare architecture with design, scenarios, workspace ownership, simplest viable alternative, exact dependency queue, and renderer revision.
+1. Validate complete official design and source lifecycle.
+2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, and the simplest viable alternative.
 3. Compare implementation with every architecture decision and forbidden approach.
-4. Review every current consumer and legacy-removal claim.
-5. Inspect API, state precedence, tokens, renderer boundaries, dependencies, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
-6. Verify faithful proof ownership, impact metadata, and stage-scoped checks.
+4. Review consumers, the explicit no-consumer case, and legacy-removal claims.
+5. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
+6. Verify proof ownership, impact metadata, and stage-scoped checks.
 7. Check for an actual operator-reported visual/motion defect.
-8. Consolidate each underlying problem once and assign its exact owning family and earliest stage.
+8. Consolidate each underlying problem once and assign the exact owning family and earliest stage.
 
 Automated checks prove only covered contracts. They do not prove architecture or subjective visual/motion quality.
 
@@ -108,61 +105,71 @@ Absence of an operator report is `no-reported-defect`, is not a blocker, and req
 
 Route:
 
-- missing, due, stale, or incorrect official fact/token/spec → owning family design;
-- incorrect demand, API, ownership, dependency queue, renderer revision/strategy, token strategy, proof ownership, or migration plan → owning family architecture;
-- component code, token declaration, mapping, export, component test/story/browser/visual proof defect → owning family implementation;
-- consumer, product-scenario, legacy-removal, or migration-proof defect → owning family migration.
+- missing or incorrect official fact → owning family/design;
+- incorrect demand, API, ownership, dependency, renderer/token strategy, proof ownership, or migration plan → owning family/architecture;
+- component code, token, mapping, export, or component-owned proof defect → owning family/implementation;
+- consumer, product-scenario, legacy-removal, or migration-proof defect → owning family/migration.
 
-Use `self` for the reviewed family. Use the exact canonical dependency family when the finding belongs to a dependency. Do not put the family only in prose.
+A dependency defect routes to the dependency family, not automatically to the reviewed parent.
+
+Do not fix findings during review.
+
+## Cross-family origin rerun
+
+When review is rerun as the origin stage after another family was corrected:
+
+- inspect the corrected target’s current artifacts and proof;
+- re-evaluate the original finding from current evidence;
+- clear return fields when resolved;
+- otherwise replace them with the exact remaining target;
+- never preserve an old route merely because it existed before correction.
+
+This origin rerun is required before the orchestrator continues the parent.
 
 ## Verdict semantics
 
 ### `compliant`
 
-Use only when all upstream artifacts and mandatory proof are current and complete; no blockers/issues/risks remain; both return fields are `none`; completion is `complete`; final verification readiness is `ready`; and no reported visual defect remains.
+Use only when all upstream revisions match, mandatory work and proof are complete, no findings or accepted risks remain, return target is `none`, completion is `complete`, final-verification readiness is `ready`, and no operator-reported defect remains unresolved.
 
 ### `compliant-with-listed-risks`
 
-Use only when all mandatory work and proof are complete and remaining entries are explicit bounded non-blocking limitations, such as controlled renderer workaround, bounded platform coverage that leaves no required scenario unknown, or upstream uncertainty outside the selected contract.
+Use only when every mandatory requirement is complete and remaining entries are explicit bounded non-blocking limitations, such as controlled renderer workarounds or bounded platform coverage that leaves no required scenario unknown.
 
-It must not represent an unrun or failed required check, stale/missing/invalid artifact, unresolved warning/finding, incomplete migration, unknown consumer state, missing proof, deferred required work, or pending final workflow verification.
+It must not represent an unrun or failed required check, revision mismatch, stale artifact, warning, unresolved finding, incomplete migration, unknown consumer state, missing proof, deferred required work, or pending final verification.
 
-Blockers, major issues, and minor issues must still be `none`; accepted risks must name the bounded limitation and why it is non-blocking.
+Blockers, major issues, and minor issues must still be `none`.
 
 ### `blocked`
 
-Use for any unresolved required work, proof gap, current warning, semantic finding, invalid upstream artifact, renderer/source revision mismatch, operator-reported defect, or genuine command blocker.
+Use for any unresolved required work, proof gap, warning caused by current work, semantic finding, invalid upstream revision, operator-reported defect, or genuine command blocker.
 
-Set the exact target family and earliest stage unless no family stage can correct the blocker.
+Set the exact return family and earliest stage unless no family stage can correct the blocker.
 
 ## Final-verifier routing
 
-Given exact verifier output and family context:
+Given exact final verifier output:
 
 1. identify the failed contract and evidence;
-2. identify the exact owning family;
-3. map it to the earliest owning stage;
-4. set verdict/completion/readiness to blocked;
-5. write exact `Required return family` and `Required return stage`;
-6. record command and relevant output under routing evidence without Git/PR interpretation;
+2. map it to the exact owning family and earliest stage;
+3. record current upstream revisions;
+4. write verdict and completion as blocked;
+5. set exact return family and stage;
+6. record the command and relevant output in routing evidence without Git/PR interpretation;
 7. return to the orchestrator.
 
-Example dependency route:
-
-```text
-Required return family: loadingIndicator
-Required return stage: implementation
-```
-
-If the failure is review-artifact formatting or review-owned content, fix only `REVIEW.md`, then restore readiness or keep it blocked with an exact reason.
-
-If no family stage can correct a command-execution blocker, set both return fields to `none` and record the exact blocker.
+If the failure is review formatting or review-owned content, fix only review and restore or retain its verdict from current evidence.
 
 ## Completion
 
-Review is complete only when the artifact contains valid fields/headings and accurately represents the complete current family.
+Review succeeds only when:
 
-A successful review means the family is ready for outer final workflow verification. It does not claim that command already passed.
+- all four recorded upstream revisions equal current artifacts;
+- all required headings exist;
+- the verdict accurately represents the complete current family;
+- no unresolved route or finding remains.
+
+A successful review means ready for outer final verification. It does not claim that command passed.
 
 ## Report
 
@@ -172,7 +179,11 @@ Input component:
 Canonical family:
 Review mode: full | final-verifier-routing
 REVIEW.md path:
-Input artifact statuses:
+Artifact revision:
+DESIGN.md revision:
+ARCHITECTURE.md revision:
+IMPLEMENTATION.md revision:
+MIGRATION.md revision:
 Operator visual status:
 Blockers:
 Major issues:
@@ -189,11 +200,12 @@ Status: complete | blocked
 ## Forbidden
 
 - Fixing production code or rewriting earlier artifacts.
-- Reviewing only the latest patch.
+- Reviewing only the latest change.
 - Depending on Git or PR state.
-- Encoding the target family only in prose.
-- Marking compliant while required work, proof, warnings, or findings remain.
+- Marking compliant with revision mismatches or unresolved work.
 - Using listed risks for incomplete work.
+- Preserving a stale cross-family route after its target was corrected.
 - Blocking only because positive visual acknowledgement is absent.
 - Fabricating operator feedback.
+- Reusing an artifact revision after content changed.
 - Running or claiming final workflow verification.
