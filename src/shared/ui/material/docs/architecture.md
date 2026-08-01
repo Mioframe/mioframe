@@ -40,24 +40,26 @@ Existing code, tests, stories, screenshots, renderer demos, and legacy APIs are 
 
 ## Durable family handoffs
 
-Every stage artifact owns an `Artifact revision`. Downstream artifacts record exact upstream revisions.
+Every stage artifact owns an `Artifact revision`. Design additionally owns a `Design contract revision`.
 
 ```text
-DESIGN revision
+DESIGN contract revision
   → ARCHITECTURE
 Dependency REVIEW revisions
   → parent ARCHITECTURE
-ARCHITECTURE revision
+ARCHITECTURE artifact revision
   → IMPLEMENTATION
-IMPLEMENTATION revision
+IMPLEMENTATION artifact revision
   → MIGRATION
-all four family revisions
+DESIGN contract + ARCHITECTURE + IMPLEMENTATION + MIGRATION revisions
   → REVIEW
 ```
 
+Design artifact revision tracks file metadata updates but does not invalidate downstream work by itself. A metadata-only source refresh preserves the design contract revision.
+
 Revision linkage is the durable continuation mechanism after interruption or a new invocation. It is not a hash system or workflow database.
 
-A parent architecture also records the exact current review revision of each direct dependency. Updating a dependency therefore invalidates parent architecture mechanically before parent code or review is reused.
+A parent architecture records the exact current review revision of each direct dependency. Updating a dependency invalidates parent architecture mechanically before parent code or review is reused.
 
 ## Family ownership
 
@@ -91,10 +93,12 @@ Deferred capability remains in design but is not copied into runtime API for sym
 When no current consumer exists, the explicit `material-component <name>` invocation establishes one approved library scenario:
 
 - render the unambiguous official standalone default;
-- expose only the public inputs needed to render, accessibly name, and control that default;
-- include disabled behavior only when official Material defines it;
-- include required states, semantics, accessibility, and faithful proof;
-- defer optional variants, sizes, shapes, and configurations;
+- expose only the API required to render and accessibly operate that default;
+- expose only mandatory official controllable state belonging to the selected default;
+- do not add `v-model`, selection, toggle, value, or open-state contracts unless that state is part of the selected official default;
+- include disabled behavior only when official Material defines it for that default;
+- include required semantics, accessibility, states, and faithful proof;
+- defer optional variants, sizes, shapes, configurations, and state models;
 - do not copy m3e capabilities or invent product scenarios;
 - do not create a product consumer merely to justify the family.
 
@@ -166,17 +170,27 @@ Parent architecture records:
 - `Dependency queue` — dependencies that do not yet have current review;
 - `Dependency review revisions` — exact review revision for every dependency not in the queue.
 
-Queue and revision entries are disjoint and their union equals dependency families.
+Queue and review-revision entries are disjoint and their union equals dependency families.
 
 A queued dependency always runs its complete pipeline through current review. Stage-specific dependency gates are unsupported.
+
+Self-dependency and ancestor dependency are forbidden. The orchestrator detects repeated family names in its active dependency path and returns the exact cycle to the architecture worker that emitted it.
+
+Architecture must correct dependency ownership or record a genuine unresolved architecture blocker. Mutual imports, related-component documentation, or shared implementation details do not justify cyclic family ownership.
 
 Parent architecture may be resolved while dependencies remain pending. It then uses status `ready`, a non-empty queue, and readiness `awaiting-dependencies`. Parent implementation cannot start.
 
 After dependencies reach current review, parent architecture runs again, validates public handoffs, clears or recomputes the queue, and records exact dependency review revisions.
 
-A later dependency review revision change invalidates parent architecture and all parent downstream artifacts through normal revision linkage.
+A later dependency review revision change invalidates parent architecture and parent downstream artifacts through normal revision linkage.
 
 Parent composition proof does not replace standalone dependency proof.
+
+## Correction and resume principle
+
+Cross-family correction retains origin and target, but target completion does not bypass durable invalidation in the origin family.
+
+After target reaches current review, the origin family resumes through its ordinary state machine from design forward. Any earlier invalid stage runs first, and the stored origin stage must then execute fresh to clear or replace its route.
 
 ## Proof and completion principles
 
