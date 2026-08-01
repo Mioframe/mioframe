@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Every official Material component family under `src/shared/ui/material/components/<family>` owns one `DESIGN.md`.
+Every official Material family under `src/shared/ui/material/components/<family>` owns one `DESIGN.md`.
 
 `DESIGN.md` is the complete normalized workspace snapshot of official Material 3 Expressive documentation. It answers only:
 
@@ -18,6 +18,7 @@ Every design artifact begins with:
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
+Design contract revision: none | YYYY-MM-DDTHH:mm:ss.sssZ
 Status: current | stale | blocked
 Source revision: <exact source/cache revision>
 Source checked at: YYYY-MM-DD
@@ -28,11 +29,32 @@ Required return family: none | self
 Required return stage: none | design
 ```
 
-`Artifact revision` is a UTC ISO 8601 timestamp with milliseconds. The design worker writes a new value whenever it rewrites or refreshes the artifact. Downstream architecture records this exact value.
+`Artifact revision` is the file-update identity. It changes whenever the document is rewritten or refreshed.
 
-`Source revision` identifies the official source or cache snapshot. It is not the artifact revision.
+`Design contract revision` is the normalized official-contract identity. It changes only when official component content changes or the normalized document adds/corrects an omitted official rule.
 
-A due `Refresh check after` triggers a source refresh attempt. Age alone does not make a complete artifact stale or blocked.
+Downstream architecture and review reference the design contract revision, not the artifact revision.
+
+## Refresh policy
+
+The interval is fixed for every family:
+
+```text
+Refresh check after = Source checked at + 30 calendar days
+```
+
+Do not choose a family-specific interval.
+
+A known newer official revision or explicit source-change evidence triggers an immediate refresh before the date.
+
+When refresh finds no normalized contract change:
+
+- update artifact revision;
+- update source revision and source-check dates as applicable;
+- preserve design contract revision exactly;
+- do not invalidate downstream stages.
+
+Change design contract revision when official facts, token tables, geometry, states, behavior, motion, accessibility, related contracts, or normalized completeness change.
 
 ## Authority and source acquisition
 
@@ -51,10 +73,12 @@ The source ledger records exact official routes and titles, source snapshot date
 ## Status lifecycle
 
 - `current` — every required official source is represented completely from the newest successfully acquired revision and no newer material revision is known;
-- `stale` — affirmative evidence shows official content changed after the recorded snapshot;
+- `stale` — affirmative evidence shows official content changed after the recorded normalized contract;
 - `blocked` — required content remains unavailable, contradictory, or incomplete after all fallbacks.
 
 A transient refresh failure does not block architecture when the newest complete snapshot remains complete and no newer revision is known.
+
+For a successful first design, create both artifact and design contract revisions. For a blocked first design with no complete contract, use `Design contract revision: none`.
 
 ## Required headings
 
@@ -124,17 +148,13 @@ Preserve the complete contract through structured paraphrase, exact names, exact
 
 `DESIGN.md` must not contain current Mioframe demand, selected/deferred decisions, Vue API, renderer details, defects, workarounds, code paths, proof plans, migration state, review state, roadmap state, Git, or PR facts.
 
-## Update rule
-
-Refresh design when official content is known to have changed, a newer source revision is available, an unavailable page becomes available, review finds an omission, or `Refresh check after` is due.
-
-Implementation, migration, and review changes alone do not modify design.
-
 ## Completion gate
 
 Design is complete only when:
 
 - control fields and exact required headings are present;
+- design contract revision is non-`none`;
+- refresh date is exactly 30 calendar days after source checked date;
 - every applicable official source is listed and represented;
 - the complete official surface is described regardless of demand;
 - every official token is included or explicitly unavailable;
@@ -143,4 +163,4 @@ Design is complete only when:
 - no Mioframe or renderer decision leaked into the artifact;
 - status is `current`.
 
-The design worker returns after writing the artifact. Architecture begins in a fresh worker and records the exact design artifact revision.
+The design worker returns after writing the artifact. Architecture begins in a fresh worker and records the exact design contract revision.
