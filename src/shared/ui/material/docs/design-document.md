@@ -2,21 +2,22 @@
 
 ## Purpose
 
-Every official Material component family under `src/shared/ui/material/components/<family>` owns `DESIGN.md` as the complete normalized workspace snapshot of the official Material 3 Expressive component documentation.
+Every official Material component family under `src/shared/ui/material/components/<family>` owns one `DESIGN.md`.
 
-It answers only:
+`DESIGN.md` is the complete normalized workspace snapshot of official Material 3 Expressive documentation. It answers only:
 
 ```text
 What does official Material define for this component?
 ```
 
-Mioframe demand, Vue API, renderer mapping, implementation, migration, proof, and review belong to later artifacts.
+Mioframe demand, Vue API, m3e mapping, implementation, migration, proof, and review belong to later stages.
 
-## Control fields
+## Durable control fields
 
-Every `DESIGN.md` begins with:
+Every design artifact begins with:
 
 ```text
+Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 Status: current | stale | blocked
 Source revision: <exact source/cache revision>
 Source checked at: YYYY-MM-DD
@@ -27,49 +28,37 @@ Required return family: none | self
 Required return stage: none | design
 ```
 
-`Source checked at` records the date of the latest complete source-check pass, including fallback evaluation. `Refresh check after` is seven calendar days later.
+`Artifact revision` is a UTC ISO 8601 timestamp with milliseconds. The design worker writes a new value whenever it rewrites or refreshes the artifact. Downstream architecture records this exact value.
 
-Age is a refresh trigger, not evidence that official content changed. On or after that date the orchestrator runs the design stage. The worker may retain `Status: current` when it completes all source fallbacks, finds no newer material revision, and still owns a complete newest-known snapshot.
+`Source revision` identifies the official source or cache snapshot. It is not the artifact revision.
+
+A due `Refresh check after` triggers a source refresh attempt. Age alone does not make a complete artifact stale or blocked.
 
 ## Authority and source acquisition
 
-Official Material documentation is authoritative. The design stage autonomously uses this fallback chain:
+Official Material documentation is authoritative. Use the available source chain instead of stopping after the first failed helper:
 
-1. current official Material MCP/source service;
+1. current official Material source service;
 2. official cache refresh and route index;
-3. direct official component routes;
-4. newest complete workspace or MCP cache snapshot;
+3. direct official routes;
+4. newest complete workspace or source-cache snapshot;
 5. associated official token resources.
 
-A failed route index, refresh script, or freshness check is tooling evidence, not proof of a Material change. Continue through available fallbacks.
+A failed refresh helper is tooling evidence, not evidence that official content changed.
+
+The source ledger records exact official routes and titles, source snapshot date, source revision, page availability, refresh attempts, selected fallback, conflicts, and extraction gaps.
 
 ## Status lifecycle
 
-- `current` — every required official source is represented completely from the newest successfully acquired revision and there is no affirmative evidence of newer component content;
-- `stale` — affirmative evidence shows official content or its material source revision changed after the recorded snapshot;
-- `blocked` — required official content remains unavailable, contradictory, or incompletely extracted after all fallbacks.
+- `current` — every required official source is represented completely from the newest successfully acquired revision and no newer material revision is known;
+- `stale` — affirmative evidence shows official content changed after the recorded snapshot;
+- `blocked` — required content remains unavailable, contradictory, or incomplete after all fallbacks.
 
-A missing, stale, blocked, structurally invalid, or refresh-due design blocks use by later stages until the design worker completes its check.
+A transient refresh failure does not block architecture when the newest complete snapshot remains complete and no newer revision is known.
 
-## Required source set
+## Required headings
 
-Inspect every applicable official page, including at minimum:
-
-- overview;
-- specifications;
-- guidelines;
-- accessibility;
-- complete component-token tables;
-- expressive-update notes;
-- related-component references;
-- delegated foundation contracts;
-- platform or adaptive guidance when present.
-
-Do not omit a source because Mioframe does not currently consume its capability.
-
-## Required document structure
-
-After control fields, use these exact headings:
+Every design artifact contains these exact headings:
 
 ```text
 ## Source ledger
@@ -85,118 +74,73 @@ After control fields, use these exact headings:
 ## Related official contracts
 ```
 
-Every heading is required. Use explicit `none`, `not documented`, or `unavailable from the recorded source revision` rather than omitting a section.
-
-### Source ledger
-
-Record:
-
-- exact official routes and source titles;
-- source snapshot date;
-- exact cache/source revision;
-- required page availability;
-- refresh attempts and fallback selected;
-- extraction limitations.
+## Completeness contract
 
 ### Identity and purpose
 
-Include official name, role, intended use, adjacent-component distinctions, and expressive-update differences.
+Record official name, role, intended use, distinction from adjacent components, and expressive changes.
 
 ### Anatomy and content
 
-Include required and optional parts, content roles, ordering, labels, icons, supporting content, and valid/invalid combinations.
+Record required and optional parts, content roles, label/icon/supporting-content rules, ordering, and allowed combinations.
 
 ### Variants and configurations
 
-Include every official variant, color/configuration, size, shape, default, selection/toggle mode, and combination constraint.
+Record every official variant, color/configuration, size, shape, default, selection mode, combination, and constraint.
 
 ### Geometry and layout
 
-Include exact heights, widths, padding, spacing, icon and target sizes, outlines, shapes, alignment, density/adaptive behavior, and standalone/composed differences.
+Record dimensions, padding, spacing, icon and target sizes, outlines, shapes, alignment, density/adaptive behavior, and composed geometry.
 
 ### States and behavior
 
-Include all documented states, state combinations and precedence, activation/selection/progress/navigation behavior, transitions, motion, shape morphing, elevation, state layer, and restoration.
+Record every documented state and state combination, activation and selection behavior, transitions, motion, shape morphing, elevation, state layers, and restoration.
 
 ### Usage guidance
 
-Include when to use or avoid, placement, hierarchy, content-writing guidance, do/don't rules, and related-component selection guidance.
+Record when to use, when not to use, placement, hierarchy, content guidance, do/don’t rules, and related-component selection.
 
 ### Accessibility
 
-Include semantic role, native behavior, accessible name/state, keyboard and pointer interaction, focus, target size, contrast, and platform/screen-reader guidance.
+Record semantic role, native behavior, accessible name/state, keyboard and pointer interaction, focus, target size, contrast, and platform guidance.
 
 ### Complete official token catalogue
 
-Include every published token path across variants, sizes, states, parts, selection modes, disabled values, motion, shape, elevation, typography, spacing, and contrast variants.
-
-For each token preserve:
-
-- exact official path;
-- official display name;
-- system/reference aliases;
-- documented values by mode;
-- unresolved or omitted values without guessing.
+Record every official token path, display name, aliases, values, variants, sizes, states, parts, disabled values, motion, shape, elevation, typography, spacing, and unresolved values. Preserve exact paths and values; never guess missing values.
 
 ### Source conflicts and unknowns
 
-Record disagreements, unresolved values, missing guidance, deprecated/superseded guidance, and refresh/extraction limitations without Mioframe or renderer decisions.
+Record official disagreements, missing guidance, deprecated material, unavailable values, and extraction limitations without making a Mioframe decision.
 
 ### Related official contracts
 
-Record required official dependencies, related foundations, alternative components, and links to family design documents when they exist.
+Record required official dependencies, related foundations, alternatives, and links to existing family design artifacts.
 
 ## Full does not mean verbatim
 
-Preserve the complete official contract without copying whole source pages.
+Preserve the complete contract through structured paraphrase, exact names, exact measurements and values, tables for enumerations, and source references. Do not copy whole official pages or replace coverage with links and a short summary.
 
-Use structured paraphrase for guidance, exact names and values for enumerable facts, complete tables for tokens/configurations, and source references for every section.
+## Separation from later stages
 
-Do not replace complete coverage with a selected-surface summary or external links.
-
-## Separation from later artifacts
-
-| Artifact            | Question answered                                         | Scope                                |
-| ------------------- | --------------------------------------------------------- | ------------------------------------ |
-| `DESIGN.md`         | What does official Material define?                       | complete official component contract |
-| `ARCHITECTURE.md`   | What must Mioframe implement now and how?                 | demand-scoped Material–Vue–m3e plan  |
-| `IMPLEMENTATION.md` | Was the accepted component architecture implemented?      | component code/proof handoff         |
-| `MIGRATION.md`      | Were consumers migrated and legacy ownership removed?     | application adoption                 |
-| `REVIEW.md`         | Does the complete result satisfy all contracts and gates? | independent review                   |
-| `README.md`         | Where are artifacts and runtime entry points?             | short index only                     |
-
-`DESIGN.md` must not contain:
-
-- current Mioframe demand or `implement-now`/`defer` decisions;
-- Vue props, emits, slots, or exports;
-- m3e properties, events, types, tags, variables, revision, defects, or workarounds;
-- code paths, test files, migration status, roadmap, Git/PR facts, or verification results.
+`DESIGN.md` must not contain current Mioframe demand, selected/deferred decisions, Vue API, renderer details, defects, workarounds, code paths, proof plans, migration state, review state, roadmap state, Git, or PR facts.
 
 ## Update rule
 
-Refresh `DESIGN.md` when:
+Refresh design when official content is known to have changed, a newer source revision is available, an unavailable page becomes available, review finds an omission, or `Refresh check after` is due.
 
-- `Refresh check after` is due;
-- official content is known to have changed;
-- a newer cache/source revision is available;
-- a previously unavailable page became available;
-- review found an omitted official capability, token, state, measurement, or guidance rule.
-
-Implementation, migration, and review changes alone do not modify official design facts.
+Implementation, migration, and review changes alone do not modify design.
 
 ## Completion gate
 
-A design document is complete only when:
+Design is complete only when:
 
-- every control field is valid;
-- source revision and dates are exact;
-- all required headings exist;
-- all applicable official pages are listed and represented;
-- the complete official surface is described regardless of current demand;
+- control fields and exact required headings are present;
+- every applicable official source is listed and represented;
+- the complete official surface is described regardless of demand;
 - every official token is included or explicitly unavailable;
 - exact measurements, defaults, states, and accessibility rules are preserved;
-- no Mioframe or renderer decision is mixed into the artifact;
 - source conflicts and extraction gaps are explicit;
-- status is `current`, blockers are `none`, and both return fields are `none`.
+- no Mioframe or renderer decision leaked into the artifact;
+- status is `current`.
 
-The design stage then returns control to the outer orchestrator. Architecture begins in a fresh worker context.
+The design worker returns after writing the artifact. Architecture begins in a fresh worker and records the exact design artifact revision.
