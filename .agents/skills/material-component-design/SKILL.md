@@ -37,6 +37,7 @@ The artifact begins with:
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
+Design contract revision: none | YYYY-MM-DDTHH:mm:ss.sssZ
 Status: current | stale | blocked
 Source revision: <exact source/cache revision>
 Source checked at: YYYY-MM-DD
@@ -47,7 +48,11 @@ Required return family: none | self
 Required return stage: none | design
 ```
 
-Use a new UTC artifact revision whenever the document is written or refreshed. Do not reuse the previous revision after any content change.
+Use a new UTC artifact revision whenever the file is written or refreshed.
+
+Use a new design contract revision only when normalized official Material content changes. Preserve the existing design contract revision when refresh changes only source metadata, source ledger details, or check dates.
+
+For a successful initial design, create both revisions. For a blocked initial design with no complete normalized contract, use `Design contract revision: none`.
 
 Required headings:
 
@@ -77,7 +82,7 @@ Use available fallbacks in order:
 4. newest complete source-cache or workspace snapshot;
 5. associated official token resources.
 
-A failed refresh helper is not itself a blocker when a complete newest-known official snapshot exists and no newer material revision is known.
+A failed refresh helper is not itself a blocker when a complete newest-known official snapshot exists and no newer Material revision is known.
 
 Use statuses exactly:
 
@@ -85,7 +90,34 @@ Use statuses exactly:
 - `stale` — affirmative evidence shows official content changed after the snapshot;
 - `blocked` — required content remains missing or incomplete after all fallbacks.
 
-Set `Refresh check after` to the next date on which ordinary `material-component` use must attempt a source refresh. Age triggers a refresh attempt; it does not itself make the content stale.
+The refresh interval is fixed by workflow:
+
+```text
+Refresh check after = Source checked at + 30 calendar days
+```
+
+Do not select another interval.
+
+Run an immediate refresh when the workflow provides explicit evidence of a newer official revision or changed official content.
+
+## Contract-change classification
+
+Change `Design contract revision` only when normalized official content changes, including:
+
+- an official fact is added, removed, or corrected;
+- token paths, values, aliases, or completeness change;
+- states, behavior, geometry, motion, accessibility, or related official contracts change;
+- a previously omitted official rule is added to the normalized document.
+
+Do not change it when only these change:
+
+- `Source checked at`;
+- `Refresh check after`;
+- source retrieval timestamps or availability notes;
+- source ledger bookkeeping;
+- a source revision identifier that resolves to semantically identical normalized content.
+
+When no contract change is found, state that explicitly in `Revision summary` and preserve the exact contract revision.
 
 ## Required content
 
@@ -110,9 +142,16 @@ For every official token preserve exact official path, display name, aliases, do
 
 ## Completion
 
-`Status: current` is valid only when the complete official surface is represented, required sources and tokens are accounted for, all required headings exist, and no Mioframe or renderer decision leaked into the artifact.
+`Status: current` is valid only when:
 
-If official content remains incomplete, use `Status: blocked`, record exact blockers, and set the return target to `self/design`.
+- the complete official surface is represented;
+- required sources and tokens are accounted for;
+- all required headings exist;
+- no Mioframe or renderer decision leaked into the artifact;
+- design contract revision is non-`none`;
+- refresh date is exactly 30 calendar days after source checked date.
+
+If official content remains incomplete, use `Status: blocked`, record exact blockers, and route to `self/design`.
 
 Return after writing the artifact. Do not execute architecture in the same context.
 
@@ -125,10 +164,12 @@ Resolved official component:
 Canonical family:
 DESIGN.md path:
 Artifact revision:
+Design contract revision:
 Official routes inspected:
 Source revision:
 Source checked at:
 Refresh check after:
+Normalized contract changed: yes | no | unknown
 Source conflicts or extraction gaps: none | <details>
 Document status: current | stale | blocked
 Remaining blockers: none | <details>
@@ -144,5 +185,7 @@ Status: complete | blocked
 - Mixing later-stage decisions into `DESIGN.md`.
 - Omitting unused official capability.
 - Guessing missing facts.
-- Reusing an artifact revision after content changed.
+- Changing design contract revision for metadata-only refresh.
+- Choosing a family-specific refresh interval.
+- Reusing an artifact revision after the file changed.
 - Asking the operator to rerun the same component command.
