@@ -86,13 +86,13 @@ Mixed `none` and non-`none` values are invalid.
 
 A same-family route must target a strictly earlier stage than the artifact that emits it:
 
-| Emitting stage   | Allowed same-family targets                    |
-| ---------------- | ---------------------------------------------- |
-| design           | none                                           |
-| architecture     | design                                         |
-| implementation   | design; architecture                           |
-| migration        | design; architecture; implementation           |
-| review           | design; architecture; implementation; migration |
+| Emitting stage | Allowed same-family targets                     |
+| -------------- | ----------------------------------------------- |
+| design         | none                                            |
+| architecture   | design                                          |
+| implementation | design; architecture                            |
+| migration      | design; architecture; implementation            |
+| review         | design; architecture; implementation; migration |
 
 A route to another family may target design, architecture, implementation, or migration.
 
