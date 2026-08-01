@@ -38,9 +38,22 @@ The complete execution state machine belongs to [`component-workflow.md`](./comp
 
 Existing code, tests, stories, screenshots, renderer demos, and legacy APIs are evidence, not public-contract authority.
 
+## Design refresh lifecycle
+
+Every design file owns two revisions:
+
+- `Artifact revision` changes whenever the file or source-check metadata changes;
+- `Design contract revision` changes only when normalized official Material content changes.
+
+Architecture and review depend on design contract revision only.
+
+The refresh interval is fixed at 30 calendar days. A metadata-only refresh updates source-check facts and artifact revision while preserving design contract revision, so it does not reopen architecture, code, migration, review, or parent dependencies.
+
+Known official source change evidence triggers an immediate design refresh.
+
 ## Durable family handoffs
 
-Every stage artifact owns an `Artifact revision`. Design additionally owns a `Design contract revision`.
+Every later stage artifact owns an `Artifact revision`.
 
 ```text
 DESIGN contract revision
@@ -54,8 +67,6 @@ IMPLEMENTATION artifact revision
 DESIGN contract + ARCHITECTURE + IMPLEMENTATION + MIGRATION revisions
   → REVIEW
 ```
-
-Design artifact revision tracks file metadata updates but does not invalidate downstream work by itself. A metadata-only source refresh preserves the design contract revision.
 
 Revision linkage is the durable continuation mechanism after interruption or a new invocation. It is not a hash system or workflow database.
 
