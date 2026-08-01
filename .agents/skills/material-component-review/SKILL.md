@@ -1,13 +1,13 @@
 ---
 name: material-component-review
-description: 'Use after design, architecture, implementation, and migration artifacts are complete to independently review one Material family, write REVIEW.md, and route findings or final-verifier output without fixing production code.'
+description: 'Use after design, architecture, implementation, and migration artifacts are complete to independently review one Material family, or to classify final-verifier output without assigning unrelated workspace failures to a family.'
 ---
 
 # Material component review
 
-Perform the independent semantic review of one complete Material family and return control to the orchestrator.
+Perform independent semantic review of one complete Material family and return control to the orchestrator.
 
-This stage owns compliance judgment and exact correction routing. It does not implement production fixes or own final workflow verification.
+This stage owns family-compliance judgment and exact Material correction routing. It does not implement production fixes or own the outer final workflow verification result.
 
 ## Modes
 
@@ -19,13 +19,18 @@ A metadata-only design refresh with unchanged design contract revision does not 
 
 Review the complete current family and all consumers, not only the latest change.
 
-### Final-verifier routing review
+### Final-verifier routing
 
 Use when the orchestrator provides the exact failed final command and visible output.
 
-Determine the exact owning family and earliest correction stage. If no family stage can correct a genuine command-execution blocker, return terminal blocked with route `none/none`.
+Classify the failed contract before editing any artifact:
 
-## Input gate
+- `material-owned` — an exact Material family and earliest stage can correct the failure;
+- `external-workspace-blocker` — no Material family stage owns the failure.
+
+A final-verifier failure outside Material must not change any family `REVIEW.md` verdict, readiness, completion status, route, or artifact revision.
+
+## Input gate for full review
 
 Require successful current design, architecture, implementation, and migration artifacts.
 
@@ -39,7 +44,7 @@ Run in a fresh isolated context independent from workers that authored or correc
 
 Use task-relevant workspace files, canonical artifacts, official design evidence, code, consumers, tests, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
-## Output
+## Full-review output
 
 Write exactly:
 
@@ -67,7 +72,9 @@ Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
 
-Use a new artifact revision whenever review content or routing changes. Record exact invalidating upstream revisions.
+`Final workflow verification readiness` means the family is ready for the outer command. It is not the result of that command.
+
+Use a new artifact revision whenever family review content or Material routing changes. Record exact invalidating upstream revisions.
 
 Required headings:
 
@@ -88,16 +95,16 @@ Required headings:
 
 ## Full review order
 
-1. Validate complete official design contract and source lifecycle.
-2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, and simplest viable alternative.
+1. Validate the complete official design contract and source lifecycle.
+2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, and the simplest viable alternative.
 3. Compare implementation with every architecture decision and forbidden approach.
-4. Review consumers, no-consumer case, and legacy-removal claims.
+4. Review consumers, the no-consumer case, and legacy-removal claims.
 5. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
 6. Verify proof ownership, impact metadata, and stage-scoped checks.
-7. Check for an actual operator-reported visual/motion defect.
+7. Check for an actual operator-reported visual or motion defect.
 8. Consolidate each underlying problem once and assign exact ownership.
 
-Automated checks prove only covered contracts. Absence of an operator visual report is not a blocker and requires no positive acknowledgement.
+Automated checks prove only covered contracts. Absence of operator visual feedback is not a blocker and requires no positive acknowledgement.
 
 ## Finding ownership
 
@@ -126,19 +133,19 @@ Use only when all revisions match, mandatory work and proof are complete, no fin
 
 ### `compliant-with-listed-risks`
 
-Use only for complete work with explicit bounded non-blocking limitations. It must not represent an unrun or failed check, revision mismatch, stale artifact, warning, unresolved finding, incomplete migration, unknown consumer state, missing proof, deferred required work, or pending final verification.
+Use only for complete work with explicit bounded non-blocking limitations. It must not represent an unrun or failed required stage check, revision mismatch, stale artifact, warning, unresolved finding, incomplete migration, unknown consumer state, missing proof, deferred required work, or pending outer verification.
 
 Blockers, major issues, and minor issues must be `none`.
 
 ### `blocked` with correction route
 
-Use when a finding belongs to an earlier stage of the same family or to another family.
+Use when a family finding belongs to an earlier stage of the same family or to another family.
 
 Same-family review routes may target design, architecture, implementation, or migration. Review cannot route to review.
 
-### Genuine blocker
+### Genuine family blocker
 
-When required evidence, safety input, or command execution cannot be resolved by any family stage, use:
+When required family evidence or safety input cannot be resolved by any Material stage, use:
 
 ```text
 Verdict: blocked
@@ -146,41 +153,71 @@ Required return family: none
 Required return stage: none
 Completion status: blocked
 Final workflow verification readiness: blocked
-Blockers: <exact blocker>
+Blockers: <exact family blocker>
 ```
 
-This is terminal for the invocation.
-
-A review-owned formatting, synthesis, classification, or routing-output defect must be fixed in this worker. Do not return a route to review.
+A review-owned formatting, synthesis, classification, or routing-output defect must be fixed in the current worker. Do not return a route to review.
 
 ## Final-verifier routing
 
 Given exact final verifier output:
 
 1. identify the failed contract and evidence;
-2. map it to the exact owning family and earliest correction stage;
-3. record current revisions;
-4. write blocked verdict and route, or terminal blocker `none/none`;
-5. record the command and relevant output without Git/PR interpretation;
-6. return.
+2. decide whether an exact Material family and earliest stage own it;
+3. do not infer ownership from the component that triggered the outer command;
+4. do not assign unrelated workspace failures to the requested parent family.
 
-If the failure is review-owned output, correct review in this worker instead of routing to review.
+### Material-owned failure
+
+When an exact Material owner exists:
+
+1. open that family’s current `REVIEW.md`;
+2. record current invalidating revisions;
+3. write verdict and completion as `blocked`;
+4. set the exact Material correction route;
+5. record the command and relevant output in routing evidence;
+6. leave every unrelated family review unchanged;
+7. return to the orchestrator.
+
+### External workspace blocker
+
+When no Material family stage owns the failure:
+
+- do not write or rewrite any family `REVIEW.md`;
+- preserve all compliant family review revisions and dependency gates;
+- return only this compact result:
+
+```text
+MATERIAL FINAL VERIFICATION ROUTING RESULT
+Classification: external-workspace-blocker
+Final command: <exact command>
+Failed contract: <exact external contract>
+Evidence: <concise exact output>
+Required return family: none
+Required return stage: none
+Family reviews changed: none
+Status: blocked
+```
+
+The outer orchestrator records this blocker in its final report and mutable roadmap/status owner. After the external owner corrects it, the orchestrator reruns the prescribed focused command and the original final command without rebuilding current Material family artifacts.
+
+A non-failing external warning must not change a family review. Whether it blocks completion follows the root verification contract.
 
 ## Completion
 
-Review succeeds only when recorded revisions equal current artifacts, all headings exist, the verdict represents the complete family, and no unresolved route or finding remains.
+Full review succeeds only when recorded revisions equal current artifacts, all headings exist, the verdict represents the complete family, and no unresolved family route or finding remains.
 
 A design artifact revision mismatch alone is irrelevant when design contract revision is unchanged.
 
 A successful review means ready for outer final verification. It does not claim that command passed.
 
-## Report
+## Full-review report
 
 ```text
 MATERIAL REVIEW RESULT
 Input component:
 Canonical family:
-Review mode: full | final-verifier-routing
+Review mode: full
 REVIEW.md path:
 Artifact revision:
 DESIGN.md contract revision:
@@ -202,11 +239,13 @@ Status: complete | blocked
 
 ## Forbidden
 
+- Writing an unrelated final-verifier failure into a family `REVIEW.md`.
+- Changing a compliant family review merely because the outer command failed elsewhere.
 - Routing to review or leaving a review-owned defect unresolved.
 - Fixing production code or rewriting earlier artifacts.
 - Reviewing only the latest change.
 - Depending on Git or PR state.
-- Marking compliant with invalidating revision mismatches or unresolved work.
+- Marking compliant with invalidating revision mismatches or unresolved family work.
 - Treating metadata-only design refresh as invalidation.
 - Using listed risks for incomplete work.
 - Preserving a stale cross-family route after durable origin resume.
