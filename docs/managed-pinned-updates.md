@@ -1,6 +1,6 @@
 # Managed pinned application updates — architecture handoff
 
-**Implementation readiness: ready after the implementation preflight is applied.**
+**Implementation readiness: ready for staged implementation through the implementation preflight.**
 
 This is the canonical architecture contract for PR 169. Existing unshipped implementation formats are replaceable evidence, not compatibility contracts.
 
@@ -46,13 +46,13 @@ A failed managed `install` leaves Workbox active. After release 1 activates, rol
 
 ## Ownership and sources of truth
 
-| Owner                   | Responsibility                                                                                      |
-| ----------------------- | --------------------------------------------------------------------------------------------------- |
-| Publisher               | deterministic source identity, append-only release archive, idempotent publication, `latest.json`   |
-| Controller worker       | bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback |
-| Service client/features | typed transport outcomes, finite busy state, user actions                                           |
-| Entity/widget/pane      | snapshot projection and product composition                                                         |
-| Browser                 | service-worker lifecycle and registration replacement                                               |
+| Owner                   | Responsibility                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| Publisher               | deterministic source identity, append-only release archive, idempotent publication, `latest.json`    |
+| Controller worker       | bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback  |
+| Service client/features | typed transport outcomes, finite busy state, user actions                                            |
+| Entity/widget/pane      | snapshot projection and product composition                                                          |
+| Browser                 | service-worker lifecycle and registration replacement                                                |
 
 Sources of truth:
 
@@ -81,6 +81,19 @@ type ReleaseDescriptor = {
 ```
 
 `releaseNumber` is a positive safe integer and the sole ordering identity inside one managed channel.
+
+A complete release identity is the four-field `ReleaseSummary`:
+
+```ts
+type ReleaseSummary = {
+  releaseNumber: number;
+  appVersion: string;
+  buildId: string;
+  buildDate: string;
+};
+```
+
+Two releases are the same exact release only when all four fields match. A shared `releaseNumber` is sufficient for ordering and archive lookup, but never sufficient to prove cache, descriptor, restoration, or in-flight preparation identity.
 
 For managed stable/develop publication:
 
@@ -123,13 +136,6 @@ The same source commit may exist independently in stable and develop because arc
 ## Persisted state
 
 ```ts
-type ReleaseSummary = {
-  releaseNumber: number;
-  appVersion: string;
-  buildId: string;
-  buildDate: string;
-};
-
 type UpdateCandidate =
   | { phase: 'available'; release: ReleaseSummary }
   | { phase: 'ready'; release: ReleaseSummary }
@@ -150,6 +156,7 @@ Invariants:
 - candidate number is greater than active number;
 - `deadlineAt` exists only for `activating` and is valid ISO time;
 - progress and transient errors are not persisted;
+- persisted objects are fail-closed: obsolete or unknown persisted fields are rejected, not stripped, normalized, repaired, or migrated;
 - invalid state is never repaired automatically;
 - no separate latest, approved, activation-target, failed-release, or operation records exist.
 
@@ -168,15 +175,20 @@ Invariants:
 | Matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed`                |
 | Stale or mismatched completion       | no state change                                             |
 
-Every long completion re-reads state and persists only when mode, release number, and phase still match its target.
+Every long completion re-reads state and persists only when mode, complete target identity where applicable, release number, and phase still match its target. A contractual no-op returns the original state reference.
 
 ## Same-path Workbox bootstrap
 
 Legacy and managed controllers both use `<channelBasePath>sw.js`, preserving the browser-native update path.
 
-When state is absent and an active predecessor exists, the installing worker sends two concurrent read-only probes with one 5-second deadline:
+When state is absent and an active predecessor exists, the installing worker sends two concurrent read-only probes with one shared 5-second deadline:
 
 ```ts
+type ManagedControllerProbeRequest = {
+  protocolVersion: 1;
+  type: 'PROBE_MANAGED_UPDATE_CONTROLLER';
+};
+
 type ManagedControllerProbeResponse = {
   protocolVersion: 1;
   kind: 'managed-update-controller';
@@ -211,6 +223,7 @@ Allowed bootstrap:
 
 ```text
 fetch and validate latest
+→ fetch and validate its exact descriptor
 → fully prepare exact release cache
 → persist initial Automatic state
 → perform no further required fallible work
@@ -218,6 +231,39 @@ fetch and validate latest
 ```
 
 If install is interrupted after state persistence, the next install preserves that valid state. No persistent bootstrap marker is required. The managed worker never calls `skipWaiting()` or `clients.claim()`.
+
+## Preparation coordination and exact identity
+
+`PreparationCoordinator` owns only worker-local preparation deduplication and arbitration with cleanup. It does not own discovery, state transitions, retries, or lifecycle policy.
+
+Each in-flight preparation entry contains both:
+
+```ts
+type InFlightPreparation = {
+  expectedRelease: ReleaseSummary;
+  promise: Promise<ReleaseDescriptor>;
+};
+```
+
+Normative join policy:
+
+```text
+no in-flight entry for releaseNumber
+→ create entry with complete expected ReleaseSummary
+
+same releaseNumber + complete summary matches
+→ join existing promise
+
+same releaseNumber + any summary field differs
+→ reject fail-closed
+→ do not join, replace, or mutate the existing attempt
+```
+
+A caller-provided validated descriptor may be reused only when `toReleaseSummary(descriptor)` exactly matches the target summary on `releaseNumber`, `appVersion`, `buildId`, and `buildDate`. A descriptor matching only by number is rejected or ignored and refetched according to the caller contract; it is never prepared as the target.
+
+A fetched restoration descriptor must match the complete persisted target summary before any cache preparation. Bootstrap is the only flow that begins from a bare latest pointer, because no prior complete summary exists yet; after validating that descriptor, its own complete summary becomes the target.
+
+The coordinator may key lookup by release number because channel publication forbids legitimate number reuse, but it must retain the complete expected summary inside each entry and detect same-number identity conflicts explicitly.
 
 ## Managed compatibility baseline
 
@@ -292,9 +338,53 @@ For Automatic `available(B)`, failed discovery retains B, does not advance `last
 
 Network, hashing, discovery, preparation, and cleanup stay outside `OperationQueue`. `PreparationCoordinator` remains limited to preparation deduplication and cleanup arbitration.
 
-## Clean launch, boot success, and fetch
+## Fetch ownership and fail-closed responses
 
-A ready candidate starts activation on an owned same-channel top-level navigation only when no other same-channel window is open.
+`sw.js` owns exactly:
+
+- same-channel top-level document navigation;
+- same-channel `<channelBasePath>assets/**`.
+
+The mechanical top-level navigation predicate is:
+
+```ts
+request.mode === 'navigate' && request.destination === 'document'
+```
+
+Navigation requests whose destination is `iframe`, `frame`, `embed`, `object`, or any other non-`document` destination are not owned. They remain ordinary browser network behavior. Foreign channels, PR previews, cross-origin requests, `updates/**`, manifests, PWA icons outside `assets/**`, APIs, fonts outside `assets/**`, and all other requests are also not owned and must return from the fetch listener without `respondWith()`.
+
+For every owned request, the promise passed to `respondWith()` must always resolve to a `Response`. It must never reject because of an unexpected controller-state, IndexedDB, Cache Storage, marker parsing, cache enumeration, cache read, restoration, or post-restoration validation exception.
+
+The outer owned-request boundary is:
+
+```text
+normal owned result
+→ return archived index, cached asset, controlled 404, or controlled 503
+
+any unexpected state/storage/cache/restoration exception
+→ resolve to the stable controlled 503 response
+→ never reject respondWith
+→ never fetch the live deployment
+```
+
+Expected owned-request behavior:
+
+| Condition                                                     | Result                    |
+| ------------------------------------------------------------- | ------------------------- |
+| state absent or invalid                                       | controlled `503`          |
+| exact selected cache available                                | serve selected archive    |
+| selected descriptor does not list requested owned asset       | controlled `404`          |
+| cache absent, incomplete, malformed, or exact summary differs | restore exact release     |
+| restoration or revalidation fails                             | controlled `503`          |
+| infrastructure exception at any owned boundary                | controlled `503`          |
+
+Missing or corrupt selected caches restore only the exact immutable release. No owned path may substitute another release or current deployment bytes.
+
+Stage 3 serves `activeRelease` only. Candidate phases are ignored for fetch selection until Stage 5 explicitly adds activating-candidate serving.
+
+## Clean launch, boot success, and activation
+
+A ready candidate starts activation on an owned same-channel top-level document navigation only when no other same-channel window is open.
 
 - controlled and uncontrolled same-channel windows block activation;
 - the evaluated navigation is not counted as another window;
@@ -312,8 +402,6 @@ root application mounted
 ```
 
 Before this point the candidate remains uncommitted and the watchdog/deadline may roll it back.
-
-`sw.js` owns only same-channel top-level navigation and same-channel `assets/**`. Other requests remain browser network behavior. Owned requests with absent or invalid state return controlled `503`. Missing or corrupt selected caches restore only the exact immutable archive or return `503`.
 
 Protected local releases are active, candidate when present, and in-flight preparations. Cleanup is best effort and event-lifetime tracked.
 
@@ -355,6 +443,9 @@ Required proof includes:
 - latest repeated `buildId` is a zero-write no-op without output reconstruction;
 - repeated non-latest or duplicate retained `buildId` rejects before writes;
 - exact Workbox probe matrix and interrupted-install retry;
+- full-summary reusable-descriptor validation and same-number in-flight conflict rejection;
+- exact top-level document ownership, including iframe/non-document navigation pass-through;
+- every owned fetch promise resolves to a `Response`, including storage/cache exception paths;
 - delayed release-1 recovery;
 - complete lifecycle transition table;
 - latest-first Automatic and Manual discovery without preparation;
@@ -378,6 +469,8 @@ pnpm verify:release
 - more than one candidate;
 - full-output reconstruction or byte comparison for latest-build publication reruns;
 - generic reconciliation manager or expanding `PreparationCoordinator` into discovery;
+- joining same-number preparation when complete release summaries differ;
+- accepting a reusable or fetched restoration descriptor by release number alone;
 - rerun requests from navigation or explicit Check;
 - once-per-worker reconciliation suppression;
 - Manual background preparation;
@@ -386,6 +479,8 @@ pnpm verify:release
 - nondeterministic managed `buildDate`;
 - long work under `OperationQueue`;
 - superseding `ready` or `activating`;
+- intercepting non-document navigation such as iframe/frame/embed/object;
+- rejected `respondWith()` promises for owned requests;
 - live-deployment fallback for owned requests;
 - persisted operation state, polling, retry counters, or backoff;
 - generic manager/registry/RPC abstractions;
@@ -397,4 +492,4 @@ The runtime architecture is stabilized. Implementation must follow the seven rev
 
 Unresolved architecture blockers: none.
 
-Verdict: **ready for Stage 1 only**.
+Verdict: **ready for the current sequential stage only after the previous stage is architecture-accepted and verification-passed.**
