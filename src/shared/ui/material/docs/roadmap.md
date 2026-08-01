@@ -8,7 +8,7 @@ Last updated: 2026-08-01
 
 Current milestone: `M0/M1 — autonomous Loading Indicator/Button pilot complete`
 
-Status: `pilot-complete; PR merge verification pending`
+Status: `pilot-complete; merge-ready`
 
 Runtime implementation status: Loading Indicator and Button runtime, token, renderer-boundary, consumer migration, and focused proof are complete. No runtime redesign is identified.
 
@@ -92,24 +92,18 @@ One `material-component Button` invocation produced the current revision-linked 
 | Dependency-review propagation                 | passed | Button architecture recorded the refreshed Loading Indicator review revision                                  |
 | Navigation Path ownership correction          | passed | obsolete padding declaration removed; focused browser proof added                                             |
 | Focused unit, type, browser, and visual proof | passed | family artifacts record successful focused proof without baseline drift                                       |
-| Ordinary final `pnpm verify`                  | passed | GitHub verify run `3257` passed format, lint, type-check, unit, E2E, Storybook behavior, visual, and mutation |
+| Ordinary final `pnpm verify`                  | passed | GitHub verify run `3261` passed format, lint, type-check, unit, E2E, Storybook behavior, visual, and mutation |
 | External final-verifier ownership             | passed | the earlier unrelated shared-reorder timeout did not alter compliant family reviews and did not reproduce     |
+
+The required full release-sensitive gate also passed through isolated validation PR #171. Release workflow run `19` (`30705988050`) executed the real `pnpm verify:release` path against exact product head `89bdcd52b114263ac92001e368082155ad70a3f5`, including release configuration, full project proof, production build, artifact validation, and release smoke checks. The validation PR was closed without merge; its three validation-only changes are not part of this branch.
 
 The documented self-route, terminal-state, cycle, interruption-recovery, and worker-isolation invariants remain part of the workflow contract. Separate synthetic executions are optional workflow hardening, not a pilot or merge gate. They should be added only when a real regression, repeated implementation failure, or a justified executable workflow harness makes them durable and proportionate.
 
 ## Current blockers
 
-There is no Material family or pilot blocker.
+None.
 
-PR merge remains blocked by required full release-sensitive verification. This PR adds a production-output dependency and changes shared Vite/Vue build configuration. Under the repository verification contract, the final completion gate is therefore:
-
-```text
-pnpm verify:release
-```
-
-The ordinary PR verifier and preview build do not replace the full-only `release-config`, `build`, `artifact`, and `release-smoke` checks. The existing `release.yml` runs this gate only for PRs into `main` and pushes to `main`, so PR 162 into `develop` requires an explicit current-head run in a normal project checkout.
-
-The earlier shared-reorder Storybook timeout was confirmed transient by the subsequent complete passing verifier run. It does not require a Material or shared-reorder change in this PR.
+The earlier shared-reorder Storybook timeout was confirmed transient by subsequent complete verifier runs. It does not require a Material or shared-reorder change in this PR.
 
 ## Pilot closure criteria
 
@@ -118,6 +112,7 @@ M0/M1 is complete because:
 - Loading Indicator and Button are current and compliant;
 - exact dependency review linkage is valid;
 - the ordinary final verifier path passed on the unchanged Material artifact chain;
+- the full release-sensitive verification passed against the exact product implementation head;
 - focused component, browser, and visual proof passed;
 - no operator-reported visual or motion defect remains unresolved;
 - the workflow preserved family compliance when an unrelated final-verifier failure occurred.
@@ -131,19 +126,13 @@ Synthetic malformed-result and cycle scenarios are not required for closure. Do 
 | M0  | workflow architecture and rules     | `complete` | coherent staged workflow and corrected terminal/verifier ownership                  |
 | M1a | Loading Indicator dependency family | `complete` | five current artifacts, compliant review, no unresolved reported defect             |
 | M1  | Button action family                | `complete` | exact dependency linkage, five current artifacts, migrated consumers, focused proof |
-| M1b | outer pilot verification            | `complete` | ordinary final verifier passed without invalidating compliant family artifacts      |
+| M1b | outer pilot verification            | `complete` | ordinary and release-sensitive final verification completed successfully            |
 | M2  | Switch stateful pilot               | `planned`  | controlled state/event contract and no-consumer/default-scenario behavior           |
 | M3  | sequential component migration      | `planned`  | dependency-first autonomous family migrations                                       |
 
 ## Next operator action
 
-After the current-head PR verifier completes, run exactly:
-
-```text
-pnpm verify:release
-```
-
-Do not rerun the Button or Loading Indicator family pipeline unless a genuine revision mismatch or Material finding appears. When the release gate passes, update the PR verification status, mark PR 162 ready, and decide squash merge readiness.
+Mark PR 162 ready and squash merge it into `develop` after the final documentation-only head passes the ordinary PR workflow. Do not rerun the Button or Loading Indicator family pipeline unless a genuine revision mismatch or Material finding appears.
 
 After PR 162 is merged, start the next selected family through one new operator invocation. The current planned stateful pilot is Switch.
 
