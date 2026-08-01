@@ -28,7 +28,7 @@ The orchestrator may only:
 - retain a compact execution ledger;
 - run final read-only verification;
 - pass exact verifier output to a fresh review-routing worker;
-- stop on a genuine blocker or malformed worker result.
+- stop on a genuine family blocker, external workspace blocker, or malformed worker result.
 
 It must not evaluate design or architecture, inspect code for drift, discover consumers, infer dependencies or correction targets, review proof or visuals, classify verifier output, or edit stage-owned files.
 
@@ -62,17 +62,7 @@ design < architecture < implementation < migration < review
 
 A same-family route must target a strictly earlier stage than the artifact that emits it.
 
-These routes are forbidden:
-
-```text
-design → self/design
-architecture → self/architecture
-implementation → self/implementation
-migration → self/migration
-review → self/review
-```
-
-A route to another family may target design, architecture, implementation, or migration.
+Same-stage self-routes and routes to review are forbidden. A route to another family may target design, architecture, implementation, or migration.
 
 ## Mechanical orchestration
 
@@ -102,7 +92,9 @@ Launch only:
 - `material-component-migration`;
 - `material-component-review`.
 
-After each worker returns, validate only its owned artifact, fixed fields, headings, revisions, route, and terminal result. Semantic compliance belongs to the worker and later independent review.
+After each ordinary stage worker returns, validate only its owned artifact, fixed fields, headings, revisions, route, and terminal result. Semantic compliance belongs to the worker and later independent review.
+
+Final-verifier routing is a mode of `material-component-review`. For an external workspace blocker it returns a compact routing result without editing a family artifact.
 
 ## Design refresh
 
@@ -189,7 +181,43 @@ Ordinary Material work uses:
 pnpm verify
 ```
 
-On failure, send the exact command and output plus parent/dependency context to a fresh review-routing worker. Validate its terminal state and route using the same rules. Follow a valid route or stop on terminal `blocked`.
+On failure, send the exact command, visible output, parent/dependency context, and current family review revisions to a fresh `material-component-review` worker in final-verifier-routing mode.
+
+### Material-owned result
+
+When the routing worker identifies an exact Material family and earliest stage:
+
+1. validate that only the owning family review was changed;
+2. follow the exact correction route;
+3. resume affected families through durable validation;
+4. rerun affected independent reviews;
+5. rerun the same final command.
+
+### External workspace blocker
+
+When the routing worker returns:
+
+```text
+Classification: external-workspace-blocker
+Required return family: none
+Required return stage: none
+Family reviews changed: none
+Status: blocked
+```
+
+then:
+
+1. verify that no family `REVIEW.md` changed;
+2. preserve all compliant family review revisions and dependency gates;
+3. stop the invocation with overall status `blocked`;
+4. record the exact command, failed external contract, and evidence in the outer final report;
+5. update the mutable roadmap/status owner when the invocation is being durably recorded;
+6. set the next action to the verifier-prescribed focused command followed by the original final command;
+7. do not rebuild current Material artifacts after the external owner fixes the failure unless a durable revision mismatch independently requires it.
+
+A non-failing external warning does not change a family review. Whether it blocks completion follows the root verification contract.
+
+The outer final-command result never changes a compliant family review merely because the command failed elsewhere.
 
 ## Compact execution ledger
 
@@ -205,6 +233,13 @@ origin: none | <canonical-family>/<stage>
 target: none | <canonical-family>/<stage>
 dependency path: none | <family>[ → <family>...]
 verification: not-applicable | passed | failed | blocked
+```
+
+For final-verifier routing also retain:
+
+```text
+classification: material-owned | external-workspace-blocker
+family reviews changed: none | <canonical-family>
 ```
 
 Do not retain full worker reports or artifact prose.
@@ -227,11 +262,14 @@ MIGRATION.md status:
 REVIEW.md verdict:
 Final workflow verification command:
 Final workflow verification result:
+Final verifier classification: none | material-owned | external-workspace-blocker
 Operator visual status: no-reported-defect | defect-reported | not-applicable
 Remaining blocker: none | <exact blocker>
 Overall family status: complete | blocked
 Next operator action: none | <single required action>
 ```
+
+A family may remain `compliant` and ready while the outer result is blocked by an external workspace contract.
 
 ## Forbidden
 
@@ -240,6 +278,8 @@ Next operator action: none | <single required action>
 - Selecting routes from prose.
 - Retrying terminal `blocked` with route `none/none`.
 - Accepting `partial`, terminal `stale`, or a same-stage self-route from a worker.
+- Writing an external verifier failure into a family `REVIEW.md`.
+- Invalidating dependency gates because an unrelated workspace test failed.
 - Using dependency gates.
 - Ignoring dependency cycles or revision mismatches.
 - Returning directly to an origin stage without durable validation.
