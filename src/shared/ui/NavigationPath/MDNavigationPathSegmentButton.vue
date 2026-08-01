@@ -23,9 +23,3 @@ const onClick = () => {
     @click="onClick"
   />
 </template>
-
-<style scoped>
-.md-navigation-path-segment-button {
-  --md-button-horizontal-padding: 8px;
-}
-</style>

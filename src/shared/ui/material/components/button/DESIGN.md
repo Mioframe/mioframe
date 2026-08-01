@@ -1,6 +1,15 @@
 # Button — official Material design
 
-Status: `current`
+Artifact revision: 2026-08-01T09:54:01.860Z
+Design contract revision: 2026-08-01T09:54:01.860Z
+Status: current
+Source revision: m3-docs cache 2026-07-20T16:16:49.323Z; DSDB 2026-07-01_06-10-02
+Source checked at: 2026-08-01
+Refresh check after: 2026-08-31
+Revision summary: Normalized the complete official Button contract into the current design-document schema.
+Remaining blockers: none
+Required return family: none
+Required return stage: none
 
 ## Source ledger
 
@@ -12,9 +21,9 @@ Status: `current`
 | `https://m3.material.io/components/buttons/accessibility`    | Buttons Accessibility           | 2026-07-20T16:12:33.651Z                                                      |
 | `designSystems/20543ce18892f7d9/components/1c4257f8804f9478` | Button component token resource | DSDB artifact `2026-07-01_06-10-02`; graph generated 2026-07-20T16:16:49.323Z |
 
-The verified Material source cache contains all four Button tabs, 244 cached pages, no failed accepted routes, and a resolved Button token resource. The cache exceeded its seven-day refresh threshold. A refresh was attempted on 2026-07-30, but `site_meta.js` did not provide a usable route list; the updater preserved the verified cache. No evidence of a newer Button material revision was found, so age and that tooling limitation do not make this complete newest-known snapshot stale.
+The official source service was checked on 2026-08-01. Its verified cache contains all four Button tabs, 244 cached pages, no partial or failed accepted routes, and a resolved Button token resource. The cache exceeded its seven-day refresh threshold. A refresh was attempted on 2026-07-30, but `site_meta.js` did not provide a usable route list; the updater preserved the verified cache. No evidence of a newer Button material revision was found, so age and that tooling limitation do not make this complete newest-known snapshot stale.
 
-## Identity and evolution
+## Identity and purpose
 
 Buttons initiate a discrete action. Material defines default action buttons and, in M3 Expressive, toggle buttons for binary selection. Buttons may have an optional leading icon. Five color configurations establish emphasis: elevated, filled, tonal, outlined, and text. Five sizes are available: extra small, small (the default), medium, large, and extra large. Shapes are round (the default) or square.
 
@@ -41,7 +50,7 @@ At most one icon accompanies the label. It precedes the label in reading order: 
 
 Buttons can participate in button groups with buttons or icon buttons. Related actions may use differences in size, color, or shape to give the primary action higher emphasis.
 
-## Geometry, typography, and motion
+## Geometry and layout
 
 | Size        | Height | Icon | Leading / icon-label / trailing space | Square corner | Pressed corner | Round corner |
 | ----------- | ------ | ---- | ------------------------------------- | ------------- | -------------- | ------------ |
@@ -71,20 +80,11 @@ The specs document enabled/default, disabled, hovered, focused, pressed, selecte
 - Width may fit content or respond to the layout, but avoid excessively long, flat buttons on large screens. Keep icon and label grouped and centered as width changes.
 - Placement, size, and arrangement may adapt across window sizes, but preserve source order so screen-reader and keyboard navigation remain consistent.
 
-## Accessibility and input
+## Accessibility
 
 Buttons must be operable and navigable with assistive technology. `Tab` moves focus to a button; `Space` or `Enter` activates it. The accessible label should match the visible label and may add necessary context. Enabled elevated, filled, and tonal containers need at least 3:1 contrast with the background; for outlined and text buttons, measure that ratio from label text to background.
 
 Keep labels concise under text scaling. On Android at 200% text size, labels should fit within two lines; if truncation still occurs, provide a one-tap alternative that exposes the full content. This platform allowance does not replace the ordinary guidance to keep labels on one line. Extra-small and small visual containers retain a minimum 48×48dp interactive target.
-
-## Related official contracts
-
-- Button groups define coordinated collections of buttons and icon buttons.
-- Icon buttons are the alternative for compact icon-only actions.
-- FABs outrank filled buttons in visual impact and represent the highest-emphasis primary action.
-- Cards, dialogs, and snackbars commonly compose text buttons; their contracts own the surrounding layout.
-- Hyperlinked body text, chips, menus, and navigation components are alternatives where the content is navigation, selection, overflow, or persistent structure rather than a discrete labeled action.
-- Material state layers, focus indicators, dynamic color, type scale, shape scale, elevation, and motion springs supply the aliases referenced by the component tokens.
 
 ## Complete official component-token catalogue
 
@@ -656,7 +656,7 @@ Use the table's menu to switch token sets. The baseline button token sets are or
 | md.comp.filled-tonal-button.container.shadow-color          | Filled tonal button container shadow color       | md.sys.color.shadow                         | md.ref.palette.neutral0           | {"alpha":1}               | {"alpha":1}               |                       |                      |
 | md.comp.filled-tonal-button.container.color                 | Filled tonal button container color              | md.sys.color.secondary-container            | md.ref.palette.secondary90        | #e8def8                   | #4a4458                   | #4a4458               | #ccc2dc              |
 
-## Source conflicts and extraction gaps
+## Source conflicts and unknowns
 
 - The overview says labels should not wrap, while Android accessibility guidance permits up to two lines specifically after 200% text scaling. These apply to ordinary layout and scaled accessibility layout respectively.
 - The overview states a standard 20dp leading/trailing icon size, while size tokens specify 24dp, 32dp, and 40dp for medium, large, and extra-large buttons. The exact size token is authoritative for those Expressive sizes.
@@ -664,3 +664,12 @@ Use the table's menu to switch token sets. The baseline button token sets are or
 - Several baseline values are explicitly `[unresolved]`, and several high-contrast cells are blank. JSON fragments such as `{"alpha":1}` are preserved rather than interpreted.
 - The official measurement graphic does not publish an independent numeric width; width is content-responsive subject to the spacing tokens.
 - Refresh tooling could not obtain a usable `site_meta.js` route list on 2026-07-30. The previous verified cache and fully resolved component resource were preserved; no required Button page or token row is missing.
+
+## Related official contracts
+
+- Button groups define coordinated collections of buttons and icon buttons.
+- Icon buttons are the alternative for compact icon-only actions.
+- FABs outrank filled buttons in visual impact and represent the highest-emphasis primary action.
+- Cards, dialogs, and snackbars commonly compose text buttons; their contracts own the surrounding layout.
+- Hyperlinked body text, chips, menus, and navigation components are alternatives where the content is navigation, selection, overflow, or persistent structure rather than a discrete labeled action.
+- Material state layers, focus indicators, dynamic color, type scale, shape scale, elevation, and motion springs supply the aliases referenced by the component tokens.

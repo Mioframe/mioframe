@@ -38,6 +38,24 @@ describe('MDLoadingIndicator adapter', () => {
       expect(indicator.attributes('style')).toContain('width: 32px');
       expect(indicator.attributes('style')).toContain('height: 32px');
     });
+
+    it('restores exact geometry and active-size mapping after an invalid size is replaced', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const wrapper = mount(MDLoadingIndicator, { props: { label: 'Loading', size: Infinity } });
+
+      expect(wrapper.get('m3e-loading-indicator').attributes('style')).toContain('width: 48px');
+
+      await wrapper.setProps({ size: 32 });
+      const style = wrapper.get('m3e-loading-indicator').attributes('style') ?? '';
+      expect(style).toContain('width: 32px');
+      expect(style).toContain('height: 32px');
+      expect(Number(/--m3e-loading-indicator-size: ([\d.]+)px/.exec(style)?.[1])).toBeCloseTo(
+        25.333333,
+        5,
+      );
+
+      warnSpy.mockRestore();
+    });
   });
 
   describe('private active-size mapping', () => {
@@ -175,7 +193,9 @@ describe('MDLoadingIndicator adapter', () => {
 
     it('merges a consumer style with the internal geometry style without breaking the M3E-001/M3E-002 workaround', () => {
       const wrapper = mount(MDLoadingIndicator, {
-        attrs: { style: 'width: 999px; height: 999px' },
+        attrs: {
+          style: 'width: 999px; height: 999px; --m3e-loading-indicator-size: 999px',
+        },
         props: { label: 'Loading', size: 32 },
       });
       const indicator = wrapper.get('m3e-loading-indicator');
@@ -210,6 +230,7 @@ describe('MDLoadingIndicator adapter', () => {
       ['renderer variant', { variant: 'contained' }, 'variant'],
       ['contained state', { contained: 'true' }, 'contained'],
       ['role override', { role: 'alert' }, 'role'],
+      ['tabindex override', { tabindex: '0' }, 'tabindex'],
       ['aria-valuenow', { 'aria-valuenow': '50' }, 'aria-valuenow'],
       ['aria-valuemin', { 'aria-valuemin': '0' }, 'aria-valuemin'],
       ['aria-valuemax', { 'aria-valuemax': '100' }, 'aria-valuemax'],

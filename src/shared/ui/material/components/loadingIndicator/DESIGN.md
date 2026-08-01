@@ -1,151 +1,115 @@
 # Loading indicator design
 
+Artifact revision: 2026-08-01T11:48:39.122Z
+Design contract revision: 2026-08-01T09:59:39.918Z
 Status: current
+Source revision: Material MCP capture `2026-07-20T16:16:49.323Z`; token resource `designSystems/20543ce18892f7d9/components/68895be451a51c31`
+Source checked at: 2026-08-01
+Refresh check after: 2026-08-31
+Revision summary: Reformatted the complete official contract without changing normalized Material content.
+Remaining blockers: none
+Required return family: none
+Required return stage: none
 
-Official component: Loading indicator  
-Source snapshot date: 2026-07-20  
-Source capture revision: Material MCP capture `2026-07-20T16:16:49.323Z`; token artifact `dsdb-resource:raw/dsdb/2026-07-01_06-10-02/designSystems_20543ce18892f7d9_components_68895be451a51c31.json`  
-Design document date: 2026-07-30
+## Source ledger
 
-## Official sources
+| Official route                                                      | Official title                  | Snapshot and coverage                                                                                                       |
+| ------------------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `https://m3.material.io/components/loading-indicator/overview`      | Loading indicator Overview      | Captured 2026-07-20; identity, availability, and Expressive update represented                                              |
+| `https://m3.material.io/components/loading-indicator/specs`         | Loading indicator Specs         | Captured 2026-07-20; variants, configurations, anatomy, colors, measurements, and complete resolved token table represented |
+| `https://m3.material.io/components/loading-indicator/guidelines`    | Loading indicator Guidelines    | Captured 2026-07-20; usage, anatomy, placement, responsive layout, and pull-to-refresh behavior represented                 |
+| `https://m3.material.io/components/loading-indicator/accessibility` | Loading indicator Accessibility | Captured 2026-07-20; assistive-technology use cases, contrast, alternate refresh action, role, and labeling represented     |
 
-| Route                                                               | Official title                  | Coverage                                       |
-| ------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------- |
-| `https://m3.material.io/components/loading-indicator/overview`      | Loading indicator Overview      | Cached page inspected                          |
-| `https://m3.material.io/components/loading-indicator/specs`         | Loading indicator Specs         | Cached page and resolved token table inspected |
-| `https://m3.material.io/components/loading-indicator/guidelines`    | Loading indicator Guidelines    | Cached page inspected                          |
-| `https://m3.material.io/components/loading-indicator/accessibility` | Loading indicator Accessibility | Cached page inspected                          |
-
-The newest successfully acquired official snapshot contains all four official tabs and reports no unresolved token rows or missing component resources. A refresh attempted on 2026-07-30 failed because `site_meta.js` did not provide a usable route list, but no newer source revision or changed official content was discovered. Under the repository source lifecycle, the failed helper is recorded as a tooling limitation and does not invalidate this complete snapshot.
+The route index identifies these four tabs as the complete component route set. The cache reports verified coverage, no failed accepted routes, no unresolved component resources, and zero unresolved token rows for this family. An explicit refresh on 2026-08-01 failed during `site_meta.js` route discovery and left the prior cache unchanged. Direct checks of all four official URLs on 2026-08-01 reached the current Material site but exposed only its JavaScript application shell. No newer official component revision or contradictory current content was acquired, so the newest complete official snapshot remains the selected fallback.
 
 ## Identity and purpose
 
-Loading indicators communicate a short, ongoing process whose progress is indeterminate. They use a looping sequence of shape morphs to attract attention, reduce perceived latency, and show that activity is still in progress. They are never merely decorative.
+Loading indicators communicate a short, ongoing process whose progress is indeterminate. Their looping shape motion attracts attention, mitigates perceived latency, and communicates that activity is in progress; they are never decorative.
 
-The component was added with M3 Expressive in May 2025; no pre-Expressive M3 loading-indicator variant is defined. Material recommends it for short processes between 200 ms and 5 s and as the replacement for most uses of the indeterminate circular progress indicator. It is also the indicator specified for pull-to-refresh.
+The component was added to the catalog with M3 Expressive in May 2025. No pre-Expressive M3 loading-indicator variant is defined. Material recommends it for short processes between 200 ms and 5 s, replacing most uses of the indeterminate circular progress indicator, and specifies it for pull-to-refresh.
 
-Loading indicators are distinct from progress indicators:
+Loading indicators differ from progress indicators by wait duration and transition capability. For work under 200 ms, show content without an indicator. For work from 200 ms through 5 s, use a loading indicator. For work over 5 s, use a progress indicator. If an indeterminate process can become determinate, use an indeterminate progress indicator and transition to its determinate counterpart; do not transition a loading indicator into a determinate progress indicator. For very long work, consider allowing navigation away while processing continues.
 
-| Expected wait      | Official recommendation                            |
-| ------------------ | -------------------------------------------------- |
-| Under 200 ms       | Show the result directly; do not show an indicator |
-| 200 ms through 5 s | Use a loading indicator                            |
-| Over 5 s           | Use a progress indicator                           |
+At the selected snapshot, the Material 3 Design Kit, Jetpack Compose Expressive, and Android Views Expressive resources are available; Web Expressive is listed as unavailable.
 
-When a process may change from indeterminate to determinate, use an indeterminate progress indicator and transition it to its determinate counterpart. Do not transition a loading indicator into a determinate progress indicator. For very long activity, consider allowing navigation away while work continues.
+## Anatomy and content
 
-Official availability at the snapshot is: Material 3 Design Kit available, Jetpack Compose Expressive available, Android Views Expressive available, and Web Expressive unavailable.
+1. **Active indicator — required.** The progress-bearing visual continuously loops through a morph sequence composed of seven unique Material 3 shapes.
+2. **Container — optional.** A circular background provides separation and contrast against underlying content.
 
-Sources: Overview; Guidelines, Usage.
+The component has no visible label or supporting-content part. Its required descriptive label is semantic. When the optional container is visible, the active indicator changes from the primary color role to on-primary-container.
 
 ## Variants and configurations
 
 There is one M3 Expressive variant, **Loading indicator**, with two containment configurations:
 
-| Configuration         | Description                                                                                                                                                                                                                                        |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Default (uncontained) | The active indicator appears without a visible container and uses the primary color role. Use directly on a suitable surface.                                                                                                                      |
-| Contained             | The active indicator appears within a circular container. Use when placed over other content to increase contrast and for pull-to-refresh. The active indicator changes to the on-primary-container role and the container uses primary-container. |
+| Configuration         | Official contract                                                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default (uncontained) | Required active indicator without a visible container; the active indicator uses the primary color role and sits directly on a suitable surface.                                                                          |
+| Contained             | Required active indicator within the optional circular container; use over other content for stronger contrast and for pull-to-refresh. The indicator uses on-primary-container and the container uses primary-container. |
 
-The component is indeterminate. The official pages publish no determinate mode, label text part, selection mode, disabled state, interactive state layer, elevation variant, density variant, or alternate shape configuration.
+The component is indeterminate. The official component pages publish no determinate configuration, rendered label, selection mode, disabled state, interactive state layer, elevation variant, density variant, or alternate container shape. The default overall size is 48 dp and the supported responsive range is 24–240 dp.
 
-Sources: Overview; Specs, Variants and Configurations; Guidelines, Anatomy.
+## Geometry and layout
 
-## Anatomy
+| Measurement                      | Official value                       |
+| -------------------------------- | ------------------------------------ |
+| Default overall/container width  | 48 dp                                |
+| Default overall/container height | 48 dp                                |
+| Default active-indicator size    | 38 dp                                |
+| Supported overall size range     | 24–240 dp                            |
+| Container shape                  | Circular; `md.sys.shape.corner.full` |
 
-1. **Active indicator** — required. A continuously looping morph sequence composed of seven unique Material 3 shapes.
-2. **Container** — optional. A circular background that supplies additional separation from underlying content.
+The 48 dp overall size provides margin around the 38 dp morphing shape. When the component is resized, the ratio between the container and active indicator remains constant. The default size is intended for mobile and compact windows. As pane or window size grows, the indicator may scale in proportion to the surrounding empty space; reserve very large indicators for large and extra-large windows and never exceed 240 dp or go below 24 dp.
 
-The active indicator is the progress-bearing visual. When the optional container is visible, the active indicator changes from primary to on-primary-container. The component has no label rendered as part of its visual anatomy; its accessible label is semantic.
+Center the indicator within a page or container whose contents are loading. When loading additional items into an existing surface, center it in the empty area where incoming content will appear and do not overlap existing content. A loading indicator may be composed inside another component, including as a button's loading visual or a tab icon. Show the circular container when the indicator overlays content; it is unnecessary when the indicator sits directly on a suitable surface.
 
-Sources: Specs, Anatomy; Guidelines, Anatomy.
+## States and behavior
 
-## Color
+The documented visual state is active indeterminate loading. The active indicator continuously morphs through seven Material shapes in a loop and remains visible while the represented process is ongoing. The component pages do not publish the individual shape names, keyframe timing, easing, spring parameters, rotation values, or total loop duration.
 
-The default active indicator uses `md.sys.color.primary`. For the contained configuration, the active indicator uses `md.sys.color.on-primary-container` and the visible container uses `md.sys.color.primary-container`.
-
-The specs token table also publishes a general `container.color` mapped to `md.sys.color.secondary-container`, although the prose and contained illustration identify primary-container for the visible contained configuration. This conflict is preserved under [Source conflicts and unknowns](#source-conflicts-and-unknowns).
-
-The active indicator must have at least 3:1 contrast against the background it is perceived on. The container itself is not required to have 3:1 contrast. When the loading indicator is composed inside another component, the active indicator must retain at least 3:1 contrast against that component.
-
-Sources: Specs, Color; Accessibility, Interaction & style.
-
-## Geometry and responsive layout
-
-| Measurement                      | Official value                        |
-| -------------------------------- | ------------------------------------- |
-| Default overall/container width  | 48 dp                                 |
-| Default overall/container height | 48 dp                                 |
-| Default active-indicator size    | 38 dp                                 |
-| Permitted overall size range     | 24–240 dp                             |
-| Container shape                  | Circular / `md.sys.shape.corner.full` |
-
-The 48 dp overall size supplies margin around the 38 dp morphing shape. When resized, the active-indicator-to-container ratio remains constant. The default size is intended for mobile and compact windows. As pane or window size grows, the indicator may scale with the surrounding empty space; very large indicators are reserved for large and extra-large windows and must not exceed 240 dp. Do not go below 24 dp.
-
-Sources: Specs, Measurements; Guidelines, Responsive layout.
-
-## Placement and composition
-
-- Center the indicator within a page or container whose contents are loading.
-- When adding content to a surface that already contains items, center the indicator in the empty area where new content will appear; do not overlap existing content.
-- The indicator may be placed within components such as buttons for actions that take a few seconds, including form validation or update checks.
-- It may occupy a compact location such as a tab icon.
-- Show the circular container when the indicator overlays other content; a container is unnecessary when the indicator sits directly on a suitable surface.
-
-Sources: Guidelines, Placement and Anatomy.
-
-## Behavior and motion
-
-The active indicator continuously morphs through seven Material 3 shapes in a loop. The official component pages define the sequence conceptually but publish no per-shape names, keyframe timing, easing, spring parameters, rotation values, or total loop duration.
-
-The indicator remains visible while the represented process is ongoing. For pull-to-refresh, it remains visible until refresh completes and new content is visible, or until the user navigates away.
-
-### Pull-to-refresh
-
-The documented pull-to-refresh behavior is identified as Jetpack Compose only. It applies at the start of lists, grids, and card collections whose newest content appears first and is most appropriate for frequently changing content where refresh is likely to reveal something new.
+For pull-to-refresh, documented as Jetpack Compose only, the component applies at the beginning of lists, grids, and card collections where the newest content appears first. It is best suited to frequently updated content where refreshing is likely to reveal new content.
 
 - A drag must cross an intentional threshold before release initiates refresh.
 - Reversing the gesture back past the threshold cancels refresh.
 - The indicator may appear over or adjacent to content.
-- Keep it visible and on-screen for the whole refresh activity; scrolling it away hides status and can falsely associate the refresh with a particular item rather than the whole screen.
-- Gesture-only refresh is inaccessible. Provide an alternative single-pointer action, such as a refresh button in an app bar, menu, or beside the content.
+- It remains visible until refresh completes and new content is visible, or until the user navigates away.
+- It must stay on-screen during refresh; scrolling it away hides status and can falsely associate the activity with one item rather than the whole screen.
 
-Sources: Guidelines, Behavior; Accessibility, Use cases and Interaction & style.
+The official pages define no activation, selection, hover, pressed, focused, disabled, error, success, determinate, or restoration state for the component itself.
 
 ## Usage guidance
 
-Use a loading indicator when progress cannot be detected or remaining time need not be communicated, particularly for background work expected to take 200 ms to 5 s. Its motion should communicate real ongoing activity.
+Use a loading indicator when progress cannot be detected or remaining time does not need to be communicated, particularly for background activity expected to last 200 ms to 5 s. Its motion must correspond to real ongoing activity.
 
 Do not:
 
 - show one for work that completes in under 200 ms;
 - use one for activity expected to exceed 5 s when a progress indicator is appropriate;
 - use one for a process that will transition from indeterminate to determinate;
-- present one as decoration unrelated to an active process;
-- overlap existing loaded content when space for incoming content is available;
-- exceed the 24–240 dp range;
+- use one decoratively or without an ongoing process;
+- overlap existing content when empty space for incoming content is available;
+- size it outside 24–240 dp;
 - let a pull-to-refresh indicator scroll out of view while refresh continues;
 - depend on a swipe gesture as the only refresh mechanism.
 
-Sources: Overview; Guidelines; Accessibility.
+Use the contained configuration when the component overlays content and for pull-to-refresh. Use the uncontained configuration directly on a surface with adequate contrast. For long-running processes, prefer a progress indicator and consider letting users navigate away.
 
 ## Accessibility
 
-Assistive-technology users must be able to navigate to the loading indicator, understand which progress it communicates, and initiate refresh without relying on a gesture.
+Assistive-technology users must be able to navigate to the loading indicator, understand what progress it communicates, and initiate a content refresh without relying on a gesture.
 
 - Use the **progress bar** accessibility role.
-- Supply an accessible label that identifies what is loading or refreshing, for example “loading news article” or “refreshing page.”
-- Maintain at least 3:1 contrast between the active indicator and its perceived background, including when composed into another component.
-- The container itself has no 3:1 contrast requirement.
-- Provide a single-pointer alternative for pull-to-refresh.
+- Provide an accessible label that names what is loading or refreshing, such as “loading news article” or “refreshing page.”
+- Maintain at least 3:1 contrast between the active indicator and its perceived background, including when composed inside another component.
+- The optional container itself is not required to meet 3:1 contrast against its background.
+- Because swipe-only pull-to-refresh is inaccessible, provide a single-pointer alternative such as a refresh action in an app bar, menu, or alongside the content.
 
-The official page does not publish component-specific keyboard commands, focus-ring geometry, live-region behavior, value attributes, determinate range semantics, reduced-motion behavior, or announcement cadence.
+The official component page does not publish component-specific keyboard commands, focus-ring geometry, live-region behavior, range/value attributes, determinate semantics, reduced-motion behavior, or announcement cadence.
 
-Source: Accessibility.
+## Complete official token catalogue
 
-## Complete official component-token catalogue
-
-Blank values mean the official token table publishes no value for that mode. Values below preserve the resolved Material MCP token resource; aliases are separated into system and reference aliases.
+The official specs publish one token set, `md.comp.loading-indicator`. An em dash means the official resolved table supplies no alias or value for that field.
 
 | Official token path                                          | Official display name                              | System alias                        | Reference alias              | Light                   | Dark                    | Light high contrast | Dark high contrast |
 | ------------------------------------------------------------ | -------------------------------------------------- | ----------------------------------- | ---------------------------- | ----------------------- | ----------------------- | ------------------- | ------------------ |
@@ -158,22 +122,20 @@ Blank values mean the official token table publishes no value for that mode. Val
 | `md.comp.loading-indicator.contained.active-indicator.color` | Loading indicator contained active indicator color | `md.sys.color.on-primary-container` | `md.ref.palette.primary30`   | `#4f378b`               | `#eaddff`               | `#ffffff`           | `#000000`          |
 | `md.comp.loading-indicator.container.color`                  | Loading indicator container color                  | `md.sys.color.secondary-container`  | `md.ref.palette.secondary90` | `#e8def8`               | `#4a4458`               | `#4a4458`           | `#ccc2dc`          |
 
-Source: Specs, Tokens & specs; resolved token resource `designSystems/20543ce18892f7d9/components/68895be451a51c31`.
-
 ## Source conflicts and unknowns
 
-1. **Refresh limitation.** The complete cached pages were captured on 2026-07-20. The 2026-07-30 refresh helper failed before route discovery because `site_meta.js` did not provide a usable route list. No newer source revision or changed official content was found, so this is recorded as a tooling limitation rather than stale design evidence.
-2. **Swapped size display names.** The official token resource assigns the display name “Loading indicator container width” to `active-indicator.size` (38 dp) and “Loading indicator active indicator size” to `container.width` (48 dp). The paths, numeric values, measurement prose, and illustration establish the opposite semantic relationship. The catalogue preserves the official display names verbatim rather than silently correcting them.
-3. **Container color conflict.** The contained-configuration prose and illustration specify primary-container, matching `contained.container.color`. The same token set additionally publishes a general `container.color` using secondary-container without explaining which configuration consumes it.
-4. **Dark high-contrast serialization.** The cached Markdown table serializes the dark high-contrast contained active-indicator value as `{"alpha":1}`. The resolved token resource reports `#000000`; the catalogue uses that resolved value and records this extraction discrepancy here.
-5. **Unspecified motion values.** The component pages state that seven Material shapes morph in a loop but do not publish the shape names or exact motion parameters.
-6. **Unpublished modes.** High-contrast geometry/shape values and several component-specific behavioral/accessibility mechanics are absent from the official tables and prose; they are not inferred.
+1. **Current-source refresh limitation.** The complete snapshot was captured on 2026-07-20. The 2026-08-01 refresh failed before route discovery because `site_meta.js` could not be fetched or parsed into a usable route list; direct route checks returned only the JavaScript application shell. No newer revision was acquired, and the complete prior snapshot remains the newest available official contract.
+2. **Swapped size display names.** The official token resource assigns “Loading indicator container width” to `active-indicator.size` at 38 dp and “Loading indicator active indicator size” to `container.width` at 48 dp. The token paths, values, measurement prose, and illustration imply the opposite semantic relationship. The catalogue preserves the official display names without silently correcting them.
+3. **Container-color ambiguity.** Contained-configuration prose and imagery specify primary-container, matching `contained.container.color`. The same token set also publishes a general `container.color` mapped to secondary-container without explaining which configuration consumes it.
+4. **Dark high-contrast serialization discrepancy.** The cached Markdown token table serializes the contained active-indicator value as `{"alpha":1}`. The resolved token resource reports `#000000`; the catalogue records the resolved value.
+5. **Unspecified motion detail.** The pages state that seven Material shapes morph in a loop but do not name the shapes or provide exact motion values.
+6. **Unpublished mechanics.** High-contrast geometry and shape values, precise adaptive sizing rules within the 24–240 dp range, and several component-specific accessibility mechanics are not published and are not inferred.
 
 ## Related official contracts
 
 - **Progress indicators** are the alternative for waits over 5 s and own the indeterminate-to-determinate transition pattern.
-- **Material shape library** supplies the seven shapes used by the morph sequence, but the component page does not enumerate them.
+- **Material shape library** supplies the seven shapes used by the morph sequence, though the component page does not enumerate them.
 - **Buttons and tabs** are documented composition contexts; the loading indicator remains the progress-bearing visual within them.
-- **Pull-to-refresh** supplies the gesture, threshold, cancellation, and refresh lifecycle described by the component guidance and is documented as Jetpack Compose only.
+- **Pull-to-refresh** supplies the gesture, threshold, cancellation, and refresh lifecycle described by the component guidance and is documented for Jetpack Compose only.
 
-No additional component token set or delegated measurement table is linked by the cached official component pages.
+No additional component token set or delegated measurement table is linked by the official component pages.

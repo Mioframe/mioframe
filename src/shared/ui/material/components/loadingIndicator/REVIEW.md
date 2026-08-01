@@ -1,68 +1,66 @@
 # Loading indicator review
 
-Reviewed workspace state: independently reviewed the complete resulting `loadingIndicator` family after the attrs-projection correction — full current `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`; `MDLoadingIndicator.vue` and `MDLoadingIndicator.test.ts` read in full; `tokens.css`, `MDLoadingIndicator.stories.ts`, `tests/e2e/storybook/md-loading-indicator.spec.ts`, `tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts`, `docs/component-adapter.md`, `docs/m3e-defects.md`, `docs/token-api.md`, and `docs/roadmap.md` read in full; `MDButton.vue` read in full as the composing consumer, with `MDButton.test.ts` and `tests/e2e/storybook/md-button-family.spec.ts` inspected for the composition-relevant assertions; `config/vueCustomElements.ts`, `package.json`, and `pnpm-lock.yaml` checked for renderer selection/version; independent of any prior review of this family or its record.
-Review date: 2026-07-31
-DESIGN.md status: current
-ARCHITECTURE.md status: ready
-IMPLEMENTATION.md status: complete
-MIGRATION.md status: complete
+Artifact revision: 2026-08-01T11:50:04.390Z
+DESIGN.md contract revision: 2026-08-01T09:59:39.918Z
+ARCHITECTURE.md revision: 2026-08-01T10:28:43.915Z
+IMPLEMENTATION.md revision: 2026-08-01T10:40:52.428Z
+MIGRATION.md revision: 2026-08-01T10:45:24.478Z
+Verdict: compliant
+Required return family: none
+Required return stage: none
+Completion status: complete
+Final workflow verification readiness: ready
 Operator visual status: no-reported-defect
-Verdict: compliant-with-listed-risks
+Blockers: none
+Major issues: none
+Minor issues: none
+Accepted risks: none
 
 ## Goal and scenarios reviewed
 
-Reviewed the complete resulting family, not only the attrs-projection correction: standalone accessible-purpose labeling and progressbar semantics; default/explicit/clamped/non-finite overall sizing (24-240, default 48) with the private 38/48 active-size mapping; the public active-indicator color token, its standalone-primary default, and its Button `currentColor` handoff; the host-attribute boundary (`inheritAttrs: false` plus the explicit allow-list: `class`, `style`, `id`, `title`, `data-*`, `aria-hidden`, `aria-describedby`) and its render-time projection mechanism; the M3E-001/M3E-002 exact-version workarounds; Button's decorative composition (`aria-hidden`, 24 px geometry, class-carried token override, `aria-busy`, icon restoration); and legacy-surface isolation. Contained presentation, pull-to-refresh, determinate progress, and operation-state ownership remain correctly deferred/assigned outside the family — unchanged and confirmed still absent from the public API and code.
+This fresh full independent review re-evaluated the complete canonical Loading indicator family after the design artifact formatting correction. It covered the standalone uncontained indeterminate presentation, bounded 24-240 overall sizing with the official 48/38 overall-to-active relationship, required accessible purpose, Material-primary and contextual active-indicator color, isolation from legacy descendant color, and 24 px Button composition with parent-owned busy and interaction semantics.
+
+The design artifact revision changed to `2026-08-01T11:48:39.122Z`, while its normalized Design contract revision remains exactly `2026-08-01T09:59:39.918Z`. That metadata-only formatting correction does not invalidate architecture, implementation, or migration identity. All recorded downstream revisions remain current and mutually consistent.
+
+The simplest viable result remains the implemented single-host adapter with required `label`, optional bounded `size`, one public active-indicator color token, and an explicit host-attribute boundary. No generic adapter, compatibility layer, public renderer vocabulary, operation-state API, or product adoption is required.
 
 ## Official design compliance
 
-`DESIGN.md` is a complete, current snapshot (status `current`, dated 2026-07-30) covering identity/purpose, variants and configurations, anatomy, color, geometry, placement, behavior/motion, usage guidance, accessibility, the complete official component-token catalogue (including the documented display-name swap, the `container.color` conflict, and the dark-high-contrast serialization discrepancy, all explicitly preserved as conflicts rather than silently resolved), and related contracts. No official fact, token, or spec appears stale, omitted, or contradicted by the resulting code. Neither correction round (host-attribute boundary, attrs-projection) touched `DESIGN.md`, and none was required to.
+`DESIGN.md` records the complete available official route set, selected-source lifecycle and refresh limitation, identity, duration guidance, anatomy, containment configurations, geometry, behavior, usage, accessibility, complete token catalogue, source conflicts, unknowns, and related contracts. Its corrected formatting preserves the normalized Material content and explicitly retains Design contract revision `2026-08-01T09:59:39.918Z`.
+
+The architecture selects only confirmed current demand: the default uncontained indeterminate presentation. Contained rendering and tokens, pull-to-refresh behavior, determinate progress, rendered labels, interaction states, and unpublished motion controls remain correctly deferred. The selected semantics, 24-240 range, 48 px default overall geometry, 38/48 active ratio, primary active color, progressbar role, purpose label, and 3:1 contextual contrast responsibility agree with the design contract.
+
+The prior formatter route is cleared. `pnpm verify --only format --files src/shared/ui/material/components/loadingIndicator/DESIGN.md` passed against the corrected artifact. No official-fact or design-stage finding remains.
 
 ## Architecture compliance
 
-`ARCHITECTURE.md` (status `ready`, dated 2026-07-31) selects a minimum-complete uncontained adapter: required `label`, optional bounded `size`, one public color token, and the host-attribute boundary allow-list with explicit `class`/`style` merge precedence (internal geometry always wins on a conflicting key; a differently-keyed public token override still passes through). Deferrals (contained configuration, pull-to-refresh, determinate progress) are justified against `DESIGN.md` sections and current Mioframe demand; no current scenario requires them. Ownership is unchanged and correctly narrow: the family owns the adapter/mapping/tokens/allow-list; Button owns composition semantics, `aria-busy`, and icon restoration; m3e owns private anatomy and motion. The allow-list itself (`class`, `style`, `id`, `title`, `data-*`, `aria-hidden`, `aria-describedby`) matches `docs/component-adapter.md`'s minimum common allow-list (`class`, `style`, `id`, `title`, `data-*`) extended by exactly two ARIA-composition attributes, each with an explicit rationale (`aria-hidden` for the Button suppression scenario; `aria-describedby` for consumer-supplied description, consistent with Button's own allowance). No new demand, prop, emit, slot, or token was introduced by either correction.
+`ARCHITECTURE.md` revision `2026-08-01T10:28:43.915Z` references the current Design contract revision and the installed renderer `@m3e/web@2.6.3`. Dependency closure is empty: Material foundation supplies the system-color fallback, m3e is a private renderer integration, and Button is a parent consumer rather than a dependency.
+
+Ownership is narrow and directional. Loading indicator owns its Vue API, standalone semantics, geometry, public token, private renderer mapping, exact-version workarounds, attribute boundary, exports, and family proof. m3e owns private anatomy and the seven-shape animation lifecycle. Button owns composition, redundant child-semantic suppression, `aria-busy`, icon replacement, contextual `currentColor`, activation, and disabled behavior. Product features retain applicability, pending/error copy, cancellation, disabled conflicts, and re-entry guards.
+
+The public contract is exact: required `label`, optional numeric `size` defaulting to 48, no slots/emits/methods or variant/value/disabled/loading surface, and only `class`, `style`, `id`, `title`, `data-*`, `aria-hidden`, and `aria-describedby` may cross the host boundary. The sole public token maps active-indicator color without exposing renderer vocabulary. M3E-001 and M3E-002 have explicit version scope, local mitigation, proof, and removal triggers. The implementation passes, proof ownership, migration inventory, acceptance criteria, risks, and forbidden approaches leave no unresolved coding choice.
 
 ## Implementation compliance
 
-Independently read `MDLoadingIndicator.vue` line by line against `ARCHITECTURE.md`, without relying on `IMPLEMENTATION.md`'s claims:
+`IMPLEMENTATION.md` revision `2026-08-01T10:40:52.428Z` references the current architecture revision and records no deviation. Direct inspection confirms one `m3e-loading-indicator` host, package-private renderer import, `inheritAttrs: false`, required label mapping, finite normalization and 24-240 clamping, explicit overall width/height, proportional private active-size mapping, selected custom-element registration, family/root exports, and the public active-color token with Material-primary fallback.
 
-- `defineOptions({ inheritAttrs: false })` is set. No `v-bind="$attrs"` appears anywhere in the file.
-- The allow-list projection is `getForwardedAttrs()`, a plain function (not `computed()`, `watch()`, or `watchEffect()`) that iterates `Object.entries(attrs)` and forwards only `id`, `title`, `aria-hidden`, `aria-describedby`, and `data-*`-prefixed keys, called directly from the template as `v-bind="getForwardedAttrs()"`. This matches the corrected mechanism `IMPLEMENTATION.md` describes: because Vue guarantees `useAttrs()` reflects the latest attrs during render but does not guarantee that object is a supported `computed()` reactive dependency, a plain function invoked from the template — which necessarily re-executes on every render — has no cache-staleness surface, unlike the previous cached `computed()` it replaced.
-- `class` and `style` are handled by separate explicit bindings: `:class="['md-loading-indicator', attrs.class]"` (union, not replacement) and `:style="[attrs.style, style]"`. Vue's array-style normalization merges array entries in order with later entries overwriting earlier ones on a matching key (`normalizeStyle` in `@vue/runtime-dom`), so the internal `style` object (width/height/`--m3e-loading-indicator-size`) — listed second — always wins over a conflicting consumer key, while a differently-keyed consumer entry (for example the public `--md-comp-loading-indicator-active-indicator-color` token) is preserved. This was independently re-derived from Vue's merge semantics, not merely taken from a code comment, and is exercised by `MDLoadingIndicator.test.ts`'s two dedicated style-merge tests (both re-run and passing).
-- `aria-label` is bound only from `props.label` (`:aria-label="props.label"`); it is never read from `attrs`/`getForwardedAttrs()`, so a consumer-passed `aria-label` cannot reach the host. `getForwardedAttrs()` explicitly excludes `aria-label`, `role`, value ARIA (`aria-valuenow`/`aria-valuemin`/`aria-valuemax`), `tabindex`, raw renderer `variant`/`contained`, and arbitrary listeners — all outside the allow-list, matching `ARCHITECTURE.md`'s explicit rejection table.
-- `useAttrs` is imported behind `// eslint-disable-next-line no-restricted-imports -- see comment above`. Independently confirmed against `eslint.config.mjs` (`noAttrsImportPath`, `paths: [{ importNames: ['useAttrs'], ... 'document a transparent host/adaptor contract with a local lint exception' }]`) that this is the exact accepted escape-hatch condition, not an ad hoc suppression, and that the identical pattern is used in `MDButton.vue`.
-- M3E-001 and M3E-002 mappings (`style` computed: `width`/`height` from normalized `size`; `--m3e-loading-indicator-size` from `size × 38/48`) are unchanged from the prior correction and match `docs/m3e-defects.md`, which independently confirms both remain `workaround-active` against the exact lockfile-resolved `@m3e/web@2.6.3` (verified in `pnpm-lock.yaml`, matching `package.json`'s `^2.6.3` range and `config/vueCustomElements.ts`'s `m3e-loading-indicator` selection).
-- Public API (`label: string` required, `size?: number` default 48 with dev-mode clamp/normalize warnings; no slots, emits, or exposed refs) is unchanged and matches `ARCHITECTURE.md`'s Public Vue API table exactly.
-- No `!important`, no generic adapter/wrapper/base/registry framework, no shadow-DOM inspection or private-state recreation.
+The live render-time allow-list forwards only the accepted attributes. Family class and consumer class merge; consumer styles may supply differently keyed public tokens, while adapter-owned width, height, and private effective-size mapping win conflicts. Raw variant/contained inputs, role and value-ARIA overrides, `tabindex`, consumer `aria-label`, unknown attributes, and arbitrary listeners are rejected. No private shadow DOM, shape, timer, or animation state is acquired.
 
-I independently re-ran the family's focused proof rather than trusting `IMPLEMENTATION.md`'s recorded results:
-
-- `pnpm verify --only unit-tests --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.test.ts` — passed.
-- `pnpm verify --only type-check` — passed.
-- `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.stories.ts tests/e2e/storybook/md-loading-indicator.spec.ts` — passed (5 tests), including the browser-level rejection test that toggles undeclared dynamic attrs/listeners against the real rendered custom element (sentinel ARIA values chosen to differ from the renderer's own defaults; a real `click()`).
-
-`MDLoadingIndicator.test.ts` (30 tests, read in full) proves: canonical rendering with progressbar role and `aria-label`; public color-token pass-through; default/explicit/clamped/non-finite geometry with dev warnings; the full allow-list forwarding matrix (`class`/`style`/`id`/`title`/`data-*`/`aria-hidden`/`aria-describedby`); style-merge precedence in both directions (internal geometry wins; differently-keyed public token still passes); rejection of raw renderer `variant`/`contained`/`role`/value-ARIA/unknown attrs/an arbitrary listener; `label` as the sole accessible-name source even against a consumer-passed `aria-label`; reactivity of every allow-listed key to consumer changes; and the new lifecycle test proving an allow-listed `id`/`data-*` key can be added, removed, and re-added after mount while a dynamically added forbidden attribute/listener remains rejected throughout — the specific coverage needed to prove the render-time mechanism has no cache-staleness gap relative to the prior `computed()` mechanism.
-
-No architecture deviation was found.
+The implementation remains aligned with the exact installed renderer defects: the effective size input is `--m3e-loading-indicator-size`, and explicit host geometry preserves the official overall/active distinction. Button consumes only public `MDLoadingIndicator`, supplies label, size 24, `aria-hidden="true"`, and the public token through `currentColor`; loading does not acquire disabled or activation ownership.
 
 ## Migration and legacy removal
 
-Independently re-read `MDButton.vue` (not `MIGRATION.md`'s summary alone) and confirmed its Loading Indicator composition uses only `class="md-button__loading-indicator"`, static `aria-hidden="true"`, and declared `label`/`size` props — every one of these is inside the allow-list, so no consumer edit was required, matching `MIGRATION.md`'s no-op conclusion.
+`MIGRATION.md` revision `2026-08-01T10:45:24.478Z` references the current implementation revision and records a complete audit-only migration. The inventory identifies Button as the sole parent composition consumer, family stories/tests as proof rather than consumers, and similarly named settings-test elements as unrelated plain HTML stubs.
 
-- `aria-hidden="true"` is forwarded by `getForwardedAttrs()`'s explicit `aria-hidden` branch; independently confirmed at the composed-tree level by `MDButton.test.ts`'s unmodified assertion (`indicator.attributes('aria-hidden')` is `'true'`) and by `md-button-family.spec.ts`'s browser-level assertion that a loading button's accessible `progressbar` role has zero count.
-- `.md-button__loading-indicator { --md-comp-loading-indicator-active-indicator-color: currentColor; }` still resolves: the class reaches the rendered `m3e-loading-indicator` because `MDLoadingIndicator.vue`'s class binding unions rather than replaces (`['md-loading-indicator', attrs.class]`). `md-button-family.spec.ts` (read directly, lines 255-263) independently confirms this at the browser level: `.md-loading-indicator`'s computed `color` inside a composed loading Button matches the label text's computed color (`rgb(103, 80, 164)`), proving the `currentColor` handoff actually resolves, not merely that the class landed.
-- `MIGRATION.md`'s explanation of why Vue's scoped-CSS `data-v-<hash>` attribute reaches the composed root is accurate as currently written: it correctly states that Vue applies the child component's `scopeId` directly to the rendered root element at the DOM-patch layer, independent of `$attrs`/`useAttrs()`/`inheritAttrs`/the allow-list filter — not because `data-v-<hash>` matches the `data-*` wildcard. This corrects the previously inaccurate attribution and was independently verified against Vue's compiler/runtime scope-ID application model, not merely taken on the document's word.
-- No product consumer under `src/app`, `src/pages`, `src/widgets`, `src/features`, or `src/entities` imports `MDLoadingIndicator` or a raw `m3e-loading-indicator`, and `SettingsSections`'s `data-testid="loading-indicator"` is confirmed an unrelated plain-HTML test stub (independently re-checked, not merely cited from `MIGRATION.md`).
+No direct product consumer, raw renderer tag/import/type, or private renderer token exists outside the canonical Material boundary. Button already uses the accepted public contract and retains its action name, busy semantics, icon restoration, contextual contrast, activation, disabled, and consumer re-entry ownership. No Loading-indicator-specific legacy adapter, duplicate export, product token, compatibility alias, or replaced product UI required removal. Provider- and browser-controlled waits remain with their feature-owned textual status and conflict guards.
 
-## Proof and verification
+## Proof and stage verification
 
-- `pnpm verify --only unit-tests --files .../MDLoadingIndicator.vue .../MDLoadingIndicator.test.ts` — re-run by this review, passed.
-- `pnpm verify --only type-check` — re-run by this review, passed.
-- `pnpm verify --only storybook-behavior --files .../MDLoadingIndicator.vue .../MDLoadingIndicator.stories.ts tests/e2e/storybook/md-loading-indicator.spec.ts` — re-run by this review, passed.
-- `pnpm verify:status` was checked before each run (`verification: idle`); no active/locked run was encountered, so no resume-vs-fresh-run judgment call was needed.
-- The visual lane (`tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts`, three snapshot tests: size matrix, color contract, legacy-surface color) was inspected by reading the spec and its three existing baseline PNGs on disk; it was not re-executed by this review because neither correction round changed any visual/motion/token/geometry output (both `IMPLEMENTATION.md` records state "no visual or motion behavior intentionally changes," and code inspection confirms the allow-list content, tokens.css, and geometry math are byte-identical to the pre-correction contract). No baseline drift is implicated by either correction.
-- The single one-time release-sensitive current-head gate (`pnpm verify` / `pnpm verify --base origin/develop`) has not been run for this correction round by any stage to date. `MIGRATION.md`'s own "Final verification" section defers it to "whichever stage closes the family" and explicitly excludes it from the correction-migration worker's task scope. This review did not run it either, since the family-scoped checks that exercise every changed file (unit tests, type-check, Storybook behavior) were independently re-run and all passed, and `docs/roadmap.md`'s own "Remaining pilot gates" separates "fresh independent review" from a later "final full pilot review" step. Flagged below as a final-verification gap, not as a blocker to this family's own compliance.
+The recorded focused stage proof is proportionate and has one primary owner per contract. Component tests cover label and size contracts, clamping and restoration, the 38/48 mapping, the exact reactive host allow-list, geometry precedence, public-token pass-through, label precedence, warnings, and forbidden inputs/listeners. Real Chromium Storybook behavior covers the named progressbar, actual public host boxes, computed default/contextual colors, legacy isolation, and dynamic rejection at the rendered custom element.
 
-Automated proof establishes the public contract, the host-attribute boundary (including negative-path browser proof against the real rendered custom element), geometry, and color mapping. It does not and cannot establish subjective quality of the renderer-owned seven-shape motion — that remains an operator judgment, and its absence is not evidence of a defect.
+Button component and browser proof cover redundant child-semantic suppression, named busy parent semantics, 24 px composition, icon restoration, contextual active color, activation while loading, and explicit disabled blocking. Token catalogue, renderer-boundary, package-derived type, and installed-artifact evidence cover integration and M3E-001/M3E-002. Visual proof passed 219/219 current baselines for standalone size/color/legacy isolation and Button composition; expected references were inspected, no baseline changed, and no concrete visual or motion defect was reported.
+
+Recorded implementation and migration checks passed their focused verifier-managed unit, ESLint, format, type-check, Storybook behavior, and visual scopes. This review additionally confirmed the corrected `DESIGN.md` passes focused formatting. Final workflow verification was not run by this worker and remains exclusively owned by the outer Material orchestrator.
 
 ## Blockers
 
@@ -74,26 +72,23 @@ None.
 
 ## Minor issues
 
-1. The single final current-head release-sensitive gate (`pnpm verify` / `pnpm verify --base origin/develop`) has not yet been run for this correction round by any stage. `ARCHITECTURE.md`'s `TEST IMPACT` and `MIGRATION.md`'s "Final verification" both explicitly assign this gate to "whichever stage closes the family," and it remains outstanding. This is a final-verification gap, not a functional defect — every family-scoped check that exercises the changed files (unit tests, type-check, Storybook behavior) independently passed. Route to `material-component-migration` (or whichever stage/operator action finally closes the family) to run it before the pilot is declared fully complete.
+None.
 
 ## Accepted risks
 
-- M3E-001 and M3E-002 remain `workaround-active` against the exact lockfile-resolved `@m3e/web@2.6.3` (independently confirmed in `pnpm-lock.yaml`); both are family-local, exact-version-gated, and revalidated unchanged by the correction. Must be revalidated or removed on the next `@m3e/web` upgrade.
-- Material publishes the seven-shape loop concept but no exact Web motion parameters; the renderer owns the private motion implementation. Automated proof establishes lifecycle/presence and stable pixels, not subjective motion quality — this is an operator judgment, and no operator has reported a defect against it.
-- Contextual `currentColor` contrast is parent-owned; Button's current composition is proven to resolve correctly, but any future parent composing Loading Indicator must independently preserve the official 3:1 contrast requirement.
-- The visual lane (`md-loading-indicator.spec.ts`, three snapshot baselines) was not re-executed in this review pass (see Proof and verification); no visual/geometry/token output changed in either correction, so no baseline drift is expected, but this is inspection rather than a fresh pixel re-run.
+None. The renderer defects and unpublished motion details are bounded implementation constraints with explicit ownership and upgrade/removal triggers, not accepted compliance gaps.
 
 ## Items not required
 
-- Contained configuration, container tokens, pull-to-refresh, determinate progress, long-wait behavior, live-region policy, rendered labels, disabled state, public motion controls, and product operation state all correctly remain deferred/out of scope, unaffected by either correction.
-- A broader host-attribute allow-list, a wrapping element, a generic adapter/wrapper framework, or new public API — none were introduced, none are needed.
-- New product migration or compatibility aliases for the previous unrestricted `$attrs` fallthrough — correctly not added; no consumer relied on the leaked access.
-- Positive operator acknowledgement — not required by the corrected workflow model; absence of a reported defect is sufficient and no fabricated confirmation was created.
+- No architecture, implementation, migration, production, consumer, story, test, baseline, export, renderer-boundary, or dependency change is required after the formatting-only design correction.
+- No downstream artifact invalidation is required because the Design contract revision did not change.
+- No contained, pull-to-refresh, determinate, disabled, operation-state, rendered-label, live-region, focus, or public motion API is required by current scenarios.
+- No product feature migration, compatibility forwarding, generic adapter, descendant color cascade, private renderer exposure, or unrelated family migration is required.
+- No positive operator visual acknowledgement is required, and no operator-reported defect exists.
+- No final workflow verification, Git, pull-request, commit, branch, diff, or external-check interpretation belongs to this review worker.
 
-## Required return stage
+## Routing evidence
 
-Migration (non-blocking): run the deferred single final current-head release-sensitive gate before the family/pilot is declared fully complete. No design, architecture, or implementation correction is required — the resulting family code, tests, tokens, consumer composition, and every independently re-run focused check are compliant with `ARCHITECTURE.md` and `docs/component-adapter.md`.
+The prior `self/design` route named only a formatter failure in `DESIGN.md`. The owning design artifact is now revision `2026-08-01T11:48:39.122Z`, its focused format check passes, and its Design contract revision remains `2026-08-01T09:59:39.918Z`. Architecture `2026-08-01T10:28:43.915Z`, implementation `2026-08-01T10:40:52.428Z`, and migration `2026-08-01T10:45:24.478Z` therefore remain current.
 
-## Completion status
-
-Compliant with the listed accepted risks and one non-blocking minor final-verification gap (the deferred release-sensitive current-head gate). No operator-reported visual/motion defect exists for this family; absence of a report is not a blocker under the corrected workflow model and requires no positive acknowledgement. No functional, ownership, API, dependency, or proof defect was found in the complete resulting family, including consumers.
+Fresh complete-family review found no official-fact, demand, ownership, dependency, API, token, renderer, implementation, proof, consumer, scenario, or legacy-removal defect. The correct route is `none/none`, completion is complete, and the family is ready for outer final workflow verification.

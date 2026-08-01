@@ -1,91 +1,77 @@
 # Button migration
 
+Artifact revision: 2026-08-01T12:15:27.037Z
 Status: complete
-DESIGN.md reference: `./DESIGN.md` (`Status: current`, official tabs snapshot 2026-07-20)
-ARCHITECTURE.md reference: `./ARCHITECTURE.md` (`Status: ready`, architecture date 2026-07-31, host-attribute boundary correction)
-IMPLEMENTATION.md reference: `./IMPLEMENTATION.md` (`Status: complete`, host-attribute-boundary correction implemented, no architecture deviations)
-Migration workspace state: this pass re-audits every current `MDButton` consumer against the corrected `## Host-attribute boundary` allow-list (`class`, `style`, `id`, `title`, `data-*`, `aria-controls`, `aria-describedby`, `aria-expanded`, `aria-haspopup`) now that `MDButton.vue` sets `inheritAttrs: false` and no longer spreads `$attrs` onto `m3e-button`. This is a correction re-audit of the same consumer set recorded by the prior migration round (seven-token Snackbar contract, AppBar cleanup), which remains valid and is carried forward below. No consumer source file required a change.
+IMPLEMENTATION.md reference: `src/shared/ui/material/components/button/IMPLEMENTATION.md`
+IMPLEMENTATION.md revision: 2026-08-01T12:02:58.888Z
+Revision summary: Revalidated the complete corrected consumer migration against the dependency-review-refreshed Button implementation.
+Remaining blockers: none
+Required return family: none
+Required return stage: none
+Review readiness: ready
 
 ## Consumer inventory
 
-Every source file importing the root-exported `MDButton` (`grep -rl "MDButton" src`, cross-checked against `<MDButton` usage sites) was inspected line-by-line for non-prop bindings. Confirmed consumers, grouped by layer:
+All 22 application, shared-UI, and existing development source files importing `MDButton` outside the canonical family were re-inspected against the corrected architecture migration inventory and host-attribute boundary.
 
-- **Widgets**: `RepositoryExplorerWidget.vue` (local-directory and Google Drive recovery actions, "Return home"), `PwaInstallWidget.vue` (install/dismiss), `DocumentView/Database/DatabasePropertiesSheet.vue` ("add property"), `DocumentView/Database/DatabaseViewsSheet.vue` ("add view").
-- **Features**: `diagnosticsErrorPrompt/DiagnosticsErrorPrompt.vue` (dismiss/enable), `databaseFilterEdit/DatabaseFilterAddButton.vue` (add filter, menu target `ref`), `databaseItemSorting/DatabaseItemSortingListSection.vue` (add sorting, menu target `ref`), `vfsActivityStatus/VfsActivityStatusChip.vue` (grant access/dismiss/close/copy details), `exampleDocumentsCreate/DatabaseExampleDocumentCreateSuccessCard.vue` ("Got it"), `databaseViewCreate/DatabaseViewAddForm.vue` (Add/Cancel, `submit` form action).
-- **Entities**: `databaseRelation/RelationValueInline.vue` (show/hide sub-relation, overlay target `ref`).
-- **Pages**: `AboutMioframePane/AboutMioframePane.vue` ("Copy diagnostics").
-- **Shared UI (product-facing)**: `Dialog/DialogForm.vue` (cancel/apply, `submit`), `Snackbar/MDSnackbar.vue` (action button with contextual token `class`), `NavigationPath/MDNavigationPathSegmentButton.vue` (segment action with local `class`).
-- **Shared UI (overlay/menu targets, `ref`-only composition)**: `Menu/MDMenuPlayground.vue`, `Menu/stories/MDMenuWithSubmenuStory.vue`, `Overlay/stories/OverlayLifecycleRegressionStory.vue`, `Tooltips/MDRichTooltipPlayground.vue`.
-- **Shared UI (dev/story playgrounds, no product runtime path)**: `onBackNavigation/BackNavigationPlayground.vue`, `State/MDStateLayer.stories.ts`, `Card/MDCard.stories.ts`.
-- **Consumer tests** (drive existing behavior, do not assert on `m3e-button` internals or forwarded attrs): `RepositoryExplorerWidget.test.ts`, `DialogForm.test.ts`, `DiagnosticsErrorPrompt.test.ts`, `VfsActivityStatusChip.test.ts`, `MDNavigationPath.test.ts`, `DatabaseExampleDocumentCreateSuccessCard.test.ts`, `AboutMioframePane.test.ts` — confirmed by grep for `m3e-button`/renderer-private vocabulary in each: no matches.
-- `src/shared/ui/ButtonsBar/index.ts` is a false positive (re-exports `MDButtonsBar`, an unrelated component whose name contains the substring `MDButton`); `MDButtonsBar.vue` does not use `MDButton`.
-- `src/shared/ui/material/components/button/MDButtonTargetHitVisualStory.vue` and `MDButton.stories.ts` are family-owned proof artifacts, not product/library consumers; audited separately as part of implementation-stage proof, not here.
+- Product consumers: `RepositoryExplorerWidget`, `PwaInstallWidget`, `DatabasePropertiesSheet`, `DatabaseViewsSheet`, `DiagnosticsErrorPrompt`, `DatabaseFilterAddButton`, `DatabaseItemSortingListSection`, `VfsActivityStatusChip`, `DatabaseExampleDocumentCreateSuccessCard`, `DatabaseViewAddForm`, `RelationValueInline`, and `AboutMioframePane`.
+- Shared product-facing consumers: `DialogForm`, `MDSnackbar`, and `MDNavigationPathSegmentButton`.
+- Overlay/menu target fixtures: `MDMenuPlayground`, `MDMenuWithSubmenuStory`, `OverlayLifecycleRegressionStory`, and `MDRichTooltipPlayground`.
+- Existing development and visual fixtures: `BackNavigationPlayground`, `MDStateLayer.stories.ts`, and `MDCard.stories.ts`.
 
-## Host-attribute allow-list audit (this correction)
+The migration proof adds `MDNavigationPath.stories.ts` as a test fixture, not as a product consumer. Every consumer imports the root `@shared/ui/material` entry point and uses only the selected props, icon slot, click emit, Vue component ref, or approved class forwarding. No consumer depends on an undeclared renderer attribute or event.
 
-Every consumer usage above was inspected for non-declared-prop bindings. Findings against the exact allow-list in `ARCHITECTURE.md`'s `## Host-attribute boundary`:
-
-| Binding found                                                                                                                                                                                                  | Consumers                                                                                                                                               | Allow-list fit                                            | Disposition                                                                                                                                                                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `label`, `color`, `size`, `nativeType` (`native-type`), `disabled`, `loading`                                                                                                                                  | all                                                                                                                                                     | declared props, not `$attrs`                              | unaffected by this correction                                                                                                                                                                                                                                    |
-| `icon` slot                                                                                                                                                                                                    | `DatabaseFilterAddButton.vue`, `DatabaseItemSortingListSection.vue`, `DatabaseViewsSheet.vue`, `DatabasePropertiesSheet.vue`, `RelationValueInline.vue` | declared slot                                             | unaffected                                                                                                                                                                                                                                                       |
-| `@click`                                                                                                                                                                                                       | all (product actions)                                                                                                                                   | declared emit                                             | unaffected                                                                                                                                                                                                                                                       |
-| `ref="..."` (e.g. `MDMenuPlayground.vue`, `MDMenuWithSubmenuStory.vue`, `DatabaseFilterAddButton.vue`, `DatabaseItemSortingListSection.vue`, `OverlayLifecycleRegressionStory.vue`, `RelationValueInline.vue`) | overlay/menu/tooltip target scenarios (Current scenarios item 7)                                                                                        | Vue component ref, not `$attrs`/host-attribute forwarding | unaffected — the ref resolves through the single `m3e-button` root exactly as before; this mechanism does not go through `useAttrs()`/`inheritAttrs` at all                                                                                                      |
-| `class="md-snackbar__action"`                                                                                                                                                                                  | `MDSnackbar.vue`                                                                                                                                        | **fits** (`class`, merged)                                | preserved — seven contextual `--md-comp-button-text-*` custom properties are set on this class selector and reach `m3e-button` via the merged `class`, independent of any attribute/listener filtering                                                           |
-| `class="md-navigation-path-segment-button"`                                                                                                                                                                    | `MDNavigationPathSegmentButton.vue`                                                                                                                     | **fits** (`class`, merged)                                | preserved — class reaches the host; the `--md-button-horizontal-padding` declaration under it is a pre-existing, not-currently-cataloged custom property unrelated to this correction (unchanged before/after; out of scope for a host-attribute-boundary audit) |
-
-No consumer passes `style`, `id`, `title`, `data-*`, `aria-controls`, `aria-describedby`, `aria-expanded`, `aria-haspopup`, `role`, `tabindex`, `aria-label`, `aria-busy`, `aria-disabled`, `aria-pressed`, renderer-private vocabulary (`toggle`, `selected`, `shape`, `variant`, `contained`), or any listener other than `click`. A repository-wide grep for these tokens directly adjacent to `<MDButton` usages (excluding the button family itself) returned no matches outside the one unrelated `aria-label` on a sibling `MDMenu` element.
-
-**Confirmation: no current consumer depends on leaked `m3e-button` properties, attributes, or events.** Tightening `$attrs` fallthrough to the accepted allow-list changes no observed consumer behavior. There is no genuine blocked consumer scenario.
+Repository-wide source inspection outside `src/shared/ui/material` found no direct `@m3e/web` Button import, raw `m3e-button`, private `--m3e-*` Button token, deep canonical-family import, legacy Button wrapper, provisional `hover`/`focus` Button token name, contextual Button icon token, or remaining `--md-button-horizontal-padding` declaration.
 
 ## Migrated consumers
 
-No consumer required a code change for this correction. Every current usage already fits the accepted allow-list (or uses only declared props/slots/emits/refs, which were never part of `$attrs` forwarding). Carried forward from the prior migration round (unchanged by this correction):
+All approved consumers use the canonical root-exported `MDButton`. `MDNavigationPathSegmentButton.vue` no longer declares the undefined `--md-button-horizontal-padding: 8px`; it uses the canonical text Button's default `small` geometry without a replacement prop, public compatibility token, private renderer variable, or descendant override.
 
-- Existing Button instances already consumed the canonical root-exported `MDButton`; no adapter or prop migration was required.
-- `src/shared/ui/Snackbar/MDSnackbar.vue` uses the seven selected official contextual text Button tokens (label-text resting/hovered/focused/pressed, state-layer hovered/focused/pressed) for inverse-primary rendering; its separately owned Icon Button remains on the Icon Button token contract.
+`MDSnackbar.vue` continues to supply exactly the seven selected contextual text Button tokens for inverse-primary resting, hovered, focused, and pressed label/state-layer rendering. Its close action remains independently owned by Icon Button and was not migrated as part of Button.
 
 ## Preserved scenarios and failure paths
 
-- Dialog submit/cancel semantics, loading-owned disabled guards, and native submit behavior are unchanged.
-- Repository recovery retains feature-owned pending text, disabled conflicting actions, re-entry protection, and live status.
-- Diagnostics, PWA install, sheet/card, navigation/overlay, Snackbar callback, compact icon-leading, and short library-operation scenarios retain their product owners and action paths.
-- Overlay/menu/tooltip trigger targeting (`ref`-based positioning in `DatabaseFilterAddButton.vue`, `DatabaseItemSortingListSection.vue`, `RelationValueInline.vue`, `MDMenuPlayground.vue`, `MDMenuWithSubmenuStory.vue`, `OverlayLifecycleRegressionStory.vue`) is unaffected: refs resolve through the component root exactly as before, independent of the attrs allow-list.
-- Snackbar action label/state-layer contextual color and NavigationPath segment padding are unaffected: both rely only on `class`, which remains forwarded and merged with the adapter-owned `md-button` class.
-- No consumer scenario, action, or failure path regressed as a result of the host-attribute-boundary correction.
+- Navigation Path retains its home action, segment selection, 4 px inter-item gap, non-wrapping labels, and owning horizontal-scroll container. Real-browser proof compares a segment with an explicit canonical small text Button and exercises a multi-segment long path through scrolling and final-segment activation.
+- Dialog and database-view forms retain native submit behavior, cancel/apply guards, form busy ownership, and consumer-owned disabled/re-entry protection.
+- Repository and VFS recovery retain feature-owned pending text, live-status semantics, disabled conflicting actions, retry/re-entry guards, result handling, and error/Snackbar paths; browser/provider waits do not use presentation-only Button loading.
+- Diagnostics, PWA install, sheet/card, compact icon-leading, and example-document actions retain their action ownership and click paths.
+- Overlay, menu, and tooltip triggers retain Vue-ref positioning/focus ownership through the single renderer-host root without renderer access.
+- Snackbar retains callback behavior and inverse-primary label/state-layer rendering across resting, hover, keyboard focus, and press; message and close-action colors remain independently owned.
+- Short indeterminate library loading remains presentation-only and does not infer or acquire disabled, operation, error, persistence, or re-entry state.
+
+No action surface, interaction tier, user-visible copy, product state owner, failure path, or mobile/overlay/form/accessibility behavior changed.
 
 ## Legacy ownership removed
 
-No new removal in this pass; no consumer relied on unrestricted `$attrs` fallthrough, so there is nothing obsolete to remove from consumers. Carried forward from the prior migration round (unchanged by this correction):
+Navigation Path's sole undefined Button padding declaration was removed without replacement. Earlier migrated Snackbar provisional token overrides and AppBar Button-color leakage remain absent. No compatibility alias, duplicate wrapper, deep import, raw renderer usage, unrestricted attribute reliance, or replaced consumer test/style remains. Native HTML and the separate Icon Button, FAB, navigation, and menu families remain untouched.
 
-- Removed Snackbar's obsolete provisional Button token overrides (prior round).
-- Removed the ineffective `--md-content-color` declaration from `MDAppBar.vue`'s `&__trailing-elements` rule (prior round; unrelated to Button host-attributes).
-- No compatibility aliases, raw renderer details, duplicate Button wrappers, deep imports, or obsolete Button exports remain outside the canonical family.
+## Consumer and blast-radius proof
 
-## Proof completed
+- `MDNavigationPath.test.ts` and the representative consumer component tests preserve segment/action wiring, repository recovery, dialog busy submit/cancel, diagnostics actions, VFS recovery/error actions, example-document dismissal, and About-pane action behavior.
+- `navigationPath.spec.ts` uses a deterministic Storybook fixture and public rendered hosts to prove default `small` property mapping, matching normal small Button height and radius, non-wrapping overflow, actual horizontal scrolling, and activation of the final long-path segment.
+- `colorOwnership.spec.ts` proves Snackbar message, action, and close colors plus the action's resting, hover, focus, and pressed routes with real browser input and rendered-anatomy assertions.
+- `color-ownership.spec.ts` selected the verifier's full 219-reference visual fallback and passed without a baseline update; no expected/actual/diff artifacts required inspection.
+- Persistent Storybook behavior impact metadata maps the Navigation Path source directory to its focused browser spec. Static inventory confirms root-export use, renderer privacy, supported host inputs, the seven-token Snackbar owner, and obsolete vocabulary removal.
 
-- This pass: full consumer-source audit (grep-driven inventory plus line-by-line inspection of every `<MDButton` usage site and every consumer test file) against the exact allow-list in `ARCHITECTURE.md`'s `## Host-attribute boundary`. No consumer file changed, so no new consumer-level test was needed.
-- The host-attribute-boundary correction itself is proven at the component-contract and Storybook-behavior level by `IMPLEMENTATION.md` (`MDButton.test.ts` host-attribute-boundary suite; `tests/e2e/storybook/md-button-family.spec.ts`'s `'MDButton drops undeclared dynamic attrs and never exposes their renderer state'` test) — both already passing, per `IMPLEMENTATION.md`'s "Verification performed".
-- Prior-round proof (seven-token Snackbar contextual states, AppBar cleanup) remains valid and unaffected by this correction.
+Operator visual status: no-reported-defect. Automated proof does not claim subjective Material conformance or renderer-motion acceptance.
 
-## Final verification
+## Stage verification
 
-No consumer source file changed in this pass, so no focused consumer verification command was run (per task scope: focused checks apply only to touched consumer files, and none were touched).
+Migration-scoped verifier-managed revalidation completed on 2026-08-01:
 
-The host-attribute-boundary correction's own verification was already completed and recorded in `IMPLEMENTATION.md`:
+- `pnpm verify --only format --files src/shared/ui/material/components/button/MIGRATION.md` — passed.
+- `pnpm verify --only unit-tests --files src/widgets/RepositoryExplorerWidget/RepositoryExplorerWidget.test.ts src/shared/ui/Dialog/DialogForm.test.ts src/features/diagnosticsErrorPrompt/DiagnosticsErrorPrompt.test.ts src/features/vfsActivityStatus/VfsActivityStatusChip.test.ts src/features/exampleDocumentsCreate/DatabaseExampleDocumentCreateSuccessCard.test.ts src/pages/AboutMioframePane/AboutMioframePane.test.ts src/shared/ui/NavigationPath/MDNavigationPath.test.ts` — passed.
+- `pnpm verify --only unit-tests --files scripts/lib/storybookBehaviorRisk.mjs scripts/lib/storybookBehaviorRisk.test.mjs` — passed; behavior-impact registry validation selected.
+- `pnpm verify --only storybook-behavior --files src/shared/ui/NavigationPath/MDNavigationPath.vue src/shared/ui/NavigationPath/MDNavigationPathSegmentButton.vue src/shared/ui/NavigationPath/MDNavigationPath.stories.ts tests/e2e/storybook/navigationPath.spec.ts` — passed.
+- `pnpm verify --only storybook-behavior --files src/shared/ui/Snackbar/MDSnackbar.vue tests/e2e/storybook/colorOwnership.spec.ts` — passed.
+- `pnpm verify --only visual --files src/shared/ui/Snackbar/MDSnackbar.vue tests/e2e/visual/shared-ui/color-ownership.spec.ts` — passed; full 219-reference visual lane, no baseline update.
 
-- `pnpm verify --only format --files src/shared/ui/material/components/button/MDButton.vue src/shared/ui/material/components/button/MDButton.test.ts src/shared/ui/material/components/button/MDButton.stories.ts tests/e2e/storybook/md-button-family.spec.ts` — passed.
-- `pnpm verify --only eslint --files ...` (same file set) — passed.
-- `pnpm verify --only type-check` — passed.
-- `pnpm verify --only unit-tests --files src/shared/ui/material/components/button/MDButton.vue src/shared/ui/material/components/button/MDButton.test.ts` — passed, 13 tests.
-- `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/button/MDButton.vue src/shared/ui/material/components/button/MDButton.stories.ts tests/e2e/storybook/md-button-family.spec.ts` — passed.
+This stage did not run independent review or the outer workflow's final verification.
 
-The prior migration round's full-project gate (`pnpm verify`, all 10 checks passed, 2026-07-30T19:20:11Z) remains the last full-project verification of record; it predates this correction. This audit-only pass found zero consumer changes, so it does not itself require re-running the full release gate; the next full `pnpm verify`/`pnpm verify:release` invocation (owned by whichever stage runs it next, e.g. review) will naturally re-cover the corrected `MDButton.vue` and its tests since they are already committed.
+## Remaining blockers
 
-## Remaining migration blockers
-
-None. The host-attribute-boundary correction is a breaking change in principle (per `ARCHITECTURE.md`) but breaks no actual current consumer: every consumer usage was already confined to declared props/slots/emits, refs, or the now-explicit allow-list (`class`).
+None.
 
 ## Review readiness
 
-Ready for a fresh independent review worker. This correction re-audit found no genuine blocked consumer scenario and required no consumer code change. Operator visual/motion acceptance remains a separate, later review gate not owned by this stage.
+Ready. Every approved consumer is canonical, consumer-owned state and failure paths remain preserved, contextual Snackbar token ownership remains complete, Navigation Path's obsolete declaration is removed with faithful geometry/overflow proof, focused migration checks passed, and the route is `none/none`.

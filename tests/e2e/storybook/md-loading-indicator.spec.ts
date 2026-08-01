@@ -109,6 +109,6 @@ test('MDLoadingIndicator rejects undeclared dynamic host attributes and listener
   await expect(indicator).not.toHaveAttribute('variant', 'contained');
 
   // An undeclared listener passed via attrs never attaches to the renderer host.
-  await indicator.click({ force: true });
+  await indicator.click();
   await expect(page.getByTestId('attribute-boundary-click-count')).toHaveText('0');
 });
