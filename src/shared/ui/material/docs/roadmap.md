@@ -1,18 +1,18 @@
 # Mioframe Material migration roadmap
 
-This file is the only owner of current Material milestone status, family-stage status, technical blockers, and next operator action. Durable rules live in the other canonical documents.
+This file is the only owner of current Material milestone status, family-stage status, technical blockers, latest pilot result, and next operator action. Durable workflow rules live in the other canonical documents.
 
 ## Current state
 
 Last updated: 2026-08-01
 
-Current milestone: `M0/M1 — prove the autonomous staged workflow through the Loading Indicator/Button pilot`
+Current milestone: `M0/M1 — close the autonomous Loading Indicator/Button pilot`
 
-Status: `in-progress`
+Status: `externally-blocked`
 
-Runtime implementation status: current Loading Indicator and Button runtime corrections are implemented; no runtime redesign is presently identified.
+Runtime implementation status: Loading Indicator and Button runtime, token, renderer-boundary, consumer migration, and focused proof are complete. No runtime redesign is identified.
 
-Workflow-rule status: the durable workflow now defines:
+Workflow-rule status: implemented. The durable workflow now defines:
 
 - one operator invocation;
 - fresh isolated workers for five reasoning stages;
@@ -21,9 +21,9 @@ Workflow-rule status: the durable workflow now defines:
 - separate design artifact and design contract revisions;
 - one fixed 30-calendar-day documentation refresh interval;
 - metadata-only source refresh without downstream invalidation;
-- exact artifact revisions and invalidating upstream links;
+- exact invalidating revision links;
 - exact dependency review revisions in parent architecture;
-- exact earlier-stage or cross-family correction routes;
+- earlier-stage and cross-family correction routes;
 - terminal `blocked + none/none` semantics;
 - prohibition of same-stage self-routes;
 - no terminal `partial` or `stale` worker results;
@@ -31,114 +31,119 @@ Workflow-rule status: the durable workflow now defines:
 - durable origin-family resume after cross-family correction;
 - gate-free dependency queues and full dependency pipelines through current review;
 - active dependency-path cycle detection;
-- deterministic no-consumer standalone scenario without speculative state APIs;
+- deterministic no-consumer standalone scenarios without speculative state APIs;
 - implementation preflight before code and consumer edits;
 - Git/PR-independent worker evidence;
-- compact execution ledger;
+- a compact execution ledger;
 - one final post-review workflow verification;
-- visual/motion feedback as a defect-reporting channel.
+- external verifier blockers separated from family compliance;
+- visual and motion feedback as a defect-reporting channel.
 
-The workflow remains `implemented-unproven` until one real `material-component Button` invocation completes the pilot.
-
-## Pilot artifact state
-
-All existing pilot artifacts predate the final contract, terminal-state, dependency-cycle, correction-resume, revision-link, and heading rules.
-
-The official design and runtime content remains useful, but both families must refresh from design once to normalize the new fields. Later metadata-only design refreshes must not cascade when contract revision remains unchanged.
+## Current family state
 
 ### Loading Indicator
 
 ```text
-DESIGN.md          refresh required for artifact/contract/source metadata
-ARCHITECTURE.md    refresh required with exact design contract and renderer revisions
-IMPLEMENTATION.md  refresh required with exact architecture revision and terminal status
-MIGRATION.md       refresh required with exact implementation revision and terminal status
-REVIEW.md          fresh independent review with design contract and downstream revisions
+DESIGN.md          current
+ARCHITECTURE.md    ready
+IMPLEMENTATION.md  complete
+MIGRATION.md       complete
+REVIEW.md          compliant
 ```
 
-Expected renderer revision: `@m3e/web@2.6.3` from the lockfile.
+- Design contract revision: `2026-08-01T09:59:39.918Z`.
+- Current review revision: `2026-08-01T11:50:04.390Z`.
+- Renderer revision: `@m3e/web@2.6.3`.
+- Dependency families: none.
+- Operator visual status: `no-reported-defect`.
 
-Operator visual status: `no-reported-defect`.
+A formatting-only design rewrite changed the design artifact revision while preserving the design contract revision. Architecture, implementation, and migration remained current, proving metadata-only refresh does not cascade.
 
 ### Button
 
 ```text
-DESIGN.md          refresh required for artifact/contract/source metadata
-ARCHITECTURE.md    refresh required with dependency families, queue, and review revisions
-IMPLEMENTATION.md  refresh required with exact architecture revision and terminal status
-MIGRATION.md       refresh required with exact implementation revision and terminal status
-REVIEW.md          fresh independent review with design contract and downstream revisions
+DESIGN.md          current
+ARCHITECTURE.md    ready
+IMPLEMENTATION.md  complete
+MIGRATION.md       complete
+REVIEW.md          compliant
 ```
 
-Button architecture must list `loadingIndicator` as a dependency, queue it only while its review is not current, and then record the exact Loading Indicator review revision.
+- Design contract revision: `2026-08-01T09:54:01.860Z`.
+- Current architecture revision: `2026-08-01T11:51:42.309Z`.
+- Current implementation revision: `2026-08-01T12:02:58.888Z`.
+- Current migration revision: `2026-08-01T12:15:27.037Z`.
+- Current review revision: `2026-08-01T12:50:00.000Z`.
+- Dependency families: `loadingIndicator`.
+- Recorded dependency review revision: `loadingIndicator=2026-08-01T11:50:04.390Z`.
+- Renderer revision: `@m3e/web@2.6.3`.
+- Operator visual status: `no-reported-defect`.
 
-Expected renderer revision: `@m3e/web@2.6.3` from the lockfile.
+Button records the exact current Loading Indicator review revision. Navigation Path's undefined Button padding declaration was removed without adding a replacement API, private renderer input, compatibility token, or descendant override. Focused browser proof covers canonical small geometry, overflow, scrolling, and activation.
 
-Operator visual status: `no-reported-defect`.
+## Latest pilot result
 
-## Pilot scenarios that must be proven
+One `material-component Button` invocation produced the current revision-linked Loading Indicator and Button artifacts and ran the outer `pnpm verify` command.
 
-The single invocation must prove:
+| Scenario | Result | Durable evidence |
+| --- | --- | --- |
+| Loading Indicator full dependency pipeline | passed | five current revision-linked artifacts; compliant review `2026-08-01T11:50:04.390Z` |
+| Button dependency queue and review linkage | passed | Button architecture queue `none`; exact Loading Indicator review revision recorded |
+| Button implementation and migration | passed | complete implementation and migration artifacts with exact upstream revisions |
+| Independent Button family review | passed | compliant review `2026-08-01T12:50:00.000Z` |
+| Metadata-only design refresh | passed | Loading Indicator artifact revision changed while contract revision and downstream revisions remained current |
+| Earlier-stage correction and fresh review | passed | Loading Indicator design-format correction cleared through a fresh compliant review |
+| Dependency-review propagation | passed | Button architecture reran and recorded the refreshed Loading Indicator review revision |
+| Navigation Path ownership correction | passed | obsolete padding declaration removed; focused browser proof added |
+| Focused unit, type, browser, and visual proof | passed | stage artifacts record passing focused commands; visual lane passed 219 references without baseline updates |
+| Final `pnpm verify` | blocked externally | unrelated `shared-reorder` Storybook timeout in `reorderDocumentViewportFallback.spec.ts`; Material smoke and family proof passed |
+| External final-verifier ownership | corrected | compliant family reviews remain unchanged; outer result owns the external blocker |
+| Same-stage self-route rejection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
+| Terminal `partial` rejection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
+| Terminal `stale` rejection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
+| Synthetic dependency-cycle detection | not durably evidenced | workflow rule is defined; no committed pilot ledger entry proves the synthetic case |
+| Invocation-local state discard and recovery | partially evidenced | dependency and revision propagation are durable; no explicit interruption ledger is committed |
+| Fresh-worker isolation count | not durably evidenced | artifacts are stage-separated; no compact committed execution ledger proves worker identities/count |
 
-1. both families receive normalized artifact revisions, design contract revisions, and source-refresh metadata;
-2. refresh interval is exactly 30 calendar days;
-3. metadata-only design refresh changes artifact revision and dates, preserves design contract revision, and does not run downstream stages;
-4. Loading Indicator completes through its full pipeline to current review;
-5. Button architecture reruns, clears its queue, and records the exact Loading Indicator review revision;
-6. Button completes through current review;
-7. a valid correction route targets an earlier stage or another family and executes once;
-8. a synthetic terminal `blocked + none/none` result stops orchestration without rerunning the worker;
-9. a synthetic same-stage self-route is rejected as a stage-contract blocker without retry;
-10. a synthetic terminal `partial` or `stale` worker result is rejected as a stage-contract blocker;
-11. when a real cross-family correction occurs, target completion is followed by durable origin validation and fresh origin-stage execution;
-12. a dependency-review change forces parent architecture and required downstream stages before parent review is reused;
-13. interrupted execution resumes only from durable revision mismatches;
-14. a non-production self- or ancestor-dependency simulation is detected through the active path without writing a cyclic artifact;
-15. implementation and migration preflight and focused verification are recorded;
-16. no worker depends on Git, PR, commit, or external-check state;
-17. one final `pnpm verify` passes without a second operator command.
+## Current blocker
 
-Do not inject a production defect or persist invalid artifacts solely to exercise routing. Terminal-state, malformed-result, and cycle checks may use orchestrator-level synthetic control-field inputs while durable family artifacts remain valid.
+The Material families are compliant and ready. The outer workflow remains blocked because `pnpm verify` exited 1 when the unrelated shared-reorder Storybook behavior test `tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts` timed out in its initial run and retry.
 
-## Exit criteria
+This failure belongs outside the Button and Loading Indicator families. It must not change their review verdicts, dependency gates, or artifact revisions.
 
-The pilot is complete only when:
+The existing non-failing ESLint warning in `scripts/agentEnvironment.mjs` is also outside Material and does not alter family compliance. Its treatment follows the root verification contract.
 
-- Loading Indicator and Button satisfy every current artifact gate;
-- metadata-only refresh does not invalidate downstream work;
-- design contract changes still invalidate architecture correctly;
-- dependencies complete through current review before parent implementation;
-- parent architecture records current dependency review revisions;
-- dependency cycles stop without recursive execution or persisted invalid artifacts;
-- terminal blockers stop once without retry;
-- same-stage self-routes, terminal `partial`, and terminal `stale` are rejected without loops;
-- valid correction routes execute and clear through fresh downstream artifacts;
-- cross-family correction resumes the origin through durable validation and fresh origin-stage execution;
-- durable revision links recover after invocation-local state is discarded;
-- source and renderer revision fields match current workspace facts;
-- each reasoning stage uses a fresh isolated worker;
-- review uses `compliant-with-listed-risks` only for genuine bounded limitations;
-- one final `pnpm verify` passes;
-- no operator-reported visual/motion defect remains unresolved.
+## Pilot closure criteria
+
+M0/M1 is complete only when:
+
+- Loading Indicator and Button remain current and compliant;
+- exact dependency review linkage remains valid;
+- the external shared-reorder verifier failure is corrected or confirmed transient by the prescribed focused rerun;
+- the original `pnpm verify` passes on the unchanged Material artifact chain;
+- the compact pilot ledger durably records the required synthetic terminal-state and cycle scenarios;
+- interruption recovery and fresh-worker isolation are recorded with enough evidence to audit without worker prose;
+- no operator-reported visual or motion defect remains unresolved.
+
+Synthetic workflow checks must not inject a production defect or persist invalid family artifacts. Use orchestrator-level control-field inputs and record only the compact result.
 
 ## Milestones
 
-| ID  | Milestone                           | Status                 | Exit gate                                                                                   |
-| --- | ----------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `implemented-unproven` | pilot proves terminal states, refresh, dependencies, correction, resume, and final verifier |
-| M1a | Loading Indicator dependency family | `refresh-required`     | five successful revision-linked artifacts and no unresolved reported defect                 |
-| M1  | Button action family                | `refresh-required`     | dependency linkage, terminal-state safety, five current artifacts, final verification       |
-| M2  | Switch stateful pilot               | `planned`              | controlled state/event contract and no-consumer/default-scenario behavior through workflow  |
-| M3  | sequential component migration      | `planned`              | dependency-first autonomous family migrations                                               |
+| ID | Milestone | Status | Exit gate |
+| --- | --- | --- | --- |
+| M0 | workflow architecture and rules | `implemented` | corrected ownership and terminal-state rules remain consistent through final pilot closure |
+| M1a | Loading Indicator dependency family | `complete` | five current artifacts, compliant review, no unresolved reported defect |
+| M1 | Button action family | `family-complete` | exact dependency linkage, five current artifacts, compliant review |
+| M1b | outer pilot verification | `externally-blocked` | focused shared-reorder rerun and original `pnpm verify` pass; compact synthetic ledger committed |
+| M2 | Switch stateful pilot | `planned` | controlled state/event contract and no-consumer/default-scenario behavior through workflow |
+| M3 | sequential component migration | `planned` | dependency-first autonomous family migrations |
 
 ## Next operator action
 
-Run once:
+Do not rerun the Material family pipeline and do not manually patch current family artifacts.
 
-```text
-material-component Button
-```
+Perform the verifier-prescribed focused Storybook behavior command for the shared-reorder failure, correct the external owner only if the failure reproduces, then rerun the original `pnpm verify`.
 
-The invocation must refresh Loading Indicator through current review, rerun Button architecture, record the dependency review revision, continue Button through review, prove metadata-only refresh, terminal-state safety, route safety, cycle protection, durable resume where applicable, and finish with one final `pnpm verify` without another operator command.
+Before declaring the pilot complete, record compact results for the synthetic self-route, terminal `partial`, terminal `stale`, dependency-cycle, interruption-recovery, and fresh-worker-isolation scenarios. Preserve the current compliant Loading Indicator and Button review revisions unless a genuine Material revision mismatch or finding appears.
 
-No manual artifact patch, separate dependency command, positive visual acknowledgement, local `verify:release`, dependency pin, worker registry, artifact hash system, workflow database, or generic adapter framework is required.
+No dependency pin, worker registry, artifact hash system, workflow database, generic adapter framework, positive visual acknowledgement, or local `verify:release` is required.
