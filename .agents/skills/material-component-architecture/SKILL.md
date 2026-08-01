@@ -7,25 +7,30 @@ description: 'Use after a current complete family DESIGN.md exists to create or 
 
 Resolve one deterministic implementation architecture from the accepted official design artifact and return control to the orchestrator.
 
-This stage owns demand selection, public contract, ownership, renderer strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or final workflow verification.
+This stage owns demand selection, public contract, ownership, dependency queue, renderer revision and strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or final workflow verification.
 
 ## Input gate
 
-Require:
+Require a mechanically valid and successful:
 
 ```text
 src/shared/ui/material/components/<family>/DESIGN.md
 ```
 
-The design artifact must contain all required control fields and satisfy its `current` success gate.
+The design must be `current`, not refresh-due, complete, and contain every required field and heading.
 
-If official design is missing, stale, blocked, incomplete, demand-scoped, or renderer-shaped, write the architecture artifact as blocked when possible, set `Required return stage: design`, and return.
+If design is invalid, write architecture as blocked when possible and set:
+
+```text
+Required return family: self
+Required return stage: design
+```
 
 ## Worker boundary
 
 Run in a fresh isolated worker context.
 
-Use task-relevant readable workspace files, applicable rules, exact renderer package artifacts, and documented project commands. Do not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
+Use task-relevant readable workspace files, applicable rules, exact renderer package artifacts, root `pnpm-lock.yaml`, and documented project commands. Do not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
 
 Treat existing code, tests, stories, and README files as implementation evidence, not architecture authority.
 
@@ -42,14 +47,30 @@ The artifact begins with exact control fields:
 ```text
 Status: ready | stale | blocked
 DESIGN.md reference: <path and source revision>
+Renderer revision: @m3e/web@<lockfile-resolved-version>
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
-Required return stage: none | design | architecture
-Implementation readiness: ready | blocked
-Dependency queue: none | <ordered family and required gate entries>
+Required return family: none | self | <canonical-family>
+Required return stage: none | design | architecture | implementation | migration
+Implementation readiness: ready | awaiting-dependencies | blocked
+Dependency queue: none | <canonical-family>@<gate>[; <canonical-family>@<gate>...]
 ```
 
-Do not append prose to enum values.
+Do not append prose to enum, routing, renderer, or queue values.
+
+Resolve `Renderer revision` from the root lockfile importer entry and strip peer-resolution suffixes. Example:
+
+```text
+Renderer revision: @m3e/web@2.6.3
+```
+
+Allowed dependency gates:
+
+```text
+design | architecture | implementation | migration | review
+```
+
+Queue entries are exact canonical family path segments, unique, and separated by `; `.
 
 ## Read first
 
@@ -70,34 +91,71 @@ Resolve:
 
 1. goal and non-goals;
 2. confirmed product and approved library scenarios, including failure paths;
-3. selected and deferred official surface with exact `DESIGN.md` references;
-4. official dependency closure and ordered `Dependency queue`;
+3. selected and deferred official surface with exact design references;
+4. official dependency closure and ordered queue;
 5. ownership of parent composition, dependency behavior, feature state, renderer behavior, and gaps;
 6. complete public Vue API: props, defaults, values, slots, emits, refs, native mappings, precedence, and restoration;
 7. selected public component-token contract and exact official paths;
 8. contextual state/part trace through renderer inputs and fallbacks;
 9. renderer coverage: `direct`, `partial`, `missing`, `divergent`, or `not-applicable`;
 10. one owner for every gap: wrapper correction, controlled renderer workaround, renderer fix, or blocked;
-11. deterministic implementation passes and expected files;
-12. `TEST IMPACT`, split into implementation-owned and migration-owned proof;
-13. complete consumer inventory, obsolete owners, and migration pass order;
-14. acceptance criteria, preserved behavior, risks, and forbidden approaches;
-15. comparison with the simplest viable alternative;
-16. implementation readiness.
+11. revalidation of every affected `M3E-*` record and workaround against the recorded renderer revision;
+12. deterministic implementation passes and expected files;
+13. `TEST IMPACT`, split into implementation-owned and migration-owned proof;
+14. complete consumer inventory, obsolete owners, and migration order;
+15. acceptance criteria, preserved behavior, risks, and forbidden approaches;
+16. comparison with the simplest viable alternative;
+17. implementation readiness.
 
 No coding decision may remain for the implementation worker.
 
 ## Dependency rules
 
-A required official dependency is a first-class family.
+A required official dependency is a first-class family. Do not implement it in this worker.
 
-Record each dependency in `Dependency queue` with the exact gate the parent requires. Do not implement the dependency in this worker.
+Write only dependencies whose required gate is not currently satisfied. Example:
 
-A parent architecture cannot be `ready` until required dependency design and architecture are ready and the public handoff is explicit.
+```text
+Dependency queue: loadingIndicator@architecture; iconButton@implementation
+```
+
+When pending dependencies exist and the parent architecture itself is resolved, write:
+
+```text
+Status: ready
+Remaining blockers: none
+Required return family: none
+Required return stage: none
+Implementation readiness: awaiting-dependencies
+```
+
+Pending dependencies are not architecture blockers. The orchestrator pauses the parent, processes the queue left to right, then reruns this worker.
+
+On the rerun:
+
+- inspect the completed dependency artifacts and public handoffs;
+- remove satisfied entries;
+- add any newly proven required entries;
+- set `Dependency queue: none` and `Implementation readiness: ready` only when dependency closure is complete.
+
+Do not set `Required return stage: architecture` merely because a dependency is pending. That would create a parent retry loop.
+
+## Renderer revision changes
+
+When the lockfile-resolved renderer revision differs from the previous architecture record:
+
+- inspect the exact current public renderer artifacts;
+- reclassify selected coverage and mappings;
+- revalidate all affected defect records and workarounds;
+- remove obsolete workarounds or preserve them with current evidence;
+- update `Renderer revision`;
+- ensure implementation, migration, and review rerun downstream.
+
+This records the version against which the decision was made; it does not pin the dependency.
 
 ## Public boundary
 
-- Derive public semantics from `DESIGN.md`, confirmed demand, and Vue mechanics.
+- Derive public semantics from design, confirmed demand, and Vue mechanics.
 - Do not derive public API or token names from renderer or legacy vocabulary.
 - Select the minimum complete surface for current scenarios.
 - Keep renderer imports, tags, types, events, and CSS inputs private.
@@ -117,19 +175,17 @@ DESIGN.md official path
 
 ## Proof ownership
 
-Architecture assigns only stage-scoped proof:
+Architecture assigns stage-scoped proof:
 
 - implementation owns component, renderer-boundary, token, browser, visual, and component-risk proof;
 - migration owns consumer, product-scenario, legacy-removal, and impact-metadata proof;
 - review independently evaluates the complete result and stage evidence.
 
-The top-level `material-component` orchestrator owns the one final read-only workflow verification after current review. Do not assign it to implementation, migration, review, a dependency, or an unspecified later stage.
-
-For ordinary component work, the expected outer command is `pnpm verify`. Select `pnpm verify:release` only when the task itself changes release-sensitive infrastructure under the verification skill.
+The outer orchestrator owns the one final read-only workflow verification. Do not assign it to a stage or dependency.
 
 ## Required sections
 
-After the control fields include:
+After control fields include exactly:
 
 ```text
 ## Goal
@@ -153,18 +209,22 @@ After the control fields include:
 
 ## Completion
 
-Use `Status: ready` only when:
+Use `Status: ready` when architecture itself is fully resolved.
 
-- design is current and complete;
-- scenarios, dependencies, owners, API, tokens, renderer mapping, gaps, proof, and migration are explicit;
-- the simplest viable design is selected;
-- final workflow verification ownership remains with the orchestrator;
-- no implementation decision remains open;
-- `Remaining blockers: none`;
-- `Required return stage: none`;
-- `Implementation readiness: ready`.
+Two valid ready states exist:
 
-If design must change, set return stage `design`. If architecture itself is unresolved, set return stage `architecture`.
+1. pending dependency closure:
+   - non-empty valid queue;
+   - readiness `awaiting-dependencies`;
+   - no blockers or return target;
+2. implementation-ready:
+   - queue `none`;
+   - readiness `ready`;
+   - no blockers or return target.
+
+Use `blocked` only for a genuine unresolved design or architecture decision, not for a queued dependency.
+
+If a finding belongs to another family, set its exact canonical family in `Required return family`. Otherwise use `self`.
 
 Return to the orchestrator after writing the artifact. Do not execute implementation in the same context.
 
@@ -176,8 +236,9 @@ Input component:
 Canonical family:
 DESIGN.md status:
 ARCHITECTURE.md path:
+Renderer revision:
 Selected and deferred surface:
-Dependencies and required gates:
+Dependency queue:
 Public Vue API:
 Selected public tokens:
 Renderer coverage and gaps:
@@ -185,9 +246,10 @@ Implementation passes:
 Migration scope:
 Stage proof ownership:
 Remaining blockers: none | <details>
-Required return stage: none | design | architecture
+Required return family: none | self | <canonical-family>
+Required return stage: none | design | architecture | implementation | migration
 Architecture status: ready | stale | blocked
-Implementation readiness: ready | blocked
+Implementation readiness: ready | awaiting-dependencies | blocked
 Status: complete | blocked
 ```
 
@@ -195,6 +257,8 @@ Status: complete | blocked
 
 - Editing official design, production code, tests, stories, tokens, exports, or consumers.
 - Leaving architecture choices to coding workers.
+- Treating pending dependencies as a parent architecture blocker.
+- Writing free-form dependency queue entries.
 - Assigning final workflow verification to a stage worker.
 - Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
 - Depending on Git or PR state.
