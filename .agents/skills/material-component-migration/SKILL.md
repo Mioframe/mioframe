@@ -1,6 +1,6 @@
 ---
 name: material-component-migration
-description: 'Use after a family implementation is complete to migrate all approved consumers to the canonical MD* API, remove replaced legacy ownership, prove product scenarios, and write MIGRATION.md without redesigning the component.'
+description: 'Use after a family implementation is complete to migrate approved consumers to the canonical MD* API, remove replaced legacy ownership, prove product scenarios, and write MIGRATION.md without redesigning the component.'
 ---
 
 # Material component migration
@@ -11,23 +11,17 @@ This stage owns product-consumer adoption, legacy-owner removal, and migration-s
 
 ## Input gate
 
-Require mechanically valid and successful:
+Require successful current design, architecture, and implementation artifacts.
 
-```text
-components/<family>/DESIGN.md
-components/<family>/ARCHITECTURE.md
-components/<family>/IMPLEMENTATION.md
-```
+Implementation must reference the exact current architecture revision, be complete with no deviations, and declare migration readiness `ready`.
 
-Design must be current and not refresh-due; architecture implementation-ready with current renderer revision and queue `none`; implementation complete with no deviations and migration readiness `ready`.
-
-If an input is invalid, write or refresh `MIGRATION.md` as blocked, record the exact earliest return family and stage, and return without consumer edits.
+If an input is invalid, write migration as blocked, record the current implementation revision when available, set the exact earliest return family and stage, and return without consumer edits.
 
 ## Worker boundary
 
 Run in a fresh isolated worker context.
 
-Use task-relevant readable workspace files, applicable rules, canonical artifacts, and documented project commands. Do not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
+Use task-relevant readable workspace files, applicable rules, canonical artifacts, and documented project commands. Do not depend on Git, PR, commit, or external-check state.
 
 Do not invent or revise public API, state, tokens, ownership, renderer strategy, gap strategy, or component behavior during migration.
 
@@ -35,18 +29,18 @@ Do not invent or revise public API, state, tokens, ownership, renderer strategy,
 
 Before consumer edits, run `implementation-preflight` using:
 
-- current architecture migration inventory and pass order;
-- complete implementation artifact;
+- the current architecture migration inventory and pass order;
+- the current implementation artifact;
 - current direct and indirect consumers;
 - accepted product scenarios and failure paths.
 
-Preflight resolves exact consumers/files, ordered passes, migration-owned `TEST IMPACT`, focused verifier scopes, obsolete owners/exports, and any upstream blocker.
+Preflight resolves exact consumers and files, ordered migration passes, migration-owned `TEST IMPACT`, focused verifier scopes, obsolete owners and exports, and upstream blockers.
 
 Do not use preflight to reopen architecture.
 
 ## Output
 
-Migration may change approved consumers, consumer tests/stories/impact metadata, and obsolete imports, adapters, exports, tokens, tests, or compatibility code owned by the replaced surface.
+Migration may change approved consumers, consumer proof and impact metadata, and obsolete imports, adapters, exports, tokens, tests, or compatibility code owned by the replaced surface.
 
 Write exactly:
 
@@ -57,16 +51,18 @@ src/shared/ui/material/components/<family>/MIGRATION.md
 Control fields:
 
 ```text
+Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 Status: complete | partial | stale | blocked
-DESIGN.md reference: <path>
-ARCHITECTURE.md reference: <path>
 IMPLEMENTATION.md reference: <path>
+IMPLEMENTATION.md revision: <exact Artifact revision>
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
 Required return family: none | self | <canonical-family>
 Required return stage: none | design | architecture | implementation | migration
 Review readiness: ready | blocked
 ```
+
+Use a new artifact revision whenever migration content or its proof record changes. Record the exact implementation revision used for migration.
 
 Required headings:
 
@@ -81,14 +77,24 @@ Required headings:
 ## Review readiness
 ```
 
-Use every heading. Record explicit `none` or `not applicable` where appropriate.
+## No-consumer case
+
+When architecture records the approved standalone library scenario and no current consumer or legacy owner exists, record explicitly:
+
+```text
+Consumer inventory: none
+Migrated consumers: none
+Legacy ownership removed: not applicable
+```
+
+Do not create a product consumer merely to make migration non-empty. Prove only that no current consumer or legacy owner exists and that the canonical family remains independently usable through its component-owned proof.
 
 ## Migration rules
 
-- Use only the canonical root-exported `MD*` API and supported public tokens.
-- Keep renderer tags, imports, types, events, private CSS inputs, and renderer DOM out of consumers.
-- Preserve product ownership of operation state, disabled guards, errors, status, persistence, routing, and business behavior.
-- Do not move feature, entity, widget, or page responsibility into Material or shared UI.
+- Use only the root-exported canonical `MD*` API and supported public tokens.
+- Keep renderer details out of consumers.
+- Preserve product ownership of state, disabled guards, errors, persistence, routing, and business behavior.
+- Do not move feature, entity, widget, or page responsibility into Material.
 - Follow architecture dependency and migration order.
 - Remove replaced legacy ownership only after every consumer has a valid destination.
 - Do not keep compatibility aliases by default for an unshipped or fully migrated internal API.
@@ -96,58 +102,40 @@ Use every heading. Record explicit `none` or `not applicable` where appropriate.
 
 ## Consumer and blast-radius proof
 
-For each materially distinct consumer path record:
+For each materially distinct consumer path record its previous and canonical owner/API, preserved behavior and failure paths, token or composition handoff, relevant loading/disabled/error/mobile/overlay/form/accessibility behavior, and faithful proof owner.
 
-- previous and canonical owner/API;
-- preserved behavior and failure paths;
-- contextual token or composition handoff;
-- disabled, loading, error, mobile, overlay, form, or accessibility behavior when applicable;
-- faithful proof owner.
+Run focused verifier-managed checks proving consumers compile, scenarios remain correct, no renderer leak remains, obsolete ownership is removed, contextual appearance is proven where required, and impact metadata maps changed source and proof.
 
-Focused verifier-managed checks prove:
-
-- every inventoried consumer compiles against canonical API;
-- required scenarios and failure paths remain correct;
-- no renderer/private token leak remains;
-- no obsolete owner or duplicate export remains;
-- contextual appearance is proven at real consumers where selected;
-- impact metadata maps source and proof correctly.
-
-A representative happy path is insufficient when consumers use distinct contracts.
-
-Run migration-scoped focused checks only. The orchestrator runs final workflow verification after independent review.
+Run migration-scoped focused checks only. The orchestrator runs final verification after independent review.
 
 ## Semantic routing
 
-If migration requires a new official fact, architecture decision, public contract, token, renderer workaround, dependency correction, or component behavior:
+If migration requires a new official fact, architecture decision, public contract, token, renderer workaround, component behavior, or dependency correction:
 
 - do not patch locally;
-- set the exact owning family (`self` or canonical dependency family);
-- set the earliest owning stage;
+- set the exact earliest return family and stage;
 - record the blocker;
 - return.
 
-Use `self/migration` for consumer, legacy-removal, product-scenario, impact-metadata, or migration-proof work owned here.
+Use `self/migration` for consumer, legacy-removal, product-scenario, impact-metadata, or migration-proof defects.
 
 ## Completion
 
-Use `Status: complete` only when:
+Use status `complete` only when:
 
-- every architecture-listed consumer is migrated or explicitly not applicable;
-- all materially distinct scenarios and failure paths are proven;
-- obsolete target ownership is removed;
+- `IMPLEMENTATION.md revision` equals the current implementation revision;
+- every listed consumer is migrated or the no-consumer case is explicitly proven;
+- materially distinct scenarios and failure paths are proven;
+- obsolete ownership is removed or marked not applicable;
 - no renderer details leak to consumers;
-- focused migration verification passes;
-- every required heading exists;
-- blockers are `none`;
-- both return fields are `none`;
-- review readiness is `ready`.
+- focused verification passes;
+- blockers and return target are `none`;
+- review readiness is `ready`;
+- every required heading exists.
 
-A current warning, missing proof, unknown consumer state, or failed focused check cannot produce complete migration.
+The not-yet-run final workflow command does not affect migration status.
 
-The pending final workflow command is expected and does not affect migration status.
-
-Operator visual/motion inspection is an external defect-reporting channel. Record `no-reported-defect`, `defect-reported`, or `not-applicable`; do not request or invent positive acceptance.
+Operator visual/motion inspection is an external defect-reporting channel. Do not request or invent positive acceptance.
 
 ## Report
 
@@ -155,8 +143,9 @@ Operator visual/motion inspection is an external defect-reporting channel. Recor
 MATERIAL MIGRATION RESULT
 Input component:
 Canonical family:
-Input artifact statuses:
+IMPLEMENTATION.md revision:
 MIGRATION.md path:
+Artifact revision:
 Preflight result:
 Consumers inventoried:
 Consumers migrated:
@@ -174,12 +163,14 @@ Status: complete | blocked
 
 ## Forbidden
 
-- Changing official design or accepted architecture.
+- Changing official design or architecture.
 - Adding consumer-specific hacks inside the component.
-- Accessing raw renderer or private tokens from consumers.
+- Accessing raw renderer details from consumers.
+- Creating a product consumer when none is required.
 - Migrating unrelated families for cleanup.
 - Keeping replaced logic only to reduce work.
-- Omitting required handoff sections.
 - Running independent review in this context.
-- Running, deferring, or claiming final workflow verification.
+- Running or claiming final workflow verification.
+- Reusing an artifact revision after content changed.
+- Recording the pending final command as a blocker or risk.
 - Depending on Git or PR state.
