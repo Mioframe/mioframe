@@ -81,21 +81,22 @@ The single invocation must prove:
 
 1. both families receive normalized artifact revisions, design contract revisions, and source-refresh metadata;
 2. refresh interval is exactly 30 calendar days;
-3. a controlled metadata-only design refresh changes artifact revision and dates but preserves design contract revision and does not run downstream stages;
+3. a metadata-only design refresh changes artifact revision and dates, preserves design contract revision, and does not run downstream stages;
 4. Button architecture emits `Dependency families: loadingIndicator` and a gate-free pending queue;
 5. Loading Indicator runs through its complete pipeline to current independent review;
 6. Button architecture reruns, clears the queue, and records the exact Loading Indicator review revision;
 7. Button continues through implementation, migration, and independent review;
-8. a cross-family correction records origin and target, completes the target family, then resumes the origin through durable validation and executes the origin stage fresh;
-9. a dependency-review change that invalidates Button architecture forces Button architecture and downstream stages before Button review clears the route;
+8. when a real cross-family correction occurs, it records origin and target, completes the target family, then resumes the origin through durable validation and executes the origin stage fresh;
+9. a dependency-review change that invalidates Button architecture forces Button architecture and downstream stages before Button review clears a route;
 10. after an upstream artifact rewrite, invocation-local pending state is discarded and the next stage is reconstructed only from durable revision mismatches;
-11. a controlled self- or ancestor-dependency entry is detected through the active path and routed to the emitting family architecture without recursive traversal;
-12. the cycle check is performed without introducing a production dependency cycle;
-13. implementation and migration run preflight where edits or revalidation require it;
-14. no worker depends on Git, PR, commit, or external-check state;
-15. the compact ledger records workers, revisions, origins, targets, dependency path, and correction routes without copying full reports;
-16. one final `pnpm verify` runs after current reviews;
-17. no second operator command is required.
+11. a non-production workflow simulation of self- or ancestor-dependency is detected through the active path and routed to the emitting family architecture without writing a cyclic family artifact;
+12. implementation and migration run preflight where edits or revalidation require it;
+13. no worker depends on Git, PR, commit, or external-check state;
+14. the compact ledger records workers, revisions, origins, targets, dependency path, and correction routes without copying full reports;
+15. one final `pnpm verify` runs after current reviews;
+16. no second operator command is required.
+
+Do not inject a production defect or persist an invalid dependency cycle merely to exercise routing. The pilot may use an orchestrator-level simulation that supplies a synthetic active path and queue candidate to the mechanical cycle detector while leaving durable family artifacts unchanged.
 
 ## Exit criteria
 
@@ -106,8 +107,8 @@ The pilot is complete only when:
 - design contract change still invalidates architecture correctly;
 - dependencies complete through current review before parent implementation;
 - parent architecture records and validates exact dependency review revisions;
-- dependency cycles are detected and routed without recursive execution;
-- cross-family correction resumes the origin through durable validation and refreshes the origin stage;
+- dependency cycles are detected and routed without recursive execution or persisted invalid artifacts;
+- any cross-family correction resumes the origin through durable validation and refreshes the origin stage;
 - durable revision links recover correctly after invocation-local state is discarded;
 - source and renderer revision fields match current workspace facts;
 - each reasoning stage uses a fresh isolated worker;
@@ -134,6 +135,6 @@ Run once:
 material-component Button
 ```
 
-The invocation must refresh Loading Indicator through current review, rerun Button architecture, record the dependency review revision, continue Button through review, prove metadata-only refresh, cycle protection, correction-origin durable resume, and finish with one final `pnpm verify` without another operator command.
+The invocation must refresh Loading Indicator through current review, rerun Button architecture, record the dependency review revision, continue Button through review, prove metadata-only refresh, cycle protection, correction-origin durable resume where applicable, and finish with one final `pnpm verify` without another operator command.
 
 No manual artifact patch, separate dependency command, positive visual acknowledgement, local `verify:release`, dependency pin, worker registry, artifact hash system, workflow database, or generic adapter framework is required.
