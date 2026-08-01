@@ -101,8 +101,5 @@
       "file": ".agents/skills/commit-message/SKILL.md"
     }
   ],
-  "better-todo-tree.regex.regexCaseSensitive": false,
-  "[json]": {
-    "editor.defaultFormatter": "vscode.json-language-features"
-  }
+  "better-todo-tree.regex.regexCaseSensitive": false
 }
