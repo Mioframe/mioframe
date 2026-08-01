@@ -20,9 +20,11 @@ Read applicable `AGENTS.md`, `src/shared/ui/material/docs/component-workflow.md`
 The orchestrator may only:
 
 - resolve canonical family names;
-- validate fixed fields, headings, dates, artifact revisions, upstream revisions, and dependency review revisions;
+- validate fixed fields, headings, dates, artifact revisions, design contract revisions, upstream revisions, and dependency review revisions;
 - compare renderer revision with the lockfile;
 - select an exact family/stage through fixed order, routing fields, or dependency queue;
+- maintain an invocation-local active dependency path;
+- detect repeated family names in that path;
 - launch fresh isolated workers;
 - retain a compact execution ledger and active route origins;
 - run final read-only verification;
@@ -35,7 +37,7 @@ It must not evaluate design or architecture, inspect code for drift, discover co
 
 Each stage runs in a fresh isolated context.
 
-A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths and revisions, and exact dependency, route, blocker, or verifier facts.
+A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths and revisions, active dependency path, and exact dependency, route, blocker, or verifier facts.
 
 Do not pass hidden reasoning, copied worker reports, or conversational conclusions.
 
@@ -57,7 +59,7 @@ Follow `component-workflow.md` exactly.
 
 For each artifact:
 
-1. validate syntax, required headings, dates, renderer revision, upstream revision links, and dependency review revisions;
+1. validate syntax, required headings, dates, renderer revision, invalidating upstream revision links, dependency review revisions, and dependency invariants;
 2. if invalid, run the owning stage before using any route stored in that artifact;
 3. if valid and its return target is non-`none`, process the exact route;
 4. otherwise run the owning stage when its success gate is not met.
@@ -66,7 +68,9 @@ A valid non-empty dependency queue pauses parent implementation. Process every q
 
 No dependency gates exist.
 
-Artifacts from an older schema, due for source refresh, recording a stale renderer revision, referencing a replaced upstream revision, or recording a replaced dependency review revision are mechanically invalid.
+A metadata-only design refresh that preserves `Design contract revision` does not invalidate architecture or later stages.
+
+Artifacts from an older schema, recording a changed design contract revision, stale renderer revision, replaced dependency review revision, or replaced direct upstream artifact revision are mechanically invalid.
 
 ## Stage execution
 
@@ -78,9 +82,25 @@ Launch only:
 - `material-component-migration`;
 - `material-component-review`.
 
-Validate only that the worker produced its owned artifact, used valid required fields and headings, wrote a new artifact revision when content changed, and returned a compact result.
+Validate only that the worker produced its owned artifact, used valid required fields and headings, updated the correct revision fields, and returned a compact result.
 
 Semantic compliance belongs to the worker and later review.
+
+## Design refresh
+
+The common refresh interval is 30 calendar days.
+
+Run design when:
+
+- current date is on or after `Refresh check after`;
+- design status is `stale` or `blocked`;
+- explicit official source-change evidence is provided by the workflow.
+
+After design returns:
+
+- use `Artifact revision` only as the file-update identity;
+- use `Design contract revision` as the downstream invalidation identity;
+- do not rerun architecture when only artifact/source-check metadata changed and design contract revision stayed exact.
 
 ## Dependency lifecycle
 
@@ -94,17 +114,36 @@ Dependency review revisions: none | <family>=<review revision>[; <family>=<revie
 
 Validate that queue and review-revision families are disjoint and their union equals dependency families.
 
-For each queued family:
+Start the active dependency path with the requested parent family.
 
-1. pause the parent;
-2. process the dependency from its durable state through successful current review;
+Before entering a queued family:
+
+- if it equals the current family; or
+- if it already exists in the active dependency path;
+
+then a dependency cycle exists.
+
+On cycle:
+
+1. stop descending;
+2. construct the exact path, for example `button → loadingIndicator → button`;
+3. launch architecture for the family that emitted the cyclic dependency;
+4. pass the exact detected path;
+5. require architecture to correct dependency ownership or record a genuine blocker;
+6. resume through the normal durable state machine.
+
+For a valid queued family:
+
+1. append it to the active dependency path;
+2. process it from its durable state through successful current review;
 3. record executions in the compact ledger;
-4. continue with the next dependency;
-5. rerun parent architecture after the queue is complete.
+4. remove it from the active path when returning;
+5. continue with the next dependency;
+6. rerun parent architecture after the queue is complete.
 
 Before parent implementation or review, compare every recorded dependency review revision with the current dependency `REVIEW.md`. A mismatch runs parent architecture.
 
-Do not infer dependencies from imports or names. Do not run a separate final verification for a dependency.
+Do not infer dependencies from imports or names. Do not run separate final verification for a dependency.
 
 ## Cross-family correction
 
@@ -118,22 +157,26 @@ target: <target-family>/<target-stage>
 Then:
 
 1. run the target family from the requested stage through successful current review;
-2. rerun the exact origin stage in a fresh worker;
-3. require origin to clear or replace its route;
-4. continue from the new origin result.
+2. resume the origin family through its ordinary durable state machine from design forward;
+3. run any earlier mechanically invalid stage and all required downstream stages;
+4. always execute the origin stage in a fresh worker before considering the route resolved;
+5. require the fresh origin result to clear or replace its route;
+6. continue from that result.
 
-Do not reread the old route and relaunch the target before origin reruns.
+Do not reread the old route and relaunch the target before a fresh origin-stage result exists.
 
 A self-route runs the requested stage and downstream stages normally. Nested routes unwind the most recent origin first.
 
 ## Durable continuation
 
-Artifact revisions determine freshness after interruption:
+Invalidating revisions determine freshness after interruption:
 
-- architecture records current design revision and current dependency review revisions;
-- implementation records current architecture revision;
-- migration records current implementation revision;
-- review records current design, architecture, implementation, and migration revisions.
+- architecture records current design contract revision and current dependency review revisions;
+- implementation records current architecture artifact revision;
+- migration records current implementation artifact revision;
+- review records current design contract revision and current architecture, implementation, and migration artifact revisions.
+
+Design artifact revision alone is not an invalidator.
 
 A mismatch launches the owning downstream stage. Invocation-local changed-stage memory is not required for correctness.
 
@@ -149,6 +192,7 @@ artifact: <path>
 artifact revision: <exact Artifact revision>
 origin: none | <canonical-family>/<stage>
 target: none | <canonical-family>/<stage>
+dependency path: none | <family>[ → <family>...]
 verification: not-applicable | passed | failed | blocked
 ```
 
@@ -166,13 +210,13 @@ pnpm verify
 
 Use `pnpm verify:release` only for actual release-sensitive infrastructure changes.
 
-On failure, send exact command and output plus parent/dependency context to a fresh review-routing worker. Follow its exact route, rerun affected reviews, then rerun the same command.
+On failure, send exact command and output plus parent/dependency context to a fresh review-routing worker. Follow its exact route, resume affected origin families through durable validation, rerun affected reviews, then rerun the same command.
 
 ## Stop conditions
 
 Stop only for a recorded unavailable required source/tool, unavailable fresh isolation, unresolved architecture decision, project command that cannot execute after applicable mechanisms, unresolved concrete operator-reported defect, or safety-required input.
 
-A pending dependency, due refresh, renderer change, dependency review change, stale downstream revision, ordinary finding, routable correction, absent positive visual acknowledgement, or missing repeated command is not a blocker.
+A metadata-only design refresh, pending dependency, dependency cycle that can be routed to architecture, renderer change, dependency review change, stale downstream revision, ordinary finding, routable correction, absent positive visual acknowledgement, or missing repeated command is not a blocker.
 
 ## Final report
 
@@ -206,8 +250,9 @@ Do not include full worker reports or copy stage artifacts.
 - Performing stage-owned reasoning or edits in the orchestrator.
 - Selecting targets from prose.
 - Using dependency gates.
-- Ignoring changed dependency review revisions.
-- Returning to parent without rerunning the route-origin stage.
+- Treating design metadata refresh as a contract change.
+- Ignoring dependency cycles or changed dependency review revisions.
+- Returning directly to an origin stage without first applying durable validation to the origin family.
 - Interpreting verifier output without fresh review routing.
 - Reusing one worker context for multiple stages.
 - Depending on Git, PR, or external checks.
