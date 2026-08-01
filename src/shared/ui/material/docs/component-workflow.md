@@ -28,6 +28,7 @@ The orchestrator may only:
 - compare renderer revision with the lockfile;
 - select exact family/stage targets;
 - process an explicit dependency queue;
+- compare recorded dependency review revisions with current dependency reviews;
 - retain a compact execution ledger and active cross-family route origin;
 - launch fresh isolated workers;
 - run final verification;
@@ -124,11 +125,24 @@ Required return stage: none | design | architecture | implementation | migration
 Implementation readiness: ready | awaiting-dependencies | blocked
 Dependency families: none | <canonical-family>[; <canonical-family>...]
 Dependency queue: none | <canonical-family>[; <canonical-family>...]
+Dependency review revisions: none | <canonical-family>=<REVIEW Artifact revision>[; <canonical-family>=<REVIEW Artifact revision>...]
 ```
 
-Dependency names are unique, ordered, exact family names separated by `; `. `Dependency queue` must be a subset of `Dependency families`.
+Dependency names are unique, ordered, exact family names separated by `; `.
 
-`Dependency families` records the complete direct dependency set. `Dependency queue` records dependencies without successful current independent review.
+`Dependency families` records the complete direct dependency set.
+
+`Dependency queue` records dependencies without successful current independent review.
+
+`Dependency review revisions` records the exact current `REVIEW.md` artifact revision for every dependency not in the queue. Entries use `family=revision` and follow `Dependency families` order.
+
+Field invariants:
+
+- queue and review-revision families are disjoint;
+- their union equals `Dependency families`;
+- when dependency families is `none`, both other fields are `none`;
+- every recorded review revision equals the current dependency `REVIEW.md` revision;
+- a changed dependency review revision runs parent architecture before any parent route or downstream stage is used.
 
 A non-empty queue requires:
 
@@ -142,7 +156,7 @@ Required return stage: none
 
 Every queued dependency runs its complete pipeline through current review. Dependency stage gates are unsupported.
 
-After all queued dependencies are current, parent architecture runs again, validates public handoffs, preserves or recomputes dependency families, and clears or recomputes the queue.
+After all queued dependencies are current, parent architecture runs again, validates public handoffs, preserves or recomputes dependency families, clears or recomputes the queue, and records exact dependency review revisions.
 
 The orchestrator derives `@m3e/web@<version>` from the root lockfile importer, stripping peer-resolution suffixes. A mismatch runs architecture.
 
@@ -168,7 +182,7 @@ Required headings:
 ## Implementation readiness
 ```
 
-Success requires current design revision, current renderer revision, no blockers or route, queue `none`, all dependency families at current review, readiness `ready`, and all headings.
+Success requires current design revision, current renderer revision, no blockers or route, queue `none`, every dependency review revision current, readiness `ready`, and all headings.
 
 ## IMPLEMENTATION.md
 
@@ -291,7 +305,7 @@ Ask the operator only when official sources define no standalone default or mult
 
 For each family, process artifacts in stage order.
 
-1. Validate mechanical syntax, required headings, dates, renderer revision, and upstream revision links.
+1. Validate mechanical syntax, required headings, dates, renderer revision, upstream revision links, and dependency review revisions.
 2. If invalid, run the owning stage before reading or following any existing route from that artifact.
 3. If valid and its return target is non-`none`, process that route.
 4. If valid but its success gate is not met, run its owning stage.
@@ -330,6 +344,7 @@ Revision links are the durable invalidation mechanism:
 
 ```text
 DESIGN revision → ARCHITECTURE
+Dependency REVIEW revisions → parent ARCHITECTURE
 ARCHITECTURE revision → IMPLEMENTATION
 IMPLEMENTATION revision → MIGRATION
 all four revisions → REVIEW
@@ -382,10 +397,10 @@ Operator visual/motion inspection is an external defect-reporting channel. Absen
 
 Stop only for a recorded unavailable required source/tool, unavailable fresh isolation, unresolved architecture decision, project command that cannot execute after applicable mechanisms, unresolved reported defect, or safety-required operator input.
 
-A due refresh, renderer change, pending dependency, stale downstream revision, ordinary finding, routable correction, or missing repeated command is not itself a blocker.
+A due refresh, renderer change, dependency review change, pending dependency, stale downstream revision, ordinary finding, routable correction, or missing repeated command is not itself a blocker.
 
 ## Completion
 
-The invocation is complete only when parent and dependency artifacts satisfy all success gates, all revision links match, every dependency family has current review, no reported defect remains unresolved, and final verification passes.
+The invocation is complete only when parent and dependency artifacts satisfy all success gates, all revision links and dependency review revisions match, every dependency family has current review, no reported defect remains unresolved, and final verification passes.
 
 The final report owns the compact ledger and final command result. Stage artifacts remain the durable source of truth.
