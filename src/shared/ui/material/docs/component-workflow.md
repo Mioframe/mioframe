@@ -96,16 +96,7 @@ A same-family route must target a strictly earlier stage than the artifact that 
 
 A route to another family may target design, architecture, implementation, or migration.
 
-These routes are invalid:
-
-```text
-design → self/design
-architecture → self/architecture
-implementation → self/implementation
-migration → self/migration
-```
-
-Review cannot route to review because review-owned output defects must be corrected in the current review worker.
+Same-stage self-routes and routes to review are invalid. Review-owned output defects must be corrected in the current review worker.
 
 ### Blocked-state semantics
 
@@ -119,7 +110,7 @@ blocked + route none/none
   → genuine terminal blocker; stop the workflow
 ```
 
-A successful artifact must have route `none/none` and no blockers.
+A successful artifact has route `none/none` and no blockers.
 
 A worker that cannot complete its own stage after exhausting the available mechanisms records `blocked`, an exact blocker, and route `none/none`. It does not ask the orchestrator to rerun the same stage.
 
@@ -159,7 +150,7 @@ Required return stage: none
 The design worker may finish only with `current` or `blocked`.
 
 - `current` requires a non-`none` contract revision, valid dates, all headings, no blockers, and route `none/none`.
-- `blocked` always means the official contract cannot be completed with the available sources and fallbacks; it has an exact blocker and route `none/none`.
+- `blocked` means the official contract cannot be completed with the available sources and fallbacks; it has an exact blocker and route `none/none`.
 - `stale` is only an external pre-run marker.
 
 `Artifact revision` tracks every file update. `Design contract revision` changes only when normalized official Material content changes.
@@ -339,8 +330,10 @@ Accepted risks: none | <exact accepted risks>
 
 - A compliant verdict requires current revisions, no findings, route `none/none`, completion `complete`, and final-verification readiness `ready`.
 - `blocked` with a route assigns an exact earlier-stage or other-family correction.
-- A genuine unresolvable review or command-execution blocker uses route `none/none`.
+- A genuine unresolvable family-review blocker uses route `none/none`.
 - Review-owned formatting or routing-output defects are fixed in the current review worker; review cannot route to review.
+- `Final workflow verification readiness` describes whether the family is ready for the outer command. It does not store the result of that command.
+- A final-verifier failure outside every Material family must not change any family `REVIEW.md` verdict, completion status, readiness, or artifact revision.
 
 Required headings:
 
@@ -462,7 +455,34 @@ Ordinary Material work uses:
 pnpm verify
 ```
 
-On failure, pass the exact command and output to a fresh review-routing worker. Validate its result with the same terminal-state and route rules. Follow a valid correction route or stop on terminal `blocked`.
+On failure, pass the exact command and visible output to a fresh review-routing worker.
+
+The routing worker returns one of two outcomes:
+
+### Material-owned failure
+
+When the failed contract belongs to an exact Material family and stage:
+
+1. update that owning family `REVIEW.md` to `blocked` with the exact correction route;
+2. leave unrelated family reviews unchanged;
+3. follow the route through normal durable validation;
+4. rerun affected reviews;
+5. rerun the original final command.
+
+### External workspace blocker
+
+When no Material family stage owns the failure:
+
+1. do not edit any family `REVIEW.md`;
+2. preserve all compliant family review revisions and dependency gates;
+3. return an external-workspace blocker with exact command and evidence;
+4. stop the invocation with overall status `blocked`;
+5. record the blocker in the outer final report and mutable roadmap/status owner;
+6. after the external owner corrects it, rerun the verifier-prescribed focused command and then the original final command without rebuilding current family artifacts.
+
+A non-failing warning outside Material is recorded in the outer result but does not change a family review. Whether it blocks completion follows the root verification contract.
+
+The family `REVIEW.md` remains the durable source of truth for family compliance. The outer final report and roadmap own final-command state and external blockers.
 
 ## Visual channel
 
@@ -472,4 +492,6 @@ Operator visual/motion inspection is an external defect-reporting channel. Absen
 
 The invocation is complete only when parent and dependency artifacts satisfy all success gates, all invalidating revisions match, every dependency has current independent review, no reported defect remains unresolved, and final verification passes.
 
-The final report owns the compact ledger and final command result. Stage artifacts remain the durable source of truth.
+The invocation may be externally blocked while every family remains compliant and ready. In that case family review revisions stay current and only the outer result is blocked.
+
+The final report owns the compact ledger, final command result, and external blocker. Stage artifacts remain the durable source of truth for their own contracts.
