@@ -84,16 +84,16 @@ One `material-component Button` invocation produced the current revision-linked 
 | Scenario                                      | Result | Durable evidence                                                                                              |
 | --------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------- |
 | Loading Indicator full dependency pipeline    | passed | five current revision-linked artifacts; compliant review `2026-08-01T11:50:04.390Z`                           |
-| Button dependency queue and review linkage    | passed | exact Loading Indicator review revision recorded; dependency queue cleared                                   |
-| Button implementation and migration           | passed | complete implementation and migration artifacts with exact upstream revisions                                |
+| Button dependency queue and review linkage    | passed | exact Loading Indicator review revision recorded; dependency queue cleared                                    |
+| Button implementation and migration           | passed | complete implementation and migration artifacts with exact upstream revisions                                 |
 | Independent Button family review              | passed | compliant review `2026-08-01T12:50:00.000Z`                                                                   |
-| Metadata-only design refresh                  | passed | Loading Indicator contract revision and downstream artifacts remained current                                |
-| Earlier-stage correction and fresh review     | passed | Loading Indicator correction propagated through a fresh compliant review                                     |
-| Dependency-review propagation                 | passed | Button architecture recorded the refreshed Loading Indicator review revision                                 |
+| Metadata-only design refresh                  | passed | Loading Indicator contract revision and downstream artifacts remained current                                 |
+| Earlier-stage correction and fresh review     | passed | Loading Indicator correction propagated through a fresh compliant review                                      |
+| Dependency-review propagation                 | passed | Button architecture recorded the refreshed Loading Indicator review revision                                  |
 | Navigation Path ownership correction          | passed | obsolete padding declaration removed; focused browser proof added                                             |
-| Focused unit, type, browser, and visual proof | passed | family artifacts record successful focused proof without baseline drift                                      |
+| Focused unit, type, browser, and visual proof | passed | family artifacts record successful focused proof without baseline drift                                       |
 | Final `pnpm verify`                           | passed | GitHub verify run `3257` passed format, lint, type-check, unit, E2E, Storybook behavior, visual, and mutation |
-| External final-verifier ownership             | passed | the earlier unrelated shared-reorder timeout did not alter compliant family reviews and did not reproduce    |
+| External final-verifier ownership             | passed | the earlier unrelated shared-reorder timeout did not alter compliant family reviews and did not reproduce     |
 
 The documented self-route, terminal-state, cycle, interruption-recovery, and worker-isolation invariants remain part of the workflow contract. Separate synthetic executions are optional workflow hardening, not a pilot or merge gate. They should be added only when a real regression, repeated implementation failure, or a justified executable workflow harness makes them durable and proportionate.
 
@@ -118,14 +118,14 @@ Synthetic malformed-result and cycle scenarios are not required for closure. Do 
 
 ## Milestones
 
-| ID  | Milestone                           | Status            | Exit gate                                                                          |
-| --- | ----------------------------------- | ----------------- | ---------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`        | coherent staged workflow and corrected terminal/verifier ownership                 |
-| M1a | Loading Indicator dependency family | `complete`        | five current artifacts, compliant review, no unresolved reported defect            |
-| M1  | Button action family                | `complete`        | exact dependency linkage, five current artifacts, migrated consumers, focused proof |
-| M1b | outer pilot verification            | `complete`        | final verifier passed without invalidating compliant family artifacts               |
-| M2  | Switch stateful pilot               | `planned`         | controlled state/event contract and no-consumer/default-scenario behavior           |
-| M3  | sequential component migration      | `planned`         | dependency-first autonomous family migrations                                      |
+| ID  | Milestone                           | Status     | Exit gate                                                                           |
+| --- | ----------------------------------- | ---------- | ----------------------------------------------------------------------------------- |
+| M0  | workflow architecture and rules     | `complete` | coherent staged workflow and corrected terminal/verifier ownership                  |
+| M1a | Loading Indicator dependency family | `complete` | five current artifacts, compliant review, no unresolved reported defect             |
+| M1  | Button action family                | `complete` | exact dependency linkage, five current artifacts, migrated consumers, focused proof |
+| M1b | outer pilot verification            | `complete` | final verifier passed without invalidating compliant family artifacts               |
+| M2  | Switch stateful pilot               | `planned`  | controlled state/event contract and no-consumer/default-scenario behavior           |
+| M3  | sequential component migration      | `planned`  | dependency-first autonomous family migrations                                       |
 
 ## Next operator action
 
