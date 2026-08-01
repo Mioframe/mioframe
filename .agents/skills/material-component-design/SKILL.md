@@ -13,15 +13,15 @@ This stage owns official Material source normalization only.
 
 The only required input is the Material component name.
 
-Resolve the official component and canonical family from official and readable workspace evidence. Ask for clarification only when the name maps to multiple materially different official components.
+Resolve the official component and canonical family from official and readable workspace evidence. Ask only when the name maps to multiple materially different official components.
 
 ## Worker boundary
 
-Run in a fresh isolated worker context.
+Run in a fresh isolated context.
 
 Use official source tools, task-relevant readable workspace files, applicable rules, and documented project commands. Do not depend on Git, PR, commit, or external-check state.
 
-Do not read family implementation, renderer package, consumers, migration, review, or roadmap before the official source ledger is complete.
+Do not read implementation, renderer, consumers, migration, review, or roadmap before the official source ledger is complete.
 
 ## Output
 
@@ -33,7 +33,7 @@ src/shared/ui/material/components/<family>/DESIGN.md
 
 Follow `src/shared/ui/material/docs/design-document.md`.
 
-The artifact begins with:
+Control fields:
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
@@ -44,17 +44,19 @@ Source checked at: YYYY-MM-DD
 Refresh check after: YYYY-MM-DD
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
-Required return family: none | self
-Required return stage: none | design
+Required return family: none
+Required return stage: none
 ```
 
-Use a new UTC artifact revision whenever the file is written or refreshed.
+`stale` is an external pre-run invalidation marker. This worker may finish only with `current` or `blocked`.
 
-Use a new design contract revision only when normalized official Material content changes. Preserve the existing design contract revision when refresh changes only source metadata, source ledger details, or check dates.
+Use a new artifact revision whenever the file is written or refreshed.
 
-For a successful initial design, create both revisions. For a blocked initial design with no complete normalized contract, use `Design contract revision: none`.
+Use a new design contract revision only when normalized official Material content changes. Preserve it when refresh changes only source metadata, source ledger details, source identifiers with equivalent normalized content, or dates.
 
-Required headings:
+For a successful initial design, create both revisions. For a blocked initial design with no complete normalized contract, use contract revision `none`.
+
+## Required headings
 
 ```text
 ## Source ledger
@@ -74,7 +76,7 @@ Required headings:
 
 Inspect every applicable official source, including overview, specifications, guidelines, accessibility, expressive updates, complete token tables, delegated foundations, related components, and adaptive/platform guidance.
 
-Use available fallbacks in order:
+Use fallbacks in order:
 
 1. current official Material source service;
 2. official cache refresh and route index;
@@ -84,40 +86,19 @@ Use available fallbacks in order:
 
 A failed refresh helper is not itself a blocker when a complete newest-known official snapshot exists and no newer Material revision is known.
 
-Use statuses exactly:
-
-- `current` — complete newest successfully acquired official revision with no evidence of a newer material revision;
-- `stale` — affirmative evidence shows official content changed after the snapshot;
-- `blocked` — required content remains missing or incomplete after all fallbacks.
-
-The refresh interval is fixed by workflow:
+The refresh interval is fixed:
 
 ```text
 Refresh check after = Source checked at + 30 calendar days
 ```
 
-Do not select another interval.
-
-Run an immediate refresh when the workflow provides explicit evidence of a newer official revision or changed official content.
+Run an immediate refresh only when canonical workflow evidence records newer or changed official content.
 
 ## Contract-change classification
 
-Change `Design contract revision` only when normalized official content changes, including:
+Change `Design contract revision` only when normalized official content changes, including an added, removed, corrected, or previously omitted official fact; token path/value/alias/completeness change; or change to state, behavior, geometry, motion, accessibility, or related official contracts.
 
-- an official fact is added, removed, or corrected;
-- token paths, values, aliases, or completeness change;
-- states, behavior, geometry, motion, accessibility, or related official contracts change;
-- a previously omitted official rule is added to the normalized document.
-
-Do not change it when only these change:
-
-- `Source checked at`;
-- `Refresh check after`;
-- source retrieval timestamps or availability notes;
-- source ledger bookkeeping;
-- a source revision identifier that resolves to semantically identical normalized content.
-
-When no contract change is found, state that explicitly in `Revision summary` and preserve the exact contract revision.
+When no contract change is found, say so in `Revision summary` and preserve the exact contract revision.
 
 ## Required content
 
@@ -126,7 +107,7 @@ Capture the complete official component contract, including unused capability:
 - identity, intended use, and adjacent-component distinctions;
 - anatomy and content roles;
 - every variant, configuration, size, shape, default, and valid combination;
-- geometry, spacing, target, typography, elevation, and motion;
+- geometry, spacing, targets, typography, elevation, and motion;
 - every documented state and state combination;
 - behavior and usage guidance;
 - accessibility and input behavior;
@@ -134,26 +115,42 @@ Capture the complete official component contract, including unused capability:
 - official dependencies and related components;
 - source conflicts, missing values, and unavailable guidance.
 
-For every official token preserve exact official path, display name, aliases, documented values, and unresolved values.
+Preserve exact official token paths, display names, aliases, documented values, and unresolved values. Never guess missing facts.
+
+## Terminal-state rules
+
+### Success
+
+Return `Status: current` only when the complete official surface, sources, tokens, headings, dates, and separation rules are satisfied.
+
+Use:
+
+```text
+Remaining blockers: none
+Required return family: none
+Required return stage: none
+```
+
+### Genuine blocker
+
+After exhausting every official-source fallback, if required content remains unavailable, contradictory, or incomplete, return:
+
+```text
+Status: blocked
+Remaining blockers: <exact blocker>
+Required return family: none
+Required return stage: none
+```
+
+This is terminal for the invocation. Do not return `self/design`; rerunning the same design worker would add no new information.
+
+A fixable design-document omission, formatting defect, or source-normalization defect owned by this stage must be corrected before this worker returns.
 
 ## Separation
 
 `DESIGN.md` contains no Mioframe demand, selected surface, Vue API, renderer mapping, defect, workaround, implementation path, proof plan, migration, review, roadmap, Git, or PR status.
 
-## Completion
-
-`Status: current` is valid only when:
-
-- the complete official surface is represented;
-- required sources and tokens are accounted for;
-- all required headings exist;
-- no Mioframe or renderer decision leaked into the artifact;
-- design contract revision is non-`none`;
-- refresh date is exactly 30 calendar days after source checked date.
-
-If official content remains incomplete, use `Status: blocked`, record exact blockers, and route to `self/design`.
-
-Return after writing the artifact. Do not execute architecture in the same context.
+Return after writing the artifact. Do not execute architecture in this context.
 
 ## Report
 
@@ -171,21 +168,22 @@ Source checked at:
 Refresh check after:
 Normalized contract changed: yes | no | unknown
 Source conflicts or extraction gaps: none | <details>
-Document status: current | stale | blocked
+Document status: current | blocked
 Remaining blockers: none | <details>
-Required return family: none | self
-Required return stage: none | design
+Required return family: none
+Required return stage: none
 Status: complete | blocked
 ```
 
 ## Forbidden
 
+- Returning terminal `stale`.
+- Returning `self/design`.
+- Leaving a current-stage fixable omission unresolved.
 - Producing a demand-scoped summary.
-- Deriving official facts from current code, renderer artifacts, stories, tests, or consumers.
+- Deriving official facts from code, renderer artifacts, stories, tests, or consumers.
 - Mixing later-stage decisions into `DESIGN.md`.
 - Omitting unused official capability.
-- Guessing missing facts.
-- Changing design contract revision for metadata-only refresh.
-- Choosing a family-specific refresh interval.
-- Reusing an artifact revision after the file changed.
+- Changing contract revision for metadata-only refresh.
+- Choosing another refresh interval.
 - Asking the operator to rerun the same component command.
