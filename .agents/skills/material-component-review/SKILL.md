@@ -13,7 +13,9 @@ This stage owns compliance judgment and exact family/stage routing. It does not 
 
 ### Full independent review
 
-Use after any upstream artifact changed, when review is missing or invalid, or when review is rerun as the origin stage after a cross-family correction.
+Use after an invalidating upstream revision changed, when review is missing or invalid, or when review is the origin stage that must be executed fresh after a cross-family correction.
+
+A metadata-only design refresh with unchanged design contract revision does not require a new review.
 
 Review the complete current family and all migrated consumers, not only the latest change.
 
@@ -27,7 +29,7 @@ Determine the exact owning family and earliest stage, update review control fiel
 
 Require successful current design, architecture, implementation, and migration artifacts.
 
-Each artifact must reference the exact current upstream revision. Architecture dependencies must have successful current reviews.
+Architecture must reference the exact current design contract revision and dependency review revisions. Implementation and migration must reference exact current upstream artifact revisions.
 
 If an upstream artifact is invalid, do not reconstruct it. Record the exact earliest return family and stage and block completion.
 
@@ -51,7 +53,7 @@ Control fields:
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-DESIGN.md revision: <exact Artifact revision>
+DESIGN.md contract revision: <exact Design contract revision>
 ARCHITECTURE.md revision: <exact Artifact revision>
 IMPLEMENTATION.md revision: <exact Artifact revision>
 MIGRATION.md revision: <exact Artifact revision>
@@ -67,7 +69,7 @@ Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
 
-Use a new artifact revision whenever review content or routing changes. Record the exact four upstream revisions reviewed.
+Use a new artifact revision whenever review content or routing changes. Record the exact design contract revision and exact three downstream artifact revisions reviewed.
 
 Required headings:
 
@@ -88,10 +90,10 @@ Required headings:
 
 ## Full review order
 
-1. Validate complete official design and source lifecycle.
-2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, and the simplest viable alternative.
+1. Validate complete official design contract and source lifecycle.
+2. Compare architecture with design contract, scenarios, ownership, dependencies, renderer revision, and simplest viable alternative.
 3. Compare implementation with every architecture decision and forbidden approach.
-4. Review consumers, the explicit no-consumer case, and legacy-removal claims.
+4. Review consumers, explicit no-consumer case, and legacy-removal claims.
 5. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
 6. Verify proof ownership, impact metadata, and stage-scoped checks.
 7. Check for an actual operator-reported visual/motion defect.
@@ -114,23 +116,28 @@ A dependency defect routes to the dependency family, not automatically to the re
 
 Do not fix findings during review.
 
-## Cross-family origin rerun
+## Cross-family origin execution
 
-When review is rerun as the origin stage after another family was corrected:
+When review is the stored origin stage after another family was corrected, the orchestrator first resumes this family through normal durable validation from design forward.
+
+Therefore review may receive newly rewritten architecture, implementation, or migration artifacts before it runs.
+
+In the fresh origin review:
 
 - inspect the corrected target’s current artifacts and proof;
+- inspect every current origin-family artifact after durable resume;
 - re-evaluate the original finding from current evidence;
 - clear return fields when resolved;
 - otherwise replace them with the exact remaining target;
 - never preserve an old route merely because it existed before correction.
 
-This origin rerun is required before the orchestrator continues the parent.
+This fresh review execution is required before the orchestrator continues.
 
 ## Verdict semantics
 
 ### `compliant`
 
-Use only when all upstream revisions match, mandatory work and proof are complete, no findings or accepted risks remain, return target is `none`, completion is `complete`, final-verification readiness is `ready`, and no operator-reported defect remains unresolved.
+Use only when all invalidating upstream revisions match, mandatory work and proof are complete, no findings or accepted risks remain, return target is `none`, completion is `complete`, final-verification readiness is `ready`, and no operator-reported defect remains unresolved.
 
 ### `compliant-with-listed-risks`
 
@@ -152,7 +159,7 @@ Given exact final verifier output:
 
 1. identify the failed contract and evidence;
 2. map it to the exact owning family and earliest stage;
-3. record current upstream revisions;
+3. record current invalidating upstream revisions;
 4. write verdict and completion as blocked;
 5. set exact return family and stage;
 6. record the command and relevant output in routing evidence without Git/PR interpretation;
@@ -164,10 +171,13 @@ If the failure is review formatting or review-owned content, fix only review and
 
 Review succeeds only when:
 
-- all four recorded upstream revisions equal current artifacts;
+- recorded design contract revision equals the current design contract revision;
+- architecture, implementation, and migration revisions equal current artifacts;
 - all required headings exist;
 - the verdict accurately represents the complete current family;
 - no unresolved route or finding remains.
+
+A design artifact revision mismatch alone is irrelevant when design contract revision is unchanged.
 
 A successful review means ready for outer final verification. It does not claim that command passed.
 
@@ -180,7 +190,7 @@ Canonical family:
 Review mode: full | final-verifier-routing
 REVIEW.md path:
 Artifact revision:
-DESIGN.md revision:
+DESIGN.md contract revision:
 ARCHITECTURE.md revision:
 IMPLEMENTATION.md revision:
 MIGRATION.md revision:
@@ -202,9 +212,10 @@ Status: complete | blocked
 - Fixing production code or rewriting earlier artifacts.
 - Reviewing only the latest change.
 - Depending on Git or PR state.
-- Marking compliant with revision mismatches or unresolved work.
+- Marking compliant with invalidating revision mismatches or unresolved work.
+- Treating metadata-only design refresh as review invalidation.
 - Using listed risks for incomplete work.
-- Preserving a stale cross-family route after its target was corrected.
+- Preserving a stale cross-family route after target correction and durable origin resume.
 - Blocking only because positive visual acknowledgement is absent.
 - Fabricating operator feedback.
 - Reusing an artifact revision after content changed.
