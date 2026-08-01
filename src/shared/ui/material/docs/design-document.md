@@ -2,13 +2,7 @@
 
 ## Purpose
 
-Every official Material component family under `src/shared/ui/material/components/<family>` owns:
-
-```text
-DESIGN.md
-```
-
-`DESIGN.md` is the complete normalized repository snapshot of the official Material 3 Expressive component documentation.
+Every official Material component family under `src/shared/ui/material/components/<family>` owns `DESIGN.md` as the complete normalized workspace snapshot of the official Material 3 Expressive component documentation.
 
 It answers only:
 
@@ -16,210 +10,193 @@ It answers only:
 What does official Material define for this component?
 ```
 
-It does not answer:
+Mioframe demand, Vue API, renderer mapping, implementation, migration, proof, and review belong to later artifacts.
+
+## Control fields
+
+Every `DESIGN.md` begins with:
 
 ```text
-What does Mioframe implement now?
-How does m3e render it?
-Which current consumers need it?
-How is it implemented, migrated, tested, or reviewed?
+Status: current | stale | blocked
+Source revision: <exact source/cache revision>
+Source checked at: YYYY-MM-DD
+Refresh check after: YYYY-MM-DD
+Revision summary: <one concise line>
+Remaining blockers: none | <exact blockers>
+Required return family: none | self
+Required return stage: none | design
 ```
 
-Those decisions belong to later stage artifacts and runtime owners.
+`Source checked at` records the date of the latest complete source-check pass, including fallback evaluation. `Refresh check after` is seven calendar days later.
+
+Age is a refresh trigger, not evidence that official content changed. On or after that date the orchestrator runs the design stage. The worker may retain `Status: current` when it completes all source fallbacks, finds no newer material revision, and still owns a complete newest-known snapshot.
 
 ## Authority and source acquisition
 
-Official Material documentation is the authority. `DESIGN.md` is the complete local, source-backed snapshot used by later architecture and implementation stages.
-
-The design stage must autonomously use the available source chain instead of stopping after the first failed helper:
+Official Material documentation is authoritative. The design stage autonomously uses this fallback chain:
 
 1. current official Material MCP/source service;
 2. official cache refresh and route index;
-3. direct official component routes when available;
-4. the newest complete repository or MCP cache snapshot;
-5. resolved official token resources associated with that snapshot.
+3. direct official component routes;
+4. newest complete workspace or MCP cache snapshot;
+5. associated official token resources.
 
-A failed route index, refresh script, or freshness check is evidence about tooling, not evidence that official content changed. Continue through the fallback chain.
-
-The document records:
-
-- exact official routes and source titles;
-- source snapshot date;
-- cache/source revision used for extraction;
-- whether every required official page was available;
-- refresh attempts and fallback source selected;
-- source conflicts, unresolved values, or extraction gaps.
+A failed route index, refresh script, or freshness check is tooling evidence, not proof of a Material change. Continue through available fallbacks.
 
 ## Status lifecycle
 
-A family design document has one status:
+- `current` — every required official source is represented completely from the newest successfully acquired revision and there is no affirmative evidence of newer component content;
+- `stale` — affirmative evidence shows official content or its material source revision changed after the recorded snapshot;
+- `blocked` — required official content remains unavailable, contradictory, or incompletely extracted after all fallbacks.
 
-- `current` — every required official source is represented completely from the newest successfully acquired official revision, and there is no affirmative evidence that a newer material revision exists;
-- `stale` — there is affirmative evidence that official component content or its material source revision changed after the recorded snapshot;
-- `blocked` — required official content remains unavailable, contradictory, or incompletely extracted after all available source and cache fallbacks.
-
-A configured cache freshness window is only a refresh trigger. Age alone does not make a complete snapshot `stale` or `blocked`.
-
-A transient refresh failure does not block architecture when:
-
-- all required official tabs are available in a complete snapshot;
-- the associated token resource is complete;
-- no newer source revision or changed content is known;
-- the refresh limitation is recorded explicitly.
-
-A missing, genuinely stale, or blocked `DESIGN.md` blocks architecture, implementation, migration, review, and complete status.
+A missing, stale, blocked, structurally invalid, or refresh-due design blocks use by later stages until the design worker completes its check.
 
 ## Required source set
 
-Inspect every official page applicable to the component, including at minimum:
+Inspect every applicable official page, including at minimum:
 
 - overview;
 - specifications;
 - guidelines;
 - accessibility;
 - complete component-token tables;
+- expressive-update notes;
 - related-component references;
-- official expressive-update notes;
-- official platform or adaptive guidance when present.
+- delegated foundation contracts;
+- platform or adaptive guidance when present.
 
-When the official component documentation delegates behavior to another official foundation or component page, include that source and the delegated facts required to understand the complete component contract.
+Do not omit a source because Mioframe does not currently consume its capability.
 
-Do not silently omit a source because Mioframe does not currently use the corresponding capability.
+## Required document structure
 
-## Completeness contract
+After control fields, use these exact headings:
 
-`DESIGN.md` describes the complete official component model, not the current Mioframe subset.
+```text
+## Source ledger
+## Identity and purpose
+## Anatomy and content
+## Variants and configurations
+## Geometry and layout
+## States and behavior
+## Usage guidance
+## Accessibility
+## Complete official token catalogue
+## Source conflicts and unknowns
+## Related official contracts
+```
 
-It must include every applicable official fact in a structured, non-duplicative form:
+Every heading is required. Use explicit `none`, `not documented`, or `unavailable from the recorded source revision` rather than omitting a section.
 
-1. **Identity and purpose**
-   - official component name;
-   - role and intended use;
-   - distinction from adjacent or alternative components;
-   - expressive-update changes and differences from earlier Material versions.
+### Source ledger
 
-2. **Anatomy and content**
-   - required and optional parts;
-   - content roles;
-   - label, icon, supporting-content, and ordering rules;
-   - allowed and disallowed combinations.
+Record:
 
-3. **Variants and configurations**
-   - every official variant;
-   - every color/configuration option;
-   - every size;
-   - every shape;
-   - default values;
-   - selection/toggle modes;
-   - all official configuration combinations and constraints.
+- exact official routes and source titles;
+- source snapshot date;
+- exact cache/source revision;
+- required page availability;
+- refresh attempts and fallback selected;
+- extraction limitations.
 
-4. **Geometry and layout**
-   - heights, widths, padding, spacing, icon sizes, target sizes, outlines, shapes, and other exact measurements;
-   - layout behavior and alignment;
-   - density or adaptive behavior;
-   - standalone and composed geometry where official documentation distinguishes them.
+### Identity and purpose
 
-5. **States and behavior**
-   - enabled, disabled, hovered, focused, pressed, dragged, selected, unselected, loading, error, or other documented states;
-   - state precedence and valid combinations when documented;
-   - activation, selection, dismissal, progress, navigation, or other component behavior;
-   - transition, motion, shape morphing, elevation, state-layer, and restoration behavior.
+Include official name, role, intended use, adjacent-component distinctions, and expressive-update differences.
 
-6. **Usage guidance**
-   - when to use and when not to use;
-   - placement and hierarchy guidance;
-   - content-writing guidance;
-   - do/don't rules;
-   - related-component selection guidance.
+### Anatomy and content
 
-7. **Accessibility**
-   - semantic role and native behavior;
-   - accessible name and state requirements;
-   - keyboard and pointer interaction;
-   - focus behavior;
-   - minimum target and contrast requirements;
-   - screen-reader or platform-specific guidance.
+Include required and optional parts, content roles, ordering, labels, icons, supporting content, and valid/invalid combinations.
 
-8. **Complete official token catalogue**
-   - every token path published for the component, including all variants, sizes, states, parts, selected/unselected modes, disabled values, motion, shape, elevation, typography, spacing, and contrast variants;
-   - exact official token path;
-   - official token display name;
-   - system/reference aliases;
-   - documented light, dark, high-contrast, or other values;
-   - unresolved or omitted official values preserved explicitly rather than guessed.
+### Variants and configurations
 
-9. **Source conflicts and unknowns**
-   - disagreements between official pages;
-   - unresolved token values;
-   - missing official guidance;
-   - deprecated or superseded guidance;
-   - refresh or extraction limitations;
-   - no Mioframe or renderer decision in this section.
+Include every official variant, color/configuration, size, shape, default, selection/toggle mode, and combination constraint.
 
-10. **Related official contracts**
-    - required official dependencies;
-    - related foundations;
-    - alternative components;
-    - links to their own design documents when those families exist in the repository.
+### Geometry and layout
+
+Include exact heights, widths, padding, spacing, icon and target sizes, outlines, shapes, alignment, density/adaptive behavior, and standalone/composed differences.
+
+### States and behavior
+
+Include all documented states, state combinations and precedence, activation/selection/progress/navigation behavior, transitions, motion, shape morphing, elevation, state layer, and restoration.
+
+### Usage guidance
+
+Include when to use or avoid, placement, hierarchy, content-writing guidance, do/don't rules, and related-component selection guidance.
+
+### Accessibility
+
+Include semantic role, native behavior, accessible name/state, keyboard and pointer interaction, focus, target size, contrast, and platform/screen-reader guidance.
+
+### Complete official token catalogue
+
+Include every published token path across variants, sizes, states, parts, selection modes, disabled values, motion, shape, elevation, typography, spacing, and contrast variants.
+
+For each token preserve:
+
+- exact official path;
+- official display name;
+- system/reference aliases;
+- documented values by mode;
+- unresolved or omitted values without guessing.
+
+### Source conflicts and unknowns
+
+Record disagreements, unresolved values, missing guidance, deprecated/superseded guidance, and refresh/extraction limitations without Mioframe or renderer decisions.
+
+### Related official contracts
+
+Record required official dependencies, related foundations, alternative components, and links to family design documents when they exist.
 
 ## Full does not mean verbatim
 
-The document must preserve the complete official contract without copying whole official pages as prose.
+Preserve the complete official contract without copying whole source pages.
 
-Use:
+Use structured paraphrase for guidance, exact names and values for enumerable facts, complete tables for tokens/configurations, and source references for every section.
 
-- structured paraphrase for guidance and behavior;
-- exact names for variants, states, parts, token paths, measurements, and values;
-- tables for complete enumerations;
-- source references for every section.
+Do not replace complete coverage with a selected-surface summary or external links.
 
-Do not replace complete coverage with a short summary, a selected-surface matrix, or links to external pages.
+## Separation from later artifacts
 
-## Separation from later stage artifacts
-
-| Artifact            | Question answered                                         | Scope                                |
-| ------------------- | --------------------------------------------------------- | ------------------------------------ |
-| `DESIGN.md`         | What does official Material define?                       | complete official component contract |
-| `ARCHITECTURE.md`   | What must Mioframe implement now and how?                 | demand-scoped Material–Vue–m3e plan  |
-| `IMPLEMENTATION.md` | Was the accepted component architecture implemented?      | component code/proof handoff         |
-| `MIGRATION.md`      | Were consumers migrated and legacy ownership removed?     | application adoption                 |
-| `REVIEW.md`         | Does the complete result satisfy all contracts and gates? | independent review                   |
-| `README.md`         | Where are the family artifacts and runtime entry points?  | short index only                     |
-
-`ARCHITECTURE.md` must reference exact `DESIGN.md` sections for every selected, deferred, conflicting, or restrictive decision.
+| Artifact            | Question answered                                         | Scope                                 |
+| ------------------- | --------------------------------------------------------- | ------------------------------------- |
+| `DESIGN.md`         | What does official Material define?                       | complete official component contract  |
+| `ARCHITECTURE.md`   | What must Mioframe implement now and how?                 | demand-scoped Material–Vue–m3e plan   |
+| `IMPLEMENTATION.md` | Was the accepted component architecture implemented?      | component code/proof handoff          |
+| `MIGRATION.md`      | Were consumers migrated and legacy ownership removed?     | application adoption                  |
+| `REVIEW.md`         | Does the complete result satisfy all contracts and gates? | independent review                    |
+| `README.md`         | Where are artifacts and runtime entry points?             | short index only                      |
 
 `DESIGN.md` must not contain:
 
-- current Mioframe demand;
-- `implement-now` or `defer` decisions;
+- current Mioframe demand or `implement-now`/`defer` decisions;
 - Vue props, emits, slots, or exports;
-- m3e properties, events, types, tags, or CSS variables;
-- renderer defects or workarounds;
-- code paths, test files, migration status, PR history, or verification results.
+- m3e properties, events, types, tags, variables, revision, defects, or workarounds;
+- code paths, test files, migration status, roadmap, Git/PR facts, or verification results.
 
 ## Update rule
 
-Regenerate or update `DESIGN.md` when:
+Refresh `DESIGN.md` when:
 
-- official source content is known to have changed;
-- a newer source cache revision is available;
-- a previously unavailable official page became available;
+- `Refresh check after` is due;
+- official content is known to have changed;
+- a newer cache/source revision is available;
+- a previously unavailable page became available;
 - review found an omitted official capability, token, state, measurement, or guidance rule.
 
-A freshness threshold may trigger a refresh attempt but does not invalidate a complete document without newer evidence.
-
-Implementation, migration, and review changes alone do not modify `DESIGN.md`.
+Implementation, migration, and review changes alone do not modify official design facts.
 
 ## Completion gate
 
 A design document is complete only when:
 
-- all applicable official source pages are listed and represented;
-- the complete component surface is described regardless of current demand;
-- every official component token is included or explicitly recorded as unavailable;
+- every control field is valid;
+- source revision and dates are exact;
+- all required headings exist;
+- all applicable official pages are listed and represented;
+- the complete official surface is described regardless of current demand;
+- every official token is included or explicitly unavailable;
 - exact measurements, defaults, states, and accessibility rules are preserved;
-- no m3e, Mioframe architecture, implementation, migration, demand, or proof decision is mixed into the artifact;
+- no Mioframe or renderer decision is mixed into the artifact;
 - source conflicts and extraction gaps are explicit;
-- status is `current`.
+- status is `current`, blockers are `none`, and both return fields are `none`.
 
-The design stage returns control to the outer `material-component` orchestrator after writing and validating this artifact. Architecture begins in a fresh internal stage scope, potentially within the same operator invocation.
+The design stage then returns control to the outer orchestrator. Architecture begins in a fresh worker context.
