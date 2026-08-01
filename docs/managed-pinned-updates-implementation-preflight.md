@@ -108,7 +108,7 @@ same releaseNumber + appVersion/buildId/buildDate differs
 The worker owns only:
 
 ```ts
-request.mode === 'navigate' && request.destination === 'document'
+request.mode === 'navigate' && request.destination === 'document';
 ```
 
 for same-channel top-level document navigation, plus same-channel `<channelBasePath>assets/**`.

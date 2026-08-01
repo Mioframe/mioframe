@@ -46,13 +46,13 @@ A failed managed `install` leaves Workbox active. After release 1 activates, rol
 
 ## Ownership and sources of truth
 
-| Owner                   | Responsibility                                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| Publisher               | deterministic source identity, append-only release archive, idempotent publication, `latest.json`    |
-| Controller worker       | bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback  |
-| Service client/features | typed transport outcomes, finite busy state, user actions                                            |
-| Entity/widget/pane      | snapshot projection and product composition                                                          |
-| Browser                 | service-worker lifecycle and registration replacement                                                |
+| Owner                   | Responsibility                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| Publisher               | deterministic source identity, append-only release archive, idempotent publication, `latest.json`   |
+| Controller worker       | bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback |
+| Service client/features | typed transport outcomes, finite busy state, user actions                                           |
+| Entity/widget/pane      | snapshot projection and product composition                                                         |
+| Browser                 | service-worker lifecycle and registration replacement                                               |
 
 Sources of truth:
 
@@ -348,7 +348,7 @@ Network, hashing, discovery, preparation, and cleanup stay outside `OperationQue
 The mechanical top-level navigation predicate is:
 
 ```ts
-request.mode === 'navigate' && request.destination === 'document'
+request.mode === 'navigate' && request.destination === 'document';
 ```
 
 Navigation requests whose destination is `iframe`, `frame`, `embed`, `object`, or any other non-`document` destination are not owned. They remain ordinary browser network behavior. Foreign channels, PR previews, cross-origin requests, `updates/**`, manifests, PWA icons outside `assets/**`, APIs, fonts outside `assets/**`, and all other requests are also not owned and must return from the fetch listener without `respondWith()`.
@@ -369,14 +369,14 @@ any unexpected state/storage/cache/restoration exception
 
 Expected owned-request behavior:
 
-| Condition                                                     | Result                    |
-| ------------------------------------------------------------- | ------------------------- |
-| state absent or invalid                                       | controlled `503`          |
-| exact selected cache available                                | serve selected archive    |
-| selected descriptor does not list requested owned asset       | controlled `404`          |
-| cache absent, incomplete, malformed, or exact summary differs | restore exact release     |
-| restoration or revalidation fails                             | controlled `503`          |
-| infrastructure exception at any owned boundary                | controlled `503`          |
+| Condition                                                     | Result                 |
+| ------------------------------------------------------------- | ---------------------- |
+| state absent or invalid                                       | controlled `503`       |
+| exact selected cache available                                | serve selected archive |
+| selected descriptor does not list requested owned asset       | controlled `404`       |
+| cache absent, incomplete, malformed, or exact summary differs | restore exact release  |
+| restoration or revalidation fails                             | controlled `503`       |
+| infrastructure exception at any owned boundary                | controlled `503`       |
 
 Missing or corrupt selected caches restore only the exact immutable release. No owned path may substitute another release or current deployment bytes.
 
