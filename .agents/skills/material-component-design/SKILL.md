@@ -7,7 +7,7 @@ description: 'Use with an official Material component name to create or refresh 
 
 Create or refresh one family `DESIGN.md` and return control to the outer orchestrator.
 
-This stage owns official Material source normalization only.
+This stage owns official Material source normalization and source-refresh metadata only.
 
 ## Input
 
@@ -37,12 +37,40 @@ The artifact begins with exact control fields:
 
 ```text
 Status: current | stale | blocked
+Source revision: <exact source/cache revision>
+Source checked at: YYYY-MM-DD
+Refresh check after: YYYY-MM-DD
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
+Required return family: none | self
 Required return stage: none | design
 ```
 
-Do not append prose to an enum value.
+Do not append prose to an enum or routing value.
+
+`Source checked at` is the date this worker completed the full source-check pass, including fallback evaluation. `Source revision` remains the exact newest complete source/cache revision actually used. Set `Refresh check after` to seven calendar days after `Source checked at`.
+
+A failed refresh helper does not prevent advancing `Source checked at` when the worker completed all fallbacks, retained a complete newest-known snapshot, and found no affirmative evidence of a newer material revision.
+
+## Required headings
+
+Use these exact top-level sections after the control fields:
+
+```text
+## Source ledger
+## Identity and purpose
+## Anatomy and content
+## Variants and configurations
+## Geometry and layout
+## States and behavior
+## Usage guidance
+## Accessibility
+## Complete official token catalogue
+## Source conflicts and unknowns
+## Related official contracts
+```
+
+Each section must be present even when its content is explicitly `none` or official guidance is unavailable.
 
 ## Official source pass
 
@@ -70,6 +98,8 @@ Use statuses exactly:
 - `stale` — affirmative evidence shows official content changed after the snapshot;
 - `blocked` — required content remains missing or incomplete after all available fallbacks.
 
+Age alone does not make a complete design stale. The refresh date exists so the orchestrator periodically launches this worker to repeat the source check.
+
 ## Required content
 
 Capture the complete official component contract, including unused capability:
@@ -93,16 +123,29 @@ For every official token preserve exact official path, display name, aliases, do
 
 - Mioframe demand or `implement-now`/`defer` decisions;
 - Vue API;
-- renderer mapping, defect, or workaround;
+- renderer mapping, defect, workaround, or renderer revision;
 - implementation path;
 - test or verification plan;
 - migration, review, roadmap, Git, or PR status.
 
 ## Completion
 
-`Status: current` is valid only when the full official surface is represented, all required sources and tokens are accounted for, and no Mioframe or renderer decision leaked into the artifact.
+`Status: current` is valid only when:
 
-If official content remains incomplete, use `Status: blocked`, record exact blockers, and set `Required return stage: design`.
+- the full official surface is represented;
+- all required sources and tokens are accounted for;
+- every required heading exists;
+- source revision and dates are exact;
+- no Mioframe or renderer decision leaked into the artifact;
+- blockers are `none`;
+- both return fields are `none`.
+
+If official content remains incomplete, use `Status: blocked`, record exact blockers, and set:
+
+```text
+Required return family: self
+Required return stage: design
+```
 
 Return to the orchestrator after writing the artifact. Do not execute architecture in the same context.
 
@@ -114,13 +157,16 @@ Input component:
 Resolved official component:
 Canonical family:
 DESIGN.md path:
+Source revision:
+Source checked at:
+Refresh check after:
 Official routes inspected:
-Source snapshot and revision:
 Refresh attempts and fallback:
 Official token rows captured:
 Source conflicts or extraction gaps: none | <details>
 Document status: current | stale | blocked
 Remaining blockers: none | <details>
+Required return family: none | self
 Required return stage: none | design
 Status: complete | blocked
 ```
@@ -130,6 +176,7 @@ Status: complete | blocked
 - Producing a demand-scoped summary.
 - Deriving official facts from current code, renderer artifacts, stories, tests, or consumers.
 - Mixing later-stage decisions into `DESIGN.md`.
-- Omitting unused official capability.
+- Omitting required headings or unused official capability.
 - Guessing missing facts.
+- Depending on Git or PR state.
 - Asking the operator to rerun the same component command.
