@@ -122,7 +122,15 @@ The refresh interval is fixed for all families:
 Refresh check after = Source checked at + 30 calendar days
 ```
 
-A due refresh date runs design. A known newer official revision or explicit source-change evidence runs design immediately.
+A due refresh date runs design.
+
+An immediate refresh before that date occurs only when one of these durable signals exists:
+
+- design status is explicitly `stale`;
+- review routes to design because official contract evidence changed or was incomplete;
+- roadmap or another canonical workflow artifact records a known newer official source revision.
+
+The orchestrator does not browse sources merely to search for an unrecorded change before the fixed refresh date.
 
 If refresh finds no normalized official contract change:
 
