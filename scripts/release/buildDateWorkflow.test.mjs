@@ -15,8 +15,13 @@ import { describe, expect, it } from 'vitest';
 // mirroring the existing pattern-match style in
 // config/viteConfigFixtureImport.test.ts (no generic YAML/workflow parser
 // is introduced).
+//
+// TZ=UTC is required in the command itself: format-local:'...Z' formats the
+// committer date in the process's local timezone but only *labels* it Z, so
+// without TZ=UTC pinning the process to UTC the resulting timestamp is
+// wrong while still looking like a valid UTC value.
 const COMMITTER_TIMESTAMP_COMMAND =
-  "git show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd";
+  "TZ=UTC git show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd ${{ github.sha }}";
 const CANONICAL_DATE_REF = '${{ steps.build-date.outputs.date }}';
 
 /**
@@ -59,7 +64,7 @@ describe.each([
   );
   const jobBlock = extractJob(source, job);
 
-  it('derives the build date from the checked-out commit committer timestamp, not execution time', () => {
+  it('derives the build date from the checked-out commit committer timestamp under TZ=UTC, not execution time', () => {
     expect(jobBlock).toContain(COMMITTER_TIMESTAMP_COMMAND);
     // No wall-clock `date` invocation stands in for the committer timestamp.
     expect(jobBlock).not.toMatch(/\bdate\s+-u\b/);
