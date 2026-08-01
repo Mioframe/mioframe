@@ -440,6 +440,7 @@ describe('src/sw.ts fetch routing', () => {
   function createFakeFetchEvent(
     url: string,
     mode: 'navigate' | 'same-origin' = 'same-origin',
+    destination: RequestDestination = '',
   ): {
     event: FakeEvent;
     respondWith: ReturnType<typeof vi.fn>;
@@ -453,6 +454,7 @@ describe('src/sw.ts fetch routing', () => {
     // getter on an ordinary constructed instance instead.
     const request = new Request(url);
     if (mode === 'navigate') Object.defineProperty(request, 'mode', { value: 'navigate' });
+    Object.defineProperty(request, 'destination', { value: destination });
     return { event: { request, respondWith, waitUntil }, respondWith, waitUntil };
   }
 
@@ -460,7 +462,11 @@ describe('src/sw.ts fetch routing', () => {
     const listeners = await importSwAndGetListeners();
     const listener = listeners.get('fetch');
     if (!listener) throw new Error('Expected a fetch listener to have been registered');
-    const { event, respondWith } = createFakeFetchEvent('https://mioframe.example/', 'navigate');
+    const { event, respondWith } = createFakeFetchEvent(
+      'https://mioframe.example/',
+      'navigate',
+      'document',
+    );
 
     listener(event);
 
@@ -477,12 +483,35 @@ describe('src/sw.ts fetch routing', () => {
     const listeners = await importSwAndGetListeners();
     const listener = listeners.get('fetch');
     if (!listener) throw new Error('Expected a fetch listener to have been registered');
-    const { event, waitUntil } = createFakeFetchEvent('https://mioframe.example/', 'navigate');
+    const { event, waitUntil } = createFakeFetchEvent(
+      'https://mioframe.example/',
+      'navigate',
+      'document',
+    );
 
     listener(event);
 
     expect(waitUntil).not.toHaveBeenCalled();
   });
+
+  it.each(['iframe', 'embed'] as const)(
+    'does not intercept navigate mode with non-document destination %s',
+    async (destination) => {
+      const listeners = await importSwAndGetListeners();
+      const listener = listeners.get('fetch');
+      if (!listener) throw new Error('Expected a fetch listener to have been registered');
+      const { event, respondWith } = createFakeFetchEvent(
+        'https://mioframe.example/',
+        'navigate',
+        destination,
+      );
+
+      listener(event);
+
+      expect(respondWith).not.toHaveBeenCalled();
+      expect(handleNavigationFetchMock).not.toHaveBeenCalled();
+    },
+  );
 
   it('intercepts a same-channel assets/** request', async () => {
     const listeners = await importSwAndGetListeners();
@@ -548,6 +577,7 @@ describe('src/sw.ts fetch routing', () => {
     const { event, respondWith } = createFakeFetchEvent(
       'https://mioframe.example/branch/develop/',
       'navigate',
+      'document',
     );
 
     listener(event);

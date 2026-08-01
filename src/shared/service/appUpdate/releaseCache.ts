@@ -79,12 +79,10 @@ export function isReleaseAvailable(
  * Returns `true` when `relativePath` (a request's URL pathname, relative to
  * the channel base path) is one of `descriptor`'s own listed release files.
  *
- * Used to decide whether a same-origin, same-channel request is this
- * worker's concern at all: a request for a path that is not part of the
- * currently selected release (a manifest, PWA icon, API route, or any other
- * same-origin resource outside the release) must never be served — or
- * synthetically 404'd — from the release cache; the caller falls through to
- * an ordinary network fetch instead.
+ * Used after a request has already been classified as an owned
+ * `<channelBasePath>assets/**` path. A path that is not listed by the active
+ * descriptor receives a controlled `404`; it never falls through to the
+ * network.
  * @param descriptor - The currently selected release's descriptor.
  * @param relativePath - The request's channel-root-relative path.
  * @returns Whether `relativePath` belongs to this release.

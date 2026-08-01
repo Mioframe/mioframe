@@ -13,11 +13,13 @@ import { fetchReleaseDescriptor, prepareRelease } from './releasePreparation';
  * outside the short state lock (see `stateLock.ts`).
  *
  * A worker-local transient map, never persisted: two callers requesting the
- * same release number (e.g. an explicit `INSTALL_ON_NEXT_LAUNCH` racing an
+ * same exact release (e.g. an explicit `INSTALL_ON_NEXT_LAUNCH` racing an
  * automatic background check for the same discovered release) share one
- * in-flight fetch+hash+cache-write instead of duplicating the work. The map
- * entry is removed once the attempt settles, success or failure, so a later
- * retry always starts fresh rather than replaying a stale rejection.
+ * in-flight fetch+hash+cache-write instead of duplicating the work. A
+ * same-number caller with conflicting metadata rejects without affecting
+ * the legitimate attempt. The map entry is removed once that attempt
+ * settles, success or failure, so a later retry always starts fresh rather
+ * than replaying a stale rejection.
  *
  * This is also the single worker-local owner of arbitration between
  * preparation and cleanup (see {@link runCleanup} on the returned value):
@@ -26,7 +28,7 @@ import { fetchReleaseDescriptor, prepareRelease } from './releasePreparation';
 export type PreparationCoordinator = {
   /**
    * Prepares `target`, or joins an already in-flight preparation for the
-   * same release number. A genuinely new preparation waits for every cleanup
+   * same complete release identity. A genuinely new preparation waits for every cleanup
    * already scheduled through {@link runCleanup} at the moment it is
    * registered — including one still queued behind an earlier cleanup —
    * before touching the network or cache, so the two can never touch the
@@ -41,7 +43,7 @@ export type PreparationCoordinator = {
    * Ignored, falling back to an ordinary fetch, when its identity does not
    * exactly match `target`.
    * @returns The validated release descriptor once preparation succeeds.
-   * @throws When fetching or preparing the release fails.
+   * @throws When the target conflicts with an in-flight release identity, or fetching or preparing the release fails.
    */
   prepare: (
     channel: ManagedChannel,
@@ -70,12 +72,17 @@ export type PreparationCoordinator = {
   ) => Promise<void>;
 };
 
+type InFlightPreparation = {
+  expectedRelease: ReleaseSummary;
+  promise: Promise<ReleaseDescriptor>;
+};
+
 /**
  * Creates a new, empty {@link PreparationCoordinator}.
  * @returns A coordinator with no in-flight preparations.
  */
 export function createPreparationCoordinator(): PreparationCoordinator {
-  const inFlight = new Map<number, Promise<ReleaseDescriptor>>();
+  const inFlight = new Map<number, InFlightPreparation>();
   // Chains every runCleanup() call so cleanups never overlap. Always settled
   // (never rejects), so a failed cleanup cannot block later cleanups or
   // preparations waiting behind it.
@@ -84,10 +91,13 @@ export function createPreparationCoordinator(): PreparationCoordinator {
   return {
     prepare(channel, channelBasePath, target, validatedDescriptor) {
       const existing = inFlight.get(target.releaseNumber);
-      if (existing) return existing;
+      if (existing) {
+        if (releaseSummariesMatch(existing.expectedRelease, target)) return existing.promise;
+        return Promise.reject(new Error('Conflicting release identity is already being prepared'));
+      }
 
       const reusableDescriptor =
-        validatedDescriptor && validatedDescriptor.releaseNumber === target.releaseNumber
+        validatedDescriptor && releaseSummariesMatch(toReleaseSummary(validatedDescriptor), target)
           ? validatedDescriptor
           : undefined;
 
@@ -120,20 +130,18 @@ export function createPreparationCoordinator(): PreparationCoordinator {
         return descriptor;
       })();
 
-      inFlight.set(target.releaseNumber, attempt);
+      const entry = { expectedRelease: target, promise: attempt };
+      inFlight.set(target.releaseNumber, entry);
       attempt
         .catch(() => {})
         .finally(() => {
-          if (inFlight.get(target.releaseNumber) === attempt) inFlight.delete(target.releaseNumber);
+          inFlight.delete(target.releaseNumber);
         });
       return attempt;
     },
 
     runCleanup(cleanup) {
-      const run = cleanupTail.then(
-        () => cleanup([...inFlight.keys()]),
-        () => cleanup([...inFlight.keys()]),
-      );
+      const run = cleanupTail.then(() => cleanup([...inFlight.keys()]));
       cleanupTail = run.then(
         () => undefined,
         () => undefined,

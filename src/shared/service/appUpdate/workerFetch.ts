@@ -114,16 +114,20 @@ export async function handleAssetFetch(
   request: Request,
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
-  const read = await readControllerState(channel);
-  if (read.status !== 'valid') return UNAVAILABLE_RESPONSE();
-  return serveRelease(
-    channel,
-    channelBasePath,
-    read.state.activeRelease,
-    request,
-    false,
-    coordinator,
-  );
+  try {
+    const read = await readControllerState(channel);
+    if (read.status !== 'valid') return UNAVAILABLE_RESPONSE();
+    return await serveRelease(
+      channel,
+      channelBasePath,
+      read.state.activeRelease,
+      request,
+      false,
+      coordinator,
+    );
+  } catch {
+    return UNAVAILABLE_RESPONSE();
+  }
 }
 
 /**
@@ -148,14 +152,18 @@ export async function handleNavigationFetch(
   request: Request,
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
-  const read = await readControllerState(channel);
-  if (read.status !== 'valid') return UNAVAILABLE_RESPONSE();
-  return serveRelease(
-    channel,
-    channelBasePath,
-    read.state.activeRelease,
-    request,
-    true,
-    coordinator,
-  );
+  try {
+    const read = await readControllerState(channel);
+    if (read.status !== 'valid') return UNAVAILABLE_RESPONSE();
+    return await serveRelease(
+      channel,
+      channelBasePath,
+      read.state.activeRelease,
+      request,
+      true,
+      coordinator,
+    );
+  } catch {
+    return UNAVAILABLE_RESPONSE();
+  }
 }

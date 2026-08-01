@@ -64,6 +64,14 @@ function createFakeCoordinator(
   };
 }
 
+async function expectUnavailable(responsePromise: Promise<Response>): Promise<void> {
+  await expect(responsePromise).resolves.toBeInstanceOf(Response);
+  const response = await responsePromise;
+  expect(response.status).toBe(503);
+  expect(await response.text()).toBe('Release unavailable');
+  expect(fetchMock).not.toHaveBeenCalled();
+}
+
 describe('workerFetch', () => {
   beforeEach(() => {
     cachesByName.clear();
@@ -77,6 +85,19 @@ describe('workerFetch', () => {
   });
 
   describe('handleNavigationFetch', () => {
+    it('resolves a controlled unavailable response when controller-state access rejects', async () => {
+      readControllerStateMock.mockRejectedValue(new Error('IndexedDB failed'));
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      const responsePromise = handleNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+      );
+
+      await expectUnavailable(responsePromise);
+    });
     it('serves the active release navigation from its archived index', async () => {
       await seedAvailableRelease();
       const { handleNavigationFetch } = await import('./workerFetch');
@@ -274,9 +295,142 @@ describe('workerFetch', () => {
       expect(response.status).toBe(503);
       expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    it('resolves a controlled unavailable response when cache-key availability reading rejects', async () => {
+      await seedAvailableRelease();
+      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
+      if (!cache) throw new Error('Expected seeded release cache');
+      vi.spyOn(cache, 'keys').mockRejectedValue(new Error('cache keys failed'));
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      await expectUnavailable(
+        handleNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+        ),
+      );
+    });
+
+    it('resolves a controlled unavailable response when restoration rejects', async () => {
+      const prepare = vi.fn().mockRejectedValue(new Error('restoration failed'));
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      await expectUnavailable(
+        handleNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+    });
+
+    it('resolves a controlled unavailable response when cache reopening after restoration rejects', async () => {
+      const originalOpen = fakeCaches.open;
+      let openCount = 0;
+      const open = vi.spyOn(fakeCaches, 'open').mockImplementation(async (name) => {
+        openCount += 1;
+        if (openCount === 2) throw new Error('reopen failed');
+        return originalOpen(name);
+      });
+      const prepare = vi.fn().mockResolvedValue(activeDescriptor);
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      await expectUnavailable(
+        handleNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+      open.mockRestore();
+    });
+
+    it('resolves a controlled unavailable response when final archived-index reading rejects', async () => {
+      await seedAvailableRelease();
+      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
+      if (!cache) throw new Error('Expected seeded release cache');
+      const originalMatch = cache.match.bind(cache);
+      let matchCount = 0;
+      vi.spyOn(cache, 'match').mockImplementation((request) => {
+        matchCount += 1;
+        if (matchCount === 3) return Promise.reject(new Error('final index read failed'));
+        return originalMatch(request);
+      });
+      const { handleNavigationFetch } = await import('./workerFetch');
+
+      await expectUnavailable(
+        handleNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+        ),
+      );
+    });
   });
 
   describe('handleAssetFetch', () => {
+    it('resolves a controlled unavailable response when Cache Storage access rejects', async () => {
+      const open = vi.spyOn(fakeCaches, 'open').mockRejectedValueOnce(new Error('cache failed'));
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      const responsePromise = handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
+      );
+
+      await expectUnavailable(responsePromise);
+      open.mockRestore();
+    });
+
+    it('resolves a controlled unavailable response when post-restoration validation rejects', async () => {
+      const prepare = vi.fn().mockImplementation(async () => {
+        await seedAvailableRelease();
+        const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
+        if (!cache) throw new Error('Expected restored release cache');
+        vi.spyOn(cache, 'keys').mockRejectedValue(new Error('post-restore validation failed'));
+        return activeDescriptor;
+      });
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      await expectUnavailable(
+        handleAssetFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/assets/app.js'),
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+    });
+
+    it('resolves a controlled unavailable response when the final cached asset read rejects', async () => {
+      await seedAvailableRelease();
+      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
+      if (!cache) throw new Error('Expected seeded release cache');
+      const originalMatch = cache.match.bind(cache);
+      let matchCount = 0;
+      vi.spyOn(cache, 'match').mockImplementation((request) => {
+        matchCount += 1;
+        if (matchCount === 4) return Promise.reject(new Error('final asset read failed'));
+        return originalMatch(request);
+      });
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      await expectUnavailable(
+        handleAssetFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/assets/app.js'),
+          createFakeCoordinator(),
+        ),
+      );
+    });
     it('serves an exact active-release asset from its cache', async () => {
       await seedAvailableRelease();
       const { handleAssetFetch } = await import('./workerFetch');

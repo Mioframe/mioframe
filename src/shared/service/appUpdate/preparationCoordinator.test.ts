@@ -56,7 +56,7 @@ describe('createPreparationCoordinator', () => {
     expect(prepareReleaseMock).toHaveBeenCalledWith('/', 'stable', descriptorA);
   });
 
-  it('deduplicates concurrent prepare calls for the same release number', async () => {
+  it('joins concurrent prepare calls only when their complete release summaries match', async () => {
     let resolveFetch: (value: ReleaseDescriptor) => void = () => {};
     fetchReleaseDescriptorMock.mockReturnValue(
       new Promise((resolve) => {
@@ -77,6 +77,35 @@ describe('createPreparationCoordinator', () => {
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
     expect(prepareReleaseMock).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ['appVersion', '9.9.9'],
+    ['buildId', 'conflicting-build'],
+    ['buildDate', '2026-07-25T00:00:00.000Z'],
+  ] as const)(
+    'rejects a concurrent same-number caller whose %s conflicts without replacing the legitimate attempt',
+    async (field, value) => {
+      const fetchGate = createDeferred<ReleaseDescriptor>();
+      fetchReleaseDescriptorMock.mockReturnValue(fetchGate.promise);
+      prepareReleaseMock.mockResolvedValue(undefined);
+      const { createPreparationCoordinator } = await import('./preparationCoordinator');
+      const coordinator = createPreparationCoordinator();
+
+      const legitimateAttempt = coordinator.prepare('stable', '/', releaseA);
+      const conflict = coordinator.prepare('stable', '/', { ...releaseA, [field]: value });
+
+      await expect(conflict).rejects.toThrow('Conflicting release identity');
+      expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+      expect(prepareReleaseMock).not.toHaveBeenCalled();
+      const cleanup = vi.fn().mockResolvedValue(undefined);
+      await coordinator.runCleanup(cleanup);
+      expect(cleanup).toHaveBeenCalledWith([releaseA.releaseNumber]);
+
+      fetchGate.resolve(descriptorA);
+      await expect(legitimateAttempt).resolves.toBe(descriptorA);
+      expect(prepareReleaseMock).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('does not deduplicate different release numbers', async () => {
     fetchReleaseDescriptorMock.mockImplementation((_base: string, target: ReleaseSummary) =>
@@ -134,6 +163,29 @@ describe('createPreparationCoordinator', () => {
     expect(result).toBe(descriptorA);
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ['appVersion', '9.9.9'],
+    ['buildId', 'conflicting-build'],
+    ['buildDate', '2026-07-25T00:00:00.000Z'],
+  ] as const)(
+    'never prepares a provided same-number descriptor whose %s conflicts, and fetches the exact target instead',
+    async (field, value) => {
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+      prepareReleaseMock.mockResolvedValue(undefined);
+      const { createPreparationCoordinator } = await import('./preparationCoordinator');
+      const coordinator = createPreparationCoordinator();
+      const mismatchedDescriptor = { ...descriptorA, [field]: value };
+
+      await expect(
+        coordinator.prepare('stable', '/', releaseA, mismatchedDescriptor),
+      ).resolves.toBe(descriptorA);
+
+      expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(1);
+      expect(prepareReleaseMock).toHaveBeenCalledWith('/', 'stable', descriptorA);
+      expect(prepareReleaseMock).not.toHaveBeenCalledWith('/', 'stable', mismatchedDescriptor);
+    },
+  );
 
   it('rejects, without preparing, a fetched descriptor whose complete identity does not exactly match the target — a shared releaseNumber alone is not enough', async () => {
     // `fetchReleaseDescriptor` only proves `releaseNumber` matches; a

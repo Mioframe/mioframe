@@ -95,7 +95,7 @@ self.addEventListener('fetch', (event) => {
   // first install.
   if (pathname.startsWith(`${channelBasePath}updates/`)) return;
 
-  if (event.request.mode === 'navigate') {
+  if (event.request.mode === 'navigate' && event.request.destination === 'document') {
     event.respondWith(
       handleNavigationFetch(channel, channelBasePath, event.request, preparationCoordinator),
     );
