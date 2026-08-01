@@ -5,98 +5,68 @@ description: 'Use with one Material component name to mechanically orchestrate i
 
 # Material component
 
-Accept exactly one required operator input: the Material component name.
+Accept exactly one operator input: the Material component name.
 
-Examples:
-
-```text
-Button
-MDButton
-Loading indicator
-MDLoadingIndicator
-```
-
-Do not require an implementation brief, mode, file path, dependency list, verification command, or repeated operator invocation.
+Do not require an implementation brief, mode, files, dependency list, verification command, or repeated invocation.
 
 ## Authority
 
-Read and execute:
-
-- applicable `AGENTS.md` files;
-- `src/shared/ui/material/docs/component-workflow.md`;
-- the `verification` skill;
-- the selected stage skill.
+Read applicable `AGENTS.md`, `src/shared/ui/material/docs/component-workflow.md`, `verification`, and the selected stage skill.
 
 `component-workflow.md` is the single complete state-machine contract. Do not reconstruct it from README, roadmap, code, tests, or conversation context.
 
 ## Orchestrator boundary
 
-This skill is a thin mechanical orchestrator. It may only:
+The orchestrator may only:
 
-- resolve the canonical family;
-- validate fixed fields, revisions, dates, and required headings;
-- compare recorded renderer revision with the lockfile-resolved `@m3e/web` version;
-- select an exact family and stage through fixed order, return fields, or dependency queue;
-- launch a fresh isolated worker;
-- retain a compact execution ledger and active route origin;
+- resolve canonical family names;
+- validate fixed fields, headings, dates, artifact revisions, upstream revisions, and dependency review revisions;
+- compare renderer revision with the lockfile;
+- select an exact family/stage through fixed order, routing fields, or dependency queue;
+- launch fresh isolated workers;
+- retain a compact execution ledger and active route origins;
 - run final read-only verification;
-- send exact verifier output to a fresh review-routing worker;
+- pass exact verifier output to a fresh review-routing worker;
 - report completion or a recorded blocker.
 
-It must not evaluate design or architecture, inspect code for drift, discover consumers, infer dependencies, choose correction targets from prose, review tests or visuals, classify verifier output, or edit stage-owned files itself.
+It must not evaluate design or architecture, inspect code for drift, discover consumers, infer dependencies or correction targets, review proof or visuals, classify verifier output, or edit stage-owned files.
 
 ## Worker boundary
 
-Each stage runs in a fresh isolated worker context using the runtime’s supported mechanism.
+Each stage runs in a fresh isolated context.
 
-A handoff contains only:
+A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths and revisions, and exact dependency, route, blocker, or verifier facts.
 
-- resolved official component and canonical family;
-- selected stage skill;
-- applicable workspace rules;
-- task-relevant readable workspace files;
-- canonical upstream artifact paths and revisions;
-- exact dependency, route-origin, route-target, blocker, or verifier-output facts required by that stage.
+Do not pass hidden reasoning, copied worker reports, or conversational conclusions.
 
-Do not pass hidden reasoning, copied worker reports, or conversational conclusions between workers.
+Review must be independent from workers that authored or corrected architecture, implementation, or migration.
 
-The review worker must be independent from workers that authored or corrected architecture, implementation, or migration.
-
-If fresh isolation is unavailable, record a blocker. Do not simulate several stages in one context.
-
-Workers and orchestrator must not depend on Git history, diff, branch, worktree/index state, commit identifiers, pull-request metadata, or external checks.
+If fresh isolation is unavailable, record a blocker. Workers and orchestrator do not depend on Git, PR, commit, branch, diff, or external-check state.
 
 ## Family resolution
 
 Normalize the supplied name against official Material names, existing `MD*` exports, and family paths.
 
-Ask for clarification only when readable workspace and official evidence leave multiple materially different official components unresolved.
+Ask only when readable workspace and official evidence leave multiple materially different official components unresolved.
 
 Canonical family values are exact `components/` path segments, such as `button` or `loadingIndicator`.
 
 ## Mechanical orchestration
 
-Follow `component-workflow.md` exactly:
+Follow `component-workflow.md` exactly.
 
-1. Validate or refresh parent design.
-2. Validate parent architecture, including exact design and renderer revisions.
-3. When parent architecture has a non-empty dependency queue, process each listed dependency through its complete pipeline to successful current independent review.
-4. Rerun parent architecture after all queued dependencies are current.
-5. Follow exact `Required return family` and `Required return stage` values.
-6. Validate every downstream artifact against the exact current upstream revision.
-7. Continue parent and dependencies through current review.
-8. Run one final workflow verification.
-9. Complete only when it passes on the unchanged workspace.
+For each artifact:
 
-Dependency queue syntax is:
+1. validate syntax, required headings, dates, renderer revision, upstream revision links, and dependency review revisions;
+2. if invalid, run the owning stage before using any route stored in that artifact;
+3. if valid and its return target is non-`none`, process the exact route;
+4. otherwise run the owning stage when its success gate is not met.
 
-```text
-Dependency queue: none | <canonical-family>[; <canonical-family>...]
-```
+A valid non-empty dependency queue pauses parent implementation. Process every queued dependency through its complete pipeline to successful current review, then rerun parent architecture.
 
-No dependency gates exist. A queued dependency is always processed through current independent review.
+No dependency gates exist.
 
-Artifacts from an older schema, missing required headings, containing invalid routing pairs, due for source refresh, recording a stale renderer revision, or referencing a replaced upstream revision are mechanically invalid.
+Artifacts from an older schema, due for source refresh, recording a stale renderer revision, referencing a replaced upstream revision, or recording a replaced dependency review revision are mechanically invalid.
 
 ## Stage execution
 
@@ -108,29 +78,37 @@ Launch only:
 - `material-component-migration`;
 - `material-component-review`.
 
-After a worker returns, validate only that it produced its owned artifact, used valid required fields and headings, wrote a new artifact revision when content changed, and returned a compact stage result.
+Validate only that the worker produced its owned artifact, used valid required fields and headings, wrote a new artifact revision when content changed, and returned a compact result.
 
-Semantic compliance belongs to the worker and later independent review.
+Semantic compliance belongs to the worker and later review.
 
 ## Dependency lifecycle
 
-Read dependencies only from architecture fields.
+Read only these architecture fields:
+
+```text
+Dependency families: none | <family>[; <family>...]
+Dependency queue: none | <family>[; <family>...]
+Dependency review revisions: none | <family>=<review revision>[; <family>=<review revision>...]
+```
+
+Validate that queue and review-revision families are disjoint and their union equals dependency families.
 
 For each queued family:
 
 1. pause the parent;
-2. process the dependency from its current durable state through successful current review;
-3. record its executions in the compact ledger;
+2. process the dependency from its durable state through successful current review;
+3. record executions in the compact ledger;
 4. continue with the next dependency;
 5. rerun parent architecture after the queue is complete.
 
-Parent architecture then clears or recomputes the queue and becomes implementation-ready only when the queue is `none`.
+Before parent implementation or review, compare every recorded dependency review revision with the current dependency `REVIEW.md`. A mismatch runs parent architecture.
 
-Do not infer dependencies from imports or names. Do not run a separate final workflow verification for a dependency.
+Do not infer dependencies from imports or names. Do not run a separate final verification for a dependency.
 
 ## Cross-family correction
 
-When an artifact routes to another family, retain:
+When a valid artifact routes to another family, retain:
 
 ```text
 origin: <origin-family>/<origin-stage>
@@ -141,23 +119,23 @@ Then:
 
 1. run the target family from the requested stage through successful current review;
 2. rerun the exact origin stage in a fresh worker;
-3. require the origin stage to clear or replace its route fields;
+3. require origin to clear or replace its route;
 4. continue from the new origin result.
 
-Do not reread the old route and relaunch the target before rerunning the origin stage.
+Do not reread the old route and relaunch the target before origin reruns.
 
-A self-route runs the requested stage and all downstream stages normally. Nested cross-family routes use the same rule and unwind the most recent origin first.
+A self-route runs the requested stage and downstream stages normally. Nested routes unwind the most recent origin first.
 
 ## Durable continuation
 
-Artifact revision links, not invocation-local memory, determine downstream freshness.
+Artifact revisions determine freshness after interruption:
 
-- architecture must reference current design revision;
-- implementation must reference current architecture revision;
-- migration must reference current implementation revision;
-- review must reference current design, architecture, implementation, and migration revisions.
+- architecture records current design revision and current dependency review revisions;
+- implementation records current architecture revision;
+- migration records current implementation revision;
+- review records current design, architecture, implementation, and migration revisions.
 
-A mismatch launches the owning downstream stage. This rule applies after interruption or a new invocation.
+A mismatch launches the owning downstream stage. Invocation-local changed-stage memory is not required for correctness.
 
 ## Compact execution ledger
 
@@ -174,48 +152,27 @@ target: none | <canonical-family>/<stage>
 verification: not-applicable | passed | failed | blocked
 ```
 
-Do not retain or reproduce full worker reports or artifact prose. Correction cycles append another compact record.
+Do not retain full worker reports or artifact prose.
 
 ## Final workflow verification
 
-After current successful reviews, use the verification skill to run one read-only final command.
+After current successful reviews, run one read-only final command through `verification`.
 
-Ordinary Material component work uses:
+Ordinary Material work uses:
 
 ```text
 pnpm verify
 ```
 
-Use `pnpm verify:release` only when the task itself changes release-sensitive infrastructure and verification explicitly selects it.
+Use `pnpm verify:release` only for actual release-sensitive infrastructure changes.
 
-Do not delegate the final command to a stage or dependency.
-
-## Verification failure routing
-
-Do not classify verifier output in the orchestrator.
-
-On failure:
-
-1. retain the exact command and visible output;
-2. launch a fresh independent review-routing worker with parent and dependency family context;
-3. require exact return family and stage fields;
-4. process the correction through self-route or cross-family origin rules;
-5. rerun the same final command after all affected reviews are current.
-
-If review records a genuine command blocker with both return fields `none`, stop and report it exactly.
+On failure, send exact command and output plus parent/dependency context to a fresh review-routing worker. Follow its exact route, rerun affected reviews, then rerun the same command.
 
 ## Stop conditions
 
-Stop only for a blocker explicitly recorded by a stage artifact or review-routing pass:
+Stop only for a recorded unavailable required source/tool, unavailable fresh isolation, unresolved architecture decision, project command that cannot execute after applicable mechanisms, unresolved concrete operator-reported defect, or safety-required input.
 
-- unavailable required official content or tools;
-- unavailable fresh-worker isolation;
-- unresolved architecture decision;
-- required project command that cannot execute after applicable mechanisms are exhausted;
-- unresolved concrete operator-reported defect;
-- safety-required operator input.
-
-A pending dependency, due source refresh, renderer revision change, stale downstream revision, ordinary finding, routable correction, absent positive visual acknowledgement, or missing repeated operator command is not a blocker.
+A pending dependency, due refresh, renderer change, dependency review change, stale downstream revision, ordinary finding, routable correction, absent positive visual acknowledgement, or missing repeated command is not a blocker.
 
 ## Final report
 
@@ -241,18 +198,18 @@ Overall family status: complete | blocked
 Next operator action: none | <single required action>
 ```
 
-Do not include full worker reports or copy stage-artifact contents.
+Do not include full worker reports or copy stage artifacts.
 
 ## Forbidden
 
 - Requiring one operator command per stage.
 - Performing stage-owned reasoning or edits in the orchestrator.
-- Selecting families or stages from prose.
+- Selecting targets from prose.
 - Using dependency gates.
+- Ignoring changed dependency review revisions.
 - Returning to parent without rerunning the route-origin stage.
-- Inferring dependencies from code.
-- Interpreting verifier output without a fresh review-routing worker.
+- Interpreting verifier output without fresh review routing.
 - Reusing one worker context for multiple stages.
-- Depending on Git, PR, or external check state.
+- Depending on Git, PR, or external checks.
 - Retaining full worker reports.
-- Marking completion before final workflow verification passes.
+- Marking completion before final verification passes.
