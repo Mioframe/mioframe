@@ -1,6 +1,6 @@
 ---
 name: material-component-migration
-description: 'Use after a family implementation is complete to migrate approved consumers to the canonical MD* API, remove replaced legacy ownership, prove product scenarios, and write MIGRATION.md without redesigning the component.'
+description: 'Use after a family implementation is complete to migrate approved consumers, remove replaced legacy ownership, prove product scenarios, and write MIGRATION.md without redesigning the component.'
 ---
 
 # Material component migration
@@ -15,32 +15,23 @@ Require successful current design, architecture, and implementation artifacts.
 
 Implementation must reference the exact current architecture revision, be complete with no deviations, and declare migration readiness `ready`.
 
-If an input is invalid, write migration as blocked, record the current implementation revision when available, set the exact earliest return family and stage, and return without consumer edits.
+If an input is invalid, write migration as blocked, set the exact earlier-stage or other-family route, and return without consumer edits.
 
 ## Worker boundary
 
-Run in a fresh isolated worker context.
+Run in a fresh isolated context.
 
-Use task-relevant readable workspace files, applicable rules, canonical artifacts, and documented project commands. Do not depend on Git, PR, commit, or external-check state.
+Use task-relevant workspace files, applicable rules, canonical artifacts, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
 Do not invent or revise public API, state, tokens, ownership, renderer strategy, gap strategy, or component behavior during migration.
 
 ## Mandatory preflight
 
-Before consumer edits, run `implementation-preflight` using:
+Before consumer edits, run `implementation-preflight` using the current architecture migration inventory, implementation artifact, consumers, scenarios, and failure paths.
 
-- the current architecture migration inventory and pass order;
-- the current implementation artifact;
-- current direct and indirect consumers;
-- accepted product scenarios and failure paths.
-
-Preflight resolves exact consumers and files, ordered migration passes, migration-owned `TEST IMPACT`, focused verifier scopes, obsolete owners and exports, and upstream blockers.
-
-Do not use preflight to reopen architecture.
+Preflight resolves exact files, pass order, migration-owned `TEST IMPACT`, focused verifier scopes, obsolete owners, and upstream blockers. It does not reopen architecture.
 
 ## Output
-
-Migration may change approved consumers, consumer proof and impact metadata, and obsolete imports, adapters, exports, tokens, tests, or compatibility code owned by the replaced surface.
 
 Write exactly:
 
@@ -52,7 +43,7 @@ Control fields:
 
 ```text
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-Status: complete | partial | stale | blocked
+Status: complete | stale | blocked
 IMPLEMENTATION.md reference: <path>
 IMPLEMENTATION.md revision: <exact Artifact revision>
 Revision summary: <one concise line>
@@ -62,7 +53,9 @@ Required return stage: none | design | architecture | implementation | migration
 Review readiness: ready | blocked
 ```
 
-Use a new artifact revision whenever migration content or its proof record changes. Record the exact implementation revision used for migration.
+`stale` is an external pre-run marker. This worker may finish only with `complete` or `blocked`.
+
+Use a new artifact revision whenever migration content or proof changes.
 
 Required headings:
 
@@ -79,7 +72,7 @@ Required headings:
 
 ## No-consumer case
 
-When architecture records the approved standalone library scenario and no current consumer or legacy owner exists, record explicitly:
+When architecture records the approved standalone library scenario and no consumer or legacy owner exists, record:
 
 ```text
 Consumer inventory: none
@@ -87,7 +80,7 @@ Migrated consumers: none
 Legacy ownership removed: not applicable
 ```
 
-Do not create a product consumer merely to make migration non-empty. Prove only that no current consumer or legacy owner exists and that the canonical family remains independently usable through its component-owned proof.
+Do not create a product consumer merely to make migration non-empty.
 
 ## Migration rules
 
@@ -102,36 +95,42 @@ Do not create a product consumer merely to make migration non-empty. Prove only 
 
 ## Consumer and blast-radius proof
 
-For each materially distinct consumer path record its previous and canonical owner/API, preserved behavior and failure paths, token or composition handoff, relevant loading/disabled/error/mobile/overlay/form/accessibility behavior, and faithful proof owner.
+For each materially distinct consumer path record previous and canonical ownership/API, preserved behavior and failure paths, token or composition handoff, relevant loading/disabled/error/mobile/overlay/form/accessibility behavior, and faithful proof owner.
 
 Run focused verifier-managed checks proving consumers compile, scenarios remain correct, no renderer leak remains, obsolete ownership is removed, contextual appearance is proven where required, and impact metadata maps changed source and proof.
 
-Run migration-scoped focused checks only. The orchestrator runs final verification after independent review.
+Run migration-scoped checks only. The orchestrator runs final verification after independent review.
 
-## Semantic routing
+## Terminal-state rules
 
-If migration requires a new official fact, architecture decision, public contract, token, renderer workaround, component behavior, or dependency correction:
+### Success
 
-- do not patch locally;
-- set the exact earliest return family and stage;
-- record the blocker;
-- return.
+Return `Status: complete` only when every consumer is migrated or the no-consumer case is proven, legacy ownership is removed or not applicable, focused checks pass, blockers and route are `none`, and review readiness is `ready`.
 
-Use `self/migration` for consumer, legacy-removal, product-scenario, impact-metadata, or migration-proof defects.
+### Earlier-stage or cross-family correction
 
-## Completion
+Return `Status: blocked` with an exact route only when correction belongs to:
 
-Use status `complete` only when:
+- `self/design`;
+- `self/architecture`;
+- `self/implementation`; or
+- another family’s design, architecture, implementation, or migration stage.
 
-- `IMPLEMENTATION.md revision` equals the current implementation revision;
-- every listed consumer is migrated or the no-consumer case is explicitly proven;
-- materially distinct scenarios and failure paths are proven;
-- obsolete ownership is removed or marked not applicable;
-- no renderer details leak to consumers;
-- focused verification passes;
-- blockers and return target are `none`;
-- review readiness is `ready`;
-- every required heading exists.
+### Current-stage defect
+
+A consumer, legacy-removal, product-scenario, impact-metadata, or migration-proof defect must be corrected in this worker.
+
+If it remains impossible after available migration mechanisms are exhausted, return:
+
+```text
+Status: blocked
+Remaining blockers: <exact blocker>
+Required return family: none
+Required return stage: none
+Review readiness: blocked
+```
+
+Do not return `self/migration` and do not return `partial`.
 
 The not-yet-run final workflow command does not affect migration status.
 
@@ -163,14 +162,15 @@ Status: complete | blocked
 
 ## Forbidden
 
+- Returning `partial` or terminal `stale`.
+- Returning `self/migration`.
+- Leaving a current-stage fixable defect unresolved.
 - Changing official design or architecture.
 - Adding consumer-specific hacks inside the component.
 - Accessing raw renderer details from consumers.
 - Creating a product consumer when none is required.
 - Migrating unrelated families for cleanup.
 - Keeping replaced logic only to reduce work.
-- Running independent review in this context.
-- Running or claiming final workflow verification.
-- Reusing an artifact revision after content changed.
+- Running independent review or final workflow verification.
 - Recording the pending final command as a blocker or risk.
 - Depending on Git or PR state.
