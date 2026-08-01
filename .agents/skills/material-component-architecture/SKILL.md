@@ -5,19 +5,19 @@ description: 'Use after a current complete family DESIGN.md exists to create or 
 
 # Material component architecture
 
-Resolve one deterministic implementation architecture from the current official design artifact and return control to the orchestrator.
+Resolve one deterministic implementation architecture from the current official design contract and return control to the orchestrator.
 
 This stage owns demand selection, public contract, ownership, dependencies, renderer strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or final workflow verification.
 
 ## Input gate
 
-Require current successful `DESIGN.md`.
+Require current successful `DESIGN.md` with a non-`none` design contract revision.
 
-If design is invalid, write architecture as blocked when possible, record the current design revision, route to `self/design`, and return.
+If design is invalid, write architecture as blocked when possible, record the current design contract revision, route to `self/design`, and return.
 
 ## Worker boundary
 
-Run in a fresh isolated context. Use task-relevant workspace files, applicable rules, exact renderer package artifacts, and documented commands. Do not depend on Git, PR, commit, or external-check state.
+Run in a fresh isolated context. Use task-relevant workspace files, applicable rules, exact renderer package artifacts, active dependency path when provided, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
 Treat code, tests, stories, and README files as implementation evidence, not architecture authority.
 
@@ -35,7 +35,7 @@ Control fields:
 Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 Status: ready | stale | blocked
 DESIGN.md reference: <path>
-DESIGN.md revision: <exact Artifact revision>
+DESIGN.md contract revision: <exact Design contract revision>
 Renderer revision: @m3e/web@<lockfile-resolved-version>
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
@@ -47,7 +47,9 @@ Dependency queue: none | <canonical-family>[; <canonical-family>...]
 Dependency review revisions: none | <canonical-family>=<REVIEW Artifact revision>[; <canonical-family>=<REVIEW Artifact revision>...]
 ```
 
-Use a new artifact revision whenever architecture changes or is revalidated after design, dependency, or renderer updates.
+Use a new artifact revision whenever architecture changes or is revalidated after a design-contract, dependency, or renderer change.
+
+A metadata-only design refresh with unchanged design contract revision does not require architecture rewrite.
 
 Dependency entries are exact family path segments, unique, ordered, and separated by `; `.
 
@@ -58,10 +60,12 @@ Use confirmed product scenarios when consumers exist.
 When no current consumer exists, the explicit invocation establishes one approved library scenario:
 
 - implement the unambiguous official standalone default;
-- expose only the minimum coherent API needed to render, accessibly name, and control it;
-- include disabled behavior only when official Material supports it;
-- include mandatory states, semantics, accessibility, and proof;
-- defer optional variants, sizes, shapes, and configurations;
+- expose only the API required to render and accessibly operate that default;
+- expose only mandatory official controllable state belonging to the selected default;
+- do not add `v-model`, selection, toggle, value, or open-state contracts unless that state is part of the selected official default;
+- include disabled behavior only when official Material supports it for that default;
+- include mandatory semantics, accessibility, states, and proof;
+- defer optional variants, sizes, shapes, configurations, and state models;
 - do not expose m3e capability merely because it exists;
 - do not invent product scenarios or create a product consumer.
 
@@ -96,12 +100,26 @@ Record every direct dependency in `Dependency families`.
 
 For each dependency:
 
-- if it lacks a successful current independent review, put it in `Dependency queue`;
+- if it lacks successful current independent review, put it in `Dependency queue`;
 - otherwise record its exact current `REVIEW.md` artifact revision in `Dependency review revisions`.
 
 Queue and revision entries must be disjoint and their union must equal dependency families.
 
 Do not use dependency stage gates.
+
+Self-dependency is forbidden.
+
+When an active dependency path is provided, every dependency already present in that path is forbidden. Do not emit a dependency that closes a cycle.
+
+If the orchestrator provides a detected path such as:
+
+```text
+button → loadingIndicator → button
+```
+
+inspect the family that emitted the repeated dependency and correct dependency ownership or composition. If the cycle cannot be removed without an unresolved architecture decision, use status `blocked`, route to `self/architecture`, and record the exact cycle and decision.
+
+Do not route to another family merely to continue traversing the same cycle.
 
 When queue is non-empty:
 
@@ -126,7 +144,7 @@ A later change to any recorded dependency review revision invalidates parent arc
 For contextual tokens record:
 
 ```text
-DESIGN.md path
+DESIGN.md official path
   → public Mioframe token
   → renderer input
   → renderer fallback
@@ -166,11 +184,11 @@ Review independently evaluates the complete result. The outer orchestrator owns 
 
 ## Completion
 
-Use readiness `ready` only when design and renderer revisions are current, all decisions are explicit, dependency queue is `none`, every dependency review revision is recorded and current, and no implementation decision remains.
+Use readiness `ready` only when design contract and renderer revisions are current, all decisions are explicit, dependency queue is `none`, every dependency review revision is recorded and current, dependency graph is acyclic for the active path, and no implementation decision remains.
 
 Use `awaiting-dependencies` for a fully resolved parent checkpoint whose dependencies still require complete pipelines.
 
-If design must change, route to `self/design`. If architecture remains unresolved, route to `self/architecture`.
+If design contract must change, route to `self/design`. If architecture remains unresolved, route to `self/architecture`.
 
 Return after writing the artifact. Do not implement in this context.
 
@@ -180,10 +198,12 @@ Return after writing the artifact. Do not implement in this context.
 MATERIAL ARCHITECTURE RESULT
 Input component:
 Canonical family:
-DESIGN.md revision:
+DESIGN.md contract revision:
 ARCHITECTURE.md path:
 Artifact revision:
 Renderer revision:
+Active dependency path: none | <path>
+Detected dependency cycle: none | <path>
 Selected and deferred surface:
 Dependency families:
 Dependency queue:
@@ -208,10 +228,13 @@ Status: complete | blocked
 - Editing official design, production code, proof, exports, or consumers.
 - Leaving architecture choices to coding workers.
 - Using dependency stage gates.
+- Emitting self-dependencies or dependencies already present in the active path.
 - Omitting or inventing dependency review revisions.
 - Inventing product demand when no consumer exists.
+- Adding `v-model` or controllable-state APIs not required by the selected official default.
 - Copying the full renderer API.
 - Assigning final verification to a stage worker.
 - Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
 - Reusing an artifact revision after content changed.
+- Rewriting architecture for metadata-only design refresh.
 - Depending on Git or PR state.
