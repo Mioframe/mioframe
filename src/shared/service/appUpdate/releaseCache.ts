@@ -32,10 +32,15 @@ export function buildReleaseCacheName(channel: ManagedChannel, releaseNumber: nu
   return `${buildManagedCacheNamespace(channel)}-release-${releaseNumber}`;
 }
 
+/** Matches only a canonical positive decimal integer: no leading zero, sign, decimal point, or exponent. */
+const CANONICAL_RELEASE_NUMBER_PATTERN = /^[1-9]\d*$/;
+
 const releaseNumberFromCacheName = (namespace: string, cacheName: string): number | undefined => {
   const prefix = `${namespace}-release-`;
   if (!cacheName.startsWith(prefix)) return undefined;
-  const numeric = Number(cacheName.slice(prefix.length));
+  const suffix = cacheName.slice(prefix.length);
+  if (!CANONICAL_RELEASE_NUMBER_PATTERN.test(suffix)) return undefined;
+  const numeric = Number(suffix);
   return isPositiveSafeInteger(numeric) ? numeric : undefined;
 };
 

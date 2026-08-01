@@ -253,12 +253,17 @@ export function rollbackActivation(
  * Returns `true` when the current `activating` candidate's boot-confirmation
  * deadline has passed as of `now`. `false` when the candidate is not
  * `activating`.
+ *
+ * Compares parsed time values (`Date.parse`), never ISO strings
+ * lexicographically: differing but valid fractional-second precision must
+ * never change the chronological outcome.
  * @param state - Current controller state.
  * @param now - ISO timestamp to evaluate against the candidate's `deadlineAt`.
  * @returns Whether the current activation is expired.
  */
 export function isActivationExpired(state: UpdateControllerState, now: string): boolean {
-  return state.candidate?.phase === 'activating' && now >= state.candidate.deadlineAt;
+  if (state.candidate?.phase !== 'activating') return false;
+  return Date.parse(now) >= Date.parse(state.candidate.deadlineAt);
 }
 
 /** Same-channel window-liveness facts a clean-launch decision needs. */

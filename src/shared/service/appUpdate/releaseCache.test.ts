@@ -112,6 +112,42 @@ describe('computeProtectedReleaseNumbers', () => {
   });
 });
 
+describe('computeCacheNamesToDelete — canonical release-number identity', () => {
+  it.each([
+    ['1', true],
+    ['42', true],
+    ['01', false],
+    ['+1', false],
+    ['1.0', false],
+    ['1e0', false],
+    ['0', false],
+    ['-1', false],
+    [String(Number.MAX_SAFE_INTEGER + 1), false],
+  ])('recognizes "stable-release-%s" as an unprotected release cache: %s', (suffix, recognized) => {
+    const name = `stable-release-${suffix}`;
+    // No release number is protected, so a recognized canonical cache name
+    // must be deleted; a non-canonical alias must never be recognized as any
+    // release identity, so it is never returned as deletable either — it is
+    // simply invisible to identity-based cleanup rather than aliasing a real
+    // release number.
+    expect(computeCacheNamesToDelete([name], 'stable', new Set())).toEqual(
+      recognized ? [name] : [],
+    );
+  });
+
+  it('never treats a non-canonical alias as the same identity as its canonical release number', () => {
+    // Protecting release 1 must not cause the non-canonical alias "01" to be
+    // treated as release 1 and thus also spared for that reason — it is
+    // simply never recognized as a release cache at all.
+    const result = computeCacheNamesToDelete(
+      ['stable-release-01', 'stable-release-1'],
+      'stable',
+      new Set([1]),
+    );
+    expect(result).toEqual([]);
+  });
+});
+
 describe('computeCacheNamesToDelete', () => {
   it('deletes unprotected release caches but keeps protected ones', () => {
     const result = computeCacheNamesToDelete(

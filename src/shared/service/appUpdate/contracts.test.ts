@@ -6,10 +6,23 @@ import {
 import {
   isPositiveSafeInteger,
   toReleaseSummary,
+  zodManagedChannel,
   zodReleaseDescriptor,
   zodReleaseSummary,
   zodUpdateControllerState,
 } from './contracts';
+
+describe('zodManagedChannel', () => {
+  it('accepts stable and develop', () => {
+    expect(zodManagedChannel.safeParse('stable').success).toBe(true);
+    expect(zodManagedChannel.safeParse('develop').success).toBe(true);
+  });
+
+  it('rejects any other value', () => {
+    expect(zodManagedChannel.safeParse('preview').success).toBe(false);
+    expect(zodManagedChannel.safeParse('').success).toBe(false);
+  });
+});
 
 describe('isPositiveSafeInteger', () => {
   it('accepts a positive safe integer', () => {

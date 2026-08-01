@@ -495,4 +495,17 @@ describe('isActivationExpired', () => {
     expect(isActivationExpired(activatingState, '2026-07-24T00:00:30.000Z')).toBe(true);
     expect(isActivationExpired(activatingState, '2026-07-24T00:01:00.000Z')).toBe(true);
   });
+
+  it('compares chronological instants, not ISO strings lexicographically', () => {
+    // '2026-07-24T00:00:30.500Z' sorts lexicographically *before*
+    // '2026-07-24T00:00:30.5Z' (the digit '0' sorts below 'Z'), even though
+    // both represent the exact same instant. A string comparison would
+    // therefore report "not yet expired"; the correct, chronological answer
+    // is "expired" (now >= deadline).
+    const withShortFraction: UpdateControllerState = {
+      ...baseState,
+      candidate: { phase: 'activating', release: releaseB, deadlineAt: '2026-07-24T00:00:30.5Z' },
+    };
+    expect(isActivationExpired(withShortFraction, '2026-07-24T00:00:30.500Z')).toBe(true);
+  });
 });

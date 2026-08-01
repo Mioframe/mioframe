@@ -1,6 +1,7 @@
 import * as z from 'zod/v4-mini';
 import {
   isPositiveSafeInteger,
+  zodManagedChannel,
   zodReleaseSummary,
   zodUpdateCandidate,
   zodUpdateMode,
@@ -180,6 +181,24 @@ export const zodAppUpdateStateChangedBroadcast = z.object({
 });
 /** A {@link zodAppUpdateStateChangedBroadcast}-validated state-changed broadcast. */
 export type AppUpdateStateChangedBroadcast = z.infer<typeof zodAppUpdateStateChangedBroadcast>;
+
+/**
+ * The response a managed controller worker returns to the same-path
+ * bootstrap compatibility probe (Stage 3): proves the responding
+ * `registration.active` worker is itself a managed update controller for the
+ * given channel, distinct from a compatible legacy Workbox `CACHE_URLS`
+ * responder. Defined here as the release-1 predecessor-compatibility
+ * contract only — Stage 2 implements no probing, install classification, or
+ * Workbox messaging.
+ */
+export const zodManagedControllerProbeResponse = z.object({
+  protocolVersion: zodProtocolVersion,
+  /** Discriminates this response from a compatible Workbox `CACHE_URLS` acknowledgement. */
+  kind: z.literal('managed-update-controller'),
+  channel: zodManagedChannel,
+});
+/** A {@link zodManagedControllerProbeResponse}-validated predecessor probe response. */
+export type ManagedControllerProbeResponse = z.infer<typeof zodManagedControllerProbeResponse>;
 
 /**
  * Stamps `payload` with the current private protocol version. The single

@@ -1,7 +1,9 @@
 import * as z from 'zod/v4-mini';
 
 /** The two channels the managed pinned-update controller supports. */
-export type ManagedChannel = 'stable' | 'develop';
+export const zodManagedChannel = z.enum(['stable', 'develop']);
+/** A {@link zodManagedChannel}-validated managed channel. */
+export type ManagedChannel = z.infer<typeof zodManagedChannel>;
 
 /**
  * Wire-format version for published release descriptors and the `latest.json`

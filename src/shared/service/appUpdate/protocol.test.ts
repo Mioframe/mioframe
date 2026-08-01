@@ -9,6 +9,7 @@ import {
   zodAppUpdateWorkerFailureResponse,
   zodAppUpdateWorkerRequest,
   zodAppUpdateWorkerResponse,
+  zodManagedControllerProbeResponse,
 } from './protocol';
 
 const activeRelease = {
@@ -240,6 +241,53 @@ describe('zodAppUpdateStateChangedBroadcast', () => {
   it('fails closed on a missing protocolVersion', () => {
     expect(
       zodAppUpdateStateChangedBroadcast.safeParse({ type: 'APP_UPDATE_STATE_CHANGED' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('zodManagedControllerProbeResponse', () => {
+  it('parses a valid v1 probe response for each channel', () => {
+    for (const channel of ['stable', 'develop'] as const) {
+      expect(
+        zodManagedControllerProbeResponse.safeParse({
+          protocolVersion: 1,
+          kind: 'managed-update-controller',
+          channel,
+        }).success,
+      ).toBe(true);
+    }
+  });
+
+  it('fails closed on a missing or wrong protocolVersion', () => {
+    expect(
+      zodManagedControllerProbeResponse.safeParse({
+        kind: 'managed-update-controller',
+        channel: 'stable',
+      }).success,
+    ).toBe(false);
+    expect(
+      zodManagedControllerProbeResponse.safeParse({
+        protocolVersion: 2,
+        kind: 'managed-update-controller',
+        channel: 'stable',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('fails closed on a wrong kind or an unsupported channel', () => {
+    expect(
+      zodManagedControllerProbeResponse.safeParse({
+        protocolVersion: 1,
+        kind: 'workbox',
+        channel: 'stable',
+      }).success,
+    ).toBe(false);
+    expect(
+      zodManagedControllerProbeResponse.safeParse({
+        protocolVersion: 1,
+        kind: 'managed-update-controller',
+        channel: 'preview',
+      }).success,
     ).toBe(false);
   });
 });
