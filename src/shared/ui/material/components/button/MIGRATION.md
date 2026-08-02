@@ -1,10 +1,10 @@
 # Button migration
 
-Artifact revision: 2026-08-01T12:15:27.037Z
+Artifact revision: 2026-08-02T15:08:21.455Z
 Status: complete
 IMPLEMENTATION.md reference: `src/shared/ui/material/components/button/IMPLEMENTATION.md`
 IMPLEMENTATION.md revision: 2026-08-01T12:02:58.888Z
-Revision summary: Revalidated the complete corrected consumer migration against the dependency-review-refreshed Button implementation.
+Revision summary: Corrected the migration record to distinguish preserved product contracts from intentional pending-presentation changes.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -39,7 +39,9 @@ All approved consumers use the canonical root-exported `MDButton`. `MDNavigation
 - Snackbar retains callback behavior and inverse-primary label/state-layer rendering across resting, hover, keyboard focus, and press; message and close-action colors remain independently owned.
 - Short indeterminate library loading remains presentation-only and does not infer or acquire disabled, operation, error, persistence, or re-entry state.
 
-No action surface, interaction tier, user-visible copy, product state owner, failure path, or mobile/overlay/form/accessibility behavior changed.
+Action surfaces, interaction tiers, product state owners, failure paths, and mobile, overlay, form, and accessibility contracts remain preserved.
+
+Pending presentation changed intentionally where the legacy Button spinner was not the correct owner. `DialogForm` now exposes form-level busy semantics and disables cancel/apply actions without placing a loading indicator inside the apply Button. Browser- and provider-controlled permission waits in repository and VFS recovery now use consumer-owned live status text and disabled conflicting actions. These user-visible copy and presentation changes implement the architecture's distinction between short library-owned loading presentation and externally controlled waits; they do not move operation ownership into Button or change result and error handling.
 
 ## Legacy ownership removed
 
@@ -74,4 +76,4 @@ None.
 
 ## Review readiness
 
-Ready. Every approved consumer is canonical, consumer-owned state and failure paths remain preserved, contextual Snackbar token ownership remains complete, Navigation Path's obsolete declaration is removed with faithful geometry/overflow proof, focused migration checks passed, and the route is `none/none`.
+Ready. Every approved consumer is canonical; the intentional DialogForm and permission-recovery pending-presentation changes are recorded with ownership preserved; contextual Snackbar token ownership remains complete; Navigation Path's obsolete declaration is removed with faithful geometry/overflow proof; focused migration checks passed; and the route is `none/none`.
