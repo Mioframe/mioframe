@@ -56,8 +56,8 @@ async function restoreRelease(
  * @param isNavigation - Whether this is a top-level navigation request.
  * @param coordinator - The channel's preparation coordinator.
  * @returns The response to serve: the archived index for navigation, the
- * cached asset or a controlled `404` for an owned asset request, or a
- * controlled `503` when `release` cannot be made available.
+ * cached asset, a controlled `404` when an owned asset is not listed by the
+ * descriptor, or a controlled `503` when `release` cannot be made available.
  */
 export async function serveRelease(
   channel: ManagedChannel,
@@ -87,10 +87,11 @@ export async function serveRelease(
 
   const relativePath = new URL(request.url).pathname.slice(channelBasePath.length);
   const descriptor = await readReleaseDescriptorMarker(cache);
-  if (!descriptor || !isReleaseFilePath(descriptor, relativePath)) return NOT_FOUND_RESPONSE();
+  if (!descriptor) return UNAVAILABLE_RESPONSE();
+  if (!isReleaseFilePath(descriptor, relativePath)) return NOT_FOUND_RESPONSE();
 
   const cached = await cache.match(request);
-  return cached ?? NOT_FOUND_RESPONSE();
+  return cached ?? UNAVAILABLE_RESPONSE();
 }
 
 /**

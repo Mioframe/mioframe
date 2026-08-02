@@ -431,6 +431,92 @@ describe('workerFetch', () => {
         ),
       );
     });
+
+    it('returns unavailable when the descriptor marker disappears after availability succeeds', async () => {
+      await seedAvailableRelease();
+      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
+      if (!cache) throw new Error('Expected seeded release cache');
+      const originalMatch = cache.match.bind(cache);
+      let matchCount = 0;
+      vi.spyOn(cache, 'match').mockImplementation((request) => {
+        matchCount += 1;
+        // Availability reads the descriptor and index first; this is the
+        // separate final descriptor read performed before asset serving.
+        if (matchCount === 3) return Promise.resolve(undefined);
+        return originalMatch(request);
+      });
+      const prepare = vi.fn();
+      const { serveRelease } = await import('./workerFetch');
+
+      await expectUnavailable(
+        serveRelease(
+          CHANNEL,
+          BASE_PATH,
+          activeRelease,
+          new Request('https://mioframe.example/assets/app.js'),
+          false,
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+      expect(prepare).not.toHaveBeenCalled();
+    });
+
+    it('returns unavailable when the final descriptor marker is malformed after availability succeeds', async () => {
+      await seedAvailableRelease();
+      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
+      if (!cache) throw new Error('Expected seeded release cache');
+      const originalMatch = cache.match.bind(cache);
+      let matchCount = 0;
+      vi.spyOn(cache, 'match').mockImplementation((request) => {
+        matchCount += 1;
+        // Availability reads the valid descriptor and index first; only the
+        // separate final descriptor response is malformed.
+        if (matchCount === 3) return Promise.resolve(new Response('not valid json{'));
+        return originalMatch(request);
+      });
+      const prepare = vi.fn();
+      const { serveRelease } = await import('./workerFetch');
+
+      await expectUnavailable(
+        serveRelease(
+          CHANNEL,
+          BASE_PATH,
+          activeRelease,
+          new Request('https://mioframe.example/assets/app.js'),
+          false,
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+      expect(prepare).not.toHaveBeenCalled();
+    });
+
+    it('returns unavailable when a listed asset disappears after availability succeeds', async () => {
+      await seedAvailableRelease();
+      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
+      if (!cache) throw new Error('Expected seeded release cache');
+      const originalMatch = cache.match.bind(cache);
+      let matchCount = 0;
+      vi.spyOn(cache, 'match').mockImplementation((request) => {
+        matchCount += 1;
+        // Availability reads descriptor and index, then serving re-reads the
+        // descriptor; the fourth match is the final requested-asset read.
+        if (matchCount === 4) return Promise.resolve(undefined);
+        return originalMatch(request);
+      });
+      const prepare = vi.fn();
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      await expectUnavailable(
+        handleAssetFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/assets/app.js'),
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+      expect(prepare).not.toHaveBeenCalled();
+    });
+
     it('serves an exact active-release asset from its cache', async () => {
       await seedAvailableRelease();
       const { handleAssetFetch } = await import('./workerFetch');
@@ -462,17 +548,19 @@ describe('workerFetch', () => {
 
     it('returns a controlled 404 for an assets/** path not listed by the active descriptor, never falling through to the network', async () => {
       await seedAvailableRelease();
+      const prepare = vi.fn();
       const { handleAssetFetch } = await import('./workerFetch');
 
       const response = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/unlisted.js'),
-        createFakeCoordinator(),
+        createFakeCoordinator({ prepare }),
       );
 
       expect(response.status).toBe(404);
       expect(fetchMock).not.toHaveBeenCalled();
+      expect(prepare).not.toHaveBeenCalled();
     });
 
     it('restores a missing listed asset through the shared preparation coordinator', async () => {
