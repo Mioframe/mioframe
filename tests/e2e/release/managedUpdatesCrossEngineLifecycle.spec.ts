@@ -18,13 +18,10 @@ import {
 // added to managedUpdatesLifecycle.spec.ts to keep that assertion present
 // on Chromium too.
 //
-// A reload of the sole remaining window is deliberately NOT part of this
-// portable contract: browsers differ in how promptly they retire a reloaded
-// document's own prior client from `clients.matchAll()`, so a sole-window
-// reload is not a guaranteed cross-browser activation trigger. The
-// guaranteed user flow this file proves instead is "close every Mioframe
-// window, then open Mioframe again" — consistent with the App updates
-// pane's own "Close all Mioframe windows" wording.
+// A sole-window reload is part of the portable contract: the worker excludes
+// both standard navigation identities (`clientId` and `resultingClientId`)
+// from the controlled+uncontrolled client enumeration, without a URL,
+// referrer, history, or browser-engine reload classifier.
 //
 // One shared work directory, artifact server, and BrowserContext for the
 // whole file (the same stateful fixture model managedUpdatesLifecycle.spec.ts
@@ -181,7 +178,7 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
     rmSync(workDir, { recursive: true, force: true });
   });
 
-  test('an uncontrolled window and a second controlled window both block activation; closing every window activates', async () => {
+  test('additional windows block activation, closing all windows activates, and a sole-window reload qualifies', async () => {
     const openPages: Page[] = [];
 
     try {
@@ -272,6 +269,7 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       expect(installedC.snapshot.candidate?.phase).toBe('ready');
       expect(installedC.snapshot.candidate?.release.releaseNumber).toBe(releaseC.releaseNumber);
 
+      // With another controlled window still open, reload remains blocked.
       await windowOne.reload();
       await waitForControlledPage(windowOne);
       await expectAppReady(windowOne);
@@ -283,9 +281,11 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
         expect(blockedC.state.candidate?.release.releaseNumber).toBe(releaseC.releaseNumber);
       }
 
-      // 4. Closing every window activates C.
-      await windowOne.close();
+      // 4. Closing every window activates C. This also lets every engine
+      // retire the deliberately additional client before the independent
+      // sole-window reload case below begins.
       await windowTwo.close();
+      await windowOne.close();
       const windowThree = await context.newPage();
       openPages.push(windowThree);
       await windowThree.goto(server.url);
@@ -295,13 +295,40 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       if (committedC.status === 'valid') {
         expect(committedC.state.candidate).toBeUndefined();
       }
+
+      // 5. With only windowThree live, its old/new standard navigation
+      // identities are excluded and its reload qualifies without any reload
+      // classifier or engine-specific branch.
+      const releaseD = await buildAndPublishManagedRelease({
+        channel: 'stable',
+        basePath: BASE_PATH,
+        appVersion: '1.3.0',
+        buildId: 'cross-engine-release-d',
+        workDir,
+      });
+      const checkedD = await sendProtocolRequest<{
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
+      }>(windowThree, { type: 'CHECK_FOR_UPDATES' });
+      expect(checkedD.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
+      const installedD = await sendProtocolRequest<{
+        snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
+      }>(windowThree, { type: 'INSTALL_ON_NEXT_LAUNCH' });
+      expect(installedD.snapshot.candidate?.phase).toBe('ready');
+
+      await windowThree.reload();
+      await waitForControlledPage(windowThree);
+      await expectAppReady(windowThree);
+      const committedD = await waitForActiveRelease(windowThree, releaseD.releaseNumber);
+      if (committedD.status === 'valid') {
+        expect(committedD.state.candidate).toBeUndefined();
+      }
     } finally {
       await closeAll(openPages);
     }
   });
 
   test('a boot failure rolls back to the previous release', async () => {
-    // Continues from the previous test's final state (release C active) —
+    // Continues from the previous test's final state (release D active) —
     // the shared context and worker state are never reset between tests.
     const openPages: Page[] = [];
 
@@ -321,23 +348,23 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       // A real hash-validated release whose entry script throws
       // immediately, exactly like a build that passed CI but has a runtime
       // bug.
-      const releaseD = await buildAndPublishBrokenManagedRelease({
+      const releaseE = await buildAndPublishBrokenManagedRelease({
         channel: 'stable',
         basePath: BASE_PATH,
-        appVersion: '1.3.0',
-        buildId: 'cross-engine-release-d-broken',
+        appVersion: '1.4.0',
+        buildId: 'cross-engine-release-e-broken',
         workDir,
       });
 
       const checked = await sendProtocolRequest<{
         snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(openPage, { type: 'CHECK_FOR_UPDATES' });
-      expect(checked.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
+      expect(checked.snapshot.candidate?.release.releaseNumber).toBe(releaseE.releaseNumber);
       const installed = await sendProtocolRequest<{
         snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(openPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
       expect(installed.snapshot.candidate?.phase).toBe('ready');
-      expect(installed.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
+      expect(installed.snapshot.candidate?.release.releaseNumber).toBe(releaseE.releaseNumber);
       await openPage.close();
 
       // Closing every window and opening a genuinely new one starts
@@ -354,7 +381,7 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       const rolledBack = await waitForActiveRelease(failingPage, previousActiveReleaseNumber ?? -1);
       if (rolledBack.status === 'valid') {
         expect(rolledBack.state.candidate?.phase).toBe('failed');
-        expect(rolledBack.state.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
+        expect(rolledBack.state.candidate?.release.releaseNumber).toBe(releaseE.releaseNumber);
       }
     } finally {
       await closeAll(openPages);

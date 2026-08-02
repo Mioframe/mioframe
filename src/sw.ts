@@ -15,9 +15,8 @@ declare const self: ServiceWorkerGlobalScope;
  * particular application release — only its own channel (derived at runtime
  * from its registration scope, not build-embedded).
  *
- * Stage 3 bootstrap and active-release serving are wired. Stage 4
- * reconciliation and preparation are wired. Stage 5 activation and
- * rollback fetch behavior is not yet wired.
+ * Stage 3 bootstrap and active-release serving, Stage 4 reconciliation and
+ * preparation, and Stage 5 activation and rollback are wired.
  */
 
 import {
@@ -108,10 +107,32 @@ self.addEventListener('fetch', (event) => {
   if (pathname.startsWith(`${channelBasePath}updates/`)) return;
 
   if (event.request.mode === 'navigate' && event.request.destination === 'document') {
-    event.respondWith(
-      handleNavigationFetch(channel, channelBasePath, event.request, preparationCoordinator),
+    const resultPromise = handleNavigationFetch(
+      channel,
+      channelBasePath,
+      event.request,
+      preparationCoordinator,
+      { clientId: event.clientId, resultingClientId: event.resultingClientId },
+      {
+        channelOrigin,
+        enqueue,
+        matchWindowClients: () =>
+          self.clients.matchAll({ type: 'window', includeUncontrolled: true }),
+      },
     );
-    event.waitUntil(updateReconciler.reconcileNavigation().catch(() => {}));
+    const responsePromise = resultPromise.then((result) => result.response);
+    event.respondWith(responsePromise);
+    event.waitUntil(
+      Promise.all([
+        resultPromise.then(async (result) => {
+          await responsePromise;
+          await result.runLifetimeWork?.();
+        }),
+        updateReconciler.reconcileNavigation(),
+      ])
+        .then(() => undefined)
+        .catch(() => {}),
+    );
     return;
   }
 

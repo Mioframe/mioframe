@@ -1,5 +1,8 @@
 import type { ManagedChannel, ReleaseSummary } from './contracts';
-import { readControllerState } from './controllerState';
+import { readControllerState, writeControllerState } from './controllerState';
+import { BOOT_CONFIRMATION_TIMEOUT_MS } from './bootConfirmation';
+import { countSameChannelWindowClients, type WindowClientIdentity } from './cleanLaunch';
+import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import {
   buildReleaseCacheName,
@@ -8,9 +11,43 @@ import {
   readReleaseDescriptorMarker,
   readReleaseIndexMarker,
 } from './releaseCache';
+import { withState } from './stateLock';
+import {
+  isActivationExpired,
+  rollbackActivation,
+  shouldStartActivation,
+  startActivation,
+} from './stateTransitions';
+import { broadcastRollback, broadcastStateChanged } from './workerBroadcast';
 
 const UNAVAILABLE_RESPONSE = () => new Response('Release unavailable', { status: 503 });
 const NOT_FOUND_RESPONSE = () => new Response('Not found', { status: 404 });
+
+/** Standard client identities belonging to the navigation being evaluated. */
+export type NavigationFetchContext = {
+  /** The FetchEvent's current client identity, when present. */
+  clientId: string;
+  /** The FetchEvent's resulting client identity, when present. */
+  resultingClientId: string;
+};
+
+/** Worker-owned dependencies needed to decide a navigation activation. */
+export type NavigationFetchDependencies = {
+  /** This worker's channel origin. */
+  channelOrigin: string;
+  /** The shared short-operation queue. */
+  enqueue: OperationQueue;
+  /** Enumerates controlled and uncontrolled window clients. */
+  matchWindowClients: () => Promise<readonly WindowClientIdentity[]>;
+};
+
+/** Navigation response plus optional event-lifetime follow-up work. */
+export type NavigationFetchResult = {
+  /** The response delivered to the navigation. */
+  response: Response;
+  /** Deferred broadcast work, invoked only after response resolution. */
+  runLifetimeWork?: (() => Promise<void>) | undefined;
+};
 
 /**
  * Attempts to restore a release from its immutable server archive, through
@@ -118,14 +155,11 @@ export async function handleAssetFetch(
   try {
     const read = await readControllerState(channel);
     if (read.status !== 'valid') return UNAVAILABLE_RESPONSE();
-    return await serveRelease(
-      channel,
-      channelBasePath,
-      read.state.activeRelease,
-      request,
-      false,
-      coordinator,
-    );
+    const release =
+      read.state.candidate?.phase === 'activating'
+        ? read.state.candidate.release
+        : read.state.activeRelease;
+    return await serveRelease(channel, channelBasePath, release, request, false, coordinator);
   } catch {
     return UNAVAILABLE_RESPONSE();
   }
@@ -145,6 +179,8 @@ export async function handleAssetFetch(
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming navigation request.
  * @param coordinator - The channel's preparation coordinator.
+ * @param context - Standard client identities for the current navigation.
+ * @param dependencies - Worker origin, queue, and controlled+uncontrolled client enumeration.
  * @returns The response to serve.
  */
 export async function handleNavigationFetch(
@@ -152,19 +188,78 @@ export async function handleNavigationFetch(
   channelBasePath: string,
   request: Request,
   coordinator: PreparationCoordinator,
-): Promise<Response> {
+  context: NavigationFetchContext,
+  dependencies: NavigationFetchDependencies,
+): Promise<NavigationFetchResult> {
   try {
-    const read = await readControllerState(channel);
-    if (read.status !== 'valid') return UNAVAILABLE_RESPONSE();
-    return await serveRelease(
+    const initial = await readControllerState(channel);
+    if (initial.status !== 'valid') return { response: UNAVAILABLE_RESPONSE() };
+
+    let otherLiveClientCount: number | undefined;
+    if (initial.state.candidate?.phase === 'ready') {
+      const clients = await dependencies.matchWindowClients();
+      const excludedClientIds = new Set(
+        [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
+      );
+      otherLiveClientCount = countSameChannelWindowClients(
+        clients,
+        excludedClientIds,
+        channelBasePath,
+        dependencies.channelOrigin,
+      );
+    }
+
+    const selection = await withState(channel, dependencies.enqueue, async (state) => {
+      const now = new Date().toISOString();
+      if (state.candidate?.phase === 'activating') {
+        if (!isActivationExpired(state, now)) return { release: state.candidate.release };
+
+        const failedReleaseNumber = state.candidate.release.releaseNumber;
+        const rolledBack = rollbackActivation(state, failedReleaseNumber);
+        await writeControllerState(channel, rolledBack);
+        const excludedClientIds = new Set(
+          [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
+        );
+        return {
+          release: rolledBack.activeRelease,
+          runLifetimeWork: () =>
+            broadcastRollback(
+              channelBasePath,
+              dependencies.channelOrigin,
+              failedReleaseNumber,
+              excludedClientIds,
+            ).catch(() => {}),
+        };
+      }
+
+      if (
+        otherLiveClientCount !== undefined &&
+        shouldStartActivation(state, { otherLiveClientCount })
+      ) {
+        const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
+        const activating = startActivation(state, deadlineAt);
+        await writeControllerState(channel, activating);
+        if (activating.candidate?.phase !== 'activating') return { release: state.activeRelease };
+        return {
+          release: activating.candidate.release,
+          runLifetimeWork: () =>
+            broadcastStateChanged(channelBasePath, dependencies.channelOrigin).catch(() => {}),
+        };
+      }
+
+      return { release: state.activeRelease };
+    });
+
+    const response = await serveRelease(
       channel,
       channelBasePath,
-      read.state.activeRelease,
+      selection.release,
       request,
       true,
       coordinator,
     );
+    return { response, runLifetimeWork: selection.runLifetimeWork };
   } catch {
-    return UNAVAILABLE_RESPONSE();
+    return { response: UNAVAILABLE_RESPONSE() };
   }
 }

@@ -77,6 +77,8 @@ type FakeEvent = {
   source?: unknown;
   ports?: Array<{ postMessage: (message: unknown) => void }>;
   request?: Request;
+  clientId?: string;
+  resultingClientId?: string;
   waitUntil: (promise: Promise<unknown>) => void;
   respondWith?: (promise: unknown) => void;
 };
@@ -163,6 +165,7 @@ beforeEach(() => {
   enqueueMock.mockClear();
   handleAssetFetchMock.mockReset();
   handleNavigationFetchMock.mockReset();
+  handleNavigationFetchMock.mockResolvedValue({ response: new Response('navigation') });
   runInstallMock.mockReset();
   runInstallMock.mockResolvedValue(undefined);
   reconcileNavigationMock.mockReset().mockResolvedValue(undefined);
@@ -472,7 +475,17 @@ describe('src/sw.ts fetch routing', () => {
     const request = new Request(url);
     if (mode === 'navigate') Object.defineProperty(request, 'mode', { value: 'navigate' });
     Object.defineProperty(request, 'destination', { value: destination });
-    return { event: { request, respondWith, waitUntil }, respondWith, waitUntil };
+    return {
+      event: {
+        request,
+        clientId: 'current-client',
+        resultingClientId: 'resulting-client',
+        respondWith,
+        waitUntil,
+      },
+      respondWith,
+      waitUntil,
+    };
   }
 
   it('intercepts a same-channel top-level navigation', async () => {
@@ -493,6 +506,12 @@ describe('src/sw.ts fetch routing', () => {
       '/',
       event.request,
       preparationCoordinatorFake,
+      { clientId: 'current-client', resultingClientId: 'resulting-client' },
+      expect.objectContaining({
+        channelOrigin: 'https://mioframe.example',
+        enqueue: enqueueMock,
+        matchWindowClients: expect.any(Function),
+      }),
     );
   });
 
@@ -511,6 +530,72 @@ describe('src/sw.ts fetch routing', () => {
     expect(reconcileNavigationMock).toHaveBeenCalledTimes(1);
     expect(waitUntil).toHaveBeenCalledTimes(1);
     expect(respondWith.mock.calls[0]?.[0]).not.toBe(waitUntil.mock.calls[0]?.[0]);
+  });
+
+  it('passes both navigation identities and starts deferred work only after the response resolves while reconciliation remains independent', async () => {
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    let resolveResult!: (value: {
+      response: Response;
+      runLifetimeWork: () => Promise<void>;
+    }) => void;
+    const resultPromise = new Promise<{
+      response: Response;
+      runLifetimeWork: () => Promise<void>;
+    }>((resolve) => {
+      resolveResult = resolve;
+    });
+    const order: string[] = [];
+    const runLifetimeWork = vi.fn(() => {
+      order.push('lifetime');
+      return Promise.resolve();
+    });
+    handleNavigationFetchMock.mockReturnValue(resultPromise);
+    reconcileNavigationMock.mockImplementation(() => {
+      order.push('reconcile');
+      return Promise.resolve();
+    });
+    const { event, respondWith, waitUntil } = createFakeFetchEvent(
+      'https://mioframe.example/',
+      'navigate',
+      'document',
+    );
+
+    listener(event);
+
+    const responsePromise = respondWith.mock.calls[0]?.[0];
+    if (!(responsePromise instanceof Promise)) throw new Error('Expected a response promise');
+    void responsePromise.then(() => {
+      order.push('response');
+    });
+    expect(order).toEqual(['reconcile']);
+    expect(runLifetimeWork).not.toHaveBeenCalled();
+    resolveResult({ response: new Response('candidate'), runLifetimeWork });
+    const response = await responsePromise;
+    if (!(response instanceof Response)) throw new Error('Expected a navigation response');
+    expect(await response.text()).toBe('candidate');
+    await waitUntil.mock.calls[0]?.[0];
+    expect(order).toEqual(['reconcile', 'response', 'lifetime']);
+  });
+
+  it('swallows deferred navigation-work rejection under waitUntil', async () => {
+    handleNavigationFetchMock.mockResolvedValue({
+      response: new Response('candidate'),
+      runLifetimeWork: () => Promise.reject(new Error('broadcast failed')),
+    });
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, waitUntil } = createFakeFetchEvent(
+      'https://mioframe.example/',
+      'navigate',
+      'document',
+    );
+
+    listener(event);
+
+    await expect(waitUntil.mock.calls[0]?.[0]).resolves.toBeUndefined();
   });
 
   it.each(['iframe', 'embed'] as const)(

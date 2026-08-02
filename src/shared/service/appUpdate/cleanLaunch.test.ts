@@ -82,10 +82,18 @@ describe('countSameChannelWindowClients', () => {
 
   it('excludes the current navigation client ids, by identity', () => {
     const clients = [
-      { id: 'replaced', url: 'https://mioframe.example/' },
+      { id: 'old-navigation', url: 'https://mioframe.example/' },
+      { id: 'new-navigation', url: 'https://mioframe.example/' },
       { id: 'other', url: 'https://mioframe.example/settings' },
     ];
-    expect(countSameChannelWindowClients(clients, new Set(['replaced']), '/', ORIGIN)).toBe(1);
+    expect(
+      countSameChannelWindowClients(
+        clients,
+        new Set(['old-navigation', 'new-navigation']),
+        '/',
+        ORIGIN,
+      ),
+    ).toBe(1);
   });
 
   it('still counts another window with the exact same URL as the current navigation', () => {

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReleaseDescriptor, ReleaseSummary } from './contracts';
+import type { ReleaseDescriptor, ReleaseSummary, UpdateControllerState } from './contracts';
+import type { NavigationFetchDependencies, NavigationFetchResult } from './workerFetch';
+import { createOperationQueue } from './operationQueue';
 import { createFakeCacheStorage } from './fakeCacheStorage.testUtils';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import {
@@ -9,9 +11,11 @@ import {
 } from './releaseCache';
 
 const readControllerStateMock = vi.fn();
+const writeControllerStateMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
+  writeControllerState: (...args: unknown[]) => writeControllerStateMock(...args),
 }));
 
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
@@ -72,12 +76,42 @@ async function expectUnavailable(responsePromise: Promise<Response>): Promise<vo
   expect(fetchMock).not.toHaveBeenCalled();
 }
 
+async function expectUnavailableNavigation(
+  resultPromise: Promise<NavigationFetchResult>,
+): Promise<void> {
+  await expectUnavailable(resultPromise.then((result) => result.response));
+}
+
+async function invokeNavigationFetch(
+  channel: typeof CHANNEL,
+  channelBasePath: string,
+  request: Request,
+  coordinator: PreparationCoordinator,
+  context = { clientId: '', resultingClientId: '' },
+  dependencies: NavigationFetchDependencies = {
+    channelOrigin: 'https://mioframe.example',
+    enqueue: (operation) => operation(),
+    matchWindowClients: () => Promise.resolve([]),
+  },
+): Promise<NavigationFetchResult> {
+  const workerFetch = await import('./workerFetch');
+  return workerFetch.handleNavigationFetch(
+    channel,
+    channelBasePath,
+    request,
+    coordinator,
+    context,
+    dependencies,
+  );
+}
+
 describe('workerFetch', () => {
   beforeEach(() => {
     cachesByName.clear();
     fetchMock.mockReset();
     fetchMock.mockResolvedValue(new Response('network response'));
     readControllerStateMock.mockReset();
+    writeControllerStateMock.mockReset().mockResolvedValue(undefined);
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
       state: { activeRelease },
@@ -87,22 +121,20 @@ describe('workerFetch', () => {
   describe('handleNavigationFetch', () => {
     it('resolves a controlled unavailable response when controller-state access rejects', async () => {
       readControllerStateMock.mockRejectedValue(new Error('IndexedDB failed'));
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const responsePromise = handleNavigationFetch(
+      const responsePromise = invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
         createFakeCoordinator(),
       );
 
-      await expectUnavailable(responsePromise);
+      await expectUnavailableNavigation(responsePromise);
     });
     it('serves the active release navigation from its archived index', async () => {
       await seedAvailableRelease();
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -115,9 +147,8 @@ describe('workerFetch', () => {
 
     it('serves cached offline navigation with no network calls at all', async () => {
       await seedAvailableRelease();
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      await handleNavigationFetch(
+      await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -129,9 +160,8 @@ describe('workerFetch', () => {
 
     it('returns the controlled unavailable response when there is no managed state yet (absent), never falling through to the live deployment', async () => {
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -144,9 +174,8 @@ describe('workerFetch', () => {
 
     it('returns the controlled unavailable response for invalid controller state, without ever calling network fetch', async () => {
       readControllerStateMock.mockResolvedValue({ status: 'invalid' });
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -164,25 +193,17 @@ describe('workerFetch', () => {
       buildDate: '2026-07-24T00:00:00.000Z',
     };
 
-    it.each(['available', 'ready', 'activating', 'failed'] as const)(
-      'never selects a candidate phase: only activeRelease is ever served while the candidate is %s',
+    it.each(['available', 'failed'] as const)(
+      'serves activeRelease while the candidate is %s',
       async (phase) => {
         await seedAvailableRelease();
-        const candidate =
-          phase === 'activating'
-            ? {
-                phase,
-                release: candidateReleaseForPhaseMatrix,
-                deadlineAt: '2026-07-24T00:00:30.000Z',
-              }
-            : { phase, release: candidateReleaseForPhaseMatrix };
+        const candidate = { phase, release: candidateReleaseForPhaseMatrix };
         readControllerStateMock.mockResolvedValue({
           status: 'valid',
           state: { activeRelease, candidate },
         });
-        const { handleNavigationFetch } = await import('./workerFetch');
 
-        const response = await handleNavigationFetch(
+        const { response } = await invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
@@ -193,14 +214,313 @@ describe('workerFetch', () => {
       },
     );
 
+    it('starts a ready clean-launch activation, preserves activeRelease, and serves the candidate', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-02T12:00:00.000Z'));
+      const candidateRelease = candidateReleaseForPhaseMatrix;
+      await seedAvailableRelease(candidateRelease, {
+        ...activeDescriptor,
+        releaseNumber: candidateRelease.releaseNumber,
+        appVersion: candidateRelease.appVersion,
+        buildId: candidateRelease.buildId,
+        buildDate: candidateRelease.buildDate,
+      });
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          schemaVersion: 1,
+          mode: 'manual',
+          activeRelease,
+          candidate: { phase: 'ready', release: candidateRelease },
+        },
+      });
+
+      const result = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+        { clientId: 'old', resultingClientId: 'new' },
+        {
+          channelOrigin: 'https://mioframe.example',
+          enqueue: (operation) => operation(),
+          matchWindowClients: () => Promise.resolve([]),
+        },
+      );
+
+      expect(writeControllerStateMock).toHaveBeenCalledWith(
+        CHANNEL,
+        expect.objectContaining({
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: '2026-08-02T12:00:30.000Z',
+          },
+        }),
+      );
+      expect(await result.response.text()).toBe('<html>archived</html>');
+      expect(result.runLifetimeWork).toBeTypeOf('function');
+      vi.useRealTimers();
+    });
+
+    it('keeps a ready candidate blocked when another same-channel window exists', async () => {
+      await seedAvailableRelease();
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          activeRelease,
+          candidate: { phase: 'ready', release: candidateReleaseForPhaseMatrix },
+        },
+      });
+
+      const { response } = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+        { clientId: 'old', resultingClientId: 'new' },
+        {
+          channelOrigin: 'https://mioframe.example',
+          enqueue: (operation) => operation(),
+          matchWindowClients: () =>
+            Promise.resolve([{ id: 'other', url: 'https://mioframe.example/settings' }]),
+        },
+      );
+
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(await response.text()).toBe('<html>archived</html>');
+    });
+
+    it('resolves controlled unavailable when clean-launch client enumeration fails', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          activeRelease,
+          candidate: { phase: 'ready', release: candidateReleaseForPhaseMatrix },
+        },
+      });
+
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+          { clientId: '', resultingClientId: '' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.reject(new Error('client enumeration failed')),
+          },
+        ),
+      );
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+    });
+
+    it('resolves controlled unavailable when activation persistence fails', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          activeRelease,
+          candidate: { phase: 'ready', release: candidateReleaseForPhaseMatrix },
+        },
+      });
+      writeControllerStateMock.mockRejectedValue(new Error('persistence failed'));
+
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+          { clientId: '', resultingClientId: '' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.resolve([]),
+          },
+        ),
+      );
+    });
+
+    it('serves an unexpired activating candidate without writing state', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-02T12:00:00.000Z'));
+      const candidateRelease = candidateReleaseForPhaseMatrix;
+      await seedAvailableRelease(candidateRelease, {
+        ...activeDescriptor,
+        releaseNumber: candidateRelease.releaseNumber,
+        appVersion: candidateRelease.appVersion,
+        buildId: candidateRelease.buildId,
+        buildDate: candidateRelease.buildDate,
+      });
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: '2026-08-02T12:00:01.000Z',
+          },
+        },
+      });
+
+      const { response } = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+      );
+
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(await response.text()).toBe('<html>archived</html>');
+      vi.useRealTimers();
+    });
+
+    it('persists an expired activation as failed, serves active, excludes both navigation identities from deferred rollback, and performs no cleanup', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-02T12:00:00.000Z'));
+      await seedAvailableRelease();
+      const candidateRelease = candidateReleaseForPhaseMatrix;
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: '2026-08-02T12:00:00.000Z',
+          },
+        },
+      });
+      const oldPostMessage = vi.fn();
+      const newPostMessage = vi.fn();
+      const otherPostMessage = vi.fn();
+      vi.stubGlobal('self', {
+        clients: {
+          matchAll: vi.fn().mockResolvedValue([
+            {
+              id: 'old',
+              type: 'window',
+              url: 'https://mioframe.example/',
+              postMessage: oldPostMessage,
+            },
+            {
+              id: 'new',
+              type: 'window',
+              url: 'https://mioframe.example/',
+              postMessage: newPostMessage,
+            },
+            {
+              id: 'other',
+              type: 'window',
+              url: 'https://mioframe.example/',
+              postMessage: otherPostMessage,
+            },
+          ]),
+        },
+      });
+      const runCleanup = vi.fn();
+      const coordinator = createFakeCoordinator({ runCleanup });
+
+      const result = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        coordinator,
+        { clientId: 'old', resultingClientId: 'new' },
+        {
+          channelOrigin: 'https://mioframe.example',
+          enqueue: (operation) => operation(),
+          matchWindowClients: () => Promise.resolve([]),
+        },
+      );
+
+      expect(writeControllerStateMock).toHaveBeenCalledWith(
+        CHANNEL,
+        expect.objectContaining({
+          activeRelease,
+          candidate: { phase: 'failed', release: candidateRelease },
+        }),
+      );
+      expect(await result.response.text()).toBe('<html>archived</html>');
+      await result.runLifetimeWork?.();
+      expect(oldPostMessage).not.toHaveBeenCalled();
+      expect(newPostMessage).not.toHaveBeenCalled();
+      expect(otherPostMessage).toHaveBeenCalledOnce();
+      expect(runCleanup).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('serializes concurrent qualifying navigations into one activation write and one served target', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-08-02T12:00:00.000Z'));
+      const candidateRelease = candidateReleaseForPhaseMatrix;
+      await seedAvailableRelease(candidateRelease, {
+        ...activeDescriptor,
+        releaseNumber: candidateRelease.releaseNumber,
+        appVersion: candidateRelease.appVersion,
+        buildId: candidateRelease.buildId,
+        buildDate: candidateRelease.buildDate,
+      });
+      let persistedState: UpdateControllerState = {
+        schemaVersion: 1 as const,
+        mode: 'manual' as const,
+        activeRelease,
+        candidate: { phase: 'ready' as const, release: candidateRelease },
+      };
+      readControllerStateMock.mockImplementation(() =>
+        Promise.resolve({
+          status: 'valid',
+          state: persistedState,
+        }),
+      );
+      writeControllerStateMock.mockImplementation((_channel, state) => {
+        persistedState = state;
+        return Promise.resolve();
+      });
+      const enqueue = createOperationQueue();
+      const dependencies = {
+        channelOrigin: 'https://mioframe.example',
+        enqueue,
+        matchWindowClients: () => Promise.resolve([]),
+      };
+
+      const [first, second] = await Promise.all([
+        invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+          { clientId: 'first-old', resultingClientId: 'first-new' },
+          dependencies,
+        ),
+        invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+          { clientId: 'second-old', resultingClientId: 'second-new' },
+          dependencies,
+        ),
+      ]);
+
+      expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
+      expect(await first.response.text()).toBe('<html>archived</html>');
+      expect(await second.response.text()).toBe('<html>archived</html>');
+      expect(persistedState.candidate?.phase).toBe('activating');
+      vi.useRealTimers();
+    });
+
     it('restores a missing active-release cache through the shared preparation coordinator', async () => {
       const prepare = vi.fn().mockImplementation(async () => {
         await seedAvailableRelease();
         return activeDescriptor;
       });
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -221,9 +541,8 @@ describe('workerFetch', () => {
         await seedAvailableRelease();
         return activeDescriptor;
       });
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -245,9 +564,8 @@ describe('workerFetch', () => {
         await seedAvailableRelease();
         return activeDescriptor;
       });
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -269,9 +587,8 @@ describe('workerFetch', () => {
         await seedAvailableRelease();
         return activeDescriptor;
       });
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -283,9 +600,7 @@ describe('workerFetch', () => {
     });
 
     it('returns the controlled unavailable response when restoration fails, never falling back to another release or the live deployment', async () => {
-      const { handleNavigationFetch } = await import('./workerFetch');
-
-      const response = await handleNavigationFetch(
+      const { response } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
@@ -301,10 +616,9 @@ describe('workerFetch', () => {
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
       vi.spyOn(cache, 'keys').mockRejectedValue(new Error('cache keys failed'));
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      await expectUnavailable(
-        handleNavigationFetch(
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
@@ -315,10 +629,9 @@ describe('workerFetch', () => {
 
     it('resolves a controlled unavailable response when restoration rejects', async () => {
       const prepare = vi.fn().mockRejectedValue(new Error('restoration failed'));
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      await expectUnavailable(
-        handleNavigationFetch(
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
@@ -336,10 +649,9 @@ describe('workerFetch', () => {
         return originalOpen(name);
       });
       const prepare = vi.fn().mockResolvedValue(activeDescriptor);
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      await expectUnavailable(
-        handleNavigationFetch(
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
@@ -360,10 +672,9 @@ describe('workerFetch', () => {
         if (matchCount === 3) return Promise.reject(new Error('final index read failed'));
         return originalMatch(request);
       });
-      const { handleNavigationFetch } = await import('./workerFetch');
 
-      await expectUnavailable(
-        handleNavigationFetch(
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
@@ -627,14 +938,21 @@ describe('workerFetch', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('never selects a candidate phase: only activeRelease is ever served for an asset request', async () => {
-      await seedAvailableRelease();
+    it('serves the activating candidate for an owned asset request', async () => {
       const candidateRelease: ReleaseSummary = {
         releaseNumber: 2,
         appVersion: '2.0.0',
         buildId: 'build-2',
         buildDate: '2026-07-24T00:00:00.000Z',
       };
+      const candidateDescriptor: ReleaseDescriptor = {
+        ...activeDescriptor,
+        releaseNumber: candidateRelease.releaseNumber,
+        appVersion: candidateRelease.appVersion,
+        buildId: candidateRelease.buildId,
+        buildDate: candidateRelease.buildDate,
+      };
+      await seedAvailableRelease(candidateRelease, candidateDescriptor);
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
@@ -657,5 +975,37 @@ describe('workerFetch', () => {
 
       expect(await response.text()).toBe('console.log(1)');
     });
+
+    it.each(['available', 'ready', 'failed'] as const)(
+      'keeps serving activeRelease assets while the candidate is %s',
+      async (phase) => {
+        await seedAvailableRelease();
+        readControllerStateMock.mockResolvedValue({
+          status: 'valid',
+          state: {
+            activeRelease,
+            candidate: {
+              phase,
+              release: {
+                releaseNumber: 2,
+                appVersion: '2.0.0',
+                buildId: 'build-2',
+                buildDate: '2026-07-24T00:00:00.000Z',
+              },
+            },
+          },
+        });
+        const { handleAssetFetch } = await import('./workerFetch');
+
+        const response = await handleAssetFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/assets/app.js'),
+          createFakeCoordinator(),
+        );
+
+        expect(await response.text()).toBe('console.log(1)');
+      },
+    );
   });
 });
