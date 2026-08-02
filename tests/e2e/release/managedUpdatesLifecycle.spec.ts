@@ -438,9 +438,9 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     await page.close();
   });
 
-  test('a second live same-channel window blocks the clean launch a lone navigation would otherwise start', async () => {
+  test('a second live same-channel window blocks activation, but a sole controlled-window reload activates and commits', async () => {
     const setupPage = await context.newPage();
-    const secondWindow = await context.newPage();
+    let secondWindow: Page | undefined;
     // Every later test in this shared lifecycle depends on no live window
     // surviving a failed assertion here — close both defensively even if an
     // assertion below throws.
@@ -453,9 +453,8 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
         before.status === 'valid' ? before.state.activeRelease.releaseNumber : undefined;
       expect(activeReleaseNumber).toBeTruthy();
 
-      await secondWindow.goto(server.url);
-      await waitForControlledPage(secondWindow);
-
+      // One controlled same-channel page schedules a newer Manual release;
+      // no other same-channel window exists at this point.
       const releaseD = await buildAndPublishManagedRelease({
         channel: 'stable',
         basePath: BASE_PATH,
@@ -474,6 +473,10 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
       expect(installed.snapshot.candidate?.phase).toBe('ready');
       expect(installed.snapshot.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
 
+      secondWindow = await context.newPage();
+      await secondWindow.goto(server.url);
+      await waitForControlledPage(secondWindow);
+
       // secondWindow is still open and controlled: navigating setupPage must
       // not activate release D.
       await setupPage.reload();
@@ -486,9 +489,28 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
         expect(afterNavigation.state.candidate?.phase).toBe('ready');
         expect(afterNavigation.state.candidate?.release.releaseNumber).toBe(releaseD.releaseNumber);
       }
+
+      // With the only other same-channel window gone, reloading this same
+      // controlled page starts activation. The archived candidate's real
+      // watchdog reports BOOT_OK through the worker protocol; no test-side
+      // controller mutation or replacement page is involved.
+      await secondWindow.close();
+      await setupPage.reload();
+      await waitForControlledPage(setupPage);
+      await expect(setupPage.getByText(/^browser storage$/i)).toBeVisible();
+      const committed = await waitForControllerState(
+        setupPage,
+        (result) =>
+          result.status === 'valid' &&
+          result.state.activeRelease.releaseNumber === releaseD.releaseNumber,
+      );
+      expect(committed.status).toBe('valid');
+      if (committed.status === 'valid') {
+        expect(committed.state.candidate).toBeUndefined();
+      }
     } finally {
       await setupPage.close();
-      await secondWindow.close();
+      await secondWindow?.close();
     }
   });
 

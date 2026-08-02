@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseSummary, UpdateControllerState } from './contracts';
 import { createOperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
@@ -71,6 +71,10 @@ beforeEach(() => {
   matchAllMock.mockClear();
   matchAllMock.mockResolvedValue([]);
   readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('handleWorkerMessage', () => {
@@ -559,7 +563,12 @@ describe('handleWorkerMessage', () => {
   });
 
   describe('BOOT_OK', () => {
-    it('commits the matching activating candidate and acknowledges committed', async () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-07-24T00:00:00.000Z'));
+    });
+
+    it('commits the matching activating candidate before its deadline and acknowledges committed', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
@@ -594,14 +603,29 @@ describe('handleWorkerMessage', () => {
       });
     });
 
-    it('acknowledges ignored for a non-matching release number, without writing', async () => {
+    it('acknowledges ignored for a wrong-release BOOT_OK, without writing or broadcasting', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
         'stable',
         '/',
         CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseNumber: 999 },
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseC.releaseNumber,
+        },
         enqueue,
         createFakeCoordinator(),
         createFakeReconciler(),
@@ -614,6 +638,137 @@ describe('handleWorkerMessage', () => {
       });
       expect(writeControllerStateMock).not.toHaveBeenCalled();
       expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('acknowledges ignored for a stale BOOT_OK after activation already resolved', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, candidate: { phase: 'failed', release: releaseB } },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseB.releaseNumber,
+        },
+        enqueue,
+        createFakeCoordinator(),
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'ignored',
+      });
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(matchAllMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('rolls back a matching BOOT_OK exactly at the deadline, preserving active release and scheduling only a rollback broadcast', async () => {
+      vi.setSystemTime(new Date('2026-07-24T00:00:30.000Z'));
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      const postMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
+      ]);
+      const coordinator = createFakeCoordinator();
+      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseB.releaseNumber,
+        },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(writeControllerStateMock).toHaveBeenCalledWith(
+        'stable',
+        expect.objectContaining({
+          activeRelease: releaseA,
+          candidate: { phase: 'failed', release: releaseB },
+        }),
+      );
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({
+          activeRelease: releaseA,
+          candidate: { phase: 'failed', release: releaseB },
+        }),
+        ack: 'rolled-back',
+      });
+      expect(result.runLifetimeWork).toBeTypeOf('function');
+
+      await result.runLifetimeWork?.();
+      expect(postMessage).toHaveBeenCalledWith({
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'APP_UPDATE_ROLLBACK',
+        releaseNumber: releaseB.releaseNumber,
+      });
+      expect(runCleanup).not.toHaveBeenCalled();
+    });
+
+    it('rolls back a matching BOOT_OK after the deadline', async () => {
+      vi.setSystemTime(new Date('2026-07-24T00:00:30.001Z'));
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseB.releaseNumber,
+        },
+        enqueue,
+        createFakeCoordinator(),
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.objectContaining({
+          activeRelease: releaseA,
+          candidate: { phase: 'failed', release: releaseB },
+        }),
+        ack: 'rolled-back',
+      });
     });
 
     it('acknowledges error, without throwing, when persistence fails', async () => {
@@ -651,6 +806,48 @@ describe('handleWorkerMessage', () => {
         ack: 'error',
       });
       expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('acknowledges error without broadcast or cleanup when expired rollback persistence fails', async () => {
+      vi.setSystemTime(new Date('2026-07-24T00:00:30.000Z'));
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      writeControllerStateMock.mockRejectedValue(new Error('IndexedDB is unavailable'));
+      const coordinator = createFakeCoordinator();
+      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseB.releaseNumber,
+        },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'error',
+      });
+      expect(result.runLifetimeWork).toBeUndefined();
+      expect(matchAllMock).not.toHaveBeenCalled();
+      expect(runCleanup).not.toHaveBeenCalled();
     });
 
     it('durably commits, producing a same-channel state-invalidation broadcast as follow-up work', async () => {

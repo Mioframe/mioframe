@@ -17,6 +17,7 @@ import {
   cancelScheduledUpdate,
   commitActivation,
   completeManualInstall,
+  isActivationExpired,
   rollbackActivation,
   setMode,
 } from './stateTransitions';
@@ -191,8 +192,11 @@ export async function handleWorkerMessage(
 
     case 'BOOT_OK':
       return withState(channel, enqueue, async (state) => {
-        const committed = commitActivation(state, request.releaseNumber);
-        if (committed === state) {
+        const expired = isActivationExpired(state, new Date().toISOString());
+        const next = expired
+          ? rollbackActivation(state, request.releaseNumber)
+          : commitActivation(state, request.releaseNumber);
+        if (next === state) {
           return {
             response: withProtocolVersion({
               snapshot: buildAppUpdateSnapshot(state),
@@ -201,7 +205,7 @@ export async function handleWorkerMessage(
           };
         }
         try {
-          await writeControllerState(channel, committed);
+          await writeControllerState(channel, next);
         } catch {
           return {
             response: withProtocolVersion({
@@ -210,9 +214,24 @@ export async function handleWorkerMessage(
             }),
           };
         }
+        if (expired) {
+          return {
+            response: withProtocolVersion({
+              snapshot: buildAppUpdateSnapshot(next),
+              ack: 'rolled-back' as const,
+            }),
+            // The acknowledgement above is posted before this broadcast can
+            // reload same-channel windows, including the reporting window.
+            // No cleanup: activating -> failed does not shrink cache ownership.
+            runLifetimeWork: () =>
+              broadcastRollback(channelBasePath, channelOrigin, request.releaseNumber).catch(
+                () => {},
+              ),
+          };
+        }
         return {
           response: withProtocolVersion({
-            snapshot: buildAppUpdateSnapshot(committed),
+            snapshot: buildAppUpdateSnapshot(next),
             ack: 'committed' as const,
           }),
           // Existing UI readers refresh from the committed active release

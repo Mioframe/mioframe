@@ -121,17 +121,16 @@ self.addEventListener('fetch', (event) => {
       },
     );
     const responsePromise = resultPromise.then((result) => result.response);
+    const navigationLifetimeWork = resultPromise.then(async (result) => {
+      await responsePromise;
+      await result.runLifetimeWork?.();
+    });
     event.respondWith(responsePromise);
     event.waitUntil(
       Promise.all([
-        resultPromise.then(async (result) => {
-          await responsePromise;
-          await result.runLifetimeWork?.();
-        }),
-        updateReconciler.reconcileNavigation(),
-      ])
-        .then(() => undefined)
-        .catch(() => {}),
+        navigationLifetimeWork.catch(() => {}),
+        updateReconciler.reconcileNavigation().catch(() => {}),
+      ]).then(() => undefined),
     );
     return;
   }

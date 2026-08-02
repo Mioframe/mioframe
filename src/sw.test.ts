@@ -579,11 +579,74 @@ describe('src/sw.ts fetch routing', () => {
     expect(order).toEqual(['reconcile', 'response', 'lifetime']);
   });
 
-  it('swallows deferred navigation-work rejection under waitUntil', async () => {
+  it('keeps waitUntil pending when reconciliation rejects while navigation lifetime work remains pending', async () => {
+    const deferredLifetimeWork = createDeferredVoid();
+    const runLifetimeWork = vi.fn(() => deferredLifetimeWork.promise);
+    handleNavigationFetchMock.mockResolvedValue({
+      response: new Response('candidate'),
+      runLifetimeWork,
+    });
+    reconcileNavigationMock.mockRejectedValue(new Error('reconciliation failed'));
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, waitUntil } = createFakeFetchEvent(
+      'https://mioframe.example/',
+      'navigate',
+      'document',
+    );
+
+    listener(event);
+
+    const waitUntilPromise = waitUntil.mock.calls[0]?.[0];
+    if (!(waitUntilPromise instanceof Promise)) throw new Error('Expected a waitUntil promise');
+    const isSettled = trackSettled(waitUntilPromise);
+    await flushMicrotasks();
+
+    expect(runLifetimeWork).toHaveBeenCalledTimes(1);
+    expect(isSettled()).toBe(false);
+
+    deferredLifetimeWork.resolve();
+    await expect(waitUntilPromise).resolves.toBeUndefined();
+  });
+
+  it('keeps waitUntil pending when navigation lifetime work rejects while reconciliation remains pending', async () => {
+    const deferredReconciliation = createDeferredVoid();
+    const runLifetimeWork = vi.fn(() => Promise.reject(new Error('broadcast failed')));
+    handleNavigationFetchMock.mockResolvedValue({
+      response: new Response('candidate'),
+      runLifetimeWork,
+    });
+    reconcileNavigationMock.mockReturnValue(deferredReconciliation.promise);
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, waitUntil } = createFakeFetchEvent(
+      'https://mioframe.example/',
+      'navigate',
+      'document',
+    );
+
+    listener(event);
+
+    const waitUntilPromise = waitUntil.mock.calls[0]?.[0];
+    if (!(waitUntilPromise instanceof Promise)) throw new Error('Expected a waitUntil promise');
+    const isSettled = trackSettled(waitUntilPromise);
+    await flushMicrotasks();
+
+    expect(runLifetimeWork).toHaveBeenCalledTimes(1);
+    expect(isSettled()).toBe(false);
+
+    deferredReconciliation.resolve();
+    await expect(waitUntilPromise).resolves.toBeUndefined();
+  });
+
+  it('resolves waitUntil when both navigation lifetime work and reconciliation fail', async () => {
     handleNavigationFetchMock.mockResolvedValue({
       response: new Response('candidate'),
       runLifetimeWork: () => Promise.reject(new Error('broadcast failed')),
     });
+    reconcileNavigationMock.mockRejectedValue(new Error('reconciliation failed'));
     const listeners = await importSwAndGetListeners();
     const listener = listeners.get('fetch');
     if (!listener) throw new Error('Expected a fetch listener to have been registered');
@@ -596,6 +659,43 @@ describe('src/sw.ts fetch routing', () => {
     listener(event);
 
     await expect(waitUntil.mock.calls[0]?.[0]).resolves.toBeUndefined();
+  });
+
+  it('resolves the navigation response while both lifetime branches are still pending', async () => {
+    const deferredLifetimeWork = createDeferredVoid();
+    const deferredReconciliation = createDeferredVoid();
+    const response = new Response('candidate');
+    const runLifetimeWork = vi.fn(() => deferredLifetimeWork.promise);
+    handleNavigationFetchMock.mockResolvedValue({ response, runLifetimeWork });
+    reconcileNavigationMock.mockReturnValue(deferredReconciliation.promise);
+    const listeners = await importSwAndGetListeners();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const { event, respondWith, waitUntil } = createFakeFetchEvent(
+      'https://mioframe.example/',
+      'navigate',
+      'document',
+    );
+
+    listener(event);
+
+    const responsePromise = respondWith.mock.calls[0]?.[0];
+    if (!(responsePromise instanceof Promise)) throw new Error('Expected a response promise');
+    const waitUntilPromise = waitUntil.mock.calls[0]?.[0];
+    if (!(waitUntilPromise instanceof Promise)) throw new Error('Expected a waitUntil promise');
+    const isSettled = trackSettled(waitUntilPromise);
+
+    await expect(responsePromise).resolves.toBe(response);
+    await flushMicrotasks();
+    expect(runLifetimeWork).toHaveBeenCalledTimes(1);
+    expect(isSettled()).toBe(false);
+
+    deferredLifetimeWork.resolve();
+    await flushMicrotasks();
+    expect(isSettled()).toBe(false);
+
+    deferredReconciliation.resolve();
+    await expect(waitUntilPromise).resolves.toBeUndefined();
   });
 
   it.each(['iframe', 'embed'] as const)(

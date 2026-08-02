@@ -83,9 +83,8 @@ async function restoreRelease(
  * different release or to the live current deployment: every unavailable
  * outcome fails closed with a controlled `503` or `404`.
  *
- * Stage 3 owns only `release` (always the persisted `activeRelease` —
- * candidate phases are never selected here); Stage 5 will extend selection
- * to an in-progress activation's target.
+ * Navigation and asset fetch owners select an activating candidate's target
+ * here. Every other candidate phase uses the persisted `activeRelease`.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param release - The release to serve.
@@ -135,11 +134,12 @@ export async function serveRelease(
  * Handles an owned same-channel `<channelBasePath>assets/**` request (the
  * caller, `src/sw.ts`, has already decided ownership purely from the
  * request's URL — this never inspects the path itself to decide whether to
- * fall through to the network, since Stage 3 owns every request it is
- * called for). Serves the currently active release only: absent or invalid
- * persisted state, or an unavailable exact release, returns a controlled
- * `503`; a path not listed by the active release's own descriptor returns a
- * controlled `404`. Never falls through to a live network fetch.
+ * fall through to the network. Navigation and assets serve the activating
+ * candidate while it is activating; every other candidate phase serves the
+ * current `activeRelease`. Absent or invalid persisted state, or an
+ * unavailable exact release, returns a controlled `503`; a path not listed
+ * by the selected release's descriptor returns a controlled `404`. Never
+ * falls through to a live network fetch.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming request.
@@ -167,14 +167,12 @@ export async function handleAssetFetch(
 
 /**
  * Handles an owned same-channel top-level navigation request (ownership
- * already decided by the caller). Serves the currently active release's
- * archived index only: absent or invalid persisted state, or an unavailable
- * exact release, returns a controlled `503`. Never falls through to a live
- * network fetch.
- *
- * Stage 3 performs no clean-launch, activation, rollback, or discovery work
- * here: it neither reads nor mutates the candidate, and triggers no
- * background reconciliation. Those are later-stage responsibilities.
+ * already decided by the caller). Navigation may start a clean-launch
+ * activation or recover an expired activation before serving its archived
+ * index. Navigation and assets use the activating candidate's target while
+ * activation is in progress; all other candidate phases use `activeRelease`.
+ * Absent or invalid persisted state, or an unavailable exact release,
+ * returns a controlled `503`. Never falls through to a live network fetch.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming navigation request.

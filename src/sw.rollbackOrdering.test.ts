@@ -134,6 +134,8 @@ const SAME_CHANNEL_WINDOW_SOURCE = { type: 'window', url: 'https://mioframe.exam
 describe('src/sw.ts BOOT_FAILED/BOOT_OK real-wiring ordering', () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-24T00:00:00.000Z'));
     readControllerStateMock.mockReset();
     writeControllerStateMock.mockReset();
     matchAllDeferred = createDeferred<unknown[]>();
@@ -143,6 +145,7 @@ describe('src/sw.ts BOOT_FAILED/BOOT_OK real-wiring ordering', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -188,6 +191,48 @@ describe('src/sw.ts BOOT_FAILED/BOOT_OK real-wiring ordering', () => {
     });
     await flushMicrotasks();
     expect(waitUntilSettled).toBe(false);
+
+    matchAllDeferred.resolve([]);
+    await expect(waitUntilPromise).resolves.toBeUndefined();
+  });
+
+  it('an expired BOOT_OK persists rollback, posts rolled-back acknowledgement, then starts only rollback broadcast', async () => {
+    vi.setSystemTime(new Date('2026-07-24T00:00:30.000Z'));
+    const { listener, matchAllMock, cachesKeysMock, callOrder } = await importSwWithRealWiring();
+    writeControllerStateMock.mockImplementation(() => {
+      callOrder.push('persist-rollback');
+      return Promise.resolve();
+    });
+
+    const postMessage = vi.fn(() => {
+      callOrder.push('postMessage');
+    });
+    let waitUntilPromise: Promise<unknown> | undefined;
+    listener({
+      data: { protocolVersion: 1, type: 'BOOT_OK', releaseNumber: activatingRelease.releaseNumber },
+      source: SAME_CHANNEL_WINDOW_SOURCE,
+      ports: [{ postMessage }],
+      waitUntil: (promise) => {
+        waitUntilPromise = promise;
+      },
+    });
+    if (!waitUntilPromise) throw new Error('Expected event.waitUntil to have been called');
+
+    await flushMicrotasks();
+
+    expect(writeControllerStateMock).toHaveBeenCalledWith(
+      'stable',
+      expect.objectContaining({
+        activeRelease,
+        candidate: { phase: 'failed', release: activatingRelease },
+      }),
+    );
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ ack: 'rolled-back', protocolVersion: 1 }),
+    );
+    expect(matchAllMock).toHaveBeenCalledTimes(1);
+    expect(cachesKeysMock).not.toHaveBeenCalled();
+    expect(callOrder).toEqual(['persist-rollback', 'postMessage', 'broadcast-start']);
 
     matchAllDeferred.resolve([]);
     await expect(waitUntilPromise).resolves.toBeUndefined();
