@@ -4,21 +4,25 @@ import { setAppUpdateMode, type UpdateMode } from '@shared/serviceClient/appUpda
 
 /**
  * User action: switch between Automatic and Manual update modes.
- * @returns The `setMode` action and its `isChangingMode` in-flight flag.
+ * @returns The action, its finite in-flight flag, and its latest transport outcome.
  */
 export function useAppUpdateModeChange() {
-  const { applySnapshot } = useAppUpdate();
+  const { applyClientResult } = useAppUpdate();
   const isChangingMode = ref(false);
+  const outcome = ref<'success' | 'timeout' | 'unavailable' | undefined>();
 
   const setMode = async (mode: UpdateMode) => {
     if (isChangingMode.value) return;
+    outcome.value = undefined;
     isChangingMode.value = true;
     try {
-      applySnapshot(await setAppUpdateMode(mode));
+      const result = await setAppUpdateMode(mode);
+      applyClientResult(result);
+      outcome.value = result.status;
     } finally {
       isChangingMode.value = false;
     }
   };
 
-  return { setMode, isChangingMode };
+  return { setMode, isChangingMode, outcome };
 }

@@ -1,51 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const applySnapshotMock = vi.fn();
+const applyClientResultMock = vi.fn();
 const checkForAppUpdatesMock = vi.fn();
 
 vi.mock('@entity/appUpdate', () => ({
-  useAppUpdate: () => ({ applySnapshot: applySnapshotMock }),
+  useAppUpdate: () => ({ applyClientResult: applyClientResultMock }),
 }));
 vi.mock('@shared/serviceClient/appUpdate/client', () => ({
   checkForAppUpdates: () => checkForAppUpdatesMock(),
 }));
 
+const success = {
+  status: 'success' as const,
+  value: { mode: 'manual' as const, activeRelease: { releaseNumber: 1 } },
+};
+
 describe('useAppUpdateCheck', () => {
   beforeEach(() => {
-    applySnapshotMock.mockClear();
+    applyClientResultMock.mockReset();
     checkForAppUpdatesMock.mockReset();
   });
 
-  it('applies the check result to the entity and tracks isChecking', async () => {
-    const snapshot = { mode: 'manual', activeRelease: { releaseNumber: 1 } };
-    checkForAppUpdatesMock.mockResolvedValue(snapshot);
-    const { useAppUpdateCheck } = await import('./useAppUpdateCheck');
-    const { checkForUpdates, isChecking } = useAppUpdateCheck();
-
-    expect(isChecking.value).toBe(false);
-    const promise = checkForUpdates();
-    expect(isChecking.value).toBe(true);
-    await promise;
-
-    expect(isChecking.value).toBe(false);
-    expect(applySnapshotMock).toHaveBeenCalledWith(snapshot);
-  });
-
-  it('does not start a second check while one is already in flight', async () => {
-    let resolveFirst: (value: unknown) => void = () => {};
+  it('keeps finite busy state, suppresses duplicates, and clears a prior outcome for a new check', async () => {
+    let resolveCheck: (result: unknown) => void = () => {};
     checkForAppUpdatesMock.mockReturnValue(
       new Promise((resolve) => {
-        resolveFirst = resolve;
+        resolveCheck = resolve;
       }),
     );
     const { useAppUpdateCheck } = await import('./useAppUpdateCheck');
-    const { checkForUpdates } = useAppUpdateCheck();
+    const { checkForUpdates, isChecking, outcome } = useAppUpdateCheck();
 
     const first = checkForUpdates();
     const second = checkForUpdates();
-    resolveFirst({ mode: 'manual', activeRelease: { releaseNumber: 1 } });
+    expect(isChecking.value).toBe(true);
+    expect(outcome.value).toBeUndefined();
+    expect(checkForAppUpdatesMock).toHaveBeenCalledTimes(1);
+
+    resolveCheck({ status: 'timeout' });
     await Promise.all([first, second]);
 
-    expect(checkForAppUpdatesMock).toHaveBeenCalledTimes(1);
+    expect(applyClientResultMock).toHaveBeenCalledWith({ status: 'timeout' });
+    expect(outcome.value).toBe('timeout');
+    expect(isChecking.value).toBe(false);
+  });
+
+  it.each([
+    ['success', success],
+    ['timeout', { status: 'timeout' as const }],
+    ['unavailable', { status: 'unavailable' as const }],
+  ])('applies the classified %s result and always clears busy state', async (status, result) => {
+    checkForAppUpdatesMock.mockResolvedValue(result);
+    const { useAppUpdateCheck } = await import('./useAppUpdateCheck');
+    const { checkForUpdates, isChecking, outcome } = useAppUpdateCheck();
+
+    await checkForUpdates();
+
+    expect(applyClientResultMock).toHaveBeenCalledWith(result);
+    expect(outcome.value).toBe(status);
+    expect(isChecking.value).toBe(false);
   });
 });

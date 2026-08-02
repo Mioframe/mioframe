@@ -4,21 +4,25 @@ import { installAppUpdateOnNextLaunch } from '@shared/serviceClient/appUpdate/cl
 
 /**
  * User action (Manual mode): schedule the current latest release for installation on the next clean launch.
- * @returns The `installOnNextLaunch` action and its `isInstalling` in-flight flag.
+ * @returns The action, its finite in-flight flag, and its latest transport outcome.
  */
 export function useAppUpdateInstallOnNextLaunch() {
-  const { applySnapshot } = useAppUpdate();
+  const { applyClientResult } = useAppUpdate();
   const isInstalling = ref(false);
+  const outcome = ref<'success' | 'timeout' | 'unavailable' | undefined>();
 
   const installOnNextLaunch = async () => {
     if (isInstalling.value) return;
+    outcome.value = undefined;
     isInstalling.value = true;
     try {
-      applySnapshot(await installAppUpdateOnNextLaunch());
+      const result = await installAppUpdateOnNextLaunch();
+      applyClientResult(result);
+      outcome.value = result.status;
     } finally {
       isInstalling.value = false;
     }
   };
 
-  return { installOnNextLaunch, isInstalling };
+  return { installOnNextLaunch, isInstalling, outcome };
 }

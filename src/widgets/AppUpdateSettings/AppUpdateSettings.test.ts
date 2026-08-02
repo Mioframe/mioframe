@@ -11,24 +11,28 @@ type Candidate =
   | {
       phase: 'activating';
       release: { releaseNumber: number; appVersion: string };
-      deadlineAt: string;
     }
   | undefined;
 
 const status = ref<AppUpdateStatus>('not-checked');
-const mode = ref<'automatic' | 'manual'>('manual');
+const isCapabilityAvailable = ref(true);
+const mode = ref<'automatic' | 'manual' | undefined>('manual');
 const activeRelease = ref<{ releaseNumber: number } | undefined>({ releaseNumber: 1 });
 const candidateRef = ref<Candidate>(undefined);
 const lastSuccessfulCheckAt = ref<string | undefined>(undefined);
 
 const checkForUpdatesMock = vi.fn();
 const isChecking = ref(false);
+const checkOutcome = ref<'success' | 'timeout' | 'unavailable' | undefined>();
 const setModeMock = vi.fn();
 const isChangingMode = ref(false);
+const modeOutcome = ref<'success' | 'timeout' | 'unavailable' | undefined>();
 const installOnNextLaunchMock = vi.fn();
 const isInstalling = ref(false);
+const installOutcome = ref<'success' | 'timeout' | 'unavailable' | undefined>();
 const cancelScheduledUpdateMock = vi.fn();
 const isCancelling = ref(false);
+const cancelOutcome = ref<'success' | 'timeout' | 'unavailable' | undefined>();
 
 vi.mock('@entity/appUpdate', async () => {
   const actual = await vi.importActual<typeof import('@entity/appUpdate')>('@entity/appUpdate');
@@ -36,6 +40,7 @@ vi.mock('@entity/appUpdate', async () => {
     ...actual,
     useAppUpdate: () => ({
       status,
+      isCapabilityAvailable,
       mode,
       activeRelease,
       candidate: candidateRef,
@@ -44,21 +49,27 @@ vi.mock('@entity/appUpdate', async () => {
   };
 });
 vi.mock('@feature/appUpdateCheck', () => ({
-  useAppUpdateCheck: () => ({ checkForUpdates: checkForUpdatesMock, isChecking }),
+  useAppUpdateCheck: () => ({
+    checkForUpdates: checkForUpdatesMock,
+    isChecking,
+    outcome: checkOutcome,
+  }),
 }));
 vi.mock('@feature/appUpdateModeChange', () => ({
-  useAppUpdateModeChange: () => ({ setMode: setModeMock, isChangingMode }),
+  useAppUpdateModeChange: () => ({ setMode: setModeMock, isChangingMode, outcome: modeOutcome }),
 }));
 vi.mock('@feature/appUpdateInstallOnNextLaunch', () => ({
   useAppUpdateInstallOnNextLaunch: () => ({
     installOnNextLaunch: installOnNextLaunchMock,
     isInstalling,
+    outcome: installOutcome,
   }),
 }));
 vi.mock('@feature/appUpdateCancelScheduledUpdate', () => ({
   useAppUpdateCancelScheduledUpdate: () => ({
     cancelScheduledUpdate: cancelScheduledUpdateMock,
     isCancelling,
+    outcome: cancelOutcome,
   }),
 }));
 
@@ -170,14 +181,19 @@ describe('AppUpdateSettings', () => {
   afterEach(() => {
     vi.resetModules();
     status.value = 'not-checked';
+    isCapabilityAvailable.value = true;
     mode.value = 'manual';
     activeRelease.value = { releaseNumber: 1 };
     candidateRef.value = undefined;
     lastSuccessfulCheckAt.value = undefined;
     isChecking.value = false;
+    checkOutcome.value = undefined;
     isChangingMode.value = false;
+    modeOutcome.value = undefined;
     isInstalling.value = false;
+    installOutcome.value = undefined;
     isCancelling.value = false;
+    cancelOutcome.value = undefined;
     checkForUpdatesMock.mockClear();
     setModeMock.mockClear();
     installOnNextLaunchMock.mockClear();
@@ -289,7 +305,6 @@ describe('AppUpdateSettings', () => {
     candidateRef.value = {
       phase: 'activating',
       release: { releaseNumber: 2, appVersion: '1.1.0' },
-      deadlineAt: '2026-07-24T00:00:30.000Z',
     };
     const { root, unmount } = await mountWidget();
 
@@ -308,7 +323,6 @@ describe('AppUpdateSettings', () => {
     candidateRef.value = {
       phase: 'activating',
       release: { releaseNumber: 2, appVersion: '1.1.0' },
-      deadlineAt: '2026-07-24T00:00:30.000Z',
     };
     const { root, unmount } = await mountWidget();
 
@@ -322,19 +336,25 @@ describe('AppUpdateSettings', () => {
 
   it('unavailable: disables both actions and the automatic switch, never shows Up to date', async () => {
     status.value = 'unavailable';
+    isCapabilityAvailable.value = false;
+    mode.value = 'manual';
+    candidateRef.value = { phase: 'ready', release: { releaseNumber: 2, appVersion: '1.1.0' } };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Updates unavailable');
     expect(root.textContent).not.toContain('Up to date');
     expect(getButtonByText(root, 'Check for updates')?.getAttribute('disabled')).toBe('');
     expect(getButtonByText(root, 'Automatic updates')?.getAttribute('disabled')).toBe('');
+    expect(getButtonByText(root, 'Cancel scheduled update')).toBeNull();
     unmount();
   });
 
-  it('checking: disables the check action while an explicit check is in flight', async () => {
+  it('keeps stable entity status while the widget presents a local checking message', async () => {
+    status.value = 'up-to-date';
     isChecking.value = true;
     const { root, unmount } = await mountWidget();
 
+    expect(root.textContent).toContain('Up to date');
     expect(root.textContent).toContain('Checking for updates');
     expect(getButtonByText(root, 'Check for updates')?.getAttribute('disabled')).toBe('');
     unmount();
@@ -367,6 +387,95 @@ describe('AppUpdateSettings', () => {
     await nextTick();
 
     expect(setModeMock).toHaveBeenCalledWith('automatic');
+    unmount();
+  });
+
+  it('shows the check timeout without replacing the stable lifecycle status and re-enables controls', async () => {
+    status.value = 'update-available';
+    mode.value = 'manual';
+    candidateRef.value = { phase: 'available', release: { releaseNumber: 2, appVersion: '1.1.0' } };
+    checkOutcome.value = 'timeout';
+    const { root, unmount } = await mountWidget();
+
+    getButtonByText(root, 'Check for updates')?.click();
+    await nextTick();
+
+    expect(root.textContent).toContain('Update available');
+    expect(root.textContent).toContain(
+      'The update check timed out. It may still finish in the background.',
+    );
+    expect(getButtonByText(root, 'Check for updates')?.hasAttribute('disabled')).toBe(false);
+    expect(getButtonByText(root, 'Install on next launch')?.hasAttribute('disabled')).toBe(false);
+    unmount();
+  });
+
+  it('shows the install timeout only after the install action is latest', async () => {
+    status.value = 'update-available';
+    mode.value = 'manual';
+    candidateRef.value = { phase: 'available', release: { releaseNumber: 2, appVersion: '1.1.0' } };
+    installOutcome.value = 'timeout';
+    const { root, unmount } = await mountWidget();
+
+    getButtonByText(root, 'Install on next launch')?.click();
+    await nextTick();
+
+    expect(root.textContent).toContain(
+      'Preparing the update timed out. It may still finish in the background.',
+    );
+    unmount();
+  });
+
+  it('shows the mode timeout only after the mode action is latest', async () => {
+    mode.value = 'manual';
+    modeOutcome.value = 'timeout';
+    const { root, unmount } = await mountWidget();
+
+    getButtonByText(root, 'Automatic updates')?.click();
+    await nextTick();
+
+    expect(root.textContent).toContain(
+      'Changing update mode timed out. It may still finish in the background.',
+    );
+    unmount();
+  });
+
+  it('shows the cancellation timeout only after the cancel action is latest', async () => {
+    status.value = 'ready';
+    mode.value = 'manual';
+    candidateRef.value = { phase: 'ready', release: { releaseNumber: 2, appVersion: '1.1.0' } };
+    cancelOutcome.value = 'timeout';
+    const { root, unmount } = await mountWidget();
+
+    getButtonByText(root, 'Cancel scheduled update')?.click();
+    await nextTick();
+
+    expect(root.textContent).toContain(
+      'Cancelling the scheduled update timed out. It may still finish in the background.',
+    );
+    unmount();
+  });
+
+  it('uses only the most recently invoked action outcome for timeout feedback', async () => {
+    checkOutcome.value = 'timeout';
+    modeOutcome.value = 'timeout';
+    const { root, unmount } = await mountWidget();
+
+    getButtonByText(root, 'Check for updates')?.click();
+    await nextTick();
+    expect(root.textContent).toContain('The update check timed out.');
+
+    getButtonByText(root, 'Automatic updates')?.click();
+    await nextTick();
+    expect(root.textContent).toContain('Changing update mode timed out.');
+    expect(root.textContent).not.toContain('The update check timed out.');
+    unmount();
+  });
+
+  it('disables the Automatic toggle until the current mode is known', async () => {
+    mode.value = undefined;
+    const { root, unmount } = await mountWidget();
+
+    expect(getButtonByText(root, 'Automatic updates')?.getAttribute('disabled')).toBe('');
     unmount();
   });
 

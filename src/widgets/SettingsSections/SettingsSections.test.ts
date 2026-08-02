@@ -351,6 +351,9 @@ describe('SettingsSections', () => {
 
     expect(root.textContent).toContain('App updates');
     expect(root.textContent).toContain('Update available');
+    expect(root.textContent).not.toContain('Checking for updates');
+    expect(root.textContent).not.toContain('Preparing update');
+    expect(root.textContent).not.toContain('timed out');
     // The old inline "Automatic updates" toggle and per-status action row no
     // longer live directly in Settings — only the one concise entry above.
     expect(getSwitchRow(root, 'Automatic updates')).toBeNull();

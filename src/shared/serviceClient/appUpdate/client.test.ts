@@ -18,16 +18,42 @@ const snapshot = {
   },
 };
 
-/** A promise that never settles, standing in for a `ready` that never resolves. */
+/** A permanently pending value used to prove client commands never await `serviceWorker.ready`. */
 const NEVER_SETTLES = new Promise<never>(() => {});
 
-function stubControlledServiceWorker() {
-  const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+type PortMessageHandler = ((event: MessageEvent) => void) | null;
+
+class FakeMessagePort {
+  onmessage: PortMessageHandler = null;
+  readonly close = vi.fn();
+  peer: FakeMessagePort | undefined;
+
+  postMessage(data: unknown): void {
+    this.peer?.onmessage?.(new MessageEvent('message', { data }));
+  }
+}
+
+class FakeMessageChannel {
+  readonly port1 = new FakeMessagePort();
+  readonly port2 = new FakeMessagePort();
+
+  constructor() {
+    this.port1.peer = this.port2;
+    this.port2.peer = this.port1;
+    channels.push(this);
+  }
+}
+
+let channels: FakeMessageChannel[] = [];
+
+function stubControlledServiceWorker(
+  onPostMessage: (request: unknown, ports: MessagePort[]) => void = (_request, ports) => {
     ports[0]?.postMessage({ protocolVersion: 1, snapshot });
-  });
+  },
+) {
+  const postMessage = vi.fn(onPostMessage);
   vi.stubGlobal('navigator', {
     serviceWorker: {
-      // Permanently pending: proves `sendToController` never awaits `ready`.
       ready: NEVER_SETTLES,
       controller: { postMessage },
     },
@@ -36,98 +62,208 @@ function stubControlledServiceWorker() {
 }
 
 describe('appUpdate client', () => {
+  beforeEach(() => {
+    channels = [];
+    vi.stubGlobal('MessageChannel', FakeMessageChannel);
+  });
+
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
-  it('getAppUpdateSnapshot returns undefined when serviceWorker is unsupported', async () => {
-    vi.stubGlobal('navigator', {});
-    expect(await getAppUpdateSnapshot()).toBeUndefined();
-  });
-
-  it('getAppUpdateSnapshot returns undefined immediately when there is no current controller, even when ready is permanently pending', async () => {
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: NEVER_SETTLES, controller: undefined },
-    });
-    expect(await getAppUpdateSnapshot()).toBeUndefined();
-  });
-
-  it('getAppUpdateSnapshot sends GET_SNAPSHOT and unwraps the resulting snapshot', async () => {
+  it('returns an explicit success result for a valid worker snapshot', async () => {
     const postMessage = stubControlledServiceWorker();
-    const result = await getAppUpdateSnapshot();
 
-    expect(result).toEqual(snapshot);
+    await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'success', value: snapshot });
     expect(postMessage.mock.calls[0]?.[0]).toEqual({ protocolVersion: 1, type: 'GET_SNAPSHOT' });
   });
 
-  it('checkForAppUpdates sends CHECK_FOR_UPDATES', async () => {
-    const postMessage = stubControlledServiceWorker();
-    await checkForAppUpdates();
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({
-      protocolVersion: 1,
-      type: 'CHECK_FOR_UPDATES',
-    });
+  it('returns unavailable when service workers are unsupported', async () => {
+    vi.stubGlobal('navigator', {});
+
+    await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'unavailable' });
   });
 
-  it('setAppUpdateMode sends SET_MODE with the given mode', async () => {
-    const postMessage = stubControlledServiceWorker();
-    await setAppUpdateMode('automatic');
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({
-      protocolVersion: 1,
-      type: 'SET_MODE',
-      mode: 'automatic',
-    });
-  });
-
-  it('installAppUpdateOnNextLaunch sends INSTALL_ON_NEXT_LAUNCH', async () => {
-    const postMessage = stubControlledServiceWorker();
-    await installAppUpdateOnNextLaunch();
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({
-      protocolVersion: 1,
-      type: 'INSTALL_ON_NEXT_LAUNCH',
-    });
-  });
-
-  it('cancelScheduledAppUpdate sends CANCEL_SCHEDULED_UPDATE', async () => {
-    const postMessage = stubControlledServiceWorker();
-    await cancelScheduledAppUpdate();
-    expect(postMessage.mock.calls[0]?.[0]).toEqual({
-      protocolVersion: 1,
-      type: 'CANCEL_SCHEDULED_UPDATE',
-    });
-  });
-
-  it('resolves undefined when the response is missing a valid protocolVersion (fails closed, never throws)', async () => {
-    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
-      ports[0]?.postMessage({ snapshot });
-    });
+  it('returns unavailable immediately when there is no current controller, without awaiting ready', async () => {
     vi.stubGlobal('navigator', {
-      serviceWorker: { ready: NEVER_SETTLES, controller: { postMessage } },
+      serviceWorker: { ready: NEVER_SETTLES, controller: undefined },
     });
 
-    await expect(getAppUpdateSnapshot()).resolves.toBeUndefined();
+    await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'unavailable' });
+    expect(channels).toHaveLength(0);
   });
 
-  it('resolves undefined, without throwing, when the worker sends the stable v1 failure envelope', async () => {
-    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+  it('sends the exact worker request for every public command', async () => {
+    const postMessage = stubControlledServiceWorker();
+
+    await getAppUpdateSnapshot();
+    await checkForAppUpdates();
+    await setAppUpdateMode('manual');
+    await setAppUpdateMode('automatic');
+    await installAppUpdateOnNextLaunch();
+    await cancelScheduledAppUpdate();
+
+    expect(postMessage.mock.calls.map(([request]) => request)).toEqual([
+      { protocolVersion: 1, type: 'GET_SNAPSHOT' },
+      { protocolVersion: 1, type: 'CHECK_FOR_UPDATES' },
+      { protocolVersion: 1, type: 'SET_MODE', mode: 'manual' },
+      { protocolVersion: 1, type: 'SET_MODE', mode: 'automatic' },
+      { protocolVersion: 1, type: 'INSTALL_ON_NEXT_LAUNCH' },
+      { protocolVersion: 1, type: 'CANCEL_SCHEDULED_UPDATE' },
+    ]);
+  });
+
+  it('returns unavailable for the exact worker failure envelope', async () => {
+    stubControlledServiceWorker((_request, ports) => {
       ports[0]?.postMessage({ protocolVersion: 1, error: 'unavailable' });
     });
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: NEVER_SETTLES, controller: { postMessage } },
-    });
 
-    await expect(getAppUpdateSnapshot()).resolves.toBeUndefined();
+    await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'unavailable' });
   });
 
-  it('resolves undefined, without throwing, for a malformed failure envelope (wrong error literal)', async () => {
-    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
-      ports[0]?.postMessage({ protocolVersion: 1, error: 'something-else' });
-    });
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: NEVER_SETTLES, controller: { postMessage } },
+  it('returns unavailable for a malformed worker response', async () => {
+    stubControlledServiceWorker((_request, ports) => {
+      ports[0]?.postMessage({ protocolVersion: 1, snapshot: { mode: 'manual' } });
     });
 
-    await expect(getAppUpdateSnapshot()).resolves.toBeUndefined();
+    await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'unavailable' });
+  });
+
+  it('returns unavailable when postMessage throws synchronously', async () => {
+    stubControlledServiceWorker(() => {
+      throw new Error('transport closed');
+    });
+
+    await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'unavailable' });
+  });
+
+  it('uses a 10-second deadline for GET_SNAPSHOT', async () => {
+    vi.useFakeTimers();
+    stubControlledServiceWorker(() => {});
+    let result: unknown;
+    void getAppUpdateSnapshot().then((value) => {
+      result = value;
+    });
+
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(result).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(result).toEqual({ status: 'timeout' });
+  });
+
+  it.each(['manual', 'automatic'] as const)(
+    'uses a 10-second deadline for SET_MODE %s',
+    async (mode) => {
+      vi.useFakeTimers();
+      stubControlledServiceWorker(() => {});
+      let result: unknown;
+      void setAppUpdateMode(mode).then((value) => {
+        result = value;
+      });
+
+      await vi.advanceTimersByTimeAsync(10_000);
+
+      expect(result).toEqual({ status: 'timeout' });
+    },
+  );
+
+  it('uses a 10-second deadline for CANCEL_SCHEDULED_UPDATE', async () => {
+    vi.useFakeTimers();
+    stubControlledServiceWorker(() => {});
+    let result: unknown;
+    void cancelScheduledAppUpdate().then((value) => {
+      result = value;
+    });
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(result).toEqual({ status: 'timeout' });
+  });
+
+  it('keeps CHECK_FOR_UPDATES pending before 120 seconds and times out at 120 seconds', async () => {
+    vi.useFakeTimers();
+    stubControlledServiceWorker(() => {});
+    let result: unknown;
+    void checkForAppUpdates().then((value) => {
+      result = value;
+    });
+
+    await vi.advanceTimersByTimeAsync(119_999);
+    expect(result).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(result).toEqual({ status: 'timeout' });
+  });
+
+  it('keeps INSTALL_ON_NEXT_LAUNCH pending before 120 seconds and times out at 120 seconds', async () => {
+    vi.useFakeTimers();
+    stubControlledServiceWorker(() => {});
+    let result: unknown;
+    void installAppUpdateOnNextLaunch().then((value) => {
+      result = value;
+    });
+
+    await vi.advanceTimersByTimeAsync(119_999);
+    expect(result).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(result).toEqual({ status: 'timeout' });
+  });
+
+  it('ignores a response that arrives after the deadline and releases the receiving port', async () => {
+    vi.useFakeTimers();
+    stubControlledServiceWorker(() => {});
+    const resultPromise = getAppUpdateSnapshot();
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(resultPromise).resolves.toEqual({ status: 'timeout' });
+
+    const channel = channels[0];
+    if (!channel) throw new Error('Expected a MessageChannel');
+    channel.port2.postMessage({ protocolVersion: 1, snapshot });
+
+    expect(channel.port1.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the pending timeout and releases the receiving port after a successful response', async () => {
+    vi.useFakeTimers();
+    stubControlledServiceWorker();
+
+    await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'success', value: snapshot });
+
+    const channel = channels[0];
+    if (!channel) throw new Error('Expected a MessageChannel');
+    expect(vi.getTimerCount()).toBe(0);
+    expect(channel.port1.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not read serviceWorker.ready for any command', async () => {
+    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
+      ports[0]?.postMessage({ protocolVersion: 1, snapshot });
+    });
+    const serviceWorker = {
+      controller: { postMessage },
+      get ready(): never {
+        throw new Error('The client must not await or read serviceWorker.ready');
+      },
+    };
+    vi.stubGlobal('navigator', { serviceWorker });
+
+    await expect(checkForAppUpdates()).resolves.toEqual({ status: 'success', value: snapshot });
+    await expect(installAppUpdateOnNextLaunch()).resolves.toEqual({
+      status: 'success',
+      value: snapshot,
+    });
+    await expect(setAppUpdateMode('automatic')).resolves.toEqual({
+      status: 'success',
+      value: snapshot,
+    });
+    await expect(cancelScheduledAppUpdate()).resolves.toEqual({
+      status: 'success',
+      value: snapshot,
+    });
   });
 });
 
@@ -168,156 +304,18 @@ describe('subscribeToAppUpdateStateChanged', () => {
     expect(onStateChanged).not.toHaveBeenCalled();
   });
 
-  it('calls onStateChanged for a valid v1 state-invalidation broadcast', () => {
-    const { dispatch } = stubServiceWorkerEventTarget();
-    const onStateChanged = vi.fn();
-
-    subscribeToAppUpdateStateChanged(onStateChanged);
-    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_STATE_CHANGED' });
-
-    expect(onStateChanged).toHaveBeenCalledTimes(1);
-  });
-
-  it('ignores an unrelated broadcast, such as a rollback', () => {
-    const { dispatch } = stubServiceWorkerEventTarget();
-    const onStateChanged = vi.fn();
-
-    subscribeToAppUpdateStateChanged(onStateChanged);
-    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_ROLLBACK', releaseNumber: 1 });
-
-    expect(onStateChanged).not.toHaveBeenCalled();
-  });
-
-  it('ignores a state-invalidation broadcast with a missing or unsupported protocol version (fails closed)', () => {
-    const { dispatch } = stubServiceWorkerEventTarget();
-    const onStateChanged = vi.fn();
-
-    subscribeToAppUpdateStateChanged(onStateChanged);
-    dispatch({ type: 'APP_UPDATE_STATE_CHANGED' });
-    dispatch({ protocolVersion: 2, type: 'APP_UPDATE_STATE_CHANGED' });
-
-    expect(onStateChanged).not.toHaveBeenCalled();
-  });
-
-  it('does not call onStateChanged again after unsubscribing', () => {
-    const { dispatch } = stubServiceWorkerEventTarget();
+  it('keeps the state-changed broadcast subscription contract unchanged', () => {
+    const { addEventListener, removeEventListener, dispatch } = stubServiceWorkerEventTarget();
     const onStateChanged = vi.fn();
 
     const unsubscribe = subscribeToAppUpdateStateChanged(onStateChanged);
-    unsubscribe();
+    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_STATE_CHANGED' });
+    dispatch({ protocolVersion: 1, type: 'APP_UPDATE_ROLLBACK', releaseNumber: 1 });
     dispatch({ type: 'APP_UPDATE_STATE_CHANGED' });
 
-    expect(onStateChanged).not.toHaveBeenCalled();
-  });
-
-  it('adds exactly one listener per subscription and removes exactly that one on unsubscribe', () => {
-    const { addEventListener, removeEventListener } = stubServiceWorkerEventTarget();
-    const unsubscribe = subscribeToAppUpdateStateChanged(vi.fn());
-
+    expect(onStateChanged).toHaveBeenCalledTimes(1);
     expect(addEventListener).toHaveBeenCalledTimes(1);
     unsubscribe();
-
-    expect(removeEventListener).toHaveBeenCalledTimes(1);
     expect(removeEventListener.mock.calls[0]?.[1]).toBe(addEventListener.mock.calls[0]?.[1]);
-  });
-});
-
-describe('appUpdate client timeout', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
-
-  it('resolves undefined when the controller never responds to GET_SNAPSHOT (a fast, bounded command)', async () => {
-    const postMessage = vi.fn();
-    vi.stubGlobal('navigator', {
-      serviceWorker: {
-        ready: new Promise<never>(() => {}),
-        controller: { postMessage },
-      },
-    });
-
-    const resultPromise = getAppUpdateSnapshot();
-    await vi.advanceTimersByTimeAsync(10_000);
-
-    expect(await resultPromise).toBeUndefined();
-  });
-
-  it('CHECK_FOR_UPDATES carries no client-side timeout: it still resolves with the final snapshot after exceeding ten seconds', async () => {
-    let capturedPorts: MessagePort[] | undefined;
-    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
-      capturedPorts = ports;
-    });
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
-    });
-
-    const resultPromise = checkForAppUpdates();
-    // Well past the bounded transport timeout other commands use — this
-    // command must never be marked unavailable merely for taking this long.
-    await vi.advanceTimersByTimeAsync(15_000);
-    capturedPorts?.[0]?.postMessage({ protocolVersion: 1, snapshot });
-
-    expect(await resultPromise).toEqual(snapshot);
-  });
-
-  it('INSTALL_ON_NEXT_LAUNCH carries no client-side timeout: it still resolves with the final snapshot after exceeding ten seconds', async () => {
-    let capturedPorts: MessagePort[] | undefined;
-    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
-      capturedPorts = ports;
-    });
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
-    });
-
-    const resultPromise = installAppUpdateOnNextLaunch();
-    await vi.advanceTimersByTimeAsync(15_000);
-    capturedPorts?.[0]?.postMessage({ protocolVersion: 1, snapshot });
-
-    expect(await resultPromise).toEqual(snapshot);
-  });
-
-  it('SET_MODE to Automatic carries no client-side timeout: it still resolves with the final snapshot after exceeding ten seconds', async () => {
-    let capturedPorts: MessagePort[] | undefined;
-    const postMessage = vi.fn((_request: unknown, ports: MessagePort[]) => {
-      capturedPorts = ports;
-    });
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
-    });
-
-    const resultPromise = setAppUpdateMode('automatic');
-    await vi.advanceTimersByTimeAsync(15_000);
-    capturedPorts?.[0]?.postMessage({ protocolVersion: 1, snapshot });
-
-    expect(await resultPromise).toEqual(snapshot);
-  });
-
-  it('SET_MODE to Manual keeps the bounded transport timeout and resolves undefined when unanswered', async () => {
-    const postMessage = vi.fn();
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
-    });
-
-    const resultPromise = setAppUpdateMode('manual');
-    await vi.advanceTimersByTimeAsync(10_000);
-
-    expect(await resultPromise).toBeUndefined();
-  });
-
-  it('CANCEL_SCHEDULED_UPDATE keeps the bounded transport timeout and resolves undefined when unanswered', async () => {
-    const postMessage = vi.fn();
-    vi.stubGlobal('navigator', {
-      serviceWorker: { ready: new Promise<never>(() => {}), controller: { postMessage } },
-    });
-
-    const resultPromise = cancelScheduledAppUpdate();
-    await vi.advanceTimersByTimeAsync(10_000);
-
-    expect(await resultPromise).toBeUndefined();
   });
 });

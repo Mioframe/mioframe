@@ -25,17 +25,13 @@ const { settings } = useLocalSettings();
 const { diagnosticsEnabled, setDiagnosticsEnabledByUser } = useDiagnosticsSettings();
 const { isSettingsEntryVisible } = usePwaInstallAction();
 
-// The Settings entry shows a concise status derived from the same update
-// view model the App updates pane uses — never the transient
-// checking/preparing states, which only apply while this screen's own
-// explicit actions are in flight (this list item triggers none).
+// The Settings entry shows concise stable entity presentation only. It never
+// reads an action feature's busy or transport outcome state.
 const { status: appUpdateStatus } = useAppUpdate();
 const appUpdatesStatusText = computed(() =>
   getAppUpdatesDisplayStatusText(
     deriveAppUpdatesDisplayStatus({
       status: appUpdateStatus.value,
-      isChecking: false,
-      isPreparing: false,
       isOnline: typeof navigator === 'undefined' ? true : navigator.onLine,
     }),
   ),

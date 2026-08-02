@@ -1,4 +1,9 @@
-export { useAppUpdate, type AppUpdateStatus } from './useAppUpdate';
+export {
+  useAppUpdate,
+  type AppUpdateCandidate,
+  type AppUpdateRelease,
+  type AppUpdateStatus,
+} from './useAppUpdate';
 export {
   deriveAppUpdatesDisplayStatus,
   getAppUpdatesDisplayStatusText,

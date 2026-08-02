@@ -15,11 +15,22 @@ import { MDButton } from '@shared/ui/Button';
 import { MDList, MDListItem } from '@shared/ui/Lists';
 import { MDSwitch } from '@shared/ui/Switch';
 
-const { status, mode, candidate, lastSuccessfulCheckAt } = useAppUpdate();
-const { checkForUpdates, isChecking } = useAppUpdateCheck();
-const { setMode, isChangingMode } = useAppUpdateModeChange();
-const { installOnNextLaunch, isInstalling } = useAppUpdateInstallOnNextLaunch();
-const { cancelScheduledUpdate, isCancelling } = useAppUpdateCancelScheduledUpdate();
+type LastAppUpdateAction = 'check' | 'install' | 'mode' | 'cancel';
+
+const { status, isCapabilityAvailable, mode, candidate, lastSuccessfulCheckAt } = useAppUpdate();
+const { checkForUpdates, isChecking, outcome: checkOutcome } = useAppUpdateCheck();
+const { setMode, isChangingMode, outcome: modeOutcome } = useAppUpdateModeChange();
+const {
+  installOnNextLaunch,
+  isInstalling,
+  outcome: installOutcome,
+} = useAppUpdateInstallOnNextLaunch();
+const {
+  cancelScheduledUpdate,
+  isCancelling,
+  outcome: cancelOutcome,
+} = useAppUpdateCancelScheduledUpdate();
+const lastAppUpdateAction = ref<LastAppUpdateAction | undefined>();
 
 /** Reflects live browser connectivity, kept current by `online`/`offline` listeners rather than only sampled when the user presses Check. */
 const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine);
@@ -46,8 +57,6 @@ onUnmounted(() => {
 const displayStatus = computed(() =>
   deriveAppUpdatesDisplayStatus({
     status: status.value,
-    isChecking: isChecking.value,
-    isPreparing: isInstalling.value,
     isOnline: isOnline.value,
   }),
 );
@@ -71,18 +80,58 @@ const showInstallOnNextLaunch = computed(
 const showRetryUpdate = computed(
   () => mode.value === 'manual' && displayStatus.value === 'update-failed',
 );
-const showCancel = computed(() => mode.value === 'manual' && candidate.value?.phase === 'ready');
+const showCancel = computed(() => mode.value === 'manual' && displayStatus.value === 'ready');
 const isCheckDisabled = computed(
   () =>
     isBusy.value ||
-    displayStatus.value === 'unavailable' ||
-    displayStatus.value === 'checking' ||
-    displayStatus.value === 'ready' ||
-    displayStatus.value === 'activating',
+    !isCapabilityAvailable.value ||
+    status.value === 'ready' ||
+    status.value === 'activating',
 );
 const isAutomaticToggleDisabled = computed(
-  () => isBusy.value || displayStatus.value === 'unavailable',
+  () => isBusy.value || !isCapabilityAvailable.value || mode.value === undefined,
 );
+
+const busyMessage = computed(() => {
+  if (isChecking.value) return 'Checking for updates…';
+  if (isInstalling.value) return 'Preparing update…';
+  if (isChangingMode.value) return 'Changing update mode…';
+  if (isCancelling.value) return 'Cancelling scheduled update…';
+  return undefined;
+});
+
+const latestActionOutcome = computed(() => {
+  switch (lastAppUpdateAction.value) {
+    case 'check':
+      return checkOutcome.value;
+    case 'install':
+      return installOutcome.value;
+    case 'mode':
+      return modeOutcome.value;
+    case 'cancel':
+      return cancelOutcome.value;
+    case undefined:
+      return undefined;
+  }
+  return undefined;
+});
+
+const timeoutMessage = computed(() => {
+  if (latestActionOutcome.value !== 'timeout') return undefined;
+  switch (lastAppUpdateAction.value) {
+    case 'check':
+      return 'The update check timed out. It may still finish in the background.';
+    case 'install':
+      return 'Preparing the update timed out. It may still finish in the background.';
+    case 'mode':
+      return 'Changing update mode timed out. It may still finish in the background.';
+    case 'cancel':
+      return 'Cancelling the scheduled update timed out. It may still finish in the background.';
+    case undefined:
+      return undefined;
+  }
+  return undefined;
+});
 
 const formattedLastCheck = computed(() =>
   lastSuccessfulCheckAt.value ? dayjs(lastSuccessfulCheckAt.value).format('lll') : undefined,
@@ -90,18 +139,23 @@ const formattedLastCheck = computed(() =>
 const formattedBuildDate = computed(() => dayjs(APP_BUILD_DATE).format('lll'));
 
 const onInstallOnNextLaunch = () => {
+  lastAppUpdateAction.value = 'install';
   void installOnNextLaunch();
 };
 
 const onCancel = () => {
+  lastAppUpdateAction.value = 'cancel';
   void cancelScheduledUpdate();
 };
 
 const onCheckForUpdates = () => {
+  lastAppUpdateAction.value = 'check';
   void checkForUpdates();
 };
 
 const onToggleAutomaticUpdates = () => {
+  if (mode.value === undefined) return;
+  lastAppUpdateAction.value = 'mode';
   void setMode(mode.value === 'automatic' ? 'manual' : 'automatic');
 };
 </script>
@@ -122,6 +176,13 @@ const onToggleAutomaticUpdates = () => {
         Activating the update now. The status will update automatically when activation completes.
       </p>
     </section>
+
+    <p v-if="busyMessage" class="app-update-settings__action-feedback" aria-live="polite">
+      {{ busyMessage }}
+    </p>
+    <p v-if="timeoutMessage" class="app-update-settings__action-feedback" aria-live="polite">
+      {{ timeoutMessage }}
+    </p>
 
     <MDButton
       v-if="showInstallOnNextLaunch"

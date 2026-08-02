@@ -1,10 +1,10 @@
 import {
   withProtocolVersion,
   zodAppUpdateStateChangedBroadcast,
+  zodAppUpdateWorkerFailureResponse,
   zodAppUpdateWorkerResponse,
   type AppUpdateSnapshot,
   type AppUpdateWorkerRequest,
-  type AppUpdateWorkerResponse,
 } from '@shared/service/appUpdate/protocol';
 import type { UpdateMode } from '@shared/service/appUpdate/contracts';
 
@@ -14,135 +14,157 @@ import type { UpdateMode } from '@shared/service/appUpdate/contracts';
 export type { AppUpdateErrorCode, AppUpdateSnapshot } from '@shared/service/appUpdate/protocol';
 export type { UpdateMode } from '@shared/service/appUpdate/contracts';
 
-/**
- * Bounded transport timeout for fast local requests that never perform
- * release preparation (network download and hashing): `GET_SNAPSHOT`,
- * `SET_MODE` to Manual, and `CANCEL_SCHEDULED_UPDATE`. `CHECK_FOR_UPDATES`,
- * `SET_MODE` to Automatic, and `INSTALL_ON_NEXT_LAUNCH` may download and
- * hash a release, so they are sent with no client-side timeout at all — the
- * feature-local `isChecking`/`isPreparing` state remains the UI's only
- * progress owner while such a command is in flight.
- */
-const REQUEST_TIMEOUT_MS = 10_000;
+/** The classified outcome of one bounded application-update client request. */
+export type AppUpdateClientResult<T> =
+  | { status: 'success'; value: T }
+  | { status: 'timeout' }
+  | { status: 'unavailable' };
+
+/** Transport deadline for commands that do not wait for release preparation. */
+const SHORT_REQUEST_TIMEOUT_MS = 10_000;
+/** Transport deadline for commands that may wait for release download and hashing. */
+const LONG_REQUEST_TIMEOUT_MS = 120_000;
+
+const unavailableResult = (): AppUpdateClientResult<never> => ({ status: 'unavailable' });
 
 /**
  * Sends one private worker protocol request to this page's controlling
- * service worker and awaits its response over a dedicated `MessageChannel`.
- * Resolves `undefined` when no managed controller is available at all
- * (unsupported browser, no current controller, or a bounded request timed
- * out) — callers treat that as the capability-unavailable state.
+ * service worker over an owned `MessageChannel`.
  *
  * Reads `navigator.serviceWorker.controller` directly rather than awaiting
- * `navigator.serviceWorker.ready` first: this client is only a bridge to
- * whichever worker already controls the current document, and `ready` can
- * remain pending indefinitely when no registration ever becomes active for
- * this page (e.g. an unmanaged channel) — an unbounded wait this function
- * must never introduce.
+ * `navigator.serviceWorker.ready`: this client only bridges the worker that
+ * already controls the current document, and `ready` can remain pending
+ * indefinitely for an unmanaged channel. A timeout never cancels worker
+ * work; it only settles this client request and ignores a later response.
  * @param request - The protocol request to send.
- * @param timeoutMs - Bounded transport timeout in milliseconds; omitted for a command that may take arbitrarily long (release download and hashing).
- * @returns The worker's response, or `undefined` when unavailable.
+ * @param timeoutMs - The finite client transport deadline.
+ * @returns A classified response, timeout, or unavailable outcome.
  */
-async function sendToController(
+function sendToController(
   request: AppUpdateWorkerRequest,
-  timeoutMs?: number,
-): Promise<AppUpdateWorkerResponse | undefined> {
-  if (!('serviceWorker' in navigator)) return undefined;
+  timeoutMs: number,
+): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return Promise.resolve(unavailableResult());
+  }
 
-  const controller = navigator.serviceWorker.controller;
-  if (!controller) return undefined;
+  let controller: ServiceWorker | null | undefined;
+  try {
+    controller = navigator.serviceWorker.controller;
+  } catch {
+    return Promise.resolve(unavailableResult());
+  }
+  if (!controller) return Promise.resolve(unavailableResult());
 
-  return new Promise<AppUpdateWorkerResponse | undefined>((resolve) => {
-    const channel = new MessageChannel();
+  let channel: MessageChannel;
+  try {
+    channel = new MessageChannel();
+  } catch {
+    return Promise.resolve(unavailableResult());
+  }
+
+  return new Promise((resolve) => {
     let settled = false;
 
-    const settle = (result: AppUpdateWorkerResponse | undefined) => {
+    const settle = (result: AppUpdateClientResult<AppUpdateSnapshot>): void => {
       if (settled) return;
       settled = true;
+      clearTimeout(timer);
+      channel.port1.onmessage = null;
+      try {
+        channel.port1.close();
+      } catch {
+        // A browser transport cleanup failure must not leak past this boundary.
+      }
       resolve(result);
     };
 
     channel.port1.onmessage = (event) => {
-      // Exactly two shapes ever legitimately cross this boundary: a
-      // successful response, or the stable v1 failure envelope
-      // (`zodAppUpdateWorkerFailureResponse`) the worker sends when its
-      // handler threw. Both a well-formed failure envelope and anything else
-      // malformed resolve exactly like no response at all (see `settle`'s
-      // callers), never thrown — this private protocol never exposes a raw
-      // exception message to the UI.
-      const parsedResponse = zodAppUpdateWorkerResponse.safeParse(event.data);
-      // Whether `event.data` is the worker's stable v1 failure envelope
-      // (`zodAppUpdateWorkerFailureResponse`, see `protocol.ts`) or anything
-      // else malformed, both resolve exactly like no response at all.
-      settle(parsedResponse.success ? parsedResponse.data : undefined);
-    };
-    if (timeoutMs !== undefined) {
-      setTimeout(() => {
-        settle(undefined);
-      }, timeoutMs);
-    }
-    controller.postMessage(request, [channel.port2]);
-  });
-}
+      const response = zodAppUpdateWorkerResponse.safeParse(event.data);
+      if (response.success) {
+        settle({ status: 'success', value: response.data.snapshot });
+        return;
+      }
 
-async function sendAndUnwrap(
-  request: AppUpdateWorkerRequest,
-  timeoutMs?: number,
-): Promise<AppUpdateSnapshot | undefined> {
-  const response = await sendToController(request, timeoutMs);
-  return response?.snapshot;
+      // The worker's stable v1 failure envelope and every malformed or
+      // unsupported response have the same capability-unavailable transport
+      // meaning. Neither exposes a raw worker exception to upper layers.
+      if (zodAppUpdateWorkerFailureResponse.safeParse(event.data).success) {
+        settle(unavailableResult());
+        return;
+      }
+      settle(unavailableResult());
+    };
+
+    const timer = setTimeout(() => {
+      settle({ status: 'timeout' });
+    }, timeoutMs);
+
+    try {
+      controller.postMessage(request, [channel.port2]);
+    } catch {
+      settle(unavailableResult());
+    }
+  });
 }
 
 /**
  * Fetches the current update snapshot without triggering a check.
- * @returns The current snapshot, or `undefined` when unavailable.
+ * @returns A classified snapshot result.
  */
-export function getAppUpdateSnapshot(): Promise<AppUpdateSnapshot | undefined> {
-  return sendAndUnwrap(withProtocolVersion({ type: 'GET_SNAPSHOT' }), REQUEST_TIMEOUT_MS);
+export function getAppUpdateSnapshot(): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
+  return sendToController(withProtocolVersion({ type: 'GET_SNAPSHOT' }), SHORT_REQUEST_TIMEOUT_MS);
 }
 
 /**
- * Checks for a newer release. In Automatic mode, a newer release is also
- * prepared and approved in the background. May download and hash a release,
- * so this command carries no client-side timeout; the caller's own
- * `isChecking` state owns UI progress while it is in flight.
- * @returns The resulting snapshot, or `undefined` when unavailable.
+ * Checks for a newer release. The deadline bounds only this page's transport
+ * wait; a worker reconciliation that outlives it remains eligible to later
+ * broadcast a fresh snapshot.
+ * @returns A classified snapshot result.
  */
-export function checkForAppUpdates(): Promise<AppUpdateSnapshot | undefined> {
-  return sendAndUnwrap(withProtocolVersion({ type: 'CHECK_FOR_UPDATES' }));
+export function checkForAppUpdates(): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
+  return sendToController(
+    withProtocolVersion({ type: 'CHECK_FOR_UPDATES' }),
+    LONG_REQUEST_TIMEOUT_MS,
+  );
 }
 
 /**
- * Switches the update mode. Switching to Automatic prepares and approves
- * the latest known forward release, so it may download and hash a release
- * and carries no client-side timeout. Switching to Manual only clears an
- * unstarted Automatic approval and keeps the bounded transport timeout.
- * @param mode - The mode to switch to.
- * @returns The resulting snapshot, or `undefined` when unavailable.
+ * Switches the managed-update mode. The worker responds after the durable
+ * mode change and performs deferred reconciliation separately, so both mode
+ * values use the short transport deadline.
+ * @param mode - The requested update mode.
+ * @returns A classified snapshot result.
  */
-export function setAppUpdateMode(mode: UpdateMode): Promise<AppUpdateSnapshot | undefined> {
-  const timeoutMs = mode === 'manual' ? REQUEST_TIMEOUT_MS : undefined;
-  return sendAndUnwrap(withProtocolVersion({ type: 'SET_MODE', mode }), timeoutMs);
+export function setAppUpdateMode(
+  mode: UpdateMode,
+): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
+  return sendToController(
+    withProtocolVersion({ type: 'SET_MODE', mode }),
+    SHORT_REQUEST_TIMEOUT_MS,
+  );
 }
 
 /**
- * Prepares and approves the current latest release for installation on the
- * next clean launch (Manual mode). May download and hash a release, so this
- * command carries no client-side timeout; the caller's own `isPreparing`
- * state owns UI progress while it is in flight.
- * @returns The resulting snapshot, or `undefined` when unavailable.
+ * Prepares and approves the current latest release for the next clean launch
+ * in Manual mode.
+ * @returns A classified snapshot result.
  */
-export function installAppUpdateOnNextLaunch(): Promise<AppUpdateSnapshot | undefined> {
-  return sendAndUnwrap(withProtocolVersion({ type: 'INSTALL_ON_NEXT_LAUNCH' }));
+export function installAppUpdateOnNextLaunch(): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
+  return sendToController(
+    withProtocolVersion({ type: 'INSTALL_ON_NEXT_LAUNCH' }),
+    LONG_REQUEST_TIMEOUT_MS,
+  );
 }
 
 /**
- * Cancels a scheduled Manual update that has not yet started activation.
- * @returns The resulting snapshot, or `undefined` when unavailable.
+ * Cancels a scheduled Manual update that has not started activation.
+ * @returns A classified snapshot result.
  */
-export function cancelScheduledAppUpdate(): Promise<AppUpdateSnapshot | undefined> {
-  return sendAndUnwrap(
+export function cancelScheduledAppUpdate(): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
+  return sendToController(
     withProtocolVersion({ type: 'CANCEL_SCHEDULED_UPDATE' }),
-    REQUEST_TIMEOUT_MS,
+    SHORT_REQUEST_TIMEOUT_MS,
   );
 }
 
@@ -162,13 +184,12 @@ function isStateChangedBroadcast(data: unknown): boolean {
  * Subscribes to the worker's private same-channel state-invalidation
  * broadcast, calling `onStateChanged` with no arguments every time one
  * arrives so the caller can re-fetch the current snapshot. A no-op
- * subscription (a no-op unsubscribe) in a browser without `serviceWorker`
- * support.
+ * subscription in a browser without `serviceWorker` support.
  * @param onStateChanged - Called whenever the worker reports a background state change.
  * @returns An unsubscribe function that removes the underlying listener.
  */
 export function subscribeToAppUpdateStateChanged(onStateChanged: () => void): () => void {
-  if (!('serviceWorker' in navigator)) return () => {};
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return () => {};
 
   const handler = (event: MessageEvent): void => {
     if (isStateChangedBroadcast(event.data)) onStateChanged();
