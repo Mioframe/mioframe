@@ -86,6 +86,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'GET_SNAPSHOT' },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       ),
     ).rejects.toThrow('Controller state is unavailable');
   });
@@ -99,6 +100,7 @@ describe('handleWorkerMessage', () => {
       { protocolVersion: PROTOCOL_VERSION, type: 'GET_SNAPSHOT' },
       enqueue,
       createFakeCoordinator(),
+      createFakeReconciler(),
     );
 
     expect(result.response).toEqual({
@@ -147,6 +149,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -174,6 +177,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'CANCEL_SCHEDULED_UPDATE' },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -199,6 +203,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'manual' },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -299,6 +304,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'manual' },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -354,6 +360,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -377,6 +384,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
+        createFakeReconciler(),
       );
 
       expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', releaseB);
@@ -401,6 +409,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -426,6 +435,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -459,6 +469,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
+        createFakeReconciler(),
       );
 
       expect(coordinator.prepare).not.toHaveBeenCalled();
@@ -488,6 +499,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         enqueue,
         coordinator,
+        createFakeReconciler(),
       );
 
       expect(coordinator.prepare).not.toHaveBeenCalled();
@@ -527,6 +539,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
         realEnqueue,
         coordinator,
+        createFakeReconciler(),
       );
       await vi.waitFor(() => {
         expect(coordinator.prepare).toHaveBeenCalledTimes(1);
@@ -571,6 +584,7 @@ describe('handleWorkerMessage', () => {
         },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -590,6 +604,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_OK', releaseNumber: 999 },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -627,6 +642,7 @@ describe('handleWorkerMessage', () => {
         },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -666,6 +682,7 @@ describe('handleWorkerMessage', () => {
         },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       await result.runLifetimeWork?.();
@@ -712,6 +729,7 @@ describe('handleWorkerMessage', () => {
         },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -741,6 +759,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseNumber: 999 },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -780,6 +799,7 @@ describe('handleWorkerMessage', () => {
         },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({
@@ -803,6 +823,7 @@ describe('handleWorkerMessage', () => {
         },
         enqueue,
         createFakeCoordinator(),
+        createFakeReconciler(),
       );
 
       expect(result.response).toEqual({

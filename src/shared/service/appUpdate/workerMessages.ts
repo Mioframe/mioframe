@@ -137,7 +137,7 @@ export async function handleWorkerMessage(
   request: AppUpdateWorkerRequest,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
-  reconciler?: UpdateReconciler,
+  reconciler: UpdateReconciler,
 ): Promise<
   WorkerMessageResult<AppUpdateWorkerResponse | AppUpdateBootAckResponse | ActivationStatusResponse>
 > {
@@ -150,7 +150,6 @@ export async function handleWorkerMessage(
     }
 
     case 'CHECK_FOR_UPDATES': {
-      if (!reconciler) throw new Error('Update reconciler is unavailable');
       return {
         response: withProtocolVersion({ snapshot: await reconciler.checkForUpdates() }),
       };
@@ -168,13 +167,7 @@ export async function handleWorkerMessage(
           changed
             ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
             : undefined,
-          changed
-            ? () => {
-                if (!reconciler)
-                  return Promise.reject(new Error('Update reconciler is unavailable'));
-                return reconciler.reconcileAfterModeChange();
-              }
-            : undefined,
+          changed ? () => reconciler.reconcileAfterModeChange() : undefined,
         ),
       };
     }

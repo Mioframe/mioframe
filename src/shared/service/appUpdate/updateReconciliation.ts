@@ -35,8 +35,17 @@ export function createUpdateReconciler(
 
     const runUntilSettled = async (): Promise<AppUpdateSnapshot> => {
       rerunRequested = false;
-      const snapshot = await dependencies.runPass();
-      return isRerunRequested() ? runUntilSettled() : snapshot;
+      let result:
+        | { status: 'resolved'; snapshot: AppUpdateSnapshot }
+        | { status: 'rejected'; error: unknown };
+      try {
+        result = { status: 'resolved', snapshot: await dependencies.runPass() };
+      } catch (error) {
+        result = { status: 'rejected', error };
+      }
+      if (isRerunRequested()) return runUntilSettled();
+      if (result.status === 'rejected') throw result.error;
+      return result.snapshot;
     };
     const attempt = Promise.resolve().then(runUntilSettled);
     inFlightPromise = attempt;

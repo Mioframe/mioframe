@@ -142,6 +142,42 @@ describe('createUpdateReconciler', () => {
     expect(settled).toHaveBeenCalledWith(snapshot(2));
   });
 
+  it('discards a failed pass when a mode change requested a successful rerun', async () => {
+    const first = deferred<AppUpdateSnapshot>();
+    const second = deferred<AppUpdateSnapshot>();
+    const runPass = vi
+      .fn()
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    const reconciler = createUpdateReconciler({ runPass });
+    const check = reconciler.checkForUpdates();
+    await startPass();
+    const modeChange = reconciler.reconcileAfterModeChange();
+    first.reject(new Error('superseded failed pass'));
+    await startPass();
+    expect(runPass).toHaveBeenCalledTimes(2);
+    second.resolve(snapshot(2));
+    await modeChange;
+    await expect(check).resolves.toEqual(snapshot(2));
+  });
+
+  it('rejects when a requested rerun is the final failed pass', async () => {
+    const first = deferred<AppUpdateSnapshot>();
+    const finalFailure = new Error('failed rerun');
+    const runPass = vi
+      .fn()
+      .mockImplementationOnce(() => first.promise)
+      .mockRejectedValueOnce(finalFailure);
+    const reconciler = createUpdateReconciler({ runPass });
+    const check = reconciler.checkForUpdates();
+    await startPass();
+    const modeChange = expect(reconciler.reconcileAfterModeChange()).rejects.toBe(finalFailure);
+    first.reject(new Error('superseded failed pass'));
+    await expect(check).rejects.toBe(finalFailure);
+    await modeChange;
+    expect(runPass).toHaveBeenCalledTimes(2);
+  });
+
   it('clears the in-flight reference after success so a later trigger starts fresh', async () => {
     const runPass = vi.fn().mockResolvedValueOnce(snapshot(1)).mockResolvedValueOnce(snapshot(2));
     const reconciler = createUpdateReconciler({ runPass });

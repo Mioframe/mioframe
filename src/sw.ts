@@ -15,9 +15,9 @@ declare const self: ServiceWorkerGlobalScope;
  * particular application release — only its own channel (derived at runtime
  * from its registration scope, not build-embedded).
  *
- * Stage 3 implements bootstrap classification and active-release-only
- * serving; discovery/preparation (Stage 4) and clean-launch
- * activation/rollback (Stage 5) are not yet wired from this file.
+ * Stage 3 bootstrap and active-release serving are wired. Stage 4
+ * reconciliation and preparation are wired. Stage 5 activation and
+ * rollback fetch behavior is not yet wired.
  */
 
 import {
