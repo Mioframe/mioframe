@@ -98,17 +98,19 @@ async function waitForControllerState(
   predicate: (result: ControllerStateReadResult) => boolean,
   timeoutMs = 20_000,
 ): Promise<ControllerStateReadResult> {
-  const start = Date.now();
-  for (;;) {
-    const result = await readControllerState(page, CONTROLLER_DB_NAME);
-    if (predicate(result)) return result;
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(
-        `Timed out waiting for controller state condition. Last: ${JSON.stringify(result)}`,
-      );
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
+  let matched: ControllerStateReadResult | undefined;
+  await expect
+    .poll(
+      async () => {
+        const result = await readControllerState(page, CONTROLLER_DB_NAME);
+        if (predicate(result)) matched = result;
+        return matched !== undefined;
+      },
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
+  if (!matched) throw new Error('Controller state condition settled without a matching result');
+  return matched;
 }
 
 async function waitForControlledPage(page: Page): Promise<void> {
@@ -241,15 +243,12 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
       snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
     }>(page, { type: 'CHECK_FOR_UPDATES' });
 
-    // CHECK_FOR_UPDATES owns discovery only and responds before Automatic
-    // preparation starts (see the managed pinned application updates
-    // feature): the response itself only shows the newly discovered
-    // `available` candidate.
-    expect(checked.snapshot.candidate?.phase).toBe('available');
+    // Explicit Check joins the complete reconciliation, including Automatic
+    // preparation, and therefore returns its final ready snapshot.
+    expect(checked.snapshot.candidate?.phase).toBe('ready');
     expect(checked.snapshot.candidate?.release.releaseNumber).toBe(3);
 
-    // Automatic preparation runs as deferred worker-owned follow-up work
-    // after the response; poll persisted state directly for it to complete.
+    // Confirm the same durable final state directly.
     const ready = await waitForControllerState(
       page,
       (r) =>
@@ -537,10 +536,9 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
         snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
       }>(page, { type: 'CHECK_FOR_UPDATES' });
 
-      // CHECK_FOR_UPDATES owns discovery only and responds before Automatic
-      // preparation starts, so its own response only shows the newly
-      // discovered `available` candidate — the aborted request happens
-      // during the deferred preparation that follows, not during this call.
+      // Explicit Check waits for the preparation attempt; a transient
+      // preparation failure leaves the candidate available in its final
+      // response and persisted state.
       expect(failedCheck.snapshot.candidate?.phase).toBe('available');
       expect(failedCheck.snapshot.candidate?.release.releaseNumber).toBe(
         releaseRetry.releaseNumber,

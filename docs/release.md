@@ -720,18 +720,14 @@ makes an already-persisted transition appear to have failed or poisons later
 cleanup/preparation work. Release downloads and hashing use a small bounded
 concurrency limit, not an unbounded fetch over every file.
 
-### Scheduled discovery event lifetime
+### Reconciliation event lifetime
 
-The background discovery check is triggered by ordinary navigation and
-deduplicated once per worker instance lifetime
-(`ScheduledDiscoveryCheckScheduler`), but its promise is attached to the
-triggering `fetch` event via `event.waitUntil` — a Service Worker may
-otherwise be terminated once its event handler returns, killing an untracked
-background check mid-flight. It runs in both update modes; only Automatic
-mode continues from discovery into preparation and approval. The navigation's
-own response is never awaited on it: `event.respondWith` resolves
-independently, so update discovery and preparation can never delay a
-navigation.
+Every owned top-level navigation joins the worker-local reconciliation promise
+and attaches it to that fetch event through `event.waitUntil`. Concurrent
+navigation and explicit Check triggers join without requesting another pass;
+a successful mode change requests one fresh-state rerun. The navigation's own
+`event.respondWith` promise remains independent, so discovery and preparation
+never delay its response.
 
 ## Production artifact validation
 

@@ -40,12 +40,24 @@ import {
 import { handleAssetFetch, handleNavigationFetch } from './shared/service/appUpdate/workerFetch';
 import { runInstall } from './shared/service/appUpdate/workerInstall';
 import { handleWorkerMessage } from './shared/service/appUpdate/workerMessages';
+import { runUpdateReconciliationPass } from './shared/service/appUpdate/updateDiscovery';
+import { createUpdateReconciler } from './shared/service/appUpdate/updateReconciliation';
 
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
 const channelOrigin = deriveManagedChannelOrigin(self.registration.scope);
 const enqueue = createOperationQueue();
 const preparationCoordinator = createPreparationCoordinator();
+const updateReconciler = createUpdateReconciler({
+  runPass: () =>
+    runUpdateReconciliationPass({
+      channel,
+      channelBasePath,
+      channelOrigin,
+      enqueue,
+      coordinator: preparationCoordinator,
+    }),
+});
 
 self.addEventListener('install', (event) => {
   // Deliberately outside `enqueue`/`OperationQueue`: predecessor probing,
@@ -99,6 +111,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       handleNavigationFetch(channel, channelBasePath, event.request, preparationCoordinator),
     );
+    event.waitUntil(updateReconciler.reconcileNavigation().catch(() => {}));
     return;
   }
 
@@ -169,6 +182,7 @@ self.addEventListener('message', (event) => {
           request,
           enqueue,
           preparationCoordinator,
+          updateReconciler,
         );
       } catch {
         // Never a raw exception message: this private protocol only ever

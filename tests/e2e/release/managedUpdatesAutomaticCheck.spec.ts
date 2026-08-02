@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,6 +25,22 @@ type ControllerStateReadResult =
         candidate?: { phase: string; release: { releaseNumber: number } };
       };
     };
+
+async function sendProtocolRequest<T>(page: Page, request: Record<string, unknown>): Promise<T> {
+  return page.evaluate<T, Record<string, unknown>>(
+    (req) =>
+      new Promise<T>((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (event) => {
+          resolve(event.data);
+        };
+        navigator.serviceWorker.controller?.postMessage({ protocolVersion: 1, ...req }, [
+          channel.port2,
+        ]);
+      }),
+    request,
+  );
+}
 
 async function readControllerState(
   page: import('@playwright/test').Page,
@@ -78,11 +94,7 @@ test('Automatic mode discovers and schedules a newer release from ordinary navig
       // is awaited here, not `.controller`: the managed worker never calls
       // `clients.claim()`, so this same page remains uncontrolled until its
       // next navigation — but `readControllerState` reads IndexedDB
-      // directly and needs no control at all. Deliberately never reloads
-      // this page: a reload is itself a `navigate` fetch event, and the
-      // Automatic check is scheduled at most once per worker instance —
-      // reloading here would consume that one attempt before release B
-      // below even exists, starving the real assertion this test makes.
+      // directly and needs no control at all.
       const sessionA = await context.newPage();
       await sessionA.goto(server.url);
       await sessionA.evaluate(() => navigator.serviceWorker.ready);
@@ -112,23 +124,19 @@ test('Automatic mode discovers and schedules a newer release from ordinary navig
         },
       );
 
-      const start = Date.now();
-      for (;;) {
-        const result = await readControllerState(sessionAObserver);
-        if (
-          result.status === 'valid' &&
-          result.state.candidate?.phase === 'ready' &&
-          result.state.candidate.release.releaseNumber === releaseB.releaseNumber
-        ) {
-          break;
-        }
-        if (Date.now() - start > 30_000) {
-          throw new Error(
-            `Timed out waiting for the automatic check to schedule release B. Last: ${JSON.stringify(result)}`,
-          );
-        }
-        await sessionAObserver.waitForTimeout(250);
-      }
+      await expect
+        .poll(
+          async () => {
+            const result = await readControllerState(sessionAObserver);
+            return (
+              result.status === 'valid' &&
+              result.state.candidate?.phase === 'ready' &&
+              result.state.candidate.release.releaseNumber === releaseB.releaseNumber
+            );
+          },
+          { timeout: 30_000 },
+        )
+        .toBe(true);
 
       // The original session A must remain uninterrupted throughout.
       await expect(sessionA.getByText(/^browser storage$/i)).toBeVisible();
@@ -138,25 +146,91 @@ test('Automatic mode discovers and schedules a newer release from ordinary navig
         expect(sessionAStillActive.state.activeRelease.releaseNumber).toBe(published.releaseNumber);
       }
 
-      // Close every A session; the next clean launch must activate B.
+      // Stage 4 stops at a prepared candidate. Activation belongs to Stage 5.
       await sessionA.close();
       await sessionAObserver.close();
+      await context.close();
+    } finally {
+      await server.close();
+    }
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
+});
 
-      const sessionB = await context.newPage();
-      await sessionB.goto(server.url);
-      await sessionB.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
-        timeout: 30_000,
+test('Manual navigation rechecks without suppression and explicit Automatic Check returns ready', async ({
+  browser,
+}, testInfo) => {
+  testInfo.setTimeout(180_000);
+  const workDir = mkdtempSync(join(tmpdir(), 'managed-release-reconciliation-work-'));
+
+  try {
+    await buildAndPublishManagedRelease({
+      channel: 'stable',
+      basePath: BASE_PATH,
+      appVersion: '1.0.0',
+      buildId: 'reconciliation-release-a',
+      workDir,
+    });
+    const server = await startManagedArtifactServer({ workDir, basePath: BASE_PATH });
+    try {
+      const context = await browser.newContext({ baseURL: server.url });
+      const page = await context.newPage();
+      await page.goto(server.url);
+      await page.evaluate(() => navigator.serviceWorker.ready);
+      await page.reload();
+      await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+      await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'manual' });
+
+      const releaseB = await buildAndPublishManagedRelease({
+        channel: 'stable',
+        basePath: BASE_PATH,
+        appVersion: '1.1.0',
+        buildId: 'reconciliation-release-b',
+        workDir,
       });
-      await expect(sessionB.getByText(/^browser storage$/i)).toBeVisible();
+      await page.reload();
+      await expect
+        .poll(async () => readControllerState(page), { timeout: 30_000 })
+        .toMatchObject({
+          status: 'valid',
+          state: {
+            mode: 'manual',
+            candidate: { phase: 'available', release: { releaseNumber: releaseB.releaseNumber } },
+          },
+        });
 
-      const committed = await readControllerState(sessionB);
-      expect(committed.status).toBe('valid');
-      if (committed.status === 'valid') {
-        expect(committed.state.activeRelease.releaseNumber).toBe(releaseB.releaseNumber);
-        expect(committed.state.candidate).toBeUndefined();
-      }
+      const releaseC = await buildAndPublishManagedRelease({
+        channel: 'stable',
+        basePath: BASE_PATH,
+        appVersion: '1.2.0',
+        buildId: 'reconciliation-release-c',
+        workDir,
+      });
+      await page.reload();
+      await expect
+        .poll(async () => readControllerState(page), { timeout: 30_000 })
+        .toMatchObject({
+          status: 'valid',
+          state: {
+            mode: 'manual',
+            candidate: { phase: 'available', release: { releaseNumber: releaseC.releaseNumber } },
+          },
+        });
 
-      await sessionB.close();
+      await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'automatic' });
+      const checked = await sendProtocolRequest<{
+        snapshot: {
+          mode: string;
+          candidate?: { phase: string; release: { releaseNumber: number } };
+        };
+      }>(page, { type: 'CHECK_FOR_UPDATES' });
+      expect(checked.snapshot).toMatchObject({
+        mode: 'automatic',
+        candidate: { phase: 'ready', release: { releaseNumber: releaseC.releaseNumber } },
+      });
+
+      await page.close();
       await context.close();
     } finally {
       await server.close();

@@ -16,6 +16,20 @@ vi.mock('./shared/service/appUpdate/workerMessages', () => ({
   handleWorkerMessage: (...args: unknown[]) => handleWorkerMessageMock(...args),
 }));
 
+const reconcileNavigationMock = vi.fn().mockResolvedValue(undefined);
+const updateReconcilerFake = {
+  reconcileNavigation: reconcileNavigationMock,
+  checkForUpdates: vi.fn(),
+  reconcileAfterModeChange: vi.fn(),
+};
+const createUpdateReconcilerMock = vi.fn((_dependencies: unknown) => updateReconcilerFake);
+vi.mock('./shared/service/appUpdate/updateReconciliation', () => ({
+  createUpdateReconciler: (dependencies: unknown) => createUpdateReconcilerMock(dependencies),
+}));
+vi.mock('./shared/service/appUpdate/updateDiscovery', () => ({
+  runUpdateReconciliationPass: vi.fn(),
+}));
+
 const isSameChannelPathMock = vi.fn((..._args: unknown[]) => true);
 const isSameChannelWindowClientMock = vi.fn((..._args: unknown[]) => true);
 vi.mock('./shared/service/appUpdate/cleanLaunch', () => ({
@@ -151,6 +165,8 @@ beforeEach(() => {
   handleNavigationFetchMock.mockReset();
   runInstallMock.mockReset();
   runInstallMock.mockResolvedValue(undefined);
+  reconcileNavigationMock.mockReset().mockResolvedValue(undefined);
+  createUpdateReconcilerMock.mockClear();
 });
 
 afterEach(() => {
@@ -185,6 +201,7 @@ describe('src/sw.ts message handler', () => {
     // The response is already posted, but the event's own lifetime is still
     // pending: `runLifetimeWork`'s returned promise has not resolved yet.
     expect(postMessage).toHaveBeenCalledWith({ protocolVersion: 1, snapshot: { mode: 'manual' } });
+    expect(handleWorkerMessageMock.mock.calls[0]?.[6]).toBe(updateReconcilerFake);
     expect(runLifetimeWork).toHaveBeenCalledTimes(1);
     expect(isSettled()).toBe(false);
 
@@ -479,11 +496,11 @@ describe('src/sw.ts fetch routing', () => {
     );
   });
 
-  it('navigation never schedules extra background work beyond respondWith', async () => {
+  it('navigation attaches reconciliation to waitUntil separately from respondWith', async () => {
     const listeners = await importSwAndGetListeners();
     const listener = listeners.get('fetch');
     if (!listener) throw new Error('Expected a fetch listener to have been registered');
-    const { event, waitUntil } = createFakeFetchEvent(
+    const { event, respondWith, waitUntil } = createFakeFetchEvent(
       'https://mioframe.example/',
       'navigate',
       'document',
@@ -491,7 +508,9 @@ describe('src/sw.ts fetch routing', () => {
 
     listener(event);
 
-    expect(waitUntil).not.toHaveBeenCalled();
+    expect(reconcileNavigationMock).toHaveBeenCalledTimes(1);
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+    expect(respondWith.mock.calls[0]?.[0]).not.toBe(waitUntil.mock.calls[0]?.[0]);
   });
 
   it.each(['iframe', 'embed'] as const)(

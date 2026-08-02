@@ -24,11 +24,14 @@ vi.mock('./shared/service/appUpdate/workerInstall', () => ({
   runInstall: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./shared/service/appUpdate/updateDiscovery', () => ({
-  runScheduledDiscoveryCheck: vi.fn().mockResolvedValue(undefined),
-}));
-vi.mock('./shared/service/appUpdate/scheduledDiscoveryCheckScheduler', () => ({
-  createScheduledDiscoveryCheckScheduler: () => ({
-    scheduleOnce: (fn: () => Promise<void>) => fn(),
+  runUpdateReconciliationPass: vi.fn().mockResolvedValue({
+    mode: 'automatic',
+    activeRelease: {
+      releaseNumber: 1,
+      appVersion: '1.0.0',
+      buildId: 'build-a',
+      buildDate: '2026-08-02T00:00:00.000Z',
+    },
   }),
 }));
 

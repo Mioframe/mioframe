@@ -20,7 +20,7 @@ import {
   rollbackActivation,
   setMode,
 } from './stateTransitions';
-import { runAutomaticPreparationFollowUp, runDiscovery } from './updateDiscovery';
+import type { UpdateReconciler } from './updateReconciliation';
 import {
   broadcastRollback,
   broadcastStateChanged,
@@ -126,6 +126,7 @@ async function installOnNextLaunch(
  * @param request - The incoming protocol request.
  * @param enqueue - The channel's serialized operation queue.
  * @param coordinator - The channel's preparation coordinator.
+ * @param reconciler - The worker-local shared reconciliation owner.
  * @returns The resulting message result.
  * @throws When persisted state is absent or invalid; this should never happen once install prerequisites have succeeded.
  */
@@ -136,6 +137,7 @@ export async function handleWorkerMessage(
   request: AppUpdateWorkerRequest,
   enqueue: OperationQueue,
   coordinator: PreparationCoordinator,
+  reconciler?: UpdateReconciler,
 ): Promise<
   WorkerMessageResult<AppUpdateWorkerResponse | AppUpdateBootAckResponse | ActivationStatusResponse>
 > {
@@ -148,29 +150,9 @@ export async function handleWorkerMessage(
     }
 
     case 'CHECK_FOR_UPDATES': {
-      const discovery = await runDiscovery(channel, channelBasePath, enqueue);
-      const shouldPrepare =
-        discovery.response.snapshot.mode === 'automatic' &&
-        discovery.response.snapshot.candidate?.phase === 'available';
+      if (!reconciler) throw new Error('Update reconciler is unavailable');
       return {
-        response: discovery.response,
-        runLifetimeWork: combineLifetimeWork(
-          discovery.candidateReplaced ? () => cleanupReleaseCache(channel, coordinator) : undefined,
-          discovery.durablyChanged
-            ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
-            : undefined,
-          shouldPrepare
-            ? () =>
-                runAutomaticPreparationFollowUp(
-                  channel,
-                  channelBasePath,
-                  channelOrigin,
-                  enqueue,
-                  coordinator,
-                  discovery.discoveredDescriptor,
-                )
-            : undefined,
-        ),
+        response: withProtocolVersion({ snapshot: await reconciler.checkForUpdates() }),
       };
     }
 
@@ -180,22 +162,18 @@ export async function handleWorkerMessage(
         if (result !== state) await writeControllerState(channel, result);
         return { state: result, changed: result !== state };
       });
-      const shouldPrepare = next.mode === 'automatic' && next.candidate?.phase === 'available';
       return {
         response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }),
         runLifetimeWork: combineLifetimeWork(
           changed
             ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
             : undefined,
-          shouldPrepare
-            ? () =>
-                runAutomaticPreparationFollowUp(
-                  channel,
-                  channelBasePath,
-                  channelOrigin,
-                  enqueue,
-                  coordinator,
-                )
+          changed
+            ? () => {
+                if (!reconciler)
+                  return Promise.reject(new Error('Update reconciler is unavailable'));
+                return reconciler.reconcileAfterModeChange();
+              }
             : undefined,
         ),
       };

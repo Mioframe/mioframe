@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseSummary, UpdateControllerState } from './contracts';
 import { createOperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
+import type { UpdateReconciler } from './updateReconciliation';
 
 const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
@@ -55,6 +56,15 @@ function createFakeCoordinator(
   };
 }
 
+function createFakeReconciler(overrides: Partial<UpdateReconciler> = {}): UpdateReconciler {
+  return {
+    reconcileNavigation: vi.fn().mockResolvedValue(undefined),
+    checkForUpdates: vi.fn().mockResolvedValue({ mode: 'manual', activeRelease: releaseA }),
+    reconcileAfterModeChange: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   readControllerStateMock.mockReset();
   writeControllerStateMock.mockReset();
@@ -96,6 +106,29 @@ describe('handleWorkerMessage', () => {
       snapshot: expect.objectContaining({ mode: 'manual' }),
     });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(result.runLifetimeWork).toBeUndefined();
+  });
+
+  it('CHECK_FOR_UPDATES returns the reconciler final snapshot without deferred work', async () => {
+    const finalSnapshot = {
+      mode: 'automatic' as const,
+      activeRelease: releaseB,
+      candidate: { phase: 'ready' as const, release: releaseC },
+    };
+    const checkForUpdates = vi.fn().mockResolvedValue(finalSnapshot);
+    const reconciler = createFakeReconciler({ checkForUpdates });
+    const { handleWorkerMessage } = await import('./workerMessages');
+    const result = await handleWorkerMessage(
+      'stable',
+      '/',
+      CHANNEL_ORIGIN,
+      { protocolVersion: PROTOCOL_VERSION, type: 'CHECK_FOR_UPDATES' },
+      enqueue,
+      createFakeCoordinator(),
+      reconciler,
+    );
+    expect(result.response).toEqual({ protocolVersion: PROTOCOL_VERSION, snapshot: finalSnapshot });
+    expect(checkForUpdates).toHaveBeenCalledTimes(1);
     expect(result.runLifetimeWork).toBeUndefined();
   });
 
@@ -176,7 +209,7 @@ describe('handleWorkerMessage', () => {
       expect(result.runLifetimeWork).toBeUndefined();
     });
 
-    it('to automatic persists the mode and responds immediately, without waiting for preparation', async () => {
+    it('to automatic persists and responds before deferred reconciliation begins', async () => {
       let persisted: UpdateControllerState = {
         ...baseState,
         candidate: { phase: 'available', release: releaseB },
@@ -188,6 +221,8 @@ describe('handleWorkerMessage', () => {
         },
       );
       const coordinator = createFakeCoordinator();
+      const reconcileAfterModeChange = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createFakeReconciler({ reconcileAfterModeChange });
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
@@ -197,6 +232,7 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
+        reconciler,
       );
 
       expect(result.response).toEqual({
@@ -209,14 +245,14 @@ describe('handleWorkerMessage', () => {
       // The mode switch is already durable, but preparation has not started
       // yet: it only runs once runLifetimeWork is explicitly invoked.
       expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
-      expect(coordinator.prepare).not.toHaveBeenCalled();
+      expect(reconcileAfterModeChange).not.toHaveBeenCalled();
       expect(result.runLifetimeWork).toBeDefined();
 
       await result.runLifetimeWork?.();
-      expect(coordinator.prepare).toHaveBeenCalledWith('stable', '/', releaseB, undefined);
+      expect(reconcileAfterModeChange).toHaveBeenCalledTimes(1);
     });
 
-    it('to automatic when already automatic with an available candidate still schedules a deferred preparation retry', async () => {
+    it('to automatic when already automatic has no deferred reconciliation retry', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
@@ -226,6 +262,8 @@ describe('handleWorkerMessage', () => {
         },
       });
       const coordinator = createFakeCoordinator();
+      const reconcileAfterModeChange = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createFakeReconciler({ reconcileAfterModeChange });
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
@@ -235,12 +273,12 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
+        reconciler,
       );
 
       expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(result.runLifetimeWork).toBeDefined();
-      await result.runLifetimeWork?.();
-      expect(coordinator.prepare).toHaveBeenCalledTimes(1);
+      expect(result.runLifetimeWork).toBeUndefined();
+      expect(reconcileAfterModeChange).not.toHaveBeenCalled();
     });
 
     it('to manual clears nothing: the candidate is untouched by a mode switch', async () => {
@@ -285,6 +323,8 @@ describe('handleWorkerMessage', () => {
         },
       });
       const coordinator = createFakeCoordinator();
+      const reconcileAfterModeChange = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createFakeReconciler({ reconcileAfterModeChange });
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
@@ -294,68 +334,12 @@ describe('handleWorkerMessage', () => {
         { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
         enqueue,
         coordinator,
+        reconciler,
       );
 
       await result.runLifetimeWork?.();
       expect(coordinator.prepare).not.toHaveBeenCalled();
-    });
-
-    it('a stale long-running Automatic preparation cannot overwrite a later completed Manual choice', async () => {
-      let persisted: UpdateControllerState = {
-        ...baseState,
-        mode: 'automatic',
-        candidate: { phase: 'available', release: releaseB },
-      };
-      readControllerStateMock.mockImplementation(() => ({ status: 'valid', state: persisted }));
-      writeControllerStateMock.mockImplementation(
-        (_channel: string, state: UpdateControllerState) => {
-          persisted = state;
-        },
-      );
-
-      let resolvePrepare: () => void = () => {};
-      const prepareGate = new Promise<void>((resolve) => {
-        resolvePrepare = resolve;
-      });
-      const coordinator = createFakeCoordinator({
-        prepare: vi.fn().mockImplementation(async () => {
-          await prepareGate;
-        }),
-      });
-
-      const { handleWorkerMessage } = await import('./workerMessages');
-      const realEnqueue = createOperationQueue();
-
-      const automaticResult = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'automatic' },
-        realEnqueue,
-        coordinator,
-      );
-      const followUp = automaticResult.runLifetimeWork?.();
-      await vi.waitFor(() => {
-        expect(coordinator.prepare).toHaveBeenCalledTimes(1);
-      });
-
-      // A later request durably switches to Manual while preparation is
-      // still gated.
-      await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'SET_MODE', mode: 'manual' },
-        realEnqueue,
-        createFakeCoordinator(),
-      );
-      expect(persisted.mode).toBe('manual');
-
-      resolvePrepare();
-      await followUp;
-
-      expect(persisted.mode).toBe('manual');
-      expect(persisted.candidate).toEqual({ phase: 'available', release: releaseB });
+      expect(reconcileAfterModeChange).toHaveBeenCalledTimes(1);
     });
   });
 
