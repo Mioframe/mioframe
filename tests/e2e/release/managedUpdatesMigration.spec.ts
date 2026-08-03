@@ -1,9 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   buildAndApplyLegacyStableDeploy,
+  buildAndPublishBrokenManagedRelease,
   buildAndPublishManagedRelease,
   corruptPublishedReleaseFile,
   startManagedArtifactServer,
@@ -65,6 +66,173 @@ async function waitForActiveReleaseNumber(
       );
     }
     await page.waitForTimeout(200);
+  }
+}
+
+type ControllerStateReadResult =
+  | { status: 'absent' }
+  | {
+      status: 'valid';
+      state: {
+        activeRelease: { releaseNumber: number };
+        candidate?: {
+          phase: 'available' | 'ready' | 'activating' | 'failed';
+          release: { releaseNumber: number };
+        };
+      };
+    };
+
+/**
+ * Reads the full persisted controller-state record (not only
+ * `activeRelease`, unlike {@link readActiveReleaseNumber}), needed to prove a
+ * discovered candidate's exact phase and release number during delayed
+ * release-1 recovery.
+ * @param page - The page to read persisted controller state from.
+ * @returns The current persisted controller-state read result.
+ */
+async function readControllerState(page: Page): Promise<ControllerStateReadResult> {
+  return page.evaluate<ControllerStateReadResult, string>(
+    (dbName) =>
+      new Promise<ControllerStateReadResult>((resolve) => {
+        const request = indexedDB.open(dbName);
+        request.onerror = () => {
+          resolve({ status: 'absent' });
+        };
+        request.onsuccess = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('controllerState')) {
+            db.close();
+            resolve({ status: 'absent' });
+            return;
+          }
+          const tx = db.transaction('controllerState', 'readonly');
+          const getRequest = tx.objectStore('controllerState').get('controllerState');
+          getRequest.onsuccess = () => {
+            db.close();
+            resolve(
+              getRequest.result === undefined
+                ? { status: 'absent' }
+                : { status: 'valid', state: getRequest.result },
+            );
+          };
+        };
+      }),
+    CONTROLLER_STATE_DB_NAME,
+  );
+}
+
+/**
+ * Polls {@link readControllerState} until `predicate` matches, bounded by
+ * `timeoutMs`. See {@link waitForActiveReleaseNumber} for why a single
+ * post-"controlled" read is not reliable.
+ * @param page - The page to read persisted controller state from.
+ * @param predicate - Resolves once the read result satisfies this.
+ * @param timeoutMs - Maximum time to poll before throwing.
+ * @returns The first read result that satisfied `predicate`.
+ */
+async function waitForControllerState(
+  page: Page,
+  predicate: (result: ControllerStateReadResult) => boolean,
+  timeoutMs = 20_000,
+): Promise<ControllerStateReadResult> {
+  let matched: ControllerStateReadResult | undefined;
+  await expect
+    .poll(
+      async () => {
+        const result = await readControllerState(page);
+        if (predicate(result)) matched = result;
+        return matched !== undefined;
+      },
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
+  if (!matched) throw new Error('Controller state condition settled without a matching result');
+  return matched;
+}
+
+async function waitForControlledPage(page: Page): Promise<void> {
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, {
+    timeout: 30_000,
+  });
+}
+
+/**
+ * Sends one private worker protocol request through the page's own
+ * `navigator.serviceWorker.controller`, the same real transport the product
+ * UI uses — never a test-side reproduction of the protocol.
+ * @param page - The controlled page to send the request from.
+ * @param request - The protocol request body, without `protocolVersion`.
+ * @returns The worker's response to this request.
+ */
+async function sendProtocolRequest<T>(page: Page, request: Record<string, unknown>): Promise<T> {
+  return page.evaluate<T, Record<string, unknown>>(
+    (req) =>
+      new Promise<T>((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = (event) => {
+          resolve(event.data);
+        };
+        navigator.serviceWorker.controller?.postMessage({ protocolVersion: 1, ...req }, [
+          channel.port2,
+        ]);
+      }),
+    request,
+  );
+}
+
+/**
+ * Opens a fresh same-channel window navigated to `url`, retrying by closing
+ * and reopening until it answers `GET_SNAPSHOT` — proof it is genuinely
+ * controlled by the managed worker, not an outgoing predecessor worker that
+ * still happened to be `registration.active` when this navigation's request
+ * was dispatched (the same same-path bootstrap race the predecessor probe
+ * exists to arbitrate at install time; a brand-new window opened immediately
+ * after the predecessor's last controlled client closes can still land on
+ * it). A predecessor worker never implements this private protocol, so an
+ * unanswered request within `perAttemptTimeoutMs` means this exact race
+ * occurred. Reloading the *same* window cannot resolve it: while it stays
+ * open, it is itself a live predecessor-controlled client, and this worker
+ * never calls `clients.claim()` to reclaim it — only closing it and
+ * navigating a genuinely new window gives the managed worker another chance
+ * to finish promoting.
+ * @param context - Browser context to open windows in.
+ * @param url - URL to navigate to.
+ * @param timeoutMs - Overall bound across every retry.
+ * @returns The confirmed managed-controlled page and its accumulated `pageerror` messages.
+ */
+async function openManagedControlledPage(
+  context: BrowserContext,
+  url: string,
+  timeoutMs = 30_000,
+): Promise<{ page: Page; pageErrors: string[] }> {
+  const perAttemptTimeoutMs = 3_000;
+  const start = Date.now();
+  for (;;) {
+    const page = await context.newPage();
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    await page.goto(url);
+    await waitForControlledPage(page);
+
+    const answered = await Promise.race([
+      sendProtocolRequest(page, { type: 'GET_SNAPSHOT' }).then(
+        () => true,
+        () => false,
+      ),
+      new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          resolve(false);
+        }, perAttemptTimeoutMs);
+      }),
+    ]);
+    if (answered) return { page, pageErrors };
+
+    await page.close();
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(
+        'Timed out waiting for a same-channel window controlled by the managed worker',
+      );
+    }
   }
 }
 
@@ -357,6 +525,209 @@ test('a failed first managed install leaves the legacy worker active and operati
       await waitForActiveReleaseNumber(verifyPage, valid.releaseNumber);
 
       await verifyPage.close();
+      await context.close();
+    } finally {
+      await server.close();
+    }
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
+});
+
+// Delayed release-1 recovery: the very first managed release is hash-correct
+// and install-valid (installation never runs a release's own application
+// JavaScript), but its entry module throws immediately once actually running
+// in the browser — a real build that passed CI but has a runtime bug,
+// discovered only once running. Per the managed pinned application updates
+// feature's accepted initial-transition boundary, release 1 becomes the
+// managed baseline directly at bootstrap (never through candidate
+// activation), so its own boot failure can never trigger a rollback — there
+// is nothing to roll back to. Recovery instead relies on every later owned
+// top-level navigation continuing reconciliation (Automatic discovery and
+// preparation) even though release 1's application JavaScript can never run
+// an explicit Check itself: a corrected release becomes discoverable and
+// `ready` from the worker's own navigation-triggered background pass alone,
+// then activates on the next qualifying clean launch exactly like any other
+// managed update.
+test('a boot-broken first managed release remains the managed baseline, and a later corrected release recovers through navigation reconciliation without application JavaScript', async ({
+  browser,
+}, testInfo) => {
+  testInfo.setTimeout(180_000);
+  const workDir = mkdtempSync(join(tmpdir(), 'managed-release-migration-recovery-work-'));
+
+  try {
+    await buildAndApplyLegacyStableDeploy({ workDir });
+    const server = await startManagedArtifactServer({ workDir, basePath: BASE_PATH });
+
+    try {
+      const context = await browser.newContext({ baseURL: server.url });
+      const legacyPage = await context.newPage();
+
+      await legacyPage.goto(server.url);
+      await legacyPage.evaluate(() => navigator.serviceWorker.ready);
+      await legacyPage.reload();
+      await legacyPage.waitForFunction(() => navigator.serviceWorker.controller !== null);
+
+      const releaseOne = await buildAndPublishBrokenManagedRelease({
+        channel: 'stable',
+        basePath: BASE_PATH,
+        appVersion: '2.0.0',
+        buildId: 'managed-release-1-broken',
+        workDir,
+      });
+
+      const freshPage = await context.newPage();
+      await freshPage.goto(server.url);
+      await freshPage.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration();
+        await registration?.update();
+      });
+
+      // Installation only validates hashes and prepares the cache — it never
+      // runs the release's own application JavaScript — so the still-broken
+      // release 1 installs and reaches "waiting" exactly like a valid one,
+      // while the legacy-controlled session stays open and untouched.
+      await freshPage.waitForFunction(
+        () =>
+          navigator.serviceWorker
+            .getRegistration()
+            .then((registration) => registration?.waiting != null),
+        undefined,
+        { timeout: 60_000 },
+      );
+      const legacyControllerWhileWaiting = await legacyPage.evaluate(
+        () => navigator.serviceWorker.controller?.scriptURL,
+      );
+      expect(legacyControllerWhileWaiting).toBeTruthy();
+
+      // Direct evidence that install-time release preparation genuinely
+      // completed for the broken release too — not merely that "install"
+      // was allowed to finish for some other reason — matching the
+      // equivalent check in the first test above.
+      await freshPage.waitForFunction(
+        async (releaseNumber) => {
+          const cache = await caches.open(`stable-release-${releaseNumber}`);
+          const marker = await cache.match(
+            'https://mioframe.internal/__release-descriptor-marker__',
+          );
+          if (!marker) return false;
+          const descriptor = await marker.json();
+          return descriptor?.releaseNumber === releaseNumber;
+        },
+        releaseOne.releaseNumber,
+        { timeout: 60_000 },
+      );
+
+      // Close every legacy-controlled window: ordinary browser lifecycle
+      // promotes the waiting managed worker to "active" only once none remain.
+      await legacyPage.close();
+      await freshPage.close();
+
+      const { page: brokenPage, pageErrors: brokenPageErrors } = await openManagedControlledPage(
+        context,
+        server.url,
+      );
+
+      // Release 1 is the active baseline directly, persisted at bootstrap
+      // without ever going through candidate activation. Poll rather than
+      // reading once immediately after "controlled" — see
+      // {@link waitForActiveReleaseNumber} for why a single post-"controlled"
+      // read is not reliable.
+      const bootstrapState = await waitForControllerState(
+        brokenPage,
+        (result) => result.status === 'valid',
+      );
+      expect(bootstrapState.status).toBe('valid');
+      if (bootstrapState.status === 'valid') {
+        expect(bootstrapState.state.activeRelease.releaseNumber).toBe(releaseOne.releaseNumber);
+        expect(bootstrapState.state.candidate).toBeUndefined();
+      }
+
+      // Only the managed worker ever answers this private protocol at all: a
+      // real `GET_SNAPSHOT` round trip succeeding is itself proof the browser
+      // is genuinely controlled by the managed worker, not the legacy
+      // Workbox worker (which never implements this protocol and would leave
+      // this request hanging).
+      const snapshotAfterBootstrap = await sendProtocolRequest<{
+        snapshot: { activeRelease: { releaseNumber: number } };
+      }>(brokenPage, { type: 'GET_SNAPSHOT' });
+      expect(snapshotAfterBootstrap.snapshot.activeRelease.releaseNumber).toBe(
+        releaseOne.releaseNumber,
+      );
+
+      // The application itself never reaches its normal ready UI: the entry
+      // module's immediate throw is a real, uncaught application failure.
+      await expect(brokenPage.getByText(/^browser storage$/i)).not.toBeVisible({
+        timeout: 5_000,
+      });
+      expect(brokenPageErrors.length).toBeGreaterThan(0);
+
+      // Publish a genuinely corrected release while release 1's own
+      // application JavaScript is still broken.
+      const releaseTwo = await buildAndPublishManagedRelease({
+        channel: 'stable',
+        basePath: BASE_PATH,
+        appVersion: '2.1.0',
+        buildId: 'managed-release-2-corrected',
+        workDir,
+      });
+
+      // An owned top-level navigation — never an explicit Check request sent
+      // by this test. This navigation's own document response still serves
+      // release 1 (still broken) unchanged; reconciliation runs
+      // independently under the same fetch event's `waitUntil`, entirely
+      // inside the worker, so it never depends on release 1's broken
+      // application JavaScript running at all.
+      const recoveryNavigationPage = await context.newPage();
+      const recoveryNavigationPageErrors: string[] = [];
+      recoveryNavigationPage.on('pageerror', (error) =>
+        recoveryNavigationPageErrors.push(error.message),
+      );
+      await recoveryNavigationPage.goto(server.url);
+      await waitForControlledPage(recoveryNavigationPage);
+      expect(recoveryNavigationPageErrors.length).toBeGreaterThan(0);
+
+      const discovered = await waitForControllerState(
+        recoveryNavigationPage,
+        (result) =>
+          result.status === 'valid' &&
+          result.state.candidate?.phase === 'ready' &&
+          result.state.candidate.release.releaseNumber === releaseTwo.releaseNumber,
+      );
+      expect(discovered.status).toBe('valid');
+      if (discovered.status === 'valid') {
+        // Release 1 remains the active baseline throughout discovery and
+        // preparation: it is never superseded merely because a newer release
+        // became `ready` — only a later qualifying clean launch activates it.
+        expect(discovered.state.activeRelease.releaseNumber).toBe(releaseOne.releaseNumber);
+      }
+
+      // Close every same-channel page: the next navigation must qualify as a
+      // clean launch.
+      await brokenPage.close();
+      await recoveryNavigationPage.close();
+
+      const recoveredPage = await context.newPage();
+      await recoveredPage.goto(server.url);
+      await waitForControlledPage(recoveredPage);
+
+      // The corrected release starts activation through this same qualifying
+      // navigation, boots normally, and its own real boot watchdog reports
+      // the existing durable BOOT_OK — no test-side reproduction of the
+      // private protocol.
+      await expect(recoveredPage.getByText(/^browser storage$/i)).toBeVisible();
+      const committed = await waitForControllerState(
+        recoveredPage,
+        (result) =>
+          result.status === 'valid' &&
+          result.state.activeRelease.releaseNumber === releaseTwo.releaseNumber,
+      );
+      expect(committed.status).toBe('valid');
+      if (committed.status === 'valid') {
+        expect(committed.state.candidate).toBeUndefined();
+      }
+
+      await recoveredPage.close();
       await context.close();
     } finally {
       await server.close();
