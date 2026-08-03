@@ -1,2 +1,6 @@
+# Canonical product browser baseline: every browser matching this query is supported.
+# A missing browser-specific Web API limits only the dependent capability: Mioframe must
+# expose an explicit user-facing unavailable state or supported alternative, not treat the
+# entire browser as unsupported or let the action fail silently.
 last 3 years
 not dead
