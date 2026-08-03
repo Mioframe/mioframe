@@ -48,3 +48,4 @@ tsconfig.tsbuildinfo
 # .brv/ may contain a nested .git; keep it ignored so tooling does not traverse it.
 .brv/
 .omo/
+.zshrc

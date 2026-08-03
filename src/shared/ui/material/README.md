@@ -1,127 +1,87 @@
 # Mioframe Material library
 
-`src/shared/ui/material` is the canonical source boundary for Mioframe's Material implementation.
+`src/shared/ui/material` is the canonical owner of Mioframe’s project-facing Material Vue API, supported Material token API, private renderer integration, and Material-specific documentation.
 
-The library contains:
+Official Material 3 Expressive defines the public model. `@m3e/web` is the preferred private renderer, not an API authority.
 
-- cross-family Material foundation contracts required by current work;
-- official public Material component families;
-- reusable official Material compositions independent of product domains.
+## Public entrypoint
 
-Canonical architecture:
-
-- `docs/material-3/library-architecture.md`;
-- `docs/material-3/foundation-architecture.md`;
-- `docs/material-3/component-architecture.md`;
-- `docs/material-3/component-testing.md`.
-
-Operational progress and the next ready family are tracked in `docs/material-3/library-roadmap.md` and `ui-library-inventory.md`.
-
-## Ownership map
-
-```text
-material/foundation
-  Cross-family Material tokens, roles, primitives, adapters, and verification helpers.
-
-material/components
-  Official public component families, adaptive contracts, implementations, stories, and focused tests.
-
-material/patterns
-  Reusable official Material compositions required by current scenarios.
-```
-
-Generic platform utilities, project-specific shared UI, features, widgets, pages, and app behavior remain outside.
-
-## Dependency direction
-
-```text
-shared/lib generic infrastructure
-  ├─→ material/foundation
-  ├─→ material/components
-  └─→ material/patterns
-
-material/foundation → material/components → material/patterns
-material library → project-specific shared UI and product layers
-```
-
-Higher Material layers may use correctly owned generic utilities directly. Do not create foundation wrappers merely to route generic behavior.
-
-Product imports inside the Material library, dependency inversion, and private cross-family imports are forbidden.
-
-## Public API
-
-The intended project-facing entry point is:
+Consumers use the curated root API:
 
 ```ts
-import { MDButton } from '@shared/ui/material';
+import { MDButton, MDLoadingIndicator } from '@shared/ui/material';
 ```
 
-Do not create the root production `index.ts` until at least one real family or foundation artifact can be exported honestly.
+A public `MD*` component:
 
-After it exists:
+- uses official Material terminology selected by its ready family architecture;
+- exposes only confirmed current demand plus the minimum coherent Material surface;
+- keeps renderer tags, attributes, events, types, and private CSS inputs out of consumers;
+- contains no product behavior or undocumented Material extension without an explicit architecture decision.
 
-- product consumers use the root entry point by default;
-- internal library modules use owning family, foundation, or generic entry points;
-- private implementation and testing files remain private.
+## Family layout
 
-## New implementation
+```text
+components/<family>/
+  DESIGN.md
+  ARCHITECTURE.md
+  IMPLEMENTATION.md
+  MIGRATION.md
+  REVIEW.md
+  README.md
+  <runtime, tests, stories, tokens>
+```
 
-- Create new official Material components under `components/<family>`.
-- Create new foundation artifacts under `foundation/<domain>` only when current work proves the cross-family need.
-- Create patterns under `patterns/<pattern>` only after the pattern conditions pass.
-- Treat legacy directories as existing owners, not templates for new ownership.
-- Create no placeholder files, empty structural layers, or speculative abstractions.
+The five stage artifacts are durable handoffs. A family `README.md` is only a short navigation index and must not own mutable status or next action.
 
-Every new public component includes:
+The complete staged execution contract belongs only to [`docs/component-workflow.md`](./docs/component-workflow.md). The normal operator entrypoint is one `material-component <name>` invocation; the operator does not repeat it after every stage.
 
-- the mandatory adaptive family-contract core;
-- only conditional contract sections applicable to the component;
-- colocated component-contract tests;
-- one stable canonical visual story when it has visible output;
-- `StateMatrix` only when multiple distinct visual routes exist;
-- browser, pure, consumer, visual-regression, and operator-review layers only when applicable.
+## Ownership
 
-## Physical migration map
+Material owns:
 
-This table tracks physical ownership only. Material alignment belongs to component and foundation contracts and registries. Program sequencing belongs to the roadmap.
+- canonical Vue adapters and exports;
+- selected official component tokens;
+- renderer-independent Material foundation and theme declarations;
+- private family-local renderer mappings;
+- approved wrapper corrections and controlled renderer workarounds;
+- component tests, stories, visual/browser proof, and stable defect records.
 
-| Area                              | Current production owner                            | Canonical owner                                                                     | Migration status              |
-| --------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------- |
-| Reference/system tokens and theme | `src/shared/lib/md/tokens.css`                      | `material/foundation/tokens` and `material/foundation/theme` as proven by migration | `legacy`                      |
-| Typography utilities              | `src/shared/lib/md`                                 | `material/foundation/typography`                                                    | `legacy`                      |
-| State layer, ripple, and focus    | `src/shared/ui/State`                               | `material/foundation/interaction`                                                   | `legacy`                      |
-| Material Symbols                  | `src/shared/ui/Icon`                                | `material/foundation/icon`                                                          | `legacy`                      |
-| Material overlay contract         | `src/shared/ui/Overlay` plus generic dependencies   | `material/foundation/overlay`; generic dependencies remain outside                  | `legacy`                      |
-| Existing official `MD*` families  | existing `src/shared/ui/<LegacyFamily>` directories | `material/components/<family>`                                                      | `legacy`                      |
-| New official Material family      | none                                                | `material/components/<family>`                                                      | create directly as `migrated` |
-| Reusable Material patterns        | scattered or missing compositions                   | `material/patterns/<pattern>` after the pattern gate passes                         | `legacy` or `missing`         |
+Material does not own:
 
-Do not split a valid cohesive owner merely to match this table. Migration follows confirmed ownership and reviewable boundaries.
+- product/domain behavior, operation state, persistence, routing, or errors;
+- application-owned `--app-*` tokens;
+- generic shared UI that is not an official Material component;
+- renderer internals, private shadow DOM, or copied renderer interaction systems.
 
-## Migration status
+## Renderer boundary
 
-- `legacy` — current code remains accepted for existing consumers but is not a template for new work;
-- `migrating` — one active family or domain migration owns the applicable implementation and consumer changes;
-- `migrated` — the canonical owner is active, obsolete paths are removed, proportional proof exists, and required agent/operator review is complete.
+Outside this directory, code must not:
 
-A domain must not have parallel permanent legacy and canonical owners. Temporary compatibility requires exact consumers and a removal target.
+- import `@m3e/web`;
+- render `m3e-*` elements;
+- consume renderer element types or events;
+- depend on `--m3e-*` variables;
+- inspect renderer DOM.
 
-## Migration rules
+Inside an owning family, prefer documented renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
 
-Use one cohesive end-to-end family migration by default:
+## Token boundary
 
-1. inspect the current family and consumers;
-2. resolve the supported Expressive contract;
-3. correct inaccurate applicable rules;
-4. change only required foundations;
-5. implement the canonical family;
-6. migrate consumers and public exports;
-7. add proportional proof;
-8. remove obsolete ownership;
-9. update only records whose owned facts changed;
-10. complete agent review and required operator visual acceptance;
-11. update the queue and continue to the next ready family.
+- `DESIGN.md` captures the complete official component-token catalogue.
+- `ARCHITECTURE.md` selects the minimum complete runtime token set required by confirmed scenarios.
+- foundation owns supported `--md-ref-*` and `--md-sys-*` tokens;
+- each family owns only its selected `--md-comp-<family>-*` tokens;
+- `docs/token-api.md` is the supported public catalogue;
+- `--m3e-*` and `--md-private-*` stay private;
+- `--app-*` stays outside Material.
 
-Split work only when shared blast radius, compatibility, reviewability, or a safer independently valid state justifies it.
+Do not create a token registry, token DSL, compatibility alias layer, duplicate owner, or exhaustive renderer/Material token copy without a demonstrated current requirement and separate architecture decision.
 
-The program sequence is `MDButton`, an independent stateful pilot such as `MDSwitch`, then autonomous priority-driven migration. A genuinely new component is added when the product requires it, not as a process gate.
+## Proof and visual feedback
+
+Architecture selects proof owners before implementation. Component tests own Vue contracts, browser tests own native and accessibility behavior, visual regression owns stable presentation, migration proof owns product scenarios, and independent review checks the complete result.
+
+Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete reported defect routes to the owning stage.
+
+See [`docs/roadmap.md`](./docs/roadmap.md) for current program status and next action.

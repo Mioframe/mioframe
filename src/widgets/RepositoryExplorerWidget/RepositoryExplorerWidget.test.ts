@@ -25,9 +25,8 @@ const requestTokenMock = vi.fn();
 const importDocumentFromPathMock = vi.fn();
 const grantFullAccessMock = vi.fn();
 const grantReadOnlyAccessMock = vi.fn();
-const isGrantFullAccessLoadingRef = ref(false);
+const isGrantLocalDirectoryAccessPendingRef = ref(false);
 const isGrantLocalDirectoryAccessDisabledRef = ref(false);
-const isGrantReadOnlyAccessLoadingRef = ref(false);
 const localDirectoryRecoveryMessageRef = ref('');
 
 const createSerializedRecoveryError = ({
@@ -55,11 +54,10 @@ vi.mock('@feature/localDirectoryRecovery', () => ({
   useLocalDirectoryRecoveryAction: () => ({
     grantFullAccess: grantFullAccessMock,
     grantReadOnlyAccess: grantReadOnlyAccessMock,
-    isGrantFullAccessLoading: computed(() => isGrantFullAccessLoadingRef.value),
+    isGrantLocalDirectoryAccessPending: computed(() => isGrantLocalDirectoryAccessPendingRef.value),
     isGrantLocalDirectoryAccessDisabled: computed(
       () => isGrantLocalDirectoryAccessDisabledRef.value,
     ),
-    isGrantReadOnlyAccessLoading: computed(() => isGrantReadOnlyAccessLoadingRef.value),
     localDirectoryRecoveryMessage: computed(() => localDirectoryRecoveryMessageRef.value),
   }),
 }));
@@ -152,12 +150,22 @@ vi.mock('@shared/ui/EmptyState', () => ({
         type: String,
         default: undefined,
       },
+      supportingTextStatus: {
+        type: Boolean,
+        default: false,
+      },
     },
     setup(props, { slots }) {
       return () =>
         h('section', [
           h('h2', props.headline),
-          props.supportingText ? h('p', props.supportingText) : null,
+          props.supportingText
+            ? h(
+                'p',
+                props.supportingTextStatus ? { 'aria-live': 'polite', role: 'status' } : undefined,
+                props.supportingText,
+              )
+            : null,
           slots.icon?.(),
           slots.actions?.(),
         ]);
@@ -174,7 +182,7 @@ vi.mock('@shared/ui/ProgressIndicators', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Button', () => ({
+vi.mock('@shared/ui/material', () => ({
   MDButton: defineComponent({
     name: 'MDButtonStub',
     props: {
@@ -315,9 +323,8 @@ describe('RepositoryExplorerWidget', () => {
     importDocumentFromPathMock.mockReset();
     grantFullAccessMock.mockReset();
     grantReadOnlyAccessMock.mockReset();
-    isGrantFullAccessLoadingRef.value = false;
+    isGrantLocalDirectoryAccessPendingRef.value = false;
     isGrantLocalDirectoryAccessDisabledRef.value = false;
-    isGrantReadOnlyAccessLoadingRef.value = false;
     localDirectoryRecoveryMessageRef.value = '';
     document.body.innerHTML = '';
   });
@@ -449,6 +456,96 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.text()).toContain(
       'Could not request browser permission. Try again from this action.',
     );
+  });
+
+  it('announces local-directory pending copy while both recovery actions are disabled', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedRecoveryError({
+        spaceName: 'Work',
+        mode: 'read',
+      }),
+    ];
+    isGrantLocalDirectoryAccessDisabledRef.value = true;
+    isGrantLocalDirectoryAccessPendingRef.value = true;
+    localDirectoryRecoveryMessageRef.value =
+      'Waiting for browser permission. If access is granted, Mioframe will restore this space.';
+
+    const wrapper = await mountWidget();
+    const pendingStatus = wrapper.get('[role="status"]');
+    const recoveryButtons = wrapper
+      .findAll('button')
+      .filter((button) => ['Read only', 'Grant full access'].includes(button.text()));
+
+    expect(recoveryButtons).toHaveLength(2);
+    expect(recoveryButtons.every((button) => button.attributes('disabled') !== undefined)).toBe(
+      true,
+    );
+    expect(pendingStatus.attributes('aria-live')).toBe('polite');
+    expect(pendingStatus.text()).toBe(
+      'Waiting for browser permission. If access is granted, Mioframe will restore this space.',
+    );
+  });
+
+  it('does not infer local-directory pending status from disabled action availability', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedRecoveryError({
+        spaceName: 'Work',
+        mode: 'read',
+      }),
+    ];
+    isGrantLocalDirectoryAccessDisabledRef.value = true;
+    isGrantLocalDirectoryAccessPendingRef.value = false;
+    localDirectoryRecoveryMessageRef.value =
+      'Mioframe remembers "Work", but your browser requires permission before opening it.';
+
+    const wrapper = await mountWidget();
+    const recoveryButtons = wrapper
+      .findAll('button')
+      .filter((button) => ['Read only', 'Grant full access'].includes(button.text()));
+
+    expect(recoveryButtons.every((button) => button.attributes('disabled') !== undefined)).toBe(
+      true,
+    );
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
+  });
+
+  it('disables Google reauthorization and announces provider-window pending copy', async () => {
+    errorMessageRef.value = 'Authorization required';
+    repositoryRecoveryErrorsRef.value = [
+      new GoogleAuthError({
+        code: GoogleAuthErrorCode.reauthRequired,
+        expectedEmail: 'work@example.com',
+      }),
+    ];
+    let resolveRequest: (() => void) | undefined;
+    requestTokenMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+
+    const wrapper = await mountGoogleDriveWidget();
+    const retryButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Retry authorization');
+
+    await retryButton?.trigger('click');
+
+    expect(retryButton?.attributes('disabled')).toBeDefined();
+    expect(wrapper.get('[role="status"]').attributes('aria-live')).toBe('polite');
+    expect(wrapper.get('[role="status"]').text()).toBe(
+      'Complete authorization in the provider window.',
+    );
+
+    await retryButton?.trigger('click');
+    expect(requestTokenMock).toHaveBeenCalledTimes(1);
+
+    resolveRequest?.();
+    await vi.dynamicImportSettled();
+
+    expect(retryButton?.attributes('disabled')).toBeUndefined();
+    expect(wrapper.find('[role="status"]').exists()).toBe(false);
   });
 
   it('does not show Google Drive recovery when the widget has no error message', async () => {

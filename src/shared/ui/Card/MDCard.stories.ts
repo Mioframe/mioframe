@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import MDButton from '../Button/MDButton.vue';
+import { MDButton } from '@shared/ui/material';
 import MDCard from './MDCard.vue';
 import MDCardActionVisualStory from './MDCardActionVisualStory.vue';
 

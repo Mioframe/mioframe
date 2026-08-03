@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent } from 'vue';
 import DiagnosticsErrorPrompt from './DiagnosticsErrorPrompt.vue';
 
 const enableDiagnosticsFromPrompt = vi.fn();
@@ -9,6 +10,20 @@ vi.mock('./useDiagnosticsErrorPromptEligibility', () => ({
   useDiagnosticsErrorPromptEligibility: () => ({
     enableDiagnosticsFromPrompt,
     dismissDiagnosticsPrompt,
+  }),
+}));
+
+vi.mock('@shared/ui/material', () => ({
+  MDButton: defineComponent({
+    props: { label: { type: String, required: true } },
+    emits: ['click'],
+    setup(_, { emit }) {
+      const onClick = (event: MouseEvent) => {
+        emit('click', event);
+      };
+      return { onClick };
+    },
+    template: '<button type="button" @click="onClick">{{ label }}</button>',
   }),
 }));
 

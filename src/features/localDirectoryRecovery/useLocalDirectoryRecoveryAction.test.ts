@@ -82,7 +82,7 @@ describe('useLocalDirectoryRecoveryAction', () => {
     scope.stop();
   });
 
-  it('shows loading only on the clicked action while a request is in progress', async () => {
+  it('disables both actions and exposes truthful pending copy while a request is in progress', async () => {
     let resolveRequest: ((value: { status: 'granted' }) => void) | undefined;
     requestAccessMock.mockImplementation(
       () =>
@@ -98,15 +98,23 @@ describe('useLocalDirectoryRecoveryAction', () => {
     const requestPromise = action.grantFullAccess();
     await flushMicrotasks();
 
-    expect(action.isGrantFullAccessLoading.value).toBe(true);
-    expect(action.isGrantReadOnlyAccessLoading.value).toBe(false);
+    expect(action.isGrantLocalDirectoryAccessPending.value).toBe(true);
     expect(action.isGrantLocalDirectoryAccessDisabled.value).toBe(true);
+    expect(action.localDirectoryRecoveryMessage.value).toBe(
+      'Waiting for browser permission. If access is granted, Mioframe will restore this space.',
+    );
+
+    await expect(action.grantReadOnlyAccess()).resolves.toEqual({ status: 'error' });
+    expect(requestAccessMock).toHaveBeenCalledTimes(1);
 
     resolveRequest?.({ status: 'granted' });
     await requestPromise;
 
-    expect(action.isGrantFullAccessLoading.value).toBe(false);
-    expect(action.isGrantReadOnlyAccessLoading.value).toBe(false);
+    expect(action.isGrantLocalDirectoryAccessPending.value).toBe(false);
+    expect(action.isGrantLocalDirectoryAccessDisabled.value).toBe(false);
+    expect(action.localDirectoryRecoveryMessage.value).toBe(
+      'Mioframe remembers "Work", but your browser requires permission before opening it.',
+    );
 
     scope.stop();
   });

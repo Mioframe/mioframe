@@ -47,10 +47,16 @@ export const MD_LIST_MATERIAL_CONTRACT = {
     leading: 16,
     trailing: 16,
   },
+  // Percentage form: the canonical `--md-sys-state-*-state-layer-opacity` foundation tokens
+  // (src/shared/ui/material/foundation/tokens.css) use `<percentage>`, not a unitless
+  // `<number>`, because that
+  // representation is valid in every selected consumer's CSS grammar, including m3e's
+  // `color-mix()`-based state layer (see component-tokens.md, "Mapping"). Same opacity
+  // magnitude as the previous `0.08`/`0.1`/`0.16` values.
   stateLayerOpacity: {
-    hover: '0.08',
-    pressed: '0.1',
-    dragged: '0.16',
+    hover: '8%',
+    pressed: '10%',
+    dragged: '16%',
   },
   disabledOpacity: 0.38,
 } as const;

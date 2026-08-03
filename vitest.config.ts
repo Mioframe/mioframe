@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitest/config';
-import vue from '@vitejs/plugin-vue';
 import { getResolveAlias } from './config/alias';
+import { getVuePlugin } from './config/plugins/base';
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [getVuePlugin()],
   resolve: {
     alias: getResolveAlias(),
   },
@@ -17,6 +17,7 @@ export default defineConfig({
       'scripts/**/*.test.ts',
       'scripts/**/*.test.mjs',
       'playwright.*.test.ts',
+      'eslint.config.test.ts',
     ],
     exclude: ['tests/e2e/**', 'node_modules/**', '.*/**'],
     coverage: {

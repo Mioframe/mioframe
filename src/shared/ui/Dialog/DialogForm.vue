@@ -5,7 +5,7 @@ import { sessionUniqueId } from '@shared/lib/uniqueId';
 import { useFocusTrap } from '@vueuse/integrations/useFocusTrap';
 import { useOnBackNavigationStacked } from '@shared/lib/onBackNavigation';
 import { useOnEscapeKeyStacked } from '@shared/lib/useOnEscapeKeyStacked';
-import { MDButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
 import { tryOnBeforeUnmount } from '@vueuse/core';
 import { useMonitorOpenDialog } from './Alert';
 
@@ -20,7 +20,7 @@ const props = withDefaults(
     cancelLabel?: string | undefined;
     applyLabel: string;
     hasCancelAction?: boolean | undefined;
-    loading?: boolean | number | undefined;
+    loading?: boolean | undefined;
     class?: unknown;
   }>(),
   { cancelLabel: 'Cancel', type: 'basic' },
@@ -108,7 +108,12 @@ useOnEscapeKeyStacked(() => {
     :aria-labelledby="dialogTitleId"
     :aria-hidden="ariaHidden"
   >
-    <form ref="formEl" class="md md-dialog__container" @submit.prevent="onSubmit">
+    <form
+      ref="formEl"
+      class="md md-dialog__container"
+      :aria-busy="loading ? 'true' : undefined"
+      @submit.prevent="onSubmit"
+    >
       <div v-if="!!slots.icon" class="md-dialog__icon">
         <slot name="icon" />
       </div>
@@ -126,9 +131,15 @@ useOnEscapeKeyStacked(() => {
       </div>
 
       <div class="md-dialog__actions">
-        <MDButton v-if="hasCancelAction" :label="cancelLabel" color="text" @click="onCancel" />
+        <MDButton
+          v-if="hasCancelAction"
+          :label="cancelLabel"
+          color="text"
+          :disabled="loading"
+          @click="onCancel"
+        />
 
-        <MDButton :label="applyLabel" :loading="loading" color="text" native-type="submit" />
+        <MDButton :label="applyLabel" color="text" :disabled="loading" native-type="submit" />
       </div>
     </form>
   </dialog>
@@ -174,7 +185,7 @@ useOnEscapeKeyStacked(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    --md-content-color: : var(--md-sys-color-secondary);
+    --md-content-color: var(--md-sys-color-secondary);
     margin: 0 auto;
   }
 
@@ -187,7 +198,7 @@ useOnEscapeKeyStacked(() => {
     font-weight: var(--md-sys-typescale-headline-small-weight);
     letter-spacing: var(--md-sys-typescale-headline-small-tracking);
 
-    --md-content-color: var(--md-sys-color-on-surface);
+    color: var(--md-sys-color-on-surface);
 
     .md-dialog_has-icon & {
       text-align: center;

@@ -16,7 +16,7 @@ const props = withDefaults(
     cancelLabel?: string | undefined;
     applyLabel?: string | undefined;
     hasCancelAction?: boolean | undefined;
-    loading?: boolean | number | undefined;
+    loading?: boolean | undefined;
     class?: never;
   }>(),
   {

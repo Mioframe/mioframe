@@ -26,10 +26,24 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   {
     name: 'storybook behavior infrastructure smoke',
     sourcePrefixes: [
-      'src/shared/ui/Button/MDButton.stories.ts',
-      'src/shared/ui/Button/MDButton.vue',
+      'src/shared/ui/material/components/button/MDButton.stories.ts',
+      'src/shared/ui/material/components/button/MDButton.vue',
     ],
     specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
+  },
+  {
+    name: 'shared color ownership',
+    sourcePrefixes: [
+      'src/shared/ui/Snackbar/MDSnackbar.vue',
+      'src/shared/ui/Snackbar/MDSnackbar.stories.ts',
+      'src/shared/ui/material/components/button/tokens.css',
+    ],
+    specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+  },
+  {
+    name: 'navigation path button geometry and overflow',
+    sourcePrefixes: ['src/shared/ui/NavigationPath/'],
+    specs: ['tests/e2e/storybook/navigationPath.spec.ts'],
   },
   {
     name: 'shared overlay outside-interaction lifecycle',
@@ -100,11 +114,17 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     // the `reorder` scenario comment above) so editing it re-selects itself.
     sourcePrefixes: [
       'src/shared/ui/Button/',
+      'src/shared/ui/LoadingButton/',
+      'src/shared/ui/material/components/button/',
       'src/shared/ui/State/useFocusIndicator.ts',
       'src/shared/ui/State/md-focus-indicator.css',
-      'tests/e2e/storybook/md-button-family.spec.ts',
     ],
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
+  },
+  {
+    name: 'loading indicator standalone accessibility',
+    sourcePrefixes: ['src/shared/ui/material/components/loadingIndicator/'],
+    specs: ['tests/e2e/storybook/md-loading-indicator.spec.ts'],
   },
   {
     name: 'bottom sheet keyboard focus wrap visibility',

@@ -1,0 +1,17 @@
+.md-button {
+  --md-comp-button-text-label-text-color: var(--md-sys-color-primary);
+  --md-comp-button-text-hovered-label-text-color: var(--md-comp-button-text-label-text-color);
+  --md-comp-button-text-focused-label-text-color: var(--md-comp-button-text-label-text-color);
+  --md-comp-button-text-pressed-label-text-color: var(--md-comp-button-text-label-text-color);
+  --md-comp-button-text-hovered-state-layer-color: var(--md-comp-button-text-label-text-color);
+  --md-comp-button-text-focused-state-layer-color: var(--md-comp-button-text-label-text-color);
+  --md-comp-button-text-pressed-state-layer-color: var(--md-comp-button-text-label-text-color);
+
+  --m3e-text-button-label-text-color: var(--md-comp-button-text-label-text-color);
+  --m3e-text-button-hover-label-text-color: var(--md-comp-button-text-hovered-label-text-color);
+  --m3e-text-button-focus-label-text-color: var(--md-comp-button-text-focused-label-text-color);
+  --m3e-text-button-pressed-label-text-color: var(--md-comp-button-text-pressed-label-text-color);
+  --m3e-text-button-hover-state-layer-color: var(--md-comp-button-text-hovered-state-layer-color);
+  --m3e-text-button-focus-state-layer-color: var(--md-comp-button-text-focused-state-layer-color);
+  --m3e-text-button-pressed-state-layer-color: var(--md-comp-button-text-pressed-state-layer-color);
+}

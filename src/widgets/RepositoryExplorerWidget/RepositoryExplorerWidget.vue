@@ -2,7 +2,7 @@
 import { computed, toRefs } from 'vue';
 import { useFSNodeStat } from '@entity/fsEntry';
 import { GoogleDriveAccessRecoveryState } from '@entity/googleDriveAccess';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDEmptyState } from '@shared/ui/EmptyState';
 import { MDSymbol } from '@shared/ui/Icon';
 import { MDNavigationPath } from '@shared/ui/NavigationPath';
@@ -48,9 +48,8 @@ const {
   grantReadOnlyAccess,
   hasGoogleDriveRecovery,
   hasLocalDirectoryRecovery,
-  isGrantFullAccessLoading,
   isGrantLocalDirectoryAccessDisabled,
-  isGrantReadOnlyAccessLoading,
+  isGrantLocalDirectoryAccessPending,
   localDirectoryRecoveryMessage,
 } = useRepositoryExplorerRecovery({
   directoryPath,
@@ -58,7 +57,8 @@ const {
   errorMessage,
   repositoryRecoveryErrors,
 });
-const { isRetryAuthorizationLoading, onRetryAuthorization } = googleDriveRecovery;
+const { isRetryAuthorizationPending, retryAuthorization, retryAuthorizationPendingMessage } =
+  googleDriveRecovery;
 const canEditDirectoryContents = computed(() => directoryStat.value?.capabilities?.canEditChildren);
 
 const onClickPath = (path: string) => {
@@ -84,6 +84,10 @@ const onClickGrantReadOnlyAccess = () => {
 const onClickGrantFullAccess = () => {
   void grantFullAccess();
 };
+
+const onRetryAuthorizationClick = () => {
+  void retryAuthorization();
+};
 </script>
 
 <template>
@@ -102,6 +106,7 @@ const onClickGrantFullAccess = () => {
         class="repository-explorer-widget__recovery"
         headline="Permission required"
         :supporting-text="localDirectoryRecoveryMessage"
+        :supporting-text-status="isGrantLocalDirectoryAccessPending"
       >
         <template #icon>
           <MDSymbol
@@ -115,13 +120,11 @@ const onClickGrantFullAccess = () => {
             color="text"
             label="Read only"
             :disabled="isGrantLocalDirectoryAccessDisabled"
-            :loading="isGrantReadOnlyAccessLoading"
             @click="onClickGrantReadOnlyAccess"
           />
           <MDButton
             label="Grant full access"
             :disabled="isGrantLocalDirectoryAccessDisabled"
-            :loading="isGrantFullAccessLoading"
             @click="onClickGrantFullAccess"
           />
         </template>
@@ -132,12 +135,13 @@ const onClickGrantFullAccess = () => {
         class="repository-explorer-widget__recovery"
         :path="directoryPath"
         :errors="recoveryErrors"
+        :pending-message="retryAuthorizationPendingMessage"
       >
         <template #actions>
           <MDButton
             label="Retry authorization"
-            :loading="isRetryAuthorizationLoading"
-            @click="onRetryAuthorization"
+            :disabled="isRetryAuthorizationPending"
+            @click="onRetryAuthorizationClick"
           />
 
           <MDButton label="Return home" color="text" @click="onReturnHomeClick" />

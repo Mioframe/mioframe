@@ -11,7 +11,8 @@ import {
 import { zodIs } from '@shared/lib/validateZodScheme';
 import { MDSymbol } from '@shared/ui/Icon';
 import type { MaybeElement } from '@vueuse/core';
-import { MDButton, MDIconButton } from '@shared/ui/Button';
+import { MDIconButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDMenuBase } from '@shared/ui/Menu';
 import { difference } from 'es-toolkit';
 import { useReorderSurface, vReorderIgnore, vReorderItem } from '@shared/lib/sortable';

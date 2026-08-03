@@ -1,0 +1,229 @@
+:root {
+  /* md */
+  /* md.ref */
+  /* md.ref.typeface */
+  --md-ref-typeface-plain: Roboto, Arial, Helvetica, sans-serif;
+  --md-ref-typeface-weight-medium: 500;
+  --md-ref-typeface-weight-bold: 700;
+  --md-ref-typeface-weight-regular: 400;
+  --md-ref-typeface-brand: Roboto, Arial, Helvetica, sans-serif;
+
+  /* md.sys */
+  /* md.sys.shape */
+  /* md.sys.shape.corner */
+  --md-sys-shape-corner-full: 50cqmin;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-large-increased: 20dp;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-extra-large-top: var(--md-sys-shape-corner-extra-large)
+    var(--md-sys-shape-corner-extra-large) 0 0;
+  --md-sys-shape-corner-extra-small-top: var(--md-sys-shape-corner-extra-small)
+    var(--md-sys-shape-corner-extra-small) 0 0;
+
+  /* md.sys.elevation */
+  /* Private bridge: components can set --md-private-elevation-shadow-color locally to redirect
+     the shadow color token without duplicating the full box-shadow value. Defaults to
+     --md-sys-color-shadow (#000), preserving existing visual output for all consumers. */
+  --md-private-elevation-shadow-color: var(--md-sys-color-shadow, #000);
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1:
+    0px 1px 3px 1px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15),
+    0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3);
+  --md-sys-elevation-level2:
+    0px 2px 6px 2px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15),
+    0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3);
+  --md-sys-elevation-level3:
+    0px 1px 3px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
+    0px 4px 8px 3px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
+  --md-sys-elevation-level4:
+    0px 2px 3px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
+    0px 6px 10px 4px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
+  --md-sys-elevation-level5:
+    0px 4px 4px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3),
+    0px 8px 12px 6px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15);
+
+  /* md.sys.typescale */
+  /* md.sys.typescale.display-large */
+  --md-sys-typescale-display-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-display-large-size: 57sp;
+  --md-sys-typescale-display-large-tracking: -0.25sp;
+  --md-sys-typescale-display-large-line-height: 64sp;
+
+  /* md.sys.typescale.display-medium */
+  --md-sys-typescale-display-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-medium-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-display-medium-size: 45sp;
+  --md-sys-typescale-display-medium-line-height: 52sp;
+  --md-sys-typescale-display-medium-tracking: 0;
+
+  /* md.sys.typescale.display-small */
+  --md-sys-typescale-display-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-small-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-display-small-size: 36sp;
+  --md-sys-typescale-display-small-line-height: 44sp;
+  --md-sys-typescale-display-small-tracking: 0;
+
+  /* md.sys.typescale.label-large */
+  --md-sys-typescale-label-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-large-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-label-large-size: 14sp;
+  --md-sys-typescale-label-large-line-height: 20sp;
+  --md-sys-typescale-label-large-tracking: 0.1sp;
+
+  /* md.sys.typescale.label-medium */
+  --md-sys-typescale-label-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-medium-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-label-medium-size: 12sp;
+  --md-sys-typescale-label-medium-line-height: 16sp;
+  --md-sys-typescale-label-medium-tracking: 0.5sp;
+  --md-sys-typescale-label-medium-weight-prominent: var(--md-ref-typeface-weight-bold);
+
+  /* md.sys.typescale.label-small */
+  --md-sys-typescale-label-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-small-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-label-small-size: 11sp;
+  --md-sys-typescale-label-small-line-height: 16sp;
+  --md-sys-typescale-label-small-tracking: 0.5sp;
+
+  /* md.sys.typescale.body-large */
+  --md-sys-typescale-body-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-body-large-size: 16sp;
+  --md-sys-typescale-body-large-line-height: 24sp;
+  --md-sys-typescale-body-large-tracking: 0.5sp;
+
+  /* md.sys.typescale.body-medium */
+  --md-sys-typescale-body-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-medium-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-body-medium-size: 14sp;
+  --md-sys-typescale-body-medium-line-height: 20sp;
+  --md-sys-typescale-body-medium-tracking: 0.25sp;
+
+  /* md.sys.typescale.body-small */
+  --md-sys-typescale-body-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-small-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-body-small-size: 12sp;
+  --md-sys-typescale-body-small-line-height: 16sp;
+  --md-sys-typescale-body-small-tracking: 0.4sp;
+
+  /* md.sys.typescale.headline-large */
+  --md-sys-typescale-headline-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-headline-large-size: 32sp;
+  --md-sys-typescale-headline-large-line-height: 40sp;
+  --md-sys-typescale-headline-large-tracking: 0;
+
+  /* md.sys.typescale.headline-medium */
+  --md-sys-typescale-headline-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-medium-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-headline-medium-size: 28sp;
+  --md-sys-typescale-headline-medium-line-height: 36sp;
+  --md-sys-typescale-headline-medium-tracking: 0;
+
+  /* md.sys.typescale.headline-small */
+  --md-sys-typescale-headline-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-small-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-headline-small-size: 24sp;
+  --md-sys-typescale-headline-small-line-height: 32sp;
+  --md-sys-typescale-headline-small-tracking: 0;
+
+  /* md.sys.typescale.title-large */
+  --md-sys-typescale-title-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-title-large-weight: var(--md-ref-typeface-weight-regular);
+  --md-sys-typescale-title-large-size: 22sp;
+  --md-sys-typescale-title-large-line-height: 28sp;
+  --md-sys-typescale-title-large-tracking: 0;
+
+  /* md.sys.typescale.title-medium */
+  --md-sys-typescale-title-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-medium-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-title-medium-size: 16sp;
+  --md-sys-typescale-title-medium-line-height: 24sp;
+  --md-sys-typescale-title-medium-tracking: 0.15sp;
+
+  /* md.sys.typescale.title-small */
+  --md-sys-typescale-title-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-small-weight: var(--md-ref-typeface-weight-medium);
+  --md-sys-typescale-title-small-size: 14sp;
+  --md-sys-typescale-title-small-line-height: 20sp;
+  --md-sys-typescale-title-small-tracking: 0.1sp;
+
+  /* md.sys.state */
+  /* md.sys.state.hover */
+  /* Percentage form (see component-tokens.md, "Mapping"): the same opacity magnitude as
+     a unitless number, but valid in every selected consumer's CSS grammar, including
+     m3e's color-mix() percentage position. */
+  --md-sys-state-hover-state-layer-opacity: 8%;
+
+  /* md.sys.state.focus-indicator */
+  --md-sys-state-focus-indicator-thickness: 3px;
+  --md-sys-state-focus-indicator-outer-offset: 2px;
+
+  /* md.sys.state.focus */
+  --md-sys-state-focus-state-layer-opacity: 10%;
+
+  /* md.sys.state.pressed */
+  --md-sys-state-pressed-state-layer-opacity: 10%;
+
+  /* md.sys.state.dragged */
+  --md-sys-state-dragged-state-layer-opacity: 16%;
+
+  /* md.sys.motion */
+  /* md.sys.motion.easing */
+  /* md.sys.motion.easing.emphasized */
+  --md-sys-motion-easing-emphasized-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  /* md.sys.motion.easing.standard */
+  --md-sys-motion-easing-standard-index: cubic-bezier(0.2, 0, 0, 1);
+  --md-sys-motion-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-sys-motion-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+
+  /* md.sys.motion.easing.legacy */
+  --md-sys-motion-easing-legacy-index: cubic-bezier(0.4, 0, 0.2, 1);
+  --md-sys-motion-easing-legacy-accelerate: cubic-bezier(0.4, 0, 1, 1);
+  --md-sys-motion-easing-legacy-decelerate: cubic-bezier(0, 0, 0.2, 1);
+
+  /* md.sys.motion.easing.linear */
+  --md-sys-motion-easing-linear: cubic-bezier(0, 0, 1, 1);
+
+  /* md.sys.motion.duration */
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 0.1s;
+  --md-sys-motion-duration-short3: 0.15s;
+  --md-sys-motion-duration-short4: 0.2s;
+  --md-sys-motion-duration-medium1: 0.25s;
+  --md-sys-motion-duration-medium2: 0.3s;
+  --md-sys-motion-duration-medium3: 0.35s;
+  --md-sys-motion-duration-medium4: 0.4s;
+  --md-sys-motion-duration-long1: 0.45s;
+  --md-sys-motion-duration-long2: 0.5s;
+  --md-sys-motion-duration-long3: 0.55s;
+  --md-sys-motion-duration-long4: 0.6s;
+  --md-sys-motion-duration-extra-long1: 0.7s;
+  --md-sys-motion-duration-extra-long2: 0.8s;
+  --md-sys-motion-duration-extra-long3: 0.9s;
+  --md-sys-motion-duration-extra-long4: 1s;
+
+  /* md.sys.motion.spring (Material 3 Expressive) */
+  --md-sys-motion-spring-fast-spatial-stiffness: 800;
+  --md-sys-motion-spring-fast-spatial-damping: 0.6;
+
+  /*
+   * Private Web platform adaptation of the Expressive spring curves above. CSS transitions
+   * cannot derive a curve from numeric stiffness/damping at runtime, so these are the fixed,
+   * documented Web conversion of the fast-spatial and fast-effects springs, not a dynamic
+   * regeneration of the curve from the --md-sys-motion-spring-* values. Not public
+   * --md-sys-* duration/easing tokens because Material 3 Expressive Web publishes no such
+   * public alias for spring-driven motion.
+   */
+  --md-private-motion-expressive-fast-spatial-duration: 350ms;
+  --md-private-motion-expressive-fast-spatial-easing: cubic-bezier(0.42, 1.67, 0.21, 0.9);
+  --md-private-motion-expressive-fast-effects-duration: 150ms;
+  --md-private-motion-expressive-fast-effects-easing: cubic-bezier(0.31, 0.94, 0.34, 1);
+}

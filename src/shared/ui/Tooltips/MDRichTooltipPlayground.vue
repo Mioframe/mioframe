@@ -6,7 +6,7 @@ import {
   PlaygroundUnion,
 } from '@shared/lib/playground';
 import MDRichTooltip from './MDRichTooltip.vue';
-import { MDButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
 import { useQueryValue } from '@shared/lib/useQueryState';
 import { useTemplateRef } from 'vue';
 import { UseDraggable } from '@vueuse/components';

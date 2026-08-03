@@ -1,211 +1,254 @@
 ---
 name: material-component-review
-description: 'Use when the user provides a Material component or family name and wants its current implementation checked against current official Material 3 Expressive documentation and project rules. Produce an evidence-backed compliance report and persist the latest family audit without modifying production implementation.'
+description: 'Use after design, architecture, implementation, and migration artifacts are complete to independently review one Material family, or to classify final-verifier output without assigning unrelated workspace failures to a family.'
 ---
 
 # Material component review
 
-Use this as the one-name, review-only entrypoint for checking an existing Material component implementation.
+Perform independent semantic review of one complete Material family and return control to the orchestrator.
 
-This skill owns target resolution, compliance-review orchestration, and the durable family audit artifact. It must not duplicate source, architecture, testing, or authoring rules owned by `material3-guidelines`, `material-component-authoring`, `docs/material-3`, and the applicable testing skills.
+This stage owns family-compliance judgment and exact Material correction routing. It does not implement production fixes or own the outer final workflow verification result.
 
-## Required input
+## Modes
 
-The only required input is a component or family name.
+### Full independent review
 
-Examples:
+Use after an invalidating upstream revision changed, when review is missing or invalid, or when review is the stored origin stage after cross-family correction.
 
-```text
-material-component-review Button
-material-component-review MDButton
-material-component-review Switch
-material-component-review Navigation rail
-```
+A metadata-only design refresh with unchanged design contract revision does not require review.
 
-Do not ask the user to predefine the expected variants, API, states, sources, tests, or known defects.
+Review the complete current family and all consumers, not only the latest change.
 
-## Review boundary
+### Final-verifier routing
 
-The default task is inspection, durable audit recording, and reporting only.
+Use when the orchestrator provides the exact failed final command and visible output.
 
-- The required repository change is `docs/material-3/audits/<family-slug>.md`.
-- Do not modify production code, tests, stories, snapshots, registries, family contracts, or project rules during the review.
-- Do not convert findings into implementation work unless the user explicitly asks to fix them.
-- When fixes are requested later, hand the resolved family and findings to `material-component` or `material-component-authoring` rather than implementing through this review skill.
+Classify the failed contract before editing any artifact:
 
-## Resolve the target
+- `material-owned` — an exact Material family and earliest stage can correct the failure;
+- `external-workspace-blocker` — no Material family stage owns the failure.
 
-1. Normalize the supplied name against current official Material 3 Expressive terminology.
-2. Inspect existing `MD*` implementations, public exports, direct consumers, family README, latest family audit, component registry, UI inventory, migration map, roadmap, stories, and tests.
-3. Resolve the official component surface and smallest cohesive owning family.
-4. Identify the current production owner, canonical owner, supported surface claimed by the repository, and active consumers.
-5. Ask one precise question only when source and repository inspection still leave two materially different official targets unresolved.
+A final-verifier failure outside Material must not change any family `REVIEW.md` verdict, readiness, completion status, route, or artifact revision.
 
-Treat repository documentation, prior audits, tests, snapshots, and current rendering as implementation claims to verify, not as Material authority.
+## Input gate for full review
 
-## Resolve authoritative evidence
+Require successful current design, architecture, implementation, and migration artifacts.
 
-Use `material3-guidelines` and the source hierarchy in `docs/material-3/source-of-truth.md`.
+Architecture must reference current design contract and dependency review revisions. Implementation and migration must reference current upstream artifact revisions.
 
-- Resolve current official Material 3 Expressive guidance first.
-- Record exact pages, snapshot metadata, and Design Kit evidence when applicable.
-- Do not use legacy Mioframe output, baseline snapshots, Material Web, another library, memory, or generic web content as proof of Material correctness.
-- When official evidence is incomplete, distinguish unsupported optional surface from a blocker affecting a required or claimed scenario.
+If an upstream artifact is invalid, do not reconstruct it. Record the exact earlier-stage or other-family route and block completion.
 
-## Review the claimed supported surface
+## Worker boundary
 
-Compare the implementation against official evidence and project rules across every applicable area:
+Run in a fresh isolated context independent from workers that authored or corrected architecture, implementation, or migration.
 
-- component choice, intended usage, and prohibited usage;
-- family boundary and ownership;
-- variants, sizes, shapes, configurations, and defaults;
-- public API, slots, emits, invalid combinations, and controlled-state contract;
-- native semantics, accessibility, keyboard, pointer, touch, focus, target area, disabled, readonly, cancellation, and cleanup;
-- anatomy and DOM ownership;
-- component, system, reference, and extension token ownership;
-- color, typography, shape, elevation, state layers, ripple, focus indicators, and motion;
-- responsive, adaptive, overlay, and containment behavior when applicable;
-- consumer compatibility, exports, migration completeness, and obsolete owners;
-- family contract, Storybook coverage, component tests, browser tests, visual evidence, and directly affected records.
+Use task-relevant workspace files, canonical artifacts, official design evidence, code, consumers, tests, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
-Review only capabilities the repository claims or current consumers require. Do not mark unimplemented optional Material capabilities as defects when they are honestly unsupported.
+## Full-review output
 
-## Evidence standard
-
-Every finding must contain:
+Write exactly:
 
 ```text
-Severity: critical | high | medium | low
-Area:
-Official requirement:
-Official source and snapshot:
-Implementation evidence:
-Observed mismatch:
-Required correction:
+src/shared/ui/material/components/<family>/REVIEW.md
 ```
 
-Severity guidance:
-
-- `critical` — invalid component choice, unsafe semantics, severe accessibility failure, data or interaction corruption, or a false complete/aligned claim hiding a blocking defect;
-- `high` — required scenario, public contract, state behavior, token ownership, migration, or major visual contract is materially wrong;
-- `medium` — bounded Material mismatch, incomplete proof, inconsistent documentation, or maintainability defect with real regression risk;
-- `low` — minor documentation, naming, evidence, or cleanup issue that does not invalidate the supported contract.
-
-Do not report speculative risks as findings. Separate confirmed defects from unavailable evidence.
-
-## Compliance result
-
-Use exactly one result:
-
-- `compliant` — every claimed and required non-visual contract is source-resolved and correctly implemented, required proof exists, one canonical owner remains, and operator visual acceptance is already recorded when required;
-- `technically-compliant-visual-review-required` — every non-visual contract passes, but final official visual comparison remains an operator gate;
-- `partially-compliant` — the implementation is usable but one or more confirmed non-critical defects or proof gaps remain;
-- `non-compliant` — a critical/high defect invalidates a required or claimed contract;
-- `blocked` — authoritative evidence needed for a required decision is unavailable or materially conflicting.
-
-Green CI, existing tests, accepted snapshots, or an `aligned` registry value are not sufficient by themselves for `compliant`.
-
-The coding agent must not claim operator visual acceptance unless it is already durably recorded.
-
-## Rule defects
-
-When the review exposes an inaccurate, contradictory, obsolete, incomplete, or needlessly complex project rule:
-
-- report the owning document or skill and the evidence exposing the defect;
-- classify it separately from component implementation findings;
-- recommend the smallest correction;
-- do not modify the rule during a review-only run.
-
-## Durable audit artifact
-
-Create or replace exactly one file:
+Control fields:
 
 ```text
-docs/material-3/audits/<family-slug>.md
+Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
+DESIGN.md contract revision: <exact Design contract revision>
+ARCHITECTURE.md revision: <exact Artifact revision>
+IMPLEMENTATION.md revision: <exact Artifact revision>
+MIGRATION.md revision: <exact Artifact revision>
+Verdict: compliant | compliant-with-listed-risks | blocked
+Required return family: none | self | <canonical-family>
+Required return stage: none | design | architecture | implementation | migration
+Completion status: complete | blocked
+Final workflow verification readiness: ready | blocked
+Operator visual status: no-reported-defect | defect-reported | not-applicable
+Blockers: none | <exact blockers>
+Major issues: none | <exact issues>
+Minor issues: none | <exact issues>
+Accepted risks: none | <exact accepted risks>
 ```
 
-Follow `docs/material-3/audits/README.md`.
+`Final workflow verification readiness` means the family is ready for the outer command. It is not the result of that command.
 
-- Use the resolved owning-family slug in kebab case, not the raw user input.
-- Keep one current file per family; do not create dated copies.
-- Record the implementation branch/ref and commit reviewed before writing the audit file.
-- Write the audit even when the result is `compliant`, there are no findings, or the review is `blocked`.
-- Preserve all required sections and use explicit `none` values where applicable.
-- Replace stale prior content rather than appending a second result.
-- Do not update component registries, roadmap state, family contracts, or production claims from a review-only run.
+Use a new artifact revision whenever family review content or Material routing changes. Record exact invalidating upstream revisions.
 
-The review is incomplete until the audit file exists, matches the reported result, and its path is included in the final response. When repository write access is unavailable, report `blocked` with the exact audit-artifact limitation rather than claiming completion.
-
-## Audit file structure
-
-Use:
+Required headings:
 
 ```text
-# <Resolved family> Material 3 Expressive compliance audit
-
-- Requested name:
-- Resolved family:
-- Audit date:
-- Implementation ref:
-- Implementation commit:
-- Current owner:
-- Canonical owner:
-- Compliance result:
-- Operator visual status: accepted | required | not applicable | blocked
-
-## Official evidence
-
-## Claimed supported surface
-
-## Required consumer scenarios
-
-## Confirmed findings
-
-## Evidence gaps
-
-## Rule defects
-
-## Verified compliant areas
-
-## Recommended next action
+## Goal and scenarios reviewed
+## Official design compliance
+## Architecture compliance
+## Implementation compliance
+## Migration and legacy removal
+## Proof and stage verification
+## Blockers
+## Major issues
+## Minor issues
+## Accepted risks
+## Items not required
+## Routing evidence
 ```
 
-Each confirmed finding uses the evidence fields defined above.
+## Full review order
 
-## Output
+1. Validate the complete official design contract and source lifecycle.
+2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, and the simplest viable alternative.
+3. Compare implementation with every architecture decision and forbidden approach.
+4. Review consumers, the no-consumer case, and legacy-removal claims.
+5. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
+6. Verify proof ownership, impact metadata, and stage-scoped checks.
+7. Check for an actual operator-reported visual or motion defect.
+8. Consolidate each underlying problem once and assign exact ownership.
 
-Finish with:
+Automated checks prove only covered contracts. Absence of operator visual feedback is not a blocker and requires no positive acknowledgement.
+
+## Finding ownership
+
+Route:
+
+- missing or incorrect official fact → owning family/design;
+- incorrect demand, API, ownership, dependency, renderer/token strategy, proof ownership, or migration plan → owning family/architecture;
+- component code, token, mapping, export, or component-owned proof defect → owning family/implementation;
+- consumer, scenario, legacy-removal, or migration-proof defect → owning family/migration.
+
+A dependency defect routes to the dependency family, not automatically to the parent.
+
+Do not fix production findings during review.
+
+## Origin execution
+
+When review is the stored origin stage after another family was corrected, the orchestrator first resumes the origin through durable validation from design forward.
+
+Review then executes fresh against all current artifacts, re-evaluates the original finding, and clears or replaces its route. Never preserve a route merely because it existed before correction.
+
+## Verdict semantics
+
+### `compliant`
+
+Use only when all revisions match, mandatory work and proof are complete, no findings or accepted risks remain, route is `none/none`, completion is `complete`, final-verification readiness is `ready`, and no reported defect remains unresolved.
+
+### `compliant-with-listed-risks`
+
+Use only for complete work with explicit bounded non-blocking limitations. It must not represent an unrun or failed required stage check, revision mismatch, stale artifact, warning, unresolved finding, incomplete migration, unknown consumer state, missing proof, deferred required work, or pending outer verification.
+
+Blockers, major issues, and minor issues must be `none`.
+
+### `blocked` with correction route
+
+Use when a family finding belongs to an earlier stage of the same family or to another family.
+
+Same-family review routes may target design, architecture, implementation, or migration. Review cannot route to review.
+
+### Genuine family blocker
+
+When required family evidence or safety input cannot be resolved by any Material stage, use:
 
 ```text
-MATERIAL COMPONENT COMPLIANCE REVIEW
-Requested name:
-Resolved family:
-Current owner:
-Canonical owner:
-Official sources and snapshot:
-Claimed supported surface:
-Required consumer scenarios:
-Compliance result:
-Operator visual status: accepted | required | not applicable | blocked
-Audit file: docs/material-3/audits/<family-slug>.md
-
-Confirmed findings:
-1. <severity> — <summary>
-   Official requirement:
-   Implementation evidence:
-   Required correction:
-
-Evidence gaps:
-- none | <exact unresolved evidence>
-
-Rule defects:
-- none | <owner, defect, recommended correction>
-
-Verified compliant areas:
-- <concise list>
-
-Recommended next action:
-- no action | run material-component <family> with this audit | resolve <exact blocker>
+Verdict: blocked
+Required return family: none
+Required return stage: none
+Completion status: blocked
+Final workflow verification readiness: blocked
+Blockers: <exact family blocker>
 ```
 
-Do not return only a checklist. State a clear compliance result, persist the audit, and prioritize actionable defects.
+A review-owned formatting, synthesis, classification, or routing-output defect must be fixed in the current worker. Do not return a route to review.
+
+## Final-verifier routing
+
+Given exact final verifier output:
+
+1. identify the failed contract and evidence;
+2. decide whether an exact Material family and earliest stage own it;
+3. do not infer ownership from the component that triggered the outer command;
+4. do not assign unrelated workspace failures to the requested parent family.
+
+### Material-owned failure
+
+When an exact Material owner exists:
+
+1. open that family’s current `REVIEW.md`;
+2. record current invalidating revisions;
+3. write verdict and completion as `blocked`;
+4. set the exact Material correction route;
+5. record the command and relevant output in routing evidence;
+6. leave every unrelated family review unchanged;
+7. return to the orchestrator.
+
+### External workspace blocker
+
+When no Material family stage owns the failure:
+
+- do not write or rewrite any family `REVIEW.md`;
+- preserve all compliant family review revisions and dependency gates;
+- return only this compact result:
+
+```text
+MATERIAL FINAL VERIFICATION ROUTING RESULT
+Classification: external-workspace-blocker
+Final command: <exact command>
+Failed contract: <exact external contract>
+Evidence: <concise exact output>
+Required return family: none
+Required return stage: none
+Family reviews changed: none
+Status: blocked
+```
+
+The outer orchestrator records this blocker in its final report and mutable roadmap/status owner. After the external owner corrects it, the orchestrator reruns the prescribed focused command and the original final command without rebuilding current Material family artifacts.
+
+A non-failing external warning must not change a family review. Whether it blocks completion follows the root verification contract.
+
+## Completion
+
+Full review succeeds only when recorded revisions equal current artifacts, all headings exist, the verdict represents the complete family, and no unresolved family route or finding remains.
+
+A design artifact revision mismatch alone is irrelevant when design contract revision is unchanged.
+
+A successful review means ready for outer final verification. It does not claim that command passed.
+
+## Full-review report
+
+```text
+MATERIAL REVIEW RESULT
+Input component:
+Canonical family:
+Review mode: full
+REVIEW.md path:
+Artifact revision:
+DESIGN.md contract revision:
+ARCHITECTURE.md revision:
+IMPLEMENTATION.md revision:
+MIGRATION.md revision:
+Operator visual status:
+Blockers:
+Major issues:
+Minor issues:
+Accepted risks:
+Required return family: none | self | <canonical-family>
+Required return stage: none | design | architecture | implementation | migration
+Review verdict: compliant | compliant-with-listed-risks | blocked
+Final workflow verification readiness: ready | blocked
+Completion status: complete | blocked
+Status: complete | blocked
+```
+
+## Forbidden
+
+- Writing an unrelated final-verifier failure into a family `REVIEW.md`.
+- Changing a compliant family review merely because the outer command failed elsewhere.
+- Routing to review or leaving a review-owned defect unresolved.
+- Fixing production code or rewriting earlier artifacts.
+- Reviewing only the latest change.
+- Depending on Git or PR state.
+- Marking compliant with invalidating revision mismatches or unresolved family work.
+- Treating metadata-only design refresh as invalidation.
+- Using listed risks for incomplete work.
+- Preserving a stale cross-family route after durable origin resume.
+- Blocking only because positive visual acknowledgement is absent.
+- Fabricating operator feedback.
+- Running or claiming final workflow verification.

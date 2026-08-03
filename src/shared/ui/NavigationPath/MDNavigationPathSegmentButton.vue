@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MDButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
 
 const props = defineProps<{
   label: string;
@@ -23,9 +23,3 @@ const onClick = () => {
     @click="onClick"
   />
 </template>
-
-<style scoped>
-.md-navigation-path-segment-button {
-  --md-button-horizontal-padding: 8px;
-}
-</style>

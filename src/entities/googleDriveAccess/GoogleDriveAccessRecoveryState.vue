@@ -5,9 +5,10 @@ import { MDSymbol } from '@shared/ui/Icon';
 import { GoogleDriveAccessRecoveryKind } from './useGoogleDriveAccessRecoveryState';
 import { useGoogleDriveAccessRecoveryState } from './useGoogleDriveAccessRecoveryState';
 
-const { errors, path } = defineProps<{
+const { errors, path, pendingMessage } = defineProps<{
   path: string;
   errors: unknown[];
+  pendingMessage?: string | undefined;
 }>();
 
 defineSlots<{
@@ -36,6 +37,10 @@ const headline = computed(() => {
 });
 
 const supportingText = computed(() => {
+  if (pendingMessage) {
+    return pendingMessage;
+  }
+
   switch (kind.value) {
     case GoogleDriveAccessRecoveryKind.popupBlocked:
       return 'Your browser blocked the Google sign-in window. Allow pop-ups for this site and retry authorization.';
@@ -54,6 +59,7 @@ const supportingText = computed(() => {
     class="google-drive-access-recovery-state"
     :headline="headline"
     :supporting-text="supportingText"
+    :supporting-text-status="!!pendingMessage"
   >
     <template #icon>
       <MDSymbol name="account_circle" class="google-drive-access-recovery-state__icon" />

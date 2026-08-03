@@ -3,7 +3,7 @@ import { ref, useTemplateRef, watch } from 'vue';
 import type { MaybeElement } from '@vueuse/core';
 import { MDMenuBase } from '../../Menu';
 import { MDOverlayTooltip, MDRichTooltip } from '../../Tooltips';
-import { MDButton } from '../../Button';
+import { MDButton } from '@shared/ui/material';
 
 const menuTargetEl = useTemplateRef<MaybeElement>('menuTargetEl');
 const nestedMenuTargetEl = useTemplateRef<MaybeElement>('nestedMenuTargetEl');
@@ -176,6 +176,9 @@ const onRichTooltipInteractionOutside = () => {
       >
         <template #text>
           <button type="button" @click="onRichTooltipAction">Rich tooltip action</button>
+        </template>
+        <template #actions>
+          <MDButton color="text" label="Rich tooltip Material action" />
         </template>
       </MDRichTooltip>
 

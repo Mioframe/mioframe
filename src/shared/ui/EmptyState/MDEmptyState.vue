@@ -2,6 +2,12 @@
 defineProps<{
   headline: string;
   supportingText: string;
+  /**
+   * Assigns `role="status"` and `aria-live="polite"` to the existing supporting-text element
+   * while its text represents a newly changed status. This does not imply disabled, busy, or
+   * loading state.
+   */
+  supportingTextStatus?: boolean;
 }>();
 
 const slots = defineSlots<{
@@ -21,7 +27,11 @@ const slots = defineSlots<{
       {{ headline }}
     </div>
 
-    <div class="md-empty-state__supporting-text">
+    <div
+      class="md-empty-state__supporting-text"
+      :role="supportingTextStatus ? 'status' : undefined"
+      :aria-live="supportingTextStatus ? 'polite' : undefined"
+    >
       {{ supportingText }}
     </div>
 
@@ -55,7 +65,7 @@ const slots = defineSlots<{
     display: flex;
     justify-content: center;
     align-items: center;
-    --md-content-color: : var(--md-sys-color-secondary);
+    --md-content-color: var(--md-sys-color-secondary);
     margin: 0 auto;
     --md-symbol-size: 42px;
   }
@@ -69,7 +79,7 @@ const slots = defineSlots<{
     font-weight: var(--md-sys-typescale-headline-small-weight);
     letter-spacing: var(--md-sys-typescale-headline-small-tracking);
 
-    --md-content-color: var(--md-sys-color-on-surface);
+    color: var(--md-sys-color-on-surface);
 
     .md-dialog_has-icon & {
       text-align: center;
