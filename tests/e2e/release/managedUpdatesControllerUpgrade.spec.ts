@@ -113,6 +113,23 @@ test('a controller-code update leaves the pinned application release, and an una
       });
       expect(manualSnapshot.snapshot.mode).toBe('manual');
 
+      // Synchronization barrier: SET_MODE returns before its deferred
+      // reconciliation settles, so an explicit CHECK_FOR_UPDATES here joins
+      // or starts that same reconciliation and returns only once the shared
+      // promise has fully settled. Only release A exists at this point, so
+      // this Check cannot discover B — it only proves the mode-change
+      // reconciliation is no longer in flight before B is published below.
+      const settledManualSnapshot = await sendProtocolRequest<{ snapshot: Snapshot }>(pageA, {
+        type: 'CHECK_FOR_UPDATES',
+      });
+      expect(settledManualSnapshot.snapshot).toMatchObject({
+        mode: 'manual',
+        activeRelease: {
+          releaseNumber: releaseA.releaseNumber,
+        },
+      });
+      expect(settledManualSnapshot.snapshot.candidate).toBeUndefined();
+
       // Release B is published but deliberately never checked for,
       // approved, or installed — it must remain a pure server-side fact the
       // controller-code upgrade below has no reason to ever touch.
@@ -167,7 +184,11 @@ test('a controller-code update leaves the pinned application release, and an una
       );
 
       // Release A continues operating, completely undisturbed, while the
-      // new controller code sits waiting.
+      // new controller code sits waiting. The synchronization Check above
+      // ran before B was published and is the only application-update Check
+      // before this point; no Check runs between B's publication and the
+      // upgraded controller's activation, so this GET_SNAPSHOT (which
+      // triggers no reconciliation) must still see no candidate.
       await expect(pageA.getByText(/^browser storage$/i)).toBeVisible();
       const snapshotWhileWaiting = await sendProtocolRequest<{ snapshot: Snapshot }>(pageA, {
         type: 'GET_SNAPSHOT',
@@ -225,7 +246,9 @@ test('a controller-code update leaves the pinned application release, and an una
 
       // Release B remains available (discoverable) but still unapproved —
       // proven only now, through the upgraded controller code, confirming
-      // it owns the exact same application-release state as before.
+      // it owns the exact same application-release state as before. This is
+      // the first application-update Check since the pre-publication
+      // synchronization barrier above; B was never checked for in between.
       const checked = await sendProtocolRequest<{ snapshot: Snapshot }>(pageAfterUpgrade, {
         type: 'CHECK_FOR_UPDATES',
       });
