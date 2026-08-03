@@ -1,6 +1,6 @@
 # Managed pinned updates — Stage 7 proof preflight
 
-**Status: final proof correction required. Production architecture changes are not expected.**
+**Status: implementation complete; strict final release proof pending. Production architecture changes are not expected.**
 
 Authoring sources: [`managed-pinned-updates.md`](./managed-pinned-updates.md) and [`managed-pinned-updates-implementation-preflight.md`](./managed-pinned-updates-implementation-preflight.md).
 
@@ -11,30 +11,31 @@ Authoring sources: [`managed-pinned-updates.md`](./managed-pinned-updates.md) an
 - Keep one public `managed-updates` label and sequential fail-stop execution.
 - Do not add another update manager, production test hook, fixture system, protocol path, browser project, retry, or parallel E2E lane.
 
-## Stage 7 scenarios
-
-The two missing acceptance scenarios are implemented:
+## Completed Stage 7 scenarios
 
 1. `managedUpdatesMigration.spec.ts` proves recovery from a boot-broken first managed release through navigation reconciliation and a later corrected release.
 2. `managedUpdatesActivationUi.spec.ts` proves that the previous release reads the document, property, and item written by an activating candidate after real worker rollback.
+3. Lifecycle, develop, and cross-engine shared-state suites use serial retry semantics, so a retry replays the complete dependent sequence.
+4. Temporary Automatic preparation failure uses deterministic corruption and exact restoration of the release-specific published entry file rather than Playwright request interception.
+5. Controller-code upgrade observes the byte-mutated worker before update, closes the old client, proves that exact worker becomes active, and only then opens the next scoped page.
+6. The exact eight-spec corpus runs in three sequential fresh containers: Chromium lifecycle, Chromium migration/isolation, and Firefox/WebKit cross-engine.
 
-The lifecycle and develop shared-state suites now use serial retry semantics. The temporary Automatic preparation failure now uses deterministic corruption and exact restoration of the release-specific published entry file rather than Playwright request interception.
+These implementation and proof-ownership corrections are accepted.
 
-These corrections are accepted.
+## Portable clean-launch contract
 
-## Current verification findings
+The user contract is the next safe application start after every same-channel window closes.
 
-The lifecycle container is now stable. The remaining failures are concentrated in the current migration/isolation container:
+- Another controlled or uncontrolled same-channel window blocks activation.
+- Closing all same-channel windows and opening the application again qualifies on Chromium, Firefox, and WebKit.
+- A sole-window reload may also qualify where the browser exposes sufficient navigation identities, but identical reload classification is not a cross-engine requirement.
+- Reload and close/reopen are equivalent user-level restart actions; production code must not add browser-specific reload classification.
 
-- `managedUpdatesCrossEngineLifecycle.spec.ts` runs only on Firefox and WebKit, shares one `BrowserContext` and one sequential release chain across two dependent tests, but does not yet declare serial semantics;
-- `managedUpdatesControllerUpgrade.spec.ts` closes the last old-controller page and immediately opens another scoped page. The new page can race browser promotion of the waiting worker and become a new client that keeps the old controller alive. Waiting only for `registration.waiting == null` after that page is opened does not prove which controller code controls it;
-- the Firefox/WebKit proof has a different engine and resource lifecycle from the Chromium migration corpus and should not share its long-lived container budget.
+The cross-engine proof therefore requires the portable close-all-windows → next-safe-start path. It does not require every browser engine to classify a same-window reload identically.
 
-These are proof-orchestration/test-observation defects. They do not require production changes or larger container resources.
+## Verification isolation
 
-## Final verification isolation
-
-Keep the exact eight-spec corpus, but execute it in three sequential fresh container sessions under the unchanged canonical `2 CPU / 6 GB / 1 worker` profile:
+The exact eight-spec corpus executes in three sequential fresh container sessions under the unchanged canonical `2 CPU / 6 GB / 1 worker` profile:
 
 1. lifecycle group:
    - lifecycle;
@@ -46,38 +47,22 @@ Keep the exact eight-spec corpus, but execute it in three sequential fresh conta
    - develop isolation;
    - Workbox migration;
 3. cross-engine group:
-   - cross-engine lifecycle only; its existing Playwright project selection continues to run Firefox and WebKit and exclude Chromium.
+   - cross-engine lifecycle only; Playwright project selection runs Firefox and WebKit and excludes Chromium.
 
-The sessions must never run in parallel. Failure or termination of an earlier group stops every later group. The aggregate passes only when all three groups pass. The public verify label and spec corpus remain unchanged.
+The sessions never run in parallel. Failure or termination of an earlier group stops every later group. The aggregate passes only when all three groups pass. The public verify label and spec corpus remain unchanged.
 
-## Final test corrections
+## Remaining verification correction
 
-### Cross-engine lifecycle
+`playwright.release.config.ts` currently enables CI retries but does not enable `failOnFlakyTests`. As a result, `pnpm verify:release` can report success after a managed-update test fails on its first attempt and passes on retry.
 
-- Configure the shared-state describe block with `mode: 'serial'` and its existing 240-second timeout.
-- A retry must replay the complete A → B → C → D → broken E sequence in a fresh worker for the failing browser project.
-- Keep the existing Firefox/WebKit project ownership and browser-neutral product assertions.
+That is inconsistent with the project app E2E policy and with this Stage 7 acceptance contract. Retries may collect diagnostics, but any flaky classification must fail the managed-update and final release gates.
 
-### Controller-code upgrade
+Minimum correction:
 
-- Preserve the browser-native waiting-worker lifecycle; do not call `skipWaiting()` or `clients.claim()`.
-- Make the test-only worker mutation expose a unique runtime revision marker and return that marker to the test.
-- Start observing the byte-different service worker before calling `registration.update()`.
-- After the new worker reaches `waiting`, close the last page controlled by the old worker.
-- Wait, without opening another scoped page, until the observed new worker is the activated registration worker and exposes the expected revision marker.
-- Only then open `pageAfterUpgrade` and continue the existing application-release assertions.
-
-This proves actual controller-code promotion and removes the test-created client race.
-
-## Minimum design
-
-The minimum complete correction is:
-
-- one third fixed aggregate group for the existing cross-engine spec;
-- serial semantics for the existing cross-engine shared-state suite;
-- an observable test-only controller revision and a wait for its activation before opening the next page;
-- aggregate timeout derived from exactly three existing Playwright container budgets;
-- no production or resource-profile changes.
+- add `failOnFlakyTests: !!process.env.CI` to the release Playwright configuration beside the existing retry setting;
+- add focused configuration proof matching the existing app E2E flaky-gate contract;
+- do not remove retries, increase resources, or weaken any managed-update scenario;
+- rerun `pnpm verify --full --only managed-updates` and `pnpm verify:release` until both pass without flaky classification.
 
 ## Acceptance
 
@@ -87,16 +72,17 @@ The minimum complete correction is:
 - Chromium migration/controller proof is isolated from Firefox/WebKit proof.
 - Stateful lifecycle, develop, and cross-engine retries replay their complete scenario sequences.
 - Controller upgrade proves the mutated worker itself becomes active before a new page is opened.
-- No page opened by the test can block waiting-worker promotion.
-- Container resources, Playwright projects, workers, and retries remain unchanged.
+- The portable next-safe-start contract passes on Chromium, Firefox, and WebKit.
+- Container resources, Playwright projects, workers, and retry counts remain unchanged.
+- A retry is diagnostic evidence and causes the release run to fail as flaky.
 - `pnpm verify --full --only managed-updates` passes without flaky classification.
 - `pnpm verify:release` passes as the single final completion gate.
 
 ## TEST IMPACT
 
-Changed contracts: managed-update proof orchestration and controller-upgrade observation only; production contracts remain unchanged.
-Risks: cross-engine shared-state retry validity; cumulative multi-engine container lifetime; waiting-worker promotion race.
-Proof owners: existing managed-update specs, managed-update aggregate runner, fixture mutation helper, and verify command-planning tests.
-New or changed tests: third aggregate group composition/fail-stop proof; cross-engine serial declaration; observable controller revision and activation wait; aggregate timeout planning.
+Changed contracts: managed-update proof orchestration, controller-upgrade observation, portable cross-engine safe-start behavior, and strict release flaky gating; production contracts remain unchanged.
+Risks: invalid stateful retries; cumulative multi-engine container lifetime; waiting-worker promotion race; accepting a flaky release proof as green.
+Proof owners: existing managed-update specs, managed-update aggregate runner, release Playwright configuration, fixture mutation helper, and verify/config tests.
+New or changed tests: strict release flaky-gate configuration proof only; Stage 7 scenarios and orchestration are complete.
 Repository impact metadata updates: none expected because spec ownership and corpus remain unchanged.
 Verification: focused static/unit proof, `pnpm verify --full --only managed-updates`, then the single final gate `pnpm verify:release`.
