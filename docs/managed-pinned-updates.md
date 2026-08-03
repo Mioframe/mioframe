@@ -388,7 +388,9 @@ A ready candidate starts activation on an owned same-channel top-level document 
 
 - controlled and uncontrolled same-channel windows block activation;
 - the evaluated navigation is not counted as another window;
-- reload of the sole remaining window is a new clean launch;
+- after all same-channel windows close, the next safe application start is a qualifying clean launch;
+- reloading the sole remaining window may qualify when the browser exposes sufficient navigation identities, but identical reload classification is not a cross-engine requirement;
+- reload and close/reopen are equivalent user-level restart actions; Mioframe does not add browser-specific reload classification;
 - concurrent navigations serialize the short state transition, producing one `activating` transition;
 - foreign channels and PR previews neither block nor receive broadcasts.
 
