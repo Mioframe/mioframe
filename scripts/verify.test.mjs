@@ -75,13 +75,7 @@ describe('resolvePlaywrightCommandTimeoutMs', () => {
 });
 
 describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
-  const playwrightBackedLabels = [
-    'e2e',
-    'storybook-behavior',
-    'visual',
-    'release-smoke',
-    'managed-updates',
-  ];
+  const playwrightBackedLabels = ['e2e', 'storybook-behavior', 'visual', 'release-smoke'];
   const unrelatedLabelsWithFixedLimits = {
     'e2e-install': 10 * 60 * 1000,
     mutation: 20 * 60 * 1000,
@@ -110,6 +104,12 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     for (const [label, expectedMs] of Object.entries(unrelatedLabelsWithFixedLimits)) {
       expect(COMMAND_TIMEOUT_MS_BY_LABEL[label]).toBe(expectedMs);
     }
+  });
+
+  it('sizes the managed-updates aggregate timeout for exactly two sequential container sessions', () => {
+    const singleSessionTimeoutMs = resolvePlaywrightCommandTimeoutMs();
+
+    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(2 * singleSessionTimeoutMs);
   });
 });
 
@@ -235,19 +235,19 @@ describe('buildCommands full mode', () => {
       'release-smoke',
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     ]);
-    expect(byLabel['managed-updates'].args).toEqual([
-      'e2e:release',
-      '--label',
-      'managed-updates',
+    expect(byLabel['managed-updates'].command).toBe('node');
+    expect(byLabel['managed-updates'].args).toEqual(['scripts/release/managedUpdatesProof.mjs']);
+  });
+
+  it('runs the managed-updates label through the aggregate proof runner, not a direct eight-file Playwright command', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const byLabel = Object.fromEntries(commands.map((entry) => [entry.label, entry]));
+
+    expect(byLabel['managed-updates'].command).not.toBe('pnpm');
+    expect(byLabel['managed-updates'].args).not.toContain('e2e:release');
+    expect(byLabel['managed-updates'].args).not.toContain(
       'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
-      'tests/e2e/release/managedUpdatesDevelop.spec.ts',
-      'tests/e2e/release/managedUpdatesMigration.spec.ts',
-      'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
-      'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
-      'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
-      'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
-      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
-    ]);
+    );
   });
 
   it('does not add release-only checks outside full mode', () => {

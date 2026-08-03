@@ -85,7 +85,11 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
-  'managed-updates': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  // Two sequential fresh-container sessions (see
+  // scripts/release/managedUpdatesProof.mjs), each bounded by the same
+  // derived Playwright container timeout as every other Playwright-backed
+  // lane.
+  'managed-updates': 2 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
@@ -1050,20 +1054,8 @@ function addReleaseOnlyCommands(commands) {
   commands.push({
     kind: 'run',
     label: 'managed-updates',
-    command: 'pnpm',
-    args: [
-      'e2e:release',
-      '--label',
-      'managed-updates',
-      'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
-      'tests/e2e/release/managedUpdatesDevelop.spec.ts',
-      'tests/e2e/release/managedUpdatesMigration.spec.ts',
-      'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
-      'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
-      'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
-      'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
-      'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
-    ],
+    command: 'node',
+    args: ['scripts/release/managedUpdatesProof.mjs'],
     weight: classifyCommandWeight({ label: 'managed-updates' }),
   });
 }

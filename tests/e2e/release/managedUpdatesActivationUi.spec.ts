@@ -408,6 +408,12 @@ test('release A remains the persisted active release while B (activating) writes
       await expect(reopenedPage.getByText(documentName, { exact: true })).toBeVisible();
       await openDocumentFromExplorer(reopenedPage, documentName);
       await expect(reopenedPage.getByRole('button', { name: /rename document/i })).toBeVisible();
+      await expect(
+        reopenedPage.getByRole('columnheader', {
+          name: propertyName,
+          exact: true,
+        }),
+      ).toBeVisible();
       await expect(findDatabaseRow(reopenedPage, itemValue)).toBeVisible();
 
       await reopenedPage.close();
