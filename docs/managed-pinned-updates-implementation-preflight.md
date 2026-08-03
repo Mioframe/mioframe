@@ -181,7 +181,9 @@ restoration, infrastructure access, or revalidation fails
 **Final artifact:** a prepared candidate activates only on a qualifying clean launch and either commits after verified boot or returns to the previous release.
 
 - implement controlled and uncontrolled same-channel window checks;
-- treat reload of the sole remaining window as a new clean launch without browser-specific classification;
+- treat the next owned navigation after all same-channel windows close as the portable qualifying clean launch;
+- allow a sole-window reload to qualify where the browser exposes sufficient navigation identities, but do not require identical reload classification across engines;
+- keep reload and close/reopen equivalent at the user-contract level without browser-specific reload logic;
 - exclude the evaluated top-level document navigation from the count;
 - serialize only the short `ready → activating` transition through `OperationQueue`;
 - serve the activating candidate while preserving the previous active release in state;
