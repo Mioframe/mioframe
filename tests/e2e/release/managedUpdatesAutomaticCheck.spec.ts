@@ -182,6 +182,22 @@ test('Manual navigation rechecks without suppression and explicit Automatic Chec
       await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
       await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'manual' });
 
+      // Synchronization barrier: SET_MODE returns before its deferred
+      // reconciliation settles, so an explicit CHECK_FOR_UPDATES here joins
+      // or starts that same reconciliation and returns only once the shared
+      // promise has fully settled. This prevents the following navigation
+      // from racing the mode-change reconciliation for release B.
+      const settledAfterModeChange = await sendProtocolRequest<{
+        snapshot: {
+          mode: string;
+          candidate?: { phase: string; release: { releaseNumber: number } };
+        };
+      }>(page, { type: 'CHECK_FOR_UPDATES' });
+      expect(settledAfterModeChange.snapshot).toMatchObject({
+        mode: 'manual',
+      });
+      expect(settledAfterModeChange.snapshot.candidate).toBeUndefined();
+
       const releaseB = await buildAndPublishManagedRelease({
         channel: 'stable',
         basePath: BASE_PATH,
@@ -199,6 +215,20 @@ test('Manual navigation rechecks without suppression and explicit Automatic Chec
             candidate: { phase: 'available', release: { releaseNumber: releaseB.releaseNumber } },
           },
         });
+
+      // Synchronization barrier: prove the navigation-triggered B
+      // reconciliation has fully settled before release C is published, so
+      // the next navigation cannot race an in-flight pass for B.
+      const settledAfterB = await sendProtocolRequest<{
+        snapshot: {
+          mode: string;
+          candidate?: { phase: string; release: { releaseNumber: number } };
+        };
+      }>(page, { type: 'CHECK_FOR_UPDATES' });
+      expect(settledAfterB.snapshot).toMatchObject({
+        mode: 'manual',
+        candidate: { phase: 'available', release: { releaseNumber: releaseB.releaseNumber } },
+      });
 
       const releaseC = await buildAndPublishManagedRelease({
         channel: 'stable',
