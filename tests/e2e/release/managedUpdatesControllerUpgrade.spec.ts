@@ -30,6 +30,15 @@ type Snapshot = {
   };
 };
 
+declare global {
+  interface Window {
+    /** Set by {@link mutateControllerWorkerBytes}'s appended marker code, in the mutated worker's own execution context. */
+    __MIOFRAME_TEST_CONTROLLER_REVISION__?: string;
+    /** `ServiceWorkerGlobalScope.registration`, observed from within the worker's own execution context. */
+    registration?: ServiceWorkerRegistration;
+  }
+}
+
 async function sendProtocolRequest<T>(page: Page, request: Record<string, unknown>): Promise<T> {
   return page.evaluate<T, Record<string, unknown>>(
     (req) =>
@@ -115,6 +124,14 @@ test('a controller-code update leaves the pinned application release, and an una
         workDir,
       });
 
+      // Observe the updated worker's own execution context before triggering
+      // the update: attaching the listener first avoids racing the event
+      // that fires once the byte-different `sw.js` is registered.
+      const expectedWorkerUrl = new URL('/sw.js', server.url).toString();
+      const updatedWorkerPromise = context.waitForEvent('serviceworker', {
+        predicate: (worker) => worker.url() === expectedWorkerUrl,
+      });
+
       const originalWorkerBytes = await pageA.evaluate(() =>
         fetch('/sw.js', { cache: 'no-store' }).then((response) => response.text()),
       );
@@ -123,7 +140,7 @@ test('a controller-code update leaves the pinned application release, and an una
       // URL and scope — never a new application release, never a change to
       // any release descriptor, `latest.json`, or persisted controller
       // state.
-      mutateControllerWorkerBytes(workDir, 'stable');
+      const revision = mutateControllerWorkerBytes(workDir, 'stable');
       const mutatedWorkerBytes = await pageA.evaluate(() =>
         fetch('/sw.js', { cache: 'no-store' }).then((response) => response.text()),
       );
@@ -133,6 +150,8 @@ test('a controller-code update leaves the pinned application release, and an una
         const registration = await navigator.serviceWorker.getRegistration();
         await registration?.update();
       });
+
+      const updatedWorker = await updatedWorkerPromise;
 
       // The new controller-code worker reaches "waiting" without this
       // worker's own `install` ever discovering, fetching, or approving
@@ -159,23 +178,41 @@ test('a controller-code update leaves the pinned application release, and an una
       expect(snapshotWhileWaiting.snapshot.candidate).toBeUndefined();
 
       // Close every window the old controller code controls; ordinary
-      // browser lifecycle promotes the waiting worker once none remain.
+      // browser lifecycle promotes the waiting worker once none remain. No
+      // scoped page is opened yet: opening one before the waiting worker is
+      // proven active would create a new client that can itself race and
+      // block that promotion.
       await pageA.close();
+
+      // Poll the observed updated worker directly — never through a page —
+      // until it proves activation: it exposes the expected revision, it is
+      // `registration.active`, and no waiting or installing worker remains.
+      // A transient evaluation failure while the worker transitions is "not
+      // active yet", not success.
+      await expect
+        .poll(
+          async () => {
+            try {
+              return await updatedWorker.evaluate((expectedRevision) => {
+                return (
+                  self.__MIOFRAME_TEST_CONTROLLER_REVISION__ === expectedRevision &&
+                  self.registration?.active?.state === 'activated' &&
+                  self.registration.waiting == null &&
+                  self.registration.installing == null
+                );
+              }, revision);
+            } catch {
+              return false;
+            }
+          },
+          { timeout: 60_000 },
+        )
+        .toBe(true);
 
       const pageAfterUpgrade = await context.newPage();
       await pageAfterUpgrade.goto(server.url);
       await pageAfterUpgrade.waitForFunction(
         () => navigator.serviceWorker.controller !== null,
-        undefined,
-        { timeout: 30_000 },
-      );
-      await pageAfterUpgrade.waitForFunction(
-        () =>
-          navigator.serviceWorker
-            .getRegistration()
-            .then(
-              (registration) => registration?.waiting == null && registration?.installing == null,
-            ),
         undefined,
         { timeout: 30_000 },
       );

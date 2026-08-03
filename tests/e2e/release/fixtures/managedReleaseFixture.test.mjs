@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { readRetainedReleaseDescriptors } from '../../../../scripts/pages/lib/releaseDescriptor.mjs';
 import { publishManagedRelease } from '../../../../scripts/pages/lib/releasePublish.mjs';
-import { materializeManagedRelease } from './managedReleaseFixture.mjs';
+import {
+  materializeManagedRelease,
+  mutateControllerWorkerBytes,
+} from './managedReleaseFixture.mjs';
 
 const ENTRY_PATH_PATTERN = /src="(\/assets\/entry-[0-9a-f-]+\.js)"/;
 const TEMPLATE_ENTRY_CONTENT = 'console.log("app entry");';
@@ -157,6 +160,94 @@ describe('materialized releases publish through the real publisher without colli
     publishFromTemplate({ buildId: 'release-broken', appVersion: '1.1.0', broken: true });
 
     for (const file of descriptorA.files) {
+      const bytes = readFileSync(join(workDir, file.path));
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(file.sha256);
+    }
+  });
+});
+
+describe('mutateControllerWorkerBytes', () => {
+  let templateDir = '';
+  let workDir = '';
+
+  beforeEach(() => {
+    templateDir = buildSyntheticTemplate();
+    workDir = mkdtempSync(join(tmpdir(), 'fixture-mutate-workdir-'));
+  });
+
+  afterEach(() => {
+    rmSync(templateDir, { recursive: true, force: true });
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
+  function publishWithWorker({ channel, buildId, appVersion }) {
+    const basePath = channel === 'stable' ? '/' : '/branch/develop/';
+    const distDir = materializeManagedRelease({ templateDir, basePath, buildId });
+    try {
+      writeFileSync(join(distDir, 'sw.js'), 'self.addEventListener("install", () => {});');
+      return publishManagedRelease({
+        workDir,
+        distDir,
+        channel,
+        appVersion,
+        buildId,
+        buildDate: '2026-07-24T00:00:00.000Z',
+      });
+    } finally {
+      rmSync(distDir, { recursive: true, force: true });
+    }
+  }
+
+  it('changes sw.js bytes and returns a revision embedded in the appended code, for the stable channel', () => {
+    publishWithWorker({ channel: 'stable', buildId: 'mutate-stable-a', appVersion: '1.0.0' });
+    const swPath = join(workDir, 'sw.js');
+    const before = readFileSync(swPath, 'utf8');
+
+    const revision = mutateControllerWorkerBytes(workDir, 'stable');
+
+    const after = readFileSync(swPath, 'utf8');
+    expect(after).not.toBe(before);
+    expect(after).toContain(revision);
+    expect(after).toContain('globalThis.__MIOFRAME_TEST_CONTROLLER_REVISION__');
+  });
+
+  it('changes sw.js bytes for the develop channel at its branch slot', () => {
+    publishWithWorker({ channel: 'develop', buildId: 'mutate-develop-a', appVersion: '1.0.0' });
+    const swPath = join(workDir, 'branch', 'develop', 'sw.js');
+    const before = readFileSync(swPath, 'utf8');
+
+    const revision = mutateControllerWorkerBytes(workDir, 'develop');
+
+    const after = readFileSync(swPath, 'utf8');
+    expect(after).not.toBe(before);
+    expect(after).toContain(revision);
+  });
+
+  it('returns a distinct revision on every call', () => {
+    publishWithWorker({ channel: 'stable', buildId: 'mutate-stable-b', appVersion: '1.0.0' });
+
+    const revisionOne = mutateControllerWorkerBytes(workDir, 'stable');
+    const revisionTwo = mutateControllerWorkerBytes(workDir, 'stable');
+
+    expect(revisionOne).not.toBe(revisionTwo);
+  });
+
+  it('does not modify any application release file, descriptor, or the latest.json pointer', () => {
+    const descriptor = publishWithWorker({
+      channel: 'stable',
+      buildId: 'mutate-stable-c',
+      appVersion: '1.0.0',
+    });
+    const descriptorPath = join(workDir, 'updates', 'releases', `${descriptor.releaseNumber}.json`);
+    const latestPath = join(workDir, 'updates', 'latest.json');
+    const descriptorBefore = readFileSync(descriptorPath, 'utf8');
+    const latestBefore = readFileSync(latestPath, 'utf8');
+
+    mutateControllerWorkerBytes(workDir, 'stable');
+
+    expect(readFileSync(descriptorPath, 'utf8')).toBe(descriptorBefore);
+    expect(readFileSync(latestPath, 'utf8')).toBe(latestBefore);
+    for (const file of descriptor.files) {
       const bytes = readFileSync(join(workDir, file.path));
       expect(createHash('sha256').update(bytes).digest('hex')).toBe(file.sha256);
     }

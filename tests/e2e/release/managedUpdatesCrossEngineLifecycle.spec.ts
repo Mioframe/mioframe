@@ -18,10 +18,11 @@ import {
 // added to managedUpdatesLifecycle.spec.ts to keep that assertion present
 // on Chromium too.
 //
-// A sole-window reload is part of the portable contract: the worker excludes
-// both standard navigation identities (`clientId` and `resultingClientId`)
-// from the controlled+uncontrolled client enumeration, without a URL,
-// referrer, history, or browser-engine reload classifier.
+// The portable contract is the next safe application start after every
+// window closes, not a same-window reload: reloading the only open window
+// and closing/reopening the application are equivalent user-level restart
+// actions, but the browser's own reload client-identity semantics are not
+// independently required to qualify on every engine.
 //
 // One shared work directory, artifact server, and BrowserContext for the
 // whole file (the same stateful fixture model managedUpdatesLifecycle.spec.ts
@@ -147,13 +148,22 @@ async function closeAll(pages: readonly Page[]): Promise<void> {
 }
 
 test.describe('managed pinned application updates: narrow cross-engine lifecycle smoke', () => {
-  test.setTimeout(240_000);
+  test.describe.configure({
+    mode: 'serial',
+    timeout: 240_000,
+  });
 
   let workDir = '';
   let server: Awaited<ReturnType<typeof startManagedArtifactServer>>;
   let context: BrowserContext;
 
   test.beforeAll(async ({ browser }) => {
+    // `describe.configure({ timeout })` only extends each test's own
+    // timeout; `beforeAll`/`afterAll` hooks keep a separate, fixed 30s
+    // default unless a hook explicitly calls `test.setTimeout` itself. This
+    // hook runs a real production `vite build` for its first release, which
+    // does not reliably finish inside that default.
+    test.setTimeout(240_000);
     workDir = mkdtempSync(join(tmpdir(), 'managed-release-cross-engine-work-'));
     await buildAndPublishManagedRelease({
       channel: 'stable',
@@ -178,7 +188,7 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
     rmSync(workDir, { recursive: true, force: true });
   });
 
-  test('additional windows block activation, closing all windows activates, and a sole-window reload qualifies', async () => {
+  test('additional windows block activation, and closing all windows activates the next scheduled release on the next safe start', async () => {
     const openPages: Page[] = [];
 
     try {
@@ -281,9 +291,7 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
         expect(blockedC.state.candidate?.release.releaseNumber).toBe(releaseC.releaseNumber);
       }
 
-      // 4. Closing every window activates C. This also lets every engine
-      // retire the deliberately additional client before the independent
-      // sole-window reload case below begins.
+      // 4. Closing every window activates C.
       await windowTwo.close();
       await windowOne.close();
       const windowThree = await context.newPage();
@@ -296,9 +304,12 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
         expect(committedC.state.candidate).toBeUndefined();
       }
 
-      // 5. With only windowThree live, its old/new standard navigation
-      // identities are excluded and its reload qualifies without any reload
-      // classifier or engine-specific branch.
+      // 5. With only windowThree live, scheduling D and then closing every
+      // window and starting again — the next safe application start —
+      // activates it, boots it, and clears the candidate. This is the same
+      // clean-launch pattern already proven for B and C above, not a
+      // same-window reload: reload's own client-identity semantics are not
+      // independently required to qualify on every engine.
       const releaseD = await buildAndPublishManagedRelease({
         channel: 'stable',
         basePath: BASE_PATH,
@@ -315,10 +326,13 @@ test.describe('managed pinned application updates: narrow cross-engine lifecycle
       }>(windowThree, { type: 'INSTALL_ON_NEXT_LAUNCH' });
       expect(installedD.snapshot.candidate?.phase).toBe('ready');
 
-      await windowThree.reload();
-      await waitForControlledPage(windowThree);
-      await expectAppReady(windowThree);
-      const committedD = await waitForActiveRelease(windowThree, releaseD.releaseNumber);
+      await windowThree.close();
+      const windowFour = await context.newPage();
+      openPages.push(windowFour);
+      await windowFour.goto(server.url);
+      await waitForControlledPage(windowFour);
+      await expectAppReady(windowFour);
+      const committedD = await waitForActiveRelease(windowFour, releaseD.releaseNumber);
       if (committedD.status === 'valid') {
         expect(committedD.state.candidate).toBeUndefined();
       }

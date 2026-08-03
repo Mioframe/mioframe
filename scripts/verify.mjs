@@ -85,11 +85,11 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
-  // Two sequential fresh-container sessions (see
+  // Three sequential fresh-container sessions (see
   // scripts/release/managedUpdatesProof.mjs), each bounded by the same
   // derived Playwright container timeout as every other Playwright-backed
   // lane.
-  'managed-updates': 2 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  'managed-updates': 3 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;

@@ -42,7 +42,7 @@ export declare function corruptPublishedReleaseFile(
 export declare function mutateControllerWorkerBytes(
   workDir: string,
   channel: ManagedReleaseChannel,
-): void;
+): string;
 
 export type ManagedArtifactServerHandle = {
   url: string;

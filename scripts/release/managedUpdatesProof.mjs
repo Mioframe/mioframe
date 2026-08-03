@@ -15,23 +15,36 @@ export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
   'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
 ];
 
-// Group 2: develop, migration, controller-upgrade, and cross-engine specs.
+// Group 2: controller-upgrade, develop, and migration specs (Chromium).
 // Runs in a second fresh Playwright container, only after group 1 passes.
+// managedUpdatesControllerUpgrade.spec.ts runs first, in its own fresh
+// Chromium container, before the longer migration suites.
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL = 'managed-updates-migration-isolation';
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS = [
+  'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
   'tests/e2e/release/managedUpdatesDevelop.spec.ts',
   'tests/e2e/release/managedUpdatesMigration.spec.ts',
-  'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
+];
+
+// Group 3: the narrow cross-engine lifecycle smoke, run on Firefox and
+// WebKit only (via this file's own Playwright project entries; Chromium's
+// project excludes it). Runs in a third fresh Playwright container, only
+// after group 2 passes, isolated from the Chromium migration/isolation
+// proof above.
+export const MANAGED_UPDATES_CROSS_ENGINE_LABEL = 'managed-updates-cross-engine';
+export const MANAGED_UPDATES_CROSS_ENGINE_SPECS = [
   'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
 ];
 
-// Fixed run order: group 1 must complete before group 2 ever starts.
+// Fixed run order: group 1 must complete before group 2 starts, and group 2
+// must complete before group 3 starts.
 export const MANAGED_UPDATES_GROUPS = [
   { label: MANAGED_UPDATES_LIFECYCLE_LABEL, specs: MANAGED_UPDATES_LIFECYCLE_SPECS },
   {
     label: MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL,
     specs: MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
   },
+  { label: MANAGED_UPDATES_CROSS_ENGINE_LABEL, specs: MANAGED_UPDATES_CROSS_ENGINE_SPECS },
 ];
 
 const defaultDeps = {
@@ -43,11 +56,12 @@ function isPassingResult(result) {
 }
 
 /**
- * Run the managed-update release proof as two fixed sequential groups, each
- * in its own fresh Playwright container via `scripts/e2eReleaseContainer.mjs`
- * (see `pnpm e2e:release`). Group 2 never starts unless group 1 passes; the
- * aggregate result preserves whichever group's exact exit status or
- * termination signal caused the run to stop, so this owns only fixed
+ * Run the managed-update release proof as three fixed sequential groups,
+ * each in its own fresh Playwright container via
+ * `scripts/e2eReleaseContainer.mjs` (see `pnpm e2e:release`). A later group
+ * never starts unless every earlier group passes; the aggregate result
+ * preserves whichever group's exact exit status or termination signal
+ * caused the run to stop, so this owns only fixed
  * grouping/ordering/propagation — never a general test scheduler.
  * @param [options] Run options.
  * @param [options.env] Environment forwarded to each container child process;

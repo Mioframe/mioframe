@@ -376,20 +376,26 @@ export function corruptPublishedReleaseFile(workDir, channel, filePath) {
 }
 
 /**
- * Appends a harmless trailing comment to an already-published channel's
- * deployed `sw.js`, changing its bytes without altering any application
- * release asset, descriptor, or persisted controller state. Used only to
- * prove a controller-code (worker script) update is independent of the
- * managed application release it controls — never used to build the real
- * production artifact, only this test-only republish step.
+ * Appends executable, test-only marker code to an already-published
+ * channel's deployed `sw.js`, changing its bytes without altering any
+ * application release asset, descriptor, or persisted controller state, and
+ * exposes a unique revision identity in the worker's own global scope so a
+ * test can observe exactly when this byte-mutated worker becomes the active
+ * controller. Used only to prove a controller-code (worker script) update is
+ * independent of the managed application release it controls — never used
+ * to build the real production artifact, only this test-only republish
+ * step.
  * @param workDir Pages staging working directory root.
  * @param channel Managed channel: `'stable'` or `'develop'`.
+ * @returns The unique revision identity appended into `sw.js`.
  */
 export function mutateControllerWorkerBytes(workDir, channel) {
+  const revision = `controller-upgrade-${randomUUID()}`;
   appendFileSync(
     join(resolveChannelBase(workDir, channel), 'sw.js'),
-    `\n// test-only controller-code byte change ${Date.now()}\n`,
+    `\nglobalThis.__MIOFRAME_TEST_CONTROLLER_REVISION__ = ${JSON.stringify(revision)};\n`,
   );
+  return revision;
 }
 
 /**
