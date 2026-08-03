@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -120,6 +120,8 @@ async function waitForControlledPage(page: Page): Promise<void> {
 }
 
 test.describe('managed pinned application updates: stable channel lifecycle', () => {
+  test.describe.configure({ mode: 'serial' });
+
   let workDir = '';
   let server: Awaited<ReturnType<typeof startManagedArtifactServer>>;
   let context: BrowserContext;
@@ -515,12 +517,13 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
   });
 
   test('a temporary Automatic preparation failure recovers on a later check of the same published release', async () => {
-    // Publishes one more real release and injects exactly one aborted
-    // network request for one of its ordinary files — a genuine, real
-    // fetch/hash preparation failure inside the worker's own preparation
-    // path, not a reproduction of the private protocol or an internal
-    // Playwright/Cache-Storage mock. See the managed pinned application
-    // updates feature, "Automatic preparation is not retried" correction.
+    // Publishes one more real release and corrupts its own unique entry
+    // file's on-disk bytes — a genuine, real fetch + byte-size/SHA-256
+    // preparation failure inside the worker's own preparation path (see
+    // src/shared/service/appUpdate/releasePreparation.ts), not a Playwright
+    // route interception or an internal Cache-Storage mock. See the managed
+    // pinned application updates feature, "Automatic preparation is not
+    // retried" correction.
     //
     // Runs last in this shared lifecycle: it schedules a real clean-launch
     // activation, and every earlier test here (in particular crash recovery,
@@ -534,24 +537,26 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
       buildId: 'automatic-retry-release',
       workDir,
     });
-    const [targetFile] = releaseRetry.files;
-    const targetUrl = new URL(`${BASE_PATH}${targetFile.path}`, server.url).toString();
+
+    // Each materialized release gets its own uniquely named entry file (see
+    // materializeManagedRelease in the fixture); select it explicitly rather
+    // than the first descriptor file so a shared, unrenamed template asset
+    // used by the still-active release is never corrupted.
+    const targetFile = releaseRetry.files.find((file) => /(?:^|\/)entry-[^/]+/.test(file.path));
+    expect(targetFile).toBeDefined();
+    if (!targetFile) {
+      throw new Error('Expected the materialized release-specific entry file');
+    }
+
+    const targetPath = join(workDir, targetFile.path);
+    const originalBytes = readFileSync(targetPath);
 
     const page = await context.newPage();
     await page.goto(server.url);
     await waitForControlledPage(page);
     await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'automatic' });
 
-    let abortedCount = 0;
-    await context.route(targetUrl, async (route) => {
-      const request = route.request();
-      if (abortedCount === 0 && request.serviceWorker() !== null) {
-        abortedCount += 1;
-        await route.abort('failed');
-        return;
-      }
-      await route.continue();
-    });
+    writeFileSync(targetPath, 'temporary managed-update preparation corruption');
 
     try {
       const failedCheck = await sendProtocolRequest<{
@@ -559,14 +564,13 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
       }>(page, { type: 'CHECK_FOR_UPDATES' });
 
       // Explicit Check waits for the preparation attempt; a transient
-      // preparation failure leaves the candidate available in its final
-      // response and persisted state.
+      // preparation failure (real byte-size/hash mismatch) leaves the
+      // candidate available in its final response and persisted state.
       expect(failedCheck.snapshot.candidate?.phase).toBe('available');
       expect(failedCheck.snapshot.candidate?.release.releaseNumber).toBe(
         releaseRetry.releaseNumber,
       );
 
-      await expect.poll(() => abortedCount, { timeout: 20_000 }).toBe(1);
       const stillAvailable = await readControllerState(page, CONTROLLER_DB_NAME);
       expect(stillAvailable.status).toBe('valid');
       if (stillAvailable.status === 'valid') {
@@ -576,11 +580,11 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
         expect(stillAvailable.state.candidate?.phase).toBe('available');
       }
     } finally {
-      await context.unroute(targetUrl);
+      writeFileSync(targetPath, originalBytes);
     }
 
     // A later check of the same still-`available` candidate retries
-    // preparation; this time nothing is aborted and it succeeds.
+    // preparation; this time the bytes are restored and it succeeds.
     await sendProtocolRequest(page, { type: 'CHECK_FOR_UPDATES' });
     const retried = await waitForControllerState(
       page,

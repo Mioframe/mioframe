@@ -119,7 +119,10 @@ test.describe('managed pinned application updates: develop channel isolation', (
   // Each test/hook here builds one or more real production artifacts via
   // `vite build`, which comfortably exceeds Playwright's default 30s
   // per-test/hook timeout.
-  test.describe.configure({ timeout: 180_000 });
+  test.describe.configure({
+    mode: 'serial',
+    timeout: 180_000,
+  });
 
   let workDir = '';
   let server: Awaited<ReturnType<typeof startManagedArtifactServer>>;
