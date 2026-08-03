@@ -20,6 +20,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // Retries collect diagnostics, but a flaky release proof must still fail the gate.
+  failOnFlakyTests: !!process.env.CI,
   reporter: process.env.CI
     ? [['line'], ['html', { open: 'never', outputFolder: 'playwright-report-release' }]]
     : 'list',
