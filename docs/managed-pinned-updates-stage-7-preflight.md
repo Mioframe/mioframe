@@ -1,6 +1,6 @@
 # Managed pinned updates — Stage 7 proof preflight
 
-**Status: implementation complete; strict final release proof pending. Production architecture changes are not expected.**
+**Status: implementation complete and architecture-accepted; strict current-head final verification pending. Production architecture changes are not expected.**
 
 Authoring sources: [`managed-pinned-updates.md`](./managed-pinned-updates.md) and [`managed-pinned-updates-implementation-preflight.md`](./managed-pinned-updates-implementation-preflight.md).
 
@@ -19,6 +19,8 @@ Authoring sources: [`managed-pinned-updates.md`](./managed-pinned-updates.md) an
 4. Temporary Automatic preparation failure uses deterministic corruption and exact restoration of the release-specific published entry file rather than Playwright request interception.
 5. Controller-code upgrade observes the byte-mutated worker before update, closes the old client, proves that exact worker becomes active, and only then opens the next scoped page.
 6. The exact eight-spec corpus runs in three sequential fresh containers: Chromium lifecycle, Chromium migration/isolation, and Firefox/WebKit cross-engine.
+7. Mode-change-dependent scenarios use explicit protocol synchronization barriers before publishing a release whose discovery must belong to a later trigger.
+8. Release Playwright keeps two diagnostic CI retries but enables `failOnFlakyTests`, so a retry-pass cannot make the managed-update or final release gate green.
 
 These implementation and proof-ownership corrections are accepted.
 
@@ -51,18 +53,18 @@ The exact eight-spec corpus executes in three sequential fresh container session
 
 The sessions never run in parallel. Failure or termination of an earlier group stops every later group. The aggregate passes only when all three groups pass. The public verify label and spec corpus remain unchanged.
 
-## Remaining verification correction
+## Current final verification state
 
-`playwright.release.config.ts` currently enables CI retries but does not enable `failOnFlakyTests`. As a result, `pnpm verify:release` can report success after a managed-update test fails on its first attempt and passes on retry.
+Strict release flaky gating is implemented and has focused configuration proof. All deterministic Stage 7 synchronization races identified during strict-gate runs have been corrected without production changes, weakened assertions, extra retries, larger resources, browser exclusions, or fixed sleeps.
 
-That is inconsistent with the project app E2E policy and with this Stage 7 acceptance contract. Retries may collect diagnostics, but any flaky classification must fail the managed-update and final release gates.
+The remaining work is proof, not implementation:
 
-Minimum correction:
+```text
+pnpm verify --full --only managed-updates
+pnpm verify:release
+```
 
-- add `failOnFlakyTests: !!process.env.CI` to the release Playwright configuration beside the existing retry setting;
-- add focused configuration proof matching the existing app E2E flaky-gate contract;
-- do not remove retries, increase resources, or weaken any managed-update scenario;
-- rerun `pnpm verify --full --only managed-updates` and `pnpm verify:release` until both pass without flaky classification.
+Both commands must run on the same current head and pass without flaky classification. A retry may collect diagnostics, but any flaky classification fails the gate.
 
 ## Acceptance
 
@@ -80,9 +82,9 @@ Minimum correction:
 
 ## TEST IMPACT
 
-Changed contracts: managed-update proof orchestration, controller-upgrade observation, portable cross-engine safe-start behavior, and strict release flaky gating; production contracts remain unchanged.
-Risks: invalid stateful retries; cumulative multi-engine container lifetime; waiting-worker promotion race; accepting a flaky release proof as green.
+Changed contracts: managed-update proof orchestration, controller-upgrade observation, portable cross-engine safe-start behavior, synchronization of deferred reconciliation in tests, and strict release flaky gating; production contracts remain unchanged.
+Risks: invalid stateful retries; cumulative multi-engine container lifetime; waiting-worker promotion race; mode-change reconciliation leaking into a later publication; accepting a flaky release proof as green.
 Proof owners: existing managed-update specs, managed-update aggregate runner, release Playwright configuration, fixture mutation helper, and verify/config tests.
-New or changed tests: strict release flaky-gate configuration proof only; Stage 7 scenarios and orchestration are complete.
+New or changed tests: strict release flaky-gate configuration proof plus synchronization barriers in existing Stage 7 scenarios; spec ownership and corpus remain unchanged.
 Repository impact metadata updates: none expected because spec ownership and corpus remain unchanged.
 Verification: focused static/unit proof, `pnpm verify --full --only managed-updates`, then the single final gate `pnpm verify:release`.
