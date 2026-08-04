@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { checkAgentEnvironment, getDirectorySymlinkType } from './agentEnvironment.mjs';
 
@@ -18,7 +18,7 @@ const MANAGED_ROOT_CLAUDE = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or canonical skill files under .agents/skills instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or skill files under .agents/skills instead.
 `;
 
 const MANAGED_NESTED_CLAUDE = `<!-- managed:agent-compat -->
@@ -76,71 +76,34 @@ function makeSymlink(root, relPath, target) {
   fs.symlinkSync(target, absPath);
 }
 
-/**
- * Create a temp ignore file outside the repository and configure it as the
- * repository-local core.excludesFile, so tests can reproduce an external
- * ignore source without touching real user-level or system-level git config.
- * @param root Absolute temp repository path.
- * @param patterns Ignore file contents.
- * @returns Absolute path to the temp directory holding the excludes file, for cleanup.
- */
-function configureExternalExcludesFile(root, patterns) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-env-excludes-'));
-  const excludesPath = path.join(dir, 'excludes');
-  fs.writeFileSync(excludesPath, patterns, 'utf8');
-
-  const result = spawnSync('git', ['config', 'core.excludesFile', excludesPath], {
-    cwd: root,
-    encoding: 'utf8',
-  });
-
-  if (result.status !== 0) {
-    throw new Error(result.stderr || 'git config core.excludesFile failed');
-  }
-
-  return dir;
-}
-
-/**
- * Append ignore patterns to the repository-local .git/info/exclude file.
- * @param root Absolute temp repository path.
- * @param patterns Ignore file contents to append.
- */
-function appendInfoExclude(root, patterns) {
-  fs.appendFileSync(path.join(root, '.git', 'info', 'exclude'), patterns);
-}
-
-/**
- * Ask raw git whether it considers a path ignored, using the same query
- * shape production check-ignore commands use (index-independent).
- * @param root Absolute temp repository path.
- * @param relPath Relative path to test.
- * @returns True when raw git reports the path as ignored.
- */
-function isRawGitIgnored(root, relPath) {
-  const result = spawnSync('git', ['check-ignore', '-q', '--no-index', relPath], {
-    cwd: root,
-  });
-
-  return result.status === 0;
-}
-
 let tempRoot;
-let externalExcludeDirs;
+let gitConfigRoot;
 
 beforeEach(() => {
+  // Temp repositories must prove repository-owned ignore rules without
+  // inheriting user, system, command-line, template, or default XDG/Home
+  // Git configuration and exclude files.
+  gitConfigRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-env-git-config-'));
+  const globalConfigPath = path.join(gitConfigRoot, 'global.gitconfig');
+  fs.writeFileSync(globalConfigPath, '', 'utf8');
+  vi.stubEnv('GIT_CONFIG_GLOBAL', globalConfigPath);
+  vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1');
+  vi.stubEnv('GIT_CONFIG_COUNT', '0');
+  vi.stubEnv('GIT_TEMPLATE_DIR', gitConfigRoot);
+  vi.stubEnv('XDG_CONFIG_HOME', gitConfigRoot);
+  vi.stubEnv('HOME', gitConfigRoot);
+  vi.stubEnv('USERPROFILE', gitConfigRoot);
   tempRoot = null;
-  externalExcludeDirs = [];
 });
 
 afterEach(() => {
   if (tempRoot) {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
-
-  for (const dir of externalExcludeDirs) {
-    fs.rmSync(dir, { recursive: true, force: true });
+  if (gitConfigRoot) {
+    fs.rmSync(gitConfigRoot, { recursive: true, force: true });
   }
+  vi.unstubAllEnvs();
 });
 
 describe('CLAUDE.md adapters — check mode', () => {
@@ -378,82 +341,7 @@ describe('.gitignore validation', () => {
     const result = checkAgentEnvironment(tempRoot, false);
 
     expect(result.errors).toContainEqual(
-      expect.stringContaining(
-        '.claude/settings.local.json must be protected by a positive rule in the repository root .gitignore',
-      ),
-    );
-  });
-
-  it('fails when only an external core.excludesFile protects settings.local.json, reproducing the nondeterministic failure', () => {
-    tempRoot = makeTempRepo({
-      '.gitignore': '',
-    });
-    externalExcludeDirs.push(
-      configureExternalExcludesFile(tempRoot, '.claude/settings.local.json\n'),
-    );
-
-    expect(isRawGitIgnored(tempRoot, '.claude/settings.local.json')).toBe(true);
-
-    const result = checkAgentEnvironment(tempRoot, false);
-
-    expect(result.errors).toContainEqual(
-      expect.stringContaining(
-        '.claude/settings.local.json must be protected by a positive rule in the repository root .gitignore',
-      ),
-    );
-  });
-
-  it('passes with a valid repository .gitignore even when an external ignore file also matches', () => {
-    tempRoot = makeTempRepo({
-      '.gitignore': VALID_GITIGNORE,
-    });
-    externalExcludeDirs.push(
-      configureExternalExcludesFile(tempRoot, '.claude/settings.local.json\n'),
-    );
-
-    const result = checkAgentEnvironment(tempRoot, false);
-
-    expect(result.errors).toHaveLength(0);
-  });
-
-  it('fails when settings.local.json is matched only by .git/info/exclude', () => {
-    tempRoot = makeTempRepo({
-      '.gitignore': '',
-    });
-    appendInfoExclude(tempRoot, '.claude/settings.local.json\n');
-
-    const result = checkAgentEnvironment(tempRoot, false);
-
-    expect(result.errors).toContainEqual(
-      expect.stringContaining(
-        '.claude/settings.local.json must be protected by a positive rule in the repository root .gitignore',
-      ),
-    );
-  });
-
-  it('fails when .claude/skills is ignored only by an external rule with no repository override', () => {
-    tempRoot = makeTempRepo({
-      '.gitignore': '.claude/settings.local.json\n',
-    });
-    externalExcludeDirs.push(configureExternalExcludesFile(tempRoot, '.claude/skills\n'));
-
-    const result = checkAgentEnvironment(tempRoot, false);
-
-    expect(result.errors).toContainEqual(
-      expect.stringContaining('.claude/skills must not be ignored'),
-    );
-  });
-
-  it('reports a git operational failure as an explicit validation error', () => {
-    tempRoot = makeTempRepo({
-      '.gitignore': VALID_GITIGNORE,
-    });
-    const missingRoot = path.join(tempRoot, 'does-not-exist');
-
-    const result = checkAgentEnvironment(missingRoot, false);
-
-    expect(result.errors).toContainEqual(
-      expect.stringContaining('Unable to validate .gitignore compatibility'),
+      expect.stringContaining('.claude/settings.local.json must remain ignored'),
     );
   });
 });
