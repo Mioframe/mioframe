@@ -698,6 +698,281 @@ describe('workerFetch', () => {
       );
       expect(prepare).toHaveBeenCalledTimes(1);
     });
+
+    describe('activating candidate failure rollback', () => {
+      const candidateRelease = candidateReleaseForPhaseMatrix;
+      const farFutureDeadlineAt = '2099-01-01T00:00:00.000Z';
+
+      function stubSameChannelClients() {
+        const oldPostMessage = vi.fn();
+        const newPostMessage = vi.fn();
+        const otherPostMessage = vi.fn();
+        vi.stubGlobal('self', {
+          clients: {
+            matchAll: vi.fn().mockResolvedValue([
+              {
+                id: 'old',
+                type: 'window',
+                url: 'https://mioframe.example/',
+                postMessage: oldPostMessage,
+              },
+              {
+                id: 'new',
+                type: 'window',
+                url: 'https://mioframe.example/',
+                postMessage: newPostMessage,
+              },
+              {
+                id: 'other',
+                type: 'window',
+                url: 'https://mioframe.example/',
+                postMessage: otherPostMessage,
+              },
+            ]),
+          },
+        });
+        return { oldPostMessage, newPostMessage, otherPostMessage };
+      }
+
+      it('starts activation, fails to serve the just-activated candidate, and durably rolls back to serve active in the same navigation, excluding this navigation from the broadcast', async () => {
+        await seedAvailableRelease();
+        let persistedState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'manual',
+          activeRelease,
+          candidate: { phase: 'ready', release: candidateRelease },
+        };
+        readControllerStateMock.mockImplementation(() =>
+          Promise.resolve({ status: 'valid', state: persistedState }),
+        );
+        writeControllerStateMock.mockImplementation((_channel, state) => {
+          persistedState = state;
+          return Promise.resolve();
+        });
+        const { oldPostMessage, newPostMessage, otherPostMessage } = stubSameChannelClients();
+
+        const result = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+          { clientId: 'old', resultingClientId: 'new' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.resolve([]),
+          },
+        );
+
+        expect(writeControllerStateMock).toHaveBeenCalledTimes(2);
+        expect(persistedState.activeRelease).toEqual(activeRelease);
+        expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
+        expect(await result.response.text()).toBe('<html>archived</html>');
+        expect(result.runLifetimeWork).toBeTypeOf('function');
+        await result.runLifetimeWork?.();
+        expect(oldPostMessage).not.toHaveBeenCalled();
+        expect(newPostMessage).not.toHaveBeenCalled();
+        expect(otherPostMessage).toHaveBeenCalledOnce();
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('rolls back and serves active when an already-activating candidate (not started by this navigation) cannot be restored', async () => {
+        await seedAvailableRelease();
+        let persistedState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'automatic',
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: farFutureDeadlineAt,
+          },
+        };
+        readControllerStateMock.mockImplementation(() =>
+          Promise.resolve({ status: 'valid', state: persistedState }),
+        );
+        writeControllerStateMock.mockImplementation((_channel, state) => {
+          persistedState = state;
+          return Promise.resolve();
+        });
+        stubSameChannelClients();
+
+        const result = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+        );
+
+        expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
+        expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
+        expect(await result.response.text()).toBe('<html>archived</html>');
+        expect(result.runLifetimeWork).toBeTypeOf('function');
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it.each(['appVersion', 'buildId', 'buildDate'] as const)(
+        'never rolls back on a same-number, different-%s candidate discovered on re-read (stale full-identity protection)',
+        async (field) => {
+          await seedAvailableRelease();
+          const exactState: UpdateControllerState = {
+            schemaVersion: 1,
+            mode: 'automatic',
+            activeRelease,
+            candidate: {
+              phase: 'activating',
+              release: candidateRelease,
+              deadlineAt: farFutureDeadlineAt,
+            },
+          };
+          const staleState: UpdateControllerState = {
+            ...exactState,
+            candidate: {
+              phase: 'activating',
+              release: { ...candidateRelease, [field]: 'diverged-value' },
+              deadlineAt: farFutureDeadlineAt,
+            },
+          };
+          let readCount = 0;
+          readControllerStateMock.mockImplementation(() => {
+            readCount += 1;
+            return Promise.resolve({
+              status: 'valid',
+              state: readCount <= 2 ? exactState : staleState,
+            });
+          });
+
+          const { response } = await invokeNavigationFetch(
+            CHANNEL,
+            BASE_PATH,
+            new Request('https://mioframe.example/'),
+            createFakeCoordinator(),
+          );
+
+          expect(response.status).toBe(503);
+          expect(await response.text()).toBe('Release unavailable');
+          expect(writeControllerStateMock).not.toHaveBeenCalled();
+          expect(fetchMock).not.toHaveBeenCalled();
+        },
+      );
+
+      it('serves the controlled unavailable response and never serves active when rollback persistence itself fails', async () => {
+        await seedAvailableRelease();
+        readControllerStateMock.mockResolvedValue({
+          status: 'valid',
+          state: {
+            activeRelease,
+            candidate: {
+              phase: 'activating',
+              release: candidateRelease,
+              deadlineAt: farFutureDeadlineAt,
+            },
+          },
+        });
+        writeControllerStateMock.mockRejectedValue(new Error('persistence failed'));
+
+        const { response, runLifetimeWork } = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+        );
+
+        expect(response.status).toBe(503);
+        expect(await response.text()).toBe('Release unavailable');
+        expect(runLifetimeWork).toBeUndefined();
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('never rolls back when the activation was concurrently resolved before the fallback re-read', async () => {
+        await seedAvailableRelease();
+        const exactState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'automatic',
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: farFutureDeadlineAt,
+          },
+        };
+        const resolvedState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'automatic',
+          activeRelease,
+          candidate: { phase: 'failed', release: candidateRelease },
+        };
+        let readCount = 0;
+        readControllerStateMock.mockImplementation(() => {
+          readCount += 1;
+          return Promise.resolve({
+            status: 'valid',
+            state: readCount <= 2 ? exactState : resolvedState,
+          });
+        });
+
+        const { response } = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+        );
+
+        expect(response.status).toBe(503);
+        expect(await response.text()).toBe('Release unavailable');
+        expect(writeControllerStateMock).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('persists the rollback and still returns controlled unavailable, with rollback lifetime work present, when the active release is also unavailable', async () => {
+        // Active release intentionally not seeded, so its own restoration also fails.
+        let persistedState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'automatic',
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: farFutureDeadlineAt,
+          },
+        };
+        readControllerStateMock.mockImplementation(() =>
+          Promise.resolve({ status: 'valid', state: persistedState }),
+        );
+        writeControllerStateMock.mockImplementation((_channel, state) => {
+          persistedState = state;
+          return Promise.resolve();
+        });
+        stubSameChannelClients();
+
+        const { response, runLifetimeWork } = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+        );
+
+        expect(response.status).toBe(503);
+        expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
+        expect(runLifetimeWork).toBeTypeOf('function');
+        await expect(runLifetimeWork?.()).resolves.toBeUndefined();
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('performs no state mutation and no rollback work for an ordinary active-release restoration failure (no candidate)', async () => {
+        const { response, runLifetimeWork } = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+        );
+
+        expect(response.status).toBe(503);
+        expect(writeControllerStateMock).not.toHaveBeenCalled();
+        expect(runLifetimeWork).toBeUndefined();
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('handleAssetFetch', () => {

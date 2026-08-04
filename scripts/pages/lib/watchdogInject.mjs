@@ -3,7 +3,10 @@
  * script the publisher writes into every archived release's `index.html`,
  * before the main module entry, so it can detect an early fatal boot
  * failure even if the main application bundle itself is the failing
- * component.
+ * component. Its `error` listener is registered on `window` with capture
+ * enabled so a linked resource's own non-bubbling load failure (a script or
+ * stylesheet this document references) is observed too, not only an
+ * ordinary runtime error dispatched at `window` itself.
  *
  * The watchdog never implements release selection or storage rules itself:
  * it only relays `BOOT_OK`/`BOOT_FAILED` to the controller worker over an
@@ -181,7 +184,14 @@ export function buildWatchdogScript(releaseNumber) {
     reportBootFailed();
   }
 
-  window.addEventListener('error', onEarlyFatalError);
+  // Capture phase: a linked resource's own load failure (a script, style, or
+  // other subresource this document's own index references) fires a
+  // non-bubbling 'error' event at that element. Registering on window with
+  // capture: true still observes it during the capture phase, which reaches
+  // every ancestor -- including window -- before the event would otherwise
+  // stop at its non-bubbling target. An ordinary runtime error still reaches
+  // this same listener exactly as before (its target is window itself).
+  window.addEventListener('error', onEarlyFatalError, true);
   window.addEventListener('unhandledrejection', onEarlyFatalError);
 
   window.mioframeAppUpdateBootOk = function () {
@@ -198,7 +208,7 @@ export function buildWatchdogScript(releaseNumber) {
       if (isCommitted) {
         settled = true;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
-        window.removeEventListener('error', onEarlyFatalError);
+        window.removeEventListener('error', onEarlyFatalError, true);
         window.removeEventListener('unhandledrejection', onEarlyFatalError);
         return;
       }
@@ -246,7 +256,7 @@ export function buildWatchdogScript(releaseNumber) {
             // BOOT_FAILED for a release that was never being activated.
             settled = true;
             if (deadlineTimer !== null) clearTimeout(deadlineTimer);
-            window.removeEventListener('error', onEarlyFatalError);
+            window.removeEventListener('error', onEarlyFatalError, true);
             window.removeEventListener('unhandledrejection', onEarlyFatalError);
             return;
           }

@@ -1,4 +1,4 @@
-import type { ManagedChannel, ReleaseSummary } from './contracts';
+import { releaseSummariesMatch, type ManagedChannel, type ReleaseSummary } from './contracts';
 import { readControllerState, writeControllerState } from './controllerState';
 import { BOOT_CONFIRMATION_TIMEOUT_MS } from './bootConfirmation';
 import { countSameChannelWindowClients, type WindowClientIdentity } from './cleanLaunch';
@@ -198,6 +198,94 @@ export async function handleAssetFetch(
   }
 }
 
+/** One resolved navigation-serving decision, prior to serving the release. */
+type NavigationSelection = {
+  /** The release to serve for this navigation. */
+  release: ReleaseSummary;
+  /** Deferred broadcast work already decided by this selection step. */
+  runLifetimeWork?: (() => Promise<void>) | undefined;
+  /**
+   * Whether `release` is being served as the current `activating` candidate's
+   * own target (freshly started this navigation, or already in progress),
+   * rather than as `activeRelease`. Only these selections are eligible for
+   * {@link tryRollbackActivatingFailure} below — the already-persisted
+   * expired-activation rollback branch always resolves to `activeRelease`
+   * and must never re-enter that fallback.
+   */
+  isActivatingTarget?: boolean;
+};
+
+/**
+ * Handles an `activating` candidate that could not be served for this
+ * navigation (see `serveRelease`'s controlled `503`). Re-reads fresh
+ * persisted state through the existing {@link OperationQueue}, since the
+ * restoration attempt already spent inside `serveRelease` is long-running:
+ * rolls back only when fresh state still has an `activating` candidate whose
+ * complete identity exactly matches `failedRelease` (see
+ * {@link releaseSummariesMatch}) — a concurrent commit, prior rollback,
+ * controller-state replacement, or same-number/different-metadata state is a
+ * no-op here, never serving the stale previously active release. Once the
+ * rollback itself is durably persisted, serves the previous `activeRelease`
+ * for this same navigation and returns deferred rollback-broadcast work,
+ * excluding this navigation's own client identities (it already received the
+ * active release directly). Returns `undefined` when no rollback applies, or
+ * when persisting the rollback itself fails, so the caller keeps the
+ * candidate's original controlled `503` untouched.
+ * @param channel - Managed channel.
+ * @param channelBasePath - This worker's channel base path.
+ * @param request - The incoming navigation request.
+ * @param failedRelease - The exact activating-candidate release that could not be served.
+ * @param coordinator - The channel's preparation coordinator.
+ * @param context - Standard client identities for the current navigation.
+ * @param dependencies - Worker origin, queue, and controlled+uncontrolled client enumeration.
+ * @returns The rollback fallback result, or `undefined` when no rollback applies.
+ */
+async function tryRollbackActivatingFailure(
+  channel: ManagedChannel,
+  channelBasePath: string,
+  request: Request,
+  failedRelease: ReleaseSummary,
+  coordinator: PreparationCoordinator,
+  context: NavigationFetchContext,
+  dependencies: NavigationFetchDependencies,
+): Promise<NavigationFetchResult | undefined> {
+  const previousActiveRelease = await withState(channel, dependencies.enqueue, async (state) => {
+    if (
+      state.candidate?.phase !== 'activating' ||
+      !releaseSummariesMatch(state.candidate.release, failedRelease)
+    ) {
+      return undefined;
+    }
+    const rolledBack = rollbackActivation(state, failedRelease.releaseNumber);
+    await writeControllerState(channel, rolledBack);
+    return rolledBack.activeRelease;
+  }).catch(() => undefined);
+
+  if (!previousActiveRelease) return undefined;
+
+  const excludedClientIds = new Set(
+    [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
+  );
+  const response = await serveRelease(
+    channel,
+    channelBasePath,
+    previousActiveRelease,
+    request,
+    true,
+    coordinator,
+  );
+  return {
+    response,
+    runLifetimeWork: () =>
+      broadcastRollback(
+        channelBasePath,
+        dependencies.channelOrigin,
+        failedRelease.releaseNumber,
+        excludedClientIds,
+      ).catch(() => {}),
+  };
+}
+
 /**
  * Handles an owned same-channel top-level navigation request (ownership
  * already decided by the caller). Navigation may start a clean-launch
@@ -206,6 +294,14 @@ export async function handleAssetFetch(
  * activation is in progress; all other candidate phases use `activeRelease`.
  * Absent or invalid persisted state, or an unavailable exact release,
  * returns a controlled `503`. Never falls through to a live network fetch.
+ *
+ * When the current `activating` candidate's own target cannot be served —
+ * whether already in progress or just started by this same navigation — a
+ * single durable rollback attempt (see {@link tryRollbackActivatingFailure})
+ * serves the previous `activeRelease` in this same navigation instead,
+ * discarding any "activation started" broadcast this navigation may have
+ * just queued: only the final durable rollback broadcast is relevant once
+ * that candidate's own serving has failed.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming navigation request.
@@ -240,46 +336,53 @@ export async function handleNavigationFetch(
       );
     }
 
-    const selection = await withState(channel, dependencies.enqueue, async (state) => {
-      const now = new Date().toISOString();
-      if (state.candidate?.phase === 'activating') {
-        if (!isActivationExpired(state, now)) return { release: state.candidate.release };
+    const selection = await withState<NavigationSelection>(
+      channel,
+      dependencies.enqueue,
+      async (state) => {
+        const now = new Date().toISOString();
+        if (state.candidate?.phase === 'activating') {
+          if (!isActivationExpired(state, now)) {
+            return { release: state.candidate.release, isActivatingTarget: true };
+          }
 
-        const failedReleaseNumber = state.candidate.release.releaseNumber;
-        const rolledBack = rollbackActivation(state, failedReleaseNumber);
-        await writeControllerState(channel, rolledBack);
-        const excludedClientIds = new Set(
-          [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
-        );
-        return {
-          release: rolledBack.activeRelease,
-          runLifetimeWork: () =>
-            broadcastRollback(
-              channelBasePath,
-              dependencies.channelOrigin,
-              failedReleaseNumber,
-              excludedClientIds,
-            ).catch(() => {}),
-        };
-      }
+          const failedReleaseNumber = state.candidate.release.releaseNumber;
+          const rolledBack = rollbackActivation(state, failedReleaseNumber);
+          await writeControllerState(channel, rolledBack);
+          const excludedClientIds = new Set(
+            [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
+          );
+          return {
+            release: rolledBack.activeRelease,
+            runLifetimeWork: () =>
+              broadcastRollback(
+                channelBasePath,
+                dependencies.channelOrigin,
+                failedReleaseNumber,
+                excludedClientIds,
+              ).catch(() => {}),
+          };
+        }
 
-      if (
-        otherLiveClientCount !== undefined &&
-        shouldStartActivation(state, { otherLiveClientCount })
-      ) {
-        const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
-        const activating = startActivation(state, deadlineAt);
-        await writeControllerState(channel, activating);
-        if (activating.candidate?.phase !== 'activating') return { release: state.activeRelease };
-        return {
-          release: activating.candidate.release,
-          runLifetimeWork: () =>
-            broadcastStateChanged(channelBasePath, dependencies.channelOrigin).catch(() => {}),
-        };
-      }
+        if (
+          otherLiveClientCount !== undefined &&
+          shouldStartActivation(state, { otherLiveClientCount })
+        ) {
+          const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
+          const activating = startActivation(state, deadlineAt);
+          await writeControllerState(channel, activating);
+          if (activating.candidate?.phase !== 'activating') return { release: state.activeRelease };
+          return {
+            release: activating.candidate.release,
+            runLifetimeWork: () =>
+              broadcastStateChanged(channelBasePath, dependencies.channelOrigin).catch(() => {}),
+            isActivatingTarget: true,
+          };
+        }
 
-      return { release: state.activeRelease };
-    });
+        return { release: state.activeRelease };
+      },
+    );
 
     const response = await serveRelease(
       channel,
@@ -289,6 +392,21 @@ export async function handleNavigationFetch(
       true,
       coordinator,
     );
+
+    if (response.status === 503 && selection.isActivatingTarget) {
+      const fallback = await tryRollbackActivatingFailure(
+        channel,
+        channelBasePath,
+        request,
+        selection.release,
+        coordinator,
+        context,
+        dependencies,
+      );
+      if (fallback) return fallback;
+      return { response };
+    }
+
     return { response, runLifetimeWork: selection.runLifetimeWork };
   } catch {
     return { response: UNAVAILABLE_RESPONSE() };

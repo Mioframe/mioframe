@@ -5,6 +5,9 @@ import { join } from 'node:path';
 import {
   buildAndPublishBrokenManagedRelease,
   buildAndPublishManagedRelease,
+  corruptPublishedReleaseFile,
+  readPublishedReleaseFile,
+  restorePublishedReleaseFile,
   startManagedArtifactServer,
 } from './fixtures/managedReleaseFixture.mjs';
 
@@ -610,5 +613,113 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
       expect(committed.state.candidate).toBeUndefined();
     }
     await activationPage.close();
+  });
+
+  test('a real linked-resource load failure during activation reports BOOT_FAILED and rolls back to the active release', async () => {
+    // Distinct from the earlier "boot failure rolls back" test above, which
+    // publishes a release whose entry module throws immediately on
+    // evaluation: this proves the newer watchdog capture-phase `error`
+    // listener (see watchdogInject.mjs) itself observes a genuine
+    // non-bubbling linked-resource *load* failure -- an activating
+    // candidate's own required asset becoming unavailable -- not an
+    // application runtime exception.
+    const releaseWithResourceFailure = await buildAndPublishManagedRelease({
+      channel: 'stable',
+      basePath: BASE_PATH,
+      appVersion: '1.4.0',
+      buildId: 'resource-failure-release',
+      workDir,
+    });
+
+    const entryFile = releaseWithResourceFailure.files.find((file) =>
+      /(?:^|\/)entry-[^/]+/.test(file.path),
+    );
+    expect(entryFile).toBeDefined();
+    if (!entryFile) {
+      throw new Error('Expected the materialized release-specific entry file');
+    }
+
+    const page = await context.newPage();
+    await page.goto(server.url);
+    await waitForControlledPage(page);
+    await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'manual' });
+    await sendProtocolRequest(page, { type: 'CHECK_FOR_UPDATES' });
+    const scheduled = await sendProtocolRequest<{
+      snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
+    }>(page, { type: 'INSTALL_ON_NEXT_LAUNCH' });
+    expect(scheduled.snapshot.candidate?.phase).toBe('ready');
+    expect(scheduled.snapshot.candidate?.release.releaseNumber).toBe(
+      releaseWithResourceFailure.releaseNumber,
+    );
+
+    const beforeState = await readControllerState(page, CONTROLLER_DB_NAME);
+    expect(beforeState.status).toBe('valid');
+    const previousActiveReleaseNumber =
+      beforeState.status === 'valid' ? beforeState.state.activeRelease.releaseNumber : undefined;
+    expect(previousActiveReleaseNumber).toBeTruthy();
+
+    // Deletes the candidate's own already-prepared entry asset directly from
+    // the real Cache Storage API, using the exact cache-name convention
+    // `buildReleaseCacheName` already applies for the stable channel (see
+    // src/shared/service/appUpdate/releaseCache.ts) -- simulating that asset
+    // having become locally unavailable despite the release otherwise being
+    // `ready`, so the next activation must restore it on demand.
+    const releaseCacheName = `stable-release-${releaseWithResourceFailure.releaseNumber}`;
+    await page.evaluate(
+      async ({ cacheName, assetPath }) => {
+        const cache = await caches.open(cacheName);
+        await cache.delete(new URL(assetPath, location.href).toString());
+      },
+      { cacheName: releaseCacheName, assetPath: `${BASE_PATH}${entryFile.path}` },
+    );
+
+    // Corrupts the same file's on-disk published bytes, so the worker's own
+    // on-demand restoration attempt (a real fetch + byte-size/SHA-256
+    // validation inside releasePreparation.ts, exercised through the same
+    // preparation coordinator every other restoration test in this suite
+    // already relies on) deterministically fails rather than silently
+    // succeeding again.
+    const originalEntryBytes = readPublishedReleaseFile(workDir, 'stable', entryFile.path);
+    corruptPublishedReleaseFile(workDir, 'stable', entryFile.path);
+
+    try {
+      // Reloading this same, already-controlled page with no other live
+      // same-channel window is the same "next clean launch" trigger every
+      // other activation test in this suite already uses. The archived
+      // candidate's own index still serves fine (only its own entry asset
+      // was removed locally); the browser's real module-script request for
+      // that asset then genuinely fails, and the injected watchdog's own
+      // capture-phase listener -- never a test-side `BOOT_FAILED` -- is what
+      // detects it.
+      await page.reload();
+      await waitForControlledPage(page);
+
+      // `activeRelease` itself never changes across this whole rollback (it
+      // was never reassigned to the candidate in the first place — see
+      // `rollbackActivation` in stateTransitions.ts), so it is already equal
+      // to `previousActiveReleaseNumber` from the very first `activating`
+      // write, well before the real restoration failure and rollback
+      // complete. The only state transition this test can actually wait on
+      // is the candidate reaching its terminal `failed` phase.
+      const rolledBack = await waitForControllerState(
+        page,
+        (r) =>
+          r.status === 'valid' &&
+          r.state.candidate?.phase === 'failed' &&
+          r.state.candidate.release.releaseNumber === releaseWithResourceFailure.releaseNumber,
+      );
+      expect(rolledBack.status).toBe('valid');
+      if (rolledBack.status === 'valid') {
+        expect(rolledBack.state.activeRelease.releaseNumber).toBe(previousActiveReleaseNumber);
+      }
+
+      // The worker's own rollback broadcast reloads this same window back
+      // onto the now-restored active release, which must render normally.
+      await expect(page.getByText(/^browser storage$/i)).toBeVisible();
+    } finally {
+      restorePublishedReleaseFile(workDir, 'stable', entryFile.path, originalEntryBytes);
+    }
+
+    await page.close();
   });
 });

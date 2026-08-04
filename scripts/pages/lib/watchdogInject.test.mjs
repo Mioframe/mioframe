@@ -30,15 +30,19 @@ beforeEach(() => {
   addedWindowListeners = [];
   vi.spyOn(window, 'addEventListener').mockImplementation((type, listener, options) => {
     if (type === 'error' || type === 'unhandledrejection') {
-      addedWindowListeners.push([type, listener]);
+      addedWindowListeners.push([type, listener, options]);
     }
     return realAddEventListener(type, listener, options);
   });
 });
 
 afterEach(() => {
-  for (const [type, listener] of addedWindowListeners) {
-    realRemoveEventListener(type, listener);
+  // `removeEventListener`'s capture option must match the option a listener
+  // was added with, or the real DOM/happy-dom implementation silently
+  // refuses to remove it — this must mirror the watchdog's own paired
+  // add/remove options exactly, not merely the event type and callback.
+  for (const [type, listener, options] of addedWindowListeners) {
+    realRemoveEventListener(type, listener, options);
   }
   vi.restoreAllMocks();
 });
@@ -103,8 +107,21 @@ describe('buildWatchdogScript', () => {
 
   it('installs early error and unhandledrejection listeners', () => {
     const script = buildWatchdogScript(1);
-    expect(script).toContain("window.addEventListener('error', onEarlyFatalError)");
+    expect(script).toContain("window.addEventListener('error', onEarlyFatalError, true)");
     expect(script).toContain("window.addEventListener('unhandledrejection', onEarlyFatalError)");
+  });
+
+  it('registers the error listener with capture so non-bubbling linked-resource load failures are observed', () => {
+    const script = buildWatchdogScript(1);
+    expect(script).toContain("window.addEventListener('error', onEarlyFatalError, true)");
+  });
+
+  it('removes the error listener using exactly the same capture option it was registered with', () => {
+    const script = buildWatchdogScript(1);
+    const removalCount =
+      script.split("window.removeEventListener('error', onEarlyFatalError, true)").length - 1;
+    // Once on a committed BOOT_OK, once on the "not this session's activation target" disarm.
+    expect(removalCount).toBe(2);
   });
 
   it('sends BOOT_OK and BOOT_FAILED through an acknowledged MessageChannel request, not a bare postMessage', () => {
@@ -157,7 +174,7 @@ describe('buildWatchdogScript', () => {
     expect(activationStatusBody).toContain('settled = true;');
     expect(activationStatusBody).toContain('clearTimeout(deadlineTimer)');
     expect(activationStatusBody).toContain(
-      "window.removeEventListener('error', onEarlyFatalError)",
+      "window.removeEventListener('error', onEarlyFatalError, true)",
     );
     expect(activationStatusBody).toContain(
       "window.removeEventListener('unhandledrejection', onEarlyFatalError)",
@@ -218,6 +235,89 @@ describe('watchdog disarm outside activation', () => {
     await flushTasks();
 
     expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('resource-load error observation during activation', () => {
+  /**
+   * Dispatches a non-bubbling `error` event from a linked-resource-style
+   * element attached to the document (as a failed `<script>` or `<link>`
+   * load would), so the assertion exercises real capture-phase propagation
+   * to `window` rather than a bare `window.dispatchEvent`, whose target is
+   * already `window` and would pass regardless of the capture option.
+   */
+  function dispatchResourceLoadError() {
+    const element = document.createElement('script');
+    document.body.appendChild(element);
+    element.dispatchEvent(new Event('error', { bubbles: false }));
+    document.body.removeChild(element);
+  }
+
+  it('a true activation target reports BOOT_FAILED from a non-bubbling linked-resource load failure', async () => {
+    const deadlineAt = new Date(Date.now() + 60_000).toISOString();
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
+      protocolVersion: 1,
+      isActivationTarget: true,
+      deadlineAt,
+    });
+
+    dispatchResourceLoadError();
+    await flushTasks();
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('a committed BOOT_OK removes the capture-phase listener: a later resource load failure is ignored', async () => {
+    const deadlineAt = new Date(Date.now() + 60_000).toISOString();
+    const postMessageCalls = [];
+    const controller = {
+      postMessage: (message, transfer) => {
+        postMessageCalls.push(message);
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          transfer[0].postMessage({ protocolVersion: 1, isActivationTarget: true, deadlineAt });
+        }
+        if (message.type === 'BOOT_OK') {
+          transfer[0].postMessage({ protocolVersion: 1, ack: 'committed' });
+        }
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_OK')).toBe(true);
+    const callsBeforeResourceError = postMessageCalls.length;
+
+    dispatchResourceLoadError();
+    await flushTasks();
+
+    expect(postMessageCalls.length).toBe(callsBeforeResourceError);
+
+    vi.unstubAllGlobals();
+  });
+
+  it('outside activation, a resource load failure is ignored exactly like an ordinary runtime error', async () => {
+    const calls = await runWatchdogWithActivationStatusResponse(1, {
+      protocolVersion: 1,
+      isActivationTarget: false,
+    });
+
+    dispatchResourceLoadError();
+    await flushTasks();
+
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
 
     vi.unstubAllGlobals();
   });
