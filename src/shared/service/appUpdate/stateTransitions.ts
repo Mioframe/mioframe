@@ -1,5 +1,6 @@
 import {
   CONTROLLER_STATE_SCHEMA_VERSION,
+  releaseSummariesMatch,
   type ReleaseSummary,
   type UpdateControllerState,
   type UpdateMode,
@@ -101,22 +102,25 @@ export function resolveAutomaticPreparationTarget(
 /**
  * Applies a completed Automatic background preparation. Only ever moves
  * `available(B)` to `ready(B)`, and only when fresh state still has
- * Automatic mode and the exact same candidate release number and `available`
- * phase — a stale completion (mode changed, candidate replaced, or candidate
- * already advanced) is a true no-op.
+ * Automatic mode and the candidate is `available` with the exact same
+ * complete release identity as `preparedRelease` (see
+ * {@link releaseSummariesMatch}) — a stale completion (mode changed,
+ * candidate replaced, candidate already advanced, or the candidate's
+ * `releaseNumber` matches but its `appVersion`/`buildId`/`buildDate` does
+ * not) is a true no-op.
  * @param state - Current controller state.
- * @param preparedReleaseNumber - The exact release number that finished preparing.
+ * @param preparedRelease - The complete release summary that finished preparing.
  * @returns The resulting state, unchanged (same reference) when stale.
  */
 export function completeAutomaticPreparation(
   state: UpdateControllerState,
-  preparedReleaseNumber: number,
+  preparedRelease: ReleaseSummary,
 ): UpdateControllerState {
   const { candidate } = state;
   if (
     state.mode !== 'automatic' ||
     candidate?.phase !== 'available' ||
-    candidate.release.releaseNumber !== preparedReleaseNumber
+    !releaseSummariesMatch(candidate.release, preparedRelease)
   ) {
     return state;
   }
@@ -126,22 +130,23 @@ export function completeAutomaticPreparation(
 /**
  * Applies a completed Manual install (`INSTALL_ON_NEXT_LAUNCH`). Moves
  * `available(B)` or `failed(B)` to `ready(B)`, only when fresh state still
- * has Manual mode and the exact same candidate release number and an allowed
- * phase — a stale completion is a true no-op.
+ * has Manual mode and the candidate is in an allowed phase with the exact
+ * same complete release identity as `preparedRelease` (see
+ * {@link releaseSummariesMatch}) — a stale completion is a true no-op.
  * @param state - Current controller state.
- * @param preparedReleaseNumber - The exact release number that finished preparing.
+ * @param preparedRelease - The complete release summary that finished preparing.
  * @returns The resulting state, unchanged (same reference) when stale.
  */
 export function completeManualInstall(
   state: UpdateControllerState,
-  preparedReleaseNumber: number,
+  preparedRelease: ReleaseSummary,
 ): UpdateControllerState {
   const { candidate } = state;
   if (
     state.mode !== 'manual' ||
     !candidate ||
     (candidate.phase !== 'available' && candidate.phase !== 'failed') ||
-    candidate.release.releaseNumber !== preparedReleaseNumber
+    !releaseSummariesMatch(candidate.release, preparedRelease)
   ) {
     return state;
   }

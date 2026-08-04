@@ -39,6 +39,19 @@ export declare function corruptPublishedReleaseFile(
   filePath: string,
 ): void;
 
+export declare function readPublishedReleaseFile(
+  workDir: string,
+  channel: ManagedReleaseChannel,
+  filePath: string,
+): Buffer;
+
+export declare function restorePublishedReleaseFile(
+  workDir: string,
+  channel: ManagedReleaseChannel,
+  filePath: string,
+  content: Buffer,
+): void;
+
 export declare function mutateControllerWorkerBytes(
   workDir: string,
   channel: ManagedReleaseChannel,

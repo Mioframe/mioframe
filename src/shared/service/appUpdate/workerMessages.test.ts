@@ -560,6 +560,59 @@ describe('handleWorkerMessage', () => {
       });
       expect(persisted.candidate).toEqual({ phase: 'available', release: releaseC });
     });
+
+    // Proves completeManualInstall receives the complete captured target
+    // (not just a bare releaseNumber): a same-number candidate with
+    // different metadata replacing the original while installing must still
+    // be rejected as stale, exactly like a different release number.
+    it('never approves a same-number candidate whose metadata changed while installing', async () => {
+      const releaseBReplaced: ReleaseSummary = { ...releaseB, buildId: 'replaced-build' };
+      let persisted: UpdateControllerState = {
+        ...baseState,
+        candidate: { phase: 'available', release: releaseB },
+      };
+      readControllerStateMock.mockImplementation(() => ({ status: 'valid', state: persisted }));
+      writeControllerStateMock.mockImplementation(
+        (_channel: string, state: UpdateControllerState) => {
+          persisted = state;
+        },
+      );
+      let resolvePrepare: () => void = () => {};
+      const prepareGate = new Promise<void>((resolve) => {
+        resolvePrepare = resolve;
+      });
+      const coordinator = createFakeCoordinator({
+        prepare: vi.fn().mockImplementation(async () => {
+          await prepareGate;
+        }),
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+      const realEnqueue = createOperationQueue();
+
+      const installPromise = handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'INSTALL_ON_NEXT_LAUNCH' },
+        realEnqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+      await vi.waitFor(() => {
+        expect(coordinator.prepare).toHaveBeenCalledTimes(1);
+      });
+
+      // Same releaseNumber as the captured target, but different buildId.
+      persisted = { ...persisted, candidate: { phase: 'available', release: releaseBReplaced } };
+
+      resolvePrepare();
+      const result = await installPromise;
+
+      expect(result.response).toMatchObject({
+        snapshot: expect.objectContaining({ error: 'install-failed' }),
+      });
+      expect(persisted.candidate).toEqual({ phase: 'available', release: releaseBReplaced });
+    });
   });
 
   describe('BOOT_OK', () => {

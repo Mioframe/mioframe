@@ -341,6 +341,29 @@ describe('runUpdateReconciliationPass', () => {
     expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 
+  // Proves completeAutomaticPreparation receives the complete prepared
+  // release (not just a bare releaseNumber): a same-number candidate whose
+  // metadata changed during preparation must still be rejected as stale.
+  it('does not persist a same-number, different-metadata completion and preserves its cache', async () => {
+    setState('automatic', candidate('available', 2));
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
+    prepareMock.mockImplementation(() => {
+      currentState = {
+        ...currentState,
+        candidate: { phase: 'available', release: { ...release(2), buildId: 'replaced-build' } },
+      };
+      return Promise.resolve();
+    });
+    cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
+    await runUpdateReconciliationPass(dependencies);
+    expect(currentState.candidate).toEqual({
+      phase: 'available',
+      release: { ...release(2), buildId: 'replaced-build' },
+    });
+    expect(cachesDeleteMock).not.toHaveBeenCalled();
+  });
+
   it('cleans an unprotected stale prepared cache', async () => {
     setState('automatic', candidate('available', 2));
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
@@ -360,5 +383,82 @@ describe('runUpdateReconciliationPass', () => {
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
     await runUpdateReconciliationPass(dependencies);
     expect(postMessageMock).toHaveBeenCalledTimes(2);
+  });
+
+  describe('Automatic preparation failure', () => {
+    it('classifies a failed preparation as install-failed after successful discovery, leaving the candidate available', async () => {
+      setState('automatic');
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
+      prepareMock.mockRejectedValue(new Error('network down'));
+
+      const result = await runUpdateReconciliationPass(dependencies);
+
+      expect(result.error).toBe('install-failed');
+      expect(result.candidate).toEqual({ phase: 'available', release: release(2) });
+      expect(result.activeRelease).toEqual(release(1));
+      expect(currentState.candidate?.phase).toBe('available');
+    });
+
+    it('classifies a failed fallback preparation as install-failed after a discovery failure, taking precedence over check-failed', async () => {
+      setState('automatic', candidate('available', 2));
+      fetchLatestReleasePointerMock.mockRejectedValue(new Error('offline'));
+      prepareMock.mockRejectedValue(new Error('network down'));
+
+      const result = await runUpdateReconciliationPass(dependencies);
+
+      expect(result.error).toBe('install-failed');
+      expect(result.candidate).toEqual({ phase: 'available', release: release(2) });
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+    });
+
+    it('never attempts Automatic preparation, and never reports install-failed, in Manual mode', async () => {
+      setState('manual', candidate('available', 2));
+      fetchLatestReleasePointerMock.mockRejectedValue(new Error('offline'));
+
+      const result = await runUpdateReconciliationPass(dependencies);
+
+      expect(result.error).toBe('check-failed');
+      expect(prepareMock).not.toHaveBeenCalled();
+    });
+
+    it('does not persist a ready transition when preparation fails', async () => {
+      setState('automatic', candidate('available', 2));
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
+      prepareMock.mockRejectedValue(new Error('network down'));
+
+      await runUpdateReconciliationPass(dependencies);
+
+      const persistedPhases = writeControllerStateMock.mock.calls.map((call: unknown[]) => {
+        const state = call[1];
+        const candidate =
+          typeof state === 'object' && state !== null ? Reflect.get(state, 'candidate') : undefined;
+        return typeof candidate === 'object' && candidate !== null
+          ? Reflect.get(candidate, 'phase')
+          : undefined;
+      });
+      expect(persistedPhases).not.toContain('ready');
+      expect(currentState.candidate?.phase).toBe('available');
+    });
+
+    it('logs the original error to the local diagnostic boundary exactly once', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setState('automatic');
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
+      const failure = new Error('network down');
+      prepareMock.mockRejectedValue(failure);
+
+      await runUpdateReconciliationPass(dependencies);
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[app-update] Automatic release preparation failed',
+        2,
+        failure,
+      );
+      consoleErrorSpy.mockRestore();
+    });
   });
 });

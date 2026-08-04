@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import {
   assertUniqueRetainedBuildIds,
   buildReleaseDescriptor,
   collectReleaseFiles,
+  computeContentSha256,
   computeFileSha256,
   isPositiveSafeInteger,
   isValidReleaseDescriptor,
@@ -19,6 +20,7 @@ import {
   resolvePublicationPlan,
   validateNoImmutableCollision,
   validateProjectedArtifactSize,
+  validateRetainedContent,
 } from './releaseDescriptor.mjs';
 
 describe('isPositiveSafeInteger', () => {
@@ -385,6 +387,148 @@ describe('assertUniqueRetainedBuildIds', () => {
   });
 });
 
+describe('validateRetainedContent', () => {
+  let channelBaseDir = '';
+  let releasesDir = '';
+
+  beforeEach(() => {
+    channelBaseDir = mkdtempSync(join(tmpdir(), 'release-channel-'));
+    releasesDir = join(channelBaseDir, 'updates', 'releases');
+  });
+
+  afterEach(() => {
+    rmSync(channelBaseDir, { recursive: true, force: true });
+  });
+
+  function writeRealRetainedRelease(releaseNumber) {
+    mkdirSync(releasesDir, { recursive: true });
+    mkdirSync(join(channelBaseDir, 'assets'), { recursive: true });
+
+    const assetRelPath = `assets/app-${releaseNumber}.js`;
+    const assetPath = join(channelBaseDir, assetRelPath);
+    const assetContent = `asset-content-${releaseNumber}`;
+    writeFileSync(assetPath, assetContent);
+
+    const indexContent = `<html>${releaseNumber}</html>`;
+    mkdirSync(join(releasesDir, String(releaseNumber)), { recursive: true });
+    writeFileSync(join(releasesDir, String(releaseNumber), 'index.html'), indexContent);
+
+    return {
+      ...validReleaseDescriptor,
+      releaseNumber,
+      indexSha256: computeContentSha256(Buffer.from(indexContent, 'utf8')),
+      indexByteSize: Buffer.byteLength(indexContent),
+      files: [
+        {
+          path: assetRelPath,
+          sha256: computeFileSha256(assetPath),
+          byteSize: Buffer.byteLength(assetContent),
+        },
+      ],
+    };
+  }
+
+  it('does not throw for a fully valid retained tree', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).not.toThrow();
+  });
+
+  it('throws when the archived index is missing', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    rmSync(join(releasesDir, '1', 'index.html'));
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'is missing',
+    );
+  });
+
+  it('throws when the archived index is replaced by a directory', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    rmSync(join(releasesDir, '1', 'index.html'));
+    mkdirSync(join(releasesDir, '1', 'index.html'));
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'must be a regular file',
+    );
+  });
+
+  it('throws when the archived index has the wrong byte size', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    writeFileSync(join(releasesDir, '1', 'index.html'), 'short');
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'byte size mismatch',
+    );
+  });
+
+  it('throws when the archived index has the wrong SHA-256', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    writeFileSync(join(releasesDir, '1', 'index.html'), 'X'.repeat(descriptor.indexByteSize));
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'SHA-256 mismatch',
+    );
+  });
+
+  it('throws when a retained asset is missing', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    rmSync(join(channelBaseDir, 'assets', 'app-1.js'));
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'is missing',
+    );
+  });
+
+  it('throws when a retained asset is replaced by a directory', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    rmSync(join(channelBaseDir, 'assets', 'app-1.js'));
+    mkdirSync(join(channelBaseDir, 'assets', 'app-1.js'));
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'must be a regular file',
+    );
+  });
+
+  it('throws when a retained asset has the wrong byte size', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    writeFileSync(join(channelBaseDir, 'assets', 'app-1.js'), 'x');
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'byte size mismatch',
+    );
+  });
+
+  it('throws when a retained asset has the wrong SHA-256', () => {
+    const descriptor = writeRealRetainedRelease(1);
+    writeFileSync(
+      join(channelBaseDir, 'assets', 'app-1.js'),
+      'Y'.repeat(descriptor.files[0].byteSize),
+    );
+
+    expect(() => validateRetainedContent([descriptor], channelBaseDir, releasesDir)).toThrow(
+      'SHA-256 mismatch',
+    );
+  });
+
+  it('throws when two retained descriptors reference the same path with conflicting metadata', () => {
+    const first = writeRealRetainedRelease(1);
+    const conflicting = {
+      ...first,
+      releaseNumber: 2,
+      files: [{ ...first.files[0], sha256: '0'.repeat(64) }],
+    };
+    mkdirSync(join(releasesDir, '2'), { recursive: true });
+    writeFileSync(
+      join(releasesDir, '2', 'index.html'),
+      readFileSync(join(releasesDir, '1', 'index.html')),
+    );
+
+    expect(() =>
+      validateRetainedContent([first, conflicting], channelBaseDir, releasesDir),
+    ).toThrow('SHA-256 mismatch');
+  });
+});
+
 describe('resolvePublicationDecision', () => {
   it('resolves publish with releaseNumber 1 for an empty retained tree', () => {
     expect(resolvePublicationDecision([], undefined, 'sha1')).toEqual({
@@ -428,28 +572,53 @@ describe('resolvePublicationDecision', () => {
 });
 
 describe('resolvePublicationPlan', () => {
+  let channelBaseDir = '';
   let updatesDir = '';
   let releasesDir = '';
 
   beforeEach(() => {
-    updatesDir = mkdtempSync(join(tmpdir(), 'release-updates-'));
+    channelBaseDir = mkdtempSync(join(tmpdir(), 'release-channel-'));
+    updatesDir = join(channelBaseDir, 'updates');
     releasesDir = join(updatesDir, 'releases');
   });
 
   afterEach(() => {
-    rmSync(updatesDir, { recursive: true, force: true });
+    rmSync(channelBaseDir, { recursive: true, force: true });
   });
 
   function writeRetainedRelease(releaseNumber, buildId) {
     mkdirSync(releasesDir, { recursive: true });
-    const descriptor = { ...validReleaseDescriptor, releaseNumber, buildId };
-    writeFileSync(join(releasesDir, `${releaseNumber}.json`), JSON.stringify(descriptor));
+    mkdirSync(join(channelBaseDir, 'assets'), { recursive: true });
+
+    const assetRelPath = `assets/app-${releaseNumber}.js`;
+    const assetPath = join(channelBaseDir, assetRelPath);
+    const assetContent = `asset-content-${releaseNumber}`;
+    writeFileSync(assetPath, assetContent);
+
+    const indexContent = `<html>${releaseNumber}</html>`;
     mkdirSync(join(releasesDir, String(releaseNumber)), { recursive: true });
-    writeFileSync(join(releasesDir, String(releaseNumber), 'index.html'), '<html></html>');
+    writeFileSync(join(releasesDir, String(releaseNumber), 'index.html'), indexContent);
+
+    const descriptor = {
+      ...validReleaseDescriptor,
+      releaseNumber,
+      buildId,
+      indexSha256: computeContentSha256(Buffer.from(indexContent, 'utf8')),
+      indexByteSize: Buffer.byteLength(indexContent),
+      files: [
+        {
+          path: assetRelPath,
+          sha256: computeFileSha256(assetPath),
+          byteSize: Buffer.byteLength(assetContent),
+        },
+      ],
+    };
+    writeFileSync(join(releasesDir, `${releaseNumber}.json`), JSON.stringify(descriptor));
+    return descriptor;
   }
 
   it('resolves publish with releaseNumber 1 for an empty retained tree', () => {
-    expect(resolvePublicationPlan(releasesDir, updatesDir, 'sha1')).toEqual({
+    expect(resolvePublicationPlan(releasesDir, updatesDir, 'sha1', channelBaseDir)).toEqual({
       kind: 'publish',
       nextReleaseNumber: 1,
       descriptors: [],
@@ -460,21 +629,29 @@ describe('resolvePublicationPlan', () => {
     writeRetainedRelease(1, 'sha1');
     writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 1 }));
 
-    const plan = resolvePublicationPlan(releasesDir, updatesDir, 'sha2');
+    const plan = resolvePublicationPlan(releasesDir, updatesDir, 'sha2', channelBaseDir);
     expect(plan.kind).toBe('publish');
     expect(plan.nextReleaseNumber).toBe(2);
   });
 
   it('resolves a zero-write no-op when buildId equals the unique latest descriptor buildId', () => {
     writeRetainedRelease(1, 'sha1');
-    writeRetainedRelease(2, 'sha2');
+    const latest = writeRetainedRelease(2, 'sha2');
     writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
 
-    const plan = resolvePublicationPlan(releasesDir, updatesDir, 'sha2');
-    expect(plan).toEqual({
-      kind: 'no-op',
-      descriptor: { ...validReleaseDescriptor, releaseNumber: 2, buildId: 'sha2' },
-    });
+    const plan = resolvePublicationPlan(releasesDir, updatesDir, 'sha2', channelBaseDir);
+    expect(plan).toEqual({ kind: 'no-op', descriptor: latest });
+  });
+
+  it('rejects a latest-build no-op when retained content is corrupt', () => {
+    writeRetainedRelease(1, 'sha1');
+    writeRetainedRelease(2, 'sha2');
+    writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
+    writeFileSync(join(channelBaseDir, 'assets', 'app-2.js'), 'tampered-content');
+
+    expect(() => resolvePublicationPlan(releasesDir, updatesDir, 'sha2', channelBaseDir)).toThrow(
+      'byte size mismatch',
+    );
   });
 
   it('rejects when buildId is retained on a non-latest release', () => {
@@ -482,7 +659,7 @@ describe('resolvePublicationPlan', () => {
     writeRetainedRelease(2, 'sha2');
     writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
 
-    expect(() => resolvePublicationPlan(releasesDir, updatesDir, 'sha1')).toThrow(
+    expect(() => resolvePublicationPlan(releasesDir, updatesDir, 'sha1', channelBaseDir)).toThrow(
       'is already retained on release 1, which is not the latest release (2)',
     );
   });
@@ -492,7 +669,7 @@ describe('resolvePublicationPlan', () => {
     writeRetainedRelease(2, 'sha1');
     writeFileSync(join(updatesDir, 'latest.json'), JSON.stringify({ releaseNumber: 2 }));
 
-    expect(() => resolvePublicationPlan(releasesDir, updatesDir, 'sha3')).toThrow(
+    expect(() => resolvePublicationPlan(releasesDir, updatesDir, 'sha3', channelBaseDir)).toThrow(
       'share the same buildId',
     );
   });

@@ -548,6 +548,72 @@ describe('publishManagedRelease', () => {
     });
   });
 
+  describe('retained content integrity', () => {
+    it('rejects a latest-build no-op when a retained asset is corrupt, without writing anything new', () => {
+      writeBasicDist(buildIndexHtml('<v1/>'));
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'stable',
+        appVersion: '1.0.0',
+        buildId: 'sha1',
+        buildDate: '2026-07-24T00:00:00.000Z',
+      });
+
+      const assetPath = join(workDir, 'assets', 'app-1.js');
+      const latestPath = join(workDir, 'updates', 'latest.json');
+      const latestBefore = readFileSync(latestPath, 'utf8');
+      writeFileSync(assetPath, 'TAMPERED-content');
+
+      expect(() =>
+        publishManagedRelease({
+          workDir,
+          distDir,
+          channel: 'stable',
+          appVersion: '1.0.0',
+          buildId: 'sha1',
+          buildDate: '2026-07-24T00:00:00.000Z',
+        }),
+      ).toThrow(/SHA-256 mismatch|byte size mismatch/);
+      expect(readFileSync(latestPath, 'utf8')).toBe(latestBefore);
+      expect(existsSync(join(workDir, 'updates', 'releases', '2.json'))).toBe(false);
+    });
+
+    it('rejects a genuinely new publish when retained content is corrupt, without writing anything new', () => {
+      writeBasicDist(buildIndexHtml('<v1/>'));
+      publishManagedRelease({
+        workDir,
+        distDir,
+        channel: 'stable',
+        appVersion: '1.0.0',
+        buildId: 'sha1',
+        buildDate: '2026-07-24T00:00:00.000Z',
+      });
+
+      const archivedIndexPath = join(workDir, 'updates', 'releases', '1', 'index.html');
+      const latestPath = join(workDir, 'updates', 'latest.json');
+      const latestBefore = readFileSync(latestPath, 'utf8');
+      writeFileSync(archivedIndexPath, 'TAMPERED');
+
+      writeFileSync(join(distDir, 'index.html'), buildIndexHtml('<v2/>'));
+      writeFileSync(join(distDir, 'assets', 'app-2.js'), 'content-2');
+
+      expect(() =>
+        publishManagedRelease({
+          workDir,
+          distDir,
+          channel: 'stable',
+          appVersion: '1.1.0',
+          buildId: 'sha2',
+          buildDate: '2026-07-25T00:00:00.000Z',
+        }),
+      ).toThrow(/SHA-256 mismatch|byte size mismatch/);
+      expect(readFileSync(latestPath, 'utf8')).toBe(latestBefore);
+      expect(existsSync(join(workDir, 'updates', 'releases', '2.json'))).toBe(false);
+      expect(existsSync(join(workDir, 'assets', 'app-2.js'))).toBe(false);
+    });
+  });
+
   describe('release-number exhaustion (Number.MAX_SAFE_INTEGER)', () => {
     // A retained tree actually reaching Number.MAX_SAFE_INTEGER cannot be
     // constructed on disk; resolvePublicationPlan is spied to return the

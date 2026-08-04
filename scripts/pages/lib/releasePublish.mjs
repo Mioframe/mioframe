@@ -100,9 +100,11 @@ export function publishManagedRelease({
   const updatesDir = join(channelBase, 'updates');
   const releasesDir = join(updatesDir, 'releases');
 
-  // 1. validate the complete retained tree and resolve the idempotent
-  // publication decision, before inspecting distDir or writing anything
-  const plan = resolvePublicationPlan(releasesDir, updatesDir, buildId);
+  // 1. validate the complete retained tree, including every retained
+  // release's physical archived index and asset bytes, and resolve the
+  // idempotent publication decision, before inspecting distDir or writing
+  // anything
+  const plan = resolvePublicationPlan(releasesDir, updatesDir, buildId, channelBase);
   if (plan.kind === 'no-op') {
     return plan.descriptor;
   }

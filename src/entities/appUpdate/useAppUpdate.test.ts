@@ -39,6 +39,27 @@ describe('useAppUpdate', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('initializes capability as unavailable for an unsupported build (no managed channel), before any refresh resolves', async () => {
+    vi.stubGlobal('__MANAGED_APP_UPDATE_CHANNEL__', undefined);
+    getAppUpdateSnapshotMock.mockImplementation(() => new Promise(() => {}));
+    const { useAppUpdate } = await import('./useAppUpdate');
+
+    const { isCapabilityAvailable } = useAppUpdate();
+
+    expect(isCapabilityAvailable.value).toBe(false);
+  });
+
+  it('initializes capability as provisionally available for a managed build, before any refresh resolves', async () => {
+    vi.stubGlobal('__MANAGED_APP_UPDATE_CHANNEL__', 'stable');
+    getAppUpdateSnapshotMock.mockImplementation(() => new Promise(() => {}));
+    const { useAppUpdate } = await import('./useAppUpdate');
+
+    const { isCapabilityAvailable } = useAppUpdate();
+
+    expect(isCapabilityAvailable.value).toBe(true);
   });
 
   it('projects a successful client result and marks the capability available', async () => {

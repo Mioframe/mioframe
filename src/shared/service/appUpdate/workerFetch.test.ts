@@ -611,20 +611,21 @@ describe('workerFetch', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('resolves a controlled unavailable response when cache-key availability reading rejects', async () => {
+    it('does not enumerate the complete release cache for a healthy navigation', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
-      vi.spyOn(cache, 'keys').mockRejectedValue(new Error('cache keys failed'));
+      const keysSpy = vi.spyOn(cache, 'keys');
 
-      await expectUnavailableNavigation(
-        invokeNavigationFetch(
-          CHANNEL,
-          BASE_PATH,
-          new Request('https://mioframe.example/'),
-          createFakeCoordinator(),
-        ),
+      const { response } = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
       );
+
+      expect(await response.text()).toBe('<html>archived</html>');
+      expect(keysSpy).not.toHaveBeenCalled();
     });
 
     it('resolves a controlled unavailable response when restoration rejects', async () => {
@@ -661,7 +662,7 @@ describe('workerFetch', () => {
       open.mockRestore();
     });
 
-    it('resolves a controlled unavailable response when final archived-index reading rejects', async () => {
+    it('resolves a controlled unavailable response when the archived index reading rejects', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
@@ -669,7 +670,8 @@ describe('workerFetch', () => {
       let matchCount = 0;
       vi.spyOn(cache, 'match').mockImplementation((request) => {
         matchCount += 1;
-        if (matchCount === 3) return Promise.reject(new Error('final index read failed'));
+        // The first match reads the descriptor marker; the second reads the archived index.
+        if (matchCount === 2) return Promise.reject(new Error('index read failed'));
         return originalMatch(request);
       });
 
@@ -681,6 +683,20 @@ describe('workerFetch', () => {
           createFakeCoordinator(),
         ),
       );
+    });
+
+    it('revalidates after a successful restoration and returns unavailable if the release is still not available', async () => {
+      const prepare = vi.fn().mockResolvedValue(activeDescriptor);
+
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+      expect(prepare).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -700,14 +716,8 @@ describe('workerFetch', () => {
       open.mockRestore();
     });
 
-    it('resolves a controlled unavailable response when post-restoration validation rejects', async () => {
-      const prepare = vi.fn().mockImplementation(async () => {
-        await seedAvailableRelease();
-        const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
-        if (!cache) throw new Error('Expected restored release cache');
-        vi.spyOn(cache, 'keys').mockRejectedValue(new Error('post-restore validation failed'));
-        return activeDescriptor;
-      });
+    it('resolves a controlled unavailable response when restoration succeeds but the release remains unavailable on revalidation', async () => {
+      const prepare = vi.fn().mockResolvedValue(activeDescriptor);
       const { handleAssetFetch } = await import('./workerFetch');
 
       await expectUnavailable(
@@ -718,9 +728,10 @@ describe('workerFetch', () => {
           createFakeCoordinator({ prepare }),
         ),
       );
+      expect(prepare).toHaveBeenCalledTimes(1);
     });
 
-    it('resolves a controlled unavailable response when the final cached asset read rejects', async () => {
+    it('resolves a controlled unavailable response when the requested asset read rejects', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
@@ -728,7 +739,8 @@ describe('workerFetch', () => {
       let matchCount = 0;
       vi.spyOn(cache, 'match').mockImplementation((request) => {
         matchCount += 1;
-        if (matchCount === 4) return Promise.reject(new Error('final asset read failed'));
+        // The first match reads the descriptor marker; the second is the requested asset.
+        if (matchCount === 2) return Promise.reject(new Error('asset read failed'));
         return originalMatch(request);
       });
       const { handleAssetFetch } = await import('./workerFetch');
@@ -743,89 +755,22 @@ describe('workerFetch', () => {
       );
     });
 
-    it('returns unavailable when the descriptor marker disappears after availability succeeds', async () => {
+    it('does not enumerate the complete release cache for a healthy asset request', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
-      const originalMatch = cache.match.bind(cache);
-      let matchCount = 0;
-      vi.spyOn(cache, 'match').mockImplementation((request) => {
-        matchCount += 1;
-        // Availability reads the descriptor and index first; this is the
-        // separate final descriptor read performed before asset serving.
-        if (matchCount === 3) return Promise.resolve(undefined);
-        return originalMatch(request);
-      });
-      const prepare = vi.fn();
-      const { serveRelease } = await import('./workerFetch');
-
-      await expectUnavailable(
-        serveRelease(
-          CHANNEL,
-          BASE_PATH,
-          activeRelease,
-          new Request('https://mioframe.example/assets/app.js'),
-          false,
-          createFakeCoordinator({ prepare }),
-        ),
-      );
-      expect(prepare).not.toHaveBeenCalled();
-    });
-
-    it('returns unavailable when the final descriptor marker is malformed after availability succeeds', async () => {
-      await seedAvailableRelease();
-      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
-      if (!cache) throw new Error('Expected seeded release cache');
-      const originalMatch = cache.match.bind(cache);
-      let matchCount = 0;
-      vi.spyOn(cache, 'match').mockImplementation((request) => {
-        matchCount += 1;
-        // Availability reads the valid descriptor and index first; only the
-        // separate final descriptor response is malformed.
-        if (matchCount === 3) return Promise.resolve(new Response('not valid json{'));
-        return originalMatch(request);
-      });
-      const prepare = vi.fn();
-      const { serveRelease } = await import('./workerFetch');
-
-      await expectUnavailable(
-        serveRelease(
-          CHANNEL,
-          BASE_PATH,
-          activeRelease,
-          new Request('https://mioframe.example/assets/app.js'),
-          false,
-          createFakeCoordinator({ prepare }),
-        ),
-      );
-      expect(prepare).not.toHaveBeenCalled();
-    });
-
-    it('returns unavailable when a listed asset disappears after availability succeeds', async () => {
-      await seedAvailableRelease();
-      const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
-      if (!cache) throw new Error('Expected seeded release cache');
-      const originalMatch = cache.match.bind(cache);
-      let matchCount = 0;
-      vi.spyOn(cache, 'match').mockImplementation((request) => {
-        matchCount += 1;
-        // Availability reads descriptor and index, then serving re-reads the
-        // descriptor; the fourth match is the final requested-asset read.
-        if (matchCount === 4) return Promise.resolve(undefined);
-        return originalMatch(request);
-      });
-      const prepare = vi.fn();
+      const keysSpy = vi.spyOn(cache, 'keys');
       const { handleAssetFetch } = await import('./workerFetch');
 
-      await expectUnavailable(
-        handleAssetFetch(
-          CHANNEL,
-          BASE_PATH,
-          new Request('https://mioframe.example/assets/app.js'),
-          createFakeCoordinator({ prepare }),
-        ),
+      const response = await handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
       );
-      expect(prepare).not.toHaveBeenCalled();
+
+      expect(await response.text()).toBe('console.log(1)');
+      expect(keysSpy).not.toHaveBeenCalled();
     });
 
     it('serves an exact active-release asset from its cache', async () => {

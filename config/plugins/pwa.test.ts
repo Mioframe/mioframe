@@ -8,6 +8,7 @@ import {
   getPwaPlugins,
   isForeignChannelPath,
   isManagedChannel,
+  resolveManagedAppUpdateChannel,
 } from './pwa.ts';
 
 describe('buildChannelCacheNamespace', () => {
@@ -165,6 +166,62 @@ describe('isManagedChannel', () => {
   it('is false for any other branch channel', () => {
     expect(isManagedChannel('branch', 'feature-x')).toBe(false);
     expect(isManagedChannel('branch')).toBe(false);
+  });
+});
+
+describe('resolveManagedAppUpdateChannel', () => {
+  it('is "stable" for an enabled stable production build', () => {
+    expect(resolveManagedAppUpdateChannel({ mode: 'production', isPreview: false })).toBe('stable');
+  });
+
+  it('is "develop" for an enabled develop branch production build', () => {
+    expect(
+      resolveManagedAppUpdateChannel({
+        mode: 'production',
+        isPreview: false,
+        channel: 'branch',
+        channelId: 'develop',
+      }),
+    ).toBe('develop');
+  });
+
+  it('is "stable" for an enabled stable preview build', () => {
+    expect(resolveManagedAppUpdateChannel({ mode: 'development', isPreview: true })).toBe('stable');
+  });
+
+  it('is undefined for an ordinary (non-develop) branch build', () => {
+    expect(
+      resolveManagedAppUpdateChannel({
+        mode: 'production',
+        isPreview: false,
+        channel: 'branch',
+        channelId: 'feature-x',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('is undefined for a PR preview build (disablePwa: true)', () => {
+    expect(
+      resolveManagedAppUpdateChannel({ mode: 'production', isPreview: false, disablePwa: true }),
+    ).toBeUndefined();
+  });
+
+  it('is undefined when PWA is explicitly disabled even for an otherwise-managed preview build', () => {
+    expect(
+      resolveManagedAppUpdateChannel({ mode: 'development', isPreview: true, disablePwa: true }),
+    ).toBeUndefined();
+  });
+
+  it('is undefined for a development build without preview', () => {
+    expect(
+      resolveManagedAppUpdateChannel({ mode: 'development', isPreview: false }),
+    ).toBeUndefined();
+  });
+
+  it('is undefined for the branch channel used without a channelId (not "develop")', () => {
+    expect(
+      resolveManagedAppUpdateChannel({ mode: 'production', isPreview: false, channel: 'branch' }),
+    ).toBeUndefined();
   });
 });
 

@@ -376,6 +376,37 @@ export function corruptPublishedReleaseFile(workDir, channel, filePath) {
 }
 
 /**
+ * Reads one already-published release file's current on-disk bytes, so a
+ * test can save them before {@link corruptPublishedReleaseFile} and restore
+ * them later via {@link restorePublishedReleaseFile}.
+ * @param workDir Pages staging working directory root.
+ * @param channel Managed channel: `'stable'` or `'develop'`.
+ * @param filePath One of the published release's own file paths.
+ * @returns The file's current bytes.
+ */
+export function readPublishedReleaseFile(workDir, channel, filePath) {
+  return readFileSync(join(resolveChannelBase(workDir, channel), filePath));
+}
+
+/**
+ * Restores one already-published release file's on-disk bytes, undoing
+ * {@link corruptPublishedReleaseFile}. Publication now validates every
+ * retained release's complete physical bytes before allocating a next
+ * release number or writing anything (see `releaseDescriptor.mjs`'s
+ * `validateRetainedContent`), so a still-corrupt earlier release would
+ * otherwise block any later publish in the same retained tree — a test that
+ * intentionally corrupts a file to prove a browser-side install failure, and
+ * then needs a further publish to succeed afterward, must restore it first.
+ * @param workDir Pages staging working directory root.
+ * @param channel Managed channel: `'stable'` or `'develop'`.
+ * @param filePath One of the published release's own file paths.
+ * @param content The original bytes to restore, from {@link readPublishedReleaseFile}.
+ */
+export function restorePublishedReleaseFile(workDir, channel, filePath, content) {
+  writeFileSync(join(resolveChannelBase(workDir, channel), filePath), content);
+}
+
+/**
  * Appends executable, test-only marker code to an already-published
  * channel's deployed `sw.js`, changing its bytes without altering any
  * application release asset, descriptor, or persisted controller state, and

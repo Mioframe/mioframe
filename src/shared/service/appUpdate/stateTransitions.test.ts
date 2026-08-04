@@ -182,13 +182,13 @@ describe('completeAutomaticPreparation', () => {
   };
 
   it('moves available(B) to ready(B) for an exact match', () => {
-    const state = completeAutomaticPreparation(automaticAvailable, releaseB.releaseNumber);
+    const state = completeAutomaticPreparation(automaticAvailable, releaseB);
     expect(state.candidate).toEqual({ phase: 'ready', release: releaseB });
   });
 
   it('is a no-op (same reference) when mode changed to Manual in the meantime', () => {
     const manualAvailable: UpdateControllerState = { ...automaticAvailable, mode: 'manual' };
-    const state = completeAutomaticPreparation(manualAvailable, releaseB.releaseNumber);
+    const state = completeAutomaticPreparation(manualAvailable, releaseB);
     expect(state).toBe(manualAvailable);
   });
 
@@ -197,7 +197,7 @@ describe('completeAutomaticPreparation', () => {
       ...automaticAvailable,
       candidate: { phase: 'available', release: releaseC },
     };
-    const state = completeAutomaticPreparation(replaced, releaseB.releaseNumber);
+    const state = completeAutomaticPreparation(replaced, releaseB);
     expect(state).toBe(replaced);
   });
 
@@ -206,14 +206,38 @@ describe('completeAutomaticPreparation', () => {
       ...automaticAvailable,
       candidate: { phase: 'ready', release: releaseB },
     };
-    const state = completeAutomaticPreparation(ready, releaseB.releaseNumber);
+    const state = completeAutomaticPreparation(ready, releaseB);
     expect(state).toBe(ready);
   });
 
   it('is a no-op (same reference) when there is no candidate at all', () => {
     const automaticNoCandidate: UpdateControllerState = { ...baseState, mode: 'automatic' };
-    const state = completeAutomaticPreparation(automaticNoCandidate, releaseB.releaseNumber);
+    const state = completeAutomaticPreparation(automaticNoCandidate, releaseB);
     expect(state).toBe(automaticNoCandidate);
+  });
+
+  it('is a no-op (same reference) for a same-number, different-appVersion completion', () => {
+    const state = completeAutomaticPreparation(automaticAvailable, {
+      ...releaseB,
+      appVersion: 'different',
+    });
+    expect(state).toBe(automaticAvailable);
+  });
+
+  it('is a no-op (same reference) for a same-number, different-buildId completion', () => {
+    const state = completeAutomaticPreparation(automaticAvailable, {
+      ...releaseB,
+      buildId: 'different-build',
+    });
+    expect(state).toBe(automaticAvailable);
+  });
+
+  it('is a no-op (same reference) for a same-number, different-buildDate completion', () => {
+    const state = completeAutomaticPreparation(automaticAvailable, {
+      ...releaseB,
+      buildDate: '2026-08-01T00:00:00.000Z',
+    });
+    expect(state).toBe(automaticAvailable);
   });
 });
 
@@ -225,7 +249,7 @@ describe('completeManualInstall', () => {
   };
 
   it('moves available(B) to ready(B) for an exact match', () => {
-    const state = completeManualInstall(manualAvailable, releaseB.releaseNumber);
+    const state = completeManualInstall(manualAvailable, releaseB);
     expect(state.candidate).toEqual({ phase: 'ready', release: releaseB });
   });
 
@@ -235,13 +259,13 @@ describe('completeManualInstall', () => {
       mode: 'manual',
       candidate: { phase: 'failed', release: releaseB },
     };
-    const state = completeManualInstall(manualFailed, releaseB.releaseNumber);
+    const state = completeManualInstall(manualFailed, releaseB);
     expect(state.candidate).toEqual({ phase: 'ready', release: releaseB });
   });
 
   it('is a no-op (same reference) when mode changed to Automatic in the meantime', () => {
     const automaticAvailable: UpdateControllerState = { ...manualAvailable, mode: 'automatic' };
-    const state = completeManualInstall(automaticAvailable, releaseB.releaseNumber);
+    const state = completeManualInstall(automaticAvailable, releaseB);
     expect(state).toBe(automaticAvailable);
   });
 
@@ -250,7 +274,7 @@ describe('completeManualInstall', () => {
       ...manualAvailable,
       candidate: { phase: 'available', release: releaseC },
     };
-    const state = completeManualInstall(replaced, releaseB.releaseNumber);
+    const state = completeManualInstall(replaced, releaseB);
     expect(state).toBe(replaced);
   });
 
@@ -259,13 +283,34 @@ describe('completeManualInstall', () => {
       ...manualAvailable,
       candidate: { phase: 'ready', release: releaseB },
     };
-    expect(completeManualInstall(ready, releaseB.releaseNumber)).toBe(ready);
+    expect(completeManualInstall(ready, releaseB)).toBe(ready);
   });
 
   it('is a no-op (same reference) when there is no candidate at all', () => {
     const manualNoCandidate: UpdateControllerState = { ...baseState, mode: 'manual' };
-    const state = completeManualInstall(manualNoCandidate, releaseB.releaseNumber);
+    const state = completeManualInstall(manualNoCandidate, releaseB);
     expect(state).toBe(manualNoCandidate);
+  });
+
+  it('is a no-op (same reference) for a same-number, different-appVersion completion', () => {
+    const state = completeManualInstall(manualAvailable, { ...releaseB, appVersion: 'different' });
+    expect(state).toBe(manualAvailable);
+  });
+
+  it('is a no-op (same reference) for a same-number, different-buildId completion', () => {
+    const state = completeManualInstall(manualAvailable, {
+      ...releaseB,
+      buildId: 'different-build',
+    });
+    expect(state).toBe(manualAvailable);
+  });
+
+  it('is a no-op (same reference) for a same-number, different-buildDate completion', () => {
+    const state = completeManualInstall(manualAvailable, {
+      ...releaseB,
+      buildDate: '2026-08-01T00:00:00.000Z',
+    });
+    expect(state).toBe(manualAvailable);
   });
 });
 

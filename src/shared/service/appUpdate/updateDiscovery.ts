@@ -71,11 +71,22 @@ async function discoverLatest(
   return { descriptor, stateAfterDiscovery: applied.state };
 }
 
+/**
+ * Prepares `target` for Automatic mode and, on success, completes it to
+ * `ready`. A preparation failure is a transient, non-persisted outcome: the
+ * candidate stays `available`, no failure state is persisted, and no retry
+ * is scheduled here — only a later ordinary reconciliation pass may attempt
+ * preparation again, per the existing mode rules.
+ * @param dependencies - Channel state, preparation, and event-side effects.
+ * @param target - The release to prepare.
+ * @param descriptor - An already fetched descriptor for `target`, when discovery just fetched it.
+ * @returns `'install-failed'` when preparation was attempted and failed; `undefined` on success.
+ */
 async function prepareAutomaticTarget(
   dependencies: UpdateDiscoveryDependencies,
   target: ReleaseSummary,
   descriptor: ReleaseDescriptor | undefined,
-): Promise<void> {
+): Promise<AppUpdateErrorCode | undefined> {
   const { channel, channelBasePath, channelOrigin, enqueue, coordinator } = dependencies;
   const reusableDescriptor =
     descriptor && releaseSummariesMatch(toReleaseSummary(descriptor), target)
@@ -84,12 +95,13 @@ async function prepareAutomaticTarget(
 
   try {
     await coordinator.prepare(channel, channelBasePath, target, reusableDescriptor);
-  } catch {
-    return;
+  } catch (error) {
+    console.error('[app-update] Automatic release preparation failed', target.releaseNumber, error);
+    return 'install-failed';
   }
 
   const changed = await withState(channel, enqueue, async (state) => {
-    const next = completeAutomaticPreparation(state, target.releaseNumber);
+    const next = completeAutomaticPreparation(state, target);
     if (next === state) return false;
     await writeControllerState(channel, next);
     return true;
@@ -99,6 +111,7 @@ async function prepareAutomaticTarget(
   } else {
     await cleanupReleaseCache(channel, coordinator);
   }
+  return undefined;
 }
 
 /**
@@ -131,10 +144,11 @@ export async function runUpdateReconciliationPass(
     }
   }
 
+  let preparationError: AppUpdateErrorCode | undefined;
   if (target) {
-    await prepareAutomaticTarget(dependencies, target, discovery.descriptor);
+    preparationError = await prepareAutomaticTarget(dependencies, target, discovery.descriptor);
   }
 
   const finalState = await readCurrentState(channel, enqueue);
-  return buildAppUpdateSnapshot(finalState, discovery.error);
+  return buildAppUpdateSnapshot(finalState, preparationError ?? discovery.error);
 }

@@ -6,9 +6,8 @@ import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import {
   buildReleaseCacheName,
-  checkReleaseAvailability,
   isReleaseFilePath,
-  readReleaseDescriptorMarker,
+  readMatchingDescriptorMarker,
   readReleaseIndexMarker,
 } from './releaseCache';
 import { withState } from './stateLock';
@@ -76,12 +75,53 @@ async function restoreRelease(
 }
 
 /**
+ * Attempts to serve `request` from `cache` using only marker reads and a
+ * direct `cache.match()` — never a full-cache enumeration (see
+ * {@link readMatchingDescriptorMarker}). Returns `undefined` when the exact
+ * release is not currently available from `cache` (missing or mismatched
+ * descriptor marker, missing archived index for navigation, or a listed
+ * asset missing from cache), so the caller can restore and retry once.
+ * Returns a controlled `404` directly, without a restore attempt, for an
+ * owned asset path the exact descriptor does not list.
+ * @param cache - The release's Cache Storage cache.
+ * @param release - The exact release identity to serve.
+ * @param request - The incoming request.
+ * @param channelBasePath - This worker's channel base path.
+ * @param isNavigation - Whether this is a top-level navigation request.
+ * @returns The response to serve, or `undefined` when restoration is required.
+ */
+async function tryServeFromCache(
+  cache: Cache,
+  release: ReleaseSummary,
+  request: Request,
+  channelBasePath: string,
+  isNavigation: boolean,
+): Promise<Response | undefined> {
+  const descriptor = await readMatchingDescriptorMarker(cache, release);
+  if (!descriptor) return undefined;
+
+  if (isNavigation) {
+    return readReleaseIndexMarker(cache);
+  }
+
+  const relativePath = new URL(request.url).pathname.slice(channelBasePath.length);
+  if (!isReleaseFilePath(descriptor, relativePath)) return NOT_FOUND_RESPONSE();
+
+  return cache.match(request);
+}
+
+/**
  * Serves `request` from `release`'s cache, restoring it from the immutable
- * server archive first if its local cache is missing, incomplete, or its
- * commit marker's complete release identity does not exactly match
- * `release` (see {@link checkReleaseAvailability}). Never falls through to a
- * different release or to the live current deployment: every unavailable
- * outcome fails closed with a controlled `503` or `404`.
+ * server archive and retrying exactly once if its local cache is missing,
+ * incomplete, or its commit marker's complete release identity does not
+ * exactly match `release` (see {@link tryServeFromCache}). Never falls
+ * through to a different release or to the live current deployment: every
+ * unavailable outcome fails closed with a controlled `503` or `404`.
+ *
+ * The healthy path — a matching descriptor marker already present, plus the
+ * archived index or the specific requested asset already cached — never
+ * enumerates the release cache's complete key set; only the deliberately
+ * exhaustive validation in `prepareRelease()` does that.
  *
  * Navigation and asset fetch owners select an activating candidate's target
  * here. Every other candidate phase uses the persisted `activeRelease`.
@@ -104,30 +144,23 @@ export async function serveRelease(
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
   const cacheName = buildReleaseCacheName(channel, release.releaseNumber);
+
   let cache = await caches.open(cacheName);
-  let available = await checkReleaseAvailability(cache, release, channelBasePath);
+  const initial = await tryServeFromCache(cache, release, request, channelBasePath, isNavigation);
+  if (initial) return initial;
 
-  if (!available) {
-    if (!(await restoreRelease(channel, channelBasePath, release, coordinator))) {
-      return UNAVAILABLE_RESPONSE();
-    }
-    cache = await caches.open(cacheName);
-    available = await checkReleaseAvailability(cache, release, channelBasePath);
-    if (!available) return UNAVAILABLE_RESPONSE();
+  if (!(await restoreRelease(channel, channelBasePath, release, coordinator))) {
+    return UNAVAILABLE_RESPONSE();
   }
-
-  if (isNavigation) {
-    const indexResponse = await readReleaseIndexMarker(cache);
-    return indexResponse ?? UNAVAILABLE_RESPONSE();
-  }
-
-  const relativePath = new URL(request.url).pathname.slice(channelBasePath.length);
-  const descriptor = await readReleaseDescriptorMarker(cache);
-  if (!descriptor) return UNAVAILABLE_RESPONSE();
-  if (!isReleaseFilePath(descriptor, relativePath)) return NOT_FOUND_RESPONSE();
-
-  const cached = await cache.match(request);
-  return cached ?? UNAVAILABLE_RESPONSE();
+  cache = await caches.open(cacheName);
+  const revalidated = await tryServeFromCache(
+    cache,
+    release,
+    request,
+    channelBasePath,
+    isNavigation,
+  );
+  return revalidated ?? UNAVAILABLE_RESPONSE();
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   getPwaPlugins,
   getSentryPlugins,
   getSslPlugins,
+  resolveManagedAppUpdateChannel,
 } from './config/plugins';
 
 // Release-test-only escape hatch for the managed pinned application updates
@@ -55,6 +56,19 @@ export default defineConfig(({ mode, isPreview }) => {
         isPreview: isPreviewBuild,
         authToken: env.SENTRY_AUTH_TOKEN,
         release: buildId || undefined,
+      });
+  // Never derived independently of pwaPlugins' own gating: reuses the exact
+  // same enablement and channel-classification decision (see
+  // resolveManagedAppUpdateChannel), so this can never disagree with
+  // whether a managed controller worker was actually emitted.
+  const managedAppUpdateChannel = isStorybookBuild
+    ? undefined
+    : resolveManagedAppUpdateChannel({
+        mode,
+        isPreview: isPreviewBuild,
+        disablePwa: isDisablePwa,
+        channel: releaseChannel,
+        channelId: releaseChannelId,
       });
 
   // Managed stable/develop publication derives one canonical UTC committer
@@ -134,6 +148,10 @@ export default defineConfig(({ mode, isPreview }) => {
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),
       __DIAGNOSTICS_MODE__: JSON.stringify(isPreviewBuild ? 'preview' : 'production'),
+      __MANAGED_APP_UPDATE_CHANNEL__:
+        managedAppUpdateChannel === undefined
+          ? 'undefined'
+          : JSON.stringify(managedAppUpdateChannel),
     },
   };
 });

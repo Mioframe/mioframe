@@ -69,22 +69,65 @@ export function buildWatchdogScript(releaseNumber) {
   var bootFailedReported = false;
   var deadlineTimer = null;
 
+  // Bounded, never-rejecting controller-message transport, shared by every
+  // outgoing message (BOOT_OK, BOOT_FAILED, GET_ACTIVATION_STATUS). Every
+  // failure mode -- no controller, a throwing controller getter, a throwing
+  // MessageChannel constructor, or a synchronously throwing postMessage --
+  // resolves null exactly like "no response" (an unacknowledged send or a
+  // timeout), so a transport failure can never turn into an unhandled
+  // promise rejection or permanently latch a caller's own report flag.
   function sendToController(message) {
     return new Promise(function (resolve) {
-      if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+      var settledLocal = false;
+      var timer = null;
+      var channel = null;
+
+      function settle(value) {
+        if (settledLocal) return;
+        settledLocal = true;
+        if (timer !== null) clearTimeout(timer);
+        if (channel) {
+          try {
+            channel.port1.onmessage = null;
+            channel.port1.close();
+          } catch (closeError) {
+            // Port cleanup must never throw out of this boundary.
+          }
+        }
+        resolve(value);
+      }
+
+      var controller;
+      try {
+        controller = navigator.serviceWorker && navigator.serviceWorker.controller;
+      } catch (controllerError) {
         resolve(null);
         return;
       }
-      var channel = new MessageChannel();
-      var acked = false;
+      if (!controller) {
+        resolve(null);
+        return;
+      }
+
+      try {
+        channel = new MessageChannel();
+      } catch (channelError) {
+        resolve(null);
+        return;
+      }
+
       channel.port1.onmessage = function (event) {
-        acked = true;
-        resolve(event.data || null);
+        settle((event && event.data) || null);
       };
-      navigator.serviceWorker.controller.postMessage(message, [channel.port2]);
-      setTimeout(function () {
-        if (!acked) resolve(null);
+      timer = setTimeout(function () {
+        settle(null);
       }, ACK_TIMEOUT_MS);
+
+      try {
+        controller.postMessage(message, [channel.port2]);
+      } catch (postError) {
+        settle(null);
+      }
     });
   }
 
@@ -186,39 +229,41 @@ export function buildWatchdogScript(releaseNumber) {
   }
 
   if (navigator.serviceWorker) {
-    navigator.serviceWorker.ready.then(function () {
-      if (settled || !navigator.serviceWorker.controller) return;
-      var channel = new MessageChannel();
-      channel.port1.onmessage = function (event) {
-        var parsed = parseActivationStatusResponse(event.data);
-        if (!parsed) return;
-        if (!parsed.isActivationTarget) {
-          // Not this session's activation target: permanently disarm rather
-          // than merely skip arming the deadline timer, so an ordinary
-          // runtime error later in this session can never send a spurious
-          // BOOT_FAILED for a release that was never being activated.
-          settled = true;
-          if (deadlineTimer !== null) clearTimeout(deadlineTimer);
-          window.removeEventListener('error', onEarlyFatalError);
-          window.removeEventListener('unhandledrejection', onEarlyFatalError);
-          return;
-        }
-        var msRemaining = parsed.deadlineAtMs - Date.now();
-        if (msRemaining <= 0) {
-          reportBootFailed();
-          return;
-        }
-        deadlineTimer = setTimeout(reportBootFailed, msRemaining);
-      };
-      navigator.serviceWorker.controller.postMessage(
-        {
+    navigator.serviceWorker.ready
+      .then(function () {
+        if (settled) return;
+        return sendToController({
           protocolVersion: PROTOCOL_VERSION,
           type: GET_ACTIVATION_STATUS,
           releaseNumber: RELEASE_NUMBER,
-        },
-        [channel.port2],
-      );
-    });
+        }).then(function (data) {
+          var parsed = parseActivationStatusResponse(data);
+          if (!parsed) return;
+          if (!parsed.isActivationTarget) {
+            // Not this session's activation target: permanently disarm rather
+            // than merely skip arming the deadline timer, so an ordinary
+            // runtime error later in this session can never send a spurious
+            // BOOT_FAILED for a release that was never being activated.
+            settled = true;
+            if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+            window.removeEventListener('error', onEarlyFatalError);
+            window.removeEventListener('unhandledrejection', onEarlyFatalError);
+            return;
+          }
+          var msRemaining = parsed.deadlineAtMs - Date.now();
+          if (msRemaining <= 0) {
+            reportBootFailed();
+            return;
+          }
+          deadlineTimer = setTimeout(reportBootFailed, msRemaining);
+        });
+      })
+      .catch(function (readyError) {
+        // navigator.serviceWorker.ready rejecting must never surface as an
+        // unhandled rejection; it simply means activation status can never
+        // be learned for this session, so the watchdog stays armed for
+        // window.mioframeAppUpdateBootOk / an early fatal error as-is.
+      });
 
     navigator.serviceWorker.addEventListener('message', function (event) {
       var data = event.data;

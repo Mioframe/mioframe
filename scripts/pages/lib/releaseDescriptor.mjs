@@ -12,7 +12,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 export const RELEASE_DESCRIPTOR_SCHEMA_VERSION = 1;
@@ -352,6 +352,75 @@ export function assertUniqueRetainedBuildIds(descriptors) {
 }
 
 /**
+ * Validates that `filePath` physically exists, is a regular file (not a
+ * directory or symlink), and has exactly `expectedByteSize` bytes and
+ * `expectedSha256` content. Part of {@link validateRetainedContent}.
+ * @param filePath Absolute path to the retained file to validate.
+ * @param expectedSha256 The descriptor's recorded lowercase hex SHA-256 digest.
+ * @param expectedByteSize The descriptor's recorded exact byte size.
+ * @param label Human-readable label for this file, used in thrown error messages.
+ * @throws {Error} When `filePath` is missing, not a regular file, or its size or content does not match.
+ */
+function validateRetainedFile(filePath, expectedSha256, expectedByteSize, label) {
+  if (!existsSync(filePath)) {
+    throw new Error(`Retained ${label} is missing: ${filePath}`);
+  }
+  const stats = lstatSync(filePath);
+  if (stats.isSymbolicLink() || !stats.isFile()) {
+    throw new Error(
+      `Retained ${label} must be a regular file, not a directory or symlink: ${filePath}`,
+    );
+  }
+  if (stats.size !== expectedByteSize) {
+    throw new Error(
+      `Retained ${label} byte size mismatch: ${filePath} (expected ${expectedByteSize}, found ${stats.size})`,
+    );
+  }
+  const actualSha256 = computeFileSha256(filePath);
+  if (actualSha256 !== expectedSha256) {
+    throw new Error(`Retained ${label} SHA-256 mismatch: ${filePath}`);
+  }
+}
+
+/**
+ * Validates that every retained release's archived index and immutable
+ * asset files are physically present and byte-for-byte correct against
+ * `channelBaseDir` and `releasesDir`, before allocation, dist inspection, any
+ * write, or an idempotent latest-build no-op resolves (see
+ * {@link resolvePublicationPlan}). A retained descriptor merely being
+ * structurally valid (see {@link readRetainedTree}) never proves its
+ * referenced bytes are still physically restorable — this proves that.
+ *
+ * A physical path referenced by multiple retained descriptors must satisfy
+ * every descriptor reference: since a real file has exactly one actual
+ * content, two descriptors recording conflicting metadata for the same path
+ * can never both validate, so a conflict fails closed here without a
+ * separate cross-descriptor check.
+ * @param descriptors Every retained `ReleaseDescriptor` for this channel, from {@link readRetainedTree}.
+ * @param channelBaseDir Channel's base directory, containing its published `assets/` files.
+ * @param releasesDir Channel's `updates/releases` directory.
+ * @throws {Error} When any retained archived index or asset is missing, is not a regular file, or has a byte size or SHA-256 mismatch.
+ */
+export function validateRetainedContent(descriptors, channelBaseDir, releasesDir) {
+  for (const descriptor of descriptors) {
+    validateRetainedFile(
+      join(releasesDir, String(descriptor.releaseNumber), 'index.html'),
+      descriptor.indexSha256,
+      descriptor.indexByteSize,
+      `archived index for release ${descriptor.releaseNumber}`,
+    );
+    for (const file of descriptor.files) {
+      validateRetainedFile(
+        join(channelBaseDir, file.path),
+        file.sha256,
+        file.byteSize,
+        `file "${file.path}" for release ${descriptor.releaseNumber}`,
+      );
+    }
+  }
+}
+
+/**
  * Resolves the channel-local idempotent publication decision for `buildId`
  * against an already-validated retained tree (see {@link readRetainedTree}
  * and the managed pinned application updates architecture, "Release
@@ -399,20 +468,26 @@ export function resolvePublicationDecision(descriptors, latestReleaseNumber, bui
  * decision for `buildId` against the complete retained release tree (see
  * the managed pinned application updates architecture, "Release identity
  * and publication"). Validates the complete retained tree — via
- * {@link readRetainedTree} and unique retained `buildId` values via
- * {@link assertUniqueRetainedBuildIds} — and resolves whether `buildId` is
+ * {@link readRetainedTree}, unique retained `buildId` values via
+ * {@link assertUniqueRetainedBuildIds}, and every retained release's
+ * physical archived index and asset bytes via
+ * {@link validateRetainedContent} — and resolves whether `buildId` is
  * absent, latest, or non-latest before ever allocating a next release
- * number or requiring any write. Callers must not inspect `dist`, or
- * perform any publication write, before this resolves.
+ * number or requiring any write. A corrupt retained tree is rejected here
+ * even when `buildId` would otherwise resolve to a zero-write no-op.
+ * Callers must not inspect `dist`, or perform any publication write, before
+ * this resolves.
  * @param releasesDir Channel's `updates/releases` directory.
  * @param updatesDir Channel's `updates` directory.
  * @param buildId The exact source commit SHA for the build being published.
+ * @param channelBaseDir Channel's base directory, containing its published `assets/` files.
  * @returns The resolved publication decision. See {@link resolvePublicationDecision}.
- * @throws {Error} When the retained tree is malformed, or `buildId` is retained on a non-latest release or duplicated.
+ * @throws {Error} When the retained tree is malformed, its content is not physically restorable, or `buildId` is retained on a non-latest release or duplicated.
  */
-export function resolvePublicationPlan(releasesDir, updatesDir, buildId) {
+export function resolvePublicationPlan(releasesDir, updatesDir, buildId, channelBaseDir) {
   const { descriptors, latestReleaseNumber } = readRetainedTree(releasesDir, updatesDir);
   assertUniqueRetainedBuildIds(descriptors);
+  validateRetainedContent(descriptors, channelBaseDir, releasesDir);
   return resolvePublicationDecision(descriptors, latestReleaseNumber, buildId);
 }
 

@@ -3,10 +3,12 @@ import {
   zodAppUpdateStateChangedBroadcast,
   zodAppUpdateWorkerFailureResponse,
   zodAppUpdateWorkerResponse,
+  zodManagedControllerProbeResponse,
   type AppUpdateSnapshot,
   type AppUpdateWorkerRequest,
 } from '@shared/service/appUpdate/protocol';
 import type { UpdateMode } from '@shared/service/appUpdate/contracts';
+import { MANAGED_APP_UPDATE_CHANNEL } from '@shared/config';
 
 // Re-exported so UI-facing layers (entities, features) never need to import
 // `@shared/service/appUpdate/*` directly — this client is their only
@@ -24,38 +26,117 @@ export type AppUpdateClientResult<T> =
 const SHORT_REQUEST_TIMEOUT_MS = 10_000;
 /** Transport deadline for commands that may wait for release download and hashing. */
 const LONG_REQUEST_TIMEOUT_MS = 120_000;
+/**
+ * Client-side deadline for the managed-controller capability probe. Never
+ * reused for an actual command deadline: a legacy Workbox controller (which
+ * never answers this probe) must become "unavailable" quickly, long before
+ * either command deadline would otherwise elapse.
+ */
+const PROBE_TIMEOUT_MS = 1_000;
 
 const unavailableResult = (): AppUpdateClientResult<never> => ({ status: 'unavailable' });
 
 /**
- * Sends one private worker protocol request to this page's controlling
- * service worker over an owned `MessageChannel`.
- *
- * Reads `navigator.serviceWorker.controller` directly rather than awaiting
- * `navigator.serviceWorker.ready`: this client only bridges the worker that
- * already controls the current document, and `ready` can remain pending
- * indefinitely for an unmanaged channel. A timeout never cancels worker
- * work; it only settles this client request and ignores a later response.
+ * Per-`ServiceWorker`-object cache of capability-probe results, so the same
+ * silent legacy controller is never probed repeatedly across commands. A
+ * different controller object (a new deployment taking over) is always
+ * probed independently. Intentionally the only capability state this client
+ * keeps — never persisted, never a manager.
+ */
+const capabilityByController = new WeakMap<ServiceWorker, Promise<boolean>>();
+
+/**
+ * Sends the same-path managed-controller capability probe to `controller`
+ * and resolves whether it is a managed controller for `expectedChannel`.
+ * Never rejects: an unavailable transport, a throwing `MessageChannel`
+ * constructor, a synchronously throwing `postMessage`, a malformed or
+ * wrong-version response, or silence until {@link PROBE_TIMEOUT_MS} all
+ * resolve `false`, exactly like a compatible legacy Workbox controller that
+ * never implements this private protocol at all.
+ * @param controller - The controller to probe.
+ * @param expectedChannel - This build's own managed application-update channel.
+ * @returns Whether `controller` is a managed controller for `expectedChannel`.
+ */
+function probeManagedController(
+  controller: ServiceWorker,
+  expectedChannel: 'stable' | 'develop',
+): Promise<boolean> {
+  let channel: MessageChannel;
+  try {
+    channel = new MessageChannel();
+  } catch {
+    return Promise.resolve(false);
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const settle = (capable: boolean): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      channel.port1.onmessage = null;
+      try {
+        channel.port1.close();
+      } catch {
+        // A browser transport cleanup failure must not leak past this boundary.
+      }
+      resolve(capable);
+    };
+
+    channel.port1.onmessage = (event) => {
+      const parsed = zodManagedControllerProbeResponse.safeParse(event.data);
+      settle(parsed.success && parsed.data.channel === expectedChannel);
+    };
+
+    const timer = setTimeout(() => {
+      settle(false);
+    }, PROBE_TIMEOUT_MS);
+
+    try {
+      controller.postMessage(
+        withProtocolVersion({ type: 'PROBE_MANAGED_UPDATE_CONTROLLER' as const }),
+        [channel.port2],
+      );
+    } catch {
+      settle(false);
+    }
+  });
+}
+
+/**
+ * Resolves — and caches, per {@link capabilityByController} — whether
+ * `controller` has confirmed managed-update capability for this build's own
+ * `MANAGED_APP_UPDATE_CHANNEL`.
+ * @param controller - The controller to confirm.
+ * @returns Whether `controller` is a confirmed managed controller.
+ */
+function confirmManagedCapability(controller: ServiceWorker): Promise<boolean> {
+  if (!MANAGED_APP_UPDATE_CHANNEL) return Promise.resolve(false);
+
+  const cached = capabilityByController.get(controller);
+  if (cached) return cached;
+
+  const probe = probeManagedController(controller, MANAGED_APP_UPDATE_CHANNEL);
+  capabilityByController.set(controller, probe);
+  return probe;
+}
+
+/**
+ * Sends one private worker protocol request to an already-capability-
+ * confirmed controller, over an owned `MessageChannel`. A timeout never
+ * cancels worker work; it only settles this client request and ignores a
+ * later response.
+ * @param controller - The confirmed managed controller.
  * @param request - The protocol request to send.
  * @param timeoutMs - The finite client transport deadline.
  * @returns A classified response, timeout, or unavailable outcome.
  */
-function sendToController(
+function sendCommand(
+  controller: ServiceWorker,
   request: AppUpdateWorkerRequest,
   timeoutMs: number,
 ): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
-    return Promise.resolve(unavailableResult());
-  }
-
-  let controller: ServiceWorker | null | undefined;
-  try {
-    controller = navigator.serviceWorker.controller;
-  } catch {
-    return Promise.resolve(unavailableResult());
-  }
-  if (!controller) return Promise.resolve(unavailableResult());
-
   let channel: MessageChannel;
   try {
     channel = new MessageChannel();
@@ -106,6 +187,44 @@ function sendToController(
       settle(unavailableResult());
     }
   });
+}
+
+/**
+ * Sends one private worker protocol request to this page's controlling
+ * service worker, only once that controller's managed-update capability has
+ * been confirmed (see {@link confirmManagedCapability}).
+ *
+ * Reads `navigator.serviceWorker.controller` directly rather than awaiting
+ * `navigator.serviceWorker.ready`: this client only bridges the worker that
+ * already controls the current document, and `ready` can remain pending
+ * indefinitely for an unmanaged channel. An unsupported build, a missing
+ * controller, or a failed capability probe all resolve `unavailable`
+ * without ever sending `request`.
+ * @param request - The protocol request to send.
+ * @param timeoutMs - The finite client transport deadline for the command itself, once capability is confirmed.
+ * @returns A classified response, timeout, or unavailable outcome.
+ */
+async function sendToController(
+  request: AppUpdateWorkerRequest,
+  timeoutMs: number,
+): Promise<AppUpdateClientResult<AppUpdateSnapshot>> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return unavailableResult();
+  }
+  if (!MANAGED_APP_UPDATE_CHANNEL) return unavailableResult();
+
+  let controller: ServiceWorker | null | undefined;
+  try {
+    controller = navigator.serviceWorker.controller;
+  } catch {
+    return unavailableResult();
+  }
+  if (!controller) return unavailableResult();
+
+  const capable = await confirmManagedCapability(controller);
+  if (!capable) return unavailableResult();
+
+  return sendCommand(controller, request, timeoutMs);
 }
 
 /**

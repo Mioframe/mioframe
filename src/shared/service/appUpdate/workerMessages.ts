@@ -88,7 +88,7 @@ async function installOnNextLaunch(
     if (error) {
       return { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(state, error) }) };
     }
-    const next = completeManualInstall(state, target.releaseNumber);
+    const next = completeManualInstall(state, target);
     if (next === state) {
       // Superseded, mode-switched, or already advanced while preparing.
       return {

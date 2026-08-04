@@ -8,6 +8,7 @@ import {
   computeProtectedReleaseNumbers,
   isReleaseAvailable,
   isReleaseFilePath,
+  readMatchingDescriptorMarker,
   readReleaseDescriptorMarker,
   runReleaseCacheCleanup,
   writeReleaseDescriptorMarker,
@@ -318,6 +319,31 @@ describe('checkReleaseAvailability', () => {
     expect(
       await checkReleaseAvailability(cache, releaseSummary(RELEASE_NUMBER), channelBasePath),
     ).toBe(false);
+  });
+});
+
+describe('readMatchingDescriptorMarker', () => {
+  const descriptorSummary = toReleaseSummary(descriptor);
+
+  it('returns the descriptor when its identity exactly matches, without enumerating the cache', async () => {
+    const cache = {
+      match: vi.fn(() => Promise.resolve(new Response(JSON.stringify(descriptor)))),
+      keys: vi.fn(),
+    };
+    expect(await readMatchingDescriptorMarker(cache, descriptorSummary)).toEqual(descriptor);
+    expect(cache.keys).not.toHaveBeenCalled();
+  });
+
+  it('returns undefined when no marker is present', async () => {
+    const cache = { match: vi.fn(() => Promise.resolve(undefined)) };
+    expect(await readMatchingDescriptorMarker(cache, descriptorSummary)).toBeUndefined();
+  });
+
+  it('returns undefined when the marker shares the release number but diverges on another identity field', async () => {
+    const cache = { match: vi.fn(() => Promise.resolve(new Response(JSON.stringify(descriptor)))) };
+    expect(
+      await readMatchingDescriptorMarker(cache, releaseSummary(RELEASE_NUMBER)),
+    ).toBeUndefined();
   });
 });
 

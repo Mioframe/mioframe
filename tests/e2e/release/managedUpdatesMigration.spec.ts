@@ -7,6 +7,8 @@ import {
   buildAndPublishBrokenManagedRelease,
   buildAndPublishManagedRelease,
   corruptPublishedReleaseFile,
+  readPublishedReleaseFile,
+  restorePublishedReleaseFile,
   startManagedArtifactServer,
 } from './fixtures/managedReleaseFixture.mjs';
 
@@ -292,6 +294,25 @@ test('migrates from the frozen legacy generated Workbox worker to the managed co
       );
       expect(legacyScriptUrl).toBeTruthy();
 
+      // Correction 3 (managed-controller capability): this build has a
+      // managed channel (__MANAGED_APP_UPDATE_CHANNEL__ === 'stable'), but
+      // the controller actually controlling this origin right now is the
+      // frozen legacy Workbox worker, which never answers the client's
+      // capability probe. The client must classify capability as unavailable
+      // within its own 1-second probe deadline — never the 10-second or
+      // 120-second command deadline — and the UI must disable update
+      // actions accordingly. Uses a separate page so `legacyPage`'s own
+      // navigation state is untouched for the assertions below.
+      const legacyCapabilityPage = await context.newPage();
+      await legacyCapabilityPage.goto(server.url);
+      await legacyCapabilityPage.waitForFunction(() => navigator.serviceWorker.controller !== null);
+      await legacyCapabilityPage.getByRole('button', { name: /^settings$/i }).click();
+      await legacyCapabilityPage.getByRole('button', { name: /^app updates/i }).click();
+      const legacyPane = legacyCapabilityPage.locator('.app-updates-pane');
+      await expect(legacyPane.getByText(/updates unavailable/i)).toBeVisible({ timeout: 5_000 });
+      await expect(legacyPane.getByRole('button', { name: /^check for updates$/i })).toBeDisabled();
+      await legacyCapabilityPage.close();
+
       // Prove the legacy worker actually caches the app for offline use,
       // establishing a real baseline before migration (not an approximation).
       await context.setOffline(true);
@@ -452,7 +473,12 @@ test('a failed first managed install leaves the legacy worker active and operati
       // retained descriptor still declares the original SHA-256, so
       // install-time preparation's own hash validation genuinely fails —
       // exactly like storage corruption between publish and this browser's
-      // fetch, not a fabricated protocol-level rejection.
+      // fetch, not a fabricated protocol-level rejection. Saved so it can be
+      // restored below: publication now validates every retained release's
+      // complete physical bytes before allocating a next release number, so
+      // a still-corrupt release 1 would otherwise block the later valid
+      // publish this test also proves.
+      const originalAssetBytes = readPublishedReleaseFile(workDir, 'stable', broken.files[0].path);
       corruptPublishedReleaseFile(workDir, 'stable', broken.files[0].path);
 
       const freshPage = await context.newPage();
@@ -487,6 +513,12 @@ test('a failed first managed install leaves the legacy worker active and operati
       await context.setOffline(false);
       await freshPage.close();
       await legacyPage.close();
+
+      // Restore release 1's corrupted bytes now that the failed-install
+      // proof above is complete: a genuinely later publish must succeed on
+      // its own retained-content merits, not because corruption elsewhere
+      // in the tree went undetected.
+      restorePublishedReleaseFile(workDir, 'stable', broken.files[0].path, originalAssetBytes);
 
       // A later, genuinely valid managed release must still install
       // successfully — the earlier failure leaves no lingering state that

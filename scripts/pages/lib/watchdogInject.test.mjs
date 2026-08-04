@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildWatchdogScript, injectWatchdogScript } from './watchdogInject.mjs';
+import {
+  WATCHDOG_ACK_TIMEOUT_MS,
+  buildWatchdogScript,
+  injectWatchdogScript,
+} from './watchdogInject.mjs';
 
 /**
  * Waits one macrotask turn: `MessageChannel`/`MessagePort` delivery is
@@ -318,6 +322,223 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
     expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe('watchdog transport resilience', () => {
+  /**
+   * Tracks Node's `unhandledRejection` events for the duration of one test,
+   * so a transport failure that would previously auto-reject the
+   * `sendToController` promise (via the Promise constructor's own
+   * throw-in-executor -> reject behavior) is caught directly, not merely
+   * inferred from absence of a crash.
+   */
+  function trackUnhandledRejections() {
+    const reasons = [];
+    const onUnhandledRejection = (reason) => reasons.push(reason);
+    process.on('unhandledRejection', onUnhandledRejection);
+    return {
+      reasons,
+      stop: () => process.off('unhandledRejection', onUnhandledRejection),
+    };
+  }
+
+  function runScript(releaseNumber = 1) {
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(releaseNumber))();
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('never produces an unhandled rejection when the MessageChannel constructor throws', async () => {
+    const controller = { postMessage: vi.fn() };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+    vi.stubGlobal('MessageChannel', function throwingMessageChannel() {
+      throw new Error('MessageChannel unavailable');
+    });
+    const tracker = trackUnhandledRejections();
+
+    expect(() => runScript()).not.toThrow();
+    await Promise.resolve();
+    await flushTasks();
+
+    expect(tracker.reasons).toEqual([]);
+    tracker.stop();
+  });
+
+  it('never produces an unhandled rejection when the controller getter throws', async () => {
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        ready: Promise.resolve(),
+        get controller() {
+          throw new Error('controller access failed');
+        },
+        addEventListener: vi.fn(),
+      },
+    });
+    const tracker = trackUnhandledRejections();
+
+    expect(() => runScript()).not.toThrow();
+    await Promise.resolve();
+    await flushTasks();
+
+    expect(tracker.reasons).toEqual([]);
+    tracker.stop();
+  });
+
+  it('never produces an unhandled rejection when postMessage throws for GET_ACTIVATION_STATUS', async () => {
+    const controller = {
+      postMessage: () => {
+        throw new Error('postMessage failed');
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+    const tracker = trackUnhandledRejections();
+
+    runScript();
+    await Promise.resolve();
+    await flushTasks();
+
+    expect(tracker.reasons).toEqual([]);
+    tracker.stop();
+  });
+
+  it('never produces an unhandled rejection when postMessage throws for BOOT_OK, and resets bootOkReported so a later call retries', async () => {
+    const postMessageCalls = [];
+    const controller = {
+      postMessage: (message) => {
+        postMessageCalls.push(message);
+        throw new Error('postMessage failed');
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+    const tracker = trackUnhandledRejections();
+
+    runScript();
+    await Promise.resolve();
+    await flushTasks();
+    const afterActivationStatus = postMessageCalls.length;
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(postMessageCalls.length).toBeGreaterThan(afterActivationStatus);
+    const afterFirstBootOk = postMessageCalls.length;
+
+    // A latched bootOkReported would silently drop this second call.
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(postMessageCalls.length).toBeGreaterThan(afterFirstBootOk);
+
+    expect(tracker.reasons).toEqual([]);
+    tracker.stop();
+  });
+
+  it('never produces an unhandled rejection when postMessage throws for BOOT_FAILED, and resets bootFailedReported so a later failure reports again', async () => {
+    const postMessageCalls = [];
+    const controller = {
+      postMessage: (message) => {
+        postMessageCalls.push(message);
+        throw new Error('postMessage failed');
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+    const tracker = trackUnhandledRejections();
+
+    runScript();
+    await Promise.resolve();
+    await flushTasks();
+    const afterActivationStatus = postMessageCalls.length;
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(postMessageCalls.length).toBeGreaterThan(afterActivationStatus);
+    const afterFirstBootFailed = postMessageCalls.length;
+
+    // A latched bootFailedReported would silently drop this second report.
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(postMessageCalls.length).toBeGreaterThan(afterFirstBootFailed);
+
+    expect(tracker.reasons).toEqual([]);
+    tracker.stop();
+  });
+
+  it('never produces an unhandled rejection when navigator.serviceWorker.ready rejects', async () => {
+    vi.stubGlobal('navigator', {
+      serviceWorker: {
+        ready: Promise.reject(new Error('ready failed')),
+        controller: null,
+        addEventListener: vi.fn(),
+      },
+    });
+    const tracker = trackUnhandledRejections();
+
+    expect(() => runScript()).not.toThrow();
+    await Promise.resolve();
+    await flushTasks();
+
+    expect(tracker.reasons).toEqual([]);
+    tracker.stop();
+  });
+
+  function stubFakePortMessageChannel() {
+    const closedPorts = [];
+    function FakePort() {
+      this.onmessage = null;
+      this.close = () => closedPorts.push(this);
+    }
+    vi.stubGlobal('MessageChannel', function FakeMessageChannel() {
+      this.port1 = new FakePort();
+      this.port2 = new FakePort();
+    });
+    return closedPorts;
+  }
+
+  it('closes the receiving port once the transport ack times out', async () => {
+    const closedPorts = stubFakePortMessageChannel();
+    const controller = { postMessage: vi.fn() };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+    vi.useFakeTimers();
+
+    runScript();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(closedPorts).toHaveLength(0);
+    vi.advanceTimersByTime(WATCHDOG_ACK_TIMEOUT_MS);
+
+    expect(closedPorts.length).toBeGreaterThan(0);
+  });
+
+  it('closes the already-created receiving port immediately when postMessage throws synchronously', async () => {
+    const closedPorts = stubFakePortMessageChannel();
+    const controller = {
+      postMessage: () => {
+        throw new Error('postMessage failed');
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+
+    runScript();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(closedPorts.length).toBeGreaterThan(0);
   });
 });
 

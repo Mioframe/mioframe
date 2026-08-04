@@ -6,6 +6,7 @@ import {
   type AppUpdateClientResult,
   type AppUpdateSnapshot,
 } from '@shared/serviceClient/appUpdate/client';
+import { MANAGED_APP_UPDATE_CHANNEL } from '@shared/config';
 
 /** A stable release record suitable for app-update UI consumers. */
 export type AppUpdateRelease = {
@@ -89,7 +90,13 @@ const setupAppUpdate = () => {
   // explicit projections below, which deliberately omit activation-only
   // protocol data such as `deadlineAt`.
   const snapshot = ref<AppUpdateSnapshot | undefined>(undefined);
-  const isCapabilityAvailable = ref(true);
+  // An unsupported build (no managed channel at all) initializes as
+  // unavailable immediately, never provisionally true: it can never pass
+  // the client's own build-time channel check, so there is nothing to wait
+  // on. A managed build starts provisionally true; the initial refresh()
+  // converts a legacy Workbox controller to unavailable within the client's
+  // capability-probe deadline.
+  const isCapabilityAvailable = ref(MANAGED_APP_UPDATE_CHANNEL !== undefined);
   let latestApplicationToken = 0;
 
   const applyResult = (result: AppUpdateClientResult<AppUpdateSnapshot>): void => {

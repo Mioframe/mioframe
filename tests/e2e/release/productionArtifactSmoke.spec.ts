@@ -2,6 +2,14 @@ import { expect, test } from '@playwright/test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { launchApp, openOpfs } from '../helpers';
+import { buildAndServeOrdinaryBranchArtifact } from './fixtures/ordinaryBranchArtifactFixture.mjs';
+
+declare global {
+  interface Window {
+    /** Test-only counter installed by `page.addInitScript` to prove `MessageChannel` was never constructed. */
+    __messageChannelConstructions?: number;
+  }
+}
 
 function collectJsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -109,4 +117,59 @@ test('no chunk embeds the release-test-only legacy migration fixture or applicat
   }
 
   expect(offenders).toEqual([]);
+});
+
+// Managed pinned application updates feature, Correction 3 (managed-controller
+// capability): an ordinary branch build (not stable, not the develop managed
+// channel) never gets a managed controller worker — only the ordinary
+// generated (`generateSW`) Workbox worker — so its `__MANAGED_APP_UPDATE_CHANNEL__`
+// build-time define is `undefined`. The client must report managed updates
+// unavailable immediately from that build-time fact alone, without ever
+// constructing a `MessageChannel` to probe whatever controller (if any)
+// happens to be present. Builds and serves a real, separate production
+// artifact for this one branch build (the shared release artifact this
+// spec file otherwise exercises is the stable managed channel).
+test('an ordinary non-develop branch build (generated Workbox) reports managed updates unavailable without sending a managed controller message', async ({
+  page,
+}, testInfo) => {
+  testInfo.setTimeout(120_000);
+  let server: Awaited<ReturnType<typeof buildAndServeOrdinaryBranchArtifact>> | undefined;
+  const previousExternalBaseUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
+
+  try {
+    server = await buildAndServeOrdinaryBranchArtifact({ channelId: 'feature-x' });
+    process.env.PLAYWRIGHT_EXTERNAL_BASE_URL = server.url;
+
+    // Records every `MessageChannel` construction this page ever performs,
+    // installed before any application script runs. The capability probe is
+    // the app's only user of `MessageChannel`; zero constructions is direct
+    // proof the controller was never accessed or messaged at all.
+    await page.addInitScript(() => {
+      window.__messageChannelConstructions = 0;
+      const OriginalMessageChannel = window.MessageChannel;
+      class TrackedMessageChannel extends OriginalMessageChannel {
+        constructor() {
+          super();
+          window.__messageChannelConstructions = (window.__messageChannelConstructions ?? 0) + 1;
+        }
+      }
+      window.MessageChannel = TrackedMessageChannel;
+    });
+
+    await launchApp(page);
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await page.getByRole('button', { name: /^app updates/i }).click();
+    const pane = page.locator('.app-updates-pane');
+
+    await expect(pane.getByText(/updates unavailable/i)).toBeVisible();
+    await expect(pane.getByRole('button', { name: /^check for updates$/i })).toBeDisabled();
+
+    const messageChannelConstructions = await page.evaluate(
+      () => window.__messageChannelConstructions ?? 0,
+    );
+    expect(messageChannelConstructions).toBe(0);
+  } finally {
+    process.env.PLAYWRIGHT_EXTERNAL_BASE_URL = previousExternalBaseUrl;
+    await server?.close();
+  }
 });

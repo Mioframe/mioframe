@@ -243,6 +243,33 @@ export function isManagedChannel(channel: ReleaseChannel, channelId?: string): b
 }
 
 /**
+ * Resolves this build's managed application-update channel, the value
+ * embedded into the `__MANAGED_APP_UPDATE_CHANNEL__` build-time define
+ * (see `vite.config.ts` and `src/shared/config.ts`).
+ *
+ * Reuses exactly the same gating decisions as {@link getPwaPlugins} — PWA
+ * enablement ({@link GetPwaPluginsParams.disablePwa}, `mode`, `isPreview`)
+ * and {@link isManagedChannel} — so channel classification is never
+ * duplicated between the two. `undefined` for an ordinary branch, a PR
+ * preview (always passes `disablePwa: true`), a disabled-PWA build, or a
+ * development/Storybook build (never calls this at all; see
+ * `vite.config.ts`).
+ * @param params - The same build parameters passed to {@link getPwaPlugins} (minus `base`, which this decision does not need).
+ * @returns `'stable'` or `'develop'` only for an enabled managed-channel build; `undefined` otherwise.
+ */
+export function resolveManagedAppUpdateChannel({
+  mode,
+  isPreview,
+  disablePwa,
+  channel = 'stable',
+  channelId,
+}: Omit<GetPwaPluginsParams, 'base'>): 'stable' | 'develop' | undefined {
+  if (disablePwa || (mode !== 'production' && !isPreview)) return undefined;
+  if (!isManagedChannel(channel, channelId)) return undefined;
+  return channel === 'stable' ? 'stable' : 'develop';
+}
+
+/**
  * Returns the Vite PWA plugin array for the given build parameters.
  *
  * Returns an empty array when PWA is disabled or the mode is not production

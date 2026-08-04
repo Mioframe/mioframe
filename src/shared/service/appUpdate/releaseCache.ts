@@ -292,3 +292,26 @@ export async function checkReleaseAvailability(
   );
   return isReleaseAvailable(descriptor, expected, presentPaths);
 }
+
+/**
+ * Reads a release cache's descriptor marker and returns it only when its
+ * complete release identity exactly matches `expected` (see
+ * {@link releaseSummariesMatch}). Unlike {@link checkReleaseAvailability},
+ * never enumerates the cache's complete key set: exact per-request serving
+ * (`workerFetch.ts`'s `serveRelease`) only ever needs this one marker read
+ * plus a direct `cache.match()` for the specific request, never a full-cache
+ * scan on every healthy request.
+ * @param cache - The release's Cache Storage cache.
+ * @param expected - The complete release summary the caller expects to be available.
+ * @returns The matching descriptor, or `undefined` when no marker is present or its identity does not exactly match.
+ */
+export async function readMatchingDescriptorMarker(
+  cache: Pick<Cache, 'match'>,
+  expected: ReleaseSummary,
+): Promise<ReleaseDescriptor | undefined> {
+  const descriptor = await readReleaseDescriptorMarker(cache);
+  if (!descriptor || !releaseSummariesMatch(toReleaseSummary(descriptor), expected)) {
+    return undefined;
+  }
+  return descriptor;
+}
