@@ -54,19 +54,14 @@ A failed managed `install` leaves Workbox active. After release 1 activates, rol
 | Entity/widget/pane      | snapshot projection and product composition                                                         |
 | Browser                 | service-worker lifecycle and registration replacement                                               |
 
-Sources of truth:
-
-- latest publication: `updates/latest.json`, written last;
-- release: `updates/releases/<releaseNumber>.json`, archived index, and immutable assets;
-- lifecycle: one validated IndexedDB record per managed channel;
-- prepared bytes: one marker-last Cache Storage cache per channel/release;
-- predecessor compatibility: bounded read-only messages to `registration.active`;
-- UI: last valid worker snapshot plus feature-local transport outcome.
-
 ## Release identity and publication
 
 ```ts
-type ReleaseNumber = number;
+type ReleaseFile = {
+  path: string;
+  sha256: string;
+  byteSize: number;
+};
 
 type ReleaseDescriptor = {
   schemaVersion: 1;
@@ -123,8 +118,11 @@ The latest-build rerun path does not rebuild an old release, compare output tree
 
 Additional publication rules:
 
-- validate retained descriptors, unique `buildId` values, archived indexes, and `latest.json` before allocation or writes;
-- malformed, conflicting, non-monotonic, reused, or overflowing retained metadata fails before writes;
+- validate retained descriptors, unique `buildId` values, archived indexes, required immutable assets, and `latest.json` before allocation or writes;
+- retained archived indexes must exist as regular files and match their descriptor's exact `indexByteSize` and `indexSha256`;
+- every retained `descriptor.files` entry must exist at its canonical channel path as a regular file and match its exact `byteSize` and `sha256`;
+- a physical immutable path referenced by multiple descriptors must satisfy every reference; conflicting retained metadata or bytes fail before writes;
+- malformed, conflicting, non-monotonic, reused, overflowing, missing, truncated, or hash-mismatched retained content fails before writes;
 - immutable path collisions with different bytes fail before writes for a new release;
 - hash the final watchdog-injected archived index;
 - write assets, archived index, descriptor, and channel deployment files before `latest.json`;
