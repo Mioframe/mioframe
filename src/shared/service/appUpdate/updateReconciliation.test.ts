@@ -194,4 +194,44 @@ describe('createUpdateReconciler', () => {
     await expect(reconciler.checkForUpdates()).resolves.toEqual(snapshot(2));
     expect(runPass).toHaveBeenCalledTimes(2);
   });
+
+  it('never loses a mode-change rerun requested exactly at the old settlement-cleanup boundary', async () => {
+    // Reproduces the settlement microtask race: `first.resolve()` schedules
+    // the pass continuation's reaction first; the `Promise.resolve().then()`
+    // scheduled immediately afterward (same synchronous tick, no `await`
+    // between them) is queued directly behind it — landing exactly where the
+    // now-removed `.finally()` cleanup used to run several microtask hops
+    // later, i.e. exactly the window the old buggy `.finally()` cleanup left
+    // open. Against the old implementation this mode-change still observes
+    // `inFlightPromise` assigned to the already-decided attempt, sets
+    // `rerunRequested` on it, and joins that same settling promise — the flag
+    // is never re-checked, so the required fresh-state rerun is silently
+    // dropped and `runPass` is called only once. The fix closes the window by
+    // releasing ownership synchronously with the final decision, so this
+    // same-tick mode-change instead starts its own fresh reconciliation and a
+    // second `runPass()` genuinely executes.
+    const first = deferred<AppUpdateSnapshot>();
+    const second = deferred<AppUpdateSnapshot>();
+    const runPass = vi
+      .fn()
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    const reconciler = createUpdateReconciler({ runPass });
+    const check = reconciler.checkForUpdates();
+    await startPass();
+
+    let modeChange!: Promise<void>;
+    first.resolve(snapshot(1));
+    const scheduled = Promise.resolve().then(() => {
+      modeChange = reconciler.reconcileAfterModeChange();
+    });
+    await scheduled;
+    await startPass();
+    await startPass();
+
+    expect(runPass).toHaveBeenCalledTimes(2);
+    second.resolve(snapshot(2));
+    await modeChange;
+    await expect(check).resolves.toEqual(snapshot(1));
+  });
 });

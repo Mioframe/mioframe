@@ -611,7 +611,11 @@ describe('workerFetch', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('does not enumerate the complete release cache for a healthy navigation', async () => {
+    it('validates the complete release exhaustively (enumerating the cache) before serving a healthy navigation', async () => {
+      // Unlike an asset request, navigation must prove every descriptor-listed
+      // file is still present, not just the descriptor marker and index —
+      // see the partial-eviction tests below for why a shallower check is
+      // insufficient.
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
@@ -625,7 +629,50 @@ describe('workerFetch', () => {
       );
 
       expect(await response.text()).toBe('<html>archived</html>');
-      expect(keysSpy).not.toHaveBeenCalled();
+      expect(keysSpy).toHaveBeenCalled();
+    });
+
+    it('restores when the descriptor marker and archived index survive but an individually evicted descriptor-listed asset is missing', async () => {
+      // Models Cache Storage entries being evicted independently: the marker
+      // and index are present (as real preparation always writes them), but
+      // the one listed asset file is gone. A shallow marker+index check would
+      // wrongly treat this release as navigation-ready and activate it
+      // incomplete; the exhaustive check must instead force restoration.
+      await seedAvailableRelease(activeRelease, activeDescriptor, false);
+      const prepare = vi.fn().mockImplementation(async () => {
+        await seedAvailableRelease();
+        return activeDescriptor;
+      });
+
+      const { response } = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator({ prepare }),
+      );
+
+      expect(prepare).toHaveBeenCalledWith(CHANNEL, BASE_PATH, activeRelease);
+      expect(await response.text()).toBe('<html>archived</html>');
+    });
+
+    it('returns the controlled unavailable response when restoration leaves a descriptor-listed asset still missing on revalidation', async () => {
+      const prepare = vi.fn().mockImplementation(async () => {
+        // Restoration reports success but the release remains incomplete —
+        // post-restoration validation must still be exhaustive, not merely
+        // re-check the marker and index that were already sufficient before.
+        await seedAvailableRelease(activeRelease, activeDescriptor, false);
+        return activeDescriptor;
+      });
+
+      await expectUnavailableNavigation(
+        invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator({ prepare }),
+        ),
+      );
+      expect(prepare).toHaveBeenCalledTimes(1);
     });
 
     it('resolves a controlled unavailable response when restoration rejects', async () => {

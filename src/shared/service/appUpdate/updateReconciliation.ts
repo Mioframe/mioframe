@@ -33,6 +33,15 @@ export function createUpdateReconciler(
   const reconcile = (): Promise<AppUpdateSnapshot> => {
     if (inFlightPromise) return inFlightPromise;
 
+    // Ownership of `inFlightPromise` must be released synchronously, in the
+    // same uninterrupted execution segment as the final "no rerun pending"
+    // decision below — never through a separate `.finally()` callback. A
+    // `.finally()` attached to `attempt` only runs one or more microtask hops
+    // after this decision, leaving a window where `reconcileAfterModeChange`
+    // can observe a still-assigned `inFlightPromise`, set `rerunRequested`,
+    // and join this same settling attempt — which has already made its final
+    // check and will never look at the flag again, silently losing the
+    // required fresh-state rerun.
     const runUntilSettled = async (): Promise<AppUpdateSnapshot> => {
       rerunRequested = false;
       let result:
@@ -44,16 +53,15 @@ export function createUpdateReconciler(
         result = { status: 'rejected', error };
       }
       if (isRerunRequested()) return runUntilSettled();
+      if (inFlightPromise === attempt) inFlightPromise = undefined;
       if (result.status === 'rejected') throw result.error;
       return result.snapshot;
     };
+    // Deferred through a resolved-promise microtask so `attempt` is already
+    // assigned to `inFlightPromise` (below) by the time `runUntilSettled`
+    // itself starts running and later needs to compare against it.
     const attempt = Promise.resolve().then(runUntilSettled);
     inFlightPromise = attempt;
-    void attempt
-      .finally(() => {
-        if (inFlightPromise === attempt) inFlightPromise = undefined;
-      })
-      .catch(() => {});
     return attempt;
   };
 

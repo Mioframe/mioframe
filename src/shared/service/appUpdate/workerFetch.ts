@@ -6,6 +6,7 @@ import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import {
   buildReleaseCacheName,
+  checkReleaseAvailability,
   isReleaseFilePath,
   readMatchingDescriptorMarker,
   readReleaseIndexMarker,
@@ -75,34 +76,27 @@ async function restoreRelease(
 }
 
 /**
- * Attempts to serve `request` from `cache` using only marker reads and a
- * direct `cache.match()` — never a full-cache enumeration (see
+ * Attempts to serve an owned asset request from `cache` using only a marker
+ * read and a direct `cache.match()` — never a full-cache enumeration (see
  * {@link readMatchingDescriptorMarker}). Returns `undefined` when the exact
- * release is not currently available from `cache` (missing or mismatched
- * descriptor marker, missing archived index for navigation, or a listed
- * asset missing from cache), so the caller can restore and retry once.
- * Returns a controlled `404` directly, without a restore attempt, for an
- * owned asset path the exact descriptor does not list.
+ * release's descriptor marker is missing or mismatched, so the caller can
+ * restore and retry once. Returns a controlled `404` directly, without a
+ * restore attempt, for an owned asset path the exact descriptor does not
+ * list.
  * @param cache - The release's Cache Storage cache.
  * @param release - The exact release identity to serve.
- * @param request - The incoming request.
+ * @param request - The incoming asset request.
  * @param channelBasePath - This worker's channel base path.
- * @param isNavigation - Whether this is a top-level navigation request.
  * @returns The response to serve, or `undefined` when restoration is required.
  */
-async function tryServeFromCache(
+async function tryServeAsset(
   cache: Cache,
   release: ReleaseSummary,
   request: Request,
   channelBasePath: string,
-  isNavigation: boolean,
 ): Promise<Response | undefined> {
   const descriptor = await readMatchingDescriptorMarker(cache, release);
   if (!descriptor) return undefined;
-
-  if (isNavigation) {
-    return readReleaseIndexMarker(cache);
-  }
 
   const relativePath = new URL(request.url).pathname.slice(channelBasePath.length);
   if (!isReleaseFilePath(descriptor, relativePath)) return NOT_FOUND_RESPONSE();
@@ -111,17 +105,46 @@ async function tryServeFromCache(
 }
 
 /**
+ * Attempts to serve a document navigation from `cache`, requiring the
+ * exhaustive {@link checkReleaseAvailability} — descriptor marker, archived
+ * index, and every descriptor-listed file present — rather than the asset
+ * path's marker-only check. Cache Storage entries may be evicted
+ * individually, so a marker and index surviving alone never proves the
+ * release is complete enough to activate; only this exhaustive check may
+ * gate serving the archived index for navigation. Returns `undefined` when
+ * the exact release is not completely available, so the caller can restore
+ * and retry once.
+ * @param cache - The release's Cache Storage cache.
+ * @param release - The exact release identity to serve.
+ * @param channelBasePath - This worker's channel base path.
+ * @returns The archived index response, or `undefined` when restoration is required.
+ */
+async function tryServeNavigation(
+  cache: Cache,
+  release: ReleaseSummary,
+  channelBasePath: string,
+): Promise<Response | undefined> {
+  const available = await checkReleaseAvailability(cache, release, channelBasePath);
+  if (!available) return undefined;
+
+  return readReleaseIndexMarker(cache);
+}
+
+/**
  * Serves `request` from `release`'s cache, restoring it from the immutable
  * server archive and retrying exactly once if its local cache is missing,
  * incomplete, or its commit marker's complete release identity does not
- * exactly match `release` (see {@link tryServeFromCache}). Never falls
- * through to a different release or to the live current deployment: every
- * unavailable outcome fails closed with a controlled `503` or `404`.
+ * exactly match `release`. Never falls through to a different release or to
+ * the live current deployment: every unavailable outcome fails closed with a
+ * controlled `503` or `404`.
  *
- * The healthy path — a matching descriptor marker already present, plus the
- * archived index or the specific requested asset already cached — never
- * enumerates the release cache's complete key set; only the deliberately
- * exhaustive validation in `prepareRelease()` does that.
+ * Asset requests use the fast exact-match path ({@link tryServeAsset}): a
+ * matching descriptor marker plus a direct `cache.match()`, never enumerating
+ * the release cache's complete key set. Document navigation instead requires
+ * the exhaustive {@link tryServeNavigation} check, because Cache Storage
+ * entries may be evicted individually — a descriptor marker and archived
+ * index surviving alone never proves every descriptor-listed asset is still
+ * present, and navigation must never activate an incomplete release.
  *
  * Navigation and asset fetch owners select an activating candidate's target
  * here. Every other candidate phase uses the persisted `activeRelease`.
@@ -133,7 +156,8 @@ async function tryServeFromCache(
  * @param coordinator - The channel's preparation coordinator.
  * @returns The response to serve: the archived index for navigation, the
  * cached asset, a controlled `404` when an owned asset is not listed by the
- * descriptor, or a controlled `503` when `release` cannot be made available.
+ * descriptor, or a controlled `503` when `release` cannot be made completely
+ * available.
  */
 export async function serveRelease(
   channel: ManagedChannel,
@@ -145,21 +169,20 @@ export async function serveRelease(
 ): Promise<Response> {
   const cacheName = buildReleaseCacheName(channel, release.releaseNumber);
 
+  const tryServe = (cache: Cache): Promise<Response | undefined> =>
+    isNavigation
+      ? tryServeNavigation(cache, release, channelBasePath)
+      : tryServeAsset(cache, release, request, channelBasePath);
+
   let cache = await caches.open(cacheName);
-  const initial = await tryServeFromCache(cache, release, request, channelBasePath, isNavigation);
+  const initial = await tryServe(cache);
   if (initial) return initial;
 
   if (!(await restoreRelease(channel, channelBasePath, release, coordinator))) {
     return UNAVAILABLE_RESPONSE();
   }
   cache = await caches.open(cacheName);
-  const revalidated = await tryServeFromCache(
-    cache,
-    release,
-    request,
-    channelBasePath,
-    isNavigation,
-  );
+  const revalidated = await tryServe(cache);
   return revalidated ?? UNAVAILABLE_RESPONSE();
 }
 
