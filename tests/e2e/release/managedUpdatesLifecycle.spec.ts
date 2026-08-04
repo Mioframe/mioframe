@@ -528,11 +528,10 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     // pinned application updates feature, "Automatic preparation is not
     // retried" correction.
     //
-    // Runs last in this shared lifecycle: it schedules a real clean-launch
-    // activation, and every earlier test here (in particular crash recovery,
-    // which compares two raw persisted `activeRelease` reads for exact
-    // shape equality) must keep seeing its own pre-existing state-write
-    // timing undisturbed.
+    // Must run after crash recovery in this shared lifecycle: it schedules a
+    // real clean-launch activation, and crash recovery (which compares two
+    // raw persisted `activeRelease` reads for exact shape equality) must keep
+    // seeing its own pre-existing state-write timing undisturbed.
     const releaseRetry = await buildAndPublishManagedRelease({
       channel: 'stable',
       basePath: BASE_PATH,

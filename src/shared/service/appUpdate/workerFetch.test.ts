@@ -772,7 +772,11 @@ describe('workerFetch', () => {
         await result.runLifetimeWork?.();
         expect(oldPostMessage).not.toHaveBeenCalled();
         expect(newPostMessage).not.toHaveBeenCalled();
-        expect(otherPostMessage).toHaveBeenCalledOnce();
+        expect(otherPostMessage).toHaveBeenCalledExactlyOnceWith({
+          protocolVersion: 1,
+          type: 'APP_UPDATE_ROLLBACK',
+          releaseNumber: candidateRelease.releaseNumber,
+        });
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
@@ -957,6 +961,63 @@ describe('workerFetch', () => {
         expect(runLifetimeWork).toBeTypeOf('function');
         await expect(runLifetimeWork?.()).resolves.toBeUndefined();
         expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('still returns controlled unavailable with rollback lifetime work when serving the previous active release throws from a Cache Storage boundary', async () => {
+        await seedAvailableRelease();
+        let persistedState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'automatic',
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: farFutureDeadlineAt,
+          },
+        };
+        readControllerStateMock.mockImplementation(() =>
+          Promise.resolve({ status: 'valid', state: persistedState }),
+        );
+        writeControllerStateMock.mockImplementation((_channel, state) => {
+          persistedState = state;
+          return Promise.resolve();
+        });
+        const { oldPostMessage, newPostMessage, otherPostMessage } = stubSameChannelClients();
+        const activeCacheName = buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber);
+        const originalOpen = fakeCaches.open;
+        const open = vi.spyOn(fakeCaches, 'open').mockImplementation(async (name) => {
+          if (name === activeCacheName) throw new Error('active cache open failed');
+          return originalOpen(name);
+        });
+
+        const result = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+          { clientId: 'old', resultingClientId: 'new' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.resolve([]),
+          },
+        );
+
+        expect(result.response.status).toBe(503);
+        expect(await result.response.text()).toBe('Release unavailable');
+        expect(persistedState.activeRelease).toEqual(activeRelease);
+        expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
+        expect(result.runLifetimeWork).toBeTypeOf('function');
+        await result.runLifetimeWork?.();
+        expect(oldPostMessage).not.toHaveBeenCalled();
+        expect(newPostMessage).not.toHaveBeenCalled();
+        expect(otherPostMessage).toHaveBeenCalledExactlyOnceWith({
+          protocolVersion: 1,
+          type: 'APP_UPDATE_ROLLBACK',
+          releaseNumber: candidateRelease.releaseNumber,
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+        open.mockRestore();
       });
 
       it('performs no state mutation and no rollback work for an ordinary active-release restoration failure (no candidate)', async () => {

@@ -225,12 +225,15 @@ type NavigationSelection = {
  * {@link releaseSummariesMatch}) — a concurrent commit, prior rollback,
  * controller-state replacement, or same-number/different-metadata state is a
  * no-op here, never serving the stale previously active release. Once the
- * rollback itself is durably persisted, serves the previous `activeRelease`
- * for this same navigation and returns deferred rollback-broadcast work,
- * excluding this navigation's own client identities (it already received the
- * active release directly). Returns `undefined` when no rollback applies, or
- * when persisting the rollback itself fails, so the caller keeps the
- * candidate's original controlled `503` untouched.
+ * rollback itself is durably persisted, the rollback-broadcast work is
+ * already decided and always returned, whether or not the previous
+ * `activeRelease` can actually be served for this same navigation: a Cache
+ * Storage or marker-read exception from that serving attempt falls back to
+ * the existing controlled `503`, excluding this navigation's own client
+ * identities (it already received the active response, or attempted to,
+ * directly). Returns `undefined` when no rollback applies, or when
+ * persisting the rollback itself fails, so the caller keeps the candidate's
+ * original controlled `503` untouched.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming navigation request.
@@ -266,6 +269,14 @@ async function tryRollbackActivatingFailure(
   const excludedClientIds = new Set(
     [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
   );
+  const runLifetimeWork = () =>
+    broadcastRollback(
+      channelBasePath,
+      dependencies.channelOrigin,
+      failedRelease.releaseNumber,
+      excludedClientIds,
+    ).catch(() => {});
+
   const response = await serveRelease(
     channel,
     channelBasePath,
@@ -273,17 +284,9 @@ async function tryRollbackActivatingFailure(
     request,
     true,
     coordinator,
-  );
-  return {
-    response,
-    runLifetimeWork: () =>
-      broadcastRollback(
-        channelBasePath,
-        dependencies.channelOrigin,
-        failedRelease.releaseNumber,
-        excludedClientIds,
-      ).catch(() => {}),
-  };
+  ).catch(() => UNAVAILABLE_RESPONSE());
+
+  return { response, runLifetimeWork };
 }
 
 /**
