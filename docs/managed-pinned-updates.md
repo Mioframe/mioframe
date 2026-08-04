@@ -54,9 +54,20 @@ A failed managed `install` leaves Workbox active. After release 1 activates, rol
 | Entity/widget/pane      | snapshot projection and product composition                                                         |
 | Browser                 | service-worker lifecycle and registration replacement                                               |
 
+Sources of truth:
+
+- latest publication: `updates/latest.json`, written last;
+- release: `updates/releases/<releaseNumber>.json`, archived index, and immutable assets;
+- lifecycle: one validated IndexedDB record per managed channel;
+- prepared bytes: one marker-last Cache Storage cache per channel/release;
+- predecessor compatibility: bounded read-only messages to `registration.active`;
+- UI: last valid worker snapshot plus feature-local transport outcome.
+
 ## Release identity and publication
 
 ```ts
+type ReleaseNumber = number;
+
 type ReleaseFile = {
   path: string;
   sha256: string;
