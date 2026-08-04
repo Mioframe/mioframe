@@ -1,0 +1,130 @@
+<script setup lang="ts">
+import '@m3e/web/loading-indicator';
+// Documented transparent host/adaptor contract (ARCHITECTURE.md "Host-attribute
+// boundary"): `useAttrs` is read-only here and feeds the explicit, family-scoped
+// host-attribute allow-list below. It is never spread wholesale and is not a
+// default forwarding escape hatch.
+// eslint-disable-next-line no-restricted-imports -- see comment above.
+import { computed, onMounted, useAttrs, warn, watchEffect } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const props = withDefaults(
+  defineProps<{
+    /**
+     * Accessible purpose of the ongoing process (Loading indicator accessibility:
+     * "Write a label describing the purpose of the loading indicator, such as
+     * loading news article or refreshing page").
+     */
+    label: string;
+    /**
+     * Overall Loading indicator component size in Material dp, mapped 1:1 to CSS
+     * px. Accepted range is 24 through 240 inclusive (Loading indicator
+     * overview/specs: the indicator "can scale in size" between 24dp and 240dp);
+     * values outside that range are clamped to the nearest bound. Defaults to the
+     * official Material default of 48. The active-indicator area scales
+     * proportionally within this overall size (specs: 38dp active indicator
+     * within the 48dp default overall size).
+     */
+    size?: number;
+  }>(),
+  { size: 48 },
+);
+
+/** Accepted Material dp range (Loading indicator overview/specs: "can scale in size" 24dp-240dp). */
+const MIN_SIZE = 24;
+const MAX_SIZE = 240;
+const DEFAULT_SIZE = 48;
+
+/**
+ * Official Material default active-indicator/overall ratio (38dp active indicator
+ * within a 48dp overall/container size, Loading indicator specs). Preserved when
+ * resizing so the public `size` keeps meaning the overall component size.
+ */
+const MATERIAL_ACTIVE_SIZE_RATIO = 38 / 48;
+
+const normalizedSize = computed(() =>
+  Number.isFinite(props.size) ? Math.min(MAX_SIZE, Math.max(MIN_SIZE, props.size)) : DEFAULT_SIZE,
+);
+
+const activeIndicatorSize = computed(() => normalizedSize.value * MATERIAL_ACTIVE_SIZE_RATIO);
+
+if (import.meta.env.DEV) {
+  onMounted(() => {
+    watchEffect(() => {
+      if (!Number.isFinite(props.size)) {
+        warn(
+          `MDLoadingIndicator: \`size\` must be a finite number; received ${props.size}. Normalized to ${DEFAULT_SIZE}.`,
+        );
+      } else if (props.size !== normalizedSize.value) {
+        warn(
+          `MDLoadingIndicator: \`size\` must be between ${MIN_SIZE} and ${MAX_SIZE}; received ${props.size}. Clamped to ${normalizedSize.value}.`,
+        );
+      }
+    });
+  });
+}
+
+/**
+ * Explicit host width/height carry the public overall Material size (M3E-002:
+ * the m3e uncontained host would otherwise derive its width from the same
+ * private active-size input, collapsing the overall/active distinction). The
+ * private input keeps the confirmed effective (documented-name-divergent,
+ * M3E-001) m3e CSS variable, scaled to the official active-indicator ratio.
+ * Both defects remain confirmed in the consumed 2.6.3 artifact (affected
+ * range 2.6.2-2.6.3); see docs/m3e-defects.md.
+ */
+const style = computed(() => ({
+  width: `${normalizedSize.value}px`,
+  height: `${normalizedSize.value}px`,
+  '--m3e-loading-indicator-size': `${activeIndicatorSize.value}px`,
+}));
+
+const attrs = useAttrs();
+
+/**
+ * Explicit host-attribute allow-list forwarded to the renderer root (see
+ * ARCHITECTURE.md "Host-attribute boundary"): `id`, `title`, `aria-hidden`,
+ * `aria-describedby`, and every `data-*` key are forwarded as-is. `class` and
+ * `style` are handled separately below so the adapter-owned class and the
+ * M3E-001/M3E-002 geometry style always win over a conflicting consumer
+ * value. `$attrs` is read-only; this builds a fresh object rather than
+ * mutating it. Every other attribute or listener (raw renderer `variant`,
+ * `contained`, `role`, value ARIA, `tabindex`, `aria-label`, or an arbitrary
+ * listener) is intentionally not forwarded.
+ *
+ * Called directly from the template (not `computed()`): Vue guarantees `useAttrs()` reflects
+ * the latest attrs during render, but does not guarantee that object is a supported reactive
+ * `computed()` dependency, so this recomputes from the live `attrs` object on every render.
+ * @returns The allow-listed subset of the current host attributes.
+ */
+const getForwardedAttrs = (): Record<string, unknown> => {
+  const forwarded: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === 'id' || key === 'title' || key === 'aria-hidden' || key === 'aria-describedby') {
+      forwarded[key] = value;
+    } else if (key.startsWith('data-')) {
+      forwarded[key] = value;
+    }
+  }
+  return forwarded;
+};
+</script>
+
+<template>
+  <!-- eslint-disable-next-line vue/no-undef-components -- m3e-loading-indicator is selected by config/vueCustomElements.ts. -->
+  <m3e-loading-indicator
+    v-bind="getForwardedAttrs()"
+    :class="['md-loading-indicator', attrs.class]"
+    :aria-label="props.label"
+    :style="[attrs.style, style]"
+  />
+</template>
+
+<style scoped>
+@import './tokens.css';
+
+.md-loading-indicator {
+  vertical-align: middle;
+}
+</style>

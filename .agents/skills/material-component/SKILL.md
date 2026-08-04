@@ -1,128 +1,289 @@
 ---
 name: material-component
-description: 'Use when the user provides only a Material component or family name and wants it created, implemented, migrated, or aligned. Resolve the official family, repository ownership, change mode, consumers, current audit, and minimum supported surface, then run material-component-authoring end to end.'
+description: 'Use with one Material component name to mechanically orchestrate isolated design, architecture, implementation, migration, and review stages, then run one final workflow verification until completion or a genuine blocker.'
 ---
 
 # Material component
 
-Use this as the one-name entrypoint for Material 3 Expressive component work.
+Accept exactly one operator input: the Material component name.
 
-This skill owns only target resolution and workflow startup. It must not duplicate component architecture, implementation, testing, review, or completion rules owned by `material-component-authoring` and `docs/material-3`.
+Do not require an implementation brief, mode, files, dependency list, verification command, or repeated invocation.
 
-## Required input
+## Authority
 
-The only required input is a component or family name.
+Read applicable `AGENTS.md`, `src/shared/ui/material/docs/component-workflow.md`, `verification`, and the selected stage skill.
 
-Examples:
+`component-workflow.md` is the single complete state-machine contract. Do not reconstruct it from README, roadmap, code, tests, or conversation context.
+
+## Orchestrator boundary
+
+The orchestrator may only:
+
+- resolve canonical family names;
+- validate fixed fields, headings, dates, invalidating revisions, routes, and terminal-state invariants;
+- compare renderer and dependency-review revisions with current workspace facts;
+- process explicit dependency queues and routes;
+- maintain an invocation-local dependency path and route stack;
+- launch fresh isolated workers;
+- retain a compact execution ledger;
+- run final read-only verification;
+- pass exact verifier output to a fresh review-routing worker;
+- stop on a genuine family blocker, external workspace blocker, or malformed worker result.
+
+It must not evaluate design or architecture, inspect code for drift, discover consumers, infer dependencies or correction targets, review proof or visuals, classify verifier output, or edit stage-owned files.
+
+## Worker boundary
+
+Each stage runs in a fresh isolated context.
+
+A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths and revisions, active dependency path, and exact dependency, route, blocker, or verifier facts.
+
+Do not pass hidden reasoning, copied worker reports, or conversational conclusions.
+
+Review must be independent from workers that authored or corrected architecture, implementation, or migration.
+
+If fresh isolation is unavailable, stop with a genuine blocker. Workers and orchestrator do not depend on Git, PR, commit, branch, diff, or external-check state.
+
+## Family resolution
+
+Normalize the supplied name against official Material names, existing `MD*` exports, and family paths.
+
+Ask only when readable workspace and official evidence leave multiple materially different official components unresolved.
+
+Canonical family values are exact `components/` path segments, such as `button` or `loadingIndicator`.
+
+## Stage order and route restrictions
+
+Stage order is:
 
 ```text
-Button
-MDButton
-Switch
-Navigation rail
+design < architecture < implementation < migration < review
 ```
 
-The user may explicitly select the skill and enter only the name, or request:
+A same-family route must target a strictly earlier stage than the artifact that emits it.
+
+Same-stage self-routes and routes to review are forbidden. A route to another family may target design, architecture, implementation, or migration.
+
+## Mechanical orchestration
+
+For each artifact in stage order:
+
+1. Validate fields, headings, dates, revisions, dependency invariants, route restrictions, and status invariants.
+2. If the stored artifact is mechanically invalid or externally `stale`, run the owning stage once.
+3. Validate the worker result. If malformed, `stale`, `partial`, or routed to the same family and same stage, stop with a stage-contract blocker. Do not rerun the worker automatically.
+4. If status/verdict is blocked and route is non-`none`, execute the exact correction route.
+5. If status/verdict is blocked and route is `none/none`, stop with the exact genuine blocker.
+6. If the success gate passes, continue.
+7. Any other combination is a stage-contract blocker; do not infer a retry.
+
+A worker must fix defects owned by its current stage before returning. If the stage remains impossible after available mechanisms are exhausted, it returns terminal `blocked` with route `none/none`.
+
+Old `partial` artifacts are mechanically invalid and cause one owning-stage execution. A worker must never return `partial`.
+
+A metadata-only design refresh that preserves `Design contract revision` does not invalidate downstream stages.
+
+## Stage execution
+
+Launch only:
+
+- `material-component-design`;
+- `material-component-architecture`;
+- `material-component-implementation`;
+- `material-component-migration`;
+- `material-component-review`.
+
+After each ordinary stage worker returns, validate only its owned artifact, fixed fields, headings, revisions, route, and terminal result. Semantic compliance belongs to the worker and later independent review.
+
+Final-verifier routing is a mode of `material-component-review`. For an external workspace blocker it returns a compact routing result without editing a family artifact.
+
+## Design refresh
+
+The common refresh interval is 30 calendar days.
+
+Run design when its refresh date is due, status is externally `stale`, or canonical workflow evidence records a newer official source revision.
+
+After design returns, use `Artifact revision` only as file identity and `Design contract revision` as downstream invalidation identity.
+
+Design terminal states are `current` and `blocked`. A design worker must not return `stale` or `self/design`.
+
+## Dependency lifecycle
+
+Read only:
 
 ```text
-material-component Button
+Dependency families: none | <family>[; <family>...]
+Dependency queue: none | <family>[; <family>...]
+Dependency review revisions: none | <family>=<review revision>[; <family>=<review revision>...]
 ```
 
-Do not ask the user to predefine variants, API, scenarios, foundations, files, tests, or consumers.
+Queue and review-revision families must be disjoint and their union must equal dependency families.
 
-## Resolve the target
+Start the active dependency path with the requested parent family.
 
-Before implementation:
+Before entering a queued family, detect whether it equals the current family or already exists in the active path.
 
-1. normalize the supplied name against current official Material 3 Expressive terminology;
-2. inspect existing `MD*` implementations, public exports, direct consumers, the latest `docs/material-3/audits/<family-slug>.md` when present, the component registry, UI inventory, migration map, and roadmap;
-3. resolve the official component surface and smallest cohesive owning family;
-4. identify current and canonical owners;
-5. identify current consumers and required compatibility;
-6. select the change mode automatically.
+On a cycle:
 
-Choose:
+1. stop descending;
+2. construct the exact cycle path;
+3. run architecture once for the family that emitted the cyclic dependency;
+4. require architecture to remove the cycle or return terminal `blocked` with route `none/none`;
+5. validate that worker result under the normal rules.
 
-- `end-to-end-migration` when a legacy production owner exists;
-- `alignment-only` when a canonical owner exists but has incomplete or outdated Material alignment;
-- `new-component` when no production implementation exists;
-- no production rewrite when the canonical component is already complete and current.
+For a valid dependency, append it to the path, process it through current independent review, remove it when returning, then continue. Rerun parent architecture after its queue is complete.
 
-An explicit component name selects the target for this run instead of automatic queue selection. Read the roadmap for real prerequisite blockers, but do not treat queue priority alone as a blocker.
+Before parent implementation or review, compare every recorded dependency review revision with current dependency review. A mismatch runs parent architecture.
 
-Accept common names, plural names, official names, and repository `MD*` names. Ask one precise question only when source and repository inspection still leave two materially different official targets unresolved.
+Do not infer dependencies from imports or names. Do not run separate final verification for dependencies.
 
-## Use the latest family audit
+## Correction routing
 
-When a family audit exists:
+### Same-family route
 
-- compare its recorded implementation ref and commit with the implementation under work;
-- treat confirmed findings as required investigation inputs, not unquestioned truth;
-- resolve each still-current finding through implementation, contract, proof, migration, or rule correction;
-- record why a finding is stale when newer official or implementation evidence invalidates it;
-- do not copy the audit into the family contract;
-- do not mark the audit current after code changes; a fresh `material-component-review` run owns the replacement audit.
+A valid same-family route targets an earlier stage. Run that stage and normal downstream stages; the emitting stage is naturally executed again.
 
-An absent audit is not a blocker for implementation.
+### Cross-family route
 
-## Resolve the supported surface
+Retain:
 
-Use `material3-guidelines` and current official sources.
+```text
+origin: <origin-family>/<origin-stage>
+target: <target-family>/<target-stage>
+```
 
-- Existing consumers and user flows define required scenarios.
-- When no consumer exists, the explicit request is sufficient to implement the current canonical Expressive default.
-- Implement the minimum complete surface required by those scenarios.
-- Record optional official capabilities as unsupported unless a current requirement needs them.
-- Do not preserve baseline Material 3 merely because it matches legacy code.
-- Narrow unsupported scope when official guidance is incomplete and required scenarios remain valid.
+Run the target from its requested stage through current review. Then resume the origin through durable validation from design forward, execute any earlier invalid stages, and always execute the stored origin stage fresh.
 
-Do not ask the user to choose variants or scope that official sources and repository evidence can determine.
+The fresh origin result must clear the route, replace it with a different valid route, or return terminal `blocked`. Do not execute the old target again before that result exists.
 
-## Start the canonical workflow
+Nested routes unwind the most recent origin first.
 
-After resolving the target, load and execute `material-component-authoring` for the resolved family and mode.
+## Durable continuation
 
-Do not stop after research, an audit, a plan, or the family contract. Continue through the complete applicable workflow defined by that skill, including implementation, consumer migration, proportional proof, obsolete-owner removal, rule refinement, agent review, visual handoff, and progress updates.
+Invalidating links are:
 
-Use `material-foundation` only when a cross-family foundation contract changes. Use specialized Vue and testing skills only for applicable implementation and proof layers.
+```text
+DESIGN contract revision → ARCHITECTURE
+Dependency REVIEW revisions → parent ARCHITECTURE
+ARCHITECTURE artifact revision → IMPLEMENTATION
+IMPLEMENTATION artifact revision → MIGRATION
+DESIGN contract + ARCHITECTURE + IMPLEMENTATION + MIGRATION revisions → REVIEW
+```
 
-## Autonomy and blockers
+Invocation-local changed-stage memory is not required for correctness.
 
-Resolve routine technical decisions without requesting approval.
+## Final workflow verification
 
-Escalate only for a genuine blocker already defined by `material-component-authoring`, such as:
+After current successful reviews, run one read-only final command through `verification`.
 
-- an unresolved product choice;
-- materially conflicting or unavailable official evidence for a required scenario;
-- an intentional Mioframe deviation;
-- an incompatible public contract requiring product approval;
-- an unsafe cross-family foundation change;
-- an unresolved verification failure;
-- rejected operator visual evidence.
+Ordinary Material work uses:
 
-A blocker must name one exact decision, summarize the evidence already gathered, and recommend the safest default.
+```text
+pnpm verify
+```
 
-## Result
+On failure, send the exact command, visible output, parent/dependency context, and current family review revisions to a fresh `material-component-review` worker in final-verifier-routing mode.
 
-Finish with:
+### Material-owned result
+
+When the routing worker identifies an exact Material family and earliest stage:
+
+1. validate that only the owning family review was changed;
+2. follow the exact correction route;
+3. resume affected families through durable validation;
+4. rerun affected independent reviews;
+5. rerun the same final command.
+
+### External workspace blocker
+
+When the routing worker returns:
+
+```text
+Classification: external-workspace-blocker
+Required return family: none
+Required return stage: none
+Family reviews changed: none
+Status: blocked
+```
+
+then:
+
+1. verify that no family `REVIEW.md` changed;
+2. preserve all compliant family review revisions and dependency gates;
+3. stop the invocation with overall status `blocked`;
+4. record the exact command, failed external contract, and evidence in the outer final report;
+5. update the mutable roadmap/status owner when the invocation is being durably recorded;
+6. set the next action to the verifier-prescribed focused command followed by the original final command;
+7. do not rebuild current Material artifacts after the external owner fixes the failure unless a durable revision mismatch independently requires it.
+
+A non-failing external warning does not change a family review. Whether it blocks completion follows the root verification contract.
+
+The outer final-command result never changes a compliant family review merely because the command failed elsewhere.
+
+## Compact execution ledger
+
+Retain one record per worker execution:
+
+```text
+family: <canonical-family>
+stage: design | architecture | implementation | migration | review
+result: complete | blocked | stage-contract-blocked
+artifact: <path>
+artifact revision: <exact Artifact revision>
+origin: none | <canonical-family>/<stage>
+target: none | <canonical-family>/<stage>
+dependency path: none | <family>[ → <family>...]
+verification: not-applicable | passed | failed | blocked
+```
+
+For final-verifier routing also retain:
+
+```text
+classification: material-owned | external-workspace-blocker
+family reviews changed: none | <canonical-family>
+```
+
+Do not retain full worker reports or artifact prose.
+
+## Final report
 
 ```text
 MATERIAL COMPONENT RESULT
-Requested name:
-Resolved family:
-Change mode:
-Canonical owner:
-Supported surface:
-Unsupported surface:
-Audit consumed: none | docs/material-3/audits/<family-slug>.md
-Audit findings resolved or invalidated: none | <summary>
-Consumers migrated:
-Foundation changes:
-Rule refinements: none | <summary>
-Verification:
-Legacy owner removal: not applicable | complete | blocked
-Operator visual acceptance: not applicable | required | blocked
-Status: complete | blocked (<exact reason>)
+Input component:
+Resolved official component:
+Canonical family:
+Execution ledger:
+- <compact record per worker execution>
+Dependencies processed:
+Correction routes:
+DESIGN.md status:
+ARCHITECTURE.md status:
+IMPLEMENTATION.md status:
+MIGRATION.md status:
+REVIEW.md verdict:
+Final workflow verification command:
+Final workflow verification result:
+Final verifier classification: none | material-owned | external-workspace-blocker
+Operator visual status: no-reported-defect | defect-reported | not-applicable
+Remaining blocker: none | <exact blocker>
+Overall family status: complete | blocked
+Next operator action: none | <single required action>
 ```
 
-`complete` requires every non-visual completion gate from `material-component-authoring` to pass and one canonical production owner to remain.
+A family may remain `compliant` and ready while the outer result is blocked by an external workspace contract.
+
+## Forbidden
+
+- Requiring one operator command per stage.
+- Performing stage-owned reasoning or edits in the orchestrator.
+- Selecting routes from prose.
+- Retrying terminal `blocked` with route `none/none`.
+- Accepting `partial`, terminal `stale`, or a same-stage self-route from a worker.
+- Writing an external verifier failure into a family `REVIEW.md`.
+- Invalidating dependency gates because an unrelated workspace test failed.
+- Using dependency gates.
+- Ignoring dependency cycles or revision mismatches.
+- Returning directly to an origin stage without durable validation.
+- Interpreting verifier output without fresh review routing.
+- Reusing one worker context for multiple stages.
+- Depending on Git, PR, or external checks.
+- Marking completion before final verification passes.

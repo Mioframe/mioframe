@@ -15,6 +15,24 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const MANAGED_MARKER = '<!-- managed:agent-compat -->';
+const REQUIRED_PROJECT_SKILL_FRONTMATTER_KEYS = new Set(['name', 'description']);
+const SUPPORTED_SKILL_FRONTMATTER_KEYS = new Set([
+  'name',
+  'description',
+  'when_to_use',
+  'argument-hint',
+  'arguments',
+  'disable-model-invocation',
+  'user-invocable',
+  'allowed-tools',
+  'model',
+  'effort',
+  'context',
+  'agent',
+  'hooks',
+  'paths',
+  'shell',
+]);
 
 const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
@@ -24,7 +42,7 @@ const ROOT_CLAUDE_MD = `<!-- managed:agent-compat -->
 
 This repository uses AGENTS.md as the canonical agent instruction format.
 
-Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or skill files under .agents/skills instead.
+Do not duplicate project policy in CLAUDE.md. Update AGENTS.md, nested AGENTS.md, or canonical skill files under .agents/skills instead.
 `;
 
 const NESTED_CLAUDE_MD = `<!-- managed:agent-compat -->
@@ -32,7 +50,6 @@ const NESTED_CLAUDE_MD = `<!-- managed:agent-compat -->
 @AGENTS.md
 `;
 
-/** Directories to skip entirely during traversal. */
 const IGNORED_DIRS = new Set([
   'node_modules',
   'dist',
@@ -53,25 +70,25 @@ const IGNORED_DIRS = new Set([
 ]);
 
 /**
- * Find all matching files under the given root, skipping ignored directories.
- * @param root Absolute repository path.
+ * Find matching files below a root while excluding generated and local state.
+ * @param root Absolute search root.
  * @param fileName File name to match.
- * @returns Relative posix paths.
+ * @returns Relative POSIX paths.
  */
 function findNamedFiles(root, fileName) {
   const results = [];
 
-  function visit(dir) {
+  function visit(directory) {
     let entries;
 
     try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
+      entries = fs.readdirSync(directory, { withFileTypes: true });
     } catch {
       return;
     }
 
     for (const entry of entries) {
-      const entryPath = path.join(dir, entry.name);
+      const entryPath = path.join(directory, entry.name);
 
       if (entry.isDirectory()) {
         if (!IGNORED_DIRS.has(entry.name)) {
@@ -81,8 +98,7 @@ function findNamedFiles(root, fileName) {
       }
 
       if (entry.isFile() && entry.name === fileName) {
-        const rel = path.relative(root, entryPath);
-        results.push(rel.split(path.sep).join('/'));
+        results.push(path.relative(root, entryPath).split(path.sep).join('/'));
       }
     }
   }
@@ -92,69 +108,92 @@ function findNamedFiles(root, fileName) {
 }
 
 /**
- * Find all AGENTS.md files under the given root, skipping ignored directories.
- * @param root Absolute repository path.
- * @returns AGENTS.md paths relative to the repository root.
+ * Validate canonical Claude Code skill frontmatter.
+ * @param root Repository root.
+ * @returns Frontmatter validation result.
  */
+export function checkSkillFrontmatter(root) {
+  const skillsRoot = path.join(root, '.agents', 'skills');
+  const errors = [];
+
+  if (!fs.existsSync(skillsRoot)) {
+    return { errors, fixes: [] };
+  }
+
+  for (const skillRelPath of findNamedFiles(skillsRoot, 'SKILL.md')) {
+    const displayPath = path.posix.join('.agents/skills', skillRelPath);
+    const content = fs.readFileSync(path.join(skillsRoot, skillRelPath), 'utf8');
+    const lines = content.split(/\r?\n/);
+
+    if (lines[0] !== '---') {
+      errors.push(`${displayPath} must start with YAML frontmatter delimited by ---.`);
+      continue;
+    }
+
+    const closingIndex = lines.indexOf('---', 1);
+
+    if (closingIndex === -1) {
+      errors.push(`${displayPath} has no closing --- for YAML frontmatter.`);
+      continue;
+    }
+
+    const keys = [];
+
+    for (const line of lines.slice(1, closingIndex)) {
+      const match = /^([a-zA-Z0-9_-]+):(?:\s|$)/.exec(line);
+
+      if (match) {
+        keys.push(match[1]);
+      }
+    }
+
+    for (const requiredKey of REQUIRED_PROJECT_SKILL_FRONTMATTER_KEYS) {
+      if (!keys.includes(requiredKey)) {
+        errors.push(`${displayPath} is missing required project frontmatter key '${requiredKey}'.`);
+      }
+    }
+
+    const unsupportedKeys = [...new Set(keys)].filter(
+      (key) => !SUPPORTED_SKILL_FRONTMATTER_KEYS.has(key),
+    );
+
+    if (unsupportedKeys.length > 0) {
+      errors.push(
+        `${displayPath} uses undocumented Claude Code skill frontmatter keys: ${unsupportedKeys.join(', ')}. ` +
+          `Use documented frontmatter fields or put project routing instructions in the skill body.`,
+      );
+    }
+  }
+
+  return { errors, fixes: [] };
+}
+
 function findAgentsMd(root) {
   return findNamedFiles(root, 'AGENTS.md');
 }
 
-/**
- * Find all CLAUDE.md files under the given root, skipping ignored directories.
- * @param root Absolute repository path.
- * @returns CLAUDE.md paths relative to the repository root.
- */
 function findClaudeMd(root) {
   return findNamedFiles(root, 'CLAUDE.md');
 }
 
-/**
- * Return expected CLAUDE.md content for a given AGENTS.md relative path.
- * @param agentsRelPath Relative posix path like "AGENTS.md" or "src/foo/AGENTS.md".
- * @returns Managed CLAUDE.md content for that location.
- */
 function expectedClaudeContent(agentsRelPath) {
   return agentsRelPath === 'AGENTS.md' ? ROOT_CLAUDE_MD : NESTED_CLAUDE_MD;
 }
 
-/**
- * Derive the sibling CLAUDE.md path from an AGENTS.md path.
- * @param agentsRelPath Relative AGENTS.md path.
- * @returns Relative sibling CLAUDE.md path.
- */
 function siblingClaudePath(agentsRelPath) {
   return agentsRelPath.replace(/AGENTS\.md$/, 'CLAUDE.md');
 }
 
-/**
- * Derive the sibling AGENTS.md path from a CLAUDE.md path.
- * @param claudeRelPath Relative CLAUDE.md path.
- * @returns Relative sibling AGENTS.md path.
- */
 function siblingAgentsPath(claudeRelPath) {
   return claudeRelPath.replace(/CLAUDE\.md$/, 'AGENTS.md');
 }
 
-/**
- * Determine whether a CLAUDE.md file is managed by this script.
- * @param claudeAbsPath Absolute CLAUDE.md path.
- * @returns True when the file contains the managed marker.
- */
 function isManagedClaudeMd(claudeAbsPath) {
-  if (!fs.existsSync(claudeAbsPath)) {
-    return false;
-  }
-
-  return fs.readFileSync(claudeAbsPath, 'utf8').includes(MANAGED_MARKER);
+  return (
+    fs.existsSync(claudeAbsPath) && fs.readFileSync(claudeAbsPath, 'utf8').includes(MANAGED_MARKER)
+  );
 }
 
-/**
- * Remove a file if it exists and then recursively remove now-empty parent dirs.
- * Stops before deleting the repository root.
- * @param root Absolute repository path.
- * @param fileAbsPath Absolute file path to remove.
- */
 function removeFileAndEmptyParents(root, fileAbsPath) {
   fs.rmSync(fileAbsPath, { force: true });
 
@@ -173,37 +212,50 @@ function removeFileAndEmptyParents(root, fileAbsPath) {
 }
 
 /**
- * Check whether git ignores a path.
- * git check-ignore semantics:
- *   - exit code 0: ignored
- *   - exit code 1: not ignored
- *   - exit code >1: operational failure
- * @param root Absolute temp repo root.
- * @param relPath Relative path to check.
- * @returns Whether the path is ignored.
+ * Query git ignore semantics while retaining the deciding source and pattern.
+ * @param root Repository root.
+ * @param relPath Relative path to query.
+ * @returns Ignore decision.
  */
-function isIgnoredByGit(root, relPath) {
-  const result = spawnSync('git', ['check-ignore', '-q', '--no-index', relPath], {
+function queryGitIgnoreDecision(root, relPath) {
+  const result = spawnSync('git', ['check-ignore', '--verbose', '--stdin', '-z', '--no-index'], {
     cwd: root,
-    stdio: 'ignore',
+    input: `${relPath}\0`,
+    encoding: 'utf8',
   });
 
-  if (result.status === 0) {
-    return true;
+  if (result.error) {
+    return { kind: 'error', message: result.error.message };
   }
 
-  if (result.status === 1) {
-    return false;
+  if (result.status !== 0 && result.status !== 1) {
+    return {
+      kind: 'error',
+      message:
+        (result.stderr && result.stderr.trim()) ||
+        `git check-ignore exited with status ${result.status}`,
+    };
   }
 
-  throw new Error(`git check-ignore failed for ${relPath}`);
+  const [source, lineNumber, pattern] = result.stdout.split('\0');
+
+  if (!pattern) {
+    return { kind: 'none' };
+  }
+
+  return {
+    kind: pattern.startsWith('!') ? 'unignored' : 'ignored',
+    source,
+    lineNumber,
+    pattern,
+  };
 }
 
 /**
- * Check and optionally fix all CLAUDE.md adapters.
+ * Check and optionally repair managed CLAUDE.md adapters.
  * @param root Repository root.
- * @param fix Whether to apply fixes.
- * @returns Collected adapter errors and applied fixes.
+ * @param fix Whether to apply safe repairs.
+ * @returns Adapter validation result.
  */
 export function checkClaudeMdAdapters(root, fix) {
   const agentsMdPaths = findAgentsMd(root);
@@ -226,7 +278,6 @@ export function checkClaudeMdAdapters(root, fix) {
           `Missing managed adapter: ${claudeRelPath} (run \`pnpm verify --fix-only\` with the original task scope to create it)`,
         );
       }
-
       continue;
     }
 
@@ -260,9 +311,8 @@ export function checkClaudeMdAdapters(root, fix) {
     }
 
     const agentsRelPath = siblingAgentsPath(claudeRelPath);
-    const agentsAbsPath = path.join(root, agentsRelPath);
 
-    if (fs.existsSync(agentsAbsPath)) {
+    if (fs.existsSync(path.join(root, agentsRelPath))) {
       continue;
     }
 
@@ -280,10 +330,10 @@ export function checkClaudeMdAdapters(root, fix) {
 }
 
 /**
- * Check and optionally fix the .claude/skills symlink.
+ * Check and optionally repair the .claude/skills compatibility symlink.
  * @param root Repository root.
- * @param fix Whether to apply fixes.
- * @returns Collected symlink errors and applied fixes.
+ * @param fix Whether to apply safe repairs.
+ * @returns Symlink validation result.
  */
 export function checkSkillsSymlink(root, fix) {
   const agentsSkillsAbs = path.join(root, '.agents', 'skills');
@@ -318,7 +368,6 @@ export function checkSkillsSymlink(root, fix) {
         `.agents/skills exists but .claude/skills symlink is missing (run \`pnpm verify --fix-only\` with the original task scope to create it)`,
       );
     }
-
     return { errors, fixes };
   }
 
@@ -342,40 +391,49 @@ export function checkSkillsSymlink(root, fix) {
   return { errors, fixes };
 }
 
-/**
- * Select the symlink type for directory links on the current platform.
- * Windows directory symlinks should use `junction` for broad compatibility.
- * @param platform Node platform identifier.
- * @returns Symlink type to pass to fs.symlinkSync.
- */
 export function getDirectorySymlinkType(platform) {
   return platform === 'win32' ? 'junction' : undefined;
 }
 
 /**
- * Validate .gitignore rules that affect managed compatibility files.
+ * Validate repository-owned ignore rules for managed Claude compatibility state.
  * @param root Repository root.
- * @returns Collected .gitignore validation errors.
+ * @returns Gitignore validation result.
  */
 export function checkGitignoreCompatibility(root) {
   const errors = [];
+  const skillsDecision = queryGitIgnoreDecision(root, '.claude/skills');
 
-  try {
-    if (isIgnoredByGit(root, '.claude/skills')) {
-      errors.push(
-        `.claude/skills must not be ignored by git. Update .gitignore so the managed compatibility symlink stays visible, then rerun the scoped \`pnpm verify --fix-only\` command if adapters or links need repair.`,
-      );
-    }
-
-    if (!isIgnoredByGit(root, '.claude/settings.local.json')) {
-      errors.push(
-        `.claude/settings.local.json must remain ignored by git. Update .gitignore so local Claude state stays untracked; \`pnpm verify --fix-only\` will not change .gitignore for you.`,
-      );
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+  if (skillsDecision.kind === 'error') {
     errors.push(
-      `Unable to validate .gitignore compatibility with git check-ignore: ${message}. Fix the repository git setup and rerun pnpm verify.`,
+      `Unable to validate .gitignore compatibility with git check-ignore for .claude/skills: ${skillsDecision.message}. Fix the repository git setup and rerun pnpm verify.`,
+    );
+  } else if (skillsDecision.kind === 'ignored') {
+    errors.push(
+      `.claude/skills must not be ignored by git, but ${skillsDecision.source}:${skillsDecision.lineNumber} ('${skillsDecision.pattern}') ignores it. Update .gitignore so the managed compatibility symlink stays visible, then rerun the scoped \`pnpm verify --fix-only\` command if adapters or links need repair.`,
+    );
+  }
+
+  const settingsPath = '.claude/settings.local.json';
+  const settingsDecision = queryGitIgnoreDecision(root, settingsPath);
+
+  if (settingsDecision.kind === 'error') {
+    errors.push(
+      `Unable to validate .gitignore compatibility with git check-ignore for ${settingsPath}: ${settingsDecision.message}. Fix the repository git setup and rerun pnpm verify.`,
+    );
+  } else if (settingsDecision.kind !== 'ignored' || settingsDecision.source !== '.gitignore') {
+    let detail;
+
+    if (settingsDecision.kind === 'none') {
+      detail = 'no ignore rule matches it';
+    } else if (settingsDecision.kind === 'unignored') {
+      detail = `a negated rule at ${settingsDecision.source}:${settingsDecision.lineNumber} ('${settingsDecision.pattern}') un-ignores it`;
+    } else {
+      detail = `the deciding rule comes from ${settingsDecision.source}:${settingsDecision.lineNumber} ('${settingsDecision.pattern}'), not the repository .gitignore`;
+    }
+
+    errors.push(
+      `${settingsPath} must be protected by a positive rule in the repository root .gitignore, but ${detail}. Update .gitignore so local Claude state stays untracked; \`pnpm verify --fix-only\` will not change .gitignore for you.`,
     );
   }
 
@@ -383,25 +441,33 @@ export function checkGitignoreCompatibility(root) {
 }
 
 /**
- * Run all agent-environment checks/fixes.
+ * Run all agent environment checks and optional safe repairs.
  * @param root Repository root.
- * @param fix Whether to apply fixes.
- * @returns Collected errors and applied fixes for the full agent environment.
+ * @param fix Whether to apply safe repairs.
+ * @returns Combined validation result.
  */
 export function checkAgentEnvironment(root, fix) {
   const claudeResult = checkClaudeMdAdapters(root, fix);
   const skillsResult = checkSkillsSymlink(root, fix);
+  const skillFrontmatterResult = checkSkillFrontmatter(root);
   const gitignoreResult = checkGitignoreCompatibility(root);
 
   return {
-    errors: [...claudeResult.errors, ...skillsResult.errors, ...gitignoreResult.errors],
-    fixes: [...claudeResult.fixes, ...skillsResult.fixes, ...gitignoreResult.fixes],
+    errors: [
+      ...claudeResult.errors,
+      ...skillsResult.errors,
+      ...skillFrontmatterResult.errors,
+      ...gitignoreResult.errors,
+    ],
+    fixes: [
+      ...claudeResult.fixes,
+      ...skillsResult.fixes,
+      ...skillFrontmatterResult.fixes,
+      ...gitignoreResult.fixes,
+    ],
   };
 }
 
-/**
- * Main entry point.
- */
 function main() {
   const args = process.argv.slice(2);
   const fix = args.includes('--fix');
@@ -413,25 +479,25 @@ function main() {
   }
 
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const { errors: allErrors, fixes: allFixes } = checkAgentEnvironment(root, fix);
+  const { errors, fixes } = checkAgentEnvironment(root, fix);
 
-  for (const msg of allFixes) {
-    console.log(`[agent-environment] fixed: ${msg}`);
+  for (const message of fixes) {
+    console.log(`[agent-environment] fixed: ${message}`);
   }
 
-  for (const msg of allErrors) {
-    console.error(`[agent-environment] error: ${msg}`);
+  for (const message of errors) {
+    console.error(`[agent-environment] error: ${message}`);
   }
 
-  if (allErrors.length > 0) {
+  if (errors.length > 0) {
     process.exit(1);
   }
 
-  if (allFixes.length === 0 && fix) {
+  if (fixes.length === 0 && fix) {
     console.log('[agent-environment] nothing to fix');
   }
 
-  if (check && allErrors.length === 0) {
+  if (check) {
     console.log('[agent-environment] ok');
   }
 }

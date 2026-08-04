@@ -5,7 +5,7 @@ description: 'Use for deterministic pure, domain, service, storage, CRDT, valida
 
 # Unit testing workflow
 
-Follow `docs/testing/architecture.md`. This skill creates deterministic proof in the `unit-tests` execution lane. Use `component-contract-testing` for Vue public contracts and `ui-browser-behavior` for real browser semantics.
+Follow `docs/testing/architecture.md`. This skill creates deterministic proof in the `unit-tests` lane. Use `component-contract-testing` for Vue public contracts and `ui-browser-behavior` for real browser semantics.
 
 ## Activation
 
@@ -18,7 +18,7 @@ Use when accepted behavior can be proved without browser rendering or a complete
 - service, storage, CRDT, worker, and protocol behavior at deterministic boundaries;
 - module-level integration where several real modules collaborate without browser or full application orchestration.
 
-Do not describe service/storage/CRDT boundary tests as pure behavior when they depend on owned state or collaboration. They remain deterministic behavior in the same execution lane.
+Do not describe service, storage, or CRDT boundary tests as pure behavior when they depend on owned state or collaboration. They remain deterministic behavior in the same execution lane.
 
 ## Workflow
 
@@ -71,9 +71,9 @@ Prefer focused deterministic tests plus one faithful product scenario when both 
 pnpm verify --only unit-tests --files <exact-owning-test-paths...>
 ```
 
-Until the unit resolver migration is implemented, prefer exact owning test files. A production source path is valid only when the current sibling relation is confirmed; current `verify` may miss non-sibling importing tests. Do not assume the target related-test resolver already exists.
+Until unit-impact migration is implemented, prefer exact owning test files. A production source path is valid only when the current relation is confirmed; do not assume the target related-test resolver already exists.
 
-The top-level task later runs one final read-only task-scope verification covering the complete branch diff.
+The top-level task later runs one final read-only project verification.
 
 ## Forbidden
 
@@ -81,5 +81,5 @@ The top-level task later runs one final read-only task-scope verification coveri
 - mocking an owned module merely to assert that the mock was called;
 - extracting a helper solely to make code testable when ownership or total complexity becomes worse;
 - using `happy-dom` for focus, pointer, layout, scrolling, overlay, responsive, or browser-lifecycle semantics;
-- duplicating component-contract, Storybook behavior, app E2E, or visual proof;
+- duplicating component-contract, Storybook behavior, application E2E, or visual proof;
 - adding artificial imports or wrappers only to influence automatic test selection.

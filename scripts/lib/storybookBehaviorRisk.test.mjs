@@ -279,6 +279,11 @@ describe('validateStorybookBehaviorScenarioRegistry deterministic spec injection
 });
 
 describe('resolveStorybookBehaviorPlan', () => {
+  it('never uses behavior spec paths as scenario source prefixes', () => {
+    for (const scenario of STORYBOOK_BEHAVIOR_SCENARIO_SCOPES) {
+      expect(scenario.sourcePrefixes.some((prefix) => prefix.endsWith('.spec.ts'))).toBe(false);
+    }
+  });
   it('runs the full lane for the behavior Playwright config', () => {
     const plan = resolveStorybookBehaviorPlan(['playwright.storybook.config.ts']);
 
@@ -363,7 +368,9 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 
   it('focuses the smoke spec and the button family spec for an MDButton story change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.stories.ts']);
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/ui/material/components/button/MDButton.stories.ts',
+    ]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
@@ -373,7 +380,9 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 
   it('focuses the smoke spec and the button family spec for an MDButton component change', () => {
-    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDButton.vue']);
+    const plan = resolveStorybookBehaviorPlan([
+      'src/shared/ui/material/components/button/MDButton.vue',
+    ]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
@@ -412,7 +421,7 @@ describe('resolveStorybookBehaviorPlan', () => {
 
   it('focuses the button family spec for a colocated Button story fixture change', () => {
     const plan = resolveStorybookBehaviorPlan([
-      'src/shared/ui/Button/MDButtonTargetHitVisualStory.vue',
+      'src/shared/ui/material/components/button/MDButtonTargetHitVisualStory.vue',
     ]);
 
     expect(plan.mode).toBe('focused');

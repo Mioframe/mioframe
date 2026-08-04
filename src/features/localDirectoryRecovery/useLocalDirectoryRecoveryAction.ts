@@ -12,7 +12,7 @@ type RequestAccessResult = Awaited<
 
 /**
  * Owns the user-triggered permission recovery action for remembered local directories.
- * Keeps browser permission mode selection and loading state out of widgets/pages.
+ * Keeps browser permission mode selection and pending state out of widgets/pages.
  * @param recovery - Current local-directory recovery request exposed by the detecting layer.
  * @returns Explicit action handlers and UI-facing state for the recovery controls.
  */
@@ -24,6 +24,9 @@ export const useLocalDirectoryRecoveryAction = ({
   const { requestAccess } = useFileSystemAccessPermissionBroker();
   const activeRequestedMode = ref<RequestedMode>();
   const recoveryMessageOverride = ref<string>();
+  const isGrantLocalDirectoryAccessPending = computed(
+    () => activeRequestedMode.value !== undefined,
+  );
 
   watch(
     recovery,
@@ -72,17 +75,17 @@ export const useLocalDirectoryRecoveryAction = ({
   return {
     grantFullAccess: () => grantAccess('readwrite'),
     grantReadOnlyAccess: () => grantAccess('read'),
-    isGrantFullAccessLoading: computed(() => activeRequestedMode.value === 'readwrite'),
-    isGrantReadOnlyAccessLoading: computed(() => activeRequestedMode.value === 'read'),
+    isGrantLocalDirectoryAccessPending,
     isGrantLocalDirectoryAccessDisabled: computed(
-      () => !recovery.value || activeRequestedMode.value !== undefined,
+      () => !recovery.value || isGrantLocalDirectoryAccessPending.value,
     ),
-    localDirectoryRecoveryMessage: computed(
-      () =>
-        recoveryMessageOverride.value ??
-        (recovery.value
-          ? `Mioframe remembers "${recovery.value.spaceName}", but your browser requires permission before opening it.`
-          : ''),
+    localDirectoryRecoveryMessage: computed(() =>
+      isGrantLocalDirectoryAccessPending.value
+        ? 'Waiting for browser permission. If access is granted, Mioframe will restore this space.'
+        : (recoveryMessageOverride.value ??
+          (recovery.value
+            ? `Mioframe remembers "${recovery.value.spaceName}", but your browser requires permission before opening it.`
+            : '')),
     ),
   };
 };

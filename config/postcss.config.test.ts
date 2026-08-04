@@ -26,18 +26,20 @@ describe('postcss custom Material units', () => {
 
   it('keeps Material typescale authoring free of legacy pt units', () => {
     const materialBaseUnits = readFileSync('./src/shared/lib/md/index.css', 'utf8');
-    const materialTokens = readFileSync('./src/shared/lib/md/tokens.css', 'utf8');
+    const foundationTokens = readFileSync('./src/shared/ui/material/foundation/tokens.css', 'utf8');
+    const foundationTheme = readFileSync('./src/shared/ui/material/foundation/theme.css', 'utf8');
 
     expect(materialBaseUnits).toContain('--one-sp: 1px;');
-    expect(materialTokens).toContain('--app-debug-unknown-color');
-    expect(materialTokens).not.toContain('--unknownColor');
-    expect(materialTokens).not.toMatch(/\b\d*\.?\d+pt\b/);
+    expect(foundationTokens).not.toContain('--app-debug-unknown-color');
+    expect(foundationTheme).not.toContain('--app-debug-unknown-color');
+    expect(foundationTokens).not.toContain('--unknownColor');
+    expect(foundationTokens).not.toMatch(/\b\d*\.?\d+pt\b/);
   });
 
   it('defines the Material system dragged state opacity token', () => {
-    const materialTokens = readFileSync('./src/shared/lib/md/tokens.css', 'utf8');
+    const foundationTokens = readFileSync('./src/shared/ui/material/foundation/tokens.css', 'utf8');
 
-    expect(materialTokens).toContain('--md-sys-state-dragged-state-layer-opacity: 0.16;');
-    expect(materialTokens).not.toContain('--md-private-state-dragged-state-layer-opacity');
+    expect(foundationTokens).toContain('--md-sys-state-dragged-state-layer-opacity: 16%;');
+    expect(foundationTokens).not.toContain('--md-private-state-dragged-state-layer-opacity');
   });
 });

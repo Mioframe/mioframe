@@ -163,7 +163,6 @@ test.describe('overlay tooltip lifecycle', () => {
 
     await openButton.click();
     await expect(tooltipAction).toBeVisible();
-
     await outsideButton.click();
     await expect(tooltipAction).toHaveCount(0);
     await expect(
@@ -193,6 +192,16 @@ test.describe('rich tooltip lifecycle', () => {
 
     await openButton.click();
     await expect(tooltipAction).toBeVisible();
+    await expect(page.locator('.md-rich-tooltip__subhead')).toHaveCSS('color', 'rgb(73, 69, 79)');
+    await expect(page.locator('.md-rich-tooltip__supporting-text')).toHaveCSS(
+      'color',
+      'rgb(73, 69, 79)',
+    );
+    await expect(
+      page
+        .getByRole('button', { name: 'Rich tooltip Material action' })
+        .locator('.md-button__label-text'),
+    ).toHaveCSS('color', 'rgb(103, 80, 164)');
 
     await outsideButton.click();
     await expect(tooltipAction).toHaveCount(0);

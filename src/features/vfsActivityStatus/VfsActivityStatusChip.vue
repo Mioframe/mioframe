@@ -2,7 +2,7 @@
 import { useVfsActivity } from '@entity/vfsActivity';
 import { useMainServiceClient } from '@shared/service';
 import { useFileSystemAccessPermissionBroker } from '@shared/serviceClient/fileSystem';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDAssistChip } from '@shared/ui/Chips';
 import { MDSymbol } from '@shared/ui/Icon';
 import { useSnackbar } from '@shared/ui/Snackbar';
@@ -20,7 +20,7 @@ const props = defineProps<{
 
 const triggerRef = useTemplateRef<ComponentPublicInstance>('triggerRef');
 const showErrorDetails = ref(false);
-const isGrantWriteAccessLoading = ref(false);
+const isGrantWriteAccessPending = ref(false);
 const { addSnackbar } = useSnackbar();
 const {
   fileSystem: { acknowledgeVfsActivityError: dismissSaveStatusError },
@@ -97,7 +97,7 @@ const onClickCopyDetails = async () => {
 };
 
 const onClickGrantWriteAccess = async () => {
-  if (isGrantWriteAccessLoading.value) {
+  if (isGrantWriteAccessPending.value) {
     return;
   }
 
@@ -107,7 +107,7 @@ const onClickGrantWriteAccess = async () => {
     return;
   }
 
-  isGrantWriteAccessLoading.value = true;
+  isGrantWriteAccessPending.value = true;
 
   try {
     const result = await requestAccess({
@@ -152,7 +152,7 @@ const onClickGrantWriteAccess = async () => {
       text: 'Could not request browser write access. Try again from this action.',
     });
   } finally {
-    isGrantWriteAccessLoading.value = false;
+    isGrantWriteAccessPending.value = false;
   }
 };
 
@@ -181,14 +181,25 @@ const onInteractionOutside = () => {
     :target-element="triggerRef"
     @interaction-outside="onInteractionOutside"
   >
-    <div class="vfs-activity-status-chip__tooltip">
+    <div
+      class="vfs-activity-status-chip__tooltip"
+      :role="isGrantWriteAccessPending ? 'status' : undefined"
+      :aria-live="isGrantWriteAccessPending ? 'polite' : undefined"
+    >
       <template v-if="isActive">
         <p>Changes are still being saved.</p>
         <p>Keep this folder open until saving finishes.</p>
       </template>
 
       <template v-else>
-        <template v-if="storageFailureAfterGrant">
+        <template v-if="isGrantWriteAccessPending">
+          <p>
+            Waiting for browser permission. Unsaved changes will be restored after access is
+            granted.
+          </p>
+        </template>
+
+        <template v-else-if="storageFailureAfterGrant">
           <p>Could not confirm the last save.</p>
           <p>Write access was granted but a storage failure prevented the save from completing.</p>
         </template>
@@ -221,9 +232,8 @@ const onInteractionOutside = () => {
       <MDButton
         v-if="hasWriteAccessRecovery"
         color="text"
-        :disabled="isGrantWriteAccessLoading"
+        :disabled="isGrantWriteAccessPending"
         label="Grant write access"
-        :loading="isGrantWriteAccessLoading"
         @click="onClickGrantWriteAccess"
       />
       <MDButton v-if="isError" color="text" label="Dismiss" @click="onClickDismissError" />

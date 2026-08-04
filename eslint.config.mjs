@@ -19,6 +19,54 @@ const vueUiCommunicationFiles = [
   'src/{app,pages,widgets,features,entities}/**/setup*.{ts,mts,tsx}',
 ];
 
+const materialLibraryFiles = 'src/shared/ui/material/**';
+
+const noAttrsImportPath = {
+  name: 'vue',
+  importNames: ['useAttrs'],
+  message:
+    'Do not use useAttrs as a default forwarding escape hatch. Use explicit props/emits/slots, or document a transparent host/adaptor contract with a local lint exception.',
+};
+
+const vueTemplateExpressionSelectors = [
+  {
+    selector:
+      "VAttribute[directive=true][key.name.name='on'] VExpressionContainer ArrowFunctionExpression",
+    message:
+      'Do not use anonymous inline arrow handlers in Vue templates. Use a named handler from <script setup>, e.g. @click="onClickItem(item.id)".',
+  },
+  {
+    selector:
+      "VAttribute[directive=true][key.name.name='on'] VExpressionContainer FunctionExpression",
+    message:
+      'Do not use anonymous inline function handlers in Vue templates. Use a named handler from <script setup>.',
+  },
+  {
+    selector:
+      "VAttribute[directive=true][key.name.name='on'] VExpressionContainer AssignmentExpression",
+    message:
+      'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
+  },
+  {
+    selector:
+      "VAttribute[directive=true][key.name.name='on'] VExpressionContainer UpdateExpression",
+    message:
+      'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
+  },
+];
+
+const m3eImportRestrictionPattern = {
+  group: ['@m3e/web', '@m3e/web/*'],
+  message:
+    'Direct @m3e/web imports are private to src/shared/ui/material. Use the Mioframe MD* Vue API instead.',
+};
+
+const m3eTemplateElementSelector = {
+  selector: 'VElement[rawName=/^m3e-/]',
+  message:
+    'Raw m3e-* elements are private to src/shared/ui/material. Use the Mioframe MD* Vue API instead.',
+};
+
 export default defineConfigWithVueTs(
   {
     linterOptions: {
@@ -103,19 +151,7 @@ export default defineConfigWithVueTs(
     ignores: ['**/*.test.vue', '**/*.stories.vue'],
     name: 'app/vue-no-attrs-forwarding-by-default',
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: 'vue',
-              importNames: ['useAttrs'],
-              message:
-                'Do not use useAttrs as a default forwarding escape hatch. Use explicit props/emits/slots, or document a transparent host/adaptor contract with a local lint exception.',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': ['error', { paths: [noAttrsImportPath] }],
     },
   },
 
@@ -189,34 +225,42 @@ export default defineConfigWithVueTs(
       'vue/require-default-prop': 'off',
       'vue/require-explicit-slots': 'error',
       'vue/v-on-handler-style': ['error', ['method', 'inline']],
+      'vue/no-restricted-syntax': ['error', ...vueTemplateExpressionSelectors],
+      '@typescript-eslint/prefer-promise-reject-errors': 'error',
+    },
+  },
+
+  {
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts,tsx,vue}'],
+    ignores: [materialLibraryFiles],
+    name: 'app/m3e-renderer-boundary-imports',
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [m3eImportRestrictionPattern] }],
+    },
+  },
+
+  {
+    files: ['src/**/*.vue'],
+    ignores: [materialLibraryFiles, '**/*.test.vue', '**/*.stories.vue'],
+    name: 'app/vue-import-boundaries',
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: [noAttrsImportPath], patterns: [m3eImportRestrictionPattern] },
+      ],
+    },
+  },
+
+  {
+    files: ['src/**/*.vue'],
+    ignores: [materialLibraryFiles],
+    name: 'app/m3e-renderer-boundary-vue-elements',
+    rules: {
       'vue/no-restricted-syntax': [
         'error',
-        {
-          selector:
-            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer ArrowFunctionExpression",
-          message:
-            'Do not use anonymous inline arrow handlers in Vue templates. Use a named handler from <script setup>, e.g. @click="onClickItem(item.id)".',
-        },
-        {
-          selector:
-            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer FunctionExpression",
-          message:
-            'Do not use anonymous inline function handlers in Vue templates. Use a named handler from <script setup>.',
-        },
-        {
-          selector:
-            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer AssignmentExpression",
-          message:
-            'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
-        },
-        {
-          selector:
-            "VAttribute[directive=true][key.name.name='on'] VExpressionContainer UpdateExpression",
-          message:
-            'Do not mutate state directly inside Vue template event expressions. Move the mutation into a named handler.',
-        },
+        ...vueTemplateExpressionSelectors,
+        m3eTemplateElementSelector,
       ],
-      '@typescript-eslint/prefer-promise-reject-errors': 'error',
     },
   },
 

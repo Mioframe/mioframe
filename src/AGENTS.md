@@ -2,16 +2,6 @@
 
 Inherits the rules from the root `AGENTS.md`. Applies to all application source code under `src`.
 
-## Material 3 guideline checks
-
-For user-visible UI or UX changes, use the `material3-guidelines` skill before planning component choice, layout, interaction behavior, visual states, accessibility semantics, tokens, public UI API names, or verification.
-
-For shared UI primitives, Material-style wrappers, Material tokens, Storybook UI documentation, or Material visual verification surfaces, also follow the relevant policies under `docs/material-3/` before editing production code.
-
-Use the `material3` MCP server from https://github.com/Vyachean/m3-docs-mcp as the primary source of official Material 3 guidance. If MCP is unavailable or incomplete for the needed page, use `Vyachean/m3-docs-cache` as the fallback snapshot of official `m3.material.io` content.
-
-Do not claim Material 3 alignment unless the relevant guidance was checked through MCP or the documented fallback cache. If that check is unavailable or incomplete, report it as an unresolved Material 3 verification risk.
-
 ## Service and worker source of truth
 
 Service and worker code own heavy data operations, storage/protocol interpretation, indexing, lifecycle, cache invalidation, and canonical existence or initialization facts.
@@ -66,12 +56,11 @@ Verification must exercise the resulting user path at the same level as the chan
 
 ## Vue, styling, stories, and copy
 
-For Vue and user-visible UI work, follow the applicable Vue, Material, browser, and visual skills and preserve these project conventions:
+For Vue and user-visible UI work, follow the applicable Vue, browser, and visual skills and preserve these project conventions:
 
 - The root class of a Vue component matches the component name in kebab-case. Components keep one stable meaningful root; parent composition owns whether the component renders.
 - Use classic BEM syntax: `block`, `block__element`, `block_modifier`, and explicit key-value modifiers such as `block_size_medium`. Do not introduce `block--modifier`, loose unowned classes, or ambiguous modifier names.
 - Keep component implementation styles scoped. Global CSS belongs only in app-level style modules or documented token/theme files.
-- Use project Material tokens and preserve project authoring units such as `dp` and `sp` where the token pipeline expects them; do not rewrite them to `px` only because a generic reviewer suggests it.
 - When visually resetting a native interactive element, restore the enabled clickable cursor and visible focus/state-layer behavior. Disabled or non-action states must not appear clickable.
 - Colocate CSF stories as `<Component>.stories.ts`. Add the `visual` tag only to stories intentionally used for screenshot coverage.
 - Keep user-facing copy in the application's established UI language. After user-visible changes, scan touched surfaces for mixed-language strings, stale task wording, and unnecessary technical terms.

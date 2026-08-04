@@ -7,7 +7,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabasePropertyId, DatabaseViewId } from '@shared/lib/databaseDocument';
 import { hasOwnKey } from '@shared/lib/typeGuards/hasOwnKey';
 import { get } from 'es-toolkit/compat';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { unrefElement, type MaybeElement } from '@vueuse/core';
 import { MDRichTooltip } from '@shared/ui/Tooltips';
 import { zodIs } from '@shared/lib/validateZodScheme';

@@ -60,7 +60,6 @@ const slots = defineSlots<{
     display: flex;
     gap: 8px;
     margin-right: -8px;
-    --md-content-color: var(--md-sys-color-on-surface-variant);
   }
 }
 </style>

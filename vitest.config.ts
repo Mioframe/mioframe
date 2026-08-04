@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitest/config';
-import vue from '@vitejs/plugin-vue';
 import { getResolveAlias } from './config/alias';
+import { getVuePlugin } from './config/plugins/base';
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [getVuePlugin()],
   resolve: {
     alias: getResolveAlias(),
   },
@@ -18,6 +18,7 @@ export default defineConfig({
       'scripts/**/*.test.mjs',
       'tests/e2e/**/*.test.mjs',
       'playwright.*.test.ts',
+      'eslint.config.test.ts',
     ],
     // Playwright specs (always `.spec.ts`) must never run as vitest tests;
     // colocated `.test.mjs` fixture-logic tests under `tests/e2e/**` are

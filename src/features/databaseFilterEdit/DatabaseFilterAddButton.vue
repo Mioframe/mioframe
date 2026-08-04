@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useDatabaseProperties, useDatabaseProperty } from '@entity/databaseProperty';
 import type { AMDocumentId } from '@shared/lib/automerge';
-import { MDButton, MDIconButton } from '@shared/ui/Button';
+import { MDIconButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import { MDMenuBase } from '@shared/ui/Menu';
 import type { MaybeElement } from '@vueuse/core';
 import { computed, shallowRef, toRefs, useTemplateRef } from 'vue';
@@ -106,7 +107,6 @@ const label = computed(() => {
     ref="addButton"
     :label="label"
     size="extra-small"
-    shape="round"
     color="outlined"
     @click="onClickAdd"
   >

@@ -5,7 +5,7 @@ description: 'Use to design or run narrow mutation audits for registered high-ri
 
 # Mutation testing workflow
 
-Follow `docs/testing/architecture.md`. Mutation testing audits the strength of already-passing focused deterministic tests. It is supplemental evidence, not the primary proof for new behavior.
+Follow `docs/testing/architecture.md`. Mutation testing audits the strength of already-passing focused deterministic tests. It is supplemental evidence, not primary proof for new behavior.
 
 ## Activation
 
@@ -20,7 +20,7 @@ Do not use mutation testing for ordinary UI behavior, documentation, type-only e
 
 ## Durable automatic ownership
 
-The target `verify` architecture automatically selects mutation only from persistent registered targets.
+The target verifier architecture selects mutation only from persistent registered targets.
 
 A target records:
 
@@ -29,11 +29,11 @@ A target records:
 - exact owning focused test files;
 - a concrete risk reason.
 
-Register a target only when repeated merge protection justifies automatic cost. Updating, moving, renaming, or deleting registered source/tests updates the target in the same change.
+Register a target only when durable regression protection justifies automatic cost. Updating, moving, or removing registered source/tests updates the target in the same change.
 
-Do not use broad prefixes initially. Do not infer semantic applicability from sibling files or agent prose.
+Do not use broad prefixes initially. Do not infer semantic applicability from neighboring files or agent prose.
 
-Until the persistent registry is implemented and validated, current final task-scope verification may still run legacy sibling-derived mutation scope. Treat that as a migration constraint, not as the target policy.
+Until the persistent registry is implemented and validated, final project verification may still run legacy location-derived mutation scope. Treat that as a migration constraint, not target policy.
 
 ## Workflow
 
@@ -41,11 +41,11 @@ Until the persistent registry is implemented and validated, current final task-s
 2. Confirm the source/test pair is an existing registered target or a deliberate focused audit required by the task.
 3. Select the narrowest exact source/test paths.
 4. Run the mutation audit.
-5. Inspect survived, no-coverage, timeout, and runner failures.
+5. Inspect survived, no-coverage, timeout, and project-command failures.
 6. Strengthen tests only when a meaningful mutant exposes a missing accepted outcome or boundary.
 7. Do not change production behavior merely to kill a mutant.
 8. Rerun focused tests and the same mutation scope after test changes.
-9. Return to the top-level task. This skill does not run a separate final gate; the top-level task runs one final read-only task-scope verification after all passes are complete.
+9. Return to the top-level task. This skill does not run a separate final gate.
 
 ## Commands
 
@@ -54,14 +54,14 @@ pnpm verify --only unit-tests --files <exact-owning-test-paths...>
 pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 ```
 
-Do not bypass an empty or unrelated scope with a broad Stryker glob. A full mutation run is diagnostic only when explicitly requested or required by a named repository policy.
+Do not bypass an empty or unrelated scope with a broad mutation glob. A broad run is diagnostic only when explicitly required by a named workspace policy.
 
 ## Results
 
 - `Killed`: selected tests rejected the mutation.
 - `Survived`: selected tests did not reject the changed behavior.
 - `No coverage`: no selected test executed the mutated code.
-- `Timeout` or runner failure: execution must be investigated before conclusions.
+- `Timeout` or command failure: no conclusion may be drawn until the exact visible failure is resolved or reported.
 
 Mutation score alone is not an acceptance criterion.
 
@@ -72,8 +72,8 @@ For equivalent or irrelevant mutants, record why no distinct accepted behavior i
 - UI component behavior or Playwright-only flows;
 - behavior-preserving refactors, type-only edits, formatting, comments, renames, or documentation;
 - unchanged focused tests used only to raise a score;
-- broad source scopes without a named repository policy;
-- automatic applicability inferred only from location or sibling tests;
+- broad source scopes without a named workspace policy;
+- automatic applicability inferred only from location or neighboring tests;
 - automatic applicability dependent on `TEST IMPACT` text;
 - production changes or brittle assertions made only to improve mutation score;
-- replacing focused tests, type-checking, linting, browser proof, or the top-level final task-scope verification.
+- replacing focused tests, type-checking, linting, browser proof, or final project verification.

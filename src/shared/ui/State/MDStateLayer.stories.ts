@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { computed, defineComponent, ref } from 'vue';
-import MDButton from '../Button/MDButton.vue';
+import { MDButton } from '@shared/ui/material';
 import MDStateLayer from './MDStateLayer.vue';
 import { useRipple } from './useRipple';
 import { useStateLayer } from './useStateLayer';
@@ -148,12 +148,11 @@ export const VisualHostIntegration: Story = {
         <div class="visual-row">
           <MDButton label="Filled button" color="filled" />
           <MDButton label="Outlined button" color="outlined" />
-          <MDButton label="Disabled button" color="tonal" disabled />
+          <MDButton label="Disabled button" color="filled" disabled />
         </div>
         <div class="visual-row">
           <MDButton label="Text button" color="text" />
-          <MDButton label="Selected toggle" color="filled" variant="toggle" selected />
-          <MDButton label="Elevated button" color="elevated" />
+          <MDButton label="Extra-small button" color="outlined" size="extra-small" />
         </div>
       </div>
     `,

@@ -20,6 +20,7 @@ type Story = StoryObj<typeof meta>;
  * idempotent close behavior. Not a screenshot target.
  */
 export const LifecycleRegression: Story = {
+  tags: ['visual'],
   render: () => ({
     components: { OverlayLifecycleRegressionStory },
     template: '<OverlayLifecycleRegressionStory />',

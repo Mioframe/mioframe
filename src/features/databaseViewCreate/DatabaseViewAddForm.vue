@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DB_VIEW_LAYOUT } from '@shared/lib/databaseDocument';
-import { MDButton } from '@shared/ui/Button';
+import { MDButton } from '@shared/ui/material';
 import FormLayout from '@shared/ui/FormLayout.vue';
 import { reactive } from 'vue';
 

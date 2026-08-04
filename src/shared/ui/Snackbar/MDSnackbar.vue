@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { MDButton, MDIconButton } from '../Button';
+import { MDButton } from '@shared/ui/material';
+import { MDIconButton } from '../Button';
 import MDSymbol from '../Icon/MDSymbol.vue';
 
 defineProps<{
@@ -71,15 +72,29 @@ const onClickClose = () => {
 
   &__close-button {
     --md-container-color: var(--md-sys-color-inverse-surface);
-    --md-content-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-hovered-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-focused-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-pressed-icon-color: var(--md-sys-color-inverse-on-surface);
+    --md-comp-icon-button-standard-hovered-state-layer-color: var(
+      --md-sys-color-inverse-on-surface
+    );
+    --md-comp-icon-button-standard-focused-state-layer-color: var(
+      --md-sys-color-inverse-on-surface
+    );
+    --md-comp-icon-button-standard-pressed-state-layer-color: var(
+      --md-sys-color-inverse-on-surface
+    );
   }
 
   &__action {
-    --md-content-color: var(--md-sys-color-inverse-primary);
-
-    &:hover {
-      --md-content-color: var(--md-sys-color-inverse-primary);
-    }
+    --md-comp-button-text-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-hovered-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-focused-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-pressed-label-text-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-hovered-state-layer-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-focused-state-layer-color: var(--md-sys-color-inverse-primary);
+    --md-comp-button-text-pressed-state-layer-color: var(--md-sys-color-inverse-primary);
   }
 }
 </style>
