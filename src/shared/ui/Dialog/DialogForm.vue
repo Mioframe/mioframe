@@ -61,10 +61,22 @@ const formEl = useTemplateRef('formEl');
 // focusable node: the dialog body can transiently have zero tabbable
 // elements (e.g. a value field whose property hasn't resolved yet, or
 // action buttons disabled while `loading`), which otherwise makes the
-// underlying focus-trap library throw synchronously.
+// underlying focus-trap library throw synchronously. The form itself is
+// the trap container and stays mounted with tabindex="-1" while the trap
+// is active, so it is always a valid fallback target.
+const getFallbackFocus = (): HTMLFormElement => {
+  const form = formEl.value;
+
+  if (!form) {
+    throw new Error('DialogForm focus trap is active without its form container');
+  }
+
+  return form;
+};
+
 const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
   allowOutsideClick: true,
-  fallbackFocus: () => formEl.value ?? document.body,
+  fallbackFocus: getFallbackFocus,
 });
 
 void nextTick(() => {

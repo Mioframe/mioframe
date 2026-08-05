@@ -68,6 +68,19 @@ describe('DialogForm focus trap', () => {
     const [, options] = useFocusTrapMock.mock.calls[0] ?? [];
     expect(options?.fallbackFocus()).toBe(form.element);
   });
+
+  it('throws explicitly if the fallback resolver is invoked after the form is unavailable', () => {
+    const wrapper = mountForm(true);
+    const [, options] = useFocusTrapMock.mock.calls[0] ?? [];
+
+    if (!options) throw new Error('Missing useFocusTrap options.');
+
+    wrapper.unmount();
+
+    expect(() => options.fallbackFocus()).toThrow(
+      'DialogForm focus trap is active without its form container',
+    );
+  });
 });
 
 describe('DialogForm busy ownership', () => {

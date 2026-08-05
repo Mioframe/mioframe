@@ -553,12 +553,22 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     const targetPath = join(workDir, targetFile.path);
     const originalBytes = readFileSync(targetPath);
 
+    // Corrupt the bytes before the first navigation, not after: mode is
+    // already Automatic at this point in the shared lifecycle (the previous
+    // test restores it), and `src/sw.ts`'s fetch handler unconditionally
+    // fires `updateReconciler.reconcileNavigation()` under `waitUntil()` for
+    // every document navigation (see managedUpdatesAutomaticCheck.spec.ts,
+    // "discovers and schedules ... from ordinary navigation alone"),
+    // independent of and unawaited by `page.goto()`. Corrupting afterward
+    // races that background reconciliation, which can discover and fully
+    // prepare this just-published release from its still-uncorrupted bytes
+    // before the explicit `CHECK_FOR_UPDATES` below ever runs.
+    writeFileSync(targetPath, 'temporary managed-update preparation corruption');
+
     const page = await context.newPage();
     await page.goto(server.url);
     await waitForControlledPage(page);
     await sendProtocolRequest(page, { type: 'SET_MODE', mode: 'automatic' });
-
-    writeFileSync(targetPath, 'temporary managed-update preparation corruption');
 
     try {
       const failedCheck = await sendProtocolRequest<{
