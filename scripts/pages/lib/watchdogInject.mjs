@@ -13,12 +13,17 @@
  * acknowledged `MessageChannel` request, asks the worker (via
  * `GET_ACTIVATION_STATUS`) whether this exact release is currently the
  * activation target and, if so, for exactly how long it has left before the
- * worker's own boot-confirmation deadline, and reloads only once it
- * receives the worker's confirmed `APP_UPDATE_ROLLBACK` broadcast. It never
+ * worker's own boot-confirmation deadline, and reloads as soon as either its
+ * own direct acknowledgement or the worker's `APP_UPDATE_ROLLBACK` broadcast
+ * confirms `rolled-back` — the direct acknowledgement guarantees recovery of
+ * this exact reporting window without depending on best-effort broadcast
+ * delivery, while the broadcast still recovers every other already-open
+ * same-channel window; a shared idempotent reload guard means whichever of
+ * the two arrives first is the only one that actually reloads. It never
  * disables its own error handlers or deadline timer on a bare "message
- * sent" — only on a worker-confirmed `committed` (`BOOT_OK`) acknowledgement,
- * matching `stateTransitions.ts`/`workerMessages.ts`'s durable commit and
- * rollback semantics.
+ * sent" — only on a worker-confirmed `committed` or `rolled-back`
+ * acknowledgement, matching `stateTransitions.ts`/`workerMessages.ts`'s
+ * durable commit and rollback semantics.
  *
  * The private protocol message type strings, protocol version, and ack
  * timeout below must stay in sync with
@@ -71,6 +76,16 @@ export function buildWatchdogScript(releaseNumber) {
   var bootOkReported = false;
   var bootFailedReported = false;
   var deadlineTimer = null;
+  var reloadScheduled = false;
+
+  // Idempotent: a direct rolled-back acknowledgement (from either BOOT_OK or
+  // BOOT_FAILED) and a later duplicate APP_UPDATE_ROLLBACK broadcast for this
+  // same release must never schedule two reloads.
+  function scheduleReload() {
+    if (reloadScheduled) return;
+    reloadScheduled = true;
+    location.reload();
+  }
 
   // Bounded, never-rejecting controller-message transport, shared by every
   // outgoing message (BOOT_OK, BOOT_FAILED, GET_ACTIVATION_STATUS). Every
@@ -162,8 +177,14 @@ export function buildWatchdogScript(releaseNumber) {
         return;
       }
       if (ack === ACK_ROLLED_BACK) {
-        // The matching APP_UPDATE_ROLLBACK broadcast below performs the
-        // actual reload once it arrives; nothing else to do here.
+        // A durable rollback was already recorded for this exact report,
+        // possibly before this window's own broadcast delivery: reload
+        // immediately rather than waiting for the matching
+        // APP_UPDATE_ROLLBACK broadcast below, which may never arrive (see
+        // broadcastToSameChannelWindows()'s best-effort delivery).
+        settled = true;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        scheduleReload();
         return;
       }
       if (ack === ACK_IGNORED || ack === null) {
@@ -212,9 +233,25 @@ export function buildWatchdogScript(releaseNumber) {
         window.removeEventListener('unhandledrejection', onEarlyFatalError);
         return;
       }
-      // Not committed ('ignored', 'error', or no acknowledgement at all):
-      // the worker did not confirm a durable commit, so the watchdog stays
-      // armed rather than claiming success.
+      var isRolledBack =
+        response &&
+        response.protocolVersion === PROTOCOL_VERSION &&
+        response.ack === ACK_ROLLED_BACK;
+      if (isRolledBack) {
+        // This release is no longer active or the current activation target
+        // (a stale window, or an activation that expired before this
+        // confirmation arrived): reload immediately rather than waiting for
+        // a later broadcast.
+        settled = true;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        window.removeEventListener('error', onEarlyFatalError, true);
+        window.removeEventListener('unhandledrejection', onEarlyFatalError);
+        scheduleReload();
+        return;
+      }
+      // Not committed or rolled back ('ignored', 'error', or no
+      // acknowledgement at all): the worker did not confirm a durable
+      // outcome, so the watchdog stays armed rather than claiming success.
       bootOkReported = false;
     });
   };
@@ -283,7 +320,7 @@ export function buildWatchdogScript(releaseNumber) {
         data.type === ROLLBACK &&
         data.releaseNumber === RELEASE_NUMBER
       ) {
-        location.reload();
+        scheduleReload();
       }
     });
   }

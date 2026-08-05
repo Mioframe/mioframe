@@ -410,16 +410,26 @@ export async function handleNavigationFetch(
       },
     );
 
-    const response = await serveRelease(
-      channel,
-      channelBasePath,
-      selection.release,
-      request,
-      true,
-      coordinator,
-    );
+    // A thrown Cache Storage error while serving the activating candidate's
+    // own target must enter the same durable rollback path as a controlled
+    // 503: `response` stays undefined for that case rather than letting the
+    // throw escape to this function's own outer catch, which would silently
+    // skip rollback and return an uncorrelated unavailable response instead.
+    let response: Response | undefined;
+    try {
+      response = await serveRelease(
+        channel,
+        channelBasePath,
+        selection.release,
+        request,
+        true,
+        coordinator,
+      );
+    } catch {
+      // Swallowed here; handled uniformly below via `response === undefined`.
+    }
 
-    if (response.status === 503 && selection.isActivatingTarget) {
+    if (selection.isActivatingTarget && (response === undefined || response.status === 503)) {
       const fallback = await tryRollbackActivatingFailure(
         channel,
         channelBasePath,
@@ -430,8 +440,10 @@ export async function handleNavigationFetch(
         dependencies,
       );
       if (fallback) return fallback;
-      return { response };
+      return { response: response ?? UNAVAILABLE_RESPONSE() };
     }
+
+    if (response === undefined) return { response: UNAVAILABLE_RESPONSE() };
 
     return { response, runLifetimeWork: selection.runLifetimeWork };
   } catch {

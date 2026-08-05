@@ -120,8 +120,9 @@ describe('buildWatchdogScript', () => {
     const script = buildWatchdogScript(1);
     const removalCount =
       script.split("window.removeEventListener('error', onEarlyFatalError, true)").length - 1;
-    // Once on a committed BOOT_OK, once on the "not this session's activation target" disarm.
-    expect(removalCount).toBe(2);
+    // Once on a committed BOOT_OK, once on a rolled-back BOOT_OK, once on the
+    // "not this session's activation target" disarm.
+    expect(removalCount).toBe(3);
   });
 
   it('sends BOOT_OK and BOOT_FAILED through an acknowledged MessageChannel request, not a bare postMessage', () => {
@@ -181,14 +182,19 @@ describe('buildWatchdogScript', () => {
     );
   });
 
-  it('reloads only on the controller rollback broadcast, not immediately on failure', () => {
+  it('never calls location.reload directly inside reportBootFailed: every reload goes through the shared scheduleReload guard', () => {
     const script = buildWatchdogScript(1);
     const reportBootFailedBody = script.slice(
       script.indexOf('function reportBootFailed'),
       script.indexOf('function onEarlyFatalError'),
     );
     expect(reportBootFailedBody).not.toContain('location.reload');
-    expect(script).toContain('location.reload()');
+    expect(reportBootFailedBody).toContain('scheduleReload()');
+    expect(script).toContain('function scheduleReload()');
+    // The only literal call site: inside scheduleReload() itself, so a
+    // direct rolled-back acknowledgement and a later duplicate broadcast
+    // can never independently trigger two reloads.
+    expect(script.match(/location\.reload\(\)/g)).toHaveLength(1);
   });
 });
 
@@ -320,6 +326,109 @@ describe('resource-load error observation during activation', () => {
     expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe('direct rolled-back acknowledgement reload recovery', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('reloads immediately on a direct rolled-back acknowledgement to BOOT_FAILED, without waiting for the broadcast', async () => {
+    const deadlineAt = new Date(Date.now() + 60_000).toISOString();
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const controller = {
+      postMessage: (message, transfer) => {
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          transfer[0].postMessage({ protocolVersion: 1, isActivationTarget: true, deadlineAt });
+        }
+        if (message.type === 'BOOT_FAILED') {
+          transfer[0].postMessage({ protocolVersion: 1, ack: 'rolled-back' });
+        }
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads immediately on a direct rolled-back acknowledgement to BOOT_OK', async () => {
+    const deadlineAt = new Date(Date.now() + 60_000).toISOString();
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const controller = {
+      postMessage: (message, transfer) => {
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          transfer[0].postMessage({ protocolVersion: 1, isActivationTarget: true, deadlineAt });
+        }
+        if (message.type === 'BOOT_OK') {
+          transfer[0].postMessage({ protocolVersion: 1, ack: 'rolled-back' });
+        }
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not reload a second time when a later rollback broadcast follows a direct rolled-back acknowledgement', async () => {
+    const deadlineAt = new Date(Date.now() + 60_000).toISOString();
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    let messageListener;
+    const controller = {
+      postMessage: (message, transfer) => {
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          transfer[0].postMessage({ protocolVersion: 1, isActivationTarget: true, deadlineAt });
+        }
+        if (message.type === 'BOOT_FAILED') {
+          transfer[0].postMessage({ protocolVersion: 1, ack: 'rolled-back' });
+        }
+      },
+    };
+    const addEventListener = vi.fn((type, listener) => {
+      if (type === 'message') messageListener = listener;
+    });
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener },
+    });
+
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    messageListener({
+      data: { protocolVersion: 1, type: 'APP_UPDATE_ROLLBACK', releaseNumber: 1 },
+    });
+
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });
 

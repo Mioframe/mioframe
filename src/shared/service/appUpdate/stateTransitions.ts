@@ -7,6 +7,144 @@ import {
 } from './contracts';
 
 /**
+ * Every classified outcome of a `BOOT_OK` report for release `R` (see
+ * {@link classifyBootOk}).
+ *
+ * - `committed`/`rolled-back` carry the freshly transitioned state, still
+ *   requiring persistence;
+ * - `idempotent-committed`/`idempotent-rolled-back` are already true of
+ *   current state and require no write: `idempotent-committed` when
+ *   `activeRelease` is already `R` (a repeated confirmation for the release
+ *   that already won), `idempotent-rolled-back` when `R` is neither
+ *   `activeRelease` nor the current `activating` target — a stale window
+ *   whose own rollback broadcast may have been missed.
+ */
+export type BootOkOutcome =
+  | { kind: 'committed'; state: UpdateControllerState }
+  | { kind: 'idempotent-committed' }
+  | { kind: 'rolled-back'; state: UpdateControllerState }
+  | { kind: 'idempotent-rolled-back' };
+
+/**
+ * Classifies a `BOOT_OK` report for release number `releaseNumber`, so a
+ * durable rollback is recoverable by any reporting window — not only the one
+ * whose own activation attempt just expired — without depending on the
+ * best-effort rollback broadcast (see `workerBroadcast.ts`).
+ * @param state - Current controller state.
+ * @param releaseNumber - The release number reported as successfully booted.
+ * @param now - ISO timestamp to evaluate activation expiry against.
+ * @returns The classified outcome.
+ */
+export function classifyBootOk(
+  state: UpdateControllerState,
+  releaseNumber: number,
+  now: string,
+): BootOkOutcome {
+  const { candidate } = state;
+  if (candidate?.phase === 'activating' && candidate.release.releaseNumber === releaseNumber) {
+    return isActivationExpired(state, now)
+      ? { kind: 'rolled-back', state: rollbackActivation(state, releaseNumber) }
+      : { kind: 'committed', state: commitActivation(state, releaseNumber) };
+  }
+  if (state.activeRelease.releaseNumber === releaseNumber) {
+    return { kind: 'idempotent-committed' };
+  }
+  return { kind: 'idempotent-rolled-back' };
+}
+
+/**
+ * Every classified outcome of a `BOOT_FAILED` report for release `R` (see
+ * {@link classifyBootFailed}).
+ *
+ * - `rolled-back` carries the freshly transitioned state, still requiring
+ *   persistence;
+ * - `idempotent-rolled-back` requires no write: `R` is neither the current
+ *   `activating` target nor `activeRelease` — a stale window reporting a
+ *   failure for a release that has already been durably rolled back;
+ * - `ignored` preserves the existing non-activation no-op: `R` is the
+ *   current `activeRelease` but not an activation target at all, which this
+ *   function never attempts to reinterpret as a rollback.
+ */
+export type BootFailedOutcome =
+  | { kind: 'rolled-back'; state: UpdateControllerState }
+  | { kind: 'idempotent-rolled-back' }
+  | { kind: 'ignored' };
+
+/**
+ * Classifies a `BOOT_FAILED` report for release number `releaseNumber`, so a
+ * durable rollback is recoverable by any stale reporting window, exactly like
+ * {@link classifyBootOk}.
+ * @param state - Current controller state.
+ * @param releaseNumber - The release number whose activation failed to boot.
+ * @returns The classified outcome.
+ */
+export function classifyBootFailed(
+  state: UpdateControllerState,
+  releaseNumber: number,
+): BootFailedOutcome {
+  const { candidate } = state;
+  if (candidate?.phase === 'activating' && candidate.release.releaseNumber === releaseNumber) {
+    return { kind: 'rolled-back', state: rollbackActivation(state, releaseNumber) };
+  }
+  if (state.activeRelease.releaseNumber === releaseNumber) {
+    return { kind: 'ignored' };
+  }
+  return { kind: 'idempotent-rolled-back' };
+}
+
+/**
+ * Every classified outcome of a Manual install completion for release `R`
+ * (see {@link classifyManualInstallCompletion}).
+ *
+ * - `ready` carries the freshly transitioned state, still requiring
+ *   persistence: `available(R)`/`failed(R)` moved to `ready(R)`;
+ * - `already-satisfied` requires no write and no cleanup: `R` is already
+ *   `activeRelease`, or the candidate is already `ready(R)` or
+ *   `activating(R)` — a concurrent duplicate Manual install of the exact
+ *   same release, not a failure;
+ * - `stale` is every other case (a different candidate release, conflicting
+ *   metadata on the same release number, an incompatible candidate phase, or
+ *   mode no longer Manual) and reports `install-failed`.
+ */
+export type ManualInstallCompletionOutcome =
+  | { kind: 'ready'; state: UpdateControllerState }
+  | { kind: 'already-satisfied' }
+  | { kind: 'stale' };
+
+/**
+ * Classifies a completed Manual install (`INSTALL_ON_NEXT_LAUNCH`) against
+ * fresh state, so two concurrent installs of the exact same release both
+ * resolve as success: the first to complete persists `ready(R)`, and every
+ * other completion for the exact same already-satisfied target (already
+ * `ready`, already `activating`, or already `activeRelease`) is an idempotent
+ * success rather than a false `install-failed`. Only a genuinely different or
+ * conflicting completion is stale.
+ * @param state - Current controller state.
+ * @param preparedRelease - The complete release summary that finished preparing.
+ * @returns The classified outcome.
+ */
+export function classifyManualInstallCompletion(
+  state: UpdateControllerState,
+  preparedRelease: ReleaseSummary,
+): ManualInstallCompletionOutcome {
+  if (releaseSummariesMatch(state.activeRelease, preparedRelease)) {
+    return { kind: 'already-satisfied' };
+  }
+
+  const { candidate } = state;
+  if (
+    candidate &&
+    (candidate.phase === 'ready' || candidate.phase === 'activating') &&
+    releaseSummariesMatch(candidate.release, preparedRelease)
+  ) {
+    return { kind: 'already-satisfied' };
+  }
+
+  const next = completeManualInstall(state, preparedRelease);
+  return next === state ? { kind: 'stale' } : { kind: 'ready', state: next };
+}
+
+/**
  * Builds the initial persisted state for a genuinely first-ever installation,
  * once `activeRelease` has been completely prepared locally. Defaults new
  * installs to Automatic mode: Manual is the mode a user explicitly opts into

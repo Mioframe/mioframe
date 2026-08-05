@@ -16,6 +16,13 @@ import { runReleaseCacheCleanup } from './releaseCache';
  * other than any in `excludedClientIds`. Never reaches a foreign-channel
  * window (another branch, PR preview, or a different managed channel sharing
  * this origin).
+ *
+ * One matching client's `postMessage()` throwing is isolated to that client
+ * alone: delivery continues to every other matching client, so a single
+ * closed or otherwise broken window can never block this rollback/state
+ * broadcast from reaching the rest. `clients.matchAll()` itself rejecting is
+ * not caught here — that failure is this function's own contract to reject
+ * with, left to the caller's existing best-effort `.catch()`.
  * @param channelBasePath - This worker's channel base path.
  * @param channelOrigin - This worker's own origin.
  * @param message - The broadcast message to send.
@@ -31,7 +38,12 @@ async function broadcastToSameChannelWindows(
   for (const client of clients) {
     if (excludedClientIds.has(client.id)) continue;
     if (isSameChannelWindowClient(client, channelBasePath, channelOrigin)) {
-      client.postMessage(message);
+      try {
+        client.postMessage(message);
+      } catch {
+        // This one client's delivery failure must never stop delivery to
+        // the remaining matching clients.
+      }
     }
   }
 }

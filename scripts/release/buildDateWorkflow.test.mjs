@@ -84,6 +84,61 @@ describe.each([
   });
 });
 
+describe('deploy-branch.yml deploy-branch: manual develop deployment build identity', () => {
+  const source = readFileSync(
+    new URL('../../.github/workflows/deploy-branch.yml', import.meta.url),
+    'utf8',
+  );
+  const jobBlock = extractJob(source, 'deploy-branch');
+
+  it('derives the build date from the selected app-source commit committer timestamp under TZ=UTC, never workflow execution time, the trusted tooling checkout, or the run id/attempt', () => {
+    expect(jobBlock).toContain(
+      "TZ=UTC git -C app-source show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd HEAD",
+    );
+    expect(jobBlock).not.toMatch(/\bdate\s+-u\b/);
+    expect(jobBlock).not.toContain('github.run_id');
+    expect(jobBlock).not.toContain('github.run_attempt');
+  });
+
+  it('passes the exact same resolved app-source build date to Vite and deployment metadata', () => {
+    const viteBuildDate = /VITE_BUILD_DATE:\s*(.+)/.exec(jobBlock)?.[1].trim();
+    const deploymentMetadataBuildDate = extractBuildDateArg(
+      jobBlock,
+      'writeDeploymentMetadata\\.mjs',
+    );
+
+    expect(viteBuildDate).toBe(CANONICAL_DATE_REF);
+    expect(deploymentMetadataBuildDate).toBe(CANONICAL_DATE_REF);
+  });
+
+  it('gates the managed publish call behind the develop slug and supplies app-source-derived identity, distinct from the unmanaged branch publish call', () => {
+    // Matches the actual script invocation line, not merely a comment
+    // mentioning the script or flag by name.
+    const PUBLISH_INVOCATION = 'tooling/scripts/pages/publishBranch.mjs';
+    const steps = jobBlock.split(/\n {6}- name: /).slice(1);
+    const managedPublishStep = steps.find(
+      (step) => step.includes(PUBLISH_INVOCATION) && step.includes('--app-version "'),
+    );
+    const unmanagedPublishStep = steps.find(
+      (step) => step.includes(PUBLISH_INVOCATION) && !step.includes('--app-version'),
+    );
+
+    if (!managedPublishStep) throw new Error('Expected a managed develop publish step');
+    if (!unmanagedPublishStep) throw new Error('Expected an unmanaged branch publish step');
+
+    expect(managedPublishStep).toMatch(/if:\s*steps\.slug\.outputs\.slug == 'develop'/);
+    expect(managedPublishStep).toContain('--build-id ${{ steps.selected-commit.outputs.sha }}');
+    expect(managedPublishStep).toContain(`--build-date ${CANONICAL_DATE_REF}`);
+    // Never the trusted tooling checkout's own commit, only the selected app-source commit.
+    expect(managedPublishStep).not.toContain('${{ github.sha }}');
+
+    expect(unmanagedPublishStep).toMatch(/if:\s*steps\.slug\.outputs\.slug != 'develop'/);
+    expect(unmanagedPublishStep).not.toContain('--app-version');
+    expect(unmanagedPublishStep).not.toContain('--build-id');
+    expect(unmanagedPublishStep).not.toContain('--build-date');
+  });
+});
+
 describe('verify.yml deploy-preview: unmanaged PR preview build date is unchanged', () => {
   const source = readFileSync(
     new URL('../../.github/workflows/verify.yml', import.meta.url),

@@ -15,10 +15,9 @@ import { buildAppUpdateSnapshot } from './snapshot';
 import { withState } from './stateLock';
 import {
   cancelScheduledUpdate,
-  commitActivation,
-  completeManualInstall,
-  isActivationExpired,
-  rollbackActivation,
+  classifyBootFailed,
+  classifyBootOk,
+  classifyManualInstallCompletion,
   setMode,
 } from './stateTransitions';
 import type { UpdateReconciler } from './updateReconciliation';
@@ -88,9 +87,16 @@ async function installOnNextLaunch(
     if (error) {
       return { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(state, error) }) };
     }
-    const next = completeManualInstall(state, target);
-    if (next === state) {
-      // Superseded, mode-switched, or already advanced while preparing.
+    const outcome = classifyManualInstallCompletion(state, target);
+    if (outcome.kind === 'already-satisfied') {
+      // Already ready(target), activating(target), or activeRelease is
+      // already target: a concurrent duplicate Manual install of the exact
+      // same release is a success, not install-failed. No write, no cleanup.
+      return { response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(state) }) };
+    }
+    if (outcome.kind === 'stale') {
+      // A different candidate, conflicting metadata on the same release
+      // number, an incompatible candidate phase, or mode no longer Manual.
       return {
         response: withProtocolVersion({
           snapshot: buildAppUpdateSnapshot(state, 'install-failed'),
@@ -98,9 +104,9 @@ async function installOnNextLaunch(
         runLifetimeWork: () => cleanupReleaseCache(channel, coordinator),
       };
     }
-    await writeControllerState(channel, next);
+    await writeControllerState(channel, outcome.state);
     return {
-      response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(next) }),
+      response: withProtocolVersion({ snapshot: buildAppUpdateSnapshot(outcome.state) }),
       runLifetimeWork: () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
     };
   });
@@ -192,20 +198,31 @@ export async function handleWorkerMessage(
 
     case 'BOOT_OK':
       return withState(channel, enqueue, async (state) => {
-        const expired = isActivationExpired(state, new Date().toISOString());
-        const next = expired
-          ? rollbackActivation(state, request.releaseNumber)
-          : commitActivation(state, request.releaseNumber);
-        if (next === state) {
+        const outcome = classifyBootOk(state, request.releaseNumber, new Date().toISOString());
+        if (outcome.kind === 'idempotent-committed') {
+          // activeRelease is already this release: a repeated confirmation
+          // for the release that already won. No write, no broadcast.
           return {
             response: withProtocolVersion({
               snapshot: buildAppUpdateSnapshot(state),
-              ack: 'ignored' as const,
+              ack: 'committed' as const,
+            }),
+          };
+        }
+        if (outcome.kind === 'idempotent-rolled-back') {
+          // This release is neither activeRelease nor the current activating
+          // target: a stale window whose own rollback broadcast may have
+          // been missed. The direct acknowledgement alone recovers it, with
+          // no write and no broadcast.
+          return {
+            response: withProtocolVersion({
+              snapshot: buildAppUpdateSnapshot(state),
+              ack: 'rolled-back' as const,
             }),
           };
         }
         try {
-          await writeControllerState(channel, next);
+          await writeControllerState(channel, outcome.state);
         } catch {
           return {
             response: withProtocolVersion({
@@ -214,10 +231,10 @@ export async function handleWorkerMessage(
             }),
           };
         }
-        if (expired) {
+        if (outcome.kind === 'rolled-back') {
           return {
             response: withProtocolVersion({
-              snapshot: buildAppUpdateSnapshot(next),
+              snapshot: buildAppUpdateSnapshot(outcome.state),
               ack: 'rolled-back' as const,
             }),
             // The acknowledgement above is posted before this broadcast can
@@ -231,7 +248,7 @@ export async function handleWorkerMessage(
         }
         return {
           response: withProtocolVersion({
-            snapshot: buildAppUpdateSnapshot(next),
+            snapshot: buildAppUpdateSnapshot(outcome.state),
             ack: 'committed' as const,
           }),
           // Existing UI readers refresh from the committed active release
@@ -245,8 +262,11 @@ export async function handleWorkerMessage(
 
     case 'BOOT_FAILED':
       return withState(channel, enqueue, async (state) => {
-        const rolledBack = rollbackActivation(state, request.releaseNumber);
-        if (rolledBack === state) {
+        const outcome = classifyBootFailed(state, request.releaseNumber);
+        if (outcome.kind === 'ignored') {
+          // This release is the current activeRelease but not an activation
+          // target at all: the existing non-activation no-op, preserved
+          // as-is rather than reinterpreted as a rollback.
           return {
             response: withProtocolVersion({
               snapshot: buildAppUpdateSnapshot(state),
@@ -254,8 +274,19 @@ export async function handleWorkerMessage(
             }),
           };
         }
+        if (outcome.kind === 'idempotent-rolled-back') {
+          // Neither the current activating target nor activeRelease: a
+          // stale window reporting failure for an already-rolled-back
+          // release. No write, no broadcast.
+          return {
+            response: withProtocolVersion({
+              snapshot: buildAppUpdateSnapshot(state),
+              ack: 'rolled-back' as const,
+            }),
+          };
+        }
         try {
-          await writeControllerState(channel, rolledBack);
+          await writeControllerState(channel, outcome.state);
         } catch {
           return {
             response: withProtocolVersion({
@@ -266,7 +297,7 @@ export async function handleWorkerMessage(
         }
         return {
           response: withProtocolVersion({
-            snapshot: buildAppUpdateSnapshot(rolledBack),
+            snapshot: buildAppUpdateSnapshot(outcome.state),
             ack: 'rolled-back' as const,
           }),
           // The acknowledgement above is posted before this broadcast can

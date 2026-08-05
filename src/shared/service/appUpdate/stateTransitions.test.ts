@@ -4,6 +4,9 @@ import {
   applyDiscovery,
   buildInitialControllerState,
   cancelScheduledUpdate,
+  classifyBootFailed,
+  classifyBootOk,
+  classifyManualInstallCompletion,
   commitActivation,
   completeAutomaticPreparation,
   completeManualInstall,
@@ -551,5 +554,193 @@ describe('isActivationExpired', () => {
       candidate: { phase: 'activating', release: releaseB, deadlineAt: '2026-07-24T00:00:30.5Z' },
     };
     expect(isActivationExpired(withShortFraction, '2026-07-24T00:00:30.500Z')).toBe(true);
+  });
+});
+
+describe('classifyBootOk', () => {
+  const now = '2026-07-24T00:00:10.000Z';
+
+  it('commits a matching activating candidate before its deadline', () => {
+    const outcome = classifyBootOk(activatingState, releaseB.releaseNumber, now);
+    expect(outcome.kind).toBe('committed');
+    if (outcome.kind !== 'committed') throw new Error('Expected committed');
+    expect(outcome.state.activeRelease).toEqual(releaseB);
+    expect(outcome.state.candidate).toBeUndefined();
+  });
+
+  it('rolls back a matching activating candidate at or after its deadline', () => {
+    const outcome = classifyBootOk(
+      activatingState,
+      releaseB.releaseNumber,
+      '2026-07-24T00:00:30.000Z',
+    );
+    expect(outcome.kind).toBe('rolled-back');
+    if (outcome.kind !== 'rolled-back') throw new Error('Expected rolled-back');
+    expect(outcome.state.activeRelease).toEqual(releaseA);
+    expect(outcome.state.candidate).toEqual({ phase: 'failed', release: releaseB });
+  });
+
+  it('is idempotent-committed when activeRelease is already the reported release, with no candidate', () => {
+    expect(classifyBootOk(baseState, releaseA.releaseNumber, now)).toEqual({
+      kind: 'idempotent-committed',
+    });
+  });
+
+  it('is idempotent-committed for a repeated confirmation after activeRelease already committed', () => {
+    const committed = commitActivation(activatingState, releaseB.releaseNumber);
+    expect(classifyBootOk(committed, releaseB.releaseNumber, now)).toEqual({
+      kind: 'idempotent-committed',
+    });
+  });
+
+  it('is idempotent-rolled-back for a report neither active nor the current activating target', () => {
+    // A wrong-release report while a different release is currently activating.
+    expect(classifyBootOk(activatingState, releaseC.releaseNumber, now)).toEqual({
+      kind: 'idempotent-rolled-back',
+    });
+  });
+
+  it('is idempotent-rolled-back for a stale window reporting after this exact release already rolled back', () => {
+    const failedState: UpdateControllerState = {
+      ...baseState,
+      candidate: { phase: 'failed', release: releaseB },
+    };
+    expect(classifyBootOk(failedState, releaseB.releaseNumber, now)).toEqual({
+      kind: 'idempotent-rolled-back',
+    });
+  });
+
+  it('is idempotent-rolled-back when there is no candidate at all and the report does not match activeRelease', () => {
+    expect(classifyBootOk(baseState, releaseB.releaseNumber, now)).toEqual({
+      kind: 'idempotent-rolled-back',
+    });
+  });
+});
+
+describe('classifyBootFailed', () => {
+  it('rolls back a matching activating candidate', () => {
+    const outcome = classifyBootFailed(activatingState, releaseB.releaseNumber);
+    expect(outcome.kind).toBe('rolled-back');
+    if (outcome.kind !== 'rolled-back') throw new Error('Expected rolled-back');
+    expect(outcome.state.activeRelease).toEqual(releaseA);
+    expect(outcome.state.candidate).toEqual({ phase: 'failed', release: releaseB });
+  });
+
+  it('is ignored (existing non-activation no-op) when the release is the current activeRelease but not an activation target', () => {
+    expect(classifyBootFailed(baseState, releaseA.releaseNumber)).toEqual({ kind: 'ignored' });
+  });
+
+  it('is idempotent-rolled-back for a stale window reporting failure after this exact release already rolled back', () => {
+    const failedState: UpdateControllerState = {
+      ...baseState,
+      candidate: { phase: 'failed', release: releaseB },
+    };
+    expect(classifyBootFailed(failedState, releaseB.releaseNumber)).toEqual({
+      kind: 'idempotent-rolled-back',
+    });
+  });
+
+  it('is idempotent-rolled-back for a report neither active nor the current activating target', () => {
+    expect(classifyBootFailed(activatingState, releaseC.releaseNumber)).toEqual({
+      kind: 'idempotent-rolled-back',
+    });
+  });
+
+  it('is idempotent-rolled-back when there is no candidate at all and the report does not match activeRelease', () => {
+    expect(classifyBootFailed(baseState, releaseB.releaseNumber)).toEqual({
+      kind: 'idempotent-rolled-back',
+    });
+  });
+});
+
+describe('classifyManualInstallCompletion', () => {
+  const manualAvailable: UpdateControllerState = {
+    ...baseState,
+    mode: 'manual',
+    candidate: { phase: 'available', release: releaseB },
+  };
+
+  it('is ready(B) for a fresh available(B) completion', () => {
+    const outcome = classifyManualInstallCompletion(manualAvailable, releaseB);
+    expect(outcome.kind).toBe('ready');
+    if (outcome.kind !== 'ready') throw new Error('Expected ready');
+    expect(outcome.state.candidate).toEqual({ phase: 'ready', release: releaseB });
+  });
+
+  it('is ready(B) for a fresh failed(B) completion (explicit Manual retry)', () => {
+    const manualFailed: UpdateControllerState = {
+      ...baseState,
+      mode: 'manual',
+      candidate: { phase: 'failed', release: releaseB },
+    };
+    const outcome = classifyManualInstallCompletion(manualFailed, releaseB);
+    expect(outcome.kind).toBe('ready');
+    if (outcome.kind !== 'ready') throw new Error('Expected ready');
+    expect(outcome.state.candidate).toEqual({ phase: 'ready', release: releaseB });
+  });
+
+  it('is already-satisfied when the candidate is already ready(B): a concurrent duplicate Manual install', () => {
+    const manualReady: UpdateControllerState = {
+      ...baseState,
+      mode: 'manual',
+      candidate: { phase: 'ready', release: releaseB },
+    };
+    expect(classifyManualInstallCompletion(manualReady, releaseB)).toEqual({
+      kind: 'already-satisfied',
+    });
+  });
+
+  it('is already-satisfied when the candidate is already activating(B)', () => {
+    const manualActivating: UpdateControllerState = {
+      ...baseState,
+      mode: 'manual',
+      candidate: {
+        phase: 'activating',
+        release: releaseB,
+        deadlineAt: '2026-07-24T00:00:30.000Z',
+      },
+    };
+    expect(classifyManualInstallCompletion(manualActivating, releaseB)).toEqual({
+      kind: 'already-satisfied',
+    });
+  });
+
+  it('is already-satisfied when activeRelease is already B (candidate cleared)', () => {
+    const activeIsB: UpdateControllerState = {
+      ...baseState,
+      mode: 'manual',
+      activeRelease: releaseB,
+    };
+    expect(classifyManualInstallCompletion(activeIsB, releaseB)).toEqual({
+      kind: 'already-satisfied',
+    });
+  });
+
+  it('is stale for a different candidate release replacing B while installing', () => {
+    const replaced: UpdateControllerState = {
+      ...manualAvailable,
+      candidate: { phase: 'available', release: releaseC },
+    };
+    expect(classifyManualInstallCompletion(replaced, releaseB)).toEqual({ kind: 'stale' });
+  });
+
+  it('is stale for a same-number, different-metadata completion', () => {
+    expect(
+      classifyManualInstallCompletion(manualAvailable, { ...releaseB, buildId: 'different-build' }),
+    ).toEqual({ kind: 'stale' });
+  });
+
+  it('is stale when mode changed to Automatic in the meantime', () => {
+    const automaticAvailable: UpdateControllerState = { ...manualAvailable, mode: 'automatic' };
+    expect(classifyManualInstallCompletion(automaticAvailable, releaseB)).toEqual({
+      kind: 'stale',
+    });
+  });
+
+  it('is stale when there is no candidate at all and activeRelease does not match', () => {
+    const manualNoCandidate: UpdateControllerState = { ...baseState, mode: 'manual' };
+    expect(classifyManualInstallCompletion(manualNoCandidate, releaseB)).toEqual({
+      kind: 'stale',
+    });
   });
 });

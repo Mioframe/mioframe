@@ -265,6 +265,99 @@ describe('appUpdate client', () => {
       expect(probeCallsB).toHaveLength(1);
     });
 
+    it('caches a confirmed incompatible (wrong-channel) result for the same controller object across commands', async () => {
+      const { getAppUpdateSnapshot, checkForAppUpdates } = await importClientForChannel('stable');
+      const postMessage = stubControlledServiceWorker((request, ports) => {
+        const type = getRequestType(request);
+        if (type === 'PROBE_MANAGED_UPDATE_CONTROLLER') {
+          ports[0]?.postMessage(developProbeResponse);
+        }
+      });
+
+      await getAppUpdateSnapshot();
+      await checkForAppUpdates();
+
+      const probeCalls = postMessage.mock.calls.filter(
+        ([request]) => getRequestType(request) === 'PROBE_MANAGED_UPDATE_CONTROLLER',
+      );
+      expect(probeCalls).toHaveLength(1);
+    });
+
+    it('does not permanently cache a timed-out probe: a later command probes the same controller again and can then succeed', async () => {
+      vi.useFakeTimers();
+      const { getAppUpdateSnapshot } = await importClientForChannel('stable');
+      let respondToProbe = false;
+      const postMessage = stubControlledServiceWorker((request, ports) => {
+        const type = getRequestType(request);
+        if (type === 'PROBE_MANAGED_UPDATE_CONTROLLER') {
+          if (respondToProbe) ports[0]?.postMessage(stableProbeResponse);
+          // Otherwise: a silent legacy controller never answers at all.
+          return;
+        }
+        ports[0]?.postMessage({ protocolVersion: 1, snapshot });
+      });
+
+      const first = getAppUpdateSnapshot();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await expect(first).resolves.toEqual({ status: 'unavailable' });
+
+      respondToProbe = true;
+      vi.useRealTimers();
+      await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'success', value: snapshot });
+
+      const probeCalls = postMessage.mock.calls.filter(
+        ([request]) => getRequestType(request) === 'PROBE_MANAGED_UPDATE_CONTROLLER',
+      );
+      expect(probeCalls).toHaveLength(2);
+    });
+
+    it('does not permanently cache a synchronous postMessage failure during the probe: a later command probes again and can then succeed', async () => {
+      const { getAppUpdateSnapshot } = await importClientForChannel('stable');
+      let throwOnProbe = true;
+      const postMessage = vi.fn((request: unknown, ports: MessagePort[]) => {
+        const type = getRequestType(request);
+        if (type === 'PROBE_MANAGED_UPDATE_CONTROLLER') {
+          if (throwOnProbe) throw new Error('transport closed');
+          ports[0]?.postMessage(stableProbeResponse);
+          return;
+        }
+        ports[0]?.postMessage({ protocolVersion: 1, snapshot });
+      });
+      vi.stubGlobal('navigator', {
+        serviceWorker: { ready: NEVER_SETTLES, controller: { postMessage } },
+      });
+
+      await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'unavailable' });
+
+      throwOnProbe = false;
+      await expect(getAppUpdateSnapshot()).resolves.toEqual({ status: 'success', value: snapshot });
+
+      const probeCalls = postMessage.mock.calls.filter(
+        ([request]) => getRequestType(request) === 'PROBE_MANAGED_UPDATE_CONTROLLER',
+      );
+      expect(probeCalls).toHaveLength(2);
+    });
+
+    it('shares one in-flight probe among concurrent callers while it is still temporarily unavailable', async () => {
+      vi.useFakeTimers();
+      const { getAppUpdateSnapshot, checkForAppUpdates } = await importClientForChannel('stable');
+      const postMessage = stubControlledServiceWorker(() => {
+        // A silent legacy controller never answers the probe at all.
+      });
+
+      const first = getAppUpdateSnapshot();
+      const second = checkForAppUpdates();
+      await vi.advanceTimersByTimeAsync(1_000);
+
+      await expect(first).resolves.toEqual({ status: 'unavailable' });
+      await expect(second).resolves.toEqual({ status: 'unavailable' });
+
+      const probeCalls = postMessage.mock.calls.filter(
+        ([request]) => getRequestType(request) === 'PROBE_MANAGED_UPDATE_CONTROLLER',
+      );
+      expect(probeCalls).toHaveLength(1);
+    });
+
     it('keeps the command timeout unchanged after a successful probe: GET_SNAPSHOT still times out at 10 seconds, not 1', async () => {
       vi.useFakeTimers();
       const { getAppUpdateSnapshot } = await importClientForChannel('stable');

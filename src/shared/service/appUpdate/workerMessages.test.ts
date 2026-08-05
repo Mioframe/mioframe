@@ -613,6 +613,83 @@ describe('handleWorkerMessage', () => {
       });
       expect(persisted.candidate).toEqual({ phase: 'available', release: releaseBReplaced });
     });
+
+    // Concurrent Manual install: two commands for the same exact release
+    // must both resolve as success. The first to complete persists ready(B);
+    // the second's completion finds the candidate already ready(B) and must
+    // be an idempotent success, never a false install-failed.
+    it('resolves both concurrent installs of the same exact target as success, persisting exactly once', async () => {
+      let persisted: UpdateControllerState = {
+        ...baseState,
+        candidate: { phase: 'available', release: releaseB },
+      };
+      readControllerStateMock.mockImplementation(() => ({ status: 'valid', state: persisted }));
+      writeControllerStateMock.mockImplementation(
+        (_channel: string, state: UpdateControllerState) => {
+          persisted = state;
+        },
+      );
+      let resolvePrepare: () => void = () => {};
+      const prepareGate = new Promise<void>((resolve) => {
+        resolvePrepare = resolve;
+      });
+      const coordinator = createFakeCoordinator({
+        prepare: vi.fn().mockImplementation(async () => {
+          await prepareGate;
+        }),
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+      const realEnqueue = createOperationQueue();
+      const request = {
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'INSTALL_ON_NEXT_LAUNCH' as const,
+      };
+
+      const install1 = handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        request,
+        realEnqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+      const install2 = handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        request,
+        realEnqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+      await vi.waitFor(() => {
+        expect(coordinator.prepare).toHaveBeenCalledTimes(2);
+      });
+
+      resolvePrepare();
+      const [result1, result2] = await Promise.all([install1, install2]);
+
+      for (const result of [result1, result2]) {
+        expect(result.response).toEqual({
+          protocolVersion: PROTOCOL_VERSION,
+          snapshot: expect.objectContaining({
+            candidate: { phase: 'ready', release: releaseB },
+            error: undefined,
+          }),
+        });
+      }
+      expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
+      expect(persisted.candidate).toEqual({ phase: 'ready', release: releaseB });
+      // Exactly one of the two completions actually persisted (and
+      // broadcasts state-changed as follow-up work); the other is the
+      // idempotent already-satisfied completion, which schedules no cleanup
+      // and no broadcast at all.
+      const definedRunLifetimeWorkCount = [result1, result2].filter(
+        (result) => result.runLifetimeWork !== undefined,
+      ).length;
+      expect(definedRunLifetimeWorkCount).toBe(1);
+    });
   });
 
   describe('BOOT_OK', () => {
@@ -656,7 +733,7 @@ describe('handleWorkerMessage', () => {
       });
     });
 
-    it('acknowledges ignored for a wrong-release BOOT_OK, without writing or broadcasting', async () => {
+    it('acknowledges idempotent rolled-back for a wrong-release BOOT_OK while a different release is activating, without writing or broadcasting', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
@@ -687,13 +764,14 @@ describe('handleWorkerMessage', () => {
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.anything(),
-        ack: 'ignored',
+        ack: 'rolled-back',
       });
       expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(matchAllMock).not.toHaveBeenCalled();
       expect(result.runLifetimeWork).toBeUndefined();
     });
 
-    it('acknowledges ignored for a stale BOOT_OK after activation already resolved', async () => {
+    it('acknowledges idempotent rolled-back for a stale window reporting BOOT_OK after this release already rolled back', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: { ...baseState, candidate: { phase: 'failed', release: releaseB } },
@@ -717,7 +795,35 @@ describe('handleWorkerMessage', () => {
       expect(result.response).toEqual({
         protocolVersion: PROTOCOL_VERSION,
         snapshot: expect.anything(),
-        ack: 'ignored',
+        ack: 'rolled-back',
+      });
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(matchAllMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('acknowledges idempotent committed for a repeated BOOT_OK confirming the already-active release, without writing or broadcasting', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_OK',
+          releaseNumber: releaseA.releaseNumber,
+        },
+        enqueue,
+        createFakeCoordinator(),
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'committed',
       });
       expect(writeControllerStateMock).not.toHaveBeenCalled();
       expect(matchAllMock).not.toHaveBeenCalled();
@@ -999,7 +1105,56 @@ describe('handleWorkerMessage', () => {
       expect(foreignPostMessage).not.toHaveBeenCalled();
     });
 
-    it('acknowledges ignored for a non-matching release number, without writing or broadcasting', async () => {
+    it('isolates one matching client throwing from postMessage: delivery still reaches every other matching client', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          ...baseState,
+          candidate: {
+            phase: 'activating',
+            release: releaseB,
+            deadlineAt: '2026-07-24T00:00:30.000Z',
+          },
+        },
+      });
+      const throwingPostMessage = vi.fn(() => {
+        throw new Error('client transport closed');
+      });
+      const secondPostMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        {
+          type: 'window',
+          url: `${CHANNEL_ORIGIN}/settings`,
+          postMessage: throwingPostMessage,
+        },
+        { type: 'window', url: `${CHANNEL_ORIGIN}/`, postMessage: secondPostMessage },
+      ]);
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_FAILED',
+          releaseNumber: releaseB.releaseNumber,
+        },
+        enqueue,
+        createFakeCoordinator(),
+        createFakeReconciler(),
+      );
+
+      await expect(result.runLifetimeWork?.()).resolves.toBeUndefined();
+      expect(throwingPostMessage).toHaveBeenCalledOnce();
+      expect(secondPostMessage).toHaveBeenCalledWith({
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'APP_UPDATE_ROLLBACK',
+        releaseNumber: releaseB.releaseNumber,
+      });
+    });
+
+    it('acknowledges idempotent rolled-back for a non-matching, non-active release number, without writing or broadcasting', async () => {
       const { handleWorkerMessage } = await import('./workerMessages');
 
       const result = await handleWorkerMessage(
@@ -1007,6 +1162,33 @@ describe('handleWorkerMessage', () => {
         '/',
         CHANNEL_ORIGIN,
         { protocolVersion: PROTOCOL_VERSION, type: 'BOOT_FAILED', releaseNumber: 999 },
+        enqueue,
+        createFakeCoordinator(),
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        snapshot: expect.anything(),
+        ack: 'rolled-back',
+      });
+      expect(matchAllMock).not.toHaveBeenCalled();
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('acknowledges ignored (existing non-activation no-op) for a BOOT_FAILED matching the current activeRelease, which is not an activation target', async () => {
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        {
+          protocolVersion: PROTOCOL_VERSION,
+          type: 'BOOT_FAILED',
+          releaseNumber: releaseA.releaseNumber,
+        },
         enqueue,
         createFakeCoordinator(),
         createFakeReconciler(),

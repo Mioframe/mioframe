@@ -58,12 +58,19 @@ export type PreparationCoordinator = {
    * concurrently with each other, and each one only starts once every
    * earlier-scheduled cleanup has settled. The in-flight release number
    * snapshot passed to `cleanup` is captured when the cleanup actually starts
-   * (not when it is scheduled), so it protects every preparation registered
-   * up to that point. A `prepare()` call registered before this call sees
-   * this cleanup — and any cleanup scheduled after it — defer that
-   * preparation's own cache-touching work until they settle, so preparation
-   * and cleanup can never touch the same release cache at once. Never
-   * cancels an already in-flight preparation.
+   * (not when it is scheduled), so it protects every preparation still
+   * in-flight at that moment instead of racing to delete its cache.
+   *
+   * This arbitration is one-directional: `prepare()` waits for the cleanup
+   * work already scheduled at the moment it is registered (see
+   * {@link prepare}), but a cleanup scheduled *after* an already-registered
+   * `prepare()` call never retroactively delays that preparation's own
+   * already-running cache-touching work — it simply observes that
+   * preparation's release number as in-flight and protects its cache from
+   * this cleanup pass instead. Only a `prepare()` call registered after this
+   * `runCleanup()` call is itself deferred until this cleanup (and any other
+   * already scheduled ahead of it) settles. Never cancels an already
+   * in-flight preparation.
    * @param cleanup - Runs the actual cache-cleanup policy against the in-flight release numbers at cleanup start.
    * @returns Resolves or rejects exactly as `cleanup` does, once it settles.
    */

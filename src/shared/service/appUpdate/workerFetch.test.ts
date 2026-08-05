@@ -709,6 +709,23 @@ describe('workerFetch', () => {
       open.mockRestore();
     });
 
+    it('resolves a controlled unavailable response, without rollback work, when caches.open() throws while serving activeRelease and there is no activating candidate', async () => {
+      const open = vi.spyOn(fakeCaches, 'open').mockRejectedValue(new Error('cache open failed'));
+
+      const { response, runLifetimeWork } = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+      );
+
+      expect(response.status).toBe(503);
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(runLifetimeWork).toBeUndefined();
+      expect(fetchMock).not.toHaveBeenCalled();
+      open.mockRestore();
+    });
+
     it('resolves a controlled unavailable response when the archived index reading rejects', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
@@ -825,6 +842,63 @@ describe('workerFetch', () => {
           releaseNumber: candidateRelease.releaseNumber,
         });
         expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it('enters the same durable rollback path when caches.open() throws while serving the activating candidate itself, not merely on a controlled 503', async () => {
+        await seedAvailableRelease();
+        let persistedState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'automatic',
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: candidateRelease,
+            deadlineAt: farFutureDeadlineAt,
+          },
+        };
+        readControllerStateMock.mockImplementation(() =>
+          Promise.resolve({ status: 'valid', state: persistedState }),
+        );
+        writeControllerStateMock.mockImplementation((_channel, state) => {
+          persistedState = state;
+          return Promise.resolve();
+        });
+        const { oldPostMessage, newPostMessage, otherPostMessage } = stubSameChannelClients();
+        const candidateCacheName = buildReleaseCacheName(CHANNEL, candidateRelease.releaseNumber);
+        const originalOpen = fakeCaches.open;
+        const open = vi.spyOn(fakeCaches, 'open').mockImplementation(async (name) => {
+          if (name === candidateCacheName) throw new Error('candidate cache open failed');
+          return originalOpen(name);
+        });
+
+        const result = await invokeNavigationFetch(
+          CHANNEL,
+          BASE_PATH,
+          new Request('https://mioframe.example/'),
+          createFakeCoordinator(),
+          { clientId: 'old', resultingClientId: 'new' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.resolve([]),
+          },
+        );
+
+        expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
+        expect(persistedState.activeRelease).toEqual(activeRelease);
+        expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
+        expect(await result.response.text()).toBe('<html>archived</html>');
+        expect(result.runLifetimeWork).toBeTypeOf('function');
+        await result.runLifetimeWork?.();
+        expect(oldPostMessage).not.toHaveBeenCalled();
+        expect(newPostMessage).not.toHaveBeenCalled();
+        expect(otherPostMessage).toHaveBeenCalledExactlyOnceWith({
+          protocolVersion: 1,
+          type: 'APP_UPDATE_ROLLBACK',
+          releaseNumber: candidateRelease.releaseNumber,
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+        open.mockRestore();
       });
 
       it('rolls back and serves active when an already-activating candidate (not started by this navigation) cannot be restored', async () => {

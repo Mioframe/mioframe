@@ -37,41 +37,60 @@ const PROBE_TIMEOUT_MS = 1_000;
 const unavailableResult = (): AppUpdateClientResult<never> => ({ status: 'unavailable' });
 
 /**
- * Per-`ServiceWorker`-object cache of capability-probe results, so the same
- * silent legacy controller is never probed repeatedly across commands. A
- * different controller object (a new deployment taking over) is always
- * probed independently. Intentionally the only capability state this client
- * keeps — never persisted, never a manager.
+ * Classified outcome of one managed-controller capability probe.
+ *
+ * - `capable`/`incompatible` are confirmed, stable facts about this exact
+ *   `ServiceWorker` object and are cached for it (see
+ *   {@link capabilityByController}) — a controller's compatibility never
+ *   changes without becoming a different `ServiceWorker` object;
+ * - `temporarily-unavailable` is a transport failure (a throwing
+ *   `MessageChannel` constructor, a synchronously throwing `postMessage`, or
+ *   silence until {@link PROBE_TIMEOUT_MS}), indistinguishable from a silent
+ *   legacy Workbox controller. Never cached: a later command must be able to
+ *   probe the same controller again, so a transient failure — or a genuinely
+ *   incompatible legacy controller, which will simply time out again — never
+ *   permanently latches this controller as unavailable.
  */
-const capabilityByController = new WeakMap<ServiceWorker, Promise<boolean>>();
+type ManagedCapabilityProbeResult = 'capable' | 'incompatible' | 'temporarily-unavailable';
+
+/**
+ * Per-`ServiceWorker`-object cache of capability-probe results. Only
+ * `capable`/`incompatible` outcomes are ever stored past their own
+ * settlement (see {@link confirmManagedCapability}); a
+ * `temporarily-unavailable` entry is removed as soon as it settles, so it
+ * only ever shares one in-flight attempt among callers racing the same
+ * probe, never a permanent cache. A different controller object (a new
+ * deployment taking over) is always probed independently. Intentionally the
+ * only capability state this client keeps — never persisted, never a
+ * manager.
+ */
+const capabilityByController = new WeakMap<ServiceWorker, Promise<ManagedCapabilityProbeResult>>();
 
 /**
  * Sends the same-path managed-controller capability probe to `controller`
- * and resolves whether it is a managed controller for `expectedChannel`.
- * Never rejects: an unavailable transport, a throwing `MessageChannel`
- * constructor, a synchronously throwing `postMessage`, a malformed or
- * wrong-version response, or silence until {@link PROBE_TIMEOUT_MS} all
- * resolve `false`, exactly like a compatible legacy Workbox controller that
- * never implements this private protocol at all.
+ * and classifies its capability for `expectedChannel`. Never rejects: every
+ * failure mode resolves `'temporarily-unavailable'`, exactly like a
+ * compatible legacy Workbox controller that never implements this private
+ * protocol at all — see {@link ManagedCapabilityProbeResult}.
  * @param controller - The controller to probe.
  * @param expectedChannel - This build's own managed application-update channel.
- * @returns Whether `controller` is a managed controller for `expectedChannel`.
+ * @returns The classified probe outcome.
  */
 function probeManagedController(
   controller: ServiceWorker,
   expectedChannel: 'stable' | 'develop',
-): Promise<boolean> {
+): Promise<ManagedCapabilityProbeResult> {
   let channel: MessageChannel;
   try {
     channel = new MessageChannel();
   } catch {
-    return Promise.resolve(false);
+    return Promise.resolve('temporarily-unavailable');
   }
 
   return new Promise((resolve) => {
     let settled = false;
 
-    const settle = (capable: boolean): void => {
+    const settle = (result: ManagedCapabilityProbeResult): void => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -81,16 +100,18 @@ function probeManagedController(
       } catch {
         // A browser transport cleanup failure must not leak past this boundary.
       }
-      resolve(capable);
+      resolve(result);
     };
 
     channel.port1.onmessage = (event) => {
       const parsed = zodManagedControllerProbeResponse.safeParse(event.data);
-      settle(parsed.success && parsed.data.channel === expectedChannel);
+      settle(
+        parsed.success && parsed.data.channel === expectedChannel ? 'capable' : 'incompatible',
+      );
     };
 
     const timer = setTimeout(() => {
-      settle(false);
+      settle('temporarily-unavailable');
     }, PROBE_TIMEOUT_MS);
 
     try {
@@ -99,25 +120,33 @@ function probeManagedController(
         [channel.port2],
       );
     } catch {
-      settle(false);
+      settle('temporarily-unavailable');
     }
   });
 }
 
 /**
- * Resolves — and caches, per {@link capabilityByController} — whether
- * `controller` has confirmed managed-update capability for this build's own
- * `MANAGED_APP_UPDATE_CHANNEL`.
+ * Resolves — and caches, per {@link capabilityByController} — this
+ * controller's managed-update capability for this build's own
+ * `MANAGED_APP_UPDATE_CHANNEL`. Only `capable`/`incompatible` are cached
+ * past their own settlement; a `temporarily-unavailable` result is removed
+ * from the cache once settled, so concurrent callers share the one in-flight
+ * attempt but a later command always probes again.
  * @param controller - The controller to confirm.
- * @returns Whether `controller` is a confirmed managed controller.
+ * @returns The classified probe outcome.
  */
-function confirmManagedCapability(controller: ServiceWorker): Promise<boolean> {
-  if (!MANAGED_APP_UPDATE_CHANNEL) return Promise.resolve(false);
+function confirmManagedCapability(
+  controller: ServiceWorker,
+): Promise<ManagedCapabilityProbeResult> {
+  if (!MANAGED_APP_UPDATE_CHANNEL) return Promise.resolve('incompatible');
 
   const cached = capabilityByController.get(controller);
   if (cached) return cached;
 
-  const probe = probeManagedController(controller, MANAGED_APP_UPDATE_CHANNEL);
+  const probe = probeManagedController(controller, MANAGED_APP_UPDATE_CHANNEL).then((result) => {
+    if (result === 'temporarily-unavailable') capabilityByController.delete(controller);
+    return result;
+  });
   capabilityByController.set(controller, probe);
   return probe;
 }
@@ -221,8 +250,8 @@ async function sendToController(
   }
   if (!controller) return unavailableResult();
 
-  const capable = await confirmManagedCapability(controller);
-  if (!capable) return unavailableResult();
+  const capability = await confirmManagedCapability(controller);
+  if (capability !== 'capable') return unavailableResult();
 
   return sendCommand(controller, request, timeoutMs);
 }
