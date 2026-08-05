@@ -29,9 +29,16 @@ legacy Workbox /sw.js
 → full rollback guarantees begin with managed release 2
 ```
 
-Release 1 is a dedicated transition release containing the managed-update infrastructure without unrelated product changes or irreversible data changes.
+Managed release 1 is the complete application artifact shipped by the promotion that introduces the managed worker. It is not required to be infrastructure-only and may include already-reviewed product fixes or accumulated `develop` changes present in that promotion.
 
-A failed managed `install` leaves Workbox active. After release 1 activates, rollback to Workbox is unsupported. If release 1 cannot finish application boot, later owned top-level navigations continue reconciliation so a corrected managed release remains discoverable without application JavaScript.
+This is an explicit accepted release risk, not an implicit rollback guarantee:
+
+- a failed managed worker `install` leaves the compatible Workbox predecessor active;
+- after managed release 1 activates, rollback to Workbox is unsupported;
+- managed release 1 must contain no irreversible user-data migration;
+- managed release 1 must pass complete product, UI/accessibility, managed-update, and release verification as one artifact;
+- if release 1 cannot finish application boot, later owned top-level navigations continue reconciliation so a corrected managed release 2 remains discoverable without application JavaScript;
+- rollback between managed application releases begins with release 2.
 
 ## Non-goals
 
