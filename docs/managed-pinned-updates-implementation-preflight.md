@@ -220,7 +220,9 @@ restoration, infrastructure access, or revalidation fails
 
 ## Initial baseline composition
 
-Managed release 1 is the complete promoted application artifact, not necessarily an infrastructure-only artifact. It may contain already-reviewed product fixes and accumulated `develop` changes. This is accepted only with the explicit boundary documented in `managed-pinned-updates.md`: no rollback to Workbox after activation, no irreversible user-data migration, complete product/UI acceptance, and full rollback guarantees beginning with managed release 2.
+Managed release 1 is the complete promoted application artifact, not necessarily an infrastructure-only artifact. It may contain already-reviewed product fixes, accumulated `develop` changes, and the local `DialogForm` focus-trap correction retained in PR 169. This is accepted only with the explicit boundary documented in `managed-pinned-updates.md`: no rollback to Workbox after activation, no irreversible user-data migration, complete product/UI acceptance, and full rollback guarantees beginning with managed release 2.
+
+No separate legacy baseline release and no separate `DialogForm` PR are required.
 
 ## TEST IMPACT
 
