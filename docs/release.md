@@ -204,6 +204,9 @@ focused and the full gate, and tag pushes never rerun the full gate:
 - Whether a given `develop` state is ready to promote to `main`.
 - Writing the release notes for a version (`docs/releases/<version>.md`).
 - Creating and pushing the `vX.Y.Z` tag after `main` is updated.
+- Accepting the complete first managed application artifact as release 1,
+  knowing rollback to legacy Workbox is unsupported after activation and
+  managed rollback guarantees begin with release 2.
 
 ## Full release verification
 
@@ -220,6 +223,8 @@ gate. It ignores changed-file scope and always runs, for the whole project:
 - the full `vitest run` unit/component suite;
 - full app Playwright E2E smoke coverage;
 - full approved visual regression coverage;
+- managed pinned-update lifecycle proof across publisher, worker, client,
+  activation/rollback, migration, isolation, and Firefox/WebKit lifecycle;
 - production build and artifact validation (`docs/release.md#production-artifact-validation`);
 - release smoke coverage (`docs/release.md#release-smoke-coverage`);
 - release/version metadata validation (`scripts/release/validateVersion.mjs`);
@@ -228,7 +233,9 @@ gate. It ignores changed-file scope and always runs, for the whole project:
 
 Full mode never reports a check as skipped because there were no changed
 files. Use `pnpm verify --full --only <label>` to focus on a single release
-check while keeping the release-scope framing.
+check while keeping the release-scope framing. For managed-update changes,
+run `pnpm verify --full --only managed-updates` without flaky classification
+before the final `pnpm verify:release` gate.
 
 Mutation testing (`pnpm test:mutate`, or scoped mutation inside ordinary
 `pnpm verify`) remains available for test design and PR-quality work, but it
@@ -330,7 +337,9 @@ only their deployment slot plus that shared root fallback file.
 On push to `develop`, the `verify` workflow's `deploy-develop` job builds
 with `BASE_URL=/branch/develop/`, `VITE_RELEASE_CHANNEL=branch`,
 `VITE_RELEASE_CHANNEL_ID=develop`, PWA enabled, and publishes to
-`branch/develop/`.
+`branch/develop/` as the managed develop channel. Its exact source commit SHA
+and canonical UTC committer timestamp are used consistently for Vite build
+metadata, `deployment.json`, and the managed release descriptor.
 
 ### Manual branch deployment
 
@@ -346,8 +355,8 @@ branch-based end to end.
 The slug is derived by `scripts/pages/lib/slug.mjs` `slugifyBranch`:
 
 - the literal `develop` branch name maps to the bare slug `develop`, so a
-  manual dispatch against `develop` resolves to the same `branch/develop/`
-  slot the automatic develop-push deployment uses;
+  manual dispatch against `develop` resolves to the same managed
+  `branch/develop/` slot the automatic develop-push deployment uses;
 - every other branch name is lower-cased, has non-`[a-z0-9]` runs (including
   `/` from `feature/x` names) collapsed to a single `-`, is truncated to
   leave room for an appended 8-character hex hash, then gets that hash
@@ -370,7 +379,11 @@ Given the validated branch name, the workflow builds with
 `branch/<slug>/`. Deployment metadata records the actual checked-out commit
 (`git -C app-source rev-parse HEAD`), not `github.sha` — for a
 `workflow_dispatch` run, `github.sha` is the workflow's own trigger commit,
-not necessarily the selected branch's tip.
+not necessarily the selected branch's tip. It also records the canonical UTC
+committer timestamp of that selected commit and passes the same value to
+`VITE_BUILD_DATE`. When the slug is exactly `develop`, the workflow uses the
+managed publisher with app version, selected commit SHA, and canonical build
+date; every other manual branch retains generated Workbox publication.
 
 ### PR preview deployment
 
@@ -500,6 +513,16 @@ retention are left untouched.
 
 Stable and develop use the managed controller worker. Ordinary manual branches retain generated Workbox behavior, while PR previews remain non-PWA.
 
+The one-time transition boundary is:
+
+```text
+legacy Workbox
+→ managed release 1 becomes the complete promoted application baseline
+→ full rollback guarantees begin with managed release 2
+```
+
+Managed release 1 may include already-reviewed product changes from the same promotion. It is not required to be infrastructure-only. Because rollback to Workbox is unsupported after activation, the first managed release must contain no irreversible user-data migration and requires complete product, UI/accessibility, managed-update, and release acceptance as one artifact. Recovery from a defective first managed release is publication of a corrected managed release 2 through navigation reconciliation.
+
 The canonical managed-update architecture is defined in:
 
 - `docs/managed-pinned-updates.md`;
@@ -617,8 +640,10 @@ apply these manually in the GitHub UI):
 ## What blocks a release
 
 - Any failing check inside `pnpm verify:release` (format, lint, type-check,
-  unit, e2e, visual, build, artifact, release smoke, version metadata,
-  release config).
+  unit, e2e, visual, managed updates, build, artifact, release smoke,
+  version metadata, release config).
+- A flaky classification in the focused managed-update gate for a release
+  containing managed-update changes.
 - A missing or non-monotonic version bump.
 - A tag that does not match `package.json` version.
 - Missing release notes for the target version
