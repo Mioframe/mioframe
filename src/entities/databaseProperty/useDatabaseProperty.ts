@@ -5,8 +5,23 @@ import { DomainError } from '@shared/lib/error';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import { useMainServiceClient } from '@shared/service';
 import { isUndefined } from 'es-toolkit';
-import { computed, toValue, type Ref } from 'vue';
+import { computed, readonly, shallowRef, toValue, watch, type Ref } from 'vue';
 
+/**
+ * Reads and patches one database property by id.
+ *
+ * The underlying property query can re-emit a transient `undefined` for a
+ * property that is still present (e.g. an upstream document-state
+ * re-emission racing the property map), which would otherwise flash
+ * consumers into their "no property" fallback while the property is being
+ * actively edited. `property` holds the last-resolved value for the current
+ * `(path, documentId, propertyId)` identity and only clears when that
+ * identity itself changes.
+ * @param path Directory path containing the document.
+ * @param documentId Document id the property belongs to.
+ * @param propertyId Property id to read; `undefined` cancels the query.
+ * @returns Reactive property state and a patch helper.
+ */
 export const useDatabaseProperty = (
   path: Ref<string>,
   documentId: Ref<AMDocumentId>,
@@ -18,13 +33,33 @@ export const useDatabaseProperty = (
     },
   } = useMainServiceClient();
 
-  const { data, error, isLoading } = useObservableQuery(
-    databaseProperty,
-    computed(() => ({
-      documentId: documentId.value,
-      id: propertyId.value,
-      path: path.value,
-    })),
+  const query = computed(() => ({
+    documentId: documentId.value,
+    id: propertyId.value,
+    path: path.value,
+  }));
+
+  const { data, error, isLoading } = useObservableQuery(databaseProperty, query);
+
+  const resolvedProperty = shallowRef<DatabaseUnknownProperty | undefined>();
+  let resolvedQueryKey: string | undefined;
+
+  watch(
+    [query, data],
+    ([{ documentId: nextDocumentId, id: nextId, path: nextPath }, nextData]) => {
+      const nextQueryKey = `${nextPath}:${nextDocumentId}:${nextId}`;
+
+      if (nextQueryKey !== resolvedQueryKey) {
+        resolvedQueryKey = nextQueryKey;
+        resolvedProperty.value = nextData;
+        return;
+      }
+
+      if (nextData !== undefined) {
+        resolvedProperty.value = nextData;
+      }
+    },
+    { immediate: true },
   );
 
   const errorMessage = computed(() => {
@@ -42,7 +77,7 @@ export const useDatabaseProperty = (
   });
 
   return {
-    property: data,
+    property: readonly(resolvedProperty),
     errorMessage,
     isLoading,
 
