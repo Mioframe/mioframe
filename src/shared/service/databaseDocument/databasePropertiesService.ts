@@ -76,12 +76,7 @@ export const useDatabasePropertiesService = (
 
           return state?.properties;
         }),
-        // Value equality, not reference equality: `state` re-emits a new
-        // object on every document mutation (e.g. an item write), which
-        // would otherwise re-emit an unchanged properties map on every
-        // unrelated write and spuriously flip dependent `hasProperties`
-        // reads through a momentary empty/undefined state.
-        distinctUntilChanged((a, b) => isEqual(a, b)),
+        distinctUntilChanged(),
       ),
   );
 

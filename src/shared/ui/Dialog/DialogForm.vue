@@ -64,7 +64,7 @@ const formEl = useTemplateRef('formEl');
 // underlying focus-trap library throw synchronously.
 const { activate: lockFocus, deactivate: unlockFocus } = useFocusTrap(formEl, {
   allowOutsideClick: true,
-  fallbackFocus: () => formEl.value ?? document.body,
+  fallbackFocus: () => formEl.value as HTMLFormElement,
 });
 
 void nextTick(() => {
