@@ -1,6 +1,6 @@
 # Managed pinned updates — Stage 7 proof preflight
 
-**Status: Stage 7 scenario architecture is accepted, but final proof is blocked by post-review publisher, state-transition, capability, fetch-path, and watchdog corrections.**
+**Status: Stage 7 implementation and browser-proof architecture are complete. Code-level post-review findings are resolved. Merge readiness now depends on current-head repository verification and operator UI/accessibility acceptance.**
 
 Authoring sources: [`managed-pinned-updates.md`](./managed-pinned-updates.md) and [`managed-pinned-updates-implementation-preflight.md`](./managed-pinned-updates-implementation-preflight.md).
 
@@ -11,7 +11,7 @@ Authoring sources: [`managed-pinned-updates.md`](./managed-pinned-updates.md) an
 - Keep one public `managed-updates` label and sequential fail-stop execution.
 - Do not add another update manager, production test hook, fixture system, protocol path, browser project, retry, or parallel E2E lane.
 
-## Completed Stage 7 scenarios
+## Accepted proof structure
 
 1. `managedUpdatesMigration.spec.ts` proves recovery from a boot-broken first managed release through navigation reconciliation and a later corrected release.
 2. `managedUpdatesActivationUi.spec.ts` proves that the previous release reads the document, property, and item written by an activating candidate after real worker rollback.
@@ -21,8 +21,6 @@ Authoring sources: [`managed-pinned-updates.md`](./managed-pinned-updates.md) an
 6. The exact eight-spec corpus runs in three sequential fresh containers: Chromium lifecycle, Chromium migration/isolation, and Firefox/WebKit cross-engine.
 7. Mode-change-dependent scenarios use explicit protocol synchronization barriers before publishing a release whose discovery must belong to a later trigger.
 8. Release Playwright keeps two diagnostic CI retries but enables `failOnFlakyTests`, so a retry-pass cannot make the managed-update or final release gate green.
-
-These Stage 7 proof-ownership corrections remain accepted.
 
 ## Portable clean-launch contract
 
@@ -53,31 +51,48 @@ The exact eight-spec corpus executes in three sequential fresh container session
 
 The sessions never run in parallel. Failure or termination of an earlier group stops every later group. The aggregate passes only when all three groups pass. The public verify label and spec corpus remain unchanged.
 
-## Post-review blockers before final proof
+## Resolved complete-PR findings
 
-Complete-PR review found earlier-stage contract violations that invalidate current-head final verification until corrected:
+The final implementation includes focused proof for all findings discovered during complete-PR review:
 
-1. retained publication validation proves descriptor structure and archive presence but does not verify the actual archived index and retained asset bytes against descriptor sizes and SHA-256 values;
-2. Automatic and Manual long-running preparation completion validates only `releaseNumber`, not the complete `ReleaseSummary` identity required by the canonical contract;
-3. the application client treats any controlling service worker as managed-update capability, so legacy Workbox and unmanaged branch controllers remain interactive until long request timeouts;
-4. Automatic preparation failure is swallowed instead of being returned as a classified reconciliation result;
-5. the owned asset fetch path enumerates the complete release cache before every asset response, creating avoidable repeated full-cache scans;
-6. the injected watchdog transport does not fail closed on synchronous `MessageChannel` or `postMessage` errors.
+- retained archived indexes and assets are validated by exact byte size and SHA-256 before allocation, no-op publication, or writes;
+- Automatic and Manual preparation completion uses the complete `ReleaseSummary` identity;
+- only a confirmed same-channel managed controller exposes update capability;
+- transient capability-probe transport failures are not permanently cached;
+- Automatic preparation failure is classified without persisted error state;
+- owned asset serving avoids complete cache enumeration for every asset request;
+- owned navigation failures, including thrown Cache Storage failures for an activating target, resolve through controlled rollback/503 paths;
+- concurrent Manual install completion for one exact target is idempotent;
+- rollback recovery uses direct durable acknowledgements for the reporting window and best-effort broadcast for other windows;
+- one failing client broadcast cannot prevent delivery to remaining same-channel clients;
+- the watchdog remains armed when activation status is false, allowing direct `BOOT_OK`/`BOOT_FAILED` classification of active versus stale windows;
+- synchronous watchdog transport failures cannot latch reporting or escape as unhandled rejections;
+- manual deployment of the literal `develop` branch supplies the same canonical managed build identity as automatic develop deployment.
 
-These findings do not require a new manager, persisted operation state, browser-specific lifecycle logic, or a redesign of the one-active/one-candidate state model. They require localized contract corrections and regression proof.
+These corrections remain localized. They add no manager, persisted operation state, polling, retry scheduler, browser-specific lifecycle branch, or second worker path.
 
-## Current final verification state
+## Initial managed baseline decision
 
-Strict release flaky gating is implemented and has focused configuration proof. Final verification must not run until the post-review blockers are corrected and the branch is synchronized with current `develop`.
+The first managed release is the complete application state shipped by the promotion that introduces the managed worker. It is not required to be an infrastructure-only release and may include already-reviewed product fixes present in the same resulting PR or accumulated `develop` state.
 
-Then, on one resulting head:
+This is an explicit release-risk decision:
+
+- the legacy Workbox application has no managed rollback contract;
+- after managed release 1 activates, rollback to Workbox is unsupported;
+- full rollback guarantees begin with managed release 2;
+- managed release 1 must contain no irreversible user-data migration and must pass complete product, UI/accessibility, managed-update, and release verification as one artifact;
+- if managed release 1 itself is defective after activation, recovery is publication of a corrected managed release 2 through navigation reconciliation, not rollback to the legacy Workbox deployment.
+
+## Final verification state
+
+The coding correction was reported as passing, on one unchanged workspace and without flaky classification:
 
 ```text
 pnpm verify --full --only managed-updates
 pnpm verify:release
 ```
 
-Both commands must pass without flaky classification. A retry may collect diagnostics, but any flaky classification fails the gate.
+Documentation changes after that proof create a new repository head. The final merge decision therefore still requires the ordinary GitHub workflow on the resulting documentation head. Any later production-code change invalidates the previous local proof and requires both commands again.
 
 ## Acceptance
 
@@ -92,17 +107,19 @@ Both commands must pass without flaky classification. A retry may collect diagno
 - Retained release bytes are verified before allocation or any publication write.
 - Long preparation completion requires the complete target identity.
 - Only a confirmed same-channel managed controller exposes update capability.
-- Automatic preparation failure is classified without persisted error state.
-- Owned asset serving performs no complete cache enumeration per asset request.
-- Watchdog transport failures cannot latch boot reporting or escape as unhandled rejections.
+- Temporary capability failures can recover on a later command without background retry.
+- Owned activation-target serving exceptions use exact guarded rollback.
+- Direct rollback acknowledgement recovers the reporting window without requiring broadcast delivery.
 - A retry is diagnostic evidence and causes the release run to fail as flaky.
-- `pnpm verify --full --only managed-updates` passes without flaky classification.
-- `pnpm verify:release` passes as the single final completion gate.
+- `pnpm verify --full --only managed-updates` passes without flaky classification after any production-code change.
+- `pnpm verify:release` passes as the final completion gate.
+- The final GitHub workflow is green on the exact merge head.
+- Operator UI/accessibility acceptance is recorded before stable release.
 
 ## TEST IMPACT
 
-Changed contracts: managed-update proof orchestration, controller-upgrade observation, portable cross-engine safe-start behavior, synchronization of deferred reconciliation in tests, strict release flaky gating, retained archive integrity, complete preparation identity, managed-controller capability, request-path cache validation, and watchdog transport failure handling.
-Risks: publishing over an unrecoverable retained release; approving a same-number conflicting candidate; long hangs under Workbox control; silent Automatic preparation failure; quadratic startup cache work; latched watchdog failure reporting; invalid stateful retries; cumulative multi-engine container lifetime; waiting-worker promotion race.
-Proof owners: publisher tests, state-transition and worker orchestration tests, service-client/entity/widget tests, existing managed-update release specs, managed-update aggregate runner, release Playwright configuration, fixture mutation helper, and verify/config tests.
-Repository impact metadata must be re-evaluated after the correction because existing files gain scenarios but the release spec file corpus should remain unchanged.
-Verification: focused static/unit proof, targeted owning browser proof, `pnpm verify --full --only managed-updates`, then the single final gate `pnpm verify:release`.
+Changed contracts: managed-update proof orchestration, controller-upgrade observation, portable cross-engine safe-start behavior, synchronization of deferred reconciliation, strict release flaky gating, retained archive integrity, complete preparation identity, managed-controller capability, request-path cache validation, rollback acknowledgements, watchdog recovery, concurrent Manual completion, and manual develop publication identity.
+
+Risks: first managed baseline cannot roll back to Workbox; publishing over an unrecoverable retained release; approving a conflicting candidate; losing rollback notification to one window; stale-window mixed-release execution; long hangs under legacy controller control; invalid stateful retries; cumulative multi-engine container lifetime; waiting-worker promotion race.
+
+Proof owners: publisher tests, state-transition and worker orchestration tests, service-client/entity/widget tests, watchdog tests, release workflow validation, existing managed-update release specs, managed-update aggregate runner, release Playwright configuration, fixture mutation helper, and verify/config tests.
