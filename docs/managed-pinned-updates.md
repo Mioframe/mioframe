@@ -1,6 +1,6 @@
 # Managed pinned application updates — architecture handoff
 
-**Implementation readiness: ready for staged implementation through the implementation preflight.**
+**Implementation status: complete; final merge readiness depends on the resulting-head repository gate, final complete-PR review, and operator UI/accessibility acceptance.**
 
 This is the canonical architecture contract for PR 169. Existing unshipped implementation formats are replaceable evidence, not compatibility contracts.
 
@@ -506,8 +506,8 @@ pnpm verify:release
 
 ## Implementation readiness
 
-The runtime architecture is stabilized. Implementation must follow the seven review stages in the preflight; the PR remains draft until all stages and final verification are complete.
+The runtime architecture and implementation are stabilized. The PR remains draft until final resulting-head verification, complete-PR review, and operator UI/accessibility acceptance are complete.
 
 Unresolved architecture blockers: none.
 
-Verdict: **ready for the current sequential stage only after the previous stage is architecture-accepted and verification-passed.**
+Verdict: **implementation complete; merge readiness is evaluated separately from architecture completeness.**
