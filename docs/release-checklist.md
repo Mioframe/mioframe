@@ -17,9 +17,10 @@ full policy this checklist enforces.
       changed unintentionally as a side effect of release infrastructure
       work.
 - [ ] For the first managed release, the complete promoted artifact is accepted
-      as the managed baseline: rollback to legacy Workbox is unsupported after
-      activation, no irreversible user-data migration is included, and the
-      complete product/UI surface has been manually accepted.
+      as the managed baseline: it may include already-reviewed product changes,
+      rollback to legacy Workbox is unsupported after activation, no
+      irreversible user-data migration is included, and the complete
+      product/UI surface has been manually accepted.
 
 ## Opening the PR into `main`
 
