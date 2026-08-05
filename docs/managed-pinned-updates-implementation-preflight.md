@@ -1,12 +1,12 @@
 # Managed pinned application updates — implementation preflight
 
-**Status: ready for sequential staged implementation.**
+**Status: sequential implementation is complete; this document records the accepted ownership and verification structure used by PR 169.**
 
 Authoritative architecture: [`docs/managed-pinned-updates.md`](./managed-pinned-updates.md).
 
-Existing code and tests are reusable evidence, not compatibility contracts. The feature has not shipped; old descriptor, state, snapshot, protocol, and watchdog formats are removed rather than migrated.
+Existing code and tests before PR 169 were reusable evidence, not compatibility contracts. The feature had not shipped, so old descriptor, state, snapshot, protocol, and watchdog formats were removed rather than migrated.
 
-The seven stages below are sequential review checkpoints inside one draft PR. They are not independently mergeable product increments. Each stage must leave all changed owners, repository type checking, focused verification, and the current-head stage gate green before the next stage begins.
+The seven stages below were sequential review checkpoints inside one draft PR. They were not independently mergeable product increments. Each stage had to leave all changed owners, repository type checking, focused verification, and the current-head stage gate green before the next stage began.
 
 ## Owner map
 
@@ -188,8 +188,8 @@ restoration, infrastructure access, or revalidation fails
 - serialize only the short `ready → activating` transition through `OperationQueue`;
 - serve the activating candidate while preserving the previous active release in state;
 - emit `BOOT_OK` only after root mount, initial routing, and first render;
-- implement activation deadline, matching `BOOT_FAILED`, expiration, stale acknowledgement handling, and exact rollback;
-- preserve response-before-follow-up ordering, broadcasts, protected-release cleanup, and controller compatibility obligations.
+- implement activation deadline, matching `BOOT_FAILED`, expiration, stale acknowledgement handling, exact rollback, direct reporting-window recovery, and best-effort broadcasts to other windows;
+- preserve response-before-follow-up ordering, protected-release cleanup, and controller compatibility obligations.
 
 ### Stage 6 — client, entity, features, and UI
 
@@ -198,6 +198,7 @@ restoration, infrastructure access, or revalidation fails
 - add explicit `success | timeout | unavailable` outcomes;
 - apply 10-second short and 120-second Check/Install deadlines;
 - preserve the last valid snapshot and capability on timeout;
+- distinguish confirmed incompatibility from temporary capability-probe transport failure;
 - project one candidate through the existing entity owner;
 - preserve feature actions and FSD dependency direction;
 - show Manual `available` notifications and settings state without adding polling or local lifecycle truth.
@@ -211,11 +212,15 @@ restoration, infrastructure access, or revalidation fails
 - prove complete-summary preparation conflicts fail closed;
 - prove iframe and other non-document navigation remains unowned;
 - prove owned storage/cache exception paths resolve controlled `503` rather than rejecting `respondWith()`;
+- prove direct rollback recovery for reporting and stale windows without relying on broadcast delivery;
+- prove concurrent Manual completion and temporary capability-probe recovery;
 - prove controller and user-data compatibility for every still-supported published release;
 - update verify impact metadata only where durable source/spec ownership changed;
 - run final managed-update and release gates.
 
-Do not begin the next stage before focused repository-managed verification and architect review of the current stage.
+## Initial baseline composition
+
+Managed release 1 is the complete promoted application artifact, not necessarily an infrastructure-only artifact. It may contain already-reviewed product fixes and accumulated `develop` changes. This is accepted only with the explicit boundary documented in `managed-pinned-updates.md`: no rollback to Workbox after activation, no irreversible user-data migration, complete product/UI acceptance, and full rollback guarantees beginning with managed release 2.
 
 ## TEST IMPACT
 
@@ -227,24 +232,24 @@ Do not begin the next stage before focused repository-managed verification and a
 
 **Stage 4:** reconciliation unit/wiring tests, join-only navigation/Check behavior, mode-change-only rerun, latest-first replacement, failed-discovery fallback, Manual discovery, coordinator integration.
 
-**Stage 5:** clean-launch client enumeration, concurrent activation, watchdog boundary, commit/rollback/expiration/stale acknowledgement, broadcasts and protected cleanup.
+**Stage 5:** clean-launch client enumeration, concurrent activation, watchdog boundary, commit/rollback/expiration/stale acknowledgement, direct rollback recovery, broadcasts and protected cleanup.
 
-**Stage 6:** app-update client, entity, feature, widget, settings, notifications, finite busy state and timeout preservation.
+**Stage 6:** app-update client, capability probe, entity, feature, widget, settings, notifications, finite busy state and timeout preservation.
 
 **Stage 7:** `tests/e2e/appUpdatesNavigation.spec.ts`, existing `tests/e2e/release/managedUpdates*.spec.ts`, cross-engine lifecycle, isolation, data compatibility, final verification.
 
 ## Verification
 
-After every stage, run the smallest repository-managed focused verification for every changed owner and report exact results. Type checking must remain green after every stage.
+After every stage, the smallest repository-managed focused verification was required for every changed owner. Type checking remained green after every stage.
 
-After Stage 7:
+Final code proof:
 
 ```text
 pnpm verify --full --only managed-updates
 pnpm verify:release
 ```
 
-GitHub CI or raw underlying commands do not replace the final release gate.
+A retry is diagnostic only: any flaky classification fails the gate. GitHub CI or raw underlying commands do not replace the final release gate.
 
 ## Forbidden
 
@@ -264,4 +269,4 @@ GitHub CI or raw underlying commands do not replace the final release gate.
 
 Unresolved architecture blockers: none.
 
-Verdict: **ready for the current sequential stage only after the previous stage is architecture-accepted and verification-passed.**
+Verdict: **implementation complete; final merge readiness depends on the resulting-head GitHub workflow, operator UI/accessibility acceptance, and final complete-PR review.**
