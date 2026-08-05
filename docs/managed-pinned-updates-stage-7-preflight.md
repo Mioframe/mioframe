@@ -73,7 +73,7 @@ These corrections remain localized. They add no manager, persisted operation sta
 
 ## Initial managed baseline decision
 
-The first managed release is the complete application state shipped by the promotion that introduces the managed worker. It is not required to be an infrastructure-only release and may include already-reviewed product fixes present in the same resulting PR or accumulated `develop` state.
+The first managed release is the complete application state shipped by the promotion that introduces the managed worker. It is not required to be an infrastructure-only release and may include already-reviewed product fixes present in the same resulting PR, including the local `DialogForm` focus-trap correction, or accumulated `develop` state.
 
 This is an explicit release-risk decision:
 
@@ -82,6 +82,8 @@ This is an explicit release-risk decision:
 - full rollback guarantees begin with managed release 2;
 - managed release 1 must contain no irreversible user-data migration and must pass complete product, UI/accessibility, managed-update, and release verification as one artifact;
 - if managed release 1 itself is defective after activation, recovery is publication of a corrected managed release 2 through navigation reconciliation, not rollback to the legacy Workbox deployment.
+
+No separate legacy-Workbox baseline release or `DialogForm` split is required before merging PR 169.
 
 ## Final verification state
 
