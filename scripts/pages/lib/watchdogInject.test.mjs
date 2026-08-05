@@ -120,9 +120,10 @@ describe('buildWatchdogScript', () => {
     const script = buildWatchdogScript(1);
     const removalCount =
       script.split("window.removeEventListener('error', onEarlyFatalError, true)").length - 1;
-    // Once on a committed BOOT_OK, once on a rolled-back BOOT_OK, once on the
-    // "not this session's activation target" disarm.
-    expect(removalCount).toBe(3);
+    // Once on a committed BOOT_OK, once on a rolled-back BOOT_OK. A
+    // non-activation-target GET_ACTIVATION_STATUS response no longer
+    // disarms, so it no longer contributes a removal site.
+    expect(removalCount).toBe(2);
   });
 
   it('sends BOOT_OK and BOOT_FAILED through an acknowledged MessageChannel request, not a bare postMessage', () => {
@@ -166,20 +167,30 @@ describe('buildWatchdogScript', () => {
     expect(reportBootFailedBody).not.toContain('location.reload');
   });
 
-  it('disarms outside activation: isActivationTarget === false sets settled, clears the deadline timer, and removes the early-error listeners', () => {
+  it('does not settle outside activation: isActivationTarget === false is a no-op, arming no deadline and touching no listener', () => {
     const script = buildWatchdogScript(1);
     const activationStatusBody = script.slice(
-      script.indexOf('channel.port1.onmessage = function (event) {'),
+      script.indexOf('if (!parsed.isActivationTarget) {'),
       script.indexOf('var msRemaining = parsed.deadlineAtMs'),
     );
-    expect(activationStatusBody).toContain('settled = true;');
-    expect(activationStatusBody).toContain('clearTimeout(deadlineTimer)');
-    expect(activationStatusBody).toContain(
-      "window.removeEventListener('error', onEarlyFatalError, true)",
+    expect(activationStatusBody).not.toContain('settled = true;');
+    expect(activationStatusBody).not.toContain('clearTimeout(deadlineTimer)');
+    expect(activationStatusBody).not.toContain('removeEventListener');
+    expect(activationStatusBody).not.toContain('setTimeout');
+  });
+
+  it('checks settled before applying a late GET_ACTIVATION_STATUS result, so it can never mutate an already-settled watchdog', () => {
+    const script = buildWatchdogScript(1);
+    const responseHandlerBody = script.slice(
+      script.indexOf('}).then(function (data) {'),
+      script.indexOf('.catch(function (readyError)'),
     );
-    expect(activationStatusBody).toContain(
-      "window.removeEventListener('unhandledrejection', onEarlyFatalError)",
-    );
+    const parsedGuardIndex = responseHandlerBody.indexOf('if (!parsed) return;');
+    const settledGuardIndex = responseHandlerBody.indexOf('if (settled) return;');
+    const branchIndex = responseHandlerBody.indexOf('if (!parsed.isActivationTarget) {');
+    expect(parsedGuardIndex).toBeGreaterThan(-1);
+    expect(settledGuardIndex).toBeGreaterThan(parsedGuardIndex);
+    expect(settledGuardIndex).toBeLessThan(branchIndex);
   });
 
   it('never calls location.reload directly inside reportBootFailed: every reload goes through the shared scheduleReload guard', () => {
@@ -199,22 +210,46 @@ describe('buildWatchdogScript', () => {
 });
 
 describe('watchdog disarm outside activation', () => {
-  it('permanently disarms when isActivationTarget is false: a later runtime error never reports BOOT_FAILED', async () => {
-    const calls = await runWatchdogWithActivationStatusResponse(1, {
-      protocolVersion: 1,
-      isActivationTarget: false,
-    });
-    expect(calls).toEqual([
-      { protocolVersion: 1, type: 'GET_ACTIVATION_STATUS', releaseNumber: 1 },
-    ]);
-
-    window.dispatchEvent(new Event('error'));
-    await flushTasks();
-
-    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
-
+  afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
+
+  /**
+   * Runs the watchdog against a controller that always answers
+   * `GET_ACTIVATION_STATUS` with `isActivationTarget: false`, and answers
+   * `BOOT_OK`/`BOOT_FAILED` with the given acknowledgement (when provided).
+   * Returns every message sent to the controller plus a `location.reload`
+   * spy, so a test can prove both the acknowledgement path and the reload
+   * outcome for a missed-broadcast stale window recovering through a direct
+   * acknowledgement rather than through `APP_UPDATE_ROLLBACK`.
+   * @param acks - `bootOkAck`/`bootFailedAck`: the acknowledgement to reply with for that message type, if any.
+   * @returns The list of messages sent to the controller and the `location.reload` spy.
+   */
+  function runOutsideActivationWithAck({ bootOkAck, bootFailedAck } = {}) {
+    const postMessageCalls = [];
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const controller = {
+      postMessage: (message, transfer) => {
+        postMessageCalls.push(message);
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          transfer[0].postMessage({ protocolVersion: 1, isActivationTarget: false });
+        }
+        if (message.type === 'BOOT_OK' && bootOkAck) {
+          transfer[0].postMessage({ protocolVersion: 1, ack: bootOkAck });
+        }
+        if (message.type === 'BOOT_FAILED' && bootFailedAck) {
+          transfer[0].postMessage({ protocolVersion: 1, ack: bootFailedAck });
+        }
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    return { postMessageCalls, reload };
+  }
 
   it('ignores an activation-status response with a missing or unsupported protocol version, never disarming', async () => {
     const calls = await runWatchdogWithActivationStatusResponse(1, {
@@ -243,6 +278,172 @@ describe('watchdog disarm outside activation', () => {
     expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
 
     vi.unstubAllGlobals();
+  });
+
+  it('active release outside activation: BOOT_OK -> committed settles normally with no reload, and a later error sends no BOOT_FAILED', async () => {
+    const { postMessageCalls, reload } = runOutsideActivationWithAck({ bootOkAck: 'committed' });
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_OK')).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+    const callsBeforeLaterError = postMessageCalls.length;
+
+    // Settled via the committed acknowledgement: the early-error listeners
+    // must already be removed, so a later runtime error sends nothing.
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(postMessageCalls.length).toBe(callsBeforeLaterError);
+  });
+
+  it('stale release after a missed broadcast: BOOT_OK -> rolled-back reloads exactly once without any rollback broadcast', async () => {
+    const { postMessageCalls, reload } = runOutsideActivationWithAck({
+      bootOkAck: 'rolled-back',
+    });
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_OK')).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('stale release fails before application boot: an early error reports BOOT_FAILED -> rolled-back and reloads exactly once', async () => {
+    const { postMessageCalls, reload } = runOutsideActivationWithAck({
+      bootFailedAck: 'rolled-back',
+    });
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('current active release fails outside activation: BOOT_FAILED -> ignored stays recoverable, and a later BOOT_OK -> committed still settles', async () => {
+    const { postMessageCalls, reload } = runOutsideActivationWithAck({
+      bootFailedAck: 'ignored',
+      bootOkAck: 'committed',
+    });
+    await Promise.resolve();
+    await flushTasks();
+    await flushTasks();
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_OK')).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe('late GET_ACTIVATION_STATUS response after settlement', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('cannot mutate a watchdog already settled by BOOT_OK -> committed: no reload, no additional report, no listener re-add', async () => {
+    let activationStatusPort;
+    const postMessageCalls = [];
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const controller = {
+      postMessage: (message, transfer) => {
+        postMessageCalls.push(message);
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          // Deliberately withheld: delivered manually below, after BOOT_OK
+          // has already settled the watchdog, to prove a late response.
+          activationStatusPort = transfer[0];
+        }
+        if (message.type === 'BOOT_OK') {
+          transfer[0].postMessage({ protocolVersion: 1, ack: 'committed' });
+        }
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    await Promise.resolve();
+    await flushTasks();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(postMessageCalls.some((message) => message.type === 'BOOT_OK')).toBe(true);
+    expect(reload).not.toHaveBeenCalled();
+    const callsBeforeLateResponse = postMessageCalls.length;
+
+    activationStatusPort.postMessage({ protocolVersion: 1, isActivationTarget: false });
+    await flushTasks();
+
+    expect(postMessageCalls.length).toBe(callsBeforeLateResponse);
+    expect(reload).not.toHaveBeenCalled();
+
+    // The committed acknowledgement already removed the early-error
+    // listeners; the late status response must not have re-added them or
+    // armed a deadline that could later fire.
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(postMessageCalls.length).toBe(callsBeforeLateResponse);
+  });
+
+  it('cannot mutate a watchdog already settled by BOOT_OK -> rolled-back: exactly one reload, no additional report', async () => {
+    let activationStatusPort;
+    const postMessageCalls = [];
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const controller = {
+      postMessage: (message, transfer) => {
+        postMessageCalls.push(message);
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          activationStatusPort = transfer[0];
+        }
+        if (message.type === 'BOOT_OK') {
+          transfer[0].postMessage({ protocolVersion: 1, ack: 'rolled-back' });
+        }
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    await Promise.resolve();
+    await flushTasks();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(reload).toHaveBeenCalledTimes(1);
+    const callsBeforeLateResponse = postMessageCalls.length;
+
+    activationStatusPort.postMessage({
+      protocolVersion: 1,
+      isActivationTarget: true,
+      deadlineAt: new Date(Date.now() + 60_000).toISOString(),
+    });
+    await flushTasks();
+
+    // A late true-activation-target response must not arm a deadline timer
+    // on top of an already-settled, already-reloading watchdog.
+    expect(postMessageCalls.length).toBe(callsBeforeLateResponse);
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -314,7 +515,7 @@ describe('resource-load error observation during activation', () => {
     vi.unstubAllGlobals();
   });
 
-  it('outside activation, a resource load failure is ignored exactly like an ordinary runtime error', async () => {
+  it('outside activation, a resource load failure is still reported exactly like an ordinary runtime error (the watchdog stays armed)', async () => {
     const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: false,
@@ -323,7 +524,7 @@ describe('resource-load error observation during activation', () => {
     dispatchResourceLoadError();
     await flushTasks();
 
-    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
 
     vi.unstubAllGlobals();
   });
@@ -505,7 +706,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
     vi.unstubAllGlobals();
   });
 
-  it('a false variant with unrelated deadline fields still disarms (additive v1 fields do not break parsing)', async () => {
+  it('a false variant with unrelated deadline fields still parses as isActivationTarget: false, leaving the watchdog armed (additive v1 fields do not break parsing)', async () => {
     const calls = await runWatchdogWithActivationStatusResponse(1, {
       protocolVersion: 1,
       isActivationTarget: false,
@@ -515,7 +716,7 @@ describe('malformed GET_ACTIVATION_STATUS responses fail closed', () => {
     window.dispatchEvent(new Event('error'));
     await flushTasks();
 
-    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(false);
+    expect(calls.some((message) => message.type === 'BOOT_FAILED')).toBe(true);
 
     vi.unstubAllGlobals();
   });

@@ -23,7 +23,13 @@
  * disables its own error handlers or deadline timer on a bare "message
  * sent" — only on a worker-confirmed `committed` or `rolled-back`
  * acknowledgement, matching `stateTransitions.ts`/`workerMessages.ts`'s
- * durable commit and rollback semantics.
+ * durable commit and rollback semantics. In particular, `isActivationTarget:
+ * false` from `GET_ACTIVATION_STATUS` never settles the watchdog by itself:
+ * it answers only whether this release is currently the activation target,
+ * not whether it is the current active release or an already-rolled-back
+ * stale one, so it merely skips arming a deadline and leaves the watchdog
+ * fully armed for the application's own `BOOT_OK` or an early fatal error's
+ * `BOOT_FAILED` to determine the durable outcome.
  *
  * The private protocol message type strings, protocol version, and ack
  * timeout below must stay in sync with
@@ -286,15 +292,26 @@ export function buildWatchdogScript(releaseNumber) {
         }).then(function (data) {
           var parsed = parseActivationStatusResponse(data);
           if (!parsed) return;
+          // A direct BOOT_OK/BOOT_FAILED acknowledgement (committed,
+          // rolled-back, or ignored) may already have settled this watchdog
+          // while this response was in flight -- e.g. the application called
+          // mioframeAppUpdateBootOk() before this round trip completed.
+          // Applying a late GET_ACTIVATION_STATUS result on top of that
+          // would be a no-op at best and a bogus re-arm at worst, so bail
+          // out before touching any of it.
+          if (settled) return;
           if (!parsed.isActivationTarget) {
-            // Not this session's activation target: permanently disarm rather
-            // than merely skip arming the deadline timer, so an ordinary
-            // runtime error later in this session can never send a spurious
-            // BOOT_FAILED for a release that was never being activated.
-            settled = true;
-            if (deadlineTimer !== null) clearTimeout(deadlineTimer);
-            window.removeEventListener('error', onEarlyFatalError, true);
-            window.removeEventListener('unhandledrejection', onEarlyFatalError);
+            // GET_ACTIVATION_STATUS answers only "is this release currently
+            // the activation target", not "is this release the current
+            // active release or an already-rolled-back stale one" -- so
+            // false is not proof this window can ever safely stop
+            // reporting. A stale window can miss its rollback broadcast
+            // entirely (see the module doc comment), and only a direct
+            // BOOT_OK/BOOT_FAILED acknowledgement can durably classify this
+            // release as committed or rolled-back. Leave the watchdog fully
+            // armed: no deadline to race, but the early-error listeners stay
+            // installed and the application's own BOOT_OK (or an early
+            // fatal error's BOOT_FAILED) still determines the outcome.
             return;
           }
           var msRemaining = parsed.deadlineAtMs - Date.now();
