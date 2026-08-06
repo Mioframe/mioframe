@@ -7,7 +7,7 @@ import type {
   UpdateMode,
 } from './contracts';
 import { buildReleaseCacheName } from './releaseCache';
-import { runUpdateReconciliationPass } from './updateDiscovery';
+import { runReconciliationEffects, runUpdateReconciliationPass } from './updateDiscovery';
 
 const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
@@ -303,7 +303,7 @@ describe('runUpdateReconciliationPass', () => {
     });
     const result = await runUpdateReconciliationPass(dependencies);
     expect(writeControllerStateMock).not.toHaveBeenCalled();
-    expect(result.runLifetimeWork).toBeUndefined();
+    expect(result.effects).toEqual({ broadcastStateChanged: false, cleanupReleaseCache: false });
     expect(postMessageMock).not.toHaveBeenCalled();
     expect(cachesKeysMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
@@ -315,7 +315,7 @@ describe('runUpdateReconciliationPass', () => {
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 3 });
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(3));
     const first = await runUpdateReconciliationPass(dependencies);
-    await first.runLifetimeWork?.();
+    await runReconciliationEffects(dependencies, first.effects);
     expect(cachesDeleteMock).toHaveBeenCalledWith(buildReleaseCacheName('stable', 2));
 
     cachesDeleteMock.mockClear();
@@ -323,7 +323,7 @@ describe('runUpdateReconciliationPass', () => {
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 3 });
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(3));
     const second = await runUpdateReconciliationPass(dependencies);
-    await second.runLifetimeWork?.();
+    await runReconciliationEffects(dependencies, second.effects);
     expect(cachesKeysMock).not.toHaveBeenCalled();
     expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
@@ -338,7 +338,7 @@ describe('runUpdateReconciliationPass', () => {
     });
     cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
     const result = await runUpdateReconciliationPass(dependencies);
-    await result.runLifetimeWork?.();
+    await runReconciliationEffects(dependencies, result.effects);
     expect(currentState.mode).toBe('manual');
     expect(currentState.candidate?.phase).toBe('available');
     expect(cachesDeleteMock).not.toHaveBeenCalled();
@@ -360,7 +360,7 @@ describe('runUpdateReconciliationPass', () => {
     });
     cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
     const result = await runUpdateReconciliationPass(dependencies);
-    await result.runLifetimeWork?.();
+    await runReconciliationEffects(dependencies, result.effects);
     expect(currentState.candidate).toEqual({
       phase: 'available',
       release: { ...release(2), buildId: 'replaced-build' },
@@ -378,11 +378,11 @@ describe('runUpdateReconciliationPass', () => {
     });
     cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
     const result = await runUpdateReconciliationPass(dependencies);
-    await result.runLifetimeWork?.();
+    await runReconciliationEffects(dependencies, result.effects);
     expect(cachesDeleteMock).toHaveBeenCalledWith(buildReleaseCacheName('stable', 2));
   });
 
-  it('does not start broadcast or cleanup until runLifetimeWork is explicitly invoked', async () => {
+  it('reports the required effects declaratively, without starting broadcast or cleanup until runReconciliationEffects is explicitly invoked', async () => {
     setState('automatic', candidate('available', 2));
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 3 });
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(3));
@@ -393,19 +393,24 @@ describe('runUpdateReconciliationPass', () => {
     expect(postMessageMock).not.toHaveBeenCalled();
     expect(cachesKeysMock).not.toHaveBeenCalled();
     expect(cachesDeleteMock).not.toHaveBeenCalled();
-    expect(result.runLifetimeWork).toBeTypeOf('function');
+    expect(result.effects).toEqual({ broadcastStateChanged: true, cleanupReleaseCache: true });
 
-    await result.runLifetimeWork?.();
+    await runReconciliationEffects(dependencies, result.effects);
     expect(postMessageMock).toHaveBeenCalled();
+    expect(cachesDeleteMock).toHaveBeenCalledWith(buildReleaseCacheName('stable', 2));
   });
 
-  it('broadcasts after each durable discovery and preparation transition', async () => {
+  it('merges the broadcast requirement from both discovery and preparation into one actual broadcast', async () => {
     setState('automatic');
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
     const result = await runUpdateReconciliationPass(dependencies);
-    await result.runLifetimeWork?.();
-    expect(postMessageMock).toHaveBeenCalledTimes(2);
+    expect(result.effects.broadcastStateChanged).toBe(true);
+    await runReconciliationEffects(dependencies, result.effects);
+    // Discovery and preparation each durably transitioned state and each
+    // requested a broadcast, but declarative effects merge (OR), so only one
+    // actual same-channel broadcast runs for this pass, not one per producer.
+    expect(postMessageMock).toHaveBeenCalledTimes(1);
   });
 
   describe('Automatic preparation failure', () => {

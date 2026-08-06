@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AppUpdateSnapshot } from './protocol';
-import { createUpdateReconciler, type ReconciliationResult } from './updateReconciliation';
+import {
+  createUpdateReconciler,
+  ReconciliationFailure,
+  type ReconciliationEffects,
+  type ReconciliationPassResult,
+} from './updateReconciliation';
+
+const NO_EFFECTS: ReconciliationEffects = {
+  broadcastStateChanged: false,
+  cleanupReleaseCache: false,
+};
 
 const snapshot = (releaseNumber: number): AppUpdateSnapshot => ({
   mode: 'automatic',
@@ -12,10 +22,10 @@ const snapshot = (releaseNumber: number): AppUpdateSnapshot => ({
   },
 });
 
-const result = (
+const passResult = (
   releaseNumber: number,
-  runLifetimeWork?: () => Promise<void>,
-): ReconciliationResult => ({ snapshot: snapshot(releaseNumber), runLifetimeWork });
+  effects: ReconciliationEffects = NO_EFFECTS,
+): ReconciliationPassResult => ({ snapshot: snapshot(releaseNumber), effects });
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -34,7 +44,7 @@ const startPass = async () => {
 /**
  * Awaits `times` sequential microtask ticks, so a chain of `.then()`
  * continuations spanning multiple hops (e.g. the reconciler's own
- * `Promise.resolve().then(runUntilSettled)` plus its internal `release()`
+ * `Promise.resolve().then(runUntilSettled)` plus its internal effect-runner
  * chain) has fully settled before the next assertion.
  * @param times - Number of microtask ticks to await.
  */
@@ -48,81 +58,86 @@ async function flushMicrotasks(times = 6): Promise<void> {
 
 describe('createUpdateReconciler', () => {
   it('starts one pass for idle navigation', async () => {
-    const runPass = vi.fn().mockResolvedValue(result(1));
-    const reconciler = createUpdateReconciler({ runPass });
+    const runPass = vi.fn().mockResolvedValue(passResult(1));
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     await reconciler.reconcileNavigation();
     expect(runPass).toHaveBeenCalledTimes(1);
   });
 
   it('joins concurrent navigation without requesting a rerun', async () => {
-    const pass = deferred<ReconciliationResult>();
+    const pass = deferred<ReconciliationPassResult>();
     const runPass = vi.fn(() => pass.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const first = reconciler.reconcileNavigation();
     const second = reconciler.reconcileNavigation();
     await startPass();
     expect(runPass).toHaveBeenCalledTimes(1);
-    pass.resolve(result(1));
+    pass.resolve(passResult(1));
     await Promise.all([first, second]);
     expect(runPass).toHaveBeenCalledTimes(1);
   });
 
   it('joins an explicit Check and returns the final durable snapshot without a rerun', async () => {
-    const pass = deferred<ReconciliationResult>();
+    const pass = deferred<ReconciliationPassResult>();
     const runPass = vi.fn(() => pass.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const navigation = reconciler.reconcileNavigation();
     const check = reconciler.checkForUpdates();
     await startPass();
-    pass.resolve(result(2));
+    pass.resolve(passResult(2));
     await navigation;
     await expect(check).resolves.toEqual({ snapshot: snapshot(2) });
     expect(runPass).toHaveBeenCalledTimes(1);
   });
 
-  it('a mode-change rerun retains and combines deferred work from both the superseded and the rerun pass', async () => {
-    const first = deferred<ReconciliationResult>();
-    const second = deferred<ReconciliationResult>();
-    const firstWork = vi.fn().mockResolvedValue(undefined);
-    const secondWork = vi.fn().mockResolvedValue(undefined);
+  it('a mode-change rerun retains and combines effects from both the superseded and the rerun pass', async () => {
+    const first = deferred<ReconciliationPassResult>();
+    const second = deferred<ReconciliationPassResult>();
+    const runEffects = vi.fn().mockResolvedValue(undefined);
     const runPass = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => second.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const check = reconciler.checkForUpdates();
     await startPass();
     const modeChange = reconciler.reconcileAfterModeChange();
-    first.resolve(result(1, firstWork));
+    first.resolve(passResult(1, { broadcastStateChanged: true, cleanupReleaseCache: false }));
     await startPass();
-    second.resolve(result(2, secondWork));
+    second.resolve(passResult(2, { broadcastStateChanged: false, cleanupReleaseCache: true }));
 
     const settled = await check;
     expect(settled.snapshot).toEqual(snapshot(2));
-    expect(firstWork).not.toHaveBeenCalled();
-    expect(secondWork).not.toHaveBeenCalled();
+    expect(runEffects).not.toHaveBeenCalled();
 
     await settled.runLifetimeWork?.();
-    expect(firstWork).toHaveBeenCalledTimes(1);
-    expect(secondWork).toHaveBeenCalledTimes(1);
+    expect(runEffects).toHaveBeenCalledTimes(1);
+    expect(runEffects).toHaveBeenCalledWith({
+      broadcastStateChanged: true,
+      cleanupReleaseCache: true,
+    });
     await modeChange;
   });
 
   it('requests exactly one rerun for a mode change during a pass', async () => {
-    const first = deferred<ReconciliationResult>();
-    const second = deferred<ReconciliationResult>();
+    const first = deferred<ReconciliationPassResult>();
+    const second = deferred<ReconciliationPassResult>();
+    const runEffects = vi.fn().mockResolvedValue(undefined);
     const runPass = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => second.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const check = reconciler.checkForUpdates();
     await startPass();
     const modeChange = reconciler.reconcileAfterModeChange();
-    first.resolve(result(1));
+    first.resolve(passResult(1));
     await startPass();
     expect(runPass).toHaveBeenCalledTimes(2);
-    second.resolve(result(2));
+    second.resolve(passResult(2));
     // `modeChange` joined the Check-created attempt, so only releasing the
     // Check's own returned callback (as `workerMessages` would, after
     // posting its response) lets the joined mode-change resolve.
@@ -133,19 +148,20 @@ describe('createUpdateReconciler', () => {
   });
 
   it('collapses multiple mode changes during one pass into one rerun', async () => {
-    const first = deferred<ReconciliationResult>();
-    const second = deferred<ReconciliationResult>();
+    const first = deferred<ReconciliationPassResult>();
+    const second = deferred<ReconciliationPassResult>();
+    const runEffects = vi.fn().mockResolvedValue(undefined);
     const runPass = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => second.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const check = reconciler.checkForUpdates();
     await startPass();
     const changes = [reconciler.reconcileAfterModeChange(), reconciler.reconcileAfterModeChange()];
-    first.resolve(result(1));
+    first.resolve(passResult(1));
     await startPass();
-    second.resolve(result(2));
+    second.resolve(passResult(2));
     const settled = await check;
     await settled.runLifetimeWork?.();
     await Promise.all(changes);
@@ -153,91 +169,104 @@ describe('createUpdateReconciler', () => {
   });
 
   it('allows a mode change during a rerun to request one additional rerun', async () => {
-    const first = deferred<ReconciliationResult>();
-    const second = deferred<ReconciliationResult>();
-    const third = deferred<ReconciliationResult>();
+    const first = deferred<ReconciliationPassResult>();
+    const second = deferred<ReconciliationPassResult>();
+    const third = deferred<ReconciliationPassResult>();
     const passes = [first, second, third];
     const runPass = vi.fn().mockImplementation(() => {
       const pass = passes[runPass.mock.calls.length - 1];
       if (!pass) throw new Error('Unexpected reconciliation pass');
       return pass.promise;
     });
-    const reconciler = createUpdateReconciler({ runPass });
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const check = reconciler.checkForUpdates();
     await startPass();
     void reconciler.reconcileAfterModeChange();
-    first.resolve(result(1));
+    first.resolve(passResult(1));
     await startPass();
     void reconciler.reconcileAfterModeChange();
-    second.resolve(result(2));
+    second.resolve(passResult(2));
     await startPass();
-    third.resolve(result(3));
+    third.resolve(passResult(3));
     const settled = await check;
     expect(settled.snapshot).toEqual(snapshot(3));
     expect(runPass).toHaveBeenCalledTimes(3);
   });
 
   it('keeps the shared promise pending until required reruns finish', async () => {
-    const first = deferred<ReconciliationResult>();
-    const second = deferred<ReconciliationResult>();
+    const first = deferred<ReconciliationPassResult>();
+    const second = deferred<ReconciliationPassResult>();
     const runPass = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => second.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const settled = vi.fn();
     const check = reconciler.checkForUpdates().then(settled);
     await startPass();
     void reconciler.reconcileAfterModeChange();
-    first.resolve(result(1));
+    first.resolve(passResult(1));
     await startPass();
     expect(settled).not.toHaveBeenCalled();
-    second.resolve(result(2));
+    second.resolve(passResult(2));
     await check;
     expect(settled).toHaveBeenCalledWith(expect.objectContaining({ snapshot: snapshot(2) }));
   });
 
   it('discards a failed pass when a mode change requested a successful rerun', async () => {
-    const first = deferred<ReconciliationResult>();
-    const second = deferred<ReconciliationResult>();
+    const first = deferred<ReconciliationPassResult>();
+    const second = deferred<ReconciliationPassResult>();
+    const runEffects = vi.fn().mockResolvedValue(undefined);
     const runPass = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => second.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const check = reconciler.checkForUpdates();
     await startPass();
     const modeChange = reconciler.reconcileAfterModeChange();
     first.reject(new Error('superseded failed pass'));
     await startPass();
     expect(runPass).toHaveBeenCalledTimes(2);
-    second.resolve(result(2));
+    second.resolve(passResult(2));
     const settled = await check;
     expect(settled.snapshot).toEqual(snapshot(2));
     await settled.runLifetimeWork?.();
     await modeChange;
   });
 
-  it('rejects when a requested rerun is the final failed pass', async () => {
-    const first = deferred<ReconciliationResult>();
+  it('rejects with a ReconciliationFailure carrying the original error when a requested rerun is the final failed pass', async () => {
+    const first = deferred<ReconciliationPassResult>();
     const finalFailure = new Error('failed rerun');
     const runPass = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
       .mockRejectedValueOnce(finalFailure);
-    const reconciler = createUpdateReconciler({ runPass });
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const check = reconciler.checkForUpdates();
     await startPass();
+    // A joiner (never the creator) rejects with the raw pass error, unwrapped.
     const modeChange = expect(reconciler.reconcileAfterModeChange()).rejects.toBe(finalFailure);
     first.reject(new Error('superseded failed pass'));
-    await expect(check).rejects.toBe(finalFailure);
+    // The creator rejects with a ReconciliationFailure carrying the original
+    // error as `cause`, so a catching `src/sw.ts` can still run this
+    // attempt's own (here empty) effects after posting its fallback response.
+    await expect(check).rejects.toBeInstanceOf(ReconciliationFailure);
+    await expect(check).rejects.toMatchObject({ cause: finalFailure });
     await modeChange;
     expect(runPass).toHaveBeenCalledTimes(2);
   });
 
   it('clears the in-flight reference after success so a later trigger starts fresh', async () => {
-    const runPass = vi.fn().mockResolvedValueOnce(result(1)).mockResolvedValueOnce(result(2));
-    const reconciler = createUpdateReconciler({ runPass });
+    const runPass = vi
+      .fn()
+      .mockResolvedValueOnce(passResult(1))
+      .mockResolvedValueOnce(passResult(2));
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     await reconciler.checkForUpdates();
     await reconciler.checkForUpdates();
     expect(runPass).toHaveBeenCalledTimes(2);
@@ -245,9 +274,10 @@ describe('createUpdateReconciler', () => {
 
   it('clears the in-flight reference after failure so a later trigger starts fresh', async () => {
     const failure = new Error('failed pass');
-    const runPass = vi.fn().mockRejectedValueOnce(failure).mockResolvedValueOnce(result(2));
-    const reconciler = createUpdateReconciler({ runPass });
-    await expect(reconciler.checkForUpdates()).rejects.toBe(failure);
+    const runPass = vi.fn().mockRejectedValueOnce(failure).mockResolvedValueOnce(passResult(2));
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
+    await expect(reconciler.checkForUpdates()).rejects.toMatchObject({ cause: failure });
     const settled = await reconciler.checkForUpdates();
     expect(settled.snapshot).toEqual(snapshot(2));
     expect(runPass).toHaveBeenCalledTimes(2);
@@ -257,29 +287,29 @@ describe('createUpdateReconciler', () => {
     // Reproduces the settlement microtask race: `first.resolve()` schedules
     // the pass continuation's reaction first; the `Promise.resolve().then()`
     // scheduled immediately afterward (same synchronous tick, no `await`
-    // between them) is queued directly behind it — landing exactly where the
-    // now-removed `.finally()` cleanup used to run several microtask hops
-    // later, i.e. exactly the window the old buggy `.finally()` cleanup left
-    // open. Against the old implementation this mode-change still observes
-    // `inFlight` assigned to the already-decided attempt, sets
-    // `rerunRequested`, and joins that same settling promise — the flag is
-    // never re-checked, so the required fresh-state rerun is silently
-    // dropped and `runPass` is called only once. The fix closes the window by
-    // releasing ownership synchronously with the final decision, so this
-    // same-tick mode-change instead starts its own fresh reconciliation and a
-    // second `runPass()` genuinely executes.
-    const first = deferred<ReconciliationResult>();
-    const second = deferred<ReconciliationResult>();
+    // between them) is queued directly behind it — landing exactly where a
+    // buggy `.finally()`-based cleanup would run several microtask hops
+    // later. Against a buggy implementation this mode-change would still
+    // observe `inFlight` assigned to the already-decided attempt, set
+    // `rerunRequested`, and join that same settling promise — the flag would
+    // never be re-checked, so the required fresh-state rerun would be
+    // silently dropped and `runPass` called only once. Releasing ownership of
+    // `inFlight` synchronously with the final decision closes that window, so
+    // this same-tick mode-change instead starts its own fresh reconciliation
+    // and a second `runPass()` genuinely executes.
+    const first = deferred<ReconciliationPassResult>();
+    const second = deferred<ReconciliationPassResult>();
     const runPass = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => second.promise);
-    const reconciler = createUpdateReconciler({ runPass });
+    const runEffects = vi.fn().mockResolvedValue(undefined);
+    const reconciler = createUpdateReconciler({ runPass, runEffects });
     const check = reconciler.checkForUpdates();
     await startPass();
 
     let modeChange!: Promise<void>;
-    first.resolve(result(1));
+    first.resolve(passResult(1));
     const scheduled = Promise.resolve().then(() => {
       modeChange = reconciler.reconcileAfterModeChange();
     });
@@ -288,54 +318,58 @@ describe('createUpdateReconciler', () => {
     await startPass();
 
     expect(runPass).toHaveBeenCalledTimes(2);
-    second.resolve(result(2));
+    second.resolve(passResult(2));
     await modeChange;
     const settled = await check;
     expect(settled.snapshot).toEqual(snapshot(1));
   });
 
-  describe('deferred work release ownership', () => {
-    it('hands the raw deferred callback back to a Check that creates the attempt, uninvoked', async () => {
-      const work = vi.fn().mockResolvedValue(undefined);
-      const runPass = vi.fn().mockResolvedValue(result(1, work));
-      const reconciler = createUpdateReconciler({ runPass });
+  describe('attempt-local effects: ownership, retention, and isolation', () => {
+    it('hands the effect runner back to a Check that creates the attempt, uninvoked', async () => {
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const effects = { broadcastStateChanged: true, cleanupReleaseCache: false };
+      const runPass = vi.fn().mockResolvedValue(passResult(1, effects));
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
 
       const settled = await reconciler.checkForUpdates();
 
       expect(settled.runLifetimeWork).toBeTypeOf('function');
-      expect(work).not.toHaveBeenCalled();
+      expect(runEffects).not.toHaveBeenCalled();
       await settled.runLifetimeWork?.();
-      expect(work).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledWith(effects);
     });
 
-    it('never exposes a deferred callback to a Check that only joins an existing attempt', async () => {
-      const work = vi.fn().mockResolvedValue(undefined);
-      const pass = deferred<ReconciliationResult>();
+    it('never exposes an effect runner to a Check that only joins an existing attempt', async () => {
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const effects = { broadcastStateChanged: true, cleanupReleaseCache: false };
+      const pass = deferred<ReconciliationPassResult>();
       const runPass = vi.fn(() => pass.promise);
-      const reconciler = createUpdateReconciler({ runPass });
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
 
       const creatorCheck = reconciler.checkForUpdates();
       const joinerCheck = reconciler.checkForUpdates();
       await startPass();
-      pass.resolve(result(1, work));
+      pass.resolve(passResult(1, effects));
 
       const [creatorResult, joinerResult] = await Promise.all([creatorCheck, joinerCheck]);
       expect(creatorResult.runLifetimeWork).toBeTypeOf('function');
       expect(joinerResult.runLifetimeWork).toBeUndefined();
-      expect(work).not.toHaveBeenCalled();
+      expect(runEffects).not.toHaveBeenCalled();
     });
 
-    it('shares one durable pass and executes deferred work exactly once for multiple Check joiners', async () => {
-      const work = vi.fn().mockResolvedValue(undefined);
-      const pass = deferred<ReconciliationResult>();
+    it('shares one durable pass and executes effects exactly once for multiple Check joiners', async () => {
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const effects = { broadcastStateChanged: true, cleanupReleaseCache: true };
+      const pass = deferred<ReconciliationPassResult>();
       const runPass = vi.fn(() => pass.promise);
-      const reconciler = createUpdateReconciler({ runPass });
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
 
       const first = reconciler.checkForUpdates();
       const second = reconciler.checkForUpdates();
       const third = reconciler.checkForUpdates();
       await startPass();
-      pass.resolve(result(1, work));
+      pass.resolve(passResult(1, effects));
 
       const [firstResult] = await Promise.all([first, second, third]);
       expect(runPass).toHaveBeenCalledTimes(1);
@@ -343,69 +377,192 @@ describe('createUpdateReconciler', () => {
       // A later, no-op invocation (e.g. a genuinely duplicate release call)
       // must never re-run the underlying broadcast/cleanup work.
       await firstResult.runLifetimeWork?.();
-      expect(work).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledTimes(1);
     });
 
-    it('releases automatically for a navigation that creates the attempt, only after its own deferred work finishes', async () => {
-      const deferredWork = deferred<undefined>();
-      const work = vi.fn(() => deferredWork.promise);
-      const pass = deferred<ReconciliationResult>();
+    it('releases automatically for a navigation that creates the attempt, only after its own effects finish', async () => {
+      const effects = { broadcastStateChanged: true, cleanupReleaseCache: false };
+      const effectsGate = deferred<undefined>();
+      const runEffects = vi.fn(() => effectsGate.promise);
+      const pass = deferred<ReconciliationPassResult>();
       const runPass = vi.fn(() => pass.promise);
-      const reconciler = createUpdateReconciler({ runPass });
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
 
       const settled = vi.fn();
       const navigation = reconciler.reconcileNavigation().then(settled);
       await startPass();
-      pass.resolve(result(1, work));
+      pass.resolve(passResult(1, effects));
       await flushMicrotasks();
 
-      expect(work).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledWith(effects);
       expect(settled).not.toHaveBeenCalled();
 
-      deferredWork.resolve(undefined);
+      effectsGate.resolve(undefined);
       await navigation;
       expect(settled).toHaveBeenCalledTimes(1);
     });
 
-    it('a navigation joining a Check-created attempt never releases the work itself, and cannot release it before the Check response', async () => {
+    it('a navigation joining a Check-created attempt never executes the effects itself, and cannot observe them starting before the Check response', async () => {
+      const effects = { broadcastStateChanged: true, cleanupReleaseCache: false };
       const releaseOrder: string[] = [];
-      const deferredWork = deferred<undefined>();
-      const work = vi.fn(() => {
-        releaseOrder.push('work-started');
-        return deferredWork.promise;
+      const effectsGate = deferred<undefined>();
+      const runEffects = vi.fn(() => {
+        releaseOrder.push('effects-started');
+        return effectsGate.promise;
       });
-      const pass = deferred<ReconciliationResult>();
+      const pass = deferred<ReconciliationPassResult>();
       const runPass = vi.fn(() => pass.promise);
-      const reconciler = createUpdateReconciler({ runPass });
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
 
       const check = reconciler.checkForUpdates();
       const navigationSettled = vi.fn();
       const navigation = reconciler.reconcileNavigation().then(navigationSettled);
       await startPass();
-      pass.resolve(result(1, work));
+      pass.resolve(passResult(1, effects));
       await flushMicrotasks();
 
       // The pass has settled and Navigation has joined, but only the Check
-      // creator owns releasing the deferred work — it must not have started
-      // yet, and Navigation's own promise must still be pending.
-      expect(work).not.toHaveBeenCalled();
+      // creator owns invoking this attempt's effects — they must not have
+      // started yet, and Navigation's own promise must still be pending.
+      expect(runEffects).not.toHaveBeenCalled();
       expect(navigationSettled).not.toHaveBeenCalled();
 
       const checkResult = await check;
       expect(checkResult.runLifetimeWork).toBeTypeOf('function');
       // Simulates workerMessages posting the Check response, then invoking
-      // the deferred callback only afterwards.
+      // the effect runner only afterwards.
       releaseOrder.push('check-response-posted');
       const released = checkResult.runLifetimeWork?.();
       await startPass();
-      expect(releaseOrder).toEqual(['check-response-posted', 'work-started']);
+      expect(releaseOrder).toEqual(['check-response-posted', 'effects-started']);
       expect(navigationSettled).not.toHaveBeenCalled();
 
-      deferredWork.resolve(undefined);
+      effectsGate.resolve(undefined);
       await released;
       await navigation;
       expect(navigationSettled).toHaveBeenCalledTimes(1);
-      expect(work).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledTimes(1);
+    });
+
+    it('a Check joining a background-created attempt never executes the effects, and background keeps owning them', async () => {
+      const effects = { broadcastStateChanged: false, cleanupReleaseCache: true };
+      const effectsGate = deferred<undefined>();
+      const runEffects = vi.fn(() => effectsGate.promise);
+      const pass = deferred<ReconciliationPassResult>();
+      const runPass = vi.fn(() => pass.promise);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      const navigationSettled = vi.fn();
+      const navigation = reconciler.reconcileNavigation().then(navigationSettled);
+      const check = reconciler.checkForUpdates();
+      await startPass();
+      pass.resolve(passResult(4, effects));
+      await flushMicrotasks();
+
+      // Navigation created the attempt and owns invoking its effects; the
+      // joined Check must never invoke them itself.
+      expect(runEffects).toHaveBeenCalledTimes(1);
+      expect(navigationSettled).not.toHaveBeenCalled();
+      await expect(check).resolves.toEqual({ snapshot: snapshot(4) });
+
+      effectsGate.resolve(undefined);
+      await navigation;
+      expect(navigationSettled).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledTimes(1);
+    });
+
+    it('a failed broadcast or cleanup never rejects the effect runner and never changes the already-returned result', async () => {
+      const effects = { broadcastStateChanged: true, cleanupReleaseCache: true };
+      const runEffects = vi.fn().mockRejectedValue(new Error('broadcast failed'));
+      const runPass = vi.fn().mockResolvedValue(passResult(1, effects));
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      const settled = await reconciler.checkForUpdates();
+      expect(settled.snapshot).toEqual(snapshot(1));
+      await expect(settled.runLifetimeWork?.()).resolves.toBeUndefined();
+      expect(runEffects).toHaveBeenCalledTimes(1);
+    });
+
+    it('retains a successful pass effects across a later failed rerun, and a Check-created attempt runs them exactly once after its own fallback response', async () => {
+      // pass 1 persists state and requests a broadcast; a mode change then
+      // requests a rerun; pass 2 fails. The Check that created the attempt
+      // must still receive access to pass 1's effects through the thrown
+      // ReconciliationFailure, so a caller can run them once after already
+      // returning its existing stable unavailable response.
+      const first = deferred<ReconciliationPassResult>();
+      const second = deferred<ReconciliationPassResult>();
+      const finalFailure = new Error('pass 2 failed');
+      const runPass = vi
+        .fn()
+        .mockImplementationOnce(() => first.promise)
+        .mockImplementationOnce(() => second.promise);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      const check = reconciler.checkForUpdates();
+      await startPass();
+      // A joiner rejects with the raw pass error, unwrapped; only the
+      // creator (`check`) receives the effect-carrying `ReconciliationFailure`.
+      const modeChange = expect(reconciler.reconcileAfterModeChange()).rejects.toBe(finalFailure);
+      first.resolve(passResult(1, { broadcastStateChanged: true, cleanupReleaseCache: false }));
+      await startPass();
+      second.reject(finalFailure);
+      await modeChange;
+
+      let caught: unknown;
+      try {
+        await check;
+      } catch (error) {
+        caught = error;
+      }
+      if (!(caught instanceof ReconciliationFailure))
+        throw new Error('Expected a ReconciliationFailure');
+      const failure = caught;
+      expect(failure.cause).toBe(finalFailure);
+      expect(runEffects).not.toHaveBeenCalled();
+
+      await failure.runLifetimeWork();
+      expect(runEffects).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenCalledWith({
+        broadcastStateChanged: true,
+        cleanupReleaseCache: false,
+      });
+    });
+
+    it('never leaks a failed attempt effects into the next independent attempt', async () => {
+      // The first attempt's pass 1 succeeds with real effects, a mode change
+      // requests a rerun, and pass 2 fails — exactly the leaking scenario the
+      // fix targets. The caller here never invokes the returned
+      // `runLifetimeWork` at all (e.g. it crashed before doing so): the
+      // effects must still never surface through a brand-new, independent
+      // attempt — proving effects are attempt-local, not reconciler-level.
+      const first = deferred<ReconciliationPassResult>();
+      const second = deferred<ReconciliationPassResult>();
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const runPass = vi
+        .fn()
+        .mockImplementationOnce(() => first.promise)
+        .mockImplementationOnce(() => second.promise)
+        .mockResolvedValueOnce(passResult(3, NO_EFFECTS));
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      const failedCheck = reconciler.checkForUpdates();
+      await startPass();
+      const rerunFailure = new Error('rerun failed');
+      const modeChange = expect(reconciler.reconcileAfterModeChange()).rejects.toBe(rerunFailure);
+      first.resolve(passResult(1, { broadcastStateChanged: true, cleanupReleaseCache: true }));
+      await startPass();
+      second.reject(rerunFailure);
+      await modeChange;
+      await expect(failedCheck).rejects.toBeInstanceOf(ReconciliationFailure);
+      expect(runEffects).not.toHaveBeenCalled();
+
+      const nextCheck = await reconciler.checkForUpdates();
+      expect(nextCheck.snapshot).toEqual(snapshot(3));
+      await nextCheck.runLifetimeWork?.();
+      expect(runEffects).toHaveBeenCalledTimes(1);
+      expect(runEffects).toHaveBeenLastCalledWith(NO_EFFECTS);
     });
   });
 });

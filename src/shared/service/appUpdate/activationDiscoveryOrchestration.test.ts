@@ -3,7 +3,7 @@ import type { ReleaseDescriptor, ReleaseSummary, UpdateControllerState } from '.
 import { createOperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import { createUpdateReconciler } from './updateReconciliation';
-import { runUpdateReconciliationPass } from './updateDiscovery';
+import { runReconciliationEffects, runUpdateReconciliationPass } from './updateDiscovery';
 import { handleWorkerMessage } from './workerMessages';
 
 const readControllerStateMock = vi.fn();
@@ -61,15 +61,16 @@ describe('mode-change reconciliation races', () => {
   });
 
   function setup(coordinator: PreparationCoordinator) {
+    const dependencies = {
+      channel: 'stable' as const,
+      channelBasePath: '/',
+      channelOrigin: 'https://mioframe.example',
+      enqueue,
+      coordinator,
+    };
     const reconciler = createUpdateReconciler({
-      runPass: () =>
-        runUpdateReconciliationPass({
-          channel: 'stable',
-          channelBasePath: '/',
-          channelOrigin: 'https://mioframe.example',
-          enqueue,
-          coordinator,
-        }),
+      runPass: () => runUpdateReconciliationPass(dependencies),
+      runEffects: (effects) => runReconciliationEffects(dependencies, effects),
     });
     return reconciler;
   }

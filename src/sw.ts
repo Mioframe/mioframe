@@ -39,8 +39,14 @@ import {
 import { handleAssetFetch, handleNavigationFetch } from './shared/service/appUpdate/workerFetch';
 import { runInstall } from './shared/service/appUpdate/workerInstall';
 import { handleWorkerMessage } from './shared/service/appUpdate/workerMessages';
-import { runUpdateReconciliationPass } from './shared/service/appUpdate/updateDiscovery';
-import { createUpdateReconciler } from './shared/service/appUpdate/updateReconciliation';
+import {
+  runReconciliationEffects,
+  runUpdateReconciliationPass,
+} from './shared/service/appUpdate/updateDiscovery';
+import {
+  createUpdateReconciler,
+  ReconciliationFailure,
+} from './shared/service/appUpdate/updateReconciliation';
 
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
@@ -56,6 +62,11 @@ const updateReconciler = createUpdateReconciler({
       enqueue,
       coordinator: preparationCoordinator,
     }),
+  runEffects: (effects) =>
+    runReconciliationEffects(
+      { channel, channelBasePath, channelOrigin, enqueue, coordinator: preparationCoordinator },
+      effects,
+    ),
 });
 
 self.addEventListener('install', (event) => {
@@ -210,10 +221,16 @@ self.addEventListener('message', (event) => {
           preparationCoordinator,
           updateReconciler,
         );
-      } catch {
+      } catch (error) {
         // Never a raw exception message: this private protocol only ever
         // sends the stable, versioned failure envelope across the boundary.
         respond(withProtocolVersion({ error: 'unavailable' as const }));
+        // A CHECK_FOR_UPDATES whose reconciliation attempt it created failed
+        // still owns that attempt's own effects (broadcast/cleanup from an
+        // earlier successful pass this same attempt ran) — run them here,
+        // exactly once, strictly after the fallback response above has
+        // already been posted.
+        if (error instanceof ReconciliationFailure) await error.runLifetimeWork().catch(() => {});
         return;
       }
       respond(result.response);

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ReconciliationFailure } from './shared/service/appUpdate/updateReconciliation';
 
 // `src/sw.ts` wires the browser's real `ServiceWorkerGlobalScope` API
 // (`self.addEventListener`, `event.waitUntil`, `event.respondWith`,
@@ -23,11 +24,21 @@ const updateReconcilerFake = {
   reconcileAfterModeChange: vi.fn(),
 };
 const createUpdateReconcilerMock = vi.fn((_dependencies: unknown) => updateReconcilerFake);
-vi.mock('./shared/service/appUpdate/updateReconciliation', () => ({
-  createUpdateReconciler: (dependencies: unknown) => createUpdateReconcilerMock(dependencies),
-}));
+vi.mock('./shared/service/appUpdate/updateReconciliation', async (importOriginal) => {
+  // `ReconciliationFailure` is imported directly by `src/sw.ts` (for its
+  // `error instanceof ReconciliationFailure` check) and must stay the real
+  // class here — only `createUpdateReconciler` itself is faked, so an
+  // `instanceof` check against the real class still works in every test.
+  const actual =
+    await importOriginal<typeof import('./shared/service/appUpdate/updateReconciliation')>();
+  return {
+    ...actual,
+    createUpdateReconciler: (dependencies: unknown) => createUpdateReconcilerMock(dependencies),
+  };
+});
 vi.mock('./shared/service/appUpdate/updateDiscovery', () => ({
   runUpdateReconciliationPass: vi.fn(),
+  runReconciliationEffects: vi.fn(),
 }));
 
 const isSameChannelPathMock = vi.fn((..._args: unknown[]) => true);
@@ -360,6 +371,68 @@ describe('src/sw.ts message handler', () => {
     expect(postMessage).not.toHaveBeenCalledWith(
       expect.objectContaining({ error: 'Controller state is unavailable' }),
     );
+  });
+
+  it('a ReconciliationFailure from a Check-created attempt still runs its own effects, exactly once, strictly after the fallback response', async () => {
+    const listener = await importSwAndGetMessageListener();
+    const callOrder: string[] = [];
+    const postMessage = vi.fn(() => {
+      callOrder.push('postMessage');
+    });
+    const deferredLifetimeWork = createDeferredVoid();
+    const runLifetimeWork = vi.fn(() => {
+      callOrder.push('runLifetimeWork');
+      return deferredLifetimeWork.promise;
+    });
+    handleWorkerMessageMock.mockRejectedValue(
+      new ReconciliationFailure(new Error('final rerun failed'), runLifetimeWork),
+    );
+
+    let waitUntilPromise: Promise<unknown> | undefined;
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage }],
+      waitUntil: (promise) => {
+        waitUntilPromise = promise;
+      },
+    });
+    if (!waitUntilPromise) throw new Error('Expected event.waitUntil to have been called');
+    const isSettled = trackSettled(waitUntilPromise);
+
+    await flushMicrotasks();
+
+    expect(postMessage).toHaveBeenCalledWith({ protocolVersion: 1, error: 'unavailable' });
+    expect(callOrder).toEqual(['postMessage', 'runLifetimeWork']);
+    expect(runLifetimeWork).toHaveBeenCalledTimes(1);
+    expect(isSettled()).toBe(false);
+
+    deferredLifetimeWork.resolve();
+    await expect(waitUntilPromise).resolves.toBeUndefined();
+  });
+
+  it('a ReconciliationFailure whose own effects reject never surfaces: the event lifetime still resolves', async () => {
+    const listener = await importSwAndGetMessageListener();
+    handleWorkerMessageMock.mockRejectedValue(
+      new ReconciliationFailure(new Error('final rerun failed'), () =>
+        Promise.reject(new Error('broadcast failed')),
+      ),
+    );
+
+    const postMessage = vi.fn();
+    let waitUntilPromise: Promise<unknown> | undefined;
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage }],
+      waitUntil: (promise) => {
+        waitUntilPromise = promise;
+      },
+    });
+    if (!waitUntilPromise) throw new Error('Expected event.waitUntil to have been called');
+
+    await expect(waitUntilPromise).resolves.toBeUndefined();
+    expect(postMessage).toHaveBeenCalledWith({ protocolVersion: 1, error: 'unavailable' });
   });
 });
 

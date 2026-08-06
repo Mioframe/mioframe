@@ -13,8 +13,17 @@ import { fetchLatestReleasePointer, fetchReleaseDescriptor } from './releasePrep
 import { buildAppUpdateSnapshot } from './snapshot';
 import { withState } from './stateLock';
 import { applyDiscovery, completeAutomaticPreparation } from './stateTransitions';
-import type { ReconciliationResult } from './updateReconciliation';
-import { broadcastStateChanged, cleanupReleaseCache, combineLifetimeWork } from './workerBroadcast';
+import {
+  mergeReconciliationEffects,
+  type ReconciliationEffects,
+  type ReconciliationPassResult,
+} from './updateReconciliation';
+import { broadcastStateChanged, cleanupReleaseCache } from './workerBroadcast';
+
+const NO_EFFECTS: ReconciliationEffects = {
+  broadcastStateChanged: false,
+  cleanupReleaseCache: false,
+};
 
 /** Dependencies for one fresh-state discovery and preparation pass. */
 export type UpdateDiscoveryDependencies = {
@@ -34,8 +43,8 @@ type DiscoveryOutcome = {
   descriptor?: ReleaseDescriptor;
   error?: AppUpdateErrorCode;
   stateAfterDiscovery: Awaited<ReturnType<typeof readCurrentState>>;
-  /** Cold deferred broadcast/cleanup work; not started until explicitly invoked. */
-  deferred?: (() => Promise<void>) | undefined;
+  /** Follow-up work this discovery step requires. Not executed here. */
+  effects: ReconciliationEffects;
 };
 
 const readCurrentState = (channel: ManagedChannel, enqueue: OperationQueue) =>
@@ -44,7 +53,7 @@ const readCurrentState = (channel: ManagedChannel, enqueue: OperationQueue) =>
 async function discoverLatest(
   dependencies: UpdateDiscoveryDependencies,
 ): Promise<DiscoveryOutcome> {
-  const { channel, channelBasePath, channelOrigin, enqueue, coordinator } = dependencies;
+  const { channel, channelBasePath, enqueue } = dependencies;
   let descriptor: ReleaseDescriptor;
   try {
     const pointer = await fetchLatestReleasePointer(channelBasePath);
@@ -53,6 +62,7 @@ async function discoverLatest(
     return {
       error: 'check-failed',
       stateAfterDiscovery: await readCurrentState(channel, enqueue),
+      effects: NO_EFFECTS,
     };
   }
 
@@ -64,22 +74,20 @@ async function discoverLatest(
     return result;
   });
 
-  const deferred = combineLifetimeWork(
-    applied.outcome !== 'skipped'
-      ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
-      : undefined,
-    applied.outcome === 'updated' ? () => cleanupReleaseCache(channel, coordinator) : undefined,
-  );
+  const effects: ReconciliationEffects = {
+    broadcastStateChanged: applied.outcome !== 'skipped',
+    cleanupReleaseCache: applied.outcome === 'updated',
+  };
 
-  return { descriptor, stateAfterDiscovery: applied.state, deferred };
+  return { descriptor, stateAfterDiscovery: applied.state, effects };
 }
 
 /** Result of {@link prepareAutomaticTarget}. */
 type AutomaticPreparationOutcome = {
   /** `'install-failed'` when preparation was attempted and failed; `undefined` on success. */
   error?: AppUpdateErrorCode;
-  /** Cold deferred broadcast/cleanup work; not started until explicitly invoked. */
-  deferred?: (() => Promise<void>) | undefined;
+  /** Follow-up work this preparation step requires. Not executed here. */
+  effects: ReconciliationEffects;
 };
 
 /**
@@ -91,14 +99,14 @@ type AutomaticPreparationOutcome = {
  * @param dependencies - Channel state, preparation, and event-side effects.
  * @param target - The release to prepare.
  * @param descriptor - An already fetched descriptor for `target`, when discovery just fetched it.
- * @returns The preparation error, if any, plus cold deferred broadcast/cleanup work.
+ * @returns The preparation error, if any, plus the follow-up effects it requires.
  */
 async function prepareAutomaticTarget(
   dependencies: UpdateDiscoveryDependencies,
   target: ReleaseSummary,
   descriptor: ReleaseDescriptor | undefined,
 ): Promise<AutomaticPreparationOutcome> {
-  const { channel, channelBasePath, channelOrigin, enqueue, coordinator } = dependencies;
+  const { channel, channelBasePath, enqueue, coordinator } = dependencies;
   const reusableDescriptor =
     descriptor && releaseSummariesMatch(toReleaseSummary(descriptor), target)
       ? descriptor
@@ -108,7 +116,7 @@ async function prepareAutomaticTarget(
     await coordinator.prepare(channel, channelBasePath, target, reusableDescriptor);
   } catch (error) {
     console.error('[app-update] Automatic release preparation failed', target.releaseNumber, error);
-    return { error: 'install-failed' };
+    return { error: 'install-failed', effects: NO_EFFECTS };
   }
 
   const changed = await withState(channel, enqueue, async (state) => {
@@ -118,9 +126,7 @@ async function prepareAutomaticTarget(
     return true;
   });
   return {
-    deferred: changed
-      ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
-      : () => cleanupReleaseCache(channel, coordinator),
+    effects: { broadcastStateChanged: changed, cleanupReleaseCache: !changed },
   };
 }
 
@@ -130,25 +136,26 @@ async function prepareAutomaticTarget(
  * for the whole pass; a concurrent durable mode change is handled by the
  * reconciliation owner's subsequent fresh-state rerun.
  *
- * Returns the durable snapshot separately from deferred broadcast/cleanup
- * work: every persisted transition (discovery, Automatic preparation
+ * Returns the durable snapshot separately from the {@link ReconciliationEffects}
+ * it requires: every persisted transition (discovery, Automatic preparation
  * completion, the final fresh-state read) happens before this returns, but
- * `runLifetimeWork` — same-channel broadcast, release-cache cleanup — is a
- * cold callback the caller must explicitly invoke, and must never start on
- * its own by this function returning.
+ * the returned effects are purely declarative — this function never itself
+ * broadcasts or cleans up. Only the reconciler's own attempt-level effect
+ * runner (see `updateReconciliation.ts`) translates them into the actual
+ * calls, via {@link runReconciliationEffects}.
  * @param dependencies - Channel state, preparation, and event-side effects.
- * @returns The final durable snapshot plus optional deferred follow-up work.
+ * @returns The final durable snapshot plus the effects this pass requires.
  */
 export async function runUpdateReconciliationPass(
   dependencies: UpdateDiscoveryDependencies,
-): Promise<ReconciliationResult> {
+): Promise<ReconciliationPassResult> {
   const { channel, enqueue } = dependencies;
   const initialState = await readCurrentState(channel, enqueue);
   const passMode = initialState.mode;
   const initialCandidate = initialState.candidate;
 
   if (initialCandidate?.phase === 'ready' || initialCandidate?.phase === 'activating') {
-    return { snapshot: buildAppUpdateSnapshot(initialState) };
+    return { snapshot: buildAppUpdateSnapshot(initialState), effects: NO_EFFECTS };
   }
 
   const discovery = await discoverLatest(dependencies);
@@ -162,16 +169,40 @@ export async function runUpdateReconciliationPass(
   }
 
   let preparationError: AppUpdateErrorCode | undefined;
-  let preparationDeferred: (() => Promise<void>) | undefined;
+  let preparationEffects = NO_EFFECTS;
   if (target) {
     const prepared = await prepareAutomaticTarget(dependencies, target, discovery.descriptor);
     preparationError = prepared.error;
-    preparationDeferred = prepared.deferred;
+    preparationEffects = prepared.effects;
   }
 
   const finalState = await readCurrentState(channel, enqueue);
   return {
     snapshot: buildAppUpdateSnapshot(finalState, preparationError ?? discovery.error),
-    runLifetimeWork: combineLifetimeWork(discovery.deferred, preparationDeferred),
+    effects: mergeReconciliationEffects(discovery.effects, preparationEffects),
   };
+}
+
+/**
+ * Executes the given {@link ReconciliationEffects}: the actual same-channel
+ * `APP_UPDATE_STATE_CHANGED` broadcast and/or release-cache cleanup. Never
+ * called by `runUpdateReconciliationPass` itself — only by the reconciler's
+ * own attempt-level effect runner, strictly after the owning response has
+ * already been posted (see `updateReconciliation.ts`). Both underlying calls
+ * are already best-effort (`broadcastStateChanged` here, `cleanupReleaseCache`
+ * internally): neither can reject out of this function.
+ * @param dependencies - Channel state and cleanup coordinator.
+ * @param effects - The effects to execute.
+ */
+export async function runReconciliationEffects(
+  dependencies: UpdateDiscoveryDependencies,
+  effects: ReconciliationEffects,
+): Promise<void> {
+  const { channel, channelBasePath, channelOrigin, coordinator } = dependencies;
+  await Promise.all([
+    effects.broadcastStateChanged
+      ? broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
+      : undefined,
+    effects.cleanupReleaseCache ? cleanupReleaseCache(channel, coordinator) : undefined,
+  ]);
 }
