@@ -1,8 +1,8 @@
 # Managed pinned application updates — implementation preflight
 
-This file is retained only as a stable link from release documentation and PR history. It contains no independent architecture contract and no historical stage status.
+This compatibility pointer is retained because release documentation and PR history link to it. It adds no requirements or status of its own.
 
-The single canonical architecture contract and current implementation status are defined in [`managed-pinned-updates.md`](./managed-pinned-updates.md).
+The architecture and status reached through this file are exactly the single canonical contract in [`managed-pinned-updates.md`](./managed-pinned-updates.md).
 
 Current PR 169 status:
 
