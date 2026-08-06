@@ -157,8 +157,10 @@ export async function handleWorkerMessage(
     }
 
     case 'CHECK_FOR_UPDATES': {
+      const { snapshot, runLifetimeWork } = await reconciler.checkForUpdates();
       return {
-        response: withProtocolVersion({ snapshot: await reconciler.checkForUpdates() }),
+        response: withProtocolVersion({ snapshot }),
+        runLifetimeWork,
       };
     }
 

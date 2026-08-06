@@ -344,7 +344,7 @@ describe('workerFetch', () => {
       );
     });
 
-    it('serves an unexpired activating candidate without writing state', async () => {
+    it('returns controlled unavailable for a pre-existing unexpired activating candidate, without writing state, restoring, or serving B or A', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-08-02T12:00:00.000Z'));
       const candidateRelease = candidateReleaseForPhaseMatrix;
@@ -355,6 +355,7 @@ describe('workerFetch', () => {
         buildId: candidateRelease.buildId,
         buildDate: candidateRelease.buildDate,
       });
+      const prepare = vi.fn();
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: {
@@ -367,15 +368,19 @@ describe('workerFetch', () => {
         },
       });
 
-      const { response } = await invokeNavigationFetch(
+      const { response, runLifetimeWork } = await invokeNavigationFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/'),
-        createFakeCoordinator(),
+        createFakeCoordinator({ prepare }),
       );
 
+      expect(response.status).toBe(503);
+      expect(await response.text()).toBe('Release unavailable');
       expect(writeControllerStateMock).not.toHaveBeenCalled();
-      expect(await response.text()).toBe('<html>archived</html>');
+      expect(prepare).not.toHaveBeenCalled();
+      expect(runLifetimeWork).toBeUndefined();
+      expect(fetchMock).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
 
@@ -454,7 +459,7 @@ describe('workerFetch', () => {
       vi.useRealTimers();
     });
 
-    it('serializes concurrent qualifying navigations into one activation write and one served target', async () => {
+    it('serializes concurrent qualifying navigations so exactly one owns the ready → activating write and receives B, and the other is blocked with a controlled 503', async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-08-02T12:00:00.000Z'));
       const candidateRelease = candidateReleaseForPhaseMatrix;
@@ -508,9 +513,22 @@ describe('workerFetch', () => {
       ]);
 
       expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
-      expect(await first.response.text()).toBe('<html>archived</html>');
-      expect(await second.response.text()).toBe('<html>archived</html>');
       expect(persistedState.candidate?.phase).toBe('activating');
+      // Exactly one of the two concurrent navigations owns the write and
+      // receives B; the other is blocked with a controlled 503 — never A,
+      // never B without owning the transition, never another rollback.
+      const results = [first, second];
+      const served = results.filter((result) => result.response.status !== 503);
+      const blocked = results.filter((result) => result.response.status === 503);
+      expect(served).toHaveLength(1);
+      expect(blocked).toHaveLength(1);
+      const [servedResult] = served;
+      const [blockedResult] = blocked;
+      if (!servedResult || !blockedResult)
+        throw new Error('Expected one served and one blocked result');
+      expect(await servedResult.response.text()).toBe('<html>archived</html>');
+      expect(await blockedResult.response.text()).toBe('Release unavailable');
+      expect(blockedResult.runLifetimeWork).toBeUndefined();
       vi.useRealTimers();
     });
 
@@ -844,17 +862,13 @@ describe('workerFetch', () => {
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
-      it('enters the same durable rollback path when caches.open() throws while serving the activating candidate itself, not merely on a controlled 503', async () => {
+      it('enters the same durable rollback path when caches.open() throws while serving the just-activated candidate itself, not merely on a controlled 503', async () => {
         await seedAvailableRelease();
         let persistedState: UpdateControllerState = {
           schemaVersion: 1,
           mode: 'automatic',
           activeRelease,
-          candidate: {
-            phase: 'activating',
-            release: candidateRelease,
-            deadlineAt: farFutureDeadlineAt,
-          },
+          candidate: { phase: 'ready', release: candidateRelease },
         };
         readControllerStateMock.mockImplementation(() =>
           Promise.resolve({ status: 'valid', state: persistedState }),
@@ -884,7 +898,7 @@ describe('workerFetch', () => {
           },
         );
 
-        expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
+        expect(writeControllerStateMock).toHaveBeenCalledTimes(2);
         expect(persistedState.activeRelease).toEqual(activeRelease);
         expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
         expect(await result.response.text()).toBe('<html>archived</html>');
@@ -901,7 +915,7 @@ describe('workerFetch', () => {
         open.mockRestore();
       });
 
-      it('rolls back and serves active when an already-activating candidate (not started by this navigation) cannot be restored', async () => {
+      it('returns controlled unavailable without restoring, writing, or rolling back for an already-activating candidate not started by this navigation', async () => {
         await seedAvailableRelease();
         let persistedState: UpdateControllerState = {
           schemaVersion: 1,
@@ -921,37 +935,42 @@ describe('workerFetch', () => {
           return Promise.resolve();
         });
         stubSameChannelClients();
+        const prepare = vi.fn();
 
         const result = await invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
-          createFakeCoordinator(),
+          createFakeCoordinator({ prepare }),
         );
 
-        expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
-        expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
-        expect(await result.response.text()).toBe('<html>archived</html>');
-        expect(result.runLifetimeWork).toBeTypeOf('function');
+        expect(writeControllerStateMock).not.toHaveBeenCalled();
+        expect(persistedState.candidate).toEqual({
+          phase: 'activating',
+          release: candidateRelease,
+          deadlineAt: farFutureDeadlineAt,
+        });
+        expect(result.response.status).toBe(503);
+        expect(await result.response.text()).toBe('Release unavailable');
+        expect(result.runLifetimeWork).toBeUndefined();
+        expect(prepare).not.toHaveBeenCalled();
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
       it.each(['appVersion', 'buildId', 'buildDate'] as const)(
-        'never rolls back on a same-number, different-%s candidate discovered on re-read (stale full-identity protection)',
+        'never rolls back on a same-number, different-%s candidate discovered on the fallback re-read, after this navigation itself started activation (stale full-identity protection)',
         async (field) => {
           await seedAvailableRelease();
-          const exactState: UpdateControllerState = {
+          const readyState: UpdateControllerState = {
             schemaVersion: 1,
             mode: 'automatic',
             activeRelease,
-            candidate: {
-              phase: 'activating',
-              release: candidateRelease,
-              deadlineAt: farFutureDeadlineAt,
-            },
+            candidate: { phase: 'ready', release: candidateRelease },
           };
           const staleState: UpdateControllerState = {
-            ...exactState,
+            schemaVersion: 1,
+            mode: 'automatic',
+            activeRelease,
             candidate: {
               phase: 'activating',
               release: { ...candidateRelease, [field]: 'diverged-value' },
@@ -963,7 +982,7 @@ describe('workerFetch', () => {
             readCount += 1;
             return Promise.resolve({
               status: 'valid',
-              state: readCount <= 2 ? exactState : staleState,
+              state: readCount <= 2 ? readyState : staleState,
             });
           });
 
@@ -972,54 +991,69 @@ describe('workerFetch', () => {
             BASE_PATH,
             new Request('https://mioframe.example/'),
             createFakeCoordinator(),
+            { clientId: 'old', resultingClientId: 'new' },
+            {
+              channelOrigin: 'https://mioframe.example',
+              enqueue: (operation) => operation(),
+              matchWindowClients: () => Promise.resolve([]),
+            },
           );
 
           expect(response.status).toBe(503);
           expect(await response.text()).toBe('Release unavailable');
-          expect(writeControllerStateMock).not.toHaveBeenCalled();
+          expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
           expect(fetchMock).not.toHaveBeenCalled();
         },
       );
 
-      it('serves the controlled unavailable response and never serves active when rollback persistence itself fails', async () => {
+      it('serves the controlled unavailable response and never serves active when this navigation started activation but the rollback write itself fails', async () => {
         await seedAvailableRelease();
-        readControllerStateMock.mockResolvedValue({
-          status: 'valid',
-          state: {
-            activeRelease,
-            candidate: {
-              phase: 'activating',
-              release: candidateRelease,
-              deadlineAt: farFutureDeadlineAt,
-            },
-          },
+        let persistedState: UpdateControllerState = {
+          schemaVersion: 1,
+          mode: 'automatic',
+          activeRelease,
+          candidate: { phase: 'ready', release: candidateRelease },
+        };
+        readControllerStateMock.mockImplementation(() =>
+          Promise.resolve({ status: 'valid', state: persistedState }),
+        );
+        let writeCount = 0;
+        writeControllerStateMock.mockImplementation((_channel, state) => {
+          writeCount += 1;
+          if (writeCount === 1) {
+            persistedState = state;
+            return Promise.resolve();
+          }
+          return Promise.reject(new Error('rollback persistence failed'));
         });
-        writeControllerStateMock.mockRejectedValue(new Error('persistence failed'));
 
         const { response, runLifetimeWork } = await invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator(),
+          { clientId: 'old', resultingClientId: 'new' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.resolve([]),
+          },
         );
 
+        expect(writeCount).toBe(2);
         expect(response.status).toBe(503);
         expect(await response.text()).toBe('Release unavailable');
         expect(runLifetimeWork).toBeUndefined();
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
-      it('never rolls back when the activation was concurrently resolved before the fallback re-read', async () => {
+      it('never rolls back when the activation was concurrently resolved before the fallback re-read, after this navigation itself started activation', async () => {
         await seedAvailableRelease();
-        const exactState: UpdateControllerState = {
+        const readyState: UpdateControllerState = {
           schemaVersion: 1,
           mode: 'automatic',
           activeRelease,
-          candidate: {
-            phase: 'activating',
-            release: candidateRelease,
-            deadlineAt: farFutureDeadlineAt,
-          },
+          candidate: { phase: 'ready', release: candidateRelease },
         };
         const resolvedState: UpdateControllerState = {
           schemaVersion: 1,
@@ -1032,7 +1066,7 @@ describe('workerFetch', () => {
           readCount += 1;
           return Promise.resolve({
             status: 'valid',
-            state: readCount <= 2 ? exactState : resolvedState,
+            state: readCount <= 2 ? readyState : resolvedState,
           });
         });
 
@@ -1041,25 +1075,27 @@ describe('workerFetch', () => {
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator(),
+          { clientId: 'old', resultingClientId: 'new' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.resolve([]),
+          },
         );
 
         expect(response.status).toBe(503);
         expect(await response.text()).toBe('Release unavailable');
-        expect(writeControllerStateMock).not.toHaveBeenCalled();
+        expect(writeControllerStateMock).toHaveBeenCalledTimes(1);
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
-      it('persists the rollback and still returns controlled unavailable, with rollback lifetime work present, when the active release is also unavailable', async () => {
+      it('persists the rollback and still returns controlled unavailable, with rollback lifetime work present, when this navigation started activation but the active release is also unavailable', async () => {
         // Active release intentionally not seeded, so its own restoration also fails.
         let persistedState: UpdateControllerState = {
           schemaVersion: 1,
           mode: 'automatic',
           activeRelease,
-          candidate: {
-            phase: 'activating',
-            release: candidateRelease,
-            deadlineAt: farFutureDeadlineAt,
-          },
+          candidate: { phase: 'ready', release: candidateRelease },
         };
         readControllerStateMock.mockImplementation(() =>
           Promise.resolve({ status: 'valid', state: persistedState }),
@@ -1075,6 +1111,12 @@ describe('workerFetch', () => {
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator(),
+          { clientId: 'old', resultingClientId: 'new' },
+          {
+            channelOrigin: 'https://mioframe.example',
+            enqueue: (operation) => operation(),
+            matchWindowClients: () => Promise.resolve([]),
+          },
         );
 
         expect(response.status).toBe(503);
@@ -1084,17 +1126,13 @@ describe('workerFetch', () => {
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
-      it('still returns controlled unavailable with rollback lifetime work when serving the previous active release throws from a Cache Storage boundary', async () => {
+      it('still returns controlled unavailable with rollback lifetime work when this navigation started activation and serving the previous active release throws from a Cache Storage boundary', async () => {
         await seedAvailableRelease();
         let persistedState: UpdateControllerState = {
           schemaVersion: 1,
           mode: 'automatic',
           activeRelease,
-          candidate: {
-            phase: 'activating',
-            release: candidateRelease,
-            deadlineAt: farFutureDeadlineAt,
-          },
+          candidate: { phase: 'ready', release: candidateRelease },
         };
         readControllerStateMock.mockImplementation(() =>
           Promise.resolve({ status: 'valid', state: persistedState }),

@@ -59,7 +59,9 @@ function createFakeCoordinator(
 function createFakeReconciler(overrides: Partial<UpdateReconciler> = {}): UpdateReconciler {
   return {
     reconcileNavigation: vi.fn().mockResolvedValue(undefined),
-    checkForUpdates: vi.fn().mockResolvedValue({ mode: 'manual', activeRelease: releaseA }),
+    checkForUpdates: vi
+      .fn()
+      .mockResolvedValue({ snapshot: { mode: 'manual', activeRelease: releaseA } }),
     reconcileAfterModeChange: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -121,7 +123,7 @@ describe('handleWorkerMessage', () => {
       activeRelease: releaseB,
       candidate: { phase: 'ready' as const, release: releaseC },
     };
-    const checkForUpdates = vi.fn().mockResolvedValue(finalSnapshot);
+    const checkForUpdates = vi.fn().mockResolvedValue({ snapshot: finalSnapshot });
     const reconciler = createFakeReconciler({ checkForUpdates });
     const { handleWorkerMessage } = await import('./workerMessages');
     const result = await handleWorkerMessage(
@@ -136,6 +138,32 @@ describe('handleWorkerMessage', () => {
     expect(result.response).toEqual({ protocolVersion: PROTOCOL_VERSION, snapshot: finalSnapshot });
     expect(checkForUpdates).toHaveBeenCalledTimes(1);
     expect(result.runLifetimeWork).toBeUndefined();
+  });
+
+  it('CHECK_FOR_UPDATES passes through the reconciler deferred callback uninvoked', async () => {
+    const finalSnapshot = {
+      mode: 'automatic' as const,
+      activeRelease: releaseB,
+      candidate: { phase: 'ready' as const, release: releaseC },
+    };
+    const deferredWork = vi.fn().mockResolvedValue(undefined);
+    const checkForUpdates = vi
+      .fn()
+      .mockResolvedValue({ snapshot: finalSnapshot, runLifetimeWork: deferredWork });
+    const reconciler = createFakeReconciler({ checkForUpdates });
+    const { handleWorkerMessage } = await import('./workerMessages');
+    const result = await handleWorkerMessage(
+      'stable',
+      '/',
+      CHANNEL_ORIGIN,
+      { protocolVersion: PROTOCOL_VERSION, type: 'CHECK_FOR_UPDATES' },
+      enqueue,
+      createFakeCoordinator(),
+      reconciler,
+    );
+    expect(result.response).toEqual({ protocolVersion: PROTOCOL_VERSION, snapshot: finalSnapshot });
+    expect(result.runLifetimeWork).toBe(deferredWork);
+    expect(deferredWork).not.toHaveBeenCalled();
   });
 
   describe('CANCEL_SCHEDULED_UPDATE', () => {

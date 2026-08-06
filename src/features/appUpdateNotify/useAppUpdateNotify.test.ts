@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, nextTick, ref, type EffectScope } from 'vue';
-import type { AppUpdateStatus } from '@entity/appUpdate';
+import type { AppUpdateLifecycleStatus } from '@entity/appUpdate';
 
 type Candidate =
   | { phase: 'available' | 'ready' | 'failed'; release: { releaseNumber: number } }
   | { phase: 'activating'; release: { releaseNumber: number } }
   | undefined;
 
-const status = ref<AppUpdateStatus>('not-checked');
+const status = ref<AppUpdateLifecycleStatus>('not-checked');
 const isCapabilityAvailable = ref(true);
 const mode = ref<'automatic' | 'manual'>('manual');
 const candidate = ref<Candidate>(undefined);
@@ -88,7 +88,7 @@ describe('useAppUpdateNotify', () => {
     expect(addSnackbarMock).not.toHaveBeenCalled();
   });
 
-  const nonNotifyingCandidates: Array<[AppUpdateStatus, Candidate]> = [
+  const nonNotifyingCandidates: Array<[AppUpdateLifecycleStatus, Candidate]> = [
     ['ready', { phase: 'ready', release: { releaseNumber: 2 } }],
     ['activating', { phase: 'activating', release: { releaseNumber: 2 } }],
     ['failed', { phase: 'failed', release: { releaseNumber: 2 } }],

@@ -217,21 +217,62 @@ describe('useAppUpdate', () => {
           release: releaseB,
           deadlineAt: '2026-07-24T00:00:30.000Z',
         },
-        error: 'install-failed' as const,
       },
     ],
+  ])(
+    'derives the stable %s lifecycle status, unaffected by a transient check-failed error',
+    async (expectedStatus, value) => {
+      const { useAppUpdate } = await import('./useAppUpdate');
+      const { status, applyClientResult } = useAppUpdate();
+
+      // Every case carries a transient error: the durable lifecycle status
+      // must never change because of it (see the lifecycle/transient-error
+      // separation correction).
+      applyClientResult(success({ ...value, error: 'check-failed' as const }));
+
+      expect(status.value).toBe(expectedStatus);
+    },
+  );
+
+  it.each([
+    [undefined, { mode: 'manual' as const, activeRelease }],
     [
       'install-failed',
       { mode: 'manual' as const, activeRelease, error: 'install-failed' as const },
     ],
     ['check-failed', { mode: 'manual' as const, activeRelease, error: 'check-failed' as const }],
-  ])('derives the stable %s status', async (expectedStatus, value) => {
+  ])('derives the %s transient error, independent of lifecycle status', async (expected, value) => {
     const { useAppUpdate } = await import('./useAppUpdate');
-    const { status, applyClientResult } = useAppUpdate();
+    const { transientError, applyClientResult } = useAppUpdate();
 
     applyClientResult(success(value));
 
-    expect(status.value).toBe(expectedStatus);
+    expect(transientError.value).toBe(expected);
+  });
+
+  it('never surfaces an unavailable command error as a transient error', async () => {
+    const { useAppUpdate } = await import('./useAppUpdate');
+    const { transientError, applyClientResult } = useAppUpdate();
+
+    applyClientResult(
+      success({ mode: 'manual' as const, activeRelease, error: 'unavailable' as const }),
+    );
+
+    expect(transientError.value).toBeUndefined();
+  });
+
+  it('a later clean snapshot clears the transient worker error', async () => {
+    const { useAppUpdate } = await import('./useAppUpdate');
+    const { transientError, applyClientResult } = useAppUpdate();
+
+    applyClientResult(
+      success({ mode: 'manual' as const, activeRelease, error: 'check-failed' as const }),
+    );
+    expect(transientError.value).toBe('check-failed');
+
+    applyClientResult(success({ mode: 'manual' as const, activeRelease }));
+
+    expect(transientError.value).toBeUndefined();
   });
 
   it('does not let an older refresh overwrite a newer action result', async () => {

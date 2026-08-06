@@ -2,7 +2,9 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
   deriveAppUpdatesDisplayStatus,
+  deriveAppUpdateTransientFeedback,
   getAppUpdatesDisplayStatusText,
+  getAppUpdateTransientFeedbackText,
   useAppUpdate,
 } from '@entity/appUpdate';
 import { useAppUpdateCancelScheduledUpdate } from '@feature/appUpdateCancelScheduledUpdate';
@@ -17,7 +19,8 @@ import { MDButton } from '@shared/ui/material';
 
 type LastAppUpdateAction = 'check' | 'install' | 'mode' | 'cancel';
 
-const { status, isCapabilityAvailable, mode, candidate, lastSuccessfulCheckAt } = useAppUpdate();
+const { status, transientError, isCapabilityAvailable, mode, candidate, lastSuccessfulCheckAt } =
+  useAppUpdate();
 const { checkForUpdates, isChecking, outcome: checkOutcome } = useAppUpdateCheck();
 const { setMode, isChangingMode, outcome: modeOutcome } = useAppUpdateModeChange();
 const {
@@ -54,13 +57,21 @@ onUnmounted(() => {
   window.removeEventListener('offline', handleOffline);
 });
 
-const displayStatus = computed(() =>
-  deriveAppUpdatesDisplayStatus({
-    status: status.value,
+const displayStatus = computed(() => deriveAppUpdatesDisplayStatus({ status: status.value }));
+const statusText = computed(() => getAppUpdatesDisplayStatusText(displayStatus.value));
+
+// Rendered as its own separate `aria-live` region below, entirely
+// independent of `displayStatus`/`statusText`: a transient command error
+// must never replace or hide the durable candidate lifecycle headline.
+const transientFeedback = computed(() =>
+  deriveAppUpdateTransientFeedback({
+    transientError: transientError.value,
     isOnline: isOnline.value,
   }),
 );
-const statusText = computed(() => getAppUpdatesDisplayStatusText(displayStatus.value));
+const transientFeedbackText = computed(() =>
+  getAppUpdateTransientFeedbackText(transientFeedback.value),
+);
 
 const isBusy = computed(
   () => isChecking.value || isInstalling.value || isChangingMode.value || isCancelling.value,
@@ -74,13 +85,26 @@ const activatingVersion = computed(() =>
   candidate.value?.phase === 'activating' ? candidate.value.release.appVersion : undefined,
 );
 
+// Derived from capability and candidate phase, never from presentation text:
+// a transient error must never remove these actions (see the managed pinned
+// application updates feature's lifecycle/transient-error separation
+// correction). Capability must still gate them — without a controlling
+// worker there is nothing for these actions to act on, even if a stale
+// candidate still lingers in the last-applied snapshot.
 const showInstallOnNextLaunch = computed(
-  () => mode.value === 'manual' && displayStatus.value === 'update-available',
+  () =>
+    isCapabilityAvailable.value &&
+    mode.value === 'manual' &&
+    candidate.value?.phase === 'available',
 );
 const showRetryUpdate = computed(
-  () => mode.value === 'manual' && displayStatus.value === 'update-failed',
+  () =>
+    isCapabilityAvailable.value && mode.value === 'manual' && candidate.value?.phase === 'failed',
 );
-const showCancel = computed(() => mode.value === 'manual' && displayStatus.value === 'ready');
+const showCancel = computed(
+  () =>
+    isCapabilityAvailable.value && mode.value === 'manual' && candidate.value?.phase === 'ready',
+);
 const isCheckDisabled = computed(
   () =>
     isBusy.value ||
@@ -176,6 +200,14 @@ const onToggleAutomaticUpdates = () => {
         Activating the update now. The status will update automatically when activation completes.
       </p>
     </section>
+
+    <p
+      v-if="transientFeedbackText"
+      class="app-update-settings__transient-feedback"
+      aria-live="polite"
+    >
+      {{ transientFeedbackText }}
+    </p>
 
     <p v-if="busyMessage" class="app-update-settings__action-feedback" aria-live="polite">
       {{ busyMessage }}

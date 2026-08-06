@@ -28,21 +28,51 @@ const zodReleaseNumber = z.number().check(z.refine(isPositiveSafeInteger));
 const RESERVED_UPDATES_PREFIX = 'updates/';
 
 /**
- * Returns `true` when `path` is a canonical channel-root-relative release
- * file path: no leading slash, no `..` traversal segment, no query/hash
- * suffix, no percent-encoded path separator, and not under the reserved
- * `updates/` metadata prefix (which also excludes every release's own
- * archived index, always published under `updates/releases/<releaseNumber>/`,
- * from ever being listed as one of its own ordinary release files).
+ * A fixed, arbitrary base URL used only to resolve a candidate path through
+ * the platform `URL` parser for the canonicalization round-trip check in
+ * {@link isCanonicalReleasePath}. Never a real network origin.
+ */
+const CANONICAL_PATH_BASE = 'https://mioframe.internal/';
+
+/**
+ * Returns `true` when `path` is the single canonical channel-root-relative
+ * representation of a release file — never merely a path that *resolves* to
+ * one. Rejects: an empty path; a leading or trailing `/`; any `\`; any `%`
+ * (no percent-encoding at all, valid or not); a query (`?`) or fragment
+ * (`#`); an empty, `.`, or `..` path segment (which also rejects a doubled
+ * `//` separator); and the reserved `updates/` metadata prefix (which also
+ * excludes every release's own archived index, always published under
+ * `updates/releases/<releaseNumber>/`, from ever being listed as one of its
+ * own ordinary release files). As a final catch-all, resolves `path` against
+ * a fixed base through the platform `URL` parser and requires its resulting
+ * pathname (with the leading `/` stripped) to equal `path` exactly — this is
+ * what additionally rejects a URL-normalizable alias such as a raw space,
+ * which would otherwise pass every explicit character check above. Mirrors
+ * `isCanonicalReleasePath` in `scripts/pages/lib/releaseDescriptor.mjs`,
+ * proven equivalent against the shared corpus in
+ * `releaseDescriptorCorpus.mjs`.
  * @param path - Candidate release file path.
  * @returns Whether `path` is canonical.
  */
 export const isCanonicalReleasePath = (path: string): boolean => {
-  if (path.length === 0 || path.startsWith('/')) return false;
+  if (path.length === 0) return false;
+  if (path.startsWith('/') || path.endsWith('/')) return false;
+  if (path.includes('\\')) return false;
+  if (path.includes('%')) return false;
   if (path.includes('?') || path.includes('#')) return false;
-  if (/%2e|%2f/i.test(path)) return false;
   if (path === 'updates' || path.startsWith(RESERVED_UPDATES_PREFIX)) return false;
-  return !path.split('/').includes('..');
+  if (
+    path.split('/').some((segment) => segment.length === 0 || segment === '.' || segment === '..')
+  ) {
+    return false;
+  }
+  let normalizedPathname: string;
+  try {
+    normalizedPathname = new URL(path, CANONICAL_PATH_BASE).pathname;
+  } catch {
+    return false;
+  }
+  return normalizedPathname.slice(1) === path;
 };
 
 /** Matches a lowercase hex SHA-256 digest exactly; mirrors the Node publisher's `SHA256_HEX_PATTERN`. */

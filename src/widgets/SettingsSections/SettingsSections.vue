@@ -29,12 +29,7 @@ const { isSettingsEntryVisible } = usePwaInstallAction();
 // reads an action feature's busy or transport outcome state.
 const { status: appUpdateStatus } = useAppUpdate();
 const appUpdatesStatusText = computed(() =>
-  getAppUpdatesDisplayStatusText(
-    deriveAppUpdatesDisplayStatus({
-      status: appUpdateStatus.value,
-      isOnline: typeof navigator === 'undefined' ? true : navigator.onLine,
-    }),
-  ),
+  getAppUpdatesDisplayStatusText(deriveAppUpdatesDisplayStatus({ status: appUpdateStatus.value })),
 );
 
 const onToggleStarterExamples = () => {

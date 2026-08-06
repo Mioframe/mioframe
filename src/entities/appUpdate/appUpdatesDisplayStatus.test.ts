@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   deriveAppUpdatesDisplayStatus,
+  deriveAppUpdateTransientFeedback,
   getAppUpdatesDisplayStatusText,
+  getAppUpdateTransientFeedbackText,
   type AppUpdatesDisplayStatus,
+  type AppUpdateTransientFeedback,
 } from './appUpdatesDisplayStatus';
-import type { AppUpdateStatus } from './useAppUpdate';
+import type { AppUpdateLifecycleStatus, AppUpdateTransientError } from './useAppUpdate';
 
-const derive = (status: AppUpdateStatus, isOnline = true) =>
-  deriveAppUpdatesDisplayStatus({ status, isOnline });
+const derive = (status: AppUpdateLifecycleStatus) => deriveAppUpdatesDisplayStatus({ status });
 
 describe('deriveAppUpdatesDisplayStatus', () => {
-  it('maps only stable entity status, without action-local busy inputs', () => {
+  it('maps only stable entity lifecycle status, without action-local busy inputs or transient errors', () => {
     expect(derive('unavailable')).toBe('unavailable');
     expect(derive('not-checked')).toBe('not-checked');
     expect(derive('up-to-date')).toBe('up-to-date');
@@ -18,15 +20,6 @@ describe('deriveAppUpdatesDisplayStatus', () => {
     expect(derive('failed')).toBe('update-failed');
     expect(derive('ready')).toBe('ready');
     expect(derive('activating')).toBe('activating');
-  });
-
-  it('maps install-failed to retryable update-available', () => {
-    expect(derive('install-failed')).toBe('update-available');
-  });
-
-  it('splits check-failed into could-not-check when online and offline when offline', () => {
-    expect(derive('check-failed', true)).toBe('could-not-check');
-    expect(derive('check-failed', false)).toBe('offline');
   });
 });
 
@@ -39,8 +32,6 @@ describe('getAppUpdatesDisplayStatusText', () => {
     ['ready', 'Update ready'],
     ['activating', 'Activating update…'],
     ['update-failed', 'Update failed'],
-    ['could-not-check', 'Could not check for updates'],
-    ['offline', 'Offline'],
   ];
 
   it.each(cases)('maps %s to %s', (status, text) => {
@@ -68,5 +59,37 @@ describe('getAppUpdatesDisplayStatusText', () => {
         expect(text).not.toContain(term);
       }
     }
+  });
+});
+
+const deriveFeedback = (transientError: AppUpdateTransientError, isOnline = true) =>
+  deriveAppUpdateTransientFeedback({ transientError, isOnline });
+
+describe('deriveAppUpdateTransientFeedback', () => {
+  it('is undefined when there is no transient error, entirely independent of lifecycle status', () => {
+    expect(deriveFeedback(undefined)).toBeUndefined();
+  });
+
+  it('splits check-failed into could-not-check when online and offline when offline', () => {
+    expect(deriveFeedback('check-failed', true)).toBe('could-not-check');
+    expect(deriveFeedback('check-failed', false)).toBe('offline');
+  });
+
+  it('maps install-failed to could-not-prepare regardless of connectivity', () => {
+    expect(deriveFeedback('install-failed', true)).toBe('could-not-prepare');
+    expect(deriveFeedback('install-failed', false)).toBe('could-not-prepare');
+  });
+});
+
+describe('getAppUpdateTransientFeedbackText', () => {
+  const cases: Array<[AppUpdateTransientFeedback, string | undefined]> = [
+    ['could-not-check', 'Could not check for updates'],
+    ['offline', 'Offline'],
+    ['could-not-prepare', 'Could not prepare the update'],
+    [undefined, undefined],
+  ];
+
+  it.each(cases)('maps %s to %s', (feedback, text) => {
+    expect(getAppUpdateTransientFeedbackText(feedback)).toBe(text);
   });
 });

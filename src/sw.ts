@@ -121,16 +121,22 @@ self.addEventListener('fetch', (event) => {
       },
     );
     const responsePromise = resultPromise.then((result) => result.response);
-    const navigationLifetimeWork = resultPromise.then(async (result) => {
-      await responsePromise;
+    // Both of this navigation's own follow-up work items — its own
+    // `runLifetimeWork` and joining/starting reconciliation — are chained
+    // directly off `responsePromise`, never started until the response has
+    // already resolved: reconciliation must never delay this navigation's
+    // own response, and starting or releasing it any earlier would let it
+    // race ahead of the response it belongs after.
+    const navigationLifetimeWork = responsePromise.then(async () => {
+      const result = await resultPromise;
       await result.runLifetimeWork?.();
     });
+    const reconciliation = responsePromise.then(() => updateReconciler.reconcileNavigation());
     event.respondWith(responsePromise);
     event.waitUntil(
-      Promise.all([
-        navigationLifetimeWork.catch(() => {}),
-        updateReconciler.reconcileNavigation().catch(() => {}),
-      ]).then(() => undefined),
+      Promise.all([navigationLifetimeWork.catch(() => {}), reconciliation.catch(() => {})]).then(
+        () => undefined,
+      ),
     );
     return;
   }

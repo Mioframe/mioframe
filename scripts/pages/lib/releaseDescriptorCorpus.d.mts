@@ -9,3 +9,16 @@ export type InvalidReleaseDescriptorFixture = {
 
 /** Named structurally invalid `ReleaseDescriptor`-shaped fixture variants. */
 export declare const invalidReleaseDescriptors: InvalidReleaseDescriptorFixture[];
+
+/** One named canonical-release-path acceptance/rejection case. */
+export type CanonicalReleasePathCase = {
+  /** Human-readable case label. */
+  name: string;
+  /** The candidate path under test. */
+  path: string;
+  /** Whether `path` must be accepted as canonical. */
+  valid: boolean;
+};
+
+/** Shared canonical-release-path acceptance/rejection corpus. */
+export declare const canonicalReleasePathCases: CanonicalReleasePathCase[];

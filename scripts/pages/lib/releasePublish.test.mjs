@@ -305,9 +305,10 @@ describe('publishManagedRelease', () => {
 
     // Simulate a stray leftover archive directory for the number about to be
     // allocated (e.g. a prior publish attempt that wrote the archive but
-    // crashed before writing the descriptor). It has no descriptor, so it is
-    // invisible to readRetainedReleaseDescriptors/allocateNextReleaseNumber,
-    // but must still be caught before any new write for that number begins.
+    // crashed before writing the descriptor). The retained-tree strictness
+    // correction now rejects this orphan directory directly inside
+    // readRetainedReleaseDescriptors, earlier than the separate
+    // assertReleaseNumberNotRetained allocation guard would.
     mkdirSync(join(workDir, 'updates', 'releases', '2'), { recursive: true });
     writeFileSync(join(workDir, 'updates', 'releases', '2', 'index.html'), '<stray/>');
 
@@ -328,7 +329,7 @@ describe('publishManagedRelease', () => {
         buildId: 'sha2',
         buildDate: '2026-07-25T00:00:00.000Z',
       }),
-    ).toThrow('Release number 2 is already retained for this channel');
+    ).toThrow('has no matching descriptor');
 
     expect(readFileSync(descriptorPath, 'utf8')).toBe(descriptorBefore);
     expect(readFileSync(latestPath, 'utf8')).toBe(latestBefore);

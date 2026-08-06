@@ -109,7 +109,7 @@ export function createPreparationCoordinator(): PreparationCoordinator {
           : undefined;
 
       const tailToAwait = cleanupTail;
-      const attempt = (async () => {
+      const runPreparation = async (): Promise<ReleaseDescriptor> => {
         // Every cleanup already scheduled at the moment this preparation was
         // registered read its protected-number snapshot before this attempt
         // existed, so it may legitimately delete a stale cache under this
@@ -135,16 +135,29 @@ export function createPreparationCoordinator(): PreparationCoordinator {
         }
         await prepareRelease(channelBasePath, channel, descriptor);
         return descriptor;
-      })();
+      };
 
-      const entry = { expectedRelease: target, promise: attempt };
-      inFlight.set(target.releaseNumber, entry);
-      attempt
-        .catch(() => {})
-        .finally(() => {
-          inFlight.delete(target.releaseNumber);
-        });
-      return attempt;
+      // The map entry must be released inside this same owned promise,
+      // before `ownedAttempt`'s resolution or rejection becomes observable
+      // to its caller — never through a detached `.catch().finally()` chain,
+      // which would leave a window after this attempt settles but before
+      // cleanup runs, in which an immediate retry could still observe the
+      // stale entry and join this already-settled promise instead of
+      // starting fresh. The `.promise === ownedAttempt` identity check
+      // guards against a newer attempt (registered for the same release
+      // number after this one already finished) ever being deleted by this
+      // older attempt's own cleanup.
+      const ownedAttempt: Promise<ReleaseDescriptor> = Promise.resolve().then(async () => {
+        try {
+          return await runPreparation();
+        } finally {
+          if (inFlight.get(target.releaseNumber)?.promise === ownedAttempt) {
+            inFlight.delete(target.releaseNumber);
+          }
+        }
+      });
+      inFlight.set(target.releaseNumber, { expectedRelease: target, promise: ownedAttempt });
+      return ownedAttempt;
     },
 
     runCleanup(cleanup) {

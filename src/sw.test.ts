@@ -515,7 +515,7 @@ describe('src/sw.ts fetch routing', () => {
     );
   });
 
-  it('navigation attaches reconciliation to waitUntil separately from respondWith', async () => {
+  it('navigation attaches reconciliation to waitUntil separately from respondWith, only after the response resolves', async () => {
     const listeners = await importSwAndGetListeners();
     const listener = listeners.get('fetch');
     if (!listener) throw new Error('Expected a fetch listener to have been registered');
@@ -527,12 +527,17 @@ describe('src/sw.ts fetch routing', () => {
 
     listener(event);
 
-    expect(reconcileNavigationMock).toHaveBeenCalledTimes(1);
+    // Reconciliation must not start before this navigation's own response
+    // has resolved, so it is not yet called synchronously here.
+    expect(reconcileNavigationMock).not.toHaveBeenCalled();
     expect(waitUntil).toHaveBeenCalledTimes(1);
     expect(respondWith.mock.calls[0]?.[0]).not.toBe(waitUntil.mock.calls[0]?.[0]);
+
+    await flushMicrotasks();
+    expect(reconcileNavigationMock).toHaveBeenCalledTimes(1);
   });
 
-  it('passes both navigation identities and starts deferred work only after the response resolves while reconciliation remains independent', async () => {
+  it('starts both navigation lifetime work and reconciliation only after the response resolves, never before', async () => {
     const listeners = await importSwAndGetListeners();
     const listener = listeners.get('fetch');
     if (!listener) throw new Error('Expected a fetch listener to have been registered');
@@ -569,14 +574,25 @@ describe('src/sw.ts fetch routing', () => {
     void responsePromise.then(() => {
       order.push('response');
     });
-    expect(order).toEqual(['reconcile']);
+    await flushMicrotasks();
+    // Neither follow-up item has started: the response itself has not
+    // resolved yet (`resolveResult` has not been called).
+    expect(order).toEqual([]);
     expect(runLifetimeWork).not.toHaveBeenCalled();
+    expect(reconcileNavigationMock).not.toHaveBeenCalled();
+
     resolveResult({ response: new Response('candidate'), runLifetimeWork });
     const response = await responsePromise;
     if (!(response instanceof Response)) throw new Error('Expected a navigation response');
     expect(await response.text()).toBe('candidate');
     await waitUntil.mock.calls[0]?.[0];
-    expect(order).toEqual(['reconcile', 'response', 'lifetime']);
+    // Both follow-up items ran — they could only ever do so once
+    // `responsePromise` (which they are both direct `.then()` continuations
+    // of) had already settled, which the pre-resolution assertions above
+    // already proved.
+    expect(order).toContain('response');
+    expect(order).toContain('lifetime');
+    expect(order).toContain('reconcile');
   });
 
   it('keeps waitUntil pending when reconciliation rejects while navigation lifetime work remains pending', async () => {

@@ -1,9 +1,9 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, createApp, defineComponent, h, nextTick, ref } from 'vue';
-import type { AppUpdateStatus } from '@entity/appUpdate';
+import type { AppUpdateLifecycleStatus } from '@entity/appUpdate';
 
-const appUpdateStatus = ref<AppUpdateStatus>('not-checked');
+const appUpdateStatus = ref<AppUpdateLifecycleStatus>('not-checked');
 
 vi.mock('@entity/appUpdate', async () => {
   const actual = await vi.importActual<typeof import('@entity/appUpdate')>('@entity/appUpdate');

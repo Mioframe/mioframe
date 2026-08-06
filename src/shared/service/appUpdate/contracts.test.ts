@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canonicalReleasePathCases,
   invalidReleaseDescriptors,
   validReleaseDescriptor,
 } from '../../../../scripts/pages/lib/releaseDescriptorCorpus.mjs';
 import {
+  isCanonicalReleasePath,
   isPositiveSafeInteger,
   releaseSummariesMatch,
   toReleaseSummary,
@@ -36,6 +38,12 @@ describe('isPositiveSafeInteger', () => {
     expect(isPositiveSafeInteger(-1)).toBe(false);
     expect(isPositiveSafeInteger(1.5)).toBe(false);
     expect(isPositiveSafeInteger(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
+  });
+});
+
+describe('isCanonicalReleasePath', () => {
+  it.each(canonicalReleasePathCases)('$name: $path -> $valid', ({ path, valid }) => {
+    expect(isCanonicalReleasePath(path)).toBe(valid);
   });
 });
 

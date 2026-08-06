@@ -519,6 +519,78 @@ test.describe('managed pinned application updates: stable channel lifecycle', ()
     }
   });
 
+  test('two concurrent qualifying navigations race into activation: exactly one performs the ready → activating write and receives the new release, the other is blocked with a controlled 503', async () => {
+    const setupPage = await context.newPage();
+    await setupPage.goto(server.url);
+    await waitForControlledPage(setupPage);
+    const before = await readControllerState(setupPage, CONTROLLER_DB_NAME);
+    expect(before.status).toBe('valid');
+
+    const releaseE = await buildAndPublishManagedRelease({
+      channel: 'stable',
+      basePath: BASE_PATH,
+      appVersion: '1.5.0',
+      buildId: 'concurrent-navigation-release-e',
+      workDir,
+    });
+
+    await sendProtocolRequest(setupPage, { type: 'SET_MODE', mode: 'manual' });
+    const checked = await sendProtocolRequest<{
+      snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
+    }>(setupPage, { type: 'CHECK_FOR_UPDATES' });
+    expect(checked.snapshot.candidate?.release.releaseNumber).toBe(releaseE.releaseNumber);
+    const installed = await sendProtocolRequest<{
+      snapshot: { candidate?: { phase: string; release: { releaseNumber: number } } };
+    }>(setupPage, { type: 'INSTALL_ON_NEXT_LAUNCH' });
+    expect(installed.snapshot.candidate?.phase).toBe('ready');
+
+    // No live same-channel window remains once this setup page closes: the
+    // two pages opened below race into the same qualifying-navigation
+    // decision with nothing else to block them, so exactly one navigation
+    // legitimately owns the real `ready` -> `activating` write and only that
+    // navigation ever receives the candidate document (see the concurrent
+    // top-level navigation activation-ownership correction).
+    await setupPage.close();
+
+    const pageA = await context.newPage();
+    const pageB = await context.newPage();
+    try {
+      const [responseA, responseB] = await Promise.all([
+        pageA.goto(server.url),
+        pageB.goto(server.url),
+      ]);
+      const statuses = [responseA?.status(), responseB?.status()];
+      expect(statuses.filter((status) => status === 200)).toHaveLength(1);
+      expect(statuses.filter((status) => status === 503)).toHaveLength(1);
+
+      const wonBlocked = responseA?.status() === 200 ? [pageA, pageB] : [pageB, pageA];
+      const [wonPage, blockedPage] = wonBlocked;
+
+      // The blocked navigation never received the candidate document or A,
+      // and never triggered a rollback: no other window besides the winner
+      // can ever observe the candidate leaving `ready`.
+      await expect(blockedPage.getByText(/^browser storage$/i)).not.toBeVisible();
+
+      // The winning page's own real boot watchdog reports BOOT_OK through
+      // the worker protocol end to end, durably committing the activation
+      // exactly once regardless of the other navigation's blocked attempt.
+      await waitForControlledPage(wonPage);
+      const committed = await waitForControllerState(
+        wonPage,
+        (result) =>
+          result.status === 'valid' &&
+          result.state.activeRelease.releaseNumber === releaseE.releaseNumber,
+      );
+      expect(committed.status).toBe('valid');
+      if (committed.status === 'valid') {
+        expect(committed.state.candidate).toBeUndefined();
+      }
+    } finally {
+      await pageA.close().catch(() => {});
+      await pageB.close().catch(() => {});
+    }
+  });
+
   test('a temporary Automatic preparation failure recovers on a later check of the same published release', async () => {
     // Publishes one more real release and corrupts its own unique entry
     // file's on-disk bytes — a genuine, real fetch + byte-size/SHA-256

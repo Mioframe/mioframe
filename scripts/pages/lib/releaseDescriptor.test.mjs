@@ -1,9 +1,13 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { invalidReleaseDescriptors, validReleaseDescriptor } from './releaseDescriptorCorpus.mjs';
+import {
+  canonicalReleasePathCases,
+  invalidReleaseDescriptors,
+  validReleaseDescriptor,
+} from './releaseDescriptorCorpus.mjs';
 import {
   assertReleaseNumberNotRetained,
   assertUniqueRetainedBuildIds,
@@ -11,6 +15,7 @@ import {
   collectReleaseFiles,
   computeContentSha256,
   computeFileSha256,
+  isCanonicalReleasePath,
   isPositiveSafeInteger,
   isValidReleaseDescriptor,
   readLatestPointer,
@@ -35,6 +40,12 @@ describe('isPositiveSafeInteger', () => {
     expect(isPositiveSafeInteger(1.5)).toBe(false);
     expect(isPositiveSafeInteger(Number.MAX_SAFE_INTEGER + 1)).toBe(false);
     expect(isPositiveSafeInteger('1')).toBe(false);
+  });
+});
+
+describe('isCanonicalReleasePath', () => {
+  it.each(canonicalReleasePathCases)('$name: $path -> $valid', ({ path, valid }) => {
+    expect(isCanonicalReleasePath(path)).toBe(valid);
   });
 });
 
@@ -150,8 +161,8 @@ describe('readRetainedReleaseDescriptors', () => {
   it('fails closed on a structurally invalid retained descriptor', () => {
     mkdirSync(releasesDir, { recursive: true });
     writeFileSync(
-      join(releasesDir, 'bad.json'),
-      JSON.stringify({ ...validReleaseDescriptor, files: [] }),
+      join(releasesDir, '2.json'),
+      JSON.stringify({ ...validReleaseDescriptor, releaseNumber: 2, files: [] }),
     );
 
     expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('structurally invalid');
@@ -159,14 +170,17 @@ describe('readRetainedReleaseDescriptors', () => {
 
   it('fails closed on unparseable JSON', () => {
     mkdirSync(releasesDir, { recursive: true });
-    writeFileSync(join(releasesDir, 'bad.json'), '{not json');
+    writeFileSync(join(releasesDir, '2.json'), '{not json');
 
     expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('not valid JSON');
   });
 
   it('fails closed when the descriptor filename does not match its releaseNumber', () => {
     mkdirSync(releasesDir, { recursive: true });
-    writeFileSync(join(releasesDir, 'r1.json'), JSON.stringify(validReleaseDescriptor));
+    // "2.json" is itself a canonical filename, but its own content's
+    // releaseNumber (1) diverges from it — a content/filename identity
+    // mismatch, distinct from a malformed filename.
+    writeFileSync(join(releasesDir, '2.json'), JSON.stringify(validReleaseDescriptor));
     mkdirSync(join(releasesDir, String(validReleaseDescriptor.releaseNumber)), { recursive: true });
     writeFileSync(
       join(releasesDir, String(validReleaseDescriptor.releaseNumber), 'index.html'),
@@ -178,7 +192,7 @@ describe('readRetainedReleaseDescriptors', () => {
     );
   });
 
-  it('fails closed on a duplicate release number under a different (padded) filename', () => {
+  it('fails closed on a malformed (padded) numeric descriptor filename', () => {
     mkdirSync(releasesDir, { recursive: true });
     writeRetainedRelease(validReleaseDescriptor);
     writeFileSync(
@@ -186,9 +200,7 @@ describe('readRetainedReleaseDescriptors', () => {
       JSON.stringify({ ...validReleaseDescriptor, releaseNumber: 1 }),
     );
 
-    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow(
-      'does not match its releaseNumber',
-    );
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('unexpected file');
   });
 
   it('fails closed when the archived index directory is missing', () => {
@@ -201,6 +213,65 @@ describe('readRetainedReleaseDescriptors', () => {
     expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow(
       'missing its archived index directory',
     );
+  });
+
+  it('fails closed on an orphan archive directory with no matching descriptor', () => {
+    mkdirSync(join(releasesDir, '1'), { recursive: true });
+    writeFileSync(join(releasesDir, '1', 'index.html'), '<html></html>');
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('no matching descriptor');
+  });
+
+  it('fails closed on an unexpected top-level file entry', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeRetainedRelease(validReleaseDescriptor);
+    writeFileSync(join(releasesDir, 'notes.txt'), 'not a release');
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('unexpected file');
+  });
+
+  it('fails closed on an unexpected top-level directory entry', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeRetainedRelease(validReleaseDescriptor);
+    mkdirSync(join(releasesDir, 'stray-directory'), { recursive: true });
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('unexpected directory');
+  });
+
+  it('fails closed on an unexpected entry inside an archive directory', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeRetainedRelease(validReleaseDescriptor);
+    writeFileSync(
+      join(releasesDir, String(validReleaseDescriptor.releaseNumber), 'extra.js'),
+      'stray',
+    );
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow(
+      'must contain exactly one file, index.html',
+    );
+  });
+
+  it('fails closed on a symlink entry in the retained tree', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeRetainedRelease(validReleaseDescriptor);
+    symlinkSync(
+      join(releasesDir, `${String(validReleaseDescriptor.releaseNumber)}.json`),
+      join(releasesDir, 'linked.json'),
+    );
+
+    expect(() => readRetainedReleaseDescriptors(releasesDir)).toThrow('symlink entry');
+  });
+
+  it('accepts a valid contiguous retained tree unchanged', () => {
+    mkdirSync(releasesDir, { recursive: true });
+    writeRetainedRelease(validReleaseDescriptor);
+    const secondDescriptor = { ...validReleaseDescriptor, releaseNumber: 2 };
+    writeRetainedRelease(secondDescriptor);
+
+    const result = readRetainedReleaseDescriptors(releasesDir);
+
+    expect(result).toEqual(expect.arrayContaining([validReleaseDescriptor, secondDescriptor]));
+    expect(result).toHaveLength(2);
   });
 });
 

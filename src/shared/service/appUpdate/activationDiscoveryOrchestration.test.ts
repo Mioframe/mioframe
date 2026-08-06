@@ -99,14 +99,20 @@ describe('mode-change reconciliation races', () => {
     expect('snapshot' in modeResult.response && modeResult.response.snapshot.mode).toBe(
       'automatic',
     );
+    // `modeResult.runLifetimeWork` joins the Check-created attempt and
+    // requests its rerun; as a joiner it only awaits release, it never
+    // triggers it — the Check's own returned callback below owns that,
+    // exactly like `workerMessages` invoking it after posting its response.
     const followUp = modeResult.runLifetimeWork?.();
     discovery.resolve(descriptorB);
 
-    await followUp;
-    await expect(check).resolves.toMatchObject({
+    const checkResult = await check;
+    expect(checkResult.snapshot).toMatchObject({
       mode: 'automatic',
       candidate: { phase: 'ready' },
     });
+    await checkResult.runLifetimeWork?.();
+    await followUp;
     expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(2);
     expect(prepare).toHaveBeenCalledTimes(1);
   });
@@ -139,11 +145,13 @@ describe('mode-change reconciliation races', () => {
     const followUp = modeResult.runLifetimeWork?.();
     preparation.resolve(descriptorB);
 
-    await followUp;
-    await expect(check).resolves.toMatchObject({
+    const checkResult = await check;
+    expect(checkResult.snapshot).toMatchObject({
       mode: 'manual',
       candidate: { phase: 'available' },
     });
+    await checkResult.runLifetimeWork?.();
+    await followUp;
     expect(state.mode).toBe('manual');
     expect(state.candidate?.phase).toBe('available');
     expect(prepare).toHaveBeenCalledTimes(1);

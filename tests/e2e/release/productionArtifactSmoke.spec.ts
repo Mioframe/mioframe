@@ -119,6 +119,21 @@ test('no chunk embeds the release-test-only legacy migration fixture or applicat
   expect(offenders).toEqual([]);
 });
 
+// Managed pinned application updates feature: the managed controller worker
+// (dist/sw.js for this spec's stable-channel build, compiled directly from
+// src/sw.ts via the injectManifest strategy — see config/plugins/pwa.ts)
+// must never manage its own code's lifecycle: no skipWaiting(), no
+// clients.claim(). Scoped to this one managed-worker artifact only — an
+// ordinary branch build's Workbox-generated `generateSW` worker legitimately
+// calls both, and a tombstone page has no service worker at all, so neither
+// is in scope for this rule.
+test('the built managed controller worker never calls skipWaiting() or clients.claim()', () => {
+  const swSource = readFileSync(join('dist', 'sw.js'), 'utf8');
+
+  expect(swSource).not.toMatch(/\bskipWaiting\s*\(/);
+  expect(swSource).not.toMatch(/\bclients\s*\.\s*claim\s*\(/);
+});
+
 // Managed pinned application updates feature, Correction 3 (managed-controller
 // capability): an ordinary branch build (not stable, not the develop managed
 // channel) never gets a managed controller worker — only the ordinary

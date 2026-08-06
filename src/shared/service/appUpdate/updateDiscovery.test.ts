@@ -232,12 +232,12 @@ describe('runUpdateReconciliationPass', () => {
 
       const result = await runUpdateReconciliationPass(dependencies);
 
-      expect(result.candidate?.phase).toBe(expectedPhase);
-      expect(result.candidate?.release.releaseNumber).toBe(expectedRelease);
+      expect(result.snapshot.candidate?.phase).toBe(expectedPhase);
+      expect(result.snapshot.candidate?.release.releaseNumber).toBe(expectedRelease);
       expect(prepareMock.mock.calls.map((call) => call[2].releaseNumber)).toEqual(
         prepared ? [prepared] : [],
       );
-      expect(result.error).toBe(failure ? 'check-failed' : undefined);
+      expect(result.snapshot.error).toBe(failure ? 'check-failed' : undefined);
     },
   );
 
@@ -289,8 +289,7 @@ describe('runUpdateReconciliationPass', () => {
     setState('automatic');
     fetchLatestReleasePointerMock.mockRejectedValue(new Error('offline'));
     await expect(runUpdateReconciliationPass(dependencies)).resolves.toMatchObject({
-      error: 'check-failed',
-      candidate: undefined,
+      snapshot: { error: 'check-failed', candidate: undefined },
     });
     expect(prepareMock).not.toHaveBeenCalled();
   });
@@ -302,8 +301,9 @@ describe('runUpdateReconciliationPass', () => {
       currentState = { ...currentState, candidate: candidate('ready', 2) };
       return Promise.resolve(descriptor(3));
     });
-    await runUpdateReconciliationPass(dependencies);
+    const result = await runUpdateReconciliationPass(dependencies);
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(result.runLifetimeWork).toBeUndefined();
     expect(postMessageMock).not.toHaveBeenCalled();
     expect(cachesKeysMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
@@ -314,14 +314,16 @@ describe('runUpdateReconciliationPass', () => {
     cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 3 });
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(3));
-    await runUpdateReconciliationPass(dependencies);
+    const first = await runUpdateReconciliationPass(dependencies);
+    await first.runLifetimeWork?.();
     expect(cachesDeleteMock).toHaveBeenCalledWith(buildReleaseCacheName('stable', 2));
 
     cachesDeleteMock.mockClear();
     cachesKeysMock.mockClear().mockResolvedValue([buildReleaseCacheName('stable', 4)]);
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 3 });
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(3));
-    await runUpdateReconciliationPass(dependencies);
+    const second = await runUpdateReconciliationPass(dependencies);
+    await second.runLifetimeWork?.();
     expect(cachesKeysMock).not.toHaveBeenCalled();
     expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
@@ -335,7 +337,8 @@ describe('runUpdateReconciliationPass', () => {
       return Promise.resolve();
     });
     cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
-    await runUpdateReconciliationPass(dependencies);
+    const result = await runUpdateReconciliationPass(dependencies);
+    await result.runLifetimeWork?.();
     expect(currentState.mode).toBe('manual');
     expect(currentState.candidate?.phase).toBe('available');
     expect(cachesDeleteMock).not.toHaveBeenCalled();
@@ -356,7 +359,8 @@ describe('runUpdateReconciliationPass', () => {
       return Promise.resolve();
     });
     cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
-    await runUpdateReconciliationPass(dependencies);
+    const result = await runUpdateReconciliationPass(dependencies);
+    await result.runLifetimeWork?.();
     expect(currentState.candidate).toEqual({
       phase: 'available',
       release: { ...release(2), buildId: 'replaced-build' },
@@ -373,15 +377,34 @@ describe('runUpdateReconciliationPass', () => {
       return Promise.resolve();
     });
     cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
-    await runUpdateReconciliationPass(dependencies);
+    const result = await runUpdateReconciliationPass(dependencies);
+    await result.runLifetimeWork?.();
     expect(cachesDeleteMock).toHaveBeenCalledWith(buildReleaseCacheName('stable', 2));
+  });
+
+  it('does not start broadcast or cleanup until runLifetimeWork is explicitly invoked', async () => {
+    setState('automatic', candidate('available', 2));
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 3 });
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptor(3));
+    cachesKeysMock.mockResolvedValue([buildReleaseCacheName('stable', 2)]);
+
+    const result = await runUpdateReconciliationPass(dependencies);
+
+    expect(postMessageMock).not.toHaveBeenCalled();
+    expect(cachesKeysMock).not.toHaveBeenCalled();
+    expect(cachesDeleteMock).not.toHaveBeenCalled();
+    expect(result.runLifetimeWork).toBeTypeOf('function');
+
+    await result.runLifetimeWork?.();
+    expect(postMessageMock).toHaveBeenCalled();
   });
 
   it('broadcasts after each durable discovery and preparation transition', async () => {
     setState('automatic');
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
     fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
-    await runUpdateReconciliationPass(dependencies);
+    const result = await runUpdateReconciliationPass(dependencies);
+    await result.runLifetimeWork?.();
     expect(postMessageMock).toHaveBeenCalledTimes(2);
   });
 
@@ -394,9 +417,9 @@ describe('runUpdateReconciliationPass', () => {
 
       const result = await runUpdateReconciliationPass(dependencies);
 
-      expect(result.error).toBe('install-failed');
-      expect(result.candidate).toEqual({ phase: 'available', release: release(2) });
-      expect(result.activeRelease).toEqual(release(1));
+      expect(result.snapshot.error).toBe('install-failed');
+      expect(result.snapshot.candidate).toEqual({ phase: 'available', release: release(2) });
+      expect(result.snapshot.activeRelease).toEqual(release(1));
       expect(currentState.candidate?.phase).toBe('available');
     });
 
@@ -407,8 +430,8 @@ describe('runUpdateReconciliationPass', () => {
 
       const result = await runUpdateReconciliationPass(dependencies);
 
-      expect(result.error).toBe('install-failed');
-      expect(result.candidate).toEqual({ phase: 'available', release: release(2) });
+      expect(result.snapshot.error).toBe('install-failed');
+      expect(result.snapshot.candidate).toEqual({ phase: 'available', release: release(2) });
       expect(writeControllerStateMock).not.toHaveBeenCalled();
     });
 
@@ -418,7 +441,7 @@ describe('runUpdateReconciliationPass', () => {
 
       const result = await runUpdateReconciliationPass(dependencies);
 
-      expect(result.error).toBe('check-failed');
+      expect(result.snapshot.error).toBe('check-failed');
       expect(prepareMock).not.toHaveBeenCalled();
     });
 

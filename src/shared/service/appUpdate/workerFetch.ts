@@ -222,21 +222,37 @@ export async function handleAssetFetch(
 }
 
 /** One resolved navigation-serving decision, prior to serving the release. */
-type NavigationSelection = {
-  /** The release to serve for this navigation. */
-  release: ReleaseSummary;
-  /** Deferred broadcast work already decided by this selection step. */
-  runLifetimeWork?: (() => Promise<void>) | undefined;
-  /**
-   * Whether `release` is being served as the current `activating` candidate's
-   * own target (freshly started this navigation, or already in progress),
-   * rather than as `activeRelease`. Only these selections are eligible for
-   * {@link tryRollbackActivatingFailure} below — the already-persisted
-   * expired-activation rollback branch always resolves to `activeRelease`
-   * and must never re-enter that fallback.
-   */
-  isActivatingTarget?: boolean;
-};
+type NavigationSelection =
+  | {
+      kind: 'serve';
+      /** The release to serve for this navigation. */
+      release: ReleaseSummary;
+      /** Deferred broadcast work already decided by this selection step. */
+      runLifetimeWork?: (() => Promise<void>) | undefined;
+      /**
+       * Whether `release` is being served as the current `activating`
+       * candidate's own target, because this exact navigation is the one
+       * that just performed the `ready` → `activating` transition. Only
+       * these selections are eligible for {@link tryRollbackActivatingFailure}
+       * below — the already-persisted expired-activation rollback branch
+       * always resolves to `activeRelease` and must never re-enter that
+       * fallback, and a navigation that merely observed a pre-existing
+       * unexpired activation never reaches `'serve'` at all (see `'blocked'`).
+       */
+      isActivatingTarget?: boolean;
+    }
+  | {
+      /**
+       * This navigation observed an existing, unexpired `activating`
+       * candidate that it did not itself start. It must not serve that
+       * candidate, must not serve `activeRelease`, must not mutate state, and
+       * must not trigger rollback — only the navigation that performed the
+       * `ready` → `activating` transition owns that candidate's outcome. The
+       * caller answers with a controlled `503` directly, without calling
+       * {@link serveRelease} at all.
+       */
+      kind: 'blocked';
+    };
 
 /**
  * Handles an `activating` candidate that could not be served for this
@@ -314,20 +330,26 @@ async function tryRollbackActivatingFailure(
 
 /**
  * Handles an owned same-channel top-level navigation request (ownership
- * already decided by the caller). Navigation may start a clean-launch
- * activation or recover an expired activation before serving its archived
- * index. Navigation and assets use the activating candidate's target while
- * activation is in progress; all other candidate phases use `activeRelease`.
- * Absent or invalid persisted state, or an unavailable exact release,
- * returns a controlled `503`. Never falls through to a live network fetch.
+ * already decided by the caller). Exactly one document navigation owns each
+ * activation attempt: only the invocation that itself performs the `ready` →
+ * `activating` transition (see `startActivation`) ever serves candidate `B`.
+ * Every other concurrent navigation that observes an existing, unexpired
+ * `activating(B)` it did not start returns a controlled `503` directly —
+ * never `B`, never `activeRelease`, no state mutation, no rollback (see the
+ * `'blocked'` {@link NavigationSelection}). An expired activation is the
+ * existing exception: any navigation that observes it may durably roll back
+ * to `activeRelease` and serve that instead. Absent or invalid persisted
+ * state, or an unavailable exact release, also returns a controlled `503`.
+ * Never falls through to a live network fetch.
  *
- * When the current `activating` candidate's own target cannot be served —
- * whether already in progress or just started by this same navigation — a
- * single durable rollback attempt (see {@link tryRollbackActivatingFailure})
- * serves the previous `activeRelease` in this same navigation instead,
- * discarding any "activation started" broadcast this navigation may have
- * just queued: only the final durable rollback broadcast is relevant once
- * that candidate's own serving has failed.
+ * When the current navigation's own just-started `activating` target cannot
+ * be served, a single durable rollback attempt (see
+ * {@link tryRollbackActivatingFailure}) serves the previous `activeRelease`
+ * in this same navigation instead, discarding the "activation started"
+ * broadcast this navigation may have just queued: only the final durable
+ * rollback broadcast is relevant once that candidate's own serving has
+ * failed. This fallback is only ever reachable for the navigation that
+ * itself performed the transition — a blocked navigation never reaches it.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming navigation request.
@@ -369,7 +391,9 @@ export async function handleNavigationFetch(
         const now = new Date().toISOString();
         if (state.candidate?.phase === 'activating') {
           if (!isActivationExpired(state, now)) {
-            return { release: state.candidate.release, isActivatingTarget: true };
+            // A pre-existing, unexpired activation this navigation did not
+            // start: fail closed without touching cache or state at all.
+            return { kind: 'blocked' };
           }
 
           const failedReleaseNumber = state.candidate.release.releaseNumber;
@@ -379,6 +403,7 @@ export async function handleNavigationFetch(
             [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
           );
           return {
+            kind: 'serve',
             release: rolledBack.activeRelease,
             runLifetimeWork: () =>
               broadcastRollback(
@@ -397,8 +422,11 @@ export async function handleNavigationFetch(
           const deadlineAt = new Date(Date.now() + BOOT_CONFIRMATION_TIMEOUT_MS).toISOString();
           const activating = startActivation(state, deadlineAt);
           await writeControllerState(channel, activating);
-          if (activating.candidate?.phase !== 'activating') return { release: state.activeRelease };
+          if (activating.candidate?.phase !== 'activating') {
+            return { kind: 'serve', release: state.activeRelease };
+          }
           return {
+            kind: 'serve',
             release: activating.candidate.release,
             runLifetimeWork: () =>
               broadcastStateChanged(channelBasePath, dependencies.channelOrigin).catch(() => {}),
@@ -406,9 +434,11 @@ export async function handleNavigationFetch(
           };
         }
 
-        return { release: state.activeRelease };
+        return { kind: 'serve', release: state.activeRelease };
       },
     );
+
+    if (selection.kind === 'blocked') return { response: UNAVAILABLE_RESPONSE() };
 
     // A thrown Cache Storage error while serving the activating candidate's
     // own target must enter the same durable rollback path as a controlled

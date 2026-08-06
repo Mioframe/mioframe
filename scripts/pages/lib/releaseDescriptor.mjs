@@ -26,6 +26,13 @@ const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 const RESERVED_UPDATES_PREFIX = 'updates/';
 
 /**
+ * A fixed, arbitrary base URL used only to resolve a candidate path through
+ * the platform `URL` parser for the canonicalization round-trip check in
+ * {@link isCanonicalReleasePath}. Never a real network origin.
+ */
+const CANONICAL_PATH_BASE = 'https://mioframe.internal/';
+
+/**
  * Returns `true` when `value` is a positive safe integer, the sole identity
  * and ordering value for a release. Mirrors `isPositiveSafeInteger` in
  * `src/shared/service/appUpdate/contracts.ts`.
@@ -37,22 +44,43 @@ export function isPositiveSafeInteger(value) {
 }
 
 /**
- * Returns `true` when `path` is a canonical channel-root-relative release
- * file path: no leading slash, no `..` traversal segment, no query/hash
- * suffix, no percent-encoded path separator, and not under the reserved
- * `updates/` metadata prefix (which also excludes a release's own archived
- * index from ever being listed as one of its own ordinary release files).
- * Mirrors `isCanonicalReleasePath` in
- * `src/shared/service/appUpdate/contracts.ts`.
+ * Returns `true` when `path` is the single canonical channel-root-relative
+ * representation of a release file — never merely a path that *resolves* to
+ * one. Rejects: an empty path; a leading or trailing `/`; any `\`; any `%`
+ * (no percent-encoding at all, valid or not); a query (`?`) or fragment
+ * (`#`); an empty, `.`, or `..` path segment (which also rejects a doubled
+ * `//` separator); and the reserved `updates/` metadata prefix (which also
+ * excludes a release's own archived index from ever being listed as one of
+ * its own ordinary release files). As a final catch-all, resolves `path`
+ * against a fixed base through the platform `URL` parser and requires its
+ * resulting pathname (with the leading `/` stripped) to equal `path`
+ * exactly — this is what additionally rejects a URL-normalizable alias such
+ * as a raw space, which would otherwise pass every explicit character check
+ * above. Mirrors `isCanonicalReleasePath` in
+ * `src/shared/service/appUpdate/contracts.ts`, proven equivalent against the
+ * shared corpus in `releaseDescriptorCorpus.mjs`.
  * @param path Candidate release file path.
  * @returns Whether `path` is canonical.
  */
 export function isCanonicalReleasePath(path) {
-  if (typeof path !== 'string' || path.length === 0 || path.startsWith('/')) return false;
+  if (typeof path !== 'string' || path.length === 0) return false;
+  if (path.startsWith('/') || path.endsWith('/')) return false;
+  if (path.includes('\\')) return false;
+  if (path.includes('%')) return false;
   if (path.includes('?') || path.includes('#')) return false;
-  if (/%2e|%2f/i.test(path)) return false;
   if (path === 'updates' || path.startsWith(RESERVED_UPDATES_PREFIX)) return false;
-  return !path.split('/').includes('..');
+  if (
+    path.split('/').some((segment) => segment.length === 0 || segment === '.' || segment === '..')
+  ) {
+    return false;
+  }
+  let normalizedPathname;
+  try {
+    normalizedPathname = new URL(path, CANONICAL_PATH_BASE).pathname;
+  } catch {
+    return false;
+  }
+  return normalizedPathname.slice(1) === path;
 }
 
 /**
@@ -188,50 +216,122 @@ export function collectReleaseFiles(distDir) {
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
+/** Canonical retained descriptor filename: `<releaseNumber>.json`, no leading zeros. */
+const RELEASE_DESCRIPTOR_FILENAME_PATTERN = /^([1-9]\d*)\.json$/;
+/** Canonical retained archive directory name: `<releaseNumber>`, no leading zeros. */
+const RELEASE_ARCHIVE_DIRECTORY_NAME_PATTERN = /^[1-9]\d*$/;
+
 /**
- * Reads and validates every retained release descriptor for a channel.
- * Fails closed: any unreadable, structurally invalid, or misplaced
- * descriptor aborts the whole read rather than silently skipping it, since
- * publishing on top of a corrupt retained tree is unsafe. Validates that
- * the descriptor filename (`<releaseNumber>.json`) matches its own
- * `releaseNumber` (which also makes two retained descriptors sharing a
- * `releaseNumber` structurally impossible: two files cannot both be named
- * after the same number) and that the release's archived index directory
- * (`<releaseNumber>/index.html`) exists.
+ * Reads and validates every retained release descriptor for a channel, and
+ * that `releasesDir` forms an exact retained tree: only canonical
+ * `<releaseNumber>.json` / `<releaseNumber>/index.html` pairs, nothing else.
+ * Fails closed: any unreadable, structurally invalid, misplaced, orphaned,
+ * unexpected, or symlink/special entry aborts the whole read rather than
+ * silently skipping it, since publishing on top of a corrupt retained tree
+ * is unsafe.
+ *
+ * Structural gate, before any content is read: every top-level entry must be
+ * either a canonical `<releaseNumber>.json` file or a canonical
+ * `<releaseNumber>` directory (no leading zeros) — a symlink, another
+ * special entry, or any other file or directory name fails closed here.
+ * Every retained directory must have a matching `.json` file present (an
+ * orphan directory fails); every retained archive directory's own contents
+ * must be exactly one `index.html` file (an unexpected entry inside it
+ * fails).
+ *
+ * Per-descriptor validation then parses and validates each `.json` file,
+ * confirms its filename matches its own `releaseNumber` (which also makes
+ * two retained descriptors sharing a `releaseNumber` structurally
+ * impossible: two files cannot both be named after the same number), and
+ * confirms its release's archived index directory exists.
  * @param releasesDir Channel's `updates/releases` directory.
  * @returns Every retained `ReleaseDescriptor`, or `[]` when the directory does not exist yet.
  */
 export function readRetainedReleaseDescriptors(releasesDir) {
   if (!existsSync(releasesDir)) return [];
 
-  return readdirSync(releasesDir, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-    .map((entry) => {
-      const filePath = join(releasesDir, entry.name);
-      let parsed;
-      try {
-        parsed = JSON.parse(readFileSync(filePath, 'utf8'));
-      } catch (error) {
-        throw new Error(`Retained release descriptor is not valid JSON: ${entry.name}`, {
-          cause: error,
-        });
+  const entries = readdirSync(releasesDir, { withFileTypes: true });
+  const descriptorFilenames = new Set();
+  const archiveDirectoryNames = new Set();
+
+  for (const entry of entries) {
+    if (entry.isSymbolicLink()) {
+      throw new Error(
+        `Retained updates/releases contains a symlink entry, which is not allowed: ${entry.name}`,
+      );
+    }
+    if (entry.isFile()) {
+      if (!RELEASE_DESCRIPTOR_FILENAME_PATTERN.test(entry.name)) {
+        throw new Error(`Retained updates/releases contains an unexpected file: ${entry.name}`);
       }
-      if (!isValidReleaseDescriptor(parsed)) {
-        throw new Error(`Retained release descriptor is structurally invalid: ${entry.name}`);
-      }
-      const expectedFilename = `${parsed.releaseNumber}.json`;
-      if (entry.name !== expectedFilename) {
+      descriptorFilenames.add(entry.name);
+      continue;
+    }
+    if (entry.isDirectory()) {
+      if (!RELEASE_ARCHIVE_DIRECTORY_NAME_PATTERN.test(entry.name)) {
         throw new Error(
-          `Retained release descriptor filename "${entry.name}" does not match its releaseNumber (expected "${expectedFilename}")`,
+          `Retained updates/releases contains an unexpected directory: ${entry.name}`,
         );
       }
-      if (!existsSync(join(releasesDir, String(parsed.releaseNumber), 'index.html'))) {
-        throw new Error(
-          `Retained release "${parsed.releaseNumber}" is missing its archived index directory`,
-        );
-      }
-      return parsed;
-    });
+      archiveDirectoryNames.add(entry.name);
+      continue;
+    }
+    throw new Error(
+      `Retained updates/releases contains an unexpected entry, neither a regular file nor a directory: ${entry.name}`,
+    );
+  }
+
+  // Per-descriptor content validation runs before the orphan-directory and
+  // archive-content checks below, so a content/filename identity mismatch on
+  // an otherwise-canonically-named descriptor is reported as exactly that,
+  // rather than as an unrelated directory-pairing failure.
+  const descriptors = [...descriptorFilenames].map((filename) => {
+    const filePath = join(releasesDir, filename);
+    let parsed;
+    try {
+      parsed = JSON.parse(readFileSync(filePath, 'utf8'));
+    } catch (error) {
+      throw new Error(`Retained release descriptor is not valid JSON: ${filename}`, {
+        cause: error,
+      });
+    }
+    if (!isValidReleaseDescriptor(parsed)) {
+      throw new Error(`Retained release descriptor is structurally invalid: ${filename}`);
+    }
+    const expectedFilename = `${parsed.releaseNumber}.json`;
+    if (filename !== expectedFilename) {
+      throw new Error(
+        `Retained release descriptor filename "${filename}" does not match its releaseNumber (expected "${expectedFilename}")`,
+      );
+    }
+    if (!existsSync(join(releasesDir, String(parsed.releaseNumber), 'index.html'))) {
+      throw new Error(
+        `Retained release "${parsed.releaseNumber}" is missing its archived index directory`,
+      );
+    }
+    return parsed;
+  });
+
+  for (const directoryName of archiveDirectoryNames) {
+    if (!descriptorFilenames.has(`${directoryName}.json`)) {
+      throw new Error(
+        `Retained release archive directory "${directoryName}" has no matching descriptor`,
+      );
+    }
+    const archiveEntries = readdirSync(join(releasesDir, directoryName), { withFileTypes: true });
+    if (
+      archiveEntries.length !== 1 ||
+      !archiveEntries[0].isFile() ||
+      archiveEntries[0].isSymbolicLink() ||
+      archiveEntries[0].name !== 'index.html'
+    ) {
+      throw new Error(
+        `Retained release archive directory "${directoryName}" must contain exactly one file, index.html`,
+      );
+    }
+  }
+
+  return descriptors;
 }
 
 /**

@@ -31,17 +31,29 @@ export type AppUpdateCandidate =
       release: AppUpdateRelease;
     };
 
-/** UI-facing update status, derived only from the last valid worker snapshot and capability. */
-export type AppUpdateStatus =
+/**
+ * Durable candidate lifecycle status, derived only from capability, the
+ * persisted candidate's phase, and successful-check state — never from
+ * `snapshot.error`. A transient worker error must never replace or hide this
+ * status; see {@link AppUpdateTransientError} for the separate projection
+ * that carries it.
+ */
+export type AppUpdateLifecycleStatus =
   | 'unavailable'
   | 'not-checked'
   | 'up-to-date'
   | 'update-available'
   | 'failed'
   | 'ready'
-  | 'activating'
-  | 'install-failed'
-  | 'check-failed';
+  | 'activating';
+
+/**
+ * The worker's most recent transient command error, projected independently
+ * of {@link AppUpdateLifecycleStatus}. `'unavailable'` (an
+ * `INSTALL_ON_NEXT_LAUNCH` with no candidate at all to install) is
+ * deliberately excluded — it is not a presentable transient feedback state.
+ */
+export type AppUpdateTransientError = 'check-failed' | 'install-failed' | undefined;
 
 function projectRelease(release: AppUpdateSnapshot['activeRelease']): AppUpdateRelease {
   return {
@@ -62,19 +74,15 @@ function projectCandidate(
   return { phase: candidate.phase, release: projectRelease(candidate.release) };
 }
 
-function deriveAppUpdateStatus(
+function deriveAppUpdateLifecycleStatus(
   snapshot: AppUpdateSnapshot | undefined,
   isCapabilityAvailable: boolean,
-): AppUpdateStatus {
+): AppUpdateLifecycleStatus {
   if (!isCapabilityAvailable) return 'unavailable';
   if (!snapshot) return 'not-checked';
-  // Activation takes priority over an ephemeral command error: the worker
-  // has already selected this release for the current clean launch, so no
-  // update mutation is meaningful until it resolves.
-  if (snapshot.candidate?.phase === 'activating') return 'activating';
-  if (snapshot.error === 'install-failed') return 'install-failed';
-  if (snapshot.error === 'check-failed') return 'check-failed';
   switch (snapshot.candidate?.phase) {
+    case 'activating':
+      return 'activating';
     case 'ready':
       return 'ready';
     case 'available':
@@ -83,6 +91,21 @@ function deriveAppUpdateStatus(
       return 'failed';
   }
   return snapshot.lastSuccessfulCheckAt ? 'up-to-date' : 'not-checked';
+}
+
+/**
+ * Derives the transient worker error to present, independent of lifecycle
+ * status. `'unavailable'` never surfaces as a transient error (see
+ * {@link AppUpdateTransientError}).
+ * @param snapshot - The last valid worker snapshot, if any.
+ * @returns The transient error to present, if any.
+ */
+function deriveAppUpdateTransientError(
+  snapshot: AppUpdateSnapshot | undefined,
+): AppUpdateTransientError {
+  return snapshot?.error === 'check-failed' || snapshot?.error === 'install-failed'
+    ? snapshot.error
+    : undefined;
 }
 
 const setupAppUpdate = () => {
@@ -157,7 +180,10 @@ const setupAppUpdate = () => {
     unsubscribeStateChanged();
   });
 
-  const status = computed(() => deriveAppUpdateStatus(snapshot.value, isCapabilityAvailable.value));
+  const status = computed(() =>
+    deriveAppUpdateLifecycleStatus(snapshot.value, isCapabilityAvailable.value),
+  );
+  const transientError = computed(() => deriveAppUpdateTransientError(snapshot.value));
   const mode = computed(() => snapshot.value?.mode);
   const activeRelease = computed(() =>
     snapshot.value ? projectRelease(snapshot.value.activeRelease) : undefined,
@@ -167,6 +193,7 @@ const setupAppUpdate = () => {
 
   return {
     status,
+    transientError,
     isCapabilityAvailable: computed(() => isCapabilityAvailable.value),
     mode,
     activeRelease,

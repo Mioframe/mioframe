@@ -25,12 +25,14 @@ vi.mock('./shared/service/appUpdate/workerInstall', () => ({
 }));
 vi.mock('./shared/service/appUpdate/updateDiscovery', () => ({
   runUpdateReconciliationPass: vi.fn().mockResolvedValue({
-    mode: 'automatic',
-    activeRelease: {
-      releaseNumber: 1,
-      appVersion: '1.0.0',
-      buildId: 'build-a',
-      buildDate: '2026-08-02T00:00:00.000Z',
+    snapshot: {
+      mode: 'automatic',
+      activeRelease: {
+        releaseNumber: 1,
+        appVersion: '1.0.0',
+        buildId: 'build-a',
+        buildDate: '2026-08-02T00:00:00.000Z',
+      },
     },
   }),
 }));

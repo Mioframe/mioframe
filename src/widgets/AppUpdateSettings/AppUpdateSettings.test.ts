@@ -1,7 +1,7 @@
 /* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, h, nextTick, ref } from 'vue';
-import type { AppUpdateStatus } from '@entity/appUpdate';
+import type { AppUpdateLifecycleStatus, AppUpdateTransientError } from '@entity/appUpdate';
 
 type Candidate =
   | {
@@ -14,7 +14,8 @@ type Candidate =
     }
   | undefined;
 
-const status = ref<AppUpdateStatus>('not-checked');
+const status = ref<AppUpdateLifecycleStatus>('not-checked');
+const transientError = ref<AppUpdateTransientError>(undefined);
 const isCapabilityAvailable = ref(true);
 const mode = ref<'automatic' | 'manual' | undefined>('manual');
 const activeRelease = ref<{ releaseNumber: number } | undefined>({ releaseNumber: 1 });
@@ -40,6 +41,7 @@ vi.mock('@entity/appUpdate', async () => {
     ...actual,
     useAppUpdate: () => ({
       status,
+      transientError,
       isCapabilityAvailable,
       mode,
       activeRelease,
@@ -181,6 +183,7 @@ describe('AppUpdateSettings', () => {
   afterEach(() => {
     vi.resetModules();
     status.value = 'not-checked';
+    transientError.value = undefined;
     isCapabilityAvailable.value = true;
     mode.value = 'manual';
     activeRelease.value = { releaseNumber: 1 };
@@ -247,6 +250,7 @@ describe('AppUpdateSettings', () => {
   it('update-failed (Manual): shows Retry update and calls installOnNextLaunch', async () => {
     status.value = 'failed';
     mode.value = 'manual';
+    candidateRef.value = { phase: 'failed', release: { releaseNumber: 2, appVersion: '1.1.0' } };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update failed');
@@ -261,6 +265,7 @@ describe('AppUpdateSettings', () => {
   it('update-failed (Automatic): does not show Retry update', async () => {
     status.value = 'failed';
     mode.value = 'automatic';
+    candidateRef.value = { phase: 'failed', release: { releaseNumber: 2, appVersion: '1.1.0' } };
     const { root, unmount } = await mountWidget();
 
     expect(root.textContent).toContain('Update failed');
@@ -495,7 +500,7 @@ describe('AppUpdateSettings', () => {
 
   describe('connectivity presentation', () => {
     it('reacts to an offline event by showing the offline failed-check state', async () => {
-      status.value = 'check-failed';
+      transientError.value = 'check-failed';
       const { root, unmount } = await mountWidget();
 
       expect(root.textContent).toContain('Could not check for updates');
@@ -509,7 +514,7 @@ describe('AppUpdateSettings', () => {
     });
 
     it('reacts to an online event by reverting back to the could-not-check state', async () => {
-      status.value = 'check-failed';
+      transientError.value = 'check-failed';
       const { root, unmount } = await mountWidget();
 
       window.dispatchEvent(new Event('offline'));
@@ -544,7 +549,7 @@ describe('AppUpdateSettings', () => {
     });
 
     it('does not react to a post-unmount offline event, since its listener was already removed', async () => {
-      status.value = 'check-failed';
+      transientError.value = 'check-failed';
       const { unmount } = await mountWidget();
       unmount();
 
@@ -552,7 +557,7 @@ describe('AppUpdateSettings', () => {
     });
 
     it('Check for updates still uses the current connectivity state instead of resetting it', async () => {
-      status.value = 'check-failed';
+      transientError.value = 'check-failed';
       const { root, unmount } = await mountWidget();
 
       window.dispatchEvent(new Event('offline'));
@@ -564,6 +569,110 @@ describe('AppUpdateSettings', () => {
 
       expect(checkForUpdatesMock).toHaveBeenCalledTimes(1);
       expect(root.textContent).toContain('Offline');
+      unmount();
+    });
+  });
+
+  describe('lifecycle/transient-error separation', () => {
+    it('available + check-failed: keeps Install on next launch visible, headline unchanged, separate feedback shown', async () => {
+      status.value = 'update-available';
+      mode.value = 'manual';
+      candidateRef.value = {
+        phase: 'available',
+        release: { releaseNumber: 2, appVersion: '1.1.0' },
+      };
+      transientError.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Update available');
+      expect(root.textContent).toContain('Could not check for updates');
+      expect(getButtonByText(root, 'Install on next launch')).not.toBeNull();
+      unmount();
+    });
+
+    it('failed + check-failed: keeps Retry update visible, headline stays Update failed, separate feedback shown', async () => {
+      status.value = 'failed';
+      mode.value = 'manual';
+      candidateRef.value = { phase: 'failed', release: { releaseNumber: 2, appVersion: '1.1.0' } };
+      transientError.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Update failed');
+      expect(root.textContent).toContain('Could not check for updates');
+      expect(getButtonByText(root, 'Retry update')).not.toBeNull();
+      unmount();
+    });
+
+    it('ready + check-failed: keeps Cancel scheduled update visible', async () => {
+      status.value = 'ready';
+      mode.value = 'manual';
+      candidateRef.value = { phase: 'ready', release: { releaseNumber: 2, appVersion: '1.1.0' } };
+      transientError.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Update ready');
+      expect(root.textContent).toContain('Could not check for updates');
+      expect(getButtonByText(root, 'Cancel scheduled update')).not.toBeNull();
+      unmount();
+    });
+
+    it('available + install-failed: keeps Install on next launch visible, feedback reads "Could not prepare the update"', async () => {
+      status.value = 'update-available';
+      mode.value = 'manual';
+      candidateRef.value = {
+        phase: 'available',
+        release: { releaseNumber: 2, appVersion: '1.1.0' },
+      };
+      transientError.value = 'install-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Update available');
+      expect(root.textContent).toContain('Could not prepare the update');
+      expect(getButtonByText(root, 'Install on next launch')).not.toBeNull();
+      unmount();
+    });
+
+    it('failed + install-failed: keeps Retry update visible, feedback reads "Could not prepare the update"', async () => {
+      status.value = 'failed';
+      mode.value = 'manual';
+      candidateRef.value = { phase: 'failed', release: { releaseNumber: 2, appVersion: '1.1.0' } };
+      transientError.value = 'install-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Update failed');
+      expect(root.textContent).toContain('Could not prepare the update');
+      expect(getButtonByText(root, 'Retry update')).not.toBeNull();
+      unmount();
+    });
+
+    it('no candidate + check-failed: still presents "Could not check for updates" or "Offline"', async () => {
+      status.value = 'not-checked';
+      candidateRef.value = undefined;
+      transientError.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Not checked yet');
+      expect(root.textContent).toContain('Could not check for updates');
+      unmount();
+    });
+
+    it('a later clean snapshot (no transient error) clears the feedback', async () => {
+      status.value = 'update-available';
+      mode.value = 'manual';
+      candidateRef.value = {
+        phase: 'available',
+        release: { releaseNumber: 2, appVersion: '1.1.0' },
+      };
+      transientError.value = 'check-failed';
+      const { root, unmount } = await mountWidget();
+
+      expect(root.textContent).toContain('Could not check for updates');
+
+      transientError.value = undefined;
+      await nextTick();
+
+      expect(root.textContent).not.toContain('Could not check for updates');
+      expect(root.textContent).not.toContain('Offline');
       unmount();
     });
   });

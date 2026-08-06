@@ -203,6 +203,49 @@ describe('createPreparationCoordinator', () => {
     expect(prepareReleaseMock).not.toHaveBeenCalled();
   });
 
+  it('releases the map entry inside the same settlement segment: an immediate retry from the rejection catch continuation creates a genuinely new preparation, never joining the already-settled one', async () => {
+    fetchReleaseDescriptorMock
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const firstAttempt = coordinator.prepare('stable', '/', releaseA);
+    let secondAttempt: ReturnType<typeof coordinator.prepare> | undefined;
+    await firstAttempt.catch(() => {
+      // Immediately, in this same catch continuation — the exact microtask
+      // boundary the settlement-race fix targets — retry.
+      secondAttempt = coordinator.prepare('stable', '/', releaseA);
+    });
+
+    expect(secondAttempt).toBeDefined();
+    expect(secondAttempt).not.toBe(firstAttempt);
+    await expect(secondAttempt).resolves.toBe(descriptorA);
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('an immediate retry from a success continuation creates a new attempt rather than joining the already-settled promise', async () => {
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    const firstAttempt = coordinator.prepare('stable', '/', releaseA);
+    let secondAttempt: ReturnType<typeof coordinator.prepare> | undefined;
+    await firstAttempt.then(() => {
+      secondAttempt = coordinator.prepare('stable', '/', releaseA);
+    });
+
+    expect(secondAttempt).toBeDefined();
+    expect(secondAttempt).not.toBe(firstAttempt);
+    await expect(secondAttempt).resolves.toBe(descriptorA);
+    // A genuinely new, independent no-op attempt against the already valid
+    // cache — not a join of the first, already-settled promise.
+    expect(fetchReleaseDescriptorMock).toHaveBeenCalledTimes(2);
+    expect(prepareReleaseMock).toHaveBeenCalledTimes(2);
+  });
+
   it('allows a fresh retry after an identity-mismatch rejection', async () => {
     fetchReleaseDescriptorMock
       .mockResolvedValueOnce({ ...descriptorA, buildId: 'different-build' })
