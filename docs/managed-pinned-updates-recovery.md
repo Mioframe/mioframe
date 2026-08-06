@@ -70,13 +70,13 @@ Do not change:
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| Controller-state service | classify `absent`, `invalid`, and storage read/write failure; perform the final serialized recovery write |
-| Controller worker | serve recovery HTML, authorize same-channel recovery requests, orchestrate exact latest preparation, return stable recovery outcomes |
-| `PreparationCoordinator` | deduplicate exact release preparation and arbitrate cleanup only |
-| Recovery page | present safe diagnostics, copy diagnostic details, invoke Retry or explicit Install latest, show bounded busy/error state |
-| Product application | no ownership; it may be unable to boot |
+| Owner                    | Responsibility                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Controller-state service | classify `absent`, `invalid`, and storage read/write failure; perform the final serialized recovery write                            |
+| Controller worker        | serve recovery HTML, authorize same-channel recovery requests, orchestrate exact latest preparation, return stable recovery outcomes |
+| `PreparationCoordinator` | deduplicate exact release preparation and arbitrate cleanup only                                                                     |
+| Recovery page            | present safe diagnostics, copy diagnostic details, invoke Retry or explicit Install latest, show bounded busy/error state            |
+| Product application      | no ownership; it may be unable to boot                                                                                               |
 
 No entity, feature, widget, page, or Material component owns this flow because recovery must work without application JavaScript or application assets.
 
@@ -220,32 +220,32 @@ Rejected because updater recovery must never destroy or reset product data.
 
 ## Acceptance matrix
 
-| Condition | Required result |
-| --- | --- |
-| Valid controller state | Existing normal managed-update behavior |
-| Absent state under active managed worker | Recovery page with `UPDATE_STATE_ABSENT` |
-| Invalid state | Recovery page with `UPDATE_STATE_INVALID` |
-| IndexedDB read failure | Recovery page with `UPDATE_STORAGE_UNAVAILABLE` |
-| Retry after transient storage recovery | Normal app or correctly reclassified recovery page |
-| Install latest without readable controller store | Stable failure; no download or state change |
-| Valid latest and preparation | Durable initial Automatic state, then reload |
-| Another window recovers first | Preserve its valid state; return success |
-| Network/metadata/integrity/cache failure | Detailed stable failure; no selected partial release |
-| State write failure after preparation | Recovery page remains; prepared cache may be cleaned later |
-| Offline recovery | Explain that internet is required; do not infer a cached release |
-| Foreign-channel request | No response or mutation under existing protocol isolation |
+| Condition                                        | Required result                                                  |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| Valid controller state                           | Existing normal managed-update behavior                          |
+| Absent state under active managed worker         | Recovery page with `UPDATE_STATE_ABSENT`                         |
+| Invalid state                                    | Recovery page with `UPDATE_STATE_INVALID`                        |
+| IndexedDB read failure                           | Recovery page with `UPDATE_STORAGE_UNAVAILABLE`                  |
+| Retry after transient storage recovery           | Normal app or correctly reclassified recovery page               |
+| Install latest without readable controller store | Stable failure; no download or state change                      |
+| Valid latest and preparation                     | Durable initial Automatic state, then reload                     |
+| Another window recovers first                    | Preserve its valid state; return success                         |
+| Network/metadata/integrity/cache failure         | Detailed stable failure; no selected partial release             |
+| State write failure after preparation            | Recovery page remains; prepared cache may be cleaned later       |
+| Offline recovery                                 | Explain that internet is required; do not infer a cached release |
+| Foreign-channel request                          | No response or mutation under existing protocol isolation        |
 
 ## Risk matrix
 
-| Risk | Mitigation |
-| --- | --- |
-| Silent release replacement | explicit user action and visible Automatic-mode reset |
-| Partial recovery state | prepare fully before serialized state write |
-| Concurrent recovery overwrite | final re-read preserves any valid state |
-| Sensitive diagnostic leakage | stable allowlisted fields only |
-| Recovery depends on broken app | worker-owned self-contained page |
-| Long operation blocks navigation/state | network/cache work outside `OperationQueue` |
-| Recovery deletes user data | updater-only ownership and explicit forbidden boundary |
+| Risk                                   | Mitigation                                             |
+| -------------------------------------- | ------------------------------------------------------ |
+| Silent release replacement             | explicit user action and visible Automatic-mode reset  |
+| Partial recovery state                 | prepare fully before serialized state write            |
+| Concurrent recovery overwrite          | final re-read preserves any valid state                |
+| Sensitive diagnostic leakage           | stable allowlisted fields only                         |
+| Recovery depends on broken app         | worker-owned self-contained page                       |
+| Long operation blocks navigation/state | network/cache work outside `OperationQueue`            |
+| Recovery deletes user data             | updater-only ownership and explicit forbidden boundary |
 
 ## Required proof
 
