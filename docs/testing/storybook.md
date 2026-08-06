@@ -72,13 +72,13 @@ Do not export stories, fixtures, test helpers, specs, or snapshots through produ
 
 ## Proof decision table
 
-| Changed contract | Primary proof owner |
-| --- | --- |
-| Props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, and non-browser wiring | colocated `*.test.ts` |
-| Isolated supported rendering state | colocated `*.stories.ts` |
-| Real focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, or browser APIs | colocated `*.browser.spec.ts` |
-| Bounded accepted appearance | colocated `*.visual.spec.ts` against a story tagged `visual` |
-| Complete scenario crossing FSD, service, worker, persistence, navigation, provider, permission, reload, or application bootstrap boundaries | `tests/e2e/*.spec.ts` |
+| Changed contract                                                                                                                            | Primary proof owner                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, and non-browser wiring                   | colocated `*.test.ts`                                        |
+| Isolated supported rendering state                                                                                                          | colocated `*.stories.ts`                                     |
+| Real focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, or browser APIs           | colocated `*.browser.spec.ts`                                |
+| Bounded accepted appearance                                                                                                                 | colocated `*.visual.spec.ts` against a story tagged `visual` |
+| Complete scenario crossing FSD, service, worker, persistence, navigation, provider, permission, reload, or application bootstrap boundaries | `tests/e2e/*.spec.ts`                                        |
 
 One observable contract has one primary proof owner. A higher-level test may prove a narrow integration seam or complete product outcome, but must not repeat the complete lower-level contract.
 
