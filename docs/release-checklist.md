@@ -50,9 +50,10 @@ full policy this checklist enforces.
 - [ ] For a release containing managed-update changes, the focused
       `pnpm verify --full --only managed-updates` gate passed without flaky
       classification before the final `pnpm verify:release` run.
-- [ ] Operator UI/accessibility acceptance covers update settings, update
-      notifications, activation, rollback recovery, and the rest of the
-      promoted product changes.
+- [ ] Operator UI/accessibility acceptance covers update settings,
+      notifications, clean-launch activation, rollback, controller-state-loss
+      recovery, known-active-release recovery, and the rest of the promoted
+      product changes.
 
 ## After merging into `main`
 
