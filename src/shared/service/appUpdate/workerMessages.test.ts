@@ -1467,11 +1467,11 @@ describe('handleWorkerMessage', () => {
       expect(runCleanup).not.toHaveBeenCalled();
     });
 
-    it('deletes the exact prepared cache with the real coordinator and real cleanup once state-changed proves it was never adopted, without a state-changed broadcast', async () => {
+    it('schedules no follow-up work once state-changed proves this attempt’s prepared release B was never adopted, leaving its cache untouched', async () => {
       // Uses the real PreparationCoordinator/runReleaseCacheCleanup, not a
       // mocked runCleanup-was-called assertion: proves the cache entry is
-      // actually removed once fresh state shows this attempt's prepared
-      // release B was never adopted.
+      // genuinely left alone, not merely that no explicit deletion call was
+      // made.
       readControllerStateMock
         .mockResolvedValueOnce({ status: 'absent' })
         .mockResolvedValueOnce({
@@ -1506,18 +1506,16 @@ describe('handleWorkerMessage', () => {
         protocolVersion: PROTOCOL_VERSION,
         result: 'state-changed',
       });
-      expect(result.runLifetimeWork).toBeTypeOf('function');
-
-      await result.runLifetimeWork?.();
-      expect(cachesDeleteMock).toHaveBeenCalledWith(`stable-release-${releaseB.releaseNumber}`);
+      expect(result.runLifetimeWork).toBeUndefined();
+      expect(cachesDeleteMock).not.toHaveBeenCalled();
       expect(postMessage).not.toHaveBeenCalled();
     });
 
-    it('deletes the exact prepared cache with the real coordinator and real cleanup when persistence fails and state remains absent, without a state-changed broadcast', async () => {
+    it('schedules no follow-up work when persistence fails and state remains absent, leaving the prepared release cache untouched', async () => {
       // Covers the state-loss persistence-failure scenario: state stays
-      // absent even at deferred-cleanup time, so ordinary valid-state
-      // cleanup never runs — only the explicit prepared-target deletion path
-      // can remove this cache.
+      // absent even after finalization, but that no longer schedules any
+      // deletion of the release this attempt prepared — it remains reusable
+      // by a later retry.
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
       fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
       fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
@@ -1543,10 +1541,8 @@ describe('handleWorkerMessage', () => {
         protocolVersion: PROTOCOL_VERSION,
         result: 'controller-state-persistence-failed',
       });
-      expect(result.runLifetimeWork).toBeTypeOf('function');
-
-      await result.runLifetimeWork?.();
-      expect(cachesDeleteMock).toHaveBeenCalledWith(`stable-release-${releaseB.releaseNumber}`);
+      expect(result.runLifetimeWork).toBeUndefined();
+      expect(cachesDeleteMock).not.toHaveBeenCalled();
       expect(postMessage).not.toHaveBeenCalled();
     });
 
@@ -1554,7 +1550,6 @@ describe('handleWorkerMessage', () => {
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
       fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
       fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
-      writeControllerStateMock.mockRejectedValue(new Error('quota exceeded'));
       const coordinator = createFakeCoordinator({
         runCleanup: vi.fn().mockRejectedValue(new Error('cleanup failed')),
       });
@@ -1570,11 +1565,82 @@ describe('handleWorkerMessage', () => {
         createFakeReconciler(),
       );
 
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        result: 'controller-state-persistence-failed',
-      });
+      expect(result.response).toEqual({ protocolVersion: PROTOCOL_VERSION, result: 'success' });
+      expect(result.runLifetimeWork).toBeTypeOf('function');
       await expect(result.runLifetimeWork?.()).resolves.toBeUndefined();
+    });
+
+    it('two concurrent recovery callers sharing one preparation: a failed finalization schedules no cleanup, leaving the shared cache intact for the sibling that persists state referencing it', async () => {
+      // Both callers discover and prepare the exact same latest release B,
+      // joining one real PreparationCoordinator preparation (the coordinator
+      // stops tracking it as in-flight the moment that shared preparation
+      // settles, for both callers at once). Whichever finalizes first hits a
+      // transient persistence failure; with `preparedTargetToCleanup` gone,
+      // that failure schedules no follow-up work at all, so it can never
+      // race the sibling — still finalizing behind it in the same real
+      // OperationQueue — which then successfully persists state referencing
+      // that exact release. The shared prepared cache must survive both
+      // outcomes and end up protected as the now-active release.
+      let persistedState: { status: 'absent' } | { status: 'valid'; state: UpdateControllerState } =
+        { status: 'absent' };
+      readControllerStateMock.mockImplementation(() => Promise.resolve(persistedState));
+      let writeAttempts = 0;
+      writeControllerStateMock.mockImplementation(
+        (_channel: string, state: UpdateControllerState) => {
+          writeAttempts += 1;
+          if (writeAttempts === 1) return Promise.reject(new Error('transient quota error'));
+          persistedState = { status: 'valid', state };
+          return Promise.resolve(undefined);
+        },
+      );
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
+      cachesKeysMock.mockResolvedValue([`stable-release-${releaseB.releaseNumber}`]);
+      const coordinator = createPreparationCoordinator();
+      const realEnqueue = createOperationQueue();
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const request = {
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'RECOVER_INSTALL_LATEST',
+      } as const;
+      const [resultA, resultB] = await Promise.all([
+        handleWorkerMessage(
+          'stable',
+          '/',
+          CHANNEL_ORIGIN,
+          request,
+          realEnqueue,
+          coordinator,
+          createFakeReconciler(),
+        ),
+        handleWorkerMessage(
+          'stable',
+          '/',
+          CHANNEL_ORIGIN,
+          request,
+          realEnqueue,
+          coordinator,
+          createFakeReconciler(),
+        ),
+      ]);
+
+      const results = [resultA, resultB];
+      const responseResult = (result: (typeof results)[number]): unknown =>
+        'result' in result.response ? result.response.result : undefined;
+      const failed = results.find(
+        (result) => responseResult(result) === 'controller-state-persistence-failed',
+      );
+      const succeeded = results.find((result) => responseResult(result) === 'success');
+      expect(failed).toBeDefined();
+      expect(succeeded).toBeDefined();
+      // No cache deletion can ever be scheduled by the failed caller: an
+      // unsuccessful finalization carries no follow-up work at all.
+      expect(failed?.runLifetimeWork).toBeUndefined();
+
+      await succeeded?.runLifetimeWork?.();
+
+      expect(cachesDeleteMock).not.toHaveBeenCalledWith(`stable-release-${releaseB.releaseNumber}`);
     });
   });
 });

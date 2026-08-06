@@ -154,54 +154,33 @@ export function computeCacheNamesToDelete(
  * transition's own response, so a cleanup failure can never make an
  * already-persisted transition appear to have failed.
  *
- * When persisted state is not currently valid, ordinary cleanup has nothing
- * to protect or delete against — except `preparedTargetToCleanup`, an
- * explicit exact release a caller (recovery) already proved it prepared but
- * could not confirm was adopted. That one release is removed, unless it is
- * still in flight, even though state itself stays absent or invalid;
- * everything else in this channel's namespace is left untouched, since an
- * absent/invalid state carries no other release identity to reason about
- * safely. Storage that cannot be read at all performs no deletion, including
- * of `preparedTargetToCleanup` — controller state might really own it, and
- * this fails closed rather than deleting.
+ * Ownership is derived exclusively from a fresh controller-state read plus
+ * in-flight preparations. When persisted state is not currently valid (or
+ * cannot be read at all), there is no active/candidate identity to protect
+ * or delete against, so this deletes nothing at all rather than acting on
+ * any caller-provided release identity.
  * @param channel - Managed channel to clean up.
  * @param inFlightReleaseNumbers - Every release number currently being prepared by the {@link PreparationCoordinator}, so a concurrent cleanup never deletes a cache still being populated.
- * @param preparedTargetToCleanup - An exact release a caller already prepared but could not confirm was adopted, to remove even when persisted state is absent or invalid.
  */
 export async function runReleaseCacheCleanup(
   channel: ManagedChannel,
   inFlightReleaseNumbers: readonly number[] = [],
-  preparedTargetToCleanup?: ReleaseSummary,
 ): Promise<void> {
   const read = await readControllerState(channel);
-  if (read.status === 'storage-unavailable') return;
+  if (read.status !== 'valid') return;
 
-  if (read.status === 'valid') {
-    const protectedReleaseNumbers = computeProtectedReleaseNumbers({
-      activeRelease: read.state.activeRelease,
-      candidate: read.state.candidate,
-      inFlightReleaseNumbers,
-    });
-    const existingCacheNames = await caches.keys();
-    const staleCacheNames = computeCacheNamesToDelete(
-      existingCacheNames,
-      channel,
-      protectedReleaseNumbers,
-    );
-    await Promise.all(staleCacheNames.map((name) => caches.delete(name)));
-    return;
-  }
-
-  // Absent or invalid: no persisted active/candidate to protect anything by.
-  // Only the one exact prepared target this caller already knows about, when
-  // given and not still in flight, is ever removed here.
-  if (
-    !preparedTargetToCleanup ||
-    inFlightReleaseNumbers.includes(preparedTargetToCleanup.releaseNumber)
-  ) {
-    return;
-  }
-  await caches.delete(buildReleaseCacheName(channel, preparedTargetToCleanup.releaseNumber));
+  const protectedReleaseNumbers = computeProtectedReleaseNumbers({
+    activeRelease: read.state.activeRelease,
+    candidate: read.state.candidate,
+    inFlightReleaseNumbers,
+  });
+  const existingCacheNames = await caches.keys();
+  const staleCacheNames = computeCacheNamesToDelete(
+    existingCacheNames,
+    channel,
+    protectedReleaseNumbers,
+  );
+  await Promise.all(staleCacheNames.map((name) => caches.delete(name)));
 }
 
 /** Synthetic request URL the release descriptor commit marker is stored under within a release cache. */

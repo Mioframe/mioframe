@@ -31,27 +31,23 @@ export type RecoveryOrchestrationDependencies = {
 
 /**
  * The attempt-local facts one {@link runRecoverInstallLatest} call actually
- * produced, so the caller can decide deferred cache cleanup from what this
- * attempt itself did — never from {@link RecoverInstallLatestResultCode}
- * alone, which the same code can report both before and after a release was
- * ever prepared.
+ * produced, so the caller can decide follow-up work (ordinary release-cache
+ * cleanup, a state-changed broadcast) from what this attempt itself did —
+ * never from {@link RecoverInstallLatestResultCode} alone, which the same
+ * code can report both before and after a release was ever prepared.
+ *
+ * A release this attempt prepared but could not confirm was adopted (a
+ * conflicting/absent/invalid finalization read, or a failed durable write) is
+ * deliberately never deleted here: Cache Storage is not lifecycle authority,
+ * the cache cannot become active without valid persisted state, and it can be
+ * reused by a later retry or reclaimed by ordinary release-cache cleanup once
+ * it is genuinely unowned by fresh state.
  */
 export type RecoverInstallLatestOutcome = {
   /** The classified result code for this attempt. */
   result: RecoverInstallLatestResultCode;
   /** Whether this attempt itself durably wrote controller state. */
   stateChanged: boolean;
-  /**
-   * Set only when this attempt successfully prepared a release into Cache
-   * Storage but finalization then proved it was not adopted (a fresh
-   * conflicting/absent/invalid read), or the durable write that would have
-   * adopted it failed. Never set for a conflict/state-change detected before
-   * preparation ever started, after a {@link ReleasePreparationError} (which
-   * already deletes its own incomplete cache), or when finalization itself
-   * could not read controller storage (fails closed instead of claiming the
-   * target unowned).
-   */
-  preparedTargetToCleanup?: ReleaseSummary;
 };
 
 /**
@@ -127,11 +123,7 @@ async function runStateLossRecovery(
       return releaseSummariesMatch(fresh.state.activeRelease, preparedLatest) &&
         !fresh.state.candidate
         ? { result: 'success', stateChanged: false }
-        : {
-            result: 'state-changed',
-            stateChanged: false,
-            preparedTargetToCleanup: preparedLatest,
-          };
+        : { result: 'state-changed', stateChanged: false };
     }
 
     // Still absent or invalid: the record is untouched until this exact
@@ -140,11 +132,7 @@ async function runStateLossRecovery(
     try {
       await writeControllerState(channel, buildInitialControllerState(preparedLatest));
     } catch {
-      return {
-        result: 'controller-state-persistence-failed',
-        stateChanged: false,
-        preparedTargetToCleanup: preparedLatest,
-      };
+      return { result: 'controller-state-persistence-failed', stateChanged: false };
     }
     return { result: 'success', stateChanged: true };
   });
@@ -308,18 +296,10 @@ async function runReprepareExactActive(
       return { result: 'controller-storage-unavailable', stateChanged: false };
     }
     if (fresh.status !== 'valid') {
-      return {
-        result: 'state-changed',
-        stateChanged: false,
-        preparedTargetToCleanup: activeAtClassification,
-      };
+      return { result: 'state-changed', stateChanged: false };
     }
     if (!releaseSummariesMatch(fresh.state.activeRelease, activeAtClassification)) {
-      return {
-        result: 'state-changed',
-        stateChanged: false,
-        preparedTargetToCleanup: activeAtClassification,
-      };
+      return { result: 'state-changed', stateChanged: false };
     }
     // No write: activeRelease and every other field are left completely
     // untouched. The page's own reload re-validates the now-prepared cache.
@@ -365,11 +345,11 @@ async function runStageNewerCandidate(
       return { result: 'controller-storage-unavailable', stateChanged: false };
     }
     if (fresh.status !== 'valid') {
-      return { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
+      return { result: 'state-changed', stateChanged: false };
     }
     const state = fresh.state;
     if (!releaseSummariesMatch(state.activeRelease, activeAtClassification)) {
-      return { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
+      return { result: 'state-changed', stateChanged: false };
     }
 
     const { candidate } = state;
@@ -378,24 +358,20 @@ async function runStageNewerCandidate(
       // this recovery's own target is already exactly what is pinned.
       return releaseSummariesMatch(candidate.release, latest)
         ? { result: 'success', stateChanged: false }
-        : { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
+        : { result: 'state-changed', stateChanged: false };
     }
     // Any remaining candidate here is necessarily `available` or `failed`:
     // `ready`/`activating` already returned above.
     if (candidate) {
       if (candidate.release.releaseNumber === latest.releaseNumber) {
         if (!releaseSummariesMatch(candidate.release, latest)) {
-          return {
-            result: 'conflicting-release-identity',
-            stateChanged: false,
-            preparedTargetToCleanup: latest,
-          };
+          return { result: 'conflicting-release-identity', stateChanged: false };
         }
         // Exact match: fall through to idempotently mark it ready.
       } else if (candidate.release.releaseNumber > latest.releaseNumber) {
         // An existing candidate already newer than B supersedes this
         // recovery's target; never replace it with something older.
-        return { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
+        return { result: 'state-changed', stateChanged: false };
       }
     }
 
@@ -406,11 +382,7 @@ async function runStageNewerCandidate(
     try {
       await writeControllerState(channel, next);
     } catch {
-      return {
-        result: 'controller-state-persistence-failed',
-        stateChanged: false,
-        preparedTargetToCleanup: latest,
-      };
+      return { result: 'controller-state-persistence-failed', stateChanged: false };
     }
     return { result: 'success', stateChanged: true };
   });

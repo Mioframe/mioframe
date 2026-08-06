@@ -49,27 +49,26 @@ beforeEach(() => {
  * `caches.delete` calls instead.
  */
 describe('cleanupReleaseCache — real PreparationCoordinator + runReleaseCacheCleanup', () => {
-  it('deletes the exact prepared target when controller state remains absent', async () => {
+  it('deletes nothing when controller state is absent: no caller-provided identity to act on', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
-    const target = releaseSummary(5);
     const coordinator = createPreparationCoordinator();
 
-    await cleanupReleaseCache('stable', coordinator, target);
+    await cleanupReleaseCache('stable', coordinator);
 
-    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-5');
+    expect(cachesKeysMock).not.toHaveBeenCalled();
+    expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 
-  it('deletes the exact prepared target when controller state is invalid', async () => {
+  it('deletes nothing when controller state is invalid', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'invalid', reason: 'MALFORMED_RECORD' });
-    const target = releaseSummary(5);
     const coordinator = createPreparationCoordinator();
 
-    await cleanupReleaseCache('stable', coordinator, target);
+    await cleanupReleaseCache('stable', coordinator);
 
-    expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-5');
+    expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 
-  it('preserves the prepared target once another window adopts it as the active release before cleanup runs', async () => {
+  it('preserves the active release under valid state', async () => {
     const target = releaseSummary(5);
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
@@ -78,12 +77,12 @@ describe('cleanupReleaseCache — real PreparationCoordinator + runReleaseCacheC
     cachesKeysMock.mockResolvedValue(['stable-release-5']);
     const coordinator = createPreparationCoordinator();
 
-    await cleanupReleaseCache('stable', coordinator, target);
+    await cleanupReleaseCache('stable', coordinator);
 
     expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 
-  it('preserves the prepared target once it becomes the candidate before cleanup runs', async () => {
+  it('preserves the candidate release under valid state', async () => {
     const target = releaseSummary(5);
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
@@ -97,13 +96,17 @@ describe('cleanupReleaseCache — real PreparationCoordinator + runReleaseCacheC
     cachesKeysMock.mockResolvedValue(['stable-release-1', 'stable-release-5']);
     const coordinator = createPreparationCoordinator();
 
-    await cleanupReleaseCache('stable', coordinator, target);
+    await cleanupReleaseCache('stable', coordinator);
 
     expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 
-  it('preserves the prepared target while it is still being prepared by a concurrent in-flight attempt', async () => {
-    readControllerStateMock.mockResolvedValue({ status: 'absent' });
+  it('preserves a release still being prepared by a concurrent in-flight attempt', async () => {
+    readControllerStateMock.mockResolvedValue({
+      status: 'valid',
+      state: { schemaVersion: 1, mode: 'automatic', activeRelease: releaseSummary(1) },
+    });
+    cachesKeysMock.mockResolvedValue(['stable-release-1', 'stable-release-5']);
     const target = releaseSummary(5);
     const coordinator = createPreparationCoordinator();
     // Never resolves: keeps this concurrent prepare() attempt in-flight for
@@ -111,23 +114,22 @@ describe('cleanupReleaseCache — real PreparationCoordinator + runReleaseCacheC
     fetchReleaseDescriptorMock.mockReturnValue(new Promise<never>(() => {}));
     void coordinator.prepare('stable', '/', target);
 
-    await cleanupReleaseCache('stable', coordinator, target);
+    await cleanupReleaseCache('stable', coordinator);
 
-    expect(cachesDeleteMock).not.toHaveBeenCalled();
+    expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-5');
   });
 
-  it('deletes nothing, including the explicit prepared target, when storage is unavailable', async () => {
+  it('deletes nothing when storage is unavailable', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'storage-unavailable' });
     const coordinator = createPreparationCoordinator();
 
-    await cleanupReleaseCache('stable', coordinator, releaseSummary(5));
+    await cleanupReleaseCache('stable', coordinator);
 
     expect(cachesKeysMock).not.toHaveBeenCalled();
     expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 
-  it('deletes an unowned prepared target under ordinary valid-state cleanup, without needing the explicit-target path', async () => {
-    const target = releaseSummary(5);
+  it('deletes an unowned release under ordinary valid-state cleanup', async () => {
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
       state: { schemaVersion: 1, mode: 'automatic', activeRelease: releaseSummary(1) },
@@ -135,7 +137,7 @@ describe('cleanupReleaseCache — real PreparationCoordinator + runReleaseCacheC
     cachesKeysMock.mockResolvedValue(['stable-release-1', 'stable-release-5']);
     const coordinator = createPreparationCoordinator();
 
-    await cleanupReleaseCache('stable', coordinator, target);
+    await cleanupReleaseCache('stable', coordinator);
 
     expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-5');
     expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-1');

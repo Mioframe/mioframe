@@ -451,61 +451,21 @@ describe('runReleaseCacheCleanup', () => {
     expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-2');
   });
 
-  describe('preparedTargetToCleanup — explicit deferred cleanup for a prepared-but-unowned recovery target', () => {
-    it('deletes the exact prepared target directly (without listing caches) when state is absent', async () => {
-      readControllerStateMock.mockResolvedValue({ status: 'absent' });
+  it('deletes nothing at all when storage is unavailable', async () => {
+    readControllerStateMock.mockResolvedValue({ status: 'storage-unavailable' });
 
-      await runReleaseCacheCleanup('stable', [], releaseSummary(5));
+    await runReleaseCacheCleanup('stable');
 
-      expect(cachesKeysMock).not.toHaveBeenCalled();
-      expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-5');
-    });
+    expect(cachesKeysMock).not.toHaveBeenCalled();
+    expect(cachesDeleteMock).not.toHaveBeenCalled();
+  });
 
-    it('deletes the exact prepared target directly when state is invalid', async () => {
-      readControllerStateMock.mockResolvedValue({ status: 'invalid', reason: 'MALFORMED_RECORD' });
+  it('is a no-op when state is invalid, never deleting anything by an assumed identity', async () => {
+    readControllerStateMock.mockResolvedValue({ status: 'invalid', reason: 'MALFORMED_RECORD' });
 
-      await runReleaseCacheCleanup('stable', [], releaseSummary(5));
+    await runReleaseCacheCleanup('stable');
 
-      expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-5');
-    });
-
-    it('never deletes the prepared target while it is still in flight, even with state absent/invalid', async () => {
-      readControllerStateMock.mockResolvedValue({ status: 'absent' });
-
-      await runReleaseCacheCleanup('stable', [5], releaseSummary(5));
-
-      expect(cachesDeleteMock).not.toHaveBeenCalled();
-    });
-
-    it('deletes nothing at all when storage is unavailable, even with an explicit prepared target', async () => {
-      readControllerStateMock.mockResolvedValue({ status: 'storage-unavailable' });
-
-      await runReleaseCacheCleanup('stable', [], releaseSummary(5));
-
-      expect(cachesKeysMock).not.toHaveBeenCalled();
-      expect(cachesDeleteMock).not.toHaveBeenCalled();
-    });
-
-    it('is a no-op for absent/invalid state when no prepared target is given', async () => {
-      readControllerStateMock.mockResolvedValue({ status: 'absent' });
-
-      await runReleaseCacheCleanup('stable');
-
-      expect(cachesKeysMock).not.toHaveBeenCalled();
-      expect(cachesDeleteMock).not.toHaveBeenCalled();
-    });
-
-    it('ignores the explicit prepared target when state is valid, deferring entirely to ordinary protected-release cleanup', async () => {
-      const target = releaseSummary(5);
-      readControllerStateMock.mockResolvedValue({
-        status: 'valid',
-        state: { schemaVersion: 1, mode: 'automatic', activeRelease: target },
-      });
-      cachesKeysMock.mockResolvedValue(['stable-release-5']);
-
-      await runReleaseCacheCleanup('stable', [], target);
-
-      expect(cachesDeleteMock).not.toHaveBeenCalled();
-    });
+    expect(cachesKeysMock).not.toHaveBeenCalled();
+    expect(cachesDeleteMock).not.toHaveBeenCalled();
   });
 });

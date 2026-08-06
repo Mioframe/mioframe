@@ -347,18 +347,18 @@ export async function handleWorkerMessage(
         enqueue,
         coordinator,
       });
-      // Cleanup is decided from what this attempt itself did — never from
-      // `outcome.result` alone, which the same code can report both before
-      // and after a release was ever prepared (see `RecoverInstallLatestOutcome`).
-      const runLifetimeWork = combineLifetimeWork(
-        outcome.stateChanged ? () => cleanupReleaseCache(channel, coordinator) : undefined,
-        outcome.preparedTargetToCleanup
-          ? () => cleanupReleaseCache(channel, coordinator, outcome.preparedTargetToCleanup)
-          : undefined,
-        outcome.stateChanged
-          ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
-          : undefined,
-      );
+      // Follow-up work is decided from what this attempt itself did — never
+      // from `outcome.result` alone, which the same code can report both
+      // before and after a release was ever prepared. An unsuccessful or
+      // no-op finalization schedules nothing: a release it merely prepared
+      // but could not confirm was adopted is left for ordinary cleanup to
+      // reclaim once it is genuinely unowned by fresh state.
+      const runLifetimeWork = outcome.stateChanged
+        ? combineLifetimeWork(
+            () => cleanupReleaseCache(channel, coordinator),
+            () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+          )
+        : undefined;
       return {
         response: withProtocolVersion({ result: outcome.result }),
         runLifetimeWork,
