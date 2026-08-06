@@ -1373,7 +1373,7 @@ describe('handleWorkerMessage', () => {
       });
     });
 
-    it('carries no follow-up work for a non-success result', async () => {
+    it('carries no follow-up work for a non-success result with no possible orphaned cache', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: { ...baseState, activeRelease: releaseB },
@@ -1397,6 +1397,138 @@ describe('handleWorkerMessage', () => {
         result: 'latest-older-than-active',
       });
       expect(result.runLifetimeWork).toBeUndefined();
+    });
+
+    it('schedules best-effort cache cleanup, without a state-changed broadcast, for state-changed: a fully prepared release may now be unowned', async () => {
+      readControllerStateMock.mockResolvedValueOnce({ status: 'absent' }).mockResolvedValueOnce({
+        status: 'valid',
+        state: { ...baseState, activeRelease: releaseC },
+      });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
+      const coordinator = createFakeCoordinator();
+      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const postMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
+      ]);
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        result: 'state-changed',
+      });
+      expect(result.runLifetimeWork).toBeTypeOf('function');
+
+      await result.runLifetimeWork?.();
+      expect(runCleanup).toHaveBeenCalledTimes(1);
+      expect(postMessage).not.toHaveBeenCalled();
+    });
+
+    it('schedules best-effort cache cleanup, without a state-changed broadcast, for conflicting-release-identity', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(
+        descriptorFor({ ...releaseA, buildId: 'conflicting-build' }),
+      );
+      const coordinator = createFakeCoordinator();
+      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const postMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
+      ]);
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        result: 'conflicting-release-identity',
+      });
+      expect(result.runLifetimeWork).toBeTypeOf('function');
+
+      await result.runLifetimeWork?.();
+      expect(runCleanup).toHaveBeenCalledTimes(1);
+      expect(postMessage).not.toHaveBeenCalled();
+    });
+
+    it('schedules best-effort cache cleanup, without a state-changed broadcast, for controller-state-persistence-failed', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'absent' });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
+      writeControllerStateMock.mockRejectedValue(new Error('quota exceeded'));
+      const coordinator = createFakeCoordinator();
+      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const postMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
+      ]);
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        result: 'controller-state-persistence-failed',
+      });
+      expect(result.runLifetimeWork).toBeTypeOf('function');
+
+      await result.runLifetimeWork?.();
+      expect(runCleanup).toHaveBeenCalledTimes(1);
+      expect(postMessage).not.toHaveBeenCalled();
+    });
+
+    it('a rejecting cleanup never replaces or throws past the already-classified response', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'absent' });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
+      writeControllerStateMock.mockRejectedValue(new Error('quota exceeded'));
+      const coordinator = createFakeCoordinator({
+        runCleanup: vi.fn().mockRejectedValue(new Error('cleanup failed')),
+      });
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        result: 'controller-state-persistence-failed',
+      });
+      await expect(result.runLifetimeWork?.()).resolves.toBeUndefined();
     });
   });
 });

@@ -113,69 +113,147 @@ async function runStateLossRecovery(
 }
 
 /**
+ * One classification of `latest` against a *fresh* controller-state read,
+ * decided entirely from that read plus `latest` — never from any state read
+ * before the network request that produced `latest` (see
+ * {@link classifyKnownActive}).
+ */
+type KnownActiveClassification =
+  | { kind: 'final'; result: RecoverInstallLatestResultCode }
+  | { kind: 'reprepare-active'; active: ReleaseSummary }
+  | { kind: 'stage-candidate'; active: ReleaseSummary };
+
+/**
+ * Classifies exact latest `latest` against a *fresh* controller state,
+ * deciding known-active recovery's outcome without touching the network or
+ * Cache Storage (see the managed pinned application updates architecture,
+ * "Recovery when active release is known but unavailable"). Called once
+ * right after a fresh state re-read, inside a short `OperationQueue`
+ * section, and again — against another fresh read — after preparation, so
+ * every decision this function can produce is always based on state no
+ * older than the moment it ran.
+ *
+ * Deliberately also classifies against the fresh pinned candidate for the
+ * newer-`latest` case: a pre-existing `ready`/`activating` candidate that
+ * already conflicts with `latest`, or an `available`/`failed` one already
+ * newer than or conflicting with `latest`, is decided here — before
+ * preparation ever starts — so recovery never fully downloads and verifies
+ * `latest` only to discover it can never be staged.
+ * @param state - A freshly re-read valid controller state.
+ * @param latest - The validated exact latest release.
+ * @returns The classified outcome.
+ */
+function classifyKnownActive(
+  state: UpdateControllerState,
+  latest: ReleaseSummary,
+): KnownActiveClassification {
+  const active = state.activeRelease;
+
+  if (latest.releaseNumber < active.releaseNumber) {
+    return { kind: 'final', result: 'latest-older-than-active' };
+  }
+  if (latest.releaseNumber === active.releaseNumber && !releaseSummariesMatch(latest, active)) {
+    return { kind: 'final', result: 'conflicting-release-identity' };
+  }
+  if (releaseSummariesMatch(latest, active)) {
+    return { kind: 'reprepare-active', active };
+  }
+
+  const { candidate } = state;
+  if (candidate?.phase === 'ready' || candidate?.phase === 'activating') {
+    // Pinned: never superseded. An exact match is an idempotent success —
+    // this recovery's own target is already exactly what is pinned.
+    return {
+      kind: 'final',
+      result: releaseSummariesMatch(candidate.release, latest) ? 'success' : 'state-changed',
+    };
+  }
+  // Any remaining candidate here is necessarily `available` or `failed`:
+  // `ready`/`activating` already returned above.
+  if (candidate) {
+    if (candidate.release.releaseNumber === latest.releaseNumber) {
+      if (!releaseSummariesMatch(candidate.release, latest)) {
+        return { kind: 'final', result: 'conflicting-release-identity' };
+      }
+      // Exact match: fall through to idempotently stage it.
+    } else if (candidate.release.releaseNumber > latest.releaseNumber) {
+      // An existing candidate already newer than latest supersedes this
+      // recovery's target; never replace it with something older.
+      return { kind: 'final', result: 'state-changed' };
+    }
+  }
+
+  return { kind: 'stage-candidate', active };
+}
+
+/**
  * Runs known-active recovery (see the managed pinned application updates
  * architecture, "Recovery when active release is known but unavailable"):
  * applies when fresh state was `valid` at the moment {@link runRecoverInstallLatest}
- * was invoked, identifying exact active release `A`. Never replaces `A`
- * directly — an exact match with the latest published release only
- * re-prepares `A`, and a strictly newer latest `B` is only ever staged as a
- * `ready` candidate for the existing clean-launch/`BOOT_OK` lifecycle.
+ * was invoked. Never replaces the active release directly — an exact match
+ * with the latest published release only re-prepares it, and a strictly
+ * newer latest is only ever staged as a `ready` candidate for the existing
+ * clean-launch/`BOOT_OK` lifecycle.
+ *
+ * Fetches and validates latest entirely outside {@link OperationQueue}, then
+ * enters one short queued section that re-reads fresh state and classifies
+ * latest against it (see {@link classifyKnownActive}) before leaving the
+ * queue again for preparation — so `latest-older-than-active` and
+ * `conflicting-release-identity` are always decided from state no older
+ * than the network round trip that produced `latest`, never from a stale
+ * snapshot read before it.
  * @param dependencies - Worker-owned recovery dependencies.
- * @param stateAtStart - The fresh valid controller state read just before this flow was chosen.
  * @returns The classified result code.
  */
 async function runKnownActiveRecovery(
   dependencies: RecoveryOrchestrationDependencies,
-  stateAtStart: UpdateControllerState,
 ): Promise<RecoverInstallLatestResultCode> {
-  const { channel, channelBasePath, enqueue, coordinator } = dependencies;
-  const activeAtStart = stateAtStart.activeRelease;
+  const { channel, enqueue } = dependencies;
 
   let latestDescriptor: ReleaseDescriptor;
   try {
-    latestDescriptor = await fetchValidatedLatestDescriptor(channelBasePath);
+    latestDescriptor = await fetchValidatedLatestDescriptor(dependencies.channelBasePath);
   } catch (error) {
     return classifyDiscoveryFailure(error);
   }
   const latest = toReleaseSummary(latestDescriptor);
 
-  if (latest.releaseNumber < activeAtStart.releaseNumber) return 'latest-older-than-active';
-  if (
-    latest.releaseNumber === activeAtStart.releaseNumber &&
-    !releaseSummariesMatch(latest, activeAtStart)
-  ) {
-    return 'conflicting-release-identity';
-  }
+  const classification = await enqueue(async (): Promise<KnownActiveClassification> => {
+    const fresh = await readControllerState(channel);
+    if (fresh.status === 'storage-unavailable') {
+      return { kind: 'final', result: 'controller-storage-unavailable' };
+    }
+    if (fresh.status !== 'valid') return { kind: 'final', result: 'state-changed' };
+    return classifyKnownActive(fresh.state, latest);
+  });
 
-  if (releaseSummariesMatch(latest, activeAtStart)) {
-    return runReprepareExactActive(dependencies, activeAtStart, latestDescriptor);
+  if (classification.kind === 'final') return classification.result;
+  if (classification.kind === 'reprepare-active') {
+    return runReprepareExactActive(dependencies, classification.active, latestDescriptor);
   }
-  return runStageNewerCandidate(
-    { channel, channelBasePath, enqueue, coordinator },
-    activeAtStart,
-    latest,
-    latestDescriptor,
-  );
+  return runStageNewerCandidate(dependencies, classification.active, latest, latestDescriptor);
 }
 
 /**
- * Latest exactly matches active `A`: fully re-prepares `A` and confirms
- * `A` is still active before letting the page reload into the ordinary
- * fetch-serving path — never changes lifecycle state.
+ * Latest exactly matched active `A` at the moment {@link classifyKnownActive}
+ * decided this (already against a fresh read): fully re-prepares `A` and
+ * re-confirms `A` is still active — against another fresh read — before
+ * letting the page reload into the ordinary fetch-serving path. Never
+ * changes lifecycle state.
  * @param dependencies - Worker-owned recovery dependencies.
- * @param activeAtStart - The exact active release identified when recovery began.
- * @param descriptor - The validated latest descriptor, already proven to match `activeAtStart`.
+ * @param activeAtClassification - The exact active release {@link classifyKnownActive} matched against.
+ * @param descriptor - The validated latest descriptor, already proven to match `activeAtClassification`.
  * @returns The classified result code.
  */
 async function runReprepareExactActive(
   dependencies: RecoveryOrchestrationDependencies,
-  activeAtStart: ReleaseSummary,
+  activeAtClassification: ReleaseSummary,
   descriptor: ReleaseDescriptor,
 ): Promise<RecoverInstallLatestResultCode> {
   const { channel, channelBasePath, enqueue, coordinator } = dependencies;
 
   try {
-    await coordinator.prepare(channel, channelBasePath, activeAtStart, descriptor);
+    await coordinator.prepare(channel, channelBasePath, activeAtClassification, descriptor);
   } catch {
     return 'release-preparation-failed';
   }
@@ -184,7 +262,9 @@ async function runReprepareExactActive(
     const fresh = await readControllerState(channel);
     if (fresh.status === 'storage-unavailable') return 'controller-storage-unavailable';
     if (fresh.status !== 'valid') return 'state-changed';
-    if (!releaseSummariesMatch(fresh.state.activeRelease, activeAtStart)) return 'state-changed';
+    if (!releaseSummariesMatch(fresh.state.activeRelease, activeAtClassification)) {
+      return 'state-changed';
+    }
     // No write: activeRelease and every other field are left completely
     // untouched. The page's own reload re-validates the now-prepared cache.
     return 'success';
@@ -192,19 +272,24 @@ async function runReprepareExactActive(
 }
 
 /**
- * Latest `B` is strictly newer than active `A`: fully prepares exact `B`,
- * then stages it as `ready(B)` only when doing so cannot supersede a pinned
+ * Latest `B` was strictly newer than active `A` at the moment
+ * {@link classifyKnownActive} decided this (already against a fresh read):
+ * fully prepares exact `B`, then — against another fresh read — stages it as
+ * `ready(B)` only when doing so still cannot supersede a pinned
  * `ready`/`activating` candidate or replace a newer/conflicting
- * `available`/`failed` one. Never makes `B` active directly.
+ * `available`/`failed` one. Never makes `B` active directly. Re-derives the
+ * complete classification from this second fresh read rather than trusting
+ * the first, since either the active release or the candidate may have
+ * changed again during preparation's network/Cache Storage work.
  * @param dependencies - Worker-owned recovery dependencies.
- * @param activeAtStart - The exact active release identified when recovery began.
+ * @param activeAtClassification - The exact active release {@link classifyKnownActive} matched against.
  * @param latest - The exact newer latest release.
  * @param descriptor - The validated latest descriptor, already proven to match `latest`.
  * @returns The classified result code.
  */
 async function runStageNewerCandidate(
   dependencies: RecoveryOrchestrationDependencies,
-  activeAtStart: ReleaseSummary,
+  activeAtClassification: ReleaseSummary,
   latest: ReleaseSummary,
   descriptor: ReleaseDescriptor,
 ): Promise<RecoverInstallLatestResultCode> {
@@ -221,7 +306,9 @@ async function runStageNewerCandidate(
     if (fresh.status === 'storage-unavailable') return 'controller-storage-unavailable';
     if (fresh.status !== 'valid') return 'state-changed';
     const state = fresh.state;
-    if (!releaseSummariesMatch(state.activeRelease, activeAtStart)) return 'state-changed';
+    if (!releaseSummariesMatch(state.activeRelease, activeAtClassification)) {
+      return 'state-changed';
+    }
 
     const { candidate } = state;
     if (candidate?.phase === 'ready' || candidate?.phase === 'activating') {
@@ -266,9 +353,11 @@ async function runStageNewerCandidate(
  *
  * Dispatches by fresh state at the moment this is called — never by the
  * caller's own possibly-stale snapshot: `absent`/`invalid` runs
- * {@link runStateLossRecovery}; `valid` runs {@link runKnownActiveRecovery}
- * against that exact fresh active release. A storage read failure fails
- * closed immediately, before selecting any release.
+ * {@link runStateLossRecovery}; `valid` runs {@link runKnownActiveRecovery},
+ * which re-reads and classifies fresh state again itself after the network
+ * round trip that fetches latest, rather than trusting this dispatch-time
+ * read for its own classification. A storage read failure fails closed
+ * immediately, before selecting any release.
  * @param dependencies - Worker-owned recovery dependencies.
  * @returns The classified {@link RecoverInstallLatestResultCode}.
  */
@@ -281,7 +370,7 @@ export async function runRecoverInstallLatest(
   if (initialRead.status === 'storage-unavailable') return 'controller-storage-unavailable';
 
   if (initialRead.status === 'valid') {
-    return runKnownActiveRecovery(dependencies, initialRead.state);
+    return runKnownActiveRecovery(dependencies);
   }
   return runStateLossRecovery(dependencies);
 }

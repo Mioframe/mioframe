@@ -231,6 +231,7 @@ describe('known-active recovery (valid initial state)', () => {
     const active = release(1);
     readControllerStateMock
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
+      .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) });
     mockLatest(active);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
@@ -242,9 +243,34 @@ describe('known-active recovery (valid initial state)', () => {
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
+  it('classifies against the fresh post-network read, never the stale dispatch-time read: active caught up to exactly latest while the network fetch was in flight', async () => {
+    // Dispatch-time active (before the network round trip) is older than
+    // latest — the exact shape that once fed `latest-older-than-active`/
+    // `conflicting-release-identity` classification straight from the
+    // stale pre-network read. By the time the classify read actually runs,
+    // active has already caught up to exactly `latest` (e.g. another
+    // window's own recovery landed first). Classification must use that
+    // fresh read: the correct outcome is an exact-active re-preparation
+    // success, never a rejection based on the stale snapshot.
+    const latest = release(3);
+    readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: release(1) }) })
+      .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: latest }) })
+      .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: latest }) });
+    mockLatest(latest);
+    const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
+
+    const result = await runRecoverInstallLatest(buildDependencies());
+
+    expect(result).toBe('success');
+    expect(prepareMock).toHaveBeenCalledWith('stable', '/', latest, descriptorFor(latest));
+    expect(writeControllerStateMock).not.toHaveBeenCalled();
+  });
+
   it('reports state-changed when active changed concurrently during exact-A re-preparation', async () => {
     const active = release(1);
     readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: release(2) }) });
     mockLatest(active);
@@ -288,6 +314,7 @@ describe('known-active recovery (valid initial state)', () => {
     });
     readControllerStateMock
       .mockResolvedValueOnce({ status: 'valid', state: initialState })
+      .mockResolvedValueOnce({ status: 'valid', state: initialState })
       .mockResolvedValueOnce({ status: 'valid', state: initialState });
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
@@ -302,7 +329,7 @@ describe('known-active recovery (valid initial state)', () => {
     });
   });
 
-  it('never supersedes a pinned ready candidate that differs from B: state-changed, no write', async () => {
+  it('never supersedes a pinned ready candidate that differs from B: state-changed, no write, no wasted preparation', async () => {
     const active = release(1);
     const pinned = { phase: 'ready' as const, release: release(4) };
     const state = stateWith({ activeRelease: active, candidate: pinned });
@@ -314,9 +341,10 @@ describe('known-active recovery (valid initial state)', () => {
 
     expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('never supersedes a pinned activating candidate that differs from B: state-changed, no write', async () => {
+  it('never supersedes a pinned activating candidate that differs from B: state-changed, no write, no wasted preparation', async () => {
     const active = release(1);
     const pinned = {
       phase: 'activating' as const,
@@ -332,6 +360,9 @@ describe('known-active recovery (valid initial state)', () => {
 
     expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    // Classified against the fresh pinned candidate before ever preparing B:
+    // a doomed target is never downloaded/verified only to be discarded.
+    expect(prepareMock).not.toHaveBeenCalled();
   });
 
   it('is idempotent when the pinned ready candidate already exactly matches B: success, no write', async () => {
@@ -349,7 +380,7 @@ describe('known-active recovery (valid initial state)', () => {
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('does not replace an existing available candidate that is already newer than B: state-changed, no write', async () => {
+  it('does not replace an existing available candidate that is already newer than B: state-changed, no write, no wasted preparation', async () => {
     const active = release(1);
     const state = stateWith({
       activeRelease: active,
@@ -363,6 +394,7 @@ describe('known-active recovery (valid initial state)', () => {
 
     expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(prepareMock).not.toHaveBeenCalled();
   });
 
   it('replaces an older available candidate with ready(B)', async () => {
@@ -373,6 +405,7 @@ describe('known-active recovery (valid initial state)', () => {
       candidate: { phase: 'available' as const, release: release(3) },
     });
     readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state });
     mockLatest(latest);
@@ -393,6 +426,7 @@ describe('known-active recovery (valid initial state)', () => {
       candidate: { phase: 'failed' as const, release: release(3) },
     });
     readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state });
     mockLatest(latest);
@@ -420,11 +454,13 @@ describe('known-active recovery (valid initial state)', () => {
 
     expect(await runRecoverInstallLatest(buildDependencies())).toBe('conflicting-release-identity');
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('reports state-changed when active changed concurrently before staging B, without writing', async () => {
+  it('reports state-changed when active changed concurrently during B preparation (between classification and the final write), without writing', async () => {
     const state = stateWith({ activeRelease: release(1) });
     readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: release(2) }) });
     mockLatest(release(5));

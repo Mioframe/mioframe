@@ -60,8 +60,10 @@ export type ControllerStateInvalidReason = (typeof CONTROLLER_STATE_INVALID_REAS
  * diagnostics. Never the raw exception message — only this fixed allowlist of
  * stable `DOMException`/`Error` `name` values, so a storage failure can be
  * shown without risking any implementation-specific or user-controlled text.
+ * Exported so `recoveryDiagnostics.ts` can type and validate against the
+ * exact same allowlist rather than duplicating it.
  */
-const ALLOWLISTED_STORAGE_ERROR_NAMES = new Set([
+export const ALLOWLISTED_STORAGE_ERROR_NAMES = [
   'AbortError',
   'ConstraintError',
   'InvalidStateError',
@@ -70,7 +72,24 @@ const ALLOWLISTED_STORAGE_ERROR_NAMES = new Set([
   'SecurityError',
   'UnknownError',
   'VersionError',
-]);
+] as const;
+/** One of {@link ALLOWLISTED_STORAGE_ERROR_NAMES}. */
+export type StorageErrorName = (typeof ALLOWLISTED_STORAGE_ERROR_NAMES)[number];
+
+const ALLOWLISTED_STORAGE_ERROR_NAME_SET: ReadonlySet<string> = new Set(
+  ALLOWLISTED_STORAGE_ERROR_NAMES,
+);
+
+/**
+ * Type predicate for {@link ALLOWLISTED_STORAGE_ERROR_NAMES} membership, so
+ * callers can narrow a raw `string` to {@link StorageErrorName} without a
+ * type assertion.
+ * @param name - Candidate error name.
+ * @returns Whether `name` is on the allowlist.
+ */
+function isAllowlistedStorageErrorName(name: string): name is StorageErrorName {
+  return ALLOWLISTED_STORAGE_ERROR_NAME_SET.has(name);
+}
 
 /**
  * Extracts a safe, allowlisted error `name` from a thrown storage failure, or
@@ -80,11 +99,11 @@ const ALLOWLISTED_STORAGE_ERROR_NAMES = new Set([
  * @param error - The raw value thrown by a storage operation.
  * @returns The allowlisted error name, or `undefined`.
  */
-function extractAllowlistedStorageErrorName(error: unknown): string | undefined {
+function extractAllowlistedStorageErrorName(error: unknown): StorageErrorName | undefined {
   if (
     error instanceof Error &&
     typeof error.name === 'string' &&
-    ALLOWLISTED_STORAGE_ERROR_NAMES.has(error.name)
+    isAllowlistedStorageErrorName(error.name)
   ) {
     return error.name;
   }
@@ -96,7 +115,7 @@ export type ControllerStateReadResult =
   | { status: 'absent' }
   | { status: 'valid'; state: UpdateControllerState }
   | { status: 'invalid'; reason: ControllerStateInvalidReason }
-  | { status: 'storage-unavailable'; errorName?: string };
+  | { status: 'storage-unavailable'; errorName?: StorageErrorName };
 
 /**
  * Returns `true` when `raw` carries its own numeric `schemaVersion` field

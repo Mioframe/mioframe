@@ -1,14 +1,26 @@
-import { buildControllerStateDbName } from './controllerState';
-import type { ManagedChannel } from './contracts';
+import * as z from 'zod/v4-mini';
+import {
+  ALLOWLISTED_STORAGE_ERROR_NAMES,
+  buildControllerStateDbName,
+  CONTROLLER_STATE_INVALID_REASONS,
+  type ControllerStateInvalidReason,
+  type StorageErrorName,
+} from './controllerState';
+import { isPositiveSafeInteger, zodManagedChannel, type ManagedChannel } from './contracts';
+import {
+  RELEASE_PREPARATION_FAILURE_REASONS,
+  type ReleasePreparationFailureReason,
+} from './releasePreparation';
 
 /**
  * Every top-level classification the worker-generated recovery page may
  * report (see the managed pinned application updates architecture,
  * "Recovery classifications"). `UPDATE_STATE_INVALID` and
  * `ACTIVE_RELEASE_UNAVAILABLE` each carry a further stable `problemDetail`
- * (a {@link import('./controllerState').ControllerStateInvalidReason} or a
- * {@link import('./releasePreparation').ReleasePreparationFailureReason}
- * respectively).
+ * (a {@link ControllerStateInvalidReason} or a
+ * {@link ReleasePreparationFailureReason} respectively) — see
+ * {@link RecoveryDiagnostics}, which encodes exactly which fields each
+ * problem code may carry.
  */
 export const RECOVERY_PROBLEM_CODES = [
   'UPDATE_STATE_ABSENT',
@@ -19,64 +31,132 @@ export const RECOVERY_PROBLEM_CODES = [
 /** One of {@link RECOVERY_PROBLEM_CODES}. */
 export type RecoveryProblemCode = (typeof RECOVERY_PROBLEM_CODES)[number];
 
-/**
- * The complete, safe diagnostic model the recovery page may render or copy.
- * Every field here is on the architecture's allowlist; nothing else (raw
- * persisted state, raw exceptions, cache keys, local paths, tokens, or user
- * content) may ever reach this shape.
- */
-export type RecoveryDiagnostics = {
-  /** The top-level recovery classification. */
-  problemCode: RecoveryProblemCode;
-  /** A further stable sub-reason, when the problem code carries one. */
-  problemDetail?: string;
+/** Field shape shared by every {@link RecoveryDiagnostics} variant. */
+const zodRecoveryDiagnosticsBaseShape = {
   /** This worker's managed channel. */
-  channel: ManagedChannel;
+  channel: zodManagedChannel,
   /** This channel's persisted-state IndexedDB database name. */
-  controllerDatabaseName: string;
-  /** The known active/candidate release number, when the failure identifies one. */
-  selectedReleaseNumber?: number;
+  controllerDatabaseName: z.string(),
   /** ISO timestamp this diagnostic snapshot was built. */
-  timestamp: string;
-  /** An allowlisted browser storage error name, when one is available. */
-  errorName?: string;
+  timestamp: z.iso.datetime(),
 };
 
-/** Inputs to {@link buildRecoveryDiagnostics}. */
+const zodSelectedReleaseNumber = z.number().check(z.refine(isPositiveSafeInteger));
+
+/**
+ * The complete, safe diagnostic model the recovery page may render or copy —
+ * a closed discriminated union keyed by `problemCode`, so an invalid
+ * code/detail combination (e.g. a raw string `problemDetail` on
+ * `UPDATE_STATE_ABSENT`, or an un-allowlisted `errorName`) is rejected by
+ * TypeScript at every call site, not merely by convention. Every field here
+ * is on the architecture's allowlist; nothing else (raw persisted state, raw
+ * exceptions, cache keys, local paths, tokens, or user content) may ever
+ * reach this shape. Runtime-validated by {@link zodRecoveryDiagnostics} at
+ * the single point every diagnostic model is constructed
+ * ({@link buildRecoveryDiagnostics}), the boundary where an allowlisted-but-
+ * untyped raw value (a storage error name, a preparation failure reason)
+ * first crosses into this safe shape.
+ */
+export const zodRecoveryDiagnostics = z.discriminatedUnion('problemCode', [
+  z.object({ problemCode: z.literal('UPDATE_STATE_ABSENT'), ...zodRecoveryDiagnosticsBaseShape }),
+  z.object({
+    problemCode: z.literal('UPDATE_STATE_INVALID'),
+    /** The stable reason the persisted controller-state record is invalid. */
+    problemDetail: z.enum(CONTROLLER_STATE_INVALID_REASONS),
+    ...zodRecoveryDiagnosticsBaseShape,
+  }),
+  z.object({
+    problemCode: z.literal('UPDATE_STORAGE_UNAVAILABLE'),
+    /** An allowlisted browser storage error name, when one is available. */
+    errorName: z.optional(z.enum(ALLOWLISTED_STORAGE_ERROR_NAMES)),
+    ...zodRecoveryDiagnosticsBaseShape,
+  }),
+  z.object({
+    problemCode: z.literal('ACTIVE_RELEASE_UNAVAILABLE'),
+    /** The stable reason exact-release restoration could not make the selected release servable. */
+    problemDetail: z.enum(RELEASE_PREPARATION_FAILURE_REASONS),
+    /** The known active release number this failure was classified against. */
+    selectedReleaseNumber: zodSelectedReleaseNumber,
+    ...zodRecoveryDiagnosticsBaseShape,
+  }),
+]);
+/** A {@link zodRecoveryDiagnostics}-validated safe diagnostic model. */
+export type RecoveryDiagnostics = z.infer<typeof zodRecoveryDiagnostics>;
+
+/** Inputs to {@link buildRecoveryDiagnostics}: one variant per {@link RecoveryProblemCode}, mirroring {@link RecoveryDiagnostics}'s own closed shape. */
 export type BuildRecoveryDiagnosticsInput = {
-  channel: ManagedChannel;
-  problemCode: RecoveryProblemCode;
-  problemDetail?: string;
-  selectedReleaseNumber?: number;
-  errorName?: string;
   /** Injectable clock, for deterministic tests. Defaults to the current time. */
   now?: () => string;
-};
+} & (
+  | { channel: ManagedChannel; problemCode: 'UPDATE_STATE_ABSENT' }
+  | {
+      channel: ManagedChannel;
+      problemCode: 'UPDATE_STATE_INVALID';
+      problemDetail: ControllerStateInvalidReason;
+    }
+  | {
+      channel: ManagedChannel;
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE';
+      errorName?: StorageErrorName;
+    }
+  | {
+      channel: ManagedChannel;
+      problemCode: 'ACTIVE_RELEASE_UNAVAILABLE';
+      problemDetail: ReleasePreparationFailureReason;
+      selectedReleaseNumber: number;
+    }
+);
 
 /**
  * Builds the complete safe {@link RecoveryDiagnostics} model for one recovery
  * page render. The single point that derives `controllerDatabaseName` and
  * `timestamp`, so every recovery page render and every recovery response
- * shares the exact same allowlisted-field construction.
+ * shares the exact same allowlisted-field construction. Validates the built
+ * model against {@link zodRecoveryDiagnostics} before returning it: `input`'s
+ * type already rejects an invalid code/detail combination at compile time,
+ * but this is the runtime boundary check for the one place an allowlisted
+ * raw value (a storage error name, a preparation failure reason) is trusted
+ * without having itself been zod-validated at its own origin.
  * @param input - The classified problem and known safe context.
  * @returns The complete diagnostic model.
+ * @throws When the constructed model does not satisfy {@link zodRecoveryDiagnostics}.
  */
 export function buildRecoveryDiagnostics(
   input: BuildRecoveryDiagnosticsInput,
 ): RecoveryDiagnostics {
   const timestamp = (input.now ?? (() => new Date().toISOString()))();
-  const diagnostics: RecoveryDiagnostics = {
-    problemCode: input.problemCode,
+  const base = {
     channel: input.channel,
     controllerDatabaseName: buildControllerStateDbName(input.channel),
     timestamp,
   };
-  if (input.problemDetail !== undefined) diagnostics.problemDetail = input.problemDetail;
-  if (input.selectedReleaseNumber !== undefined) {
-    diagnostics.selectedReleaseNumber = input.selectedReleaseNumber;
+
+  let diagnostics: RecoveryDiagnostics;
+  switch (input.problemCode) {
+    case 'UPDATE_STATE_ABSENT':
+      diagnostics = { ...base, problemCode: input.problemCode };
+      break;
+    case 'UPDATE_STATE_INVALID':
+      diagnostics = { ...base, problemCode: input.problemCode, problemDetail: input.problemDetail };
+      break;
+    case 'UPDATE_STORAGE_UNAVAILABLE':
+      diagnostics = {
+        ...base,
+        problemCode: input.problemCode,
+        ...(input.errorName !== undefined ? { errorName: input.errorName } : {}),
+      };
+      break;
+    case 'ACTIVE_RELEASE_UNAVAILABLE':
+      diagnostics = {
+        ...base,
+        problemCode: input.problemCode,
+        problemDetail: input.problemDetail,
+        selectedReleaseNumber: input.selectedReleaseNumber,
+      };
+      break;
   }
-  if (input.errorName !== undefined) diagnostics.errorName = input.errorName;
-  return diagnostics;
+
+  return zodRecoveryDiagnostics.parse(diagnostics);
 }
 
 /**

@@ -1,6 +1,7 @@
 import {
   APP_UPDATE_PROTOCOL_MESSAGE_TYPES,
   APP_UPDATE_PROTOCOL_VERSION,
+  RECOVER_INSTALL_LATEST_RESULT_CODES,
   type RecoverInstallLatestResultCode,
 } from './protocol';
 import {
@@ -19,29 +20,89 @@ import {
  */
 export const RECOVERY_COMMAND_TIMEOUT_MS = 120_000;
 
-const STATE_LOSS_PROBLEM_CODES = new Set([
-  'UPDATE_STATE_ABSENT',
-  'UPDATE_STATE_INVALID',
-  'UPDATE_STORAGE_UNAVAILABLE',
-]);
+/**
+ * Problem codes where the persisted record has already been read and
+ * confirmed absent or corrupt — genuine, already-known state loss, distinct
+ * from `UPDATE_STORAGE_UNAVAILABLE`'s merely-transient read failure (see
+ * {@link buildProblemExplanation}).
+ */
+const CONFIRMED_STATE_LOSS_PROBLEM_CODES = new Set(['UPDATE_STATE_ABSENT', 'UPDATE_STATE_INVALID']);
+
+/**
+ * Reads `problemDetail` from a {@link RecoveryDiagnostics}, narrowed by its
+ * `problemCode` discriminant: `undefined` for the two variants
+ * (`UPDATE_STATE_ABSENT`, `UPDATE_STORAGE_UNAVAILABLE`) that carry no
+ * `problemDetail` field at all.
+ * @param diagnostics - The diagnostic model to render.
+ * @returns The stable `problemDetail`, or `undefined`.
+ */
+function getProblemDetail(diagnostics: RecoveryDiagnostics): string | undefined {
+  return diagnostics.problemCode === 'UPDATE_STATE_INVALID' ||
+    diagnostics.problemCode === 'ACTIVE_RELEASE_UNAVAILABLE'
+    ? diagnostics.problemDetail
+    : undefined;
+}
+
+/**
+ * Reads `selectedReleaseNumber` from a {@link RecoveryDiagnostics}, narrowed
+ * by its `problemCode` discriminant: only `ACTIVE_RELEASE_UNAVAILABLE`
+ * carries this field.
+ * @param diagnostics - The diagnostic model to render.
+ * @returns The selected release number, or `undefined`.
+ */
+function getSelectedReleaseNumber(diagnostics: RecoveryDiagnostics): number | undefined {
+  return diagnostics.problemCode === 'ACTIVE_RELEASE_UNAVAILABLE'
+    ? diagnostics.selectedReleaseNumber
+    : undefined;
+}
+
+/**
+ * Reads `errorName` from a {@link RecoveryDiagnostics}, narrowed by its
+ * `problemCode` discriminant: only `UPDATE_STORAGE_UNAVAILABLE` carries this
+ * field.
+ * @param diagnostics - The diagnostic model to render.
+ * @returns The allowlisted storage error name, or `undefined`.
+ */
+function getErrorName(diagnostics: RecoveryDiagnostics): string | undefined {
+  return diagnostics.problemCode === 'UPDATE_STORAGE_UNAVAILABLE'
+    ? diagnostics.errorName
+    : undefined;
+}
 
 /**
  * Builds the scenario-specific explanatory copy shown above the recovery
- * actions: the state-loss group (absent/invalid/unreadable controller state)
- * warns that no previous version or update mode can be trusted, while
+ * actions.
+ *
+ * The confirmed-state-loss group (absent or invalid persisted record — the
+ * record was actually read and found genuinely unusable) warns that no
+ * previous version or update mode can be trusted. `UPDATE_STORAGE_UNAVAILABLE`
+ * is deliberately distinct: the persisted record itself was never read, so
+ * this may only be a transient storage failure — the copy never promises a
+ * guaranteed baseline reset, only that the worker will re-check storage and
+ * pick whichever recovery path fresh state actually calls for.
  * `ACTIVE_RELEASE_UNAVAILABLE` explains that the previously selected release
  * merely could not be restored and describes each action's actual effect.
  * @param diagnostics - The current recovery diagnostic model.
  * @returns HTML-safe explanatory paragraph text (no wrapping tag).
  */
 function buildProblemExplanation(diagnostics: RecoveryDiagnostics): string {
-  if (STATE_LOSS_PROBLEM_CODES.has(diagnostics.problemCode)) {
+  if (CONFIRMED_STATE_LOSS_PROBLEM_CODES.has(diagnostics.problemCode)) {
     return (
       'This channel’s update information could not be read, so the previously selected ' +
       'version and update mode cannot be trusted. Installing the latest version resets update ' +
       'mode to Automatic and starts a brand-new baseline release — there is no older trusted ' +
       'version to fall back to. If this new baseline cannot start, a corrected newer release ' +
       'remains discoverable automatically the next time this app is opened.'
+    );
+  }
+  if (diagnostics.problemCode === 'UPDATE_STORAGE_UNAVAILABLE') {
+    return (
+      'This channel’s update information could not be read right now — this may only be ' +
+      'temporary. Installing the latest version asks the update worker to re-check update ' +
+      'storage and choose the safe recovery path for whatever it finds there: if storage is ' +
+      'still unreadable or the record is genuinely lost, it starts a brand-new Automatic ' +
+      'baseline release with no older trusted version to fall back to; if your previous ' +
+      'selection can still be read after all, it is respected instead.'
     );
   }
   return (
@@ -52,9 +113,19 @@ function buildProblemExplanation(diagnostics: RecoveryDiagnostics): string {
   );
 }
 
-/** Human-readable, non-technical text for every {@link RecoverInstallLatestResultCode}, shown in the status region after a command completes. */
+/**
+ * Human-readable, non-technical text for every {@link RecoverInstallLatestResultCode},
+ * shown in the status region after a command completes.
+ *
+ * `success` is deliberately worded to stay true for every successful
+ * recovery outcome — a fresh Automatic baseline, an exact restoration of the
+ * already-selected release, or a newer release staged as a `ready`
+ * candidate for the ordinary clean-launch/`BOOT_OK` flow — since the
+ * protocol's single `success` code never reveals which one occurred; the
+ * page's own reload is what lets the user observe the resulting state.
+ */
 const RESULT_MESSAGES: Record<RecoverInstallLatestResultCode, string> = {
-  success: 'Latest version installed. Reloading…',
+  success: 'Update recovery finished successfully. Reloading…',
   'state-changed':
     'Update state changed in another window. Reloading to pick up the current state…',
   'controller-storage-unavailable': 'Update storage is unavailable right now. You may retry.',
@@ -81,12 +152,11 @@ const RESULT_MESSAGES: Record<RecoverInstallLatestResultCode, string> = {
  * @returns The recovery page's HTML document text.
  */
 export function buildRecoveryPageHtml(diagnostics: RecoveryDiagnostics): string {
-  const problemDetail = diagnostics.problemDetail ?? 'none';
+  const problemDetail = getProblemDetail(diagnostics) ?? 'none';
+  const selectedReleaseNumberValue = getSelectedReleaseNumber(diagnostics);
   const selectedReleaseNumber =
-    diagnostics.selectedReleaseNumber === undefined
-      ? 'unknown'
-      : String(diagnostics.selectedReleaseNumber);
-  const errorName = diagnostics.errorName ?? 'none';
+    selectedReleaseNumberValue === undefined ? 'unknown' : String(selectedReleaseNumberValue);
+  const errorName = getErrorName(diagnostics) ?? 'none';
   const diagnosticsJson = serializeDiagnosticsForEmbedding(diagnostics);
 
   return `<!doctype html>
@@ -189,6 +259,7 @@ export function buildRecoveryPageHtml(diagnostics: RecoveryDiagnostics): string 
   var RECOVER_TYPE = ${JSON.stringify(APP_UPDATE_PROTOCOL_MESSAGE_TYPES.RECOVER_INSTALL_LATEST)};
   var TIMEOUT_MS = ${RECOVERY_COMMAND_TIMEOUT_MS};
   var RESULT_MESSAGES = ${JSON.stringify(RESULT_MESSAGES)};
+  var RESULT_CODES = ${JSON.stringify(RECOVER_INSTALL_LATEST_RESULT_CODES)};
   var DIAGNOSTICS = JSON.parse(document.getElementById("diagnostics-data").textContent);
 
   var statusRegion = document.getElementById("status-region");
@@ -268,26 +339,57 @@ export function buildRecoveryPageHtml(diagnostics: RecoveryDiagnostics): string 
       return;
     }
 
+    // Every click owns exactly one fresh MessageChannel and one fresh
+    // "settled" flag, closed over by this attempt alone: a retry after
+    // timeout or failure always starts a brand-new attempt here, never
+    // reuses or references this one's channel or state.
     var settled = false;
     var channel = new MessageChannel();
+
+    function closeOwnedPorts() {
+      // Closing an already-transferred (or never-transferred, on a
+      // synchronous postMessage failure) port is always safe: a closed or
+      // neutered port simply stops delivering.
+      try {
+        channel.port1.close();
+      } catch (error) {
+        // Ignored: closing must never itself block settlement.
+      }
+      try {
+        channel.port2.close();
+      } catch (error) {
+        // Ignored: closing must never itself block settlement.
+      }
+    }
 
     var timeoutId = setTimeout(function () {
       if (settled) return;
       settled = true;
+      closeOwnedPorts();
       setBusy(false);
       setRecoveryAction("timed-out");
       setStatus(
         "The request timed out after " + Math.round(TIMEOUT_MS / 1000) +
         " seconds. Work may still be finishing in the background \\u2014 you may retry."
       );
+      // Deliberately never cancels the worker's own in-progress recovery
+      // attempt: this only clears this page's own local busy state.
     }, TIMEOUT_MS);
 
     channel.port1.onmessage = function (event) {
+      // A response can arrive after this attempt already settled (timeout,
+      // or a synchronous postMessage failure) if the worker still delivers
+      // late — it must never mutate an already-settled attempt.
       if (settled) return;
       settled = true;
       clearTimeout(timeoutId);
-      var data = event.data || {};
-      if (data.protocolVersion !== PROTOCOL_VERSION || typeof data.result !== "string") {
+      closeOwnedPorts();
+      var data = (event && event.data) || {};
+      if (
+        data.protocolVersion !== PROTOCOL_VERSION ||
+        typeof data.result !== "string" ||
+        RESULT_CODES.indexOf(data.result) === -1
+      ) {
         setBusy(false);
         setRecoveryAction("error");
         setStatus("Received an unexpected response. You may retry.");
@@ -306,10 +408,20 @@ export function buildRecoveryPageHtml(diagnostics: RecoveryDiagnostics): string 
     setBusy(true);
     setRecoveryAction("installing");
     setStatus("Installing latest version\\u2026");
-    navigator.serviceWorker.controller.postMessage(
-      { protocolVersion: PROTOCOL_VERSION, type: RECOVER_TYPE },
-      [channel.port2]
-    );
+    try {
+      navigator.serviceWorker.controller.postMessage(
+        { protocolVersion: PROTOCOL_VERSION, type: RECOVER_TYPE },
+        [channel.port2]
+      );
+    } catch (error) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      closeOwnedPorts();
+      setBusy(false);
+      setRecoveryAction("error");
+      setStatus("Could not send the recovery request. You may retry.");
+    }
   });
 })();
 </script>

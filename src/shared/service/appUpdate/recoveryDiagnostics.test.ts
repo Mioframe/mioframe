@@ -4,6 +4,8 @@ import {
   buildRecoveryDiagnostics,
   escapeHtml,
   serializeDiagnosticsForEmbedding,
+  zodRecoveryDiagnostics,
+  type RecoveryDiagnostics,
 } from './recoveryDiagnostics';
 
 describe('buildRecoveryDiagnostics', () => {
@@ -22,13 +24,61 @@ describe('buildRecoveryDiagnostics', () => {
     });
   });
 
-  it('includes every optional field only when explicitly provided', () => {
+  it('builds UPDATE_STATE_INVALID with its stable invalid-record reason as problemDetail', () => {
+    const diagnostics = buildRecoveryDiagnostics({
+      channel: 'stable',
+      problemCode: 'UPDATE_STATE_INVALID',
+      problemDetail: 'MALFORMED_RECORD',
+      now: () => '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(diagnostics).toEqual({
+      problemCode: 'UPDATE_STATE_INVALID',
+      problemDetail: 'MALFORMED_RECORD',
+      channel: 'stable',
+      controllerDatabaseName: buildControllerStateDbName('stable'),
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+  });
+
+  it('builds UPDATE_STORAGE_UNAVAILABLE without errorName when none is available', () => {
+    const diagnostics = buildRecoveryDiagnostics({
+      channel: 'stable',
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE',
+      now: () => '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(diagnostics).toEqual({
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE',
+      channel: 'stable',
+      controllerDatabaseName: buildControllerStateDbName('stable'),
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+  });
+
+  it('builds UPDATE_STORAGE_UNAVAILABLE with its allowlisted errorName when provided', () => {
+    const diagnostics = buildRecoveryDiagnostics({
+      channel: 'stable',
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE',
+      errorName: 'QuotaExceededError',
+      now: () => '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(diagnostics).toEqual({
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE',
+      errorName: 'QuotaExceededError',
+      channel: 'stable',
+      controllerDatabaseName: buildControllerStateDbName('stable'),
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+  });
+
+  it('builds ACTIVE_RELEASE_UNAVAILABLE with its required problemDetail and selectedReleaseNumber', () => {
     const diagnostics = buildRecoveryDiagnostics({
       channel: 'develop',
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
       problemDetail: 'INTEGRITY_FAILURE',
       selectedReleaseNumber: 4,
-      errorName: 'QuotaExceededError',
       now: () => '2026-08-06T00:00:00.000Z',
     });
 
@@ -38,8 +88,18 @@ describe('buildRecoveryDiagnostics', () => {
       channel: 'develop',
       controllerDatabaseName: buildControllerStateDbName('develop'),
       selectedReleaseNumber: 4,
-      errorName: 'QuotaExceededError',
       timestamp: '2026-08-06T00:00:00.000Z',
+    });
+  });
+
+  it('rejects an invalid code/detail combination at compile time (ACTIVE_RELEASE_UNAVAILABLE carries no errorName)', () => {
+    buildRecoveryDiagnostics({
+      channel: 'develop',
+      problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
+      problemDetail: 'INTEGRITY_FAILURE',
+      selectedReleaseNumber: 4,
+      // @ts-expect-error -- ACTIVE_RELEASE_UNAVAILABLE's input variant has no `errorName` field; only UPDATE_STORAGE_UNAVAILABLE does.
+      errorName: 'QuotaExceededError',
     });
   });
 
@@ -54,6 +114,44 @@ describe('buildRecoveryDiagnostics', () => {
     const parsed = Date.parse(diagnostics.timestamp);
     expect(parsed).toBeGreaterThanOrEqual(before);
     expect(parsed).toBeLessThanOrEqual(after);
+  });
+});
+
+describe('zodRecoveryDiagnostics runtime boundary validation', () => {
+  it('rejects a problemDetail value outside the ControllerStateInvalidReason allowlist even if TypeScript were bypassed', () => {
+    const result = zodRecoveryDiagnostics.safeParse({
+      problemCode: 'UPDATE_STATE_INVALID',
+      problemDetail: 'SOMETHING_UNEXPECTED',
+      channel: 'stable',
+      controllerDatabaseName: 'db',
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an errorName value outside the storage-error allowlist even if TypeScript were bypassed', () => {
+    const result = zodRecoveryDiagnostics.safeParse({
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE',
+      errorName: 'TotallyMadeUpError',
+      channel: 'stable',
+      controllerDatabaseName: 'db',
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects ACTIVE_RELEASE_UNAVAILABLE missing its required selectedReleaseNumber even if TypeScript were bypassed', () => {
+    const result = zodRecoveryDiagnostics.safeParse({
+      problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
+      problemDetail: 'INTEGRITY_FAILURE',
+      channel: 'stable',
+      controllerDatabaseName: 'db',
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
@@ -82,20 +180,22 @@ describe('serializeDiagnosticsForEmbedding', () => {
   });
 
   it('never emits a raw "<" that could prematurely close a surrounding </script> tag', () => {
-    const diagnostics = buildRecoveryDiagnostics({
+    // Every enum-shaped field is a stable literal union in production (the
+    // builder's typed input rejects anything else), but embedding must stay
+    // safe even against a RecoveryDiagnostics value whose one genuinely
+    // free-form string field (`controllerDatabaseName`) happens to contain
+    // the dangerous substring.
+    const diagnostics: RecoveryDiagnostics = {
+      problemCode: 'UPDATE_STATE_ABSENT',
       channel: 'stable',
-      problemCode: 'UPDATE_STATE_INVALID',
-      // problemDetail is a stable enum in production, but this proves the
-      // embedding is safe even against a value that happens to contain the
-      // dangerous substring.
-      problemDetail: '</script><script>alert(1)</script>',
-      now: () => '2026-08-06T00:00:00.000Z',
-    });
+      controllerDatabaseName: '</script><script>alert(1)</script>',
+      timestamp: '2026-08-06T00:00:00.000Z',
+    };
 
     const serialized = serializeDiagnosticsForEmbedding(diagnostics);
     expect(serialized).not.toContain('<');
     expect(JSON.parse(serialized)).toMatchObject({
-      problemDetail: '</script><script>alert(1)</script>',
+      controllerDatabaseName: '</script><script>alert(1)</script>',
     });
   });
 });

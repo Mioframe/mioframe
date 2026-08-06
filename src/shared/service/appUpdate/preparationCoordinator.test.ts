@@ -4,10 +4,15 @@ import type { ReleaseDescriptor, ReleaseSummary } from './contracts';
 const fetchReleaseDescriptorMock = vi.fn();
 const prepareReleaseMock = vi.fn();
 
-vi.mock('./releasePreparation', () => ({
-  fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
-  prepareRelease: (...args: unknown[]) => prepareReleaseMock(...args),
-}));
+vi.mock('./releasePreparation', async () => {
+  const actual =
+    await vi.importActual<typeof import('./releasePreparation')>('./releasePreparation');
+  return {
+    ...actual,
+    fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
+    prepareRelease: (...args: unknown[]) => prepareReleaseMock(...args),
+  };
+});
 
 const releaseA: ReleaseSummary = {
   releaseNumber: 1,
@@ -187,21 +192,39 @@ describe('createPreparationCoordinator', () => {
     },
   );
 
-  it('rejects, without preparing, a fetched descriptor whose complete identity does not exactly match the target — a shared releaseNumber alone is not enough', async () => {
-    // `fetchReleaseDescriptor` only proves `releaseNumber` matches; a
-    // restoration target already knows the complete expected identity
-    // (releaseNumber, appVersion, buildId, buildDate), and a same-number
-    // descriptor that diverges on any other field must never be accepted.
-    fetchReleaseDescriptorMock.mockResolvedValue({ ...descriptorA, buildId: 'different-build' });
-    prepareReleaseMock.mockResolvedValue(undefined);
-    const { createPreparationCoordinator } = await import('./preparationCoordinator');
-    const coordinator = createPreparationCoordinator();
+  it.each([
+    ['appVersion', '9.9.9'],
+    ['buildId', 'different-build'],
+    ['buildDate', '2026-07-25T00:00:00.000Z'],
+  ] as const)(
+    'rejects, without preparing, a fetched descriptor whose %s does not exactly match the target — a shared releaseNumber alone is not enough — as a typed INVALID_ARCHIVE_METADATA ReleasePreparationError, not a generic Error',
+    async (field, value) => {
+      // `fetchReleaseDescriptor` only proves `releaseNumber` matches; a
+      // restoration target already knows the complete expected identity
+      // (releaseNumber, appVersion, buildId, buildDate), and a same-number
+      // descriptor that diverges on any other field must never be accepted.
+      fetchReleaseDescriptorMock.mockResolvedValue({ ...descriptorA, [field]: value });
+      prepareReleaseMock.mockResolvedValue(undefined);
+      const { createPreparationCoordinator } = await import('./preparationCoordinator');
+      const { ReleasePreparationError } = await import('./releasePreparation');
+      const coordinator = createPreparationCoordinator();
 
-    await expect(coordinator.prepare('stable', '/', releaseA)).rejects.toThrow(
-      'does not match the expected release identity',
-    );
-    expect(prepareReleaseMock).not.toHaveBeenCalled();
-  });
+      await expect(coordinator.prepare('stable', '/', releaseA)).rejects.toThrow(
+        'does not match the expected release identity',
+      );
+      let caught: unknown;
+      try {
+        await coordinator.prepare('stable', '/', releaseA);
+      } catch (error) {
+        caught = error;
+      }
+      if (!(caught instanceof ReleasePreparationError)) {
+        throw new Error('Expected a ReleasePreparationError');
+      }
+      expect(caught.reason).toBe('INVALID_ARCHIVE_METADATA');
+      expect(prepareReleaseMock).not.toHaveBeenCalled();
+    },
+  );
 
   it('releases the map entry inside the same settlement segment: an immediate retry from the rejection catch continuation creates a genuinely new preparation, never joining the already-settled one', async () => {
     fetchReleaseDescriptorMock

@@ -17,7 +17,10 @@ import {
   readMatchingDescriptorMarker,
   readReleaseIndexMarker,
 } from './releaseCache';
-import { ReleasePreparationError } from './releasePreparation';
+import {
+  ReleasePreparationError,
+  type ReleasePreparationFailureReason,
+} from './releasePreparation';
 import { withState } from './stateLock';
 import {
   isActivationExpired,
@@ -90,7 +93,7 @@ async function resolveActiveReleaseNavigationResponse(
   release: ReleaseSummary,
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
-  const unavailable = (detail: string) =>
+  const unavailable = (detail: ReleasePreparationFailureReason) =>
     buildRecoveryPageResponse(
       buildRecoveryDiagnostics({
         channel,
