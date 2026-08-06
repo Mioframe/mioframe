@@ -1,80 +1,71 @@
 # Managed pinned application updates — architecture handoff
 
-**Implementation status: complete; final merge readiness depends on the resulting-head repository gate, final complete-PR review, and operator UI/accessibility acceptance.**
+**Implementation status: managed-update core implemented; recovery architecture ready; PR 169 is not implementation-complete until recovery and its required proof are present.**
 
-This is the canonical architecture contract for PR 169. Existing unshipped implementation formats are replaceable evidence, not compatibility contracts.
+This is the single canonical architecture contract for PR 169. Existing unshipped implementation formats are replaceable evidence, not compatibility contracts.
 
 ## Goal
 
-Stable (`/`) and develop (`/branch/develop/`) provide Automatic and Manual managed application updates with one selected active release and at most one candidate.
+Stable (`/`) and develop (`/branch/develop/`) provide Automatic and Manual managed application updates with:
 
-After the one-time Workbox transition:
-
-- an application release changes only through candidate activation followed by durable `BOOT_OK`;
-- failed activation keeps the previous managed release selected;
-- owned navigation and assets use only the selected immutable archive;
-- controller-worker upgrades do not silently change the selected application release;
-- same-channel windows observe durable state changes;
-- rollback never rolls back user data.
+- one selected active release and at most one candidate;
+- immutable verified release archives;
+- safe activation only after durable `BOOT_OK`;
+- rollback to the previous managed release after failed activation;
+- explicit worker-owned recovery when controller state is lost or the selected active release cannot be restored;
+- no deletion or rollback of user data.
 
 Manual branches keep generated Workbox behavior. PR previews remain non-PWA.
-
-## Accepted initial-transition boundary
-
-The pre-managed Workbox application has no managed rollback contract:
-
-```text
-legacy Workbox /sw.js
-→ verified managed release 1 becomes the initial managed baseline
-→ full rollback guarantees begin with managed release 2
-```
-
-Managed release 1 is the complete application artifact shipped by the promotion that introduces the managed worker. It is not required to be infrastructure-only and may include already-reviewed product fixes or accumulated `develop` changes present in that promotion.
-
-This is an explicit accepted release risk, not an implicit rollback guarantee:
-
-- a failed managed worker `install` leaves the compatible Workbox predecessor active;
-- after managed release 1 activates, rollback to Workbox is unsupported;
-- managed release 1 must contain no irreversible user-data migration;
-- managed release 1 must pass complete product, UI/accessibility, managed-update, and release verification as one artifact;
-- if release 1 cannot finish application boot, later owned top-level navigations continue reconciliation so a corrected managed release 2 remains discoverable without application JavaScript;
-- rollback between managed application releases begins with release 2.
 
 ## Non-goals
 
 - rollback to Workbox or arbitrary historical-version selection;
+- silently selecting a release after controller-state loss;
+- guessing the active release from remaining Cache Storage entries;
+- offline state-loss recovery through a second persisted active pointer;
 - forcing open sessions to update;
-- browser-specific reload classification;
-- persisted polling, operation IDs, progress, cancellation, retry counters, or backoff;
-- generic RPC, release manager, cache registry, migration bridge, second worker path, compatibility adapter, or persistent bootstrap marker;
-- build reproducibility verification inside the publisher;
-- remote archive pruning;
-- irreversible user-data migration.
+- irreversible user-data migration;
+- persisted polling, operation IDs, progress journals, retry counters, backoff, or cancellation;
+- generic RPC, release manager, cache registry, recovery manager, second worker path, or compatibility bridge;
+- remote archive pruning or build reproducibility verification inside the publisher.
+
+## Channels
+
+| Channel | Update behavior |
+| --- | --- |
+| stable `/` | managed updates with its own state, archive, cache namespace, and worker scope |
+| develop `/branch/develop/` | independent managed updates |
+| ordinary manual branch | generated Workbox |
+| PR preview | PWA disabled |
+
+No channel may read, mutate, block, or notify another channel.
 
 ## Ownership and sources of truth
 
-| Owner                   | Responsibility                                                                                      |
-| ----------------------- | --------------------------------------------------------------------------------------------------- |
-| Publisher               | deterministic source identity, append-only release archive, idempotent publication, `latest.json`   |
-| Controller worker       | bootstrap classification, lifecycle state, reconciliation, preparation, fetch, activation, rollback |
-| Service client/features | typed transport outcomes, finite busy state, user actions                                           |
-| Entity/widget/pane      | snapshot projection and product composition                                                         |
-| Browser                 | service-worker lifecycle and registration replacement                                               |
+| Owner | Responsibility |
+| --- | --- |
+| Publisher | deterministic source identity, append-only archive, retained-tree validation, `latest.json` |
+| Controller-state service | classify and persist lifecycle state; serialized final decisions |
+| Controller worker | bootstrap, reconciliation, fetch, activation, rollback, recovery page, recovery commands |
+| `PreparationCoordinator` | exact-release preparation deduplication and cleanup arbitration only |
+| Service client/features | typed transport outcomes and ordinary settings actions |
+| Recovery page | safe diagnostics and explicit recovery actions without application JavaScript |
+| Browser | Service Worker lifecycle and registration replacement |
 
 Sources of truth:
 
 - latest publication: `updates/latest.json`, written last;
-- release: `updates/releases/<releaseNumber>.json`, archived index, and immutable assets;
+- release bytes and identity: descriptor, archived index, and immutable assets;
 - lifecycle: one validated IndexedDB record per managed channel;
-- prepared bytes: one marker-last Cache Storage cache per channel/release;
-- predecessor compatibility: bounded read-only messages to `registration.active`;
-- UI: last valid worker snapshot plus feature-local transport outcome.
+- prepared bytes: marker-last exact-release Cache Storage entry;
+- recovery target after lost state: the exact descriptor referenced by a freshly validated `latest.json` after explicit user action;
+- UI under normal operation: last valid worker snapshot plus feature-local transport outcome.
+
+Cache presence is never lifecycle authority.
 
 ## Release identity and publication
 
 ```ts
-type ReleaseNumber = number;
-
 type ReleaseFile = {
   path: string;
   sha256: string;
@@ -91,13 +82,7 @@ type ReleaseDescriptor = {
   indexByteSize: number;
   files: ReleaseFile[];
 };
-```
 
-`releaseNumber` is a positive safe integer and the sole ordering identity inside one managed channel.
-
-A complete release identity is the four-field `ReleaseSummary`:
-
-```ts
 type ReleaseSummary = {
   releaseNumber: number;
   appVersion: string;
@@ -106,48 +91,34 @@ type ReleaseSummary = {
 };
 ```
 
-Two releases are the same exact release only when all four fields match. A shared `releaseNumber` is sufficient for ordering and archive lookup, but never sufficient to prove cache, descriptor, restoration, or in-flight preparation identity.
+`releaseNumber` is the sole ordering identity inside one channel. Exact identity requires all four `ReleaseSummary` fields.
 
 For managed stable/develop publication:
 
 - `buildId` is the exact source commit SHA;
-- `buildDate` is the canonical UTC committer timestamp of that commit, not workflow execution time;
-- the same `buildDate` is passed to Vite `__BUILD_DATE__`, descriptor generation, and `deployment.json`;
-- channel publication remains serialized by the existing Pages publication concurrency gate.
+- `buildDate` is the canonical UTC committer timestamp of that commit;
+- the same `buildDate` is used by Vite, descriptor generation, and `deployment.json`;
+- publication remains serialized by the Pages concurrency gate.
 
-Publication is channel-local and idempotent by `buildId`:
+Publication contract:
 
 ```text
-validate complete retained tree
+validate the complete retained tree
 
-buildId absent
+new buildId
 → allocate latest.releaseNumber + 1, or 1 for an empty archive
-→ validate and publish the new artifact
+→ validate and write assets, archived index, descriptor, and channel metadata
+→ write latest.json last
 
-buildId == unique latest buildId
-→ return the retained latest descriptor
+buildId equals the unique latest descriptor
+→ return the retained descriptor
 → perform zero writes
 
-buildId exists on a non-latest descriptor, or is duplicated
+buildId exists on a non-latest descriptor or is duplicated
 → reject before writes
 ```
 
-The latest-build rerun path does not rebuild an old release, compare output trees, inspect current `dist`, or copy any current artifact bytes. Publishing changed bytes requires a different source commit. Build reproducibility may be checked independently in CI, but it is not part of the publication state machine.
-
-Additional publication rules:
-
-- validate retained descriptors, unique `buildId` values, archived indexes, required immutable assets, and `latest.json` before allocation or writes;
-- retained archived indexes must exist as regular files and match their descriptor's exact `indexByteSize` and `indexSha256`;
-- every retained `descriptor.files` entry must exist at its canonical channel path as a regular file and match its exact `byteSize` and `sha256`;
-- a physical immutable path referenced by multiple descriptors must satisfy every reference; conflicting retained metadata or bytes fail before writes;
-- malformed, conflicting, non-monotonic, reused, overflowing, missing, truncated, or hash-mismatched retained content fails before writes;
-- immutable path collisions with different bytes fail before writes for a new release;
-- hash the final watchdog-injected archived index;
-- write assets, archived index, descriptor, and channel deployment files before `latest.json`;
-- write `latest.json` last;
-- retain descriptors, archived indexes, and required hashed assets append-only in this PR.
-
-The same source commit may exist independently in stable and develop because archives are channel-scoped.
+Retained descriptors, archived indexes, and every referenced immutable asset must exist as canonical regular files and match exact size and SHA-256. Conflicts, malformed paths, missing files, reused numbers, duplicate identities, overflow, or hash mismatches reject before writes. Published release content remains append-only in this PR.
 
 ## Persisted state
 
@@ -169,90 +140,64 @@ type UpdateControllerState = {
 
 Invariants:
 
-- candidate number is greater than active number;
+- candidate number is strictly greater than active number;
 - `deadlineAt` exists only for `activating` and is valid ISO time;
 - progress and transient errors are not persisted;
-- persisted objects are fail-closed: obsolete or unknown persisted fields are rejected, not stripped, normalized, repaired, or migrated;
-- invalid state is never repaired automatically;
-- no separate latest, approved, activation-target, failed-release, or operation records exist.
+- unknown fields, unsupported schemas, malformed records, and invariant violations are rejected rather than normalized;
+- no second active pointer, recovery journal, operation record, or cached latest record exists.
 
-## Normative lifecycle transitions
+## Normal lifecycle
+
+| Event | Final state |
+| --- | --- |
+| newer discovery | `candidate = available(new)` |
+| Automatic preparation succeeds | matching `available → ready` |
+| Manual Install succeeds | matching `available/failed → ready` |
+| Manual Cancel | matching `ready → available` |
+| qualifying clean launch | matching `ready → activating(deadlineAt)`; active unchanged |
+| matching durable `BOOT_OK` | candidate becomes active; candidate cleared |
+| matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed` |
+| stale or mismatched completion | no state change |
 
 `available` and eligible `failed` may be replaced only by a strictly newer discovery. `ready` and `activating` are pinned and never superseded. Automatic never retries the exact failed release; Manual may explicitly retry it.
 
-| Event                                | Final state                                                 |
-| ------------------------------------ | ----------------------------------------------------------- |
-| Newer discovery                      | `candidate = available(new)`                                |
-| Automatic preparation succeeds       | matching `available → ready`                                |
-| Manual Install succeeds              | matching `available/failed → ready`                         |
-| Manual Cancel                        | matching `ready → available`                                |
-| Qualifying clean launch              | matching `ready → activating(deadlineAt)`; active unchanged |
-| Matching durable `BOOT_OK`           | candidate becomes active; candidate cleared                 |
-| Matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed`                |
-| Stale or mismatched completion       | no state change                                             |
+Every long completion re-reads fresh state and persists only when mode, phase, release number, and complete target identity still match.
 
-Every long completion re-reads state and persists only when mode, complete target identity where applicable, release number, and phase still match its target. A contractual no-op returns the original state reference.
+## Initial Workbox transition
 
-## Same-path Workbox bootstrap
+Legacy and managed controllers both use `<channelBasePath>sw.js`.
 
-Legacy and managed controllers both use `<channelBasePath>sw.js`, preserving the browser-native update path.
-
-When state is absent and an active predecessor exists, the installing worker sends two concurrent read-only probes with one shared 5-second deadline:
-
-```ts
-type ManagedControllerProbeRequest = {
-  protocolVersion: 1;
-  type: 'PROBE_MANAGED_UPDATE_CONTROLLER';
-};
-
-type ManagedControllerProbeResponse = {
-  protocolVersion: 1;
-  kind: 'managed-update-controller';
-  channel: 'stable' | 'develop';
-};
+```text
+legacy Workbox /sw.js
+→ verified managed release 1 becomes the initial managed baseline
+→ full rollback guarantees begin with managed release 2
 ```
-
-The Workbox probe sends standard `CACHE_URLS` with `payload.urlsToCache = []`; compatible generated Workbox returns exact `true` without a cache write. It proves compatibility, not unique historical Mioframe identity. Frozen legacy artifacts prove all known pre-managed Mioframe workers satisfy it.
-
-| Managed probe                                                    | Workbox probe     | Result                         |
-| ---------------------------------------------------------------- | ----------------- | ------------------------------ |
-| valid managed response                                           | missing or silent | managed predecessor            |
-| silent by deadline                                               | exact `true`      | compatible Workbox predecessor |
-| valid managed response                                           | exact `true`      | conflict; reject               |
-| malformed response from either probe                             | any               | reject                         |
-| no managed success and Workbox missing, timed out, or non-`true` | any               | reject                         |
 
 Install classification:
 
-| State   | Predecessor                                 | Result                                     |
-| ------- | ------------------------------------------- | ------------------------------------------ |
-| valid   | any                                         | preserve unchanged; ordinary retry/upgrade |
-| invalid | any                                         | reject                                     |
-| absent  | no active worker                            | genuine first registration                 |
-| absent  | managed predecessor                         | reject as managed-state loss               |
-| absent  | compatible Workbox                          | supported one-time bootstrap               |
-| absent  | unknown/conflicting/malformed/nonresponsive | reject                                     |
+| State | Predecessor | Result |
+| --- | --- | --- |
+| valid | any | preserve unchanged |
+| invalid | any | reject installation |
+| absent | no active worker | genuine first registration |
+| absent | managed predecessor | reject as managed-state loss |
+| absent | compatible generated Workbox | one-time bootstrap |
+| absent | unknown, conflicting, malformed, or silent predecessor | reject |
 
-Stale caches never authorize bootstrap. The managed controller never answers Workbox `CACHE_URLS`.
+Allowed bootstrap fully validates and prepares exact latest before writing initial Automatic state. A failed install leaves compatible Workbox active. After release 1 activates, rollback to Workbox is unsupported.
 
-Allowed bootstrap:
+Release 1 and every later state-loss recovery baseline:
 
-```text
-fetch and validate latest
-→ fetch and validate its exact descriptor
-→ fully prepare exact release cache
-→ persist initial Automatic state
-→ perform no further required fallible work
-→ complete install
-```
+- must contain no irreversible user-data migration;
+- has no older trusted managed rollback target;
+- may recover from a runtime-defective baseline only by discovering and activating a corrected newer managed release;
+- continues navigation-triggered reconciliation even when application JavaScript cannot finish boot.
 
-If install is interrupted after state persistence, the next install preserves that valid state. No persistent bootstrap marker is required. The managed worker never calls `skipWaiting()` or `clients.claim()`.
+The worker never calls `skipWaiting()` or `clients.claim()`.
 
-## Preparation coordination and exact identity
+## Preparation coordination
 
-`PreparationCoordinator` owns only worker-local preparation deduplication and arbitration with cleanup. It does not own discovery, state transitions, retries, or lifecycle policy.
-
-Each in-flight preparation entry contains both:
+`PreparationCoordinator` owns only exact-release preparation deduplication and cleanup arbitration.
 
 ```ts
 type InFlightPreparation = {
@@ -261,253 +206,312 @@ type InFlightPreparation = {
 };
 ```
 
-Normative join policy:
+Join policy:
 
 ```text
 no in-flight entry for releaseNumber
-→ create entry with complete expected ReleaseSummary
+→ create with complete expected summary
 
-same releaseNumber + complete summary matches
-→ join existing promise
+same releaseNumber and exact summary match
+→ join
 
-same releaseNumber + any summary field differs
+same releaseNumber with any differing summary field
 → reject fail-closed
-→ do not join, replace, or mutate the existing attempt
 ```
 
-A caller-provided validated descriptor may be reused only when `toReleaseSummary(descriptor)` exactly matches the target summary on `releaseNumber`, `appVersion`, `buildId`, and `buildDate`. A descriptor matching only by number is rejected or ignored and refetched according to the caller contract; it is never prepared as the target.
-
-A fetched restoration descriptor must match the complete persisted target summary before any cache preparation. Bootstrap is the only flow that begins from a bare latest pointer, because no prior complete summary exists yet; after validating that descriptor, its own complete summary becomes the target.
-
-The coordinator may key lookup by release number because channel publication forbids legitimate number reuse, but it must retain the complete expected summary inside each entry and detect same-number identity conflicts explicitly.
-
-## Managed compatibility baseline
-
-The pure-contract stage establishes the release-1 descriptor, state, protocol, snapshot, and watchdog contracts. Existing unshipped PR formats are removed, not preserved or migrated.
-
-Compatibility obligations begin with the first published managed release. Every later `sw.js` must remain compatible with every application release that can still appear as active or candidate in valid state, including:
-
-- persisted-state meaning;
-- application/worker messages and acknowledgements;
-- watchdog requests and rollback broadcasts;
-- snapshot fields;
-- cache and archive lookup.
-
-Contracts may evolve only additively while older releases remain supported. An incompatible change requires a separate fail-closed migration that first removes incompatible releases from the supported pin/rollback set.
+A caller-provided or fetched descriptor must match the complete expected summary before preparation. Bootstrap and state-loss recovery may begin from a validated latest pointer because no trusted prior summary exists.
 
 ## Reconciliation
 
 Reconciliation is triggered by:
 
-- every owned same-channel top-level navigation under that fetch event's `waitUntil`, without delaying its response;
+- every owned same-channel top-level navigation under its fetch event lifetime, without delaying the document response;
 - explicit Check for updates;
-- every successful mode change, after the response.
+- every successful mode change after its response.
 
-The reconciliation module owns only two worker-local guards:
+Only one worker-local shared attempt exists at a time. Navigation and Check join without requesting another pass. A mode change during an attempt requests one fresh-state rerun; another mode change during that rerun may request one further pass.
+
+Each attempt owns declarative effects:
 
 ```ts
-let inFlightPromise: Promise<Snapshot> | undefined;
-let rerunRequested = false;
+type ReconciliationEffects = {
+  broadcastStateChanged: boolean;
+  cleanupReleaseCache: boolean;
+};
 ```
 
-Normative trigger behavior:
+Effects:
 
-```text
-trigger while idle
-→ create the shared promise
-→ run one pass from fresh state
-
-navigation while in flight
-→ join only
-
-explicit Check while in flight
-→ join only and receive the final snapshot
-
-successful mode change while in flight
-→ set rerunRequested = true
-→ join the shared promise
-
-pass completes
-→ if rerunRequested, clear the flag and run one fresh-state pass
-→ otherwise resolve and clear the promise
-```
-
-A later mode change during the rerun may set the same boolean again. The promise settles only after a pass completes without a pending mode-change rerun. Navigation and Check never request an additional pass merely because they were concurrent.
-
-This is local deduplication, not a scheduler, manager, or persisted operation state. Every triggering event attaches the shared promise to its own lifetime.
-
-This guarantees:
-
-- Manual discovery in flight → switch to Automatic → a fresh pass prepares the newest eligible candidate without another navigation;
-- Automatic preparation in flight → switch to Manual → downloaded bytes may finish, but stale mode checks prevent automatic `ready`; the fresh pass follows Manual semantics.
+- are merged by logical OR across reruns;
+- belong only to the attempt that produced them;
+- survive a successful earlier pass followed by a failed rerun;
+- execute exactly once by the attempt owner after its response boundary;
+- never leak into a later independent attempt.
 
 Mode behavior per fresh pass:
 
-| State                   | Automatic                                                            | Manual                                               |
-| ----------------------- | -------------------------------------------------------------------- | ---------------------------------------------------- |
-| no candidate            | discover; persist newer `available`; prepare to `ready`              | discover; persist newer `available`; do not prepare  |
-| `available(B)`          | discover latest first; replace with newer C; prepare final candidate | discover strictly newer; otherwise keep B            |
-| `failed(B)`             | discover strictly newer; never retry B; prepare newer result         | discover strictly newer; never retry B automatically |
-| `ready` or `activating` | no-op                                                                | no-op                                                |
+| State | Automatic | Manual |
+| --- | --- | --- |
+| no candidate | discover; persist newer `available`; prepare to `ready` | discover; persist newer `available`; do not prepare |
+| `available(B)` | discover latest first; replace by newer C; prepare final candidate | discover strictly newer; otherwise keep B |
+| `failed(B)` | discover strictly newer; never retry B | discover strictly newer; never retry B automatically |
+| `ready` or `activating` | no-op | no-op |
 
-For Automatic `available(B)`, failed discovery retains B, does not advance `lastSuccessfulCheckAt`, and may prepare B as an offline or metadata-failure fallback.
+Network, hashing, preparation, and cleanup remain outside `OperationQueue`.
 
-Network, hashing, discovery, preparation, and cleanup stay outside `OperationQueue`. `PreparationCoordinator` remains limited to preparation deduplication and cleanup arbitration.
+## Fetch ownership and exact restoration
 
-## Fetch ownership and fail-closed responses
+The worker owns exactly:
 
-`sw.js` owns exactly:
-
-- same-channel top-level document navigation;
+- same-channel top-level requests where `request.mode === 'navigate' && request.destination === 'document'`;
 - same-channel `<channelBasePath>assets/**`.
 
-The mechanical top-level navigation predicate is:
+All other requests pass through normal browser networking.
+
+Owned requests never use live deployment bytes. They either:
+
+- serve the exact selected immutable release;
+- restore that exact release from its archive and retry once;
+- return controlled `404` for an owned asset not listed by the selected descriptor;
+- show a recovery page for a recoverable top-level failure;
+- return controlled `503` for an asset or non-recoverable owned failure.
+
+Every promise passed to `respondWith()` must resolve to a `Response` and never reject.
+
+## Clean launch and activation
+
+A `ready` candidate starts activation only on an owned top-level navigation when no other same-channel controlled or uncontrolled window is open. The evaluated navigation is excluded from that count.
+
+Only the navigation that performs `ready → activating` serves the candidate document. A concurrent navigation that observes an unexpired activation it did not start receives controlled `503`; it serves neither active nor candidate and does not mutate or roll back state.
+
+During activation:
+
+- the selected navigation and owned assets use the candidate release;
+- `activeRelease` remains unchanged;
+- activation deadline is 30 seconds;
+- a worker-injected watchdog observes early runtime and linked-resource failures;
+- `BOOT_OK` is sent after root mount, initial router navigation, and first render;
+- durable `BOOT_OK` commits the candidate;
+- `BOOT_FAILED`, serving failure, or expiration rolls back while leaving the previous active selected;
+- direct rollback acknowledgement recovers the reporting window without depending on broadcast delivery.
+
+## Recovery classifications
+
+A top-level recovery page is required for these stable categories:
+
+```text
+UPDATE_STATE_ABSENT
+UPDATE_STATE_INVALID
+  ├─ UNSUPPORTED_SCHEMA_VERSION
+  ├─ MALFORMED_RECORD
+  └─ INVARIANT_VIOLATION
+UPDATE_STORAGE_UNAVAILABLE
+ACTIVE_RELEASE_UNAVAILABLE
+  ├─ ARCHIVE_UNAVAILABLE
+  ├─ INVALID_ARCHIVE_METADATA
+  ├─ INTEGRITY_FAILURE
+  ├─ CACHE_STORAGE_UNAVAILABLE
+  └─ RESTORATION_FAILED
+```
+
+Only allowlisted categories and safe metadata are shown. Raw state, raw exception messages, stack traces, tokens, local paths, user documents, and sensitive URLs are forbidden.
+
+`ACTIVE_RELEASE_UNAVAILABLE` is emitted only after valid state identifies exact active release A and normal exact-cache validation plus exact-archive restoration cannot make A servable.
+
+## Recovery page
+
+The active worker generates a self-contained accessible HTML page:
+
+- no Vue application or external assets;
+- `Content-Type: text/html`;
+- `Cache-Control: no-store`;
+- HTTP `503` while recovery is required;
+- visible heading, status region, keyboard-operable actions, visible focus, mobile layout;
+- safe diagnostic fields: problem code and detail, channel, controller database name, selected release number when known, recovery action, timestamp, and safe browser error name when available.
+
+Required actions:
+
+- **Retry**;
+- **Install latest version**;
+- **Copy diagnostic details**.
+
+The page must state that updater recovery does not delete Mioframe user data. It must not claim that an unrelated browser-storage failure left all product data intact.
+
+## Recovery when controller state is lost
+
+Applies to `UPDATE_STATE_ABSENT` and `UPDATE_STATE_INVALID`.
+
+Before explicit user action, no release is trusted and no cache is inferred.
+
+`Install latest version`:
+
+```text
+confirm controller storage can be read
+→ fetch and validate latest.json
+→ fetch and validate its exact descriptor
+→ fully prepare exact release outside OperationQueue
+→ enter short serialized finalization
+→ re-read controller state
+→ valid: preserve it; another window already recovered
+→ absent/invalid: write initial Automatic state with prepared latest as active and no candidate
+→ storage failure: fail without selecting a release
+→ post stable result
+→ reload only after valid state is durably present
+```
+
+The invalid record is not deleted before successful preparation. Recovery changes only update-controller state and release caches; it never clears origin storage, OPFS, Spaces, documents, product settings, or external-storage configuration.
+
+The page must warn:
+
+- the previous selected version and update mode cannot be trusted;
+- recovery resets update mode to Automatic;
+- the installed latest becomes a new baseline without an older trusted rollback target;
+- a corrected newer release remains discoverable through navigation reconciliation if this baseline cannot finish boot.
+
+Offline state-loss recovery is unsupported because no authoritative release is known.
+
+## Recovery when active release is known but unavailable
+
+Applies to `ACTIVE_RELEASE_UNAVAILABLE` with valid state and exact active release A.
+
+### Retry
+
+An ordinary reload repeats exact-cache validation and exact restoration of A. No state changes.
+
+### Install latest version
+
+After explicit action:
+
+```text
+fetch and validate latest and its exact descriptor
+→ compare latest with fresh valid state
+```
+
+Rules:
+
+1. `latest` exactly matches active A:
+   - fully prepare exact A;
+   - do not change lifecycle state;
+   - reload A after preparation succeeds.
+
+2. `latest.releaseNumber > active.releaseNumber`:
+   - fully prepare exact latest B;
+   - in a short serialized finalization, re-read state;
+   - preserve state and request reclassification if active or a pinned `ready/activating` candidate changed concurrently;
+   - otherwise set or replace only an absent/`available`/`failed` candidate with `ready(B)` when B is not older than that candidate;
+   - preserve `activeRelease`, mode, and all unrelated state;
+   - reload into the ordinary clean-launch activation flow;
+   - B becomes active only after durable `BOOT_OK`.
+
+3. `latest.releaseNumber < active.releaseNumber`, or the same number has conflicting metadata:
+   - reject recovery;
+   - never downgrade or replace A.
+
+A pre-existing `ready` or `activating` candidate is never superseded by recovery. The page reloads and lets ordinary lifecycle logic reclassify the situation.
+
+If candidate B fails activation and exact A remains unavailable, the recovery page is shown again. This is expected: valid-state recovery must not bypass the existing rollback contract.
+
+## Recovery protocol and timeout
+
+One private same-channel command is sufficient:
 
 ```ts
-request.mode === 'navigate' && request.destination === 'document';
+type RecoverInstallLatestRequest = {
+  protocolVersion: 1;
+  type: 'RECOVER_INSTALL_LATEST';
+};
 ```
 
-Navigation requests whose destination is `iframe`, `frame`, `embed`, `object`, or any other non-`document` destination are not owned. They remain ordinary browser network behavior. Foreign channels, PR previews, cross-origin requests, `updates/**`, manifests, PWA icons outside `assets/**`, APIs, fonts outside `assets/**`, and all other requests are also not owned and must return from the fetch listener without `respondWith()`.
+The command uses stable result codes and existing same-channel and protocol-version validation. It is unavailable to foreign-channel clients.
 
-For every owned request, the promise passed to `respondWith()` must always resolve to a `Response`. It must never reject because of an unexpected controller-state, IndexedDB, Cache Storage, marker parsing, cache enumeration, cache read, restoration, or post-restoration validation exception.
+Long-operation semantics:
 
-The outer owned-request boundary is:
+- client timeout: 120 seconds;
+- timeout clears page-local busy state but does not cancel worker work;
+- the user may retry;
+- repeated requests may join the same exact preparation through `PreparationCoordinator`;
+- every finalization re-reads fresh state and is idempotent;
+- no polling, persisted retry state, or cancellation protocol is added.
 
-```text
-normal owned result
-→ return archived index, cached asset, controlled 404, or controlled 503
+`Retry` is an ordinary navigation reload. Copying diagnostics is page-local.
 
-any unexpected state/storage/cache/restoration exception
-→ resolve to the stable controlled 503 response
-→ never reject respondWith
-→ never fetch the live deployment
-```
+## Recovery result categories
 
-Expected owned-request behavior:
+At minimum:
 
-| Condition                                                     | Result                 |
-| ------------------------------------------------------------- | ---------------------- |
-| state absent or invalid                                       | controlled `503`       |
-| exact selected cache available                                | serve selected archive |
-| selected descriptor does not list requested owned asset       | controlled `404`       |
-| cache absent, incomplete, malformed, or exact summary differs | restore exact release  |
-| restoration or revalidation fails                             | controlled `503`       |
-| infrastructure exception at any owned boundary                | controlled `503`       |
+- success;
+- state changed concurrently; reload and reclassify;
+- controller storage unavailable;
+- network or latest metadata unavailable;
+- invalid latest metadata;
+- latest older than active;
+- conflicting release identity;
+- release integrity or preparation failure;
+- controller-state persistence failure.
 
-Missing or corrupt selected caches restore only the exact immutable release. No owned path may substitute another release or current deployment bytes.
-
-Stage 3 serves `activeRelease` only. Candidate phases are ignored for fetch selection until Stage 5 explicitly adds activating-candidate serving.
-
-## Clean launch, boot success, and activation
-
-A ready candidate starts activation on an owned same-channel top-level document navigation only when no other same-channel window is open.
-
-- controlled and uncontrolled same-channel windows block activation;
-- the evaluated navigation is not counted as another window;
-- after all same-channel windows close, the next safe application start is a qualifying clean launch;
-- reloading the sole remaining window may qualify when the browser exposes sufficient navigation identities, but identical reload classification is not a cross-engine requirement;
-- reload and close/reopen are equivalent user-level restart actions; Mioframe does not add browser-specific reload classification;
-- concurrent navigations serialize the short state transition, producing one `activating` transition;
-- foreign channels and PR previews neither block nor receive broadcasts.
-
-`BOOT_OK` means:
-
-```text
-root application mounted
-→ initial router navigation completed
-→ first Vue render completed
-→ BOOT_OK
-```
-
-Before this point the candidate remains uncommitted and the watchdog/deadline may roll it back.
-
-Protected local releases are active, candidate when present, and in-flight preparations. Cleanup is best effort and event-lifetime tracked.
-
-## Transport
-
-- short UI requests: 10 seconds;
-- Check/Install requests: 120 seconds;
-- predecessor probes and watchdog acknowledgements: 5 seconds independently;
-- activation deadline: 30 seconds.
-
-```ts
-type AppUpdateClientResult<T> =
-  | { status: 'success'; value: T }
-  | { status: 'timeout' }
-  | { status: 'unavailable' };
-```
-
-Timeout clears feature-local busy state but preserves the last snapshot and capability. It does not cancel worker work.
-
-Required ordering:
-
-```text
-persist result
-→ post response
-→ start deferred work
-→ await it in the originating event.waitUntil
-```
+No raw exception text is returned to the page.
 
 ## Data compatibility
 
-While an older managed release remains a supported Manual pin or rollback target, every newer release must keep user data readable by it. Irreversible migration requires a separate fail-closed architecture.
+While an older managed release remains a supported pin or rollback target, every newer release must keep user data readable by it. Irreversible migration requires a separate architecture and cannot be included in an ordinary managed release.
 
 ## Acceptance and proof
 
 Required proof includes:
 
-- safe release allocation, retained-tree validation, append-only archive, and `latest.json` last;
-- canonical source commit timestamp in all managed build metadata;
-- latest repeated `buildId` is a zero-write no-op without output reconstruction;
-- repeated non-latest or duplicate retained `buildId` rejects before writes;
+- publication allocation, retained-tree integrity, append-only archive, and `latest.json` last;
+- canonical source identity and idempotent latest-build rerun;
 - exact Workbox probe matrix and interrupted-install retry;
-- full-summary reusable-descriptor validation and same-number in-flight conflict rejection;
-- exact top-level document ownership, including iframe/non-document navigation pass-through;
-- every owned fetch promise resolves to a `Response`, including storage/cache exception paths;
-- delayed release-1 recovery;
-- complete lifecycle transition table;
-- latest-first Automatic and Manual discovery without preparation;
-- navigation and Check join without rerun; mode changes request a fresh-state rerun;
-- both in-flight mode-change scenarios;
-- controller compatibility with pinned releases;
-- clean-launch window rules, `BOOT_OK`, rollback, exact restoration, isolation, uncontrolled windows, and cross-engine lifecycle;
-- previous supported managed releases can read newer data after rollback.
+- full-summary preparation identity and same-number conflict rejection;
+- lifecycle transition table and Automatic/Manual behavior;
+- attempt-local reconciliation effects and response-before-effects ordering;
+- exact top-level ownership and every owned fetch resolving to a `Response`;
+- exact-cache restoration without live deployment fallback;
+- clean-launch ownership, concurrent navigation blocking, boot confirmation, rollback, and cross-engine behavior;
+- recovery page for absent, invalid, unreadable state, and unavailable active release;
+- safe diagnostic allowlist and accessibility behavior;
+- explicit state-loss baseline recovery without product-data deletion;
+- exact-active Retry;
+- newer-latest recovery through `ready` candidate and ordinary `BOOT_OK` activation;
+- no downgrade, conflicting identity rejection, and pinned-candidate preservation;
+- recovery timeout and repeated-request idempotence;
+- browser proof that product storage remains readable after recovery;
+- previous supported managed releases can read newer user data after rollback.
 
-Final verification:
+Final unchanged workspace verification:
 
 ```text
 pnpm verify --full --only managed-updates
 pnpm verify:release
 ```
 
+The exact final head also requires the ordinary GitHub workflow and operator UI/accessibility acceptance.
+
 ## Forbidden
 
-- bridge, second worker path, persistent bootstrap marker, or rollback to Workbox;
-- old UUID/multi-reference state or preservation of unshipped formats;
+- automatic or silent recovery;
+- selecting a release by cache enumeration;
+- writing recovery state before complete exact-release preparation;
+- replacing valid active state directly with newer latest;
+- bypassing candidate activation or `BOOT_OK` when valid state exists;
+- downgrading active release;
+- superseding a `ready` or `activating` candidate;
+- deleting invalid state before successful finalization;
+- clearing origin data or any product data;
+- exposing raw state or raw exceptions;
+- network, hashing, or Cache Storage work inside `OperationQueue`;
+- second active pointer, recovery journal, scheduler, manager, registry, generic RPC, polling, retry counters, or backoff;
 - more than one candidate;
-- full-output reconstruction or byte comparison for latest-build publication reruns;
-- generic reconciliation manager or expanding `PreparationCoordinator` into discovery;
-- joining same-number preparation when complete release summaries differ;
-- accepting a reusable or fetched restoration descriptor by release number alone;
-- rerun requests from navigation or explicit Check;
-- once-per-worker reconciliation suppression;
-- Manual background preparation;
-- non-idempotent publication of the same source commit;
-- workflow-attempt identity as managed `buildId`;
-- nondeterministic managed `buildDate`;
 - long work under `OperationQueue`;
-- superseding `ready` or `activating`;
-- intercepting non-document navigation such as iframe/frame/embed/object;
-- rejected `respondWith()` promises for owned requests;
 - live-deployment fallback for owned requests;
-- persisted operation state, polling, retry counters, or backoff;
-- generic manager/registry/RPC abstractions;
-- remote archive pruning, browser-specific reload logic, irreversible user-data migration, or shared Material/global-style changes.
+- rollback to Workbox;
+- browser-specific reload logic;
+- irreversible user-data migration.
 
 ## Implementation readiness
 
-The runtime architecture and implementation are stabilized. The PR remains draft until final resulting-head verification, complete-PR review, and operator UI/accessibility acceptance are complete.
+Required product and architecture decisions are resolved.
 
 Unresolved architecture blockers: none.
 
-Verdict: **implementation complete; merge readiness is evaluated separately from architecture completeness.**
+Verdict: **ready for implementation; PR 169 is not implementation-complete until the recovery flow and its required proof are present.**
