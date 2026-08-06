@@ -2,7 +2,7 @@
 declare const self: ServiceWorkerGlobalScope;
 
 import { isSameChannelWindowClient } from './cleanLaunch';
-import type { ManagedChannel } from './contracts';
+import type { ManagedChannel, ReleaseSummary } from './contracts';
 import {
   withProtocolVersion,
   type AppUpdateRollbackBroadcast,
@@ -114,14 +114,20 @@ export async function broadcastStateChanged(
  * builds the promise once called.
  * @param channel - Managed channel to clean up.
  * @param coordinator - The channel's preparation coordinator.
+ * @param preparedTargetToCleanup - An exact release a caller already
+ * prepared but could not confirm was adopted, to remove even when persisted
+ * state turns out absent or invalid by the time cleanup actually runs.
  * @returns A promise that never rejects.
  */
 export function cleanupReleaseCache(
   channel: ManagedChannel,
   coordinator: PreparationCoordinator,
+  preparedTargetToCleanup?: ReleaseSummary,
 ): Promise<void> {
   return coordinator
-    .runCleanup((inFlightReleaseNumbers) => runReleaseCacheCleanup(channel, inFlightReleaseNumbers))
+    .runCleanup((inFlightReleaseNumbers) =>
+      runReleaseCacheCleanup(channel, inFlightReleaseNumbers, preparedTargetToCleanup),
+    )
     .catch(() => {});
 }
 

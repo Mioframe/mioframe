@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseSummary, UpdateControllerState } from './contracts';
 import { createOperationQueue } from './operationQueue';
-import type { PreparationCoordinator } from './preparationCoordinator';
+import {
+  createPreparationCoordinator,
+  type PreparationCoordinator,
+} from './preparationCoordinator';
 import type { UpdateReconciler } from './updateReconciliation';
 
 const readControllerStateMock = vi.fn();
@@ -10,6 +13,9 @@ type MockWindowClient = { type: 'window'; url: string; postMessage: (message: un
 const matchAllMock = vi.fn((): Promise<MockWindowClient[]> => Promise.resolve([]));
 const fetchLatestReleasePointerMock = vi.fn();
 const fetchReleaseDescriptorMock = vi.fn();
+const prepareReleaseMock = vi.fn();
+const cachesKeysMock = vi.fn();
+const cachesDeleteMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
@@ -22,10 +28,11 @@ vi.mock('./releasePreparation', async () => {
     ...actual,
     fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
     fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
+    prepareRelease: (...args: unknown[]) => prepareReleaseMock(...args),
   };
 });
 vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
-vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() });
+vi.stubGlobal('caches', { keys: cachesKeysMock, delete: cachesDeleteMock });
 
 const PROTOCOL_VERSION = 1 as const;
 const CHANNEL_ORIGIN = 'https://mioframe.example';
@@ -86,6 +93,9 @@ beforeEach(() => {
   readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
   fetchLatestReleasePointerMock.mockReset();
   fetchReleaseDescriptorMock.mockReset();
+  prepareReleaseMock.mockReset().mockResolvedValue(undefined);
+  cachesKeysMock.mockReset().mockResolvedValue([]);
+  cachesDeleteMock.mockReset().mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -1341,7 +1351,8 @@ describe('handleWorkerMessage', () => {
       },
     );
 
-    it('responds with the stable result code, never a snapshot, and schedules cleanup plus a state-changed broadcast only on success', async () => {
+    it('responds with the stable result code, never a snapshot, and schedules cleanup plus a state-changed broadcast when this attempt durably changed state', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'absent' });
       fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
       fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseA));
       const coordinator = createFakeCoordinator();
@@ -1373,7 +1384,34 @@ describe('handleWorkerMessage', () => {
       });
     });
 
-    it('carries no follow-up work for a non-success result with no possible orphaned cache', async () => {
+    it('carries no follow-up work for an idempotent success that changed no state (exact-active re-preparation, no write)', async () => {
+      // Cleanup ownership must come from this attempt's own facts, not the
+      // bare `success` code: a no-write idempotent success must schedule
+      // neither cleanup nor a broadcast, unlike a state-loss/stage-candidate
+      // success that actually wrote controller state (see the previous test).
+      readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseA));
+      const coordinator = createFakeCoordinator();
+      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({ protocolVersion: PROTOCOL_VERSION, result: 'success' });
+      expect(result.runLifetimeWork).toBeUndefined();
+      expect(runCleanup).not.toHaveBeenCalled();
+    });
+
+    it('carries no follow-up work for a conflict detected before preparation ever started (latest-older-than-active)', async () => {
       readControllerStateMock.mockResolvedValue({
         status: 'valid',
         state: { ...baseState, activeRelease: releaseB },
@@ -1399,15 +1437,55 @@ describe('handleWorkerMessage', () => {
       expect(result.runLifetimeWork).toBeUndefined();
     });
 
-    it('schedules best-effort cache cleanup, without a state-changed broadcast, for state-changed: a fully prepared release may now be unowned', async () => {
-      readControllerStateMock.mockResolvedValueOnce({ status: 'absent' }).mockResolvedValueOnce({
-        status: 'valid',
-        state: { ...baseState, activeRelease: releaseC },
-      });
-      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
-      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
+    it('carries no follow-up work for a same-number identity conflict detected before preparation ever started (conflicting-release-identity)', async () => {
+      // Never schedules cleanup here: no release was ever prepared this
+      // attempt, unlike the post-preparation conflict covered below.
+      readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(
+        descriptorFor({ ...releaseA, buildId: 'conflicting-build' }),
+      );
       const coordinator = createFakeCoordinator();
       const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        result: 'conflicting-release-identity',
+      });
+      expect(result.runLifetimeWork).toBeUndefined();
+      expect(runCleanup).not.toHaveBeenCalled();
+    });
+
+    it('deletes the exact prepared cache with the real coordinator and real cleanup once state-changed proves it was never adopted, without a state-changed broadcast', async () => {
+      // Uses the real PreparationCoordinator/runReleaseCacheCleanup, not a
+      // mocked runCleanup-was-called assertion: proves the cache entry is
+      // actually removed once fresh state shows this attempt's prepared
+      // release B was never adopted.
+      readControllerStateMock
+        .mockResolvedValueOnce({ status: 'absent' })
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: { ...baseState, activeRelease: releaseC },
+        })
+        .mockResolvedValueOnce({
+          status: 'valid',
+          state: { ...baseState, activeRelease: releaseC },
+        });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
+      cachesKeysMock.mockResolvedValue([`stable-release-${releaseB.releaseNumber}`]);
+      const coordinator = createPreparationCoordinator();
       const postMessage = vi.fn();
       matchAllMock.mockResolvedValue([
         { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
@@ -1431,52 +1509,20 @@ describe('handleWorkerMessage', () => {
       expect(result.runLifetimeWork).toBeTypeOf('function');
 
       await result.runLifetimeWork?.();
-      expect(runCleanup).toHaveBeenCalledTimes(1);
+      expect(cachesDeleteMock).toHaveBeenCalledWith(`stable-release-${releaseB.releaseNumber}`);
       expect(postMessage).not.toHaveBeenCalled();
     });
 
-    it('schedules best-effort cache cleanup, without a state-changed broadcast, for conflicting-release-identity', async () => {
-      readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
-      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
-      fetchReleaseDescriptorMock.mockResolvedValue(
-        descriptorFor({ ...releaseA, buildId: 'conflicting-build' }),
-      );
-      const coordinator = createFakeCoordinator();
-      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
-      const postMessage = vi.fn();
-      matchAllMock.mockResolvedValue([
-        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
-      ]);
-      const { handleWorkerMessage } = await import('./workerMessages');
-
-      const result = await handleWorkerMessage(
-        'stable',
-        '/',
-        CHANNEL_ORIGIN,
-        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
-        enqueue,
-        coordinator,
-        createFakeReconciler(),
-      );
-
-      expect(result.response).toEqual({
-        protocolVersion: PROTOCOL_VERSION,
-        result: 'conflicting-release-identity',
-      });
-      expect(result.runLifetimeWork).toBeTypeOf('function');
-
-      await result.runLifetimeWork?.();
-      expect(runCleanup).toHaveBeenCalledTimes(1);
-      expect(postMessage).not.toHaveBeenCalled();
-    });
-
-    it('schedules best-effort cache cleanup, without a state-changed broadcast, for controller-state-persistence-failed', async () => {
+    it('deletes the exact prepared cache with the real coordinator and real cleanup when persistence fails and state remains absent, without a state-changed broadcast', async () => {
+      // Covers the state-loss persistence-failure scenario: state stays
+      // absent even at deferred-cleanup time, so ordinary valid-state
+      // cleanup never runs — only the explicit prepared-target deletion path
+      // can remove this cache.
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
       fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseB.releaseNumber });
       fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseB));
       writeControllerStateMock.mockRejectedValue(new Error('quota exceeded'));
-      const coordinator = createFakeCoordinator();
-      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const coordinator = createPreparationCoordinator();
       const postMessage = vi.fn();
       matchAllMock.mockResolvedValue([
         { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
@@ -1500,7 +1546,7 @@ describe('handleWorkerMessage', () => {
       expect(result.runLifetimeWork).toBeTypeOf('function');
 
       await result.runLifetimeWork?.();
-      expect(runCleanup).toHaveBeenCalledTimes(1);
+      expect(cachesDeleteMock).toHaveBeenCalledWith(`stable-release-${releaseB.releaseNumber}`);
       expect(postMessage).not.toHaveBeenCalled();
     });
 

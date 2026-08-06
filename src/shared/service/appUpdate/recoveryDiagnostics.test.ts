@@ -153,6 +153,72 @@ describe('zodRecoveryDiagnostics runtime boundary validation', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('rejects a problemDetail field on UPDATE_STATE_ABSENT, which carries none', () => {
+    const result = zodRecoveryDiagnostics.safeParse({
+      problemCode: 'UPDATE_STATE_ABSENT',
+      problemDetail: 'MALFORMED_RECORD',
+      channel: 'stable',
+      controllerDatabaseName: 'db',
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a problemDetail field on UPDATE_STORAGE_UNAVAILABLE, which carries none', () => {
+    const result = zodRecoveryDiagnostics.safeParse({
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE',
+      problemDetail: 'MALFORMED_RECORD',
+      channel: 'stable',
+      controllerDatabaseName: 'db',
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an errorName field on ACTIVE_RELEASE_UNAVAILABLE, which carries none', () => {
+    const result = zodRecoveryDiagnostics.safeParse({
+      problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
+      problemDetail: 'INTEGRITY_FAILURE',
+      selectedReleaseNumber: 4,
+      errorName: 'QuotaExceededError',
+      channel: 'stable',
+      controllerDatabaseName: 'db',
+      timestamp: '2026-08-06T00:00:00.000Z',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it.each(['UPDATE_STATE_ABSENT', 'UPDATE_STATE_INVALID', 'UPDATE_STORAGE_UNAVAILABLE'] as const)(
+    'rejects a selectedReleaseNumber field on %s, which forbids it',
+    (problemCode) => {
+      const result = zodRecoveryDiagnostics.safeParse({
+        problemCode,
+        ...(problemCode === 'UPDATE_STATE_INVALID' ? { problemDetail: 'MALFORMED_RECORD' } : {}),
+        selectedReleaseNumber: 4,
+        channel: 'stable',
+        controllerDatabaseName: 'db',
+        timestamp: '2026-08-06T00:00:00.000Z',
+      });
+
+      expect(result.success).toBe(false);
+    },
+  );
+
+  it('rejects an arbitrary unknown field on every variant', () => {
+    const result = zodRecoveryDiagnostics.safeParse({
+      problemCode: 'UPDATE_STATE_ABSENT',
+      channel: 'stable',
+      controllerDatabaseName: 'db',
+      timestamp: '2026-08-06T00:00:00.000Z',
+      unexpectedField: 'should be rejected',
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('escapeHtml', () => {

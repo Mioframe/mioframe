@@ -500,6 +500,21 @@ describe('interactive recovery script (executable behavior)', () => {
       expect(getStatusText()).toBe('Diagnostic details copied.');
     });
 
+    it('reports failure, and still removes the temporary textarea, when execCommand returns false', () => {
+      vi.stubGlobal('navigator', { serviceWorker: { controller: undefined } });
+      const execCommand = vi.fn().mockReturnValue(false);
+      // oxlint-disable-next-line no-restricted-syntax -- deliberately stubbing execCommand for this isolated fallback-path test.
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- deliberately stubbing the deprecated execCommand fallback the production code itself still uses when the Clipboard API is unavailable.
+      document.execCommand = execCommand;
+
+      renderAndRunRecoveryScript(stateLossDiagnostics);
+      document.getElementById('copy-diagnostics-button')?.dispatchEvent(new Event('click'));
+
+      expect(execCommand).toHaveBeenCalledWith('copy');
+      expect(getStatusText()).toBe('Could not copy diagnostic details.');
+      expect(document.querySelector('textarea')).toBeNull();
+    });
+
     it('reports failure when the Clipboard API rejects and the execCommand fallback also throws', async () => {
       const writeText = vi.fn().mockRejectedValue(new Error('denied'));
       vi.stubGlobal('navigator', {

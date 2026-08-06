@@ -66,13 +66,13 @@ beforeEach(() => {
 });
 
 describe('runRecoverInstallLatest / top-level dispatch', () => {
-  it('fails closed on a storage-unavailable initial read, before any network fetch', async () => {
+  it('fails closed on a storage-unavailable initial read, before any network fetch: no state change, no cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'storage-unavailable' });
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('controller-storage-unavailable');
+    expect(outcome).toEqual({ result: 'controller-storage-unavailable', stateChanged: false });
     expect(fetchLatestReleasePointerMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
   });
@@ -80,7 +80,7 @@ describe('runRecoverInstallLatest / top-level dispatch', () => {
 
 describe('state-loss recovery (absent/invalid initial state)', () => {
   it.each(['absent', 'invalid'] as const)(
-    'writes a fresh Automatic baseline with no candidate for %s state',
+    'writes a fresh Automatic baseline with no candidate for %s state, reporting stateChanged and no cleanup target',
     async (status) => {
       readControllerStateMock
         .mockResolvedValueOnce(
@@ -93,9 +93,9 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
       mockLatest(latest);
       const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-      const result = await runRecoverInstallLatest(buildDependencies());
+      const outcome = await runRecoverInstallLatest(buildDependencies());
 
-      expect(result).toBe('success');
+      expect(outcome).toEqual({ result: 'success', stateChanged: true });
       expect(prepareMock).toHaveBeenCalledWith('stable', '/', latest, descriptorFor(latest));
       expect(writeControllerStateMock).toHaveBeenCalledWith('stable', {
         schemaVersion: 1,
@@ -105,7 +105,7 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
     },
   );
 
-  it('classifies a latest.json/descriptor fetch failure as network-or-latest-unavailable, without preparing or writing', async () => {
+  it('classifies a latest.json/descriptor fetch failure as network-or-latest-unavailable, without preparing, writing, or a cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 5 });
     const { ReleasePreparationError } = await import('./releasePreparation');
@@ -114,14 +114,14 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
     );
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('network-or-latest-unavailable');
+    expect(outcome).toEqual({ result: 'network-or-latest-unavailable', stateChanged: false });
     expect(prepareMock).not.toHaveBeenCalled();
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('classifies structurally invalid latest metadata as invalid-latest-metadata', async () => {
+  it('classifies structurally invalid latest metadata as invalid-latest-metadata, with no cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
     const { ReleasePreparationError } = await import('./releasePreparation');
     fetchLatestReleasePointerMock.mockRejectedValue(
@@ -132,25 +132,25 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
     );
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('invalid-latest-metadata');
+    expect(outcome).toEqual({ result: 'invalid-latest-metadata', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('classifies a preparation failure as release-preparation-failed, without writing', async () => {
+  it('classifies a preparation failure as release-preparation-failed, without writing or a cleanup target (prepareRelease already self-cleans)', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
     mockLatest(release(5));
     prepareMock.mockRejectedValue(new Error('integrity failure'));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('release-preparation-failed');
+    expect(outcome).toEqual({ result: 'release-preparation-failed', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('never overwrites another window’s already-completed identical recovery: idempotent success, no write', async () => {
+  it('never overwrites another window’s already-completed identical recovery: idempotent success, no write, no cleanup target', async () => {
     const latest = release(5);
     readControllerStateMock.mockResolvedValueOnce({ status: 'absent' }).mockResolvedValueOnce({
       status: 'valid',
@@ -159,48 +159,59 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('success');
+    expect(outcome).toEqual({ result: 'success', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('reports state-changed, without overwriting, when another window landed a different valid state', async () => {
+  it('reports state-changed, without overwriting, and schedules the just-prepared release for cleanup, when another window landed a different valid state', async () => {
+    const latest = release(5);
     readControllerStateMock.mockResolvedValueOnce({ status: 'absent' }).mockResolvedValueOnce({
       status: 'valid',
       state: { schemaVersion: 1, mode: 'manual', activeRelease: release(9) },
     });
-    mockLatest(release(5));
+    mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('state-changed');
+    expect(outcome).toEqual({
+      result: 'state-changed',
+      stateChanged: false,
+      preparedTargetToCleanup: latest,
+    });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('reports controller-storage-unavailable when finalization cannot re-read state, without writing', async () => {
+  it('reports controller-storage-unavailable when finalization cannot re-read state, without writing and without claiming the prepared target unowned', async () => {
     readControllerStateMock
       .mockResolvedValueOnce({ status: 'absent' })
       .mockResolvedValueOnce({ status: 'storage-unavailable' });
     mockLatest(release(5));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('controller-storage-unavailable');
+    expect(outcome).toEqual({ result: 'controller-storage-unavailable', stateChanged: false });
+    expect(outcome.preparedTargetToCleanup).toBeUndefined();
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('reports controller-state-persistence-failed when the final write throws', async () => {
+  it('reports controller-state-persistence-failed and schedules the just-prepared release for cleanup when the final write throws', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
-    mockLatest(release(5));
+    const latest = release(5);
+    mockLatest(latest);
     writeControllerStateMock.mockRejectedValue(new Error('quota exceeded'));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('controller-state-persistence-failed');
+    expect(outcome).toEqual({
+      result: 'controller-state-persistence-failed',
+      stateChanged: false,
+      preparedTargetToCleanup: latest,
+    });
   });
 
   it('never deletes the invalid record before preparation succeeds (write only happens after prepare resolves)', async () => {
@@ -227,7 +238,7 @@ describe('known-active recovery (valid initial state)', () => {
     return { schemaVersion: 1, mode: 'automatic', activeRelease: release(1), ...overrides };
   }
 
-  it('re-prepares exact active A when latest exactly matches it, without writing any state', async () => {
+  it('re-prepares exact active A when latest exactly matches it, without writing any state or scheduling cleanup', async () => {
     const active = release(1);
     readControllerStateMock
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
@@ -236,9 +247,9 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(active);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('success');
+    expect(outcome).toEqual({ result: 'success', stateChanged: false });
     expect(prepareMock).toHaveBeenCalledWith('stable', '/', active, descriptorFor(active));
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
@@ -260,14 +271,14 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('success');
+    expect(outcome).toEqual({ result: 'success', stateChanged: false });
     expect(prepareMock).toHaveBeenCalledWith('stable', '/', latest, descriptorFor(latest));
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('reports state-changed when active changed concurrently during exact-A re-preparation', async () => {
+  it('reports state-changed and schedules the reprepared release for cleanup when active changed concurrently during exact-A re-preparation', async () => {
     const active = release(1);
     readControllerStateMock
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
@@ -276,11 +287,32 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(active);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+
+    expect(outcome).toEqual({
+      result: 'state-changed',
+      stateChanged: false,
+      preparedTargetToCleanup: active,
+    });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('rejects a latest release older than active, without any preparation attempt', async () => {
+  it('reports controller-storage-unavailable during exact-A re-preparation finalization, without claiming the reprepared cache unowned', async () => {
+    const active = release(1);
+    readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
+      .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: active }) })
+      .mockResolvedValueOnce({ status: 'storage-unavailable' });
+    mockLatest(active);
+    const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
+
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+
+    expect(outcome).toEqual({ result: 'controller-storage-unavailable', stateChanged: false });
+    expect(outcome.preparedTargetToCleanup).toBeUndefined();
+  });
+
+  it('rejects a latest release older than active, without any preparation attempt or cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
       state: stateWith({ activeRelease: release(5) }),
@@ -288,11 +320,12 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(release(3));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('latest-older-than-active');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'latest-older-than-active', stateChanged: false });
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('rejects a same-number latest release with conflicting identity against active', async () => {
+  it('rejects a same-number latest release with conflicting identity against active, without a cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({
       status: 'valid',
       state: stateWith({ activeRelease: release(5) }),
@@ -300,11 +333,12 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(release(5, { buildId: 'conflicting-build' }));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('conflicting-release-identity');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'conflicting-release-identity', stateChanged: false });
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('stages a strictly newer latest B as ready, preserving mode/activeRelease/lastSuccessfulCheckAt, when there is no candidate', async () => {
+  it('stages a strictly newer latest B as ready, preserving mode/activeRelease/lastSuccessfulCheckAt, when there is no candidate — reports stateChanged, no cleanup target', async () => {
     const active = release(1);
     const latest = release(3);
     const initialState = stateWith({
@@ -319,9 +353,9 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    const result = await runRecoverInstallLatest(buildDependencies());
+    const outcome = await runRecoverInstallLatest(buildDependencies());
 
-    expect(result).toBe('success');
+    expect(outcome).toEqual({ result: 'success', stateChanged: true });
     expect(prepareMock).toHaveBeenCalledWith('stable', '/', latest, descriptorFor(latest));
     expect(writeControllerStateMock).toHaveBeenCalledWith('stable', {
       ...initialState,
@@ -329,7 +363,7 @@ describe('known-active recovery (valid initial state)', () => {
     });
   });
 
-  it('never supersedes a pinned ready candidate that differs from B: state-changed, no write, no wasted preparation', async () => {
+  it('never supersedes a pinned ready candidate that differs from B: state-changed, no write, no wasted preparation, no cleanup target', async () => {
     const active = release(1);
     const pinned = { phase: 'ready' as const, release: release(4) };
     const state = stateWith({ activeRelease: active, candidate: pinned });
@@ -339,12 +373,13 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(release(3));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'state-changed', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('never supersedes a pinned activating candidate that differs from B: state-changed, no write, no wasted preparation', async () => {
+  it('never supersedes a pinned activating candidate that differs from B: state-changed, no write, no wasted preparation, no cleanup target', async () => {
     const active = release(1);
     const pinned = {
       phase: 'activating' as const,
@@ -358,14 +393,15 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(release(3));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'state-changed', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
     // Classified against the fresh pinned candidate before ever preparing B:
     // a doomed target is never downloaded/verified only to be discarded.
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('is idempotent when the pinned ready candidate already exactly matches B: success, no write', async () => {
+  it('is idempotent when the pinned ready candidate already exactly matches B: success, no write, no cleanup target', async () => {
     const active = release(1);
     const latest = release(3);
     const pinned = { phase: 'ready' as const, release: latest };
@@ -376,11 +412,12 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('success');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'success', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('does not replace an existing available candidate that is already newer than B: state-changed, no write, no wasted preparation', async () => {
+  it('does not replace an existing available candidate that is already newer than B: state-changed, no write, no wasted preparation, no cleanup target', async () => {
     const active = release(1);
     const state = stateWith({
       activeRelease: active,
@@ -392,12 +429,13 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(release(3));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'state-changed', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('replaces an older available candidate with ready(B)', async () => {
+  it('replaces an older available candidate with ready(B), reporting stateChanged and no cleanup target', async () => {
     const active = release(1);
     const latest = release(5);
     const state = stateWith({
@@ -411,14 +449,15 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('success');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'success', stateChanged: true });
     expect(writeControllerStateMock).toHaveBeenCalledWith('stable', {
       ...state,
       candidate: { phase: 'ready', release: latest },
     });
   });
 
-  it('replaces an older failed candidate with ready(B)', async () => {
+  it('replaces an older failed candidate with ready(B), reporting stateChanged and no cleanup target', async () => {
     const active = release(1);
     const latest = release(5);
     const state = stateWith({
@@ -432,14 +471,15 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('success');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'success', stateChanged: true });
     expect(writeControllerStateMock).toHaveBeenCalledWith('stable', {
       ...state,
       candidate: { phase: 'ready', release: latest },
     });
   });
 
-  it('rejects a same-number conflicting available candidate against B as conflicting-release-identity', async () => {
+  it('rejects a same-number conflicting available candidate against B as conflicting-release-identity, without a cleanup target (decided before preparation)', async () => {
     const active = release(1);
     const latest = release(5);
     const state = stateWith({
@@ -452,43 +492,94 @@ describe('known-active recovery (valid initial state)', () => {
     mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('conflicting-release-identity');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'conflicting-release-identity', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
     expect(prepareMock).not.toHaveBeenCalled();
   });
 
-  it('reports state-changed when active changed concurrently during B preparation (between classification and the final write), without writing', async () => {
+  it('rejects a same-number conflicting available candidate discovered only after preparing B: post-preparation conflicting-release-identity schedules B for cleanup', async () => {
+    const active = release(1);
+    const latest = release(5);
+    const preClassificationState = stateWith({ activeRelease: active });
+    const postPrepState = stateWith({
+      activeRelease: active,
+      candidate: { phase: 'available' as const, release: release(5, { buildId: 'other-build' }) },
+    });
+    readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state: preClassificationState })
+      .mockResolvedValueOnce({ status: 'valid', state: preClassificationState })
+      .mockResolvedValueOnce({ status: 'valid', state: postPrepState });
+    mockLatest(latest);
+    const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
+
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({
+      result: 'conflicting-release-identity',
+      stateChanged: false,
+      preparedTargetToCleanup: latest,
+    });
+    expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(prepareMock).toHaveBeenCalled();
+  });
+
+  it('reports state-changed and schedules B for cleanup when active changed concurrently during B preparation (between classification and the final write), without writing', async () => {
+    const latest = release(5);
     const state = stateWith({ activeRelease: release(1) });
     readControllerStateMock
       .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state })
       .mockResolvedValueOnce({ status: 'valid', state: stateWith({ activeRelease: release(2) }) });
-    mockLatest(release(5));
+    mockLatest(latest);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('state-changed');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({
+      result: 'state-changed',
+      stateChanged: false,
+      preparedTargetToCleanup: latest,
+    });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('classifies a preparation failure for B as release-preparation-failed, without writing', async () => {
+  it('reports controller-storage-unavailable during B finalization, without claiming the prepared cache unowned', async () => {
+    const state = stateWith({ activeRelease: release(1) });
+    readControllerStateMock
+      .mockResolvedValueOnce({ status: 'valid', state })
+      .mockResolvedValueOnce({ status: 'valid', state })
+      .mockResolvedValueOnce({ status: 'storage-unavailable' });
+    mockLatest(release(5));
+    const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
+
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'controller-storage-unavailable', stateChanged: false });
+    expect(outcome.preparedTargetToCleanup).toBeUndefined();
+  });
+
+  it('classifies a preparation failure for B as release-preparation-failed, without writing or a cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'valid', state: stateWith({}) });
     mockLatest(release(5));
     prepareMock.mockRejectedValue(new Error('integrity failure'));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe('release-preparation-failed');
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({ result: 'release-preparation-failed', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 
-  it('reports controller-state-persistence-failed when the final candidate write throws', async () => {
+  it('reports controller-state-persistence-failed and schedules B for cleanup when the final candidate write throws', async () => {
+    const latest = release(5);
     readControllerStateMock.mockResolvedValue({ status: 'valid', state: stateWith({}) });
-    mockLatest(release(5));
+    mockLatest(latest);
     writeControllerStateMock.mockRejectedValue(new Error('quota exceeded'));
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
-    expect(await runRecoverInstallLatest(buildDependencies())).toBe(
-      'controller-state-persistence-failed',
-    );
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+    expect(outcome).toEqual({
+      result: 'controller-state-persistence-failed',
+      stateChanged: false,
+      preparedTargetToCleanup: latest,
+    });
   });
 });
 

@@ -58,20 +58,23 @@ const zodSelectedReleaseNumber = z.number().check(z.refine(isPositiveSafeInteger
  * first crosses into this safe shape.
  */
 export const zodRecoveryDiagnostics = z.discriminatedUnion('problemCode', [
-  z.object({ problemCode: z.literal('UPDATE_STATE_ABSENT'), ...zodRecoveryDiagnosticsBaseShape }),
-  z.object({
+  z.strictObject({
+    problemCode: z.literal('UPDATE_STATE_ABSENT'),
+    ...zodRecoveryDiagnosticsBaseShape,
+  }),
+  z.strictObject({
     problemCode: z.literal('UPDATE_STATE_INVALID'),
     /** The stable reason the persisted controller-state record is invalid. */
     problemDetail: z.enum(CONTROLLER_STATE_INVALID_REASONS),
     ...zodRecoveryDiagnosticsBaseShape,
   }),
-  z.object({
+  z.strictObject({
     problemCode: z.literal('UPDATE_STORAGE_UNAVAILABLE'),
     /** An allowlisted browser storage error name, when one is available. */
     errorName: z.optional(z.enum(ALLOWLISTED_STORAGE_ERROR_NAMES)),
     ...zodRecoveryDiagnosticsBaseShape,
   }),
-  z.object({
+  z.strictObject({
     problemCode: z.literal('ACTIVE_RELEASE_UNAVAILABLE'),
     /** The stable reason exact-release restoration could not make the selected release servable. */
     problemDetail: z.enum(RELEASE_PREPARATION_FAILURE_REASONS),

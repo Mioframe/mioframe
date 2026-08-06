@@ -10,7 +10,6 @@ import {
   type AppUpdateWorkerRequest,
   type AppUpdateWorkerResponse,
   type RecoverInstallLatestResponse,
-  type RecoverInstallLatestResultCode,
   type WorkerMessageResult,
 } from './protocol';
 import { runRecoverInstallLatest } from './recoveryOrchestration';
@@ -114,24 +113,6 @@ async function installOnNextLaunch(
     };
   });
 }
-
-/**
- * `RECOVER_INSTALL_LATEST` result codes whose recovery attempt may have
- * fully prepared a release into Cache Storage without that prepared target
- * becoming owned by fresh `activeRelease`/`candidate` state: state changed
- * concurrently, a same-number identity conflict was found only after
- * preparation, or the final durable write itself failed. Best-effort cleanup
- * is scheduled for exactly these outcomes, through the existing
- * `PreparationCoordinator`/`runReleaseCacheCleanup` ownership rules (never
- * ad hoc deletion) — a stale prepared cache is otherwise never revisited.
- * `release-preparation-failed` needs no entry here: `prepareRelease` already
- * deletes its own incomplete cache on failure.
- */
-const RECOVERY_RESULTS_WITH_POSSIBLE_ORPHANED_CACHE = new Set<RecoverInstallLatestResultCode>([
-  'state-changed',
-  'conflicting-release-identity',
-  'controller-state-persistence-failed',
-]);
 
 /**
  * Handles one private worker protocol request.
@@ -360,23 +341,26 @@ export async function handleWorkerMessage(
       // remain handleable when persisted state is absent or invalid, exactly
       // the cases `withState()` intentionally rejects. `runRecoverInstallLatest`
       // owns its own fresh reads/writes, each under the short queue.
-      const result = await runRecoverInstallLatest({
+      const outcome = await runRecoverInstallLatest({
         channel,
         channelBasePath,
         enqueue,
         coordinator,
       });
-      const runLifetimeWork =
-        result === 'success'
-          ? combineLifetimeWork(
-              () => cleanupReleaseCache(channel, coordinator),
-              () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
-            )
-          : RECOVERY_RESULTS_WITH_POSSIBLE_ORPHANED_CACHE.has(result)
-            ? () => cleanupReleaseCache(channel, coordinator)
-            : undefined;
+      // Cleanup is decided from what this attempt itself did — never from
+      // `outcome.result` alone, which the same code can report both before
+      // and after a release was ever prepared (see `RecoverInstallLatestOutcome`).
+      const runLifetimeWork = combineLifetimeWork(
+        outcome.stateChanged ? () => cleanupReleaseCache(channel, coordinator) : undefined,
+        outcome.preparedTargetToCleanup
+          ? () => cleanupReleaseCache(channel, coordinator, outcome.preparedTargetToCleanup)
+          : undefined,
+        outcome.stateChanged
+          ? () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {})
+          : undefined,
+      );
       return {
-        response: withProtocolVersion({ result }),
+        response: withProtocolVersion({ result: outcome.result }),
         runLifetimeWork,
       };
     }

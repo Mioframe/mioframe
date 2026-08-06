@@ -30,6 +30,31 @@ export type RecoveryOrchestrationDependencies = {
 };
 
 /**
+ * The attempt-local facts one {@link runRecoverInstallLatest} call actually
+ * produced, so the caller can decide deferred cache cleanup from what this
+ * attempt itself did — never from {@link RecoverInstallLatestResultCode}
+ * alone, which the same code can report both before and after a release was
+ * ever prepared.
+ */
+export type RecoverInstallLatestOutcome = {
+  /** The classified result code for this attempt. */
+  result: RecoverInstallLatestResultCode;
+  /** Whether this attempt itself durably wrote controller state. */
+  stateChanged: boolean;
+  /**
+   * Set only when this attempt successfully prepared a release into Cache
+   * Storage but finalization then proved it was not adopted (a fresh
+   * conflicting/absent/invalid read), or the durable write that would have
+   * adopted it failed. Never set for a conflict/state-change detected before
+   * preparation ever started, after a {@link ReleasePreparationError} (which
+   * already deletes its own incomplete cache), or when finalization itself
+   * could not read controller storage (fails closed instead of claiming the
+   * target unowned).
+   */
+  preparedTargetToCleanup?: ReleaseSummary;
+};
+
+/**
  * Classifies a failure from fetching/validating `latest.json` or its exact
  * descriptor (the "fetch and validate latest" step, common to both recovery
  * flows) into its {@link RecoverInstallLatestResultCode}.
@@ -64,30 +89,35 @@ async function fetchValidatedLatestDescriptor(channelBasePath: string): Promise<
  * step that re-reads fresh state and only ever writes a brand-new Automatic
  * baseline — never a guessed or retained previous mode/candidate.
  * @param dependencies - Worker-owned recovery dependencies.
- * @returns The classified result code.
+ * @returns The classified {@link RecoverInstallLatestOutcome}.
  */
 async function runStateLossRecovery(
   dependencies: RecoveryOrchestrationDependencies,
-): Promise<RecoverInstallLatestResultCode> {
+): Promise<RecoverInstallLatestOutcome> {
   const { channel, channelBasePath, enqueue, coordinator } = dependencies;
 
   let descriptor: ReleaseDescriptor;
   try {
     descriptor = await fetchValidatedLatestDescriptor(channelBasePath);
   } catch (error) {
-    return classifyDiscoveryFailure(error);
+    return { result: classifyDiscoveryFailure(error), stateChanged: false };
   }
 
   const preparedLatest = toReleaseSummary(descriptor);
   try {
     await coordinator.prepare(channel, channelBasePath, preparedLatest, descriptor);
   } catch {
-    return 'release-preparation-failed';
+    return { result: 'release-preparation-failed', stateChanged: false };
   }
 
-  return enqueue(async () => {
+  return enqueue(async (): Promise<RecoverInstallLatestOutcome> => {
     const fresh = await readControllerState(channel);
-    if (fresh.status === 'storage-unavailable') return 'controller-storage-unavailable';
+    if (fresh.status === 'storage-unavailable') {
+      // Preparation already succeeded, but finalization cannot confirm
+      // whether preparedLatest was adopted: fails closed rather than
+      // claiming it unowned.
+      return { result: 'controller-storage-unavailable', stateChanged: false };
+    }
 
     if (fresh.status === 'valid') {
       // Another window's own recovery (or an otherwise concurrent write)
@@ -96,8 +126,12 @@ async function runStateLossRecovery(
       // success; anything else asks the page to reload and reclassify.
       return releaseSummariesMatch(fresh.state.activeRelease, preparedLatest) &&
         !fresh.state.candidate
-        ? 'success'
-        : 'state-changed';
+        ? { result: 'success', stateChanged: false }
+        : {
+            result: 'state-changed',
+            stateChanged: false,
+            preparedTargetToCleanup: preparedLatest,
+          };
     }
 
     // Still absent or invalid: the record is untouched until this exact
@@ -106,9 +140,13 @@ async function runStateLossRecovery(
     try {
       await writeControllerState(channel, buildInitialControllerState(preparedLatest));
     } catch {
-      return 'controller-state-persistence-failed';
+      return {
+        result: 'controller-state-persistence-failed',
+        stateChanged: false,
+        preparedTargetToCleanup: preparedLatest,
+      };
     }
-    return 'success';
+    return { result: 'success', stateChanged: true };
   });
 }
 
@@ -203,18 +241,18 @@ function classifyKnownActive(
  * than the network round trip that produced `latest`, never from a stale
  * snapshot read before it.
  * @param dependencies - Worker-owned recovery dependencies.
- * @returns The classified result code.
+ * @returns The classified {@link RecoverInstallLatestOutcome}.
  */
 async function runKnownActiveRecovery(
   dependencies: RecoveryOrchestrationDependencies,
-): Promise<RecoverInstallLatestResultCode> {
+): Promise<RecoverInstallLatestOutcome> {
   const { channel, enqueue } = dependencies;
 
   let latestDescriptor: ReleaseDescriptor;
   try {
     latestDescriptor = await fetchValidatedLatestDescriptor(dependencies.channelBasePath);
   } catch (error) {
-    return classifyDiscoveryFailure(error);
+    return { result: classifyDiscoveryFailure(error), stateChanged: false };
   }
   const latest = toReleaseSummary(latestDescriptor);
 
@@ -227,7 +265,11 @@ async function runKnownActiveRecovery(
     return classifyKnownActive(fresh.state, latest);
   });
 
-  if (classification.kind === 'final') return classification.result;
+  if (classification.kind === 'final') {
+    // Every 'final' classification is decided before preparation ever
+    // starts: no target can have been left unowned.
+    return { result: classification.result, stateChanged: false };
+  }
   if (classification.kind === 'reprepare-active') {
     return runReprepareExactActive(dependencies, classification.active, latestDescriptor);
   }
@@ -243,31 +285,45 @@ async function runKnownActiveRecovery(
  * @param dependencies - Worker-owned recovery dependencies.
  * @param activeAtClassification - The exact active release {@link classifyKnownActive} matched against.
  * @param descriptor - The validated latest descriptor, already proven to match `activeAtClassification`.
- * @returns The classified result code.
+ * @returns The classified {@link RecoverInstallLatestOutcome}.
  */
 async function runReprepareExactActive(
   dependencies: RecoveryOrchestrationDependencies,
   activeAtClassification: ReleaseSummary,
   descriptor: ReleaseDescriptor,
-): Promise<RecoverInstallLatestResultCode> {
+): Promise<RecoverInstallLatestOutcome> {
   const { channel, channelBasePath, enqueue, coordinator } = dependencies;
 
   try {
     await coordinator.prepare(channel, channelBasePath, activeAtClassification, descriptor);
   } catch {
-    return 'release-preparation-failed';
+    return { result: 'release-preparation-failed', stateChanged: false };
   }
 
-  return enqueue(async () => {
+  return enqueue(async (): Promise<RecoverInstallLatestOutcome> => {
     const fresh = await readControllerState(channel);
-    if (fresh.status === 'storage-unavailable') return 'controller-storage-unavailable';
-    if (fresh.status !== 'valid') return 'state-changed';
+    if (fresh.status === 'storage-unavailable') {
+      // Fails closed: never claims the just-reprepared cache is unowned
+      // when finalization itself cannot confirm anything.
+      return { result: 'controller-storage-unavailable', stateChanged: false };
+    }
+    if (fresh.status !== 'valid') {
+      return {
+        result: 'state-changed',
+        stateChanged: false,
+        preparedTargetToCleanup: activeAtClassification,
+      };
+    }
     if (!releaseSummariesMatch(fresh.state.activeRelease, activeAtClassification)) {
-      return 'state-changed';
+      return {
+        result: 'state-changed',
+        stateChanged: false,
+        preparedTargetToCleanup: activeAtClassification,
+      };
     }
     // No write: activeRelease and every other field are left completely
     // untouched. The page's own reload re-validates the now-prepared cache.
-    return 'success';
+    return { result: 'success', stateChanged: false };
   });
 }
 
@@ -285,48 +341,61 @@ async function runReprepareExactActive(
  * @param activeAtClassification - The exact active release {@link classifyKnownActive} matched against.
  * @param latest - The exact newer latest release.
  * @param descriptor - The validated latest descriptor, already proven to match `latest`.
- * @returns The classified result code.
+ * @returns The classified {@link RecoverInstallLatestOutcome}.
  */
 async function runStageNewerCandidate(
   dependencies: RecoveryOrchestrationDependencies,
   activeAtClassification: ReleaseSummary,
   latest: ReleaseSummary,
   descriptor: ReleaseDescriptor,
-): Promise<RecoverInstallLatestResultCode> {
+): Promise<RecoverInstallLatestOutcome> {
   const { channel, channelBasePath, enqueue, coordinator } = dependencies;
 
   try {
     await coordinator.prepare(channel, channelBasePath, latest, descriptor);
   } catch {
-    return 'release-preparation-failed';
+    return { result: 'release-preparation-failed', stateChanged: false };
   }
 
-  return enqueue(async () => {
+  return enqueue(async (): Promise<RecoverInstallLatestOutcome> => {
     const fresh = await readControllerState(channel);
-    if (fresh.status === 'storage-unavailable') return 'controller-storage-unavailable';
-    if (fresh.status !== 'valid') return 'state-changed';
+    if (fresh.status === 'storage-unavailable') {
+      // Fails closed: never claims the just-prepared latest is unowned when
+      // finalization itself cannot confirm anything.
+      return { result: 'controller-storage-unavailable', stateChanged: false };
+    }
+    if (fresh.status !== 'valid') {
+      return { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
+    }
     const state = fresh.state;
     if (!releaseSummariesMatch(state.activeRelease, activeAtClassification)) {
-      return 'state-changed';
+      return { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
     }
 
     const { candidate } = state;
     if (candidate?.phase === 'ready' || candidate?.phase === 'activating') {
       // Pinned: never superseded. An exact match is an idempotent success —
       // this recovery's own target is already exactly what is pinned.
-      return releaseSummariesMatch(candidate.release, latest) ? 'success' : 'state-changed';
+      return releaseSummariesMatch(candidate.release, latest)
+        ? { result: 'success', stateChanged: false }
+        : { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
     }
     // Any remaining candidate here is necessarily `available` or `failed`:
     // `ready`/`activating` already returned above.
     if (candidate) {
       if (candidate.release.releaseNumber === latest.releaseNumber) {
-        if (!releaseSummariesMatch(candidate.release, latest))
-          return 'conflicting-release-identity';
+        if (!releaseSummariesMatch(candidate.release, latest)) {
+          return {
+            result: 'conflicting-release-identity',
+            stateChanged: false,
+            preparedTargetToCleanup: latest,
+          };
+        }
         // Exact match: fall through to idempotently mark it ready.
       } else if (candidate.release.releaseNumber > latest.releaseNumber) {
         // An existing candidate already newer than B supersedes this
         // recovery's target; never replace it with something older.
-        return 'state-changed';
+        return { result: 'state-changed', stateChanged: false, preparedTargetToCleanup: latest };
       }
     }
 
@@ -337,9 +406,13 @@ async function runStageNewerCandidate(
     try {
       await writeControllerState(channel, next);
     } catch {
-      return 'controller-state-persistence-failed';
+      return {
+        result: 'controller-state-persistence-failed',
+        stateChanged: false,
+        preparedTargetToCleanup: latest,
+      };
     }
-    return 'success';
+    return { result: 'success', stateChanged: true };
   });
 }
 
@@ -359,15 +432,17 @@ async function runStageNewerCandidate(
  * read for its own classification. A storage read failure fails closed
  * immediately, before selecting any release.
  * @param dependencies - Worker-owned recovery dependencies.
- * @returns The classified {@link RecoverInstallLatestResultCode}.
+ * @returns The classified {@link RecoverInstallLatestOutcome}.
  */
 export async function runRecoverInstallLatest(
   dependencies: RecoveryOrchestrationDependencies,
-): Promise<RecoverInstallLatestResultCode> {
+): Promise<RecoverInstallLatestOutcome> {
   const { channel, enqueue } = dependencies;
 
   const initialRead = await enqueue(() => readControllerState(channel));
-  if (initialRead.status === 'storage-unavailable') return 'controller-storage-unavailable';
+  if (initialRead.status === 'storage-unavailable') {
+    return { result: 'controller-storage-unavailable', stateChanged: false };
+  }
 
   if (initialRead.status === 'valid') {
     return runKnownActiveRecovery(dependencies);

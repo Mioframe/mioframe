@@ -314,8 +314,10 @@ export function buildRecoveryPageHtml(diagnostics: RecoveryDiagnostics): string 
       document.body.appendChild(textarea);
       textarea.select();
       try {
-        document.execCommand("copy");
-        setStatus("Diagnostic details copied.");
+        var copied = document.execCommand("copy");
+        setStatus(
+          copied === true ? "Diagnostic details copied." : "Could not copy diagnostic details."
+        );
       } catch (error) {
         setStatus("Could not copy diagnostic details.");
       }
