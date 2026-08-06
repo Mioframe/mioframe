@@ -37,12 +37,55 @@ describe('parseControllerState', () => {
     const { parseControllerState } = await import('./controllerState');
     expect(parseControllerState({ ...validState, schemaVersion: 999 })).toEqual({
       status: 'invalid',
+      reason: 'UNSUPPORTED_SCHEMA_VERSION',
     });
   });
 
   it('fails closed for a structurally unrelated value', async () => {
     const { parseControllerState } = await import('./controllerState');
-    expect(parseControllerState('not-an-object')).toEqual({ status: 'invalid' });
+    expect(parseControllerState('not-an-object')).toEqual({
+      status: 'invalid',
+      reason: 'MALFORMED_RECORD',
+    });
+  });
+
+  it('classifies a missing schemaVersion as malformed, not an unsupported version', async () => {
+    const { parseControllerState } = await import('./controllerState');
+    const { schemaVersion: _schemaVersion, ...withoutSchemaVersion } = validState;
+    expect(parseControllerState(withoutSchemaVersion)).toEqual({
+      status: 'invalid',
+      reason: 'MALFORMED_RECORD',
+    });
+  });
+
+  it('classifies an unknown strict field as malformed', async () => {
+    const { parseControllerState } = await import('./controllerState');
+    expect(
+      parseControllerState({ ...validState, approvedRelease: validState.activeRelease }),
+    ).toEqual({
+      status: 'invalid',
+      reason: 'MALFORMED_RECORD',
+    });
+  });
+
+  it('classifies a structurally valid record that violates the candidate/active invariant', async () => {
+    const { parseControllerState } = await import('./controllerState');
+    const invariantViolating = {
+      ...validState,
+      candidate: { phase: 'available' as const, release: validState.activeRelease },
+    };
+    expect(parseControllerState(invariantViolating)).toEqual({
+      status: 'invalid',
+      reason: 'INVARIANT_VIOLATION',
+    });
+  });
+
+  it('gives UNSUPPORTED_SCHEMA_VERSION precedence even when the record is also otherwise malformed', async () => {
+    const { parseControllerState } = await import('./controllerState');
+    expect(parseControllerState({ schemaVersion: 2, mode: 'not-a-mode' })).toEqual({
+      status: 'invalid',
+      reason: 'UNSUPPORTED_SCHEMA_VERSION',
+    });
   });
 });
 
@@ -144,6 +187,24 @@ describe('readControllerState / writeControllerState', () => {
       'Refusing to persist an invalid controller state',
     );
     expect(setMock).not.toHaveBeenCalled();
+  });
+
+  it('classifies a thrown storage read failure as storage-unavailable with an allowlisted error name', async () => {
+    getMock.mockRejectedValue(Object.assign(new Error('boom'), { name: 'QuotaExceededError' }));
+    const { readControllerState } = await import('./controllerState');
+
+    const result = await readControllerState('stable');
+
+    expect(result).toEqual({ status: 'storage-unavailable', errorName: 'QuotaExceededError' });
+  });
+
+  it('omits errorName for a storage read failure outside the allowlist, and never leaks the raw message', async () => {
+    getMock.mockRejectedValue(new Error('some internal path or token leaked in this message'));
+    const { readControllerState } = await import('./controllerState');
+
+    const result = await readControllerState('stable');
+
+    expect(result).toEqual({ status: 'storage-unavailable', errorName: undefined });
   });
 
   it('refuses to persist a state with an unknown root field, and never calls idb-keyval set', async () => {

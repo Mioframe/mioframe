@@ -66,7 +66,7 @@ export async function runInstall(
   coordinator: PreparationCoordinator,
 ): Promise<void> {
   const read = await readControllerState(channel);
-  if (read.status === 'invalid') {
+  if (read.status === 'invalid' || read.status === 'storage-unavailable') {
     throw new Error('Persisted controller state is invalid; refusing to install a new controller');
   }
   if (read.status === 'valid') return;

@@ -5,14 +5,16 @@ import { runLocalCommand } from '../lib/runLocalCommand.mjs';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 
-// Group 1: lifecycle, Automatic check, uncontrolled-window, and the Stage 7
-// activation-UI specs. Runs in its own fresh Playwright container.
+// Group 1: lifecycle, Automatic check, uncontrolled-window, the Stage 7
+// activation-UI specs, and worker-owned recovery. Runs in its own fresh
+// Playwright container.
 export const MANAGED_UPDATES_LIFECYCLE_LABEL = 'managed-updates-lifecycle';
 export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
   'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
   'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
   'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
   'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
+  'tests/e2e/release/managedUpdatesRecovery.spec.ts',
 ];
 
 // Group 2: controller-upgrade, develop, and migration specs (Chromium).

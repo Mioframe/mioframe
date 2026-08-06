@@ -257,3 +257,113 @@ describe('prepareRelease', () => {
     expect(committedMarker).toEqual(descriptor);
   });
 });
+
+describe('ReleasePreparationError classification', () => {
+  beforeEach(() => {
+    cachesByName.clear();
+    fetchMock.mockReset();
+    digestMock.mockReset();
+    mockDigestMatchesFileHash();
+  });
+
+  it('classifies latest.json fetch failure as ARCHIVE_UNAVAILABLE', async () => {
+    fetchMock.mockResolvedValue(new Response('nope', { status: 500 }));
+    const { fetchLatestReleasePointer, ReleasePreparationError } =
+      await import('./releasePreparation');
+
+    await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
+      reason: 'ARCHIVE_UNAVAILABLE',
+    });
+    await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toBeInstanceOf(
+      ReleasePreparationError,
+    );
+  });
+
+  it('classifies a structurally invalid latest.json as INVALID_ARCHIVE_METADATA', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ releaseNumber: 0 })));
+    const { fetchLatestReleasePointer } = await import('./releasePreparation');
+
+    await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
+      reason: 'INVALID_ARCHIVE_METADATA',
+    });
+  });
+
+  it('classifies a descriptor identity mismatch as INVALID_ARCHIVE_METADATA', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ...descriptor, releaseNumber: 2 })));
+    const { fetchReleaseDescriptor } = await import('./releasePreparation');
+
+    await expect(
+      fetchReleaseDescriptor(BASE_PATH, { releaseNumber: RELEASE_NUMBER }),
+    ).rejects.toMatchObject({ reason: 'INVALID_ARCHIVE_METADATA' });
+  });
+
+  it('classifies a network-level throw during file download as ARCHIVE_UNAVAILABLE', async () => {
+    fetchMock.mockRejectedValue(new Error('network down'));
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
+      reason: 'ARCHIVE_UNAVAILABLE',
+    });
+  });
+
+  it('classifies a byte-size mismatch as INTEGRITY_FAILURE', async () => {
+    fetchMock.mockResolvedValue(new Response('too-long-a-body'));
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
+      reason: 'INTEGRITY_FAILURE',
+    });
+  });
+
+  it('classifies a SHA-256 mismatch as INTEGRITY_FAILURE', async () => {
+    fetchMock.mockResolvedValue(new Response('AAA'));
+    digestMock.mockResolvedValue(new Uint8Array(32).fill(1).buffer);
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
+      reason: 'INTEGRITY_FAILURE',
+    });
+  });
+
+  it('classifies a Cache Storage open failure as CACHE_STORAGE_UNAVAILABLE', async () => {
+    mockSuccessfulDownloads();
+    vi.stubGlobal('caches', {
+      open: vi.fn().mockRejectedValue(new Error('storage disabled')),
+      delete: vi.fn().mockResolvedValue(true),
+    });
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
+      reason: 'CACHE_STORAGE_UNAVAILABLE',
+    });
+
+    vi.stubGlobal('caches', fakeCaches);
+  });
+
+  it('classifies a Cache Storage write failure as CACHE_STORAGE_UNAVAILABLE', async () => {
+    mockSuccessfulDownloads();
+    const openMock = vi.fn().mockResolvedValue({
+      match: vi.fn().mockResolvedValue(undefined),
+      keys: vi.fn().mockResolvedValue([]),
+      put: vi.fn().mockRejectedValue(new Error('write failed')),
+    });
+    vi.stubGlobal('caches', { open: openMock, delete: vi.fn().mockResolvedValue(true) });
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
+      reason: 'CACHE_STORAGE_UNAVAILABLE',
+    });
+
+    vi.stubGlobal('caches', fakeCaches);
+  });
+
+  it('falls back to RESTORATION_FAILED for an otherwise unclassified failure', async () => {
+    mockSuccessfulDownloads();
+    digestMock.mockRejectedValue(new Error('digest broke'));
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
+      reason: 'RESTORATION_FAILED',
+    });
+  });
+});

@@ -13,10 +13,14 @@ import {
 const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
 
-vi.mock('./controllerState', () => ({
-  readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
-  writeControllerState: (...args: unknown[]) => writeControllerStateMock(...args),
-}));
+vi.mock('./controllerState', async () => {
+  const actual = await vi.importActual<typeof import('./controllerState')>('./controllerState');
+  return {
+    ...actual,
+    readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
+    writeControllerState: (...args: unknown[]) => writeControllerStateMock(...args),
+  };
+});
 
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
 const fetchMock = vi.fn();
@@ -80,6 +84,36 @@ async function expectUnavailableNavigation(
   resultPromise: Promise<NavigationFetchResult>,
 ): Promise<void> {
   await expectUnavailable(resultPromise.then((result) => result.response));
+}
+
+/**
+ * Asserts a `503` known-active recovery page — required for every navigation
+ * failure to serve the current `activeRelease`, in place of the old generic
+ * `503` text (see `resolveActiveReleaseNavigationResponse` in `workerFetch.ts`).
+ */
+async function expectActiveReleaseRecoveryResponse(
+  responsePromise: Promise<Response>,
+  problemDetail: string,
+): Promise<void> {
+  const response = await responsePromise;
+  expect(response.status).toBe(503);
+  expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+  expect(response.headers.get('Cache-Control')).toBe('no-store');
+  const text = await response.text();
+  expect(text).toContain('<h1 id="recovery-heading">');
+  expect(text).toContain('ACTIVE_RELEASE_UNAVAILABLE');
+  expect(text).toContain(`id="diagnostic-detail">${problemDetail}<`);
+  expect(fetchMock).not.toHaveBeenCalled();
+}
+
+async function expectActiveReleaseRecoveryNavigation(
+  resultPromise: Promise<NavigationFetchResult>,
+  problemDetail: string,
+): Promise<void> {
+  await expectActiveReleaseRecoveryResponse(
+    resultPromise.then((result) => result.response),
+    problemDetail,
+  );
 }
 
 async function invokeNavigationFetch(
@@ -158,7 +192,7 @@ describe('workerFetch', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('returns the controlled unavailable response when there is no managed state yet (absent), never falling through to the live deployment', async () => {
+    it('shows the state-loss recovery page (UPDATE_STATE_ABSENT) when there is no managed state yet, never falling through to the live deployment', async () => {
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
 
       const { response } = await invokeNavigationFetch(
@@ -169,11 +203,16 @@ describe('workerFetch', () => {
       );
 
       expect(response.status).toBe(503);
+      expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      const text = await response.text();
+      expect(text).toContain('<h1 id="recovery-heading">');
+      expect(text).toContain('UPDATE_STATE_ABSENT');
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('returns the controlled unavailable response for invalid controller state, without ever calling network fetch', async () => {
-      readControllerStateMock.mockResolvedValue({ status: 'invalid' });
+    it('shows the state-loss recovery page (UPDATE_STATE_INVALID) with its stable reason, without ever calling network fetch', async () => {
+      readControllerStateMock.mockResolvedValue({ status: 'invalid', reason: 'MALFORMED_RECORD' });
 
       const { response } = await invokeNavigationFetch(
         CHANNEL,
@@ -183,6 +222,29 @@ describe('workerFetch', () => {
       );
 
       expect(response.status).toBe(503);
+      const text = await response.text();
+      expect(text).toContain('UPDATE_STATE_INVALID');
+      expect(text).toContain('id="diagnostic-detail">MALFORMED_RECORD<');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('shows the storage-unavailable recovery page with its allowlisted error name, without ever calling network fetch', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'storage-unavailable',
+        errorName: 'QuotaExceededError',
+      });
+
+      const { response } = await invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+      );
+
+      expect(response.status).toBe(503);
+      const text = await response.text();
+      expect(text).toContain('UPDATE_STORAGE_UNAVAILABLE');
+      expect(text).toContain('<dd>QuotaExceededError</dd>');
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -682,31 +744,33 @@ describe('workerFetch', () => {
         return activeDescriptor;
       });
 
-      await expectUnavailableNavigation(
+      await expectActiveReleaseRecoveryNavigation(
         invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator({ prepare }),
         ),
+        'RESTORATION_FAILED',
       );
       expect(prepare).toHaveBeenCalledTimes(1);
     });
 
-    it('resolves a controlled unavailable response when restoration rejects', async () => {
+    it('resolves a known-active recovery page when restoration rejects', async () => {
       const prepare = vi.fn().mockRejectedValue(new Error('restoration failed'));
 
-      await expectUnavailableNavigation(
+      await expectActiveReleaseRecoveryNavigation(
         invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator({ prepare }),
         ),
+        'RESTORATION_FAILED',
       );
     });
 
-    it('resolves a controlled unavailable response when cache reopening after restoration rejects', async () => {
+    it('resolves a known-active recovery page (Cache Storage unavailable) when cache reopening after restoration rejects', async () => {
       const originalOpen = fakeCaches.open;
       let openCount = 0;
       const open = vi.spyOn(fakeCaches, 'open').mockImplementation(async (name) => {
@@ -716,13 +780,14 @@ describe('workerFetch', () => {
       });
       const prepare = vi.fn().mockResolvedValue(activeDescriptor);
 
-      await expectUnavailableNavigation(
+      await expectActiveReleaseRecoveryNavigation(
         invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator({ prepare }),
         ),
+        'CACHE_STORAGE_UNAVAILABLE',
       );
       open.mockRestore();
     });
@@ -744,7 +809,7 @@ describe('workerFetch', () => {
       open.mockRestore();
     });
 
-    it('resolves a controlled unavailable response when the archived index reading rejects', async () => {
+    it('resolves a known-active recovery page (Cache Storage unavailable) when the archived index reading rejects', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
@@ -757,26 +822,28 @@ describe('workerFetch', () => {
         return originalMatch(request);
       });
 
-      await expectUnavailableNavigation(
+      await expectActiveReleaseRecoveryNavigation(
         invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator(),
         ),
+        'CACHE_STORAGE_UNAVAILABLE',
       );
     });
 
-    it('revalidates after a successful restoration and returns unavailable if the release is still not available', async () => {
+    it('revalidates after a successful restoration and shows the known-active recovery page if the release is still not available', async () => {
       const prepare = vi.fn().mockResolvedValue(activeDescriptor);
 
-      await expectUnavailableNavigation(
+      await expectActiveReleaseRecoveryNavigation(
         invokeNavigationFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/'),
           createFakeCoordinator({ prepare }),
         ),
+        'RESTORATION_FAILED',
       );
       expect(prepare).toHaveBeenCalledTimes(1);
     });
@@ -1126,7 +1193,7 @@ describe('workerFetch', () => {
         expect(fetchMock).not.toHaveBeenCalled();
       });
 
-      it('still returns controlled unavailable with rollback lifetime work when this navigation started activation and serving the previous active release throws from a Cache Storage boundary', async () => {
+      it('shows the known-active recovery page with rollback lifetime work when this navigation started activation and serving the previous active release throws from a Cache Storage boundary', async () => {
         await seedAvailableRelease();
         let persistedState: UpdateControllerState = {
           schemaVersion: 1,
@@ -1163,7 +1230,9 @@ describe('workerFetch', () => {
         );
 
         expect(result.response.status).toBe(503);
-        expect(await result.response.text()).toBe('Release unavailable');
+        const bodyText = await result.response.text();
+        expect(bodyText).toContain('ACTIVE_RELEASE_UNAVAILABLE');
+        expect(bodyText).toContain('id="diagnostic-detail">CACHE_STORAGE_UNAVAILABLE<');
         expect(persistedState.activeRelease).toEqual(activeRelease);
         expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
         expect(result.runLifetimeWork).toBeTypeOf('function');

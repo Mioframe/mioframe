@@ -8,11 +8,22 @@ const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
 type MockWindowClient = { type: 'window'; url: string; postMessage: (message: unknown) => void };
 const matchAllMock = vi.fn((): Promise<MockWindowClient[]> => Promise.resolve([]));
+const fetchLatestReleasePointerMock = vi.fn();
+const fetchReleaseDescriptorMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
   writeControllerState: (...args: unknown[]) => writeControllerStateMock(...args),
 }));
+vi.mock('./releasePreparation', async () => {
+  const actual =
+    await vi.importActual<typeof import('./releasePreparation')>('./releasePreparation');
+  return {
+    ...actual,
+    fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
+    fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
+  };
+});
 vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
 vi.stubGlobal('caches', { keys: vi.fn().mockResolvedValue([]), delete: vi.fn() });
 
@@ -73,6 +84,8 @@ beforeEach(() => {
   matchAllMock.mockClear();
   matchAllMock.mockResolvedValue([]);
   readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+  fetchLatestReleasePointerMock.mockReset();
+  fetchReleaseDescriptorMock.mockReset();
 });
 
 afterEach(() => {
@@ -1290,6 +1303,100 @@ describe('handleWorkerMessage', () => {
         protocolVersion: PROTOCOL_VERSION,
         isActivationTarget: false,
       });
+    });
+  });
+
+  describe('RECOVER_INSTALL_LATEST', () => {
+    const descriptorFor = (summary: ReleaseSummary) => ({
+      schemaVersion: 1 as const,
+      ...summary,
+      indexSha256: '0'.repeat(64),
+      indexByteSize: 100,
+      files: [{ path: 'assets/app.js', sha256: '0'.repeat(64), byteSize: 3 }],
+    });
+
+    it.each(['absent', 'invalid'] as const)(
+      'never throws for %s persisted state, unlike every withState()-routed command',
+      async (status) => {
+        readControllerStateMock.mockResolvedValue(
+          status === 'invalid'
+            ? { status: 'invalid', reason: 'MALFORMED_RECORD' }
+            : { status: 'absent' },
+        );
+        fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
+        fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseA));
+        const { handleWorkerMessage } = await import('./workerMessages');
+
+        const result = await handleWorkerMessage(
+          'stable',
+          '/',
+          CHANNEL_ORIGIN,
+          { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+          enqueue,
+          createFakeCoordinator(),
+          createFakeReconciler(),
+        );
+
+        expect(result.response).toEqual({ protocolVersion: PROTOCOL_VERSION, result: 'success' });
+      },
+    );
+
+    it('responds with the stable result code, never a snapshot, and schedules cleanup plus a state-changed broadcast only on success', async () => {
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseA));
+      const coordinator = createFakeCoordinator();
+      const runCleanup = vi.spyOn(coordinator, 'runCleanup');
+      const postMessage = vi.fn();
+      matchAllMock.mockResolvedValue([
+        { type: 'window', url: `${CHANNEL_ORIGIN}/settings`, postMessage },
+      ]);
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        coordinator,
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({ protocolVersion: PROTOCOL_VERSION, result: 'success' });
+      expect(result.runLifetimeWork).toBeTypeOf('function');
+
+      await result.runLifetimeWork?.();
+      expect(runCleanup).toHaveBeenCalledTimes(1);
+      expect(postMessage).toHaveBeenCalledWith({
+        protocolVersion: PROTOCOL_VERSION,
+        type: 'APP_UPDATE_STATE_CHANGED',
+      });
+    });
+
+    it('carries no follow-up work for a non-success result', async () => {
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: { ...baseState, activeRelease: releaseB },
+      });
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: releaseA.releaseNumber });
+      fetchReleaseDescriptorMock.mockResolvedValue(descriptorFor(releaseA));
+      const { handleWorkerMessage } = await import('./workerMessages');
+
+      const result = await handleWorkerMessage(
+        'stable',
+        '/',
+        CHANNEL_ORIGIN,
+        { protocolVersion: PROTOCOL_VERSION, type: 'RECOVER_INSTALL_LATEST' },
+        enqueue,
+        createFakeCoordinator(),
+        createFakeReconciler(),
+      );
+
+      expect(result.response).toEqual({
+        protocolVersion: PROTOCOL_VERSION,
+        result: 'latest-older-than-active',
+      });
+      expect(result.runLifetimeWork).toBeUndefined();
     });
   });
 });

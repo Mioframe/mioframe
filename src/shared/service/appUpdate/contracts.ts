@@ -301,21 +301,28 @@ const zodPersistedUpdateCandidate = z.discriminatedUnion('phase', [
  * {@link zodUpdateCandidate}), which must stay able to gain optional fields
  * for a pinned v1 consumer.
  */
-export const zodUpdateControllerState = z
-  .strictObject({
-    schemaVersion: z.literal(CONTROLLER_STATE_SCHEMA_VERSION),
-    mode: zodUpdateMode,
-    activeRelease: zodPersistedReleaseSummary,
-    candidate: z.optional(zodPersistedUpdateCandidate),
-    lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
-  })
-  .check(
-    z.refine(
-      (state) =>
-        !state.candidate ||
-        state.candidate.release.releaseNumber > state.activeRelease.releaseNumber,
-      'candidate.release must be strictly newer than activeRelease',
-    ),
-  );
+/**
+ * The complete persisted controller-state structural shape, without the
+ * cross-field invariant check (see {@link zodUpdateControllerState}). Exists
+ * so `controllerState.ts`'s two-phase classification (unsupported schema
+ * version → structurally malformed → invariant violation → valid) can
+ * validate structure and invariants as two distinct phases without
+ * duplicating this shape between the two schemas.
+ */
+export const zodUpdateControllerStateShape = z.strictObject({
+  schemaVersion: z.literal(CONTROLLER_STATE_SCHEMA_VERSION),
+  mode: zodUpdateMode,
+  activeRelease: zodPersistedReleaseSummary,
+  candidate: z.optional(zodPersistedUpdateCandidate),
+  lastSuccessfulCheckAt: z.optional(z.iso.datetime()),
+});
+
+export const zodUpdateControllerState = zodUpdateControllerStateShape.check(
+  z.refine(
+    (state) =>
+      !state.candidate || state.candidate.release.releaseNumber > state.activeRelease.releaseNumber,
+    'candidate.release must be strictly newer than activeRelease',
+  ),
+);
 /** A {@link zodUpdateControllerState}-validated persisted controller state. */
 export type UpdateControllerState = z.infer<typeof zodUpdateControllerState>;

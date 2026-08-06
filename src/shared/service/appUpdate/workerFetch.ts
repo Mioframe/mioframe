@@ -1,9 +1,15 @@
 import { releaseSummariesMatch, type ManagedChannel, type ReleaseSummary } from './contracts';
-import { readControllerState, writeControllerState } from './controllerState';
+import {
+  readControllerState,
+  writeControllerState,
+  type ControllerStateReadResult,
+} from './controllerState';
 import { BOOT_CONFIRMATION_TIMEOUT_MS } from './bootConfirmation';
 import { countSameChannelWindowClients, type WindowClientIdentity } from './cleanLaunch';
 import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
+import { buildRecoveryDiagnostics } from './recoveryDiagnostics';
+import { buildRecoveryPageResponse } from './recoveryPage';
 import {
   buildReleaseCacheName,
   checkReleaseAvailability,
@@ -11,6 +17,7 @@ import {
   readMatchingDescriptorMarker,
   readReleaseIndexMarker,
 } from './releaseCache';
+import { ReleasePreparationError } from './releasePreparation';
 import { withState } from './stateLock';
 import {
   isActivationExpired,
@@ -22,6 +29,100 @@ import { broadcastRollback, broadcastStateChanged } from './workerBroadcast';
 
 const UNAVAILABLE_RESPONSE = () => new Response('Release unavailable', { status: 503 });
 const NOT_FOUND_RESPONSE = () => new Response('Not found', { status: 404 });
+
+/**
+ * Builds the top-level recovery page response for a non-`'valid'` controller
+ * state classification (see the managed pinned application updates
+ * architecture, "Recovery classifications"). Only reached for a top-level
+ * navigation — asset requests never show recovery HTML (see
+ * {@link handleAssetFetch}).
+ * @param channel - Managed channel.
+ * @param read - The non-`'valid'` controller-state read result.
+ * @returns The recovery page response.
+ */
+function buildStateRecoveryResponse(
+  channel: ManagedChannel,
+  read: Exclude<ControllerStateReadResult, { status: 'valid' }>,
+): Response {
+  if (read.status === 'absent') {
+    return buildRecoveryPageResponse(
+      buildRecoveryDiagnostics({ channel, problemCode: 'UPDATE_STATE_ABSENT' }),
+    );
+  }
+  if (read.status === 'invalid') {
+    return buildRecoveryPageResponse(
+      buildRecoveryDiagnostics({
+        channel,
+        problemCode: 'UPDATE_STATE_INVALID',
+        problemDetail: read.reason,
+      }),
+    );
+  }
+  return buildRecoveryPageResponse(
+    buildRecoveryDiagnostics({
+      channel,
+      problemCode: 'UPDATE_STORAGE_UNAVAILABLE',
+      ...(read.errorName ? { errorName: read.errorName } : {}),
+    }),
+  );
+}
+
+/**
+ * Resolves a top-level navigation's response for `release` — always the
+ * current `activeRelease` (never an `activating` candidate target, which
+ * keeps using {@link serveRelease} and the existing rollback path below).
+ * Requires the same exhaustive {@link tryServeNavigation} check before and
+ * after restoration as {@link serveRelease}, but never collapses an
+ * unavailable outcome into a generic `503`: every failure — the initial
+ * check, restoration itself, a still-incomplete release after otherwise
+ * successful restoration, or any Cache Storage exception along the way —
+ * resolves to the `ACTIVE_RELEASE_UNAVAILABLE` recovery page with a safe
+ * classified `problemDetail`, never a raw exception. Never throws.
+ * @param channel - Managed channel.
+ * @param channelBasePath - This worker's channel base path.
+ * @param release - The exact active release to serve.
+ * @param coordinator - The channel's preparation coordinator.
+ * @returns The response to serve: the archived index, or the known-active recovery page.
+ */
+async function resolveActiveReleaseNavigationResponse(
+  channel: ManagedChannel,
+  channelBasePath: string,
+  release: ReleaseSummary,
+  coordinator: PreparationCoordinator,
+): Promise<Response> {
+  const unavailable = (detail: string) =>
+    buildRecoveryPageResponse(
+      buildRecoveryDiagnostics({
+        channel,
+        problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
+        problemDetail: detail,
+        selectedReleaseNumber: release.releaseNumber,
+      }),
+    );
+
+  try {
+    const cacheName = buildReleaseCacheName(channel, release.releaseNumber);
+    let cache = await caches.open(cacheName);
+    const initial = await tryServeNavigation(cache, release, channelBasePath);
+    if (initial) return initial;
+
+    try {
+      await coordinator.prepare(channel, channelBasePath, release);
+    } catch (error) {
+      return unavailable(
+        error instanceof ReleasePreparationError ? error.reason : 'RESTORATION_FAILED',
+      );
+    }
+
+    cache = await caches.open(cacheName);
+    const revalidated = await tryServeNavigation(cache, release, channelBasePath);
+    return revalidated ?? unavailable('RESTORATION_FAILED');
+  } catch (error) {
+    return unavailable(
+      error instanceof ReleasePreparationError ? error.reason : 'CACHE_STORAGE_UNAVAILABLE',
+    );
+  }
+}
 
 /** Standard client identities belonging to the navigation being evaluated. */
 export type NavigationFetchContext = {
@@ -275,7 +376,6 @@ type NavigationSelection =
  * original controlled `503` untouched.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
- * @param request - The incoming navigation request.
  * @param failedRelease - The exact activating-candidate release that could not be served.
  * @param coordinator - The channel's preparation coordinator.
  * @param context - Standard client identities for the current navigation.
@@ -285,7 +385,6 @@ type NavigationSelection =
 async function tryRollbackActivatingFailure(
   channel: ManagedChannel,
   channelBasePath: string,
-  request: Request,
   failedRelease: ReleaseSummary,
   coordinator: PreparationCoordinator,
   context: NavigationFetchContext,
@@ -316,14 +415,15 @@ async function tryRollbackActivatingFailure(
       excludedClientIds,
     ).catch(() => {});
 
-  const response = await serveRelease(
+  // Never a generic 503: an unavailable previous active release after a
+  // durable rollback is exactly the known-active recovery scenario (see
+  // resolveActiveReleaseNavigationResponse), never a raw exception.
+  const response = await resolveActiveReleaseNavigationResponse(
     channel,
     channelBasePath,
     previousActiveRelease,
-    request,
-    true,
     coordinator,
-  ).catch(() => UNAVAILABLE_RESPONSE());
+  );
 
   return { response, runLifetimeWork };
 }
@@ -368,7 +468,9 @@ export async function handleNavigationFetch(
 ): Promise<NavigationFetchResult> {
   try {
     const initial = await readControllerState(channel);
-    if (initial.status !== 'valid') return { response: UNAVAILABLE_RESPONSE() };
+    if (initial.status !== 'valid') {
+      return { response: buildStateRecoveryResponse(channel, initial) };
+    }
 
     let otherLiveClientCount: number | undefined;
     if (initial.state.candidate?.phase === 'ready') {
@@ -440,41 +542,53 @@ export async function handleNavigationFetch(
 
     if (selection.kind === 'blocked') return { response: UNAVAILABLE_RESPONSE() };
 
-    // A thrown Cache Storage error while serving the activating candidate's
-    // own target must enter the same durable rollback path as a controlled
-    // 503: `response` stays undefined for that case rather than letting the
-    // throw escape to this function's own outer catch, which would silently
-    // skip rollback and return an uncorrelated unavailable response instead.
-    let response: Response | undefined;
-    try {
-      response = await serveRelease(
-        channel,
-        channelBasePath,
-        selection.release,
-        request,
-        true,
-        coordinator,
-      );
-    } catch {
-      // Swallowed here; handled uniformly below via `response === undefined`.
+    if (selection.isActivatingTarget) {
+      // A thrown Cache Storage error while serving the activating
+      // candidate's own target must enter the same durable rollback path as
+      // a controlled 503: `response` stays undefined for that case rather
+      // than letting the throw escape to this function's own outer catch,
+      // which would silently skip rollback and return an uncorrelated
+      // unavailable response instead.
+      let response: Response | undefined;
+      try {
+        response = await serveRelease(
+          channel,
+          channelBasePath,
+          selection.release,
+          request,
+          true,
+          coordinator,
+        );
+      } catch {
+        // Swallowed here; handled uniformly below via `response === undefined`.
+      }
+
+      if (response === undefined || response.status === 503) {
+        const fallback = await tryRollbackActivatingFailure(
+          channel,
+          channelBasePath,
+          selection.release,
+          coordinator,
+          context,
+          dependencies,
+        );
+        if (fallback) return fallback;
+        return { response: response ?? UNAVAILABLE_RESPONSE() };
+      }
+
+      return { response, runLifetimeWork: selection.runLifetimeWork };
     }
 
-    if (selection.isActivatingTarget && (response === undefined || response.status === 503)) {
-      const fallback = await tryRollbackActivatingFailure(
-        channel,
-        channelBasePath,
-        request,
-        selection.release,
-        coordinator,
-        context,
-        dependencies,
-      );
-      if (fallback) return fallback;
-      return { response: response ?? UNAVAILABLE_RESPONSE() };
-    }
-
-    if (response === undefined) return { response: UNAVAILABLE_RESPONSE() };
-
+    // Every non-activating-target 'serve' selection always targets the
+    // current activeRelease (see NavigationSelection): never collapsed to a
+    // raw 503 on failure, only the classified ACTIVE_RELEASE_UNAVAILABLE
+    // recovery page.
+    const response = await resolveActiveReleaseNavigationResponse(
+      channel,
+      channelBasePath,
+      selection.release,
+      coordinator,
+    );
     return { response, runLifetimeWork: selection.runLifetimeWork };
   } catch {
     return { response: UNAVAILABLE_RESPONSE() };

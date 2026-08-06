@@ -9,8 +9,10 @@ import {
   type AppUpdateErrorCode,
   type AppUpdateWorkerRequest,
   type AppUpdateWorkerResponse,
+  type RecoverInstallLatestResponse,
   type WorkerMessageResult,
 } from './protocol';
+import { runRecoverInstallLatest } from './recoveryOrchestration';
 import { buildAppUpdateSnapshot } from './snapshot';
 import { withState } from './stateLock';
 import {
@@ -146,7 +148,12 @@ export async function handleWorkerMessage(
   coordinator: PreparationCoordinator,
   reconciler: UpdateReconciler,
 ): Promise<
-  WorkerMessageResult<AppUpdateWorkerResponse | AppUpdateBootAckResponse | ActivationStatusResponse>
+  WorkerMessageResult<
+    | AppUpdateWorkerResponse
+    | AppUpdateBootAckResponse
+    | ActivationStatusResponse
+    | RecoverInstallLatestResponse
+  >
 > {
   switch (request.type) {
     case 'GET_SNAPSHOT': {
@@ -328,5 +335,28 @@ export async function handleWorkerMessage(
         }
         return { response: withProtocolVersion({ isActivationTarget: false as const }) };
       });
+
+    case 'RECOVER_INSTALL_LATEST': {
+      // Deliberately never routed through `withState()`: this command must
+      // remain handleable when persisted state is absent or invalid, exactly
+      // the cases `withState()` intentionally rejects. `runRecoverInstallLatest`
+      // owns its own fresh reads/writes, each under the short queue.
+      const result = await runRecoverInstallLatest({
+        channel,
+        channelBasePath,
+        enqueue,
+        coordinator,
+      });
+      return {
+        response: withProtocolVersion({ result }),
+        runLifetimeWork:
+          result === 'success'
+            ? combineLifetimeWork(
+                () => cleanupReleaseCache(channel, coordinator),
+                () => broadcastStateChanged(channelBasePath, channelOrigin).catch(() => {}),
+              )
+            : undefined,
+      };
+    }
   }
 }

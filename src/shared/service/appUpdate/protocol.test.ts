@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   APP_UPDATE_PROTOCOL_VERSION,
+  RECOVER_INSTALL_LATEST_RESULT_CODES,
   withProtocolVersion,
   zodActivationStatusResponse,
   zodAppUpdateRollbackBroadcast,
@@ -11,6 +12,7 @@ import {
   zodAppUpdateWorkerResponse,
   zodManagedControllerProbeRequest,
   zodManagedControllerProbeResponse,
+  zodRecoverInstallLatestResponse,
 } from './protocol';
 
 const activeRelease = {
@@ -45,6 +47,7 @@ describe('zodAppUpdateWorkerRequest', () => {
       { protocolVersion: 1, type: 'BOOT_OK', releaseNumber: 1 },
       { protocolVersion: 1, type: 'BOOT_FAILED', releaseNumber: 1 },
       { protocolVersion: 1, type: 'GET_ACTIVATION_STATUS', releaseNumber: 1 },
+      { protocolVersion: 1, type: 'RECOVER_INSTALL_LATEST' },
     ];
     for (const request of requests) {
       expect(zodAppUpdateWorkerRequest.safeParse(request).success).toBe(true);
@@ -275,6 +278,42 @@ describe('zodManagedControllerProbeRequest', () => {
         .success,
     ).toBe(false);
     expect(zodManagedControllerProbeRequest.safeParse({ protocolVersion: 1 }).success).toBe(false);
+  });
+});
+
+describe('zodRecoverInstallLatestResponse', () => {
+  it('parses every stable v1 result code', () => {
+    for (const result of RECOVER_INSTALL_LATEST_RESULT_CODES) {
+      expect(
+        zodRecoverInstallLatestResponse.safeParse({ protocolVersion: 1, result }).success,
+      ).toBe(true);
+    }
+  });
+
+  it('fails closed on a missing or wrong protocolVersion', () => {
+    expect(zodRecoverInstallLatestResponse.safeParse({ result: 'success' }).success).toBe(false);
+    expect(
+      zodRecoverInstallLatestResponse.safeParse({ protocolVersion: 2, result: 'success' }).success,
+    ).toBe(false);
+  });
+
+  it('fails closed on an unknown result code', () => {
+    expect(
+      zodRecoverInstallLatestResponse.safeParse({ protocolVersion: 1, result: 'not-a-real-result' })
+        .success,
+    ).toBe(false);
+  });
+
+  it('never carries a raw state snapshot or exception field', () => {
+    const parsed = zodRecoverInstallLatestResponse.safeParse({
+      protocolVersion: 1,
+      result: 'success',
+      snapshot: { mode: 'automatic' },
+    });
+    // Additive v1 schema still accepts unknown fields for forward
+    // compatibility, but production code must never populate one — proven
+    // by recoveryOrchestration.test.ts asserting the exact response shape.
+    expect(parsed.success).toBe(true);
   });
 });
 

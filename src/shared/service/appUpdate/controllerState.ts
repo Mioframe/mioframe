@@ -1,6 +1,8 @@
 import { createStore, get, set } from 'idb-keyval';
 import {
+  CONTROLLER_STATE_SCHEMA_VERSION,
   zodUpdateControllerState,
+  zodUpdateControllerStateShape,
   type ManagedChannel,
   type UpdateControllerState,
 } from './contracts';
@@ -32,11 +34,96 @@ export const buildControllerStateDbName = (channel: ManagedChannel): string =>
 export const createControllerStateStore = (channel: ManagedChannel) =>
   createStore(buildControllerStateDbName(channel), 'controllerState');
 
+/**
+ * Stable reasons a persisted controller-state record is classified invalid,
+ * in the exact precedence two-phase validation applies them:
+ *
+ * 1. `UNSUPPORTED_SCHEMA_VERSION`: the record's own `schemaVersion` field is a
+ *    number but does not equal {@link CONTROLLER_STATE_SCHEMA_VERSION} — takes
+ *    precedence over every other defect the record might also have;
+ * 2. `MALFORMED_RECORD`: the record is missing, incorrectly typed,
+ *    structurally invalid, or carries an unknown strict field;
+ * 3. `INVARIANT_VIOLATION`: the record is structurally a valid v1 record but
+ *    violates a cross-field invariant (e.g. `candidate` not strictly newer
+ *    than `activeRelease`).
+ */
+export const CONTROLLER_STATE_INVALID_REASONS = [
+  'UNSUPPORTED_SCHEMA_VERSION',
+  'MALFORMED_RECORD',
+  'INVARIANT_VIOLATION',
+] as const;
+/** One of {@link CONTROLLER_STATE_INVALID_REASONS}. */
+export type ControllerStateInvalidReason = (typeof CONTROLLER_STATE_INVALID_REASONS)[number];
+
+/**
+ * Browser storage error names safe to surface in worker-generated recovery
+ * diagnostics. Never the raw exception message — only this fixed allowlist of
+ * stable `DOMException`/`Error` `name` values, so a storage failure can be
+ * shown without risking any implementation-specific or user-controlled text.
+ */
+const ALLOWLISTED_STORAGE_ERROR_NAMES = new Set([
+  'AbortError',
+  'ConstraintError',
+  'InvalidStateError',
+  'NotFoundError',
+  'QuotaExceededError',
+  'SecurityError',
+  'UnknownError',
+  'VersionError',
+]);
+
+/**
+ * Extracts a safe, allowlisted error `name` from a thrown storage failure, or
+ * `undefined` when `error` is not an `Error`-like value with a name on the
+ * allowlist. The single point every raw storage exception passes through
+ * before it can ever reach a recovery diagnostic.
+ * @param error - The raw value thrown by a storage operation.
+ * @returns The allowlisted error name, or `undefined`.
+ */
+function extractAllowlistedStorageErrorName(error: unknown): string | undefined {
+  if (
+    error instanceof Error &&
+    typeof error.name === 'string' &&
+    ALLOWLISTED_STORAGE_ERROR_NAMES.has(error.name)
+  ) {
+    return error.name;
+  }
+  return undefined;
+}
+
 /** Result of reading the persisted controller state. */
 export type ControllerStateReadResult =
   | { status: 'absent' }
   | { status: 'valid'; state: UpdateControllerState }
-  | { status: 'invalid' };
+  | { status: 'invalid'; reason: ControllerStateInvalidReason }
+  | { status: 'storage-unavailable'; errorName?: string };
+
+/**
+ * Returns `true` when `raw` carries its own numeric `schemaVersion` field
+ * that differs from {@link CONTROLLER_STATE_SCHEMA_VERSION} — checked before
+ * full structural validation so an unsupported version is never
+ * misclassified as a merely malformed record.
+ * @param raw - The raw value read from storage.
+ * @returns Whether `raw` declares an unsupported numeric schema version.
+ */
+function hasUnsupportedNumericSchemaVersion(raw: unknown): boolean {
+  if (typeof raw !== 'object' || raw === null || !('schemaVersion' in raw)) return false;
+  const value = raw.schemaVersion;
+  return typeof value === 'number' && value !== CONTROLLER_STATE_SCHEMA_VERSION;
+}
+
+/**
+ * Classifies why a record that failed full validation is invalid, applying
+ * the exact precedence documented on {@link ControllerStateInvalidReason}.
+ * @param raw - The raw value read from storage.
+ * @returns The classified invalid reason.
+ */
+function classifyInvalidReason(raw: unknown): ControllerStateInvalidReason {
+  if (hasUnsupportedNumericSchemaVersion(raw)) return 'UNSUPPORTED_SCHEMA_VERSION';
+  const structural = zodUpdateControllerStateShape.safeParse(raw);
+  if (!structural.success) return 'MALFORMED_RECORD';
+  return 'INVARIANT_VIOLATION';
+}
 
 /**
  * Parses a raw persisted value into a controller-state read result.
@@ -44,26 +131,43 @@ export type ControllerStateReadResult =
  * Fails closed: an unreadable or structurally invalid record never falls
  * back to a default state (unlike `localSettings`'s default-fallback
  * behavior) because a pinned release must never be silently replaced by
- * whatever the network currently serves.
+ * whatever the network currently serves. Never weakens or normalizes strict
+ * persisted validation — {@link classifyInvalidReason} only explains why the
+ * exact same canonical schema already rejected `raw`.
  * @param raw - The raw value read from storage.
  * @returns `'absent'` when nothing is persisted yet, `'valid'` with the
- * parsed state, or `'invalid'` when the record cannot be trusted.
+ * parsed state, or `'invalid'` with a stable reason when the record cannot be
+ * trusted.
  */
 export function parseControllerState(raw: unknown): ControllerStateReadResult {
   if (raw === undefined) return { status: 'absent' };
   const result = zodUpdateControllerState.safeParse(raw);
-  return result.success ? { status: 'valid', state: result.data } : { status: 'invalid' };
+  if (result.success) return { status: 'valid', state: result.data };
+  return { status: 'invalid', reason: classifyInvalidReason(raw) };
 }
 
 /**
  * Reads and validates this channel's persisted controller state.
+ *
+ * A thrown storage-layer failure (e.g. IndexedDB unavailable) is distinct
+ * from invalid persisted contents: it is classified as
+ * `'storage-unavailable'` with only an optional allowlisted error name, never
+ * the raw exception, and never reinterpreted as `'absent'` or `'invalid'`.
  * @param channel - Managed channel.
  * @returns The channel's {@link ControllerStateReadResult}.
  */
 export async function readControllerState(
   channel: ManagedChannel,
 ): Promise<ControllerStateReadResult> {
-  const raw = await get(CONTROLLER_STATE_KEY, createControllerStateStore(channel));
+  let raw: unknown;
+  try {
+    raw = await get(CONTROLLER_STATE_KEY, createControllerStateStore(channel));
+  } catch (error) {
+    const errorName = extractAllowlistedStorageErrorName(error);
+    return errorName
+      ? { status: 'storage-unavailable', errorName }
+      : { status: 'storage-unavailable' };
+  }
   return parseControllerState(raw);
 }
 

@@ -29,6 +29,7 @@ export const APP_UPDATE_PROTOCOL_MESSAGE_TYPES = {
   GET_ACTIVATION_STATUS: 'GET_ACTIVATION_STATUS',
   ROLLBACK_BROADCAST: 'APP_UPDATE_ROLLBACK',
   STATE_CHANGED_BROADCAST: 'APP_UPDATE_STATE_CHANGED',
+  RECOVER_INSTALL_LATEST: 'RECOVER_INSTALL_LATEST',
 } as const;
 
 /**
@@ -97,9 +98,18 @@ export const zodAppUpdateWorkerRequest = z.discriminatedUnion('type', [
     type: z.literal(APP_UPDATE_PROTOCOL_MESSAGE_TYPES.GET_ACTIVATION_STATUS),
     releaseNumber: zodProtocolReleaseNumber,
   }),
+  z.object({
+    protocolVersion: zodProtocolVersion,
+    type: z.literal(APP_UPDATE_PROTOCOL_MESSAGE_TYPES.RECOVER_INSTALL_LATEST),
+  }),
 ]);
 /** A {@link zodAppUpdateWorkerRequest}-validated private protocol request. */
 export type AppUpdateWorkerRequest = z.infer<typeof zodAppUpdateWorkerRequest>;
+/** The `RECOVER_INSTALL_LATEST` request variant of {@link AppUpdateWorkerRequest}. */
+export type RecoverInstallLatestRequest = Extract<
+  AppUpdateWorkerRequest,
+  { type: 'RECOVER_INSTALL_LATEST' }
+>;
 
 /** Private worker protocol response message: every command resolves with the resulting snapshot. */
 export const zodAppUpdateWorkerResponse = z.object({
@@ -140,6 +150,49 @@ export const zodAppUpdateBootAckResponse = z.object({
 });
 /** A {@link zodAppUpdateBootAckResponse}-validated boot acknowledgement. */
 export type AppUpdateBootAckResponse = z.infer<typeof zodAppUpdateBootAckResponse>;
+
+/**
+ * Every stable result code a `RECOVER_INSTALL_LATEST` response may report
+ * (see the managed pinned application updates architecture, "Recovery result
+ * categories"). Never carries a raw exception or a state snapshot — the
+ * recovery page's own subsequent reload, not this response, is what a client
+ * uses to observe the resulting state.
+ */
+export const RECOVER_INSTALL_LATEST_RESULT_CODES = [
+  /** State-loss recovery wrote a fresh Automatic baseline, or known-active recovery restored exact A or scheduled a newer B as `ready`. */
+  'success',
+  /** Fresh state changed concurrently (another window already recovered, or active/pinned candidate changed); the page should reload and let ordinary lifecycle logic reclassify. */
+  'state-changed',
+  /** Controller storage could not be read or written. */
+  'controller-storage-unavailable',
+  /** `latest.json` or its descriptor could not be fetched. */
+  'network-or-latest-unavailable',
+  /** `latest.json` or its descriptor failed structural validation. */
+  'invalid-latest-metadata',
+  /** Known-active recovery only: `latest.releaseNumber` is older than the current active release. */
+  'latest-older-than-active',
+  /** Known-active recovery only: `latest` shares the active/candidate release number but conflicts on another identity field. */
+  'conflicting-release-identity',
+  /** Exact-release preparation (download, integrity, or Cache Storage) failed. */
+  'release-preparation-failed',
+  /** The final durable controller-state write failed after successful preparation. */
+  'controller-state-persistence-failed',
+] as const;
+/** One of {@link RECOVER_INSTALL_LATEST_RESULT_CODES}. */
+export type RecoverInstallLatestResultCode = (typeof RECOVER_INSTALL_LATEST_RESULT_CODES)[number];
+
+/**
+ * Private worker protocol response to `RECOVER_INSTALL_LATEST`. Deliberately
+ * not an {@link AppUpdateWorkerResponse}: recovery may run from absent or
+ * invalid persisted state, so it has no snapshot to report — only this one
+ * stable result code, safe to render directly on the recovery page.
+ */
+export const zodRecoverInstallLatestResponse = z.object({
+  protocolVersion: zodProtocolVersion,
+  result: z.enum(RECOVER_INSTALL_LATEST_RESULT_CODES),
+});
+/** A {@link zodRecoverInstallLatestResponse}-validated recovery response. */
+export type RecoverInstallLatestResponse = z.infer<typeof zodRecoverInstallLatestResponse>;
 
 /**
  * Private worker protocol response to `GET_ACTIVATION_STATUS`, used only by
