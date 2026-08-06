@@ -90,6 +90,8 @@ async function expectUnavailableNavigation(
  * Asserts a `503` known-active recovery page — required for every navigation
  * failure to serve the current `activeRelease`, in place of the old generic
  * `503` text (see `resolveActiveReleaseNavigationResponse` in `workerFetch.ts`).
+ * @param responsePromise
+ * @param problemDetail
  */
 async function expectActiveReleaseRecoveryResponse(
   responsePromise: Promise<Response>,
