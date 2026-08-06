@@ -31,26 +31,26 @@ Manual branches keep generated Workbox behavior. PR previews remain non-PWA.
 
 ## Channels
 
-| Channel | Update behavior |
-| --- | --- |
-| stable `/` | managed updates with its own state, archive, cache namespace, and worker scope |
-| develop `/branch/develop/` | independent managed updates |
-| ordinary manual branch | generated Workbox |
-| PR preview | PWA disabled |
+| Channel                    | Update behavior                                                                |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| stable `/`                 | managed updates with its own state, archive, cache namespace, and worker scope |
+| develop `/branch/develop/` | independent managed updates                                                    |
+| ordinary manual branch     | generated Workbox                                                              |
+| PR preview                 | PWA disabled                                                                   |
 
 No channel may read, mutate, block, or notify another channel.
 
 ## Ownership and sources of truth
 
-| Owner | Responsibility |
-| --- | --- |
-| Publisher | deterministic source identity, append-only archive, retained-tree validation, `latest.json` |
-| Controller-state service | classify and persist lifecycle state; serialized final decisions |
-| Controller worker | bootstrap, reconciliation, fetch, activation, rollback, recovery page, recovery commands |
-| `PreparationCoordinator` | exact-release preparation deduplication and cleanup arbitration only |
-| Service client/features | typed transport outcomes and ordinary settings actions |
-| Recovery page | safe diagnostics and explicit recovery actions without application JavaScript |
-| Browser | Service Worker lifecycle and registration replacement |
+| Owner                    | Responsibility                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| Publisher                | deterministic source identity, append-only archive, retained-tree validation, `latest.json` |
+| Controller-state service | classify and persist lifecycle state; serialized final decisions                            |
+| Controller worker        | bootstrap, reconciliation, fetch, activation, rollback, recovery page, recovery commands    |
+| `PreparationCoordinator` | exact-release preparation deduplication and cleanup arbitration only                        |
+| Service client/features  | typed transport outcomes and ordinary settings actions                                      |
+| Recovery page            | safe diagnostics and explicit recovery actions without application JavaScript               |
+| Browser                  | Service Worker lifecycle and registration replacement                                       |
 
 Sources of truth:
 
@@ -148,16 +148,16 @@ Invariants:
 
 ## Normal lifecycle
 
-| Event | Final state |
-| --- | --- |
-| newer discovery | `candidate = available(new)` |
-| Automatic preparation succeeds | matching `available → ready` |
-| Manual Install succeeds | matching `available/failed → ready` |
-| Manual Cancel | matching `ready → available` |
-| qualifying clean launch | matching `ready → activating(deadlineAt)`; active unchanged |
-| matching durable `BOOT_OK` | candidate becomes active; candidate cleared |
-| matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed` |
-| stale or mismatched completion | no state change |
+| Event                                | Final state                                                 |
+| ------------------------------------ | ----------------------------------------------------------- |
+| newer discovery                      | `candidate = available(new)`                                |
+| Automatic preparation succeeds       | matching `available → ready`                                |
+| Manual Install succeeds              | matching `available/failed → ready`                         |
+| Manual Cancel                        | matching `ready → available`                                |
+| qualifying clean launch              | matching `ready → activating(deadlineAt)`; active unchanged |
+| matching durable `BOOT_OK`           | candidate becomes active; candidate cleared                 |
+| matching `BOOT_FAILED` or expiration | active unchanged; candidate becomes `failed`                |
+| stale or mismatched completion       | no state change                                             |
 
 `available` and eligible `failed` may be replaced only by a strictly newer discovery. `ready` and `activating` are pinned and never superseded. Automatic never retries the exact failed release; Manual may explicitly retry it.
 
@@ -175,14 +175,14 @@ legacy Workbox /sw.js
 
 Install classification:
 
-| State | Predecessor | Result |
-| --- | --- | --- |
-| valid | any | preserve unchanged |
-| invalid | any | reject installation |
-| absent | no active worker | genuine first registration |
-| absent | managed predecessor | reject as managed-state loss |
-| absent | compatible generated Workbox | one-time bootstrap |
-| absent | unknown, conflicting, malformed, or silent predecessor | reject |
+| State   | Predecessor                                            | Result                       |
+| ------- | ------------------------------------------------------ | ---------------------------- |
+| valid   | any                                                    | preserve unchanged           |
+| invalid | any                                                    | reject installation          |
+| absent  | no active worker                                       | genuine first registration   |
+| absent  | managed predecessor                                    | reject as managed-state loss |
+| absent  | compatible generated Workbox                           | one-time bootstrap           |
+| absent  | unknown, conflicting, malformed, or silent predecessor | reject                       |
 
 Allowed bootstrap fully validates and prepares exact latest before writing initial Automatic state. A failed install leaves compatible Workbox active. After release 1 activates, rollback to Workbox is unsupported.
 
@@ -250,12 +250,12 @@ Effects:
 
 Mode behavior per fresh pass:
 
-| State | Automatic | Manual |
-| --- | --- | --- |
-| no candidate | discover; persist newer `available`; prepare to `ready` | discover; persist newer `available`; do not prepare |
-| `available(B)` | discover latest first; replace by newer C; prepare final candidate | discover strictly newer; otherwise keep B |
-| `failed(B)` | discover strictly newer; never retry B | discover strictly newer; never retry B automatically |
-| `ready` or `activating` | no-op | no-op |
+| State                   | Automatic                                                          | Manual                                               |
+| ----------------------- | ------------------------------------------------------------------ | ---------------------------------------------------- |
+| no candidate            | discover; persist newer `available`; prepare to `ready`            | discover; persist newer `available`; do not prepare  |
+| `available(B)`          | discover latest first; replace by newer C; prepare final candidate | discover strictly newer; otherwise keep B            |
+| `failed(B)`             | discover strictly newer; never retry B                             | discover strictly newer; never retry B automatically |
+| `ready` or `activating` | no-op                                                              | no-op                                                |
 
 Network, hashing, preparation, and cleanup remain outside `OperationQueue`.
 
