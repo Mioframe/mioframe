@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { readRetainedReleaseDescriptors } from '../../../../scripts/pages/lib/releaseDescriptor.mjs';
+import { readRetainedReleaseDescriptors } from '../../../../scripts/pages/lib/retainedReleaseTree.mjs';
 import { publishManagedRelease } from '../../../../scripts/pages/lib/releasePublish.mjs';
 import {
   materializeManagedRelease,

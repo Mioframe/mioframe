@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import * as releaseDescriptor from './releaseDescriptor.mjs';
+import * as retainedReleaseTree from './retainedReleaseTree.mjs';
 import { publishManagedRelease } from './releasePublish.mjs';
 
 let workDir = '';
@@ -639,7 +639,7 @@ describe('publishManagedRelease', () => {
         indexByteSize: 100,
         files: [{ path: 'assets/a.js', sha256: '0'.repeat(64), byteSize: 10 }],
       };
-      vi.spyOn(releaseDescriptor, 'resolvePublicationPlan').mockReturnValue({
+      vi.spyOn(retainedReleaseTree, 'resolvePublicationPlan').mockReturnValue({
         kind: 'no-op',
         descriptor,
       });
@@ -660,7 +660,7 @@ describe('publishManagedRelease', () => {
 
     it('rejects a genuinely new buildId before any write when the next release number would exceed Number.MAX_SAFE_INTEGER', () => {
       writeBasicDist();
-      vi.spyOn(releaseDescriptor, 'resolvePublicationPlan').mockImplementation(() => {
+      vi.spyOn(retainedReleaseTree, 'resolvePublicationPlan').mockImplementation(() => {
         throw new Error('Next release number would exceed Number.MAX_SAFE_INTEGER');
       });
 

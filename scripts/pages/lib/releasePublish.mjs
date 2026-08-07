@@ -20,15 +20,14 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { buildReleaseDescriptor } from './releaseDescriptor.mjs';
 import {
-  assertReleaseNumberNotRetained,
-  buildReleaseDescriptor,
   collectReleaseFiles,
   computeContentSha256,
-  resolvePublicationPlan,
   validateNoImmutableCollision,
   validateProjectedArtifactSize,
-} from './releaseDescriptor.mjs';
+} from './releaseArtifact.mjs';
+import { assertReleaseNumberNotRetained, resolvePublicationPlan } from './retainedReleaseTree.mjs';
 import { applyManagedBranchPublish, applyManagedStablePublish } from './pagesFs.mjs';
 import { injectWatchdogScript } from './watchdogInject.mjs';
 

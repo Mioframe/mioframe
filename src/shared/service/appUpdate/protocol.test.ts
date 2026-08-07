@@ -312,7 +312,8 @@ describe('zodRecoverInstallLatestResponse', () => {
     });
     // Additive v1 schema still accepts unknown fields for forward
     // compatibility, but production code must never populate one — proven
-    // by recoveryOrchestration.test.ts asserting the exact response shape.
+    // by recoveryStateLoss.test.ts and recoveryKnownActive.test.ts asserting
+    // the exact response shape.
     expect(parsed.success).toBe(true);
   });
 });
