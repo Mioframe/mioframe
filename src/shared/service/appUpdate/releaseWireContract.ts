@@ -83,7 +83,10 @@ export const isCanonicalReleasePath = (path: string): boolean => {
 /** Matches a lowercase hex SHA-256 digest exactly. */
 const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
-/** Returns `true` when `value` is a lowercase hex SHA-256 digest. */
+/**
+ * Returns `true` when `value` is a lowercase hex SHA-256 digest.
+ * @param value
+ */
 export const isSha256Hex = (value: string): boolean => SHA256_HEX_PATTERN.test(value);
 
 /**
