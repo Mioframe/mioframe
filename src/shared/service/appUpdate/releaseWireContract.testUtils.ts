@@ -3,9 +3,11 @@ import type { ReleaseDescriptor } from './releaseWireContract';
 /**
  * Shared valid/invalid `ReleaseDescriptor` and canonical-path fixture corpus
  * for the single canonical release-wire-contract validator
- * (`releaseWireContract.ts`). `releaseWireContract.test.ts` is the sole
- * consumer: it owns the complete validation matrix for canonical release
- * paths, release descriptors, and the `latest.json` pointer.
+ * (`releaseWireContract.ts`). `releaseWireContract.test.ts` is the sole owner
+ * of the complete validation matrix for canonical release paths, release
+ * descriptors, and the `latest.json` pointer. Other tests may reuse
+ * individual canonical fixtures from this corpus for narrower contracts, but
+ * must not iterate the complete matrix to re-prove release-wire validation.
  */
 
 const SHA256_OF_EMPTY_STRING = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';

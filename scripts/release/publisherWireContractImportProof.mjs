@@ -38,7 +38,7 @@ import {
  * @throws {Error} When the publisher import seam or its erasable-TypeScript
  * dependency does not execute correctly under plain Node.
  */
-export function runPublisherWireContractImportProof() {
+function runPublisherWireContractImportProof() {
   assert.equal(
     typeof publishManagedRelease,
     'function',

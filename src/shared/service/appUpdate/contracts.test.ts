@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { invalidReleaseDescriptors, validReleaseDescriptor } from './releaseWireContract.testUtils';
+import { validReleaseDescriptor } from './releaseWireContract.testUtils';
 import {
   releaseSummariesMatch,
   toReleaseSummary,
@@ -33,14 +33,6 @@ describe('toReleaseSummary', () => {
     });
     expect(zodReleaseSummary.safeParse(summary).success).toBe(true);
   });
-
-  it.each(invalidReleaseDescriptors)(
-    'never produces a summary from an invalid descriptor: $name',
-    ({ descriptor }) => {
-      const parsed = zodReleaseDescriptor.safeParse(descriptor);
-      expect(parsed.success).toBe(false);
-    },
-  );
 });
 
 const releaseSummaryA = {
