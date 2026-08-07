@@ -7,28 +7,12 @@ const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
 type MockWindowClient = { type: 'window'; url: string; postMessage: (message: unknown) => void };
 const matchAllMock = vi.fn((): Promise<MockWindowClient[]> => Promise.resolve([]));
-const fetchLatestReleasePointerMock = vi.fn();
-const fetchReleaseDescriptorMock = vi.fn();
-const prepareReleaseMock = vi.fn();
-const cachesKeysMock = vi.fn();
-const cachesDeleteMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
   writeControllerState: (...args: unknown[]) => writeControllerStateMock(...args),
 }));
-vi.mock('./releasePreparation', async () => {
-  const actual =
-    await vi.importActual<typeof import('./releasePreparation')>('./releasePreparation');
-  return {
-    ...actual,
-    fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
-    fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
-    prepareRelease: (...args: unknown[]) => prepareReleaseMock(...args),
-  };
-});
 vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
-vi.stubGlobal('caches', { keys: cachesKeysMock, delete: cachesDeleteMock });
 
 const PROTOCOL_VERSION = 1 as const;
 const CHANNEL_ORIGIN = 'https://mioframe.example';
@@ -87,11 +71,6 @@ beforeEach(() => {
   matchAllMock.mockClear();
   matchAllMock.mockResolvedValue([]);
   readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
-  fetchLatestReleasePointerMock.mockReset();
-  fetchReleaseDescriptorMock.mockReset();
-  prepareReleaseMock.mockReset().mockResolvedValue(undefined);
-  cachesKeysMock.mockReset().mockResolvedValue([]);
-  cachesDeleteMock.mockReset().mockResolvedValue(true);
 });
 
 afterEach(() => {
