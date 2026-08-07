@@ -1,8 +1,6 @@
 # Managed pinned application updates — architecture handoff
 
-**Implementation status: managed-update core implemented; recovery architecture ready; PR 169 is not implementation-complete until recovery and its required proof are present.**
-
-This is the single canonical architecture contract for PR 169. Existing unshipped implementation formats are replaceable evidence, not compatibility contracts.
+This is the single canonical architecture and implementation contract for managed pinned application updates. Existing unshipped implementation formats are replaceable evidence, not compatibility contracts.
 
 ## Goal
 
@@ -478,6 +476,34 @@ Required proof includes:
 - browser proof that product storage remains readable after recovery;
 - previous supported managed releases can read newer user data after rollback.
 
+## TEST IMPACT
+
+Changed contract/scenario groups, primary proof owner, and additional proof:
+
+- Release descriptor / latest-pointer / path validation — one canonical schema in `src/shared/service/appUpdate/releaseWireContract.ts`, imported directly by both the runtime (`contracts.ts`) and the Node publisher (`scripts/pages/lib/releaseDescriptor.mjs`), no duplicate implementation.
+  - Primary proof: `releaseWireContract.test.ts`.
+  - Additional proof: `scripts/pages/lib/releaseDescriptor.test.mjs` (proves plain Node LTS imports the canonical `.ts` module directly, no loader), `retainedReleaseTree.test.mjs`, publisher release-publish tests.
+- Watchdog/runtime protocol wire values — one canonical implementation in `src/shared/service/appUpdate/workerProtocolWireContract.ts`, imported directly by `protocol.ts`, `bootConfirmation.ts`, and the Node publisher's `scripts/pages/lib/watchdogInject.mjs` (interpolated into the generated inline watchdog script).
+  - Primary proof: `scripts/pages/lib/watchdogInject.test.mjs` (generated script's actual runtime behavior).
+  - Additional proof: `protocol.test.ts` (schema-level).
+- Release-preparation error boundary — `DomainError`-based, classified by the stable `ReleasePreparationFailureReason` code set (`releasePreparation.ts`); `message` stays a short project-controlled safe string, raw detail (paths, HTTP status, external error text) lives only in `cause`.
+  - Primary proof: `releasePreparation.test.ts`.
+  - Additional proof: `preparationCoordinator.test.ts`, `recoveryStateLoss.test.ts`, `recoveryDiagnostics.test.ts`.
+- Recovery orchestration and result-code classification (`recoveryOrchestration.ts`): unchanged result codes and recovery behavior.
+  - Primary proof: `workerMessagesRecovery.test.ts`, `recoveryStateLoss.test.ts`.
+- Controller lifecycle, activation, rollback, and boot confirmation: unchanged.
+  - Primary proof: `workerMessages.test.ts`, `workerMessagesActivation.test.ts`, `stateTransitions.test.ts`.
+- Top-level fetch ownership and serving: unchanged.
+  - Primary proof: `workerFetch.test.ts`.
+- Release publication, retained-tree integrity, and publisher CLI: unchanged.
+  - Primary proof: `scripts/pages/lib/*.test.mjs`.
+- Failed-install browser proof is condition/event based, not time based: the E2E spec now observes the update attempt's installing worker reaching the browser's own terminal `redundant` state, bounded by a maximum wait, instead of a fixed sleep.
+  - Primary proof: `tests/e2e/release/managedUpdatesMigration.spec.ts`.
+- Every other product-facing scenario (lifecycle, activation UI, recovery page, cross-engine, uncontrolled window, automatic check, controller upgrade, develop channel): unchanged, applicable to every supported browser/platform per `docs/testing/architecture.md`.
+  - Primary proof: `managedUpdatesLifecycle.spec.ts`, `managedUpdatesActivationUi.spec.ts`, `managedUpdatesRecovery.spec.ts`, `managedUpdatesCrossEngineLifecycle.spec.ts`, `managedUpdatesUncontrolledWindow.spec.ts`, `managedUpdatesAutomaticCheck.spec.ts`, `managedUpdatesControllerUpgrade.spec.ts`, `managedUpdatesDevelop.spec.ts`.
+
+Persistent verification/impact metadata: none — internal contract-ownership and error-model refactor only; persisted controller-state shape, protocol wire values, recovery result codes, and user-visible behavior are unchanged.
+
 Final unchanged workspace verification:
 
 ```text
@@ -514,4 +540,4 @@ Required product and architecture decisions are resolved.
 
 Unresolved architecture blockers: none.
 
-Verdict: **ready for implementation; PR 169 is not implementation-complete until the recovery flow and its required proof are present.**
+Verdict: **implemented, including recovery and its required proof (see "TEST IMPACT").**

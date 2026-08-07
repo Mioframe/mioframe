@@ -18,7 +18,7 @@ import {
   readReleaseIndexMarker,
 } from './releaseCache';
 import {
-  ReleasePreparationError,
+  isReleasePreparationError,
   type ReleasePreparationFailureReason,
 } from './releasePreparation';
 import { withState } from './stateLock';
@@ -112,18 +112,14 @@ async function resolveActiveReleaseNavigationResponse(
     try {
       await coordinator.prepare(channel, channelBasePath, release);
     } catch (error) {
-      return unavailable(
-        error instanceof ReleasePreparationError ? error.reason : 'RESTORATION_FAILED',
-      );
+      return unavailable(isReleasePreparationError(error) ? error.code : 'RESTORATION_FAILED');
     }
 
     cache = await caches.open(cacheName);
     const revalidated = await tryServeNavigation(cache, release, channelBasePath);
     return revalidated ?? unavailable('RESTORATION_FAILED');
   } catch (error) {
-    return unavailable(
-      error instanceof ReleasePreparationError ? error.reason : 'CACHE_STORAGE_UNAVAILABLE',
-    );
+    return unavailable(isReleasePreparationError(error) ? error.code : 'CACHE_STORAGE_UNAVAILABLE');
   }
 }
 

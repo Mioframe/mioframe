@@ -197,7 +197,7 @@ describe('createPreparationCoordinator', () => {
     ['buildId', 'different-build'],
     ['buildDate', '2026-07-25T00:00:00.000Z'],
   ] as const)(
-    'rejects, without preparing, a fetched descriptor whose %s does not exactly match the target — a shared releaseNumber alone is not enough — as a typed INVALID_ARCHIVE_METADATA ReleasePreparationError, not a generic Error',
+    'rejects, without preparing, a fetched descriptor whose %s does not exactly match the target — a shared releaseNumber alone is not enough — as a classified INVALID_ARCHIVE_METADATA DomainError, not a generic Error',
     async (field, value) => {
       // `fetchReleaseDescriptor` only proves `releaseNumber` matches; a
       // restoration target already knows the complete expected identity
@@ -206,7 +206,7 @@ describe('createPreparationCoordinator', () => {
       fetchReleaseDescriptorMock.mockResolvedValue({ ...descriptorA, [field]: value });
       prepareReleaseMock.mockResolvedValue(undefined);
       const { createPreparationCoordinator } = await import('./preparationCoordinator');
-      const { ReleasePreparationError } = await import('./releasePreparation');
+      const { isReleasePreparationError } = await import('./releasePreparation');
       const coordinator = createPreparationCoordinator();
 
       await expect(coordinator.prepare('stable', '/', releaseA)).rejects.toThrow(
@@ -218,10 +218,10 @@ describe('createPreparationCoordinator', () => {
       } catch (error) {
         caught = error;
       }
-      if (!(caught instanceof ReleasePreparationError)) {
-        throw new Error('Expected a ReleasePreparationError');
+      if (!isReleasePreparationError(caught)) {
+        throw new Error('Expected a classified release-preparation DomainError');
       }
-      expect(caught.reason).toBe('INVALID_ARCHIVE_METADATA');
+      expect(caught.code).toBe('INVALID_ARCHIVE_METADATA');
       expect(prepareReleaseMock).not.toHaveBeenCalled();
     },
   );

@@ -32,13 +32,12 @@
  * `BOOT_FAILED` to determine the durable outcome.
  *
  * The private protocol message type strings, protocol version, and ack
- * timeout below must stay in sync with
- * `src/shared/service/appUpdate/protocol.ts` and `bootConfirmation.ts`'s
- * `BOOT_ACK_TIMEOUT_MS`. This script runs as a Node publisher tool with no
- * TypeScript loader, so it cannot import those modules directly (see
- * `releaseDescriptor.mjs`'s doc comment for the same constraint);
- * `watchdogProtocolParity.test.ts` proves the literal copies below stay in
- * exact agreement.
+ * timeout below are interpolated directly from the single canonical
+ * `src/shared/service/appUpdate/workerProtocolWireContract.ts` — imported
+ * here directly, since Node LTS can execute that module's erasable
+ * TypeScript syntax with no loader. The generated inline script below
+ * contains literal values, which is expected and not a second source of
+ * truth.
  *
  * Every message the watchdog sends carries `protocolVersion: 1`. Every
  * message it consumes (an acknowledgement, the activation-status response,
@@ -48,13 +47,28 @@
  * (timeout, or no controller).
  */
 
+import {
+  APP_UPDATE_PROTOCOL_VERSION,
+  BOOT_ACK_OUTCOMES,
+  WATCHDOG_ACK_TIMEOUT_MS,
+  WATCHDOG_PROTOCOL_MESSAGE_TYPES,
+} from '../../../src/shared/service/appUpdate/workerProtocolWireContract.ts';
+
 const MAIN_MODULE_SCRIPT_MARKER = '<script type="module"';
 
-/** Must match `src/shared/service/appUpdate/bootConfirmation.ts`'s `BOOT_ACK_TIMEOUT_MS`. */
-export const WATCHDOG_ACK_TIMEOUT_MS = 5_000;
+const [ACK_COMMITTED_LITERAL, ACK_ROLLED_BACK_LITERAL, ACK_IGNORED_LITERAL, ACK_ERROR_LITERAL] =
+  BOOT_ACK_OUTCOMES;
 
-/** Must match `src/shared/service/appUpdate/protocol.ts`'s `APP_UPDATE_PROTOCOL_VERSION`. */
-export const WATCHDOG_PROTOCOL_VERSION = 1;
+/**
+ * Wraps a trusted constant string value (never user input) as a
+ * single-quoted JavaScript string literal, matching the generated watchdog
+ * script's own quoting convention.
+ * @param value Trusted constant string value.
+ * @returns The single-quoted literal source text.
+ */
+function toSingleQuotedLiteral(value) {
+  return `'${value}'`;
+}
 
 /**
  * Builds the watchdog's self-contained inline script source for one
@@ -67,16 +81,16 @@ export function buildWatchdogScript(releaseNumber) {
 
   return `(function () {
   var RELEASE_NUMBER = ${releaseNumberLiteral};
-  var PROTOCOL_VERSION = ${WATCHDOG_PROTOCOL_VERSION};
-  var BOOT_OK = 'BOOT_OK';
-  var BOOT_FAILED = 'BOOT_FAILED';
-  var GET_ACTIVATION_STATUS = 'GET_ACTIVATION_STATUS';
-  var ROLLBACK = 'APP_UPDATE_ROLLBACK';
+  var PROTOCOL_VERSION = ${APP_UPDATE_PROTOCOL_VERSION};
+  var BOOT_OK = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.BOOT_OK)};
+  var BOOT_FAILED = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.BOOT_FAILED)};
+  var GET_ACTIVATION_STATUS = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.GET_ACTIVATION_STATUS)};
+  var ROLLBACK = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.ROLLBACK_BROADCAST)};
   var ACK_TIMEOUT_MS = ${WATCHDOG_ACK_TIMEOUT_MS};
-  var ACK_COMMITTED = 'committed';
-  var ACK_ROLLED_BACK = 'rolled-back';
-  var ACK_IGNORED = 'ignored';
-  var ACK_ERROR = 'error';
+  var ACK_COMMITTED = ${toSingleQuotedLiteral(ACK_COMMITTED_LITERAL)};
+  var ACK_ROLLED_BACK = ${toSingleQuotedLiteral(ACK_ROLLED_BACK_LITERAL)};
+  var ACK_IGNORED = ${toSingleQuotedLiteral(ACK_IGNORED_LITERAL)};
+  var ACK_ERROR = ${toSingleQuotedLiteral(ACK_ERROR_LITERAL)};
 
   var settled = false;
   var bootOkReported = false;

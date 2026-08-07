@@ -1,11 +1,12 @@
 /**
- * Shared valid/invalid `ReleaseDescriptor` fixture corpus.
+ * Shared valid/invalid `ReleaseDescriptor` fixture corpus for the single
+ * canonical release-wire-contract validator
+ * (`src/shared/service/appUpdate/releaseWireContract.ts`).
  *
- * Imported by both the Node publisher's structural validator
- * (`releaseDescriptor.test.mjs`) and the runtime zod schema
- * (`src/shared/service/appUpdate/contracts.test.ts`), so the two independent
- * validators are proven to accept and reject the exact same descriptors.
- * Kept dependency-free so both Vitest projects can import it directly.
+ * Imported by both `releaseDescriptor.test.mjs` (proving plain Node can
+ * import and exercise that `.ts` module directly) and
+ * `releaseWireContract.test.ts` (the TS/Vitest project). Kept dependency-free
+ * so both Vitest projects can import it directly.
  */
 
 const SHA256_OF_EMPTY_STRING = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
@@ -142,14 +143,11 @@ export const invalidReleaseDescriptors = [
 ];
 
 /**
- * Shared canonical-release-path acceptance/rejection corpus.
- *
- * Imported by both the Node publisher's structural validator
- * (`releaseDescriptor.test.mjs`) and the runtime zod schema
- * (`src/shared/service/appUpdate/contracts.test.ts`), so
- * `isCanonicalReleasePath` in each independent implementation is proven to
- * accept and reject the exact same paths — see the managed pinned
- * application updates feature's canonical release-path correction.
+ * Shared canonical-release-path acceptance/rejection corpus for the single
+ * canonical `isCanonicalReleasePath` in
+ * `src/shared/service/appUpdate/releaseWireContract.ts`, exercised from both
+ * `releaseDescriptor.test.mjs` (plain Node) and `releaseWireContract.test.ts`
+ * (Vitest).
  */
 export const canonicalReleasePathCases = [
   { name: 'empty path', path: '', valid: false },

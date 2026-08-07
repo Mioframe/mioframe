@@ -13,7 +13,7 @@ import type { RecoverInstallLatestResultCode } from './protocol';
 import {
   fetchLatestReleasePointer,
   fetchReleaseDescriptor,
-  ReleasePreparationError,
+  isReleasePreparationError,
 } from './releasePreparation';
 import { buildInitialControllerState } from './stateTransitions';
 
@@ -58,7 +58,7 @@ export type RecoverInstallLatestOutcome = {
  * @returns The classified result code.
  */
 function classifyDiscoveryFailure(error: unknown): RecoverInstallLatestResultCode {
-  if (error instanceof ReleasePreparationError && error.reason === 'INVALID_ARCHIVE_METADATA') {
+  if (isReleasePreparationError(error) && error.code === 'INVALID_ARCHIVE_METADATA') {
     return 'invalid-latest-metadata';
   }
   return 'network-or-latest-unavailable';
@@ -69,7 +69,7 @@ function classifyDiscoveryFailure(error: unknown): RecoverInstallLatestResultCod
  * lock — shared by both recovery flows' first network step.
  * @param channelBasePath - This worker's channel base path.
  * @returns The validated exact descriptor.
- * @throws {ReleasePreparationError} When the fetch or validation fails.
+ * @throws {DomainError} When the fetch or validation fails.
  */
 async function fetchValidatedLatestDescriptor(channelBasePath: string): Promise<ReleaseDescriptor> {
   const pointer = await fetchLatestReleasePointer(channelBasePath);

@@ -8,7 +8,7 @@ import {
 import {
   fetchReleaseDescriptor,
   prepareRelease,
-  ReleasePreparationError,
+  releasePreparationError,
 } from './releasePreparation';
 
 /**
@@ -131,7 +131,7 @@ export function createPreparationCoordinator(): PreparationCoordinator {
           // `appVersion`/`buildId`/`buildDate` must never be accepted or
           // cached as `target`; see `releaseSummariesMatch`.
           if (!releaseSummariesMatch(toReleaseSummary(fetched), target)) {
-            throw new ReleasePreparationError(
+            throw releasePreparationError(
               'INVALID_ARCHIVE_METADATA',
               'Fetched release descriptor does not match the expected release identity',
             );

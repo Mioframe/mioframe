@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  WATCHDOG_ACK_TIMEOUT_MS,
-  buildWatchdogScript,
-  injectWatchdogScript,
-} from './watchdogInject.mjs';
+import { WATCHDOG_ACK_TIMEOUT_MS } from '../../../src/shared/service/appUpdate/workerProtocolWireContract.ts';
+import { buildWatchdogScript, injectWatchdogScript } from './watchdogInject.mjs';
 
 /**
  * Waits one macrotask turn: `MessageChannel`/`MessagePort` delivery is

@@ -1,3 +1,4 @@
+import { DomainError } from '@shared/lib/error';
 import {
   buildArchivedIndexPath,
   buildLatestPointerPath,
@@ -71,13 +72,10 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 }
 
 /**
- * Stable internal reasons {@link ReleasePreparationError} classifies a
- * release-discovery/preparation/restoration failure into (see the managed
- * pinned application updates architecture, "Release preparation failure
- * classification"). Never exposed directly — only this `reason` is safe for
- * the worker fetch/recovery boundary to surface as a recovery diagnostic
- * `problemDetail`; this error's own `message`/`cause` may still carry raw,
- * unsanitized detail for internal logging only.
+ * Stable classification codes for a release-discovery/preparation/restoration
+ * failure (see the managed pinned application updates architecture, "Release
+ * preparation failure classification"). Safe for the worker fetch/recovery
+ * boundary to surface directly as a recovery diagnostic `problemDetail`.
  */
 export const RELEASE_PREPARATION_FAILURE_REASONS = [
   'ARCHIVE_UNAVAILABLE',
@@ -90,30 +88,48 @@ export const RELEASE_PREPARATION_FAILURE_REASONS = [
 export type ReleasePreparationFailureReason = (typeof RELEASE_PREPARATION_FAILURE_REASONS)[number];
 
 /**
- * Thrown by every discovery/preparation boundary in this module, classified
- * by {@link ReleasePreparationFailureReason}. `message` keeps today's
- * internal-only wording (unchanged, for existing log/test callers); only
- * `reason` is safe to surface externally.
+ * Builds a `DomainError` for every discovery/preparation boundary in this
+ * module, classified by {@link ReleasePreparationFailureReason} as `code`.
+ * `message` must stay a short, project-controlled, safe string — no paths,
+ * URLs, response text, or raw external/runtime error text; that detail
+ * belongs only in `cause`, preserved for internal debugging.
+ * @param code - Stable failure classification.
+ * @param message - Safe, project-controlled message.
+ * @param options - Optional raw cause preserved for debugging.
+ * @returns The classified `DomainError`.
  */
-export class ReleasePreparationError extends Error {
-  readonly reason: ReleasePreparationFailureReason;
+export function releasePreparationError(
+  code: ReleasePreparationFailureReason,
+  message: string,
+  options?: { cause?: unknown },
+): DomainError<ReleasePreparationFailureReason> {
+  return new DomainError(message, { cause: options?.cause, code });
+}
 
-  constructor(
-    reason: ReleasePreparationFailureReason,
-    message: string,
-    options?: { cause?: unknown },
-  ) {
-    super(message, options);
-    this.name = 'ReleasePreparationError';
-    this.reason = reason;
-  }
+/**
+ * Returns `true` when `error` is a `DomainError` classified with one of
+ * {@link RELEASE_PREPARATION_FAILURE_REASONS} — the release-preparation
+ * boundary's own failures, narrowed from any other `DomainError`.
+ * @param error - The raw thrown value.
+ * @returns Whether `error` is a classified release-preparation error.
+ */
+export function isReleasePreparationError(
+  error: unknown,
+): error is DomainError<ReleasePreparationFailureReason> & {
+  code: ReleasePreparationFailureReason;
+} {
+  return (
+    error instanceof DomainError &&
+    typeof error.code === 'string' &&
+    RELEASE_PREPARATION_FAILURE_REASONS.some((reason) => reason === error.code)
+  );
 }
 
 /**
  * Fetches and validates this channel's `latest.json` pointer.
  * @param channelBasePath - This worker's channel base path, e.g. `/` or `/branch/develop/`.
  * @returns The validated {@link LatestReleasePointer}.
- * @throws {ReleasePreparationError} When the fetch fails or the pointer is structurally invalid.
+ * @throws {DomainError} A {@link ReleasePreparationFailureReason}-classified error when the fetch fails or the pointer is structurally invalid.
  */
 export async function fetchLatestReleasePointer(
   channelBasePath: string,
@@ -122,23 +138,16 @@ export async function fetchLatestReleasePointer(
   try {
     response = await fetch(buildLatestPointerPath(channelBasePath), { cache: 'no-store' });
   } catch (cause) {
-    throw new ReleasePreparationError(
-      'ARCHIVE_UNAVAILABLE',
-      cause instanceof Error ? cause.message : 'Failed to fetch latest.json',
-      { cause },
-    );
+    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch latest.json', { cause });
   }
   if (!response.ok) {
-    throw new ReleasePreparationError(
-      'ARCHIVE_UNAVAILABLE',
-      `Failed to fetch latest.json: ${response.status}`,
-    );
+    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch latest.json');
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch (cause) {
-    throw new ReleasePreparationError(
+    throw releasePreparationError(
       'INVALID_ARCHIVE_METADATA',
       'latest.json is structurally invalid',
       { cause },
@@ -146,7 +155,7 @@ export async function fetchLatestReleasePointer(
   }
   const parsed = zodLatestReleasePointer.safeParse(body);
   if (!parsed.success) {
-    throw new ReleasePreparationError(
+    throw releasePreparationError(
       'INVALID_ARCHIVE_METADATA',
       'latest.json is structurally invalid',
     );
@@ -160,7 +169,7 @@ export async function fetchLatestReleasePointer(
  * @param channelBasePath - This worker's channel base path.
  * @param release - The expected release identity, from `latest.json` or an existing candidate.
  * @returns The validated {@link ReleaseDescriptor}.
- * @throws {ReleasePreparationError} When the fetch fails, the descriptor is invalid, or its identity does not match `release`.
+ * @throws {DomainError} A {@link ReleasePreparationFailureReason}-classified error when the fetch fails, the descriptor is invalid, or its identity does not match `release`.
  */
 export async function fetchReleaseDescriptor(
   channelBasePath: string,
@@ -172,23 +181,18 @@ export async function fetchReleaseDescriptor(
       cache: 'no-store',
     });
   } catch (cause) {
-    throw new ReleasePreparationError(
-      'ARCHIVE_UNAVAILABLE',
-      cause instanceof Error ? cause.message : 'Failed to fetch release descriptor',
-      { cause },
-    );
+    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch release descriptor', {
+      cause,
+    });
   }
   if (!response.ok) {
-    throw new ReleasePreparationError(
-      'ARCHIVE_UNAVAILABLE',
-      `Failed to fetch release descriptor: ${response.status}`,
-    );
+    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch release descriptor');
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch (cause) {
-    throw new ReleasePreparationError(
+    throw releasePreparationError(
       'INVALID_ARCHIVE_METADATA',
       'Release descriptor is structurally invalid',
       { cause },
@@ -196,13 +200,13 @@ export async function fetchReleaseDescriptor(
   }
   const parsed = zodReleaseDescriptor.safeParse(body);
   if (!parsed.success) {
-    throw new ReleasePreparationError(
+    throw releasePreparationError(
       'INVALID_ARCHIVE_METADATA',
       'Release descriptor is structurally invalid',
     );
   }
   if (parsed.data.releaseNumber !== release.releaseNumber) {
-    throw new ReleasePreparationError(
+    throw releasePreparationError(
       'INVALID_ARCHIVE_METADATA',
       'Release descriptor identity does not match the expected release',
     );
@@ -235,7 +239,7 @@ export async function fetchReleaseDescriptor(
  * @param channelBasePath - This worker's channel base path.
  * @param channel - Managed channel.
  * @param descriptor - The validated release descriptor to prepare.
- * @throws {ReleasePreparationError} When any file fails to download, fails byte-size/hash validation, or Cache Storage is unavailable.
+ * @throws {DomainError} A {@link ReleasePreparationFailureReason}-classified error when any file fails to download, fails byte-size/hash validation, or Cache Storage is unavailable.
  */
 export async function prepareRelease(
   channelBasePath: string,
@@ -254,7 +258,7 @@ export async function prepareRelease(
       channelBasePath,
     );
   } catch (cause) {
-    throw new ReleasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage is unavailable', {
+    throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage is unavailable', {
       cause,
     });
   }
@@ -265,7 +269,7 @@ export async function prepareRelease(
     await caches.delete(cacheName);
     cache = await caches.open(cacheName);
   } catch (cause) {
-    throw new ReleasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage is unavailable', {
+    throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage is unavailable', {
       cause,
     });
   }
@@ -276,31 +280,20 @@ export async function prepareRelease(
       try {
         response = await fetch(`${channelBasePath}${file.path}`, { cache: 'no-store' });
       } catch (cause) {
-        throw new ReleasePreparationError(
-          'ARCHIVE_UNAVAILABLE',
-          cause instanceof Error ? cause.message : `Failed to download release file: ${file.path}`,
-          { cause },
-        );
+        throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download release file', {
+          cause,
+        });
       }
       if (!response.ok) {
-        throw new ReleasePreparationError(
-          'ARCHIVE_UNAVAILABLE',
-          `Failed to download release file: ${file.path}`,
-        );
+        throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download release file');
       }
 
       const bytes = await response.arrayBuffer();
       if (bytes.byteLength !== file.byteSize) {
-        throw new ReleasePreparationError(
-          'INTEGRITY_FAILURE',
-          `Byte size mismatch for release file: ${file.path}`,
-        );
+        throw releasePreparationError('INTEGRITY_FAILURE', 'Byte size mismatch for release file');
       }
       if ((await sha256Hex(bytes)) !== file.sha256) {
-        throw new ReleasePreparationError(
-          'INTEGRITY_FAILURE',
-          `SHA-256 mismatch for release file: ${file.path}`,
-        );
+        throw releasePreparationError('INTEGRITY_FAILURE', 'SHA-256 mismatch for release file');
       }
 
       try {
@@ -309,13 +302,9 @@ export async function prepareRelease(
           new Response(bytes, { headers: response.headers }),
         );
       } catch (cause) {
-        throw new ReleasePreparationError(
-          'CACHE_STORAGE_UNAVAILABLE',
-          'Cache Storage write failed',
-          {
-            cause,
-          },
-        );
+        throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage write failed', {
+          cause,
+        });
       }
     });
 
@@ -324,30 +313,19 @@ export async function prepareRelease(
     try {
       indexResponse = await fetch(indexPath, { cache: 'no-store' });
     } catch (cause) {
-      throw new ReleasePreparationError(
-        'ARCHIVE_UNAVAILABLE',
-        cause instanceof Error ? cause.message : `Failed to download archived index: ${indexPath}`,
-        { cause },
-      );
+      throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download archived index', {
+        cause,
+      });
     }
     if (!indexResponse.ok) {
-      throw new ReleasePreparationError(
-        'ARCHIVE_UNAVAILABLE',
-        `Failed to download archived index: ${indexPath}`,
-      );
+      throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download archived index');
     }
     const indexBytes = await indexResponse.arrayBuffer();
     if (indexBytes.byteLength !== descriptor.indexByteSize) {
-      throw new ReleasePreparationError(
-        'INTEGRITY_FAILURE',
-        `Byte size mismatch for archived index: ${indexPath}`,
-      );
+      throw releasePreparationError('INTEGRITY_FAILURE', 'Byte size mismatch for archived index');
     }
     if ((await sha256Hex(indexBytes)) !== descriptor.indexSha256) {
-      throw new ReleasePreparationError(
-        'INTEGRITY_FAILURE',
-        `SHA-256 mismatch for archived index: ${indexPath}`,
-      );
+      throw releasePreparationError('INTEGRITY_FAILURE', 'SHA-256 mismatch for archived index');
     }
     const indexHtml = new TextDecoder().decode(indexBytes);
     try {
@@ -357,7 +335,7 @@ export async function prepareRelease(
       // release "available" (see releaseCache.ts).
       await writeReleaseDescriptorMarker(cache, descriptor);
     } catch (cause) {
-      throw new ReleasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage write failed', {
+      throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage write failed', {
         cause,
       });
     }
@@ -367,12 +345,10 @@ export async function prepareRelease(
     } catch {
       // Best-effort cleanup only; the original failure below is what matters.
     }
-    throw error instanceof ReleasePreparationError
+    throw isReleasePreparationError(error)
       ? error
-      : new ReleasePreparationError(
-          'RESTORATION_FAILED',
-          error instanceof Error ? error.message : 'Release preparation failed',
-          { cause: error },
-        );
+      : releasePreparationError('RESTORATION_FAILED', 'Release preparation failed', {
+          cause: error,
+        });
   }
 }

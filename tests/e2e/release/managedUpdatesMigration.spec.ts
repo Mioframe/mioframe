@@ -159,6 +159,57 @@ async function waitForControlledPage(page: Page): Promise<void> {
 }
 
 /**
+ * Triggers `registration.update()` and waits for the resulting installing
+ * worker to reach the browser's own terminal failed-install state
+ * (`redundant`) — the real signal that an `install` event was rejected —
+ * bounded by `timeoutMs` as the maximum wait for that observable condition,
+ * never a blind sleep. The `updatefound` listener is attached before
+ * `update()` is called, in the same browser-side call, so a fast failure
+ * cannot fire before this starts observing it.
+ * @param page - The page whose registration should be updated and observed.
+ * @param timeoutMs - Maximum time to wait for the installing worker to reach `redundant`.
+ * @returns Whether an installing worker was observed reaching `redundant` before the timeout.
+ */
+async function waitForFailedInstallToSettle(page: Page, timeoutMs = 20_000): Promise<boolean> {
+  return page.evaluate(async (timeout) => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) return false;
+
+    const reachedRedundant = new Promise<boolean>((resolve) => {
+      let settled = false;
+      const settle = (value: boolean) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const timer = setTimeout(() => {
+        settle(false);
+      }, timeout);
+      const observeInstallingWorker = (worker: ServiceWorker) => {
+        if (worker.state === 'redundant') {
+          clearTimeout(timer);
+          settle(true);
+          return;
+        }
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'redundant') {
+            clearTimeout(timer);
+            settle(true);
+          }
+        });
+      };
+      if (registration.installing) observeInstallingWorker(registration.installing);
+      registration.addEventListener('updatefound', () => {
+        if (registration.installing) observeInstallingWorker(registration.installing);
+      });
+    });
+
+    await registration.update();
+    return reachedRedundant;
+  }, timeoutMs);
+}
+
+/**
  * Sends one private worker protocol request through the page's own
  * `navigator.serviceWorker.controller`, the same real transport the product
  * UI uses — never a test-side reproduction of the protocol.
@@ -483,15 +534,14 @@ test('a failed first managed install leaves the legacy worker active and operati
 
       const freshPage = await context.newPage();
       await freshPage.goto(server.url);
-      await freshPage.evaluate(async () => {
-        const registration = await navigator.serviceWorker.getRegistration();
-        await registration?.update();
-      });
 
-      // Give the browser ample time to attempt (and fail) installation, then
-      // confirm it never reaches "installing" or "waiting" — a failed
+      // Observe the real browser Service Worker lifecycle: the update
+      // attempt's installing worker must itself reach the terminal
+      // `redundant` state (a failed `install` event), then the registration
+      // must never have reached "installing" or "waiting" — a failed
       // `install` event leaves the registration with no new worker at all.
-      await freshPage.waitForTimeout(10_000);
+      const installReachedRedundant = await waitForFailedInstallToSettle(freshPage);
+      expect(installReachedRedundant).toBe(true);
       const registrationAfterFailedInstall = await freshPage.evaluate(async () => {
         const registration = await navigator.serviceWorker.getRegistration();
         return {

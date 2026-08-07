@@ -6,6 +6,14 @@ import {
   zodUpdateCandidate,
   zodUpdateMode,
 } from './contracts';
+import {
+  APP_UPDATE_PROTOCOL_VERSION,
+  BOOT_ACK_OUTCOMES,
+  WATCHDOG_PROTOCOL_MESSAGE_TYPES,
+} from './workerProtocolWireContract';
+
+export { APP_UPDATE_PROTOCOL_VERSION, BOOT_ACK_OUTCOMES } from './workerProtocolWireContract';
+export type { BootAckOutcome } from './workerProtocolWireContract';
 
 /** Stable public error codes the worker may report back to the UI. Defined next to this boundary. */
 export const APP_UPDATE_ERROR_CODES = ['check-failed', 'install-failed', 'unavailable'] as const;
@@ -14,40 +22,17 @@ export type AppUpdateErrorCode = (typeof APP_UPDATE_ERROR_CODES)[number];
 
 /**
  * Private worker protocol message-type string literals, as a runtime value.
- *
- * The publisher-generated boot watchdog (`scripts/pages/lib/watchdogInject.mjs`)
- * runs as plain Node ESM with no TypeScript loader, so it cannot import this
- * module directly — it keeps its own literal copies of these strings.
- * `watchdogProtocolParity.test.ts` imports both this object and the built
- * watchdog script text and proves they stay in exact agreement, the same
- * proven-equivalence pattern used for the release descriptor validators (see
- * `scripts/pages/lib/releaseDescriptorCorpus.mjs`).
+ * Composed from the canonical {@link WATCHDOG_PROTOCOL_MESSAGE_TYPES} (the
+ * subset the publisher-generated boot watchdog itself sends or reads) plus
+ * the two runtime-only broadcast/recovery types the watchdog never uses.
  */
 export const APP_UPDATE_PROTOCOL_MESSAGE_TYPES = {
-  BOOT_OK: 'BOOT_OK',
-  BOOT_FAILED: 'BOOT_FAILED',
-  GET_ACTIVATION_STATUS: 'GET_ACTIVATION_STATUS',
-  ROLLBACK_BROADCAST: 'APP_UPDATE_ROLLBACK',
+  ...WATCHDOG_PROTOCOL_MESSAGE_TYPES,
   STATE_CHANGED_BROADCAST: 'APP_UPDATE_STATE_CHANGED',
   RECOVER_INSTALL_LATEST: 'RECOVER_INSTALL_LATEST',
 } as const;
 
-/**
- * Private protocol wire-format version, present in every request, response,
- * acknowledgement, and broadcast that crosses the UI/worker/watchdog
- * boundary. Evolves additively: existing fields and semantics never change
- * for v1, and new fields are optional for a pinned v1 consumer. An
- * incompatible change requires a new explicit version and a separate
- * architecture decision — never a negotiation or adapter layer.
- */
-export const APP_UPDATE_PROTOCOL_VERSION = 1;
-
 const zodProtocolVersion = z.literal(APP_UPDATE_PROTOCOL_VERSION);
-
-/** Every outcome the worker may report for a `BOOT_OK`/`BOOT_FAILED` acknowledgement. */
-export const BOOT_ACK_OUTCOMES = ['committed', 'rolled-back', 'ignored', 'error'] as const;
-/** One of {@link BOOT_ACK_OUTCOMES}. */
-export type BootAckOutcome = (typeof BOOT_ACK_OUTCOMES)[number];
 
 /**
  * The narrow, UI-facing read model the worker reports for every command

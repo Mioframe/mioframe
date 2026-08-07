@@ -1,9 +1,3 @@
-/** Must match `src/shared/service/appUpdate/bootConfirmation.ts`'s `BOOT_ACK_TIMEOUT_MS`. */
-export declare const WATCHDOG_ACK_TIMEOUT_MS: number;
-
-/** Must match `src/shared/service/appUpdate/protocol.ts`'s `APP_UPDATE_PROTOCOL_VERSION`. */
-export declare const WATCHDOG_PROTOCOL_VERSION: number;
-
 /**
  * Builds the watchdog's self-contained inline script source for one release.
  * @param releaseNumber The exact archived release number this watchdog belongs to.

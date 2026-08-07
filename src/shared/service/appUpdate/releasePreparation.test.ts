@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DomainError } from '@shared/lib/error';
 import type { ReleaseDescriptor } from './contracts';
 import { createFakeCacheStorage } from './fakeCacheStorage.testUtils';
 import { buildReleaseCacheName, readReleaseDescriptorMarker } from './releaseCache';
@@ -157,11 +158,18 @@ describe('prepareRelease', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('deletes the release cache on any failure, leaving no partial content behind', async () => {
+  it('deletes the release cache on any failure, leaving no partial content behind, without copying the raw runtime error into the safe message', async () => {
     fetchMock.mockRejectedValue(new Error('network down'));
     const { prepareRelease } = await import('./releasePreparation');
 
-    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow('network down');
+    const error: unknown = await prepareRelease(BASE_PATH, CHANNEL, descriptor).catch(
+      (caught: unknown) => caught,
+    );
+
+    if (!(error instanceof DomainError)) throw new Error('Expected a DomainError');
+    expect(error.message).toBe('Failed to download release file');
+    if (!(error.cause instanceof Error)) throw new Error('Expected an Error cause');
+    expect(error.cause.message).toBe('network down');
 
     const cacheName = buildReleaseCacheName(CHANNEL, RELEASE_NUMBER);
     expect(cachesByName.has(cacheName)).toBe(false);
@@ -253,12 +261,18 @@ describe('prepareRelease', () => {
     await fakeCaches.delete(buildReleaseCacheName(CHANNEL, RELEASE_NUMBER));
     fetchMock.mockRejectedValue(new Error('offline'));
 
-    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toThrow('offline');
+    const error: unknown = await prepareRelease(BASE_PATH, CHANNEL, descriptor).catch(
+      (caught: unknown) => caught,
+    );
+    if (!(error instanceof DomainError)) throw new Error('Expected a DomainError');
+    expect(error.message).toBe('Failed to download release file');
+    if (!(error.cause instanceof Error)) throw new Error('Expected an Error cause');
+    expect(error.cause.message).toBe('offline');
     expect(committedMarker).toEqual(descriptor);
   });
 });
 
-describe('ReleasePreparationError classification', () => {
+describe('release-preparation DomainError classification', () => {
   beforeEach(() => {
     cachesByName.clear();
     fetchMock.mockReset();
@@ -268,15 +282,27 @@ describe('ReleasePreparationError classification', () => {
 
   it('classifies latest.json fetch failure as ARCHIVE_UNAVAILABLE', async () => {
     fetchMock.mockResolvedValue(new Response('nope', { status: 500 }));
-    const { fetchLatestReleasePointer, ReleasePreparationError } =
-      await import('./releasePreparation');
+    const { fetchLatestReleasePointer } = await import('./releasePreparation');
 
     await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
-      reason: 'ARCHIVE_UNAVAILABLE',
+      code: 'ARCHIVE_UNAVAILABLE',
     });
-    await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toBeInstanceOf(
-      ReleasePreparationError,
-    );
+    await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toBeInstanceOf(DomainError);
+  });
+
+  it('never copies a path, URL, response text, or raw external error text into the safe message', async () => {
+    fetchMock.mockResolvedValue(new Response('nope', { status: 500 }));
+    const { fetchReleaseDescriptor } = await import('./releasePreparation');
+
+    const error: unknown = await fetchReleaseDescriptor(BASE_PATH, {
+      releaseNumber: RELEASE_NUMBER,
+    }).catch((caught: unknown) => caught);
+
+    if (!(error instanceof DomainError)) throw new Error('Expected a DomainError');
+    const message = error.message;
+    expect(message).not.toMatch(/https?:\/\//);
+    expect(message).not.toContain(BASE_PATH + 'updates');
+    expect(message).not.toMatch(/\d{3}/);
   });
 
   it('classifies a structurally invalid latest.json as INVALID_ARCHIVE_METADATA', async () => {
@@ -284,7 +310,7 @@ describe('ReleasePreparationError classification', () => {
     const { fetchLatestReleasePointer } = await import('./releasePreparation');
 
     await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
-      reason: 'INVALID_ARCHIVE_METADATA',
+      code: 'INVALID_ARCHIVE_METADATA',
     });
   });
 
@@ -294,7 +320,7 @@ describe('ReleasePreparationError classification', () => {
 
     await expect(
       fetchReleaseDescriptor(BASE_PATH, { releaseNumber: RELEASE_NUMBER }),
-    ).rejects.toMatchObject({ reason: 'INVALID_ARCHIVE_METADATA' });
+    ).rejects.toMatchObject({ code: 'INVALID_ARCHIVE_METADATA' });
   });
 
   it('classifies a network-level throw during file download as ARCHIVE_UNAVAILABLE', async () => {
@@ -302,7 +328,7 @@ describe('ReleasePreparationError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      reason: 'ARCHIVE_UNAVAILABLE',
+      code: 'ARCHIVE_UNAVAILABLE',
     });
   });
 
@@ -311,7 +337,7 @@ describe('ReleasePreparationError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      reason: 'INTEGRITY_FAILURE',
+      code: 'INTEGRITY_FAILURE',
     });
   });
 
@@ -321,7 +347,7 @@ describe('ReleasePreparationError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      reason: 'INTEGRITY_FAILURE',
+      code: 'INTEGRITY_FAILURE',
     });
   });
 
@@ -334,7 +360,7 @@ describe('ReleasePreparationError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      reason: 'CACHE_STORAGE_UNAVAILABLE',
+      code: 'CACHE_STORAGE_UNAVAILABLE',
     });
 
     vi.stubGlobal('caches', fakeCaches);
@@ -351,7 +377,7 @@ describe('ReleasePreparationError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      reason: 'CACHE_STORAGE_UNAVAILABLE',
+      code: 'CACHE_STORAGE_UNAVAILABLE',
     });
 
     vi.stubGlobal('caches', fakeCaches);
@@ -363,7 +389,7 @@ describe('ReleasePreparationError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      reason: 'RESTORATION_FAILED',
+      code: 'RESTORATION_FAILED',
     });
   });
 });
