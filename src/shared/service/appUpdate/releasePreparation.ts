@@ -77,15 +77,17 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
  * preparation failure classification"). Safe for the worker fetch/recovery
  * boundary to surface directly as a recovery diagnostic `problemDetail`.
  */
-export const RELEASE_PREPARATION_FAILURE_REASONS = [
-  'ARCHIVE_UNAVAILABLE',
-  'INVALID_ARCHIVE_METADATA',
-  'INTEGRITY_FAILURE',
-  'CACHE_STORAGE_UNAVAILABLE',
-  'RESTORATION_FAILED',
-] as const;
-/** One of {@link RELEASE_PREPARATION_FAILURE_REASONS}. */
-export type ReleasePreparationFailureReason = (typeof RELEASE_PREPARATION_FAILURE_REASONS)[number];
+export enum ReleasePreparationFailureReason {
+  ARCHIVE_UNAVAILABLE = 'ARCHIVE_UNAVAILABLE',
+  INVALID_ARCHIVE_METADATA = 'INVALID_ARCHIVE_METADATA',
+  INTEGRITY_FAILURE = 'INTEGRITY_FAILURE',
+  CACHE_STORAGE_UNAVAILABLE = 'CACHE_STORAGE_UNAVAILABLE',
+  RESTORATION_FAILED = 'RESTORATION_FAILED',
+}
+
+const RELEASE_PREPARATION_FAILURE_REASON_VALUES = new Set<string>(
+  Object.values(ReleasePreparationFailureReason),
+);
 
 /**
  * Builds a `DomainError` for every discovery/preparation boundary in this
@@ -108,7 +110,7 @@ export function releasePreparationError(
 
 /**
  * Returns `true` when `error` is a `DomainError` classified with one of
- * {@link RELEASE_PREPARATION_FAILURE_REASONS} — the release-preparation
+ * {@link ReleasePreparationFailureReason} — the release-preparation
  * boundary's own failures, narrowed from any other `DomainError`.
  * @param error - The raw thrown value.
  * @returns Whether `error` is a classified release-preparation error.
@@ -121,7 +123,7 @@ export function isReleasePreparationError(
   return (
     error instanceof DomainError &&
     typeof error.code === 'string' &&
-    RELEASE_PREPARATION_FAILURE_REASONS.some((reason) => reason === error.code)
+    RELEASE_PREPARATION_FAILURE_REASON_VALUES.has(error.code)
   );
 }
 
@@ -138,17 +140,24 @@ export async function fetchLatestReleasePointer(
   try {
     response = await fetch(buildLatestPointerPath(channelBasePath), { cache: 'no-store' });
   } catch (cause) {
-    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch latest.json', { cause });
+    throw releasePreparationError(
+      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      'Failed to fetch latest.json',
+      { cause },
+    );
   }
   if (!response.ok) {
-    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch latest.json');
+    throw releasePreparationError(
+      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      'Failed to fetch latest.json',
+    );
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch (cause) {
     throw releasePreparationError(
-      'INVALID_ARCHIVE_METADATA',
+      ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
       'latest.json is structurally invalid',
       { cause },
     );
@@ -156,7 +165,7 @@ export async function fetchLatestReleasePointer(
   const parsed = zodLatestReleasePointer.safeParse(body);
   if (!parsed.success) {
     throw releasePreparationError(
-      'INVALID_ARCHIVE_METADATA',
+      ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
       'latest.json is structurally invalid',
     );
   }
@@ -181,19 +190,26 @@ export async function fetchReleaseDescriptor(
       cache: 'no-store',
     });
   } catch (cause) {
-    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch release descriptor', {
-      cause,
-    });
+    throw releasePreparationError(
+      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      'Failed to fetch release descriptor',
+      {
+        cause,
+      },
+    );
   }
   if (!response.ok) {
-    throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch release descriptor');
+    throw releasePreparationError(
+      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      'Failed to fetch release descriptor',
+    );
   }
   let body: unknown;
   try {
     body = await response.json();
   } catch (cause) {
     throw releasePreparationError(
-      'INVALID_ARCHIVE_METADATA',
+      ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
       'Release descriptor is structurally invalid',
       { cause },
     );
@@ -201,13 +217,13 @@ export async function fetchReleaseDescriptor(
   const parsed = zodReleaseDescriptor.safeParse(body);
   if (!parsed.success) {
     throw releasePreparationError(
-      'INVALID_ARCHIVE_METADATA',
+      ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
       'Release descriptor is structurally invalid',
     );
   }
   if (parsed.data.releaseNumber !== release.releaseNumber) {
     throw releasePreparationError(
-      'INVALID_ARCHIVE_METADATA',
+      ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
       'Release descriptor identity does not match the expected release',
     );
   }
@@ -258,9 +274,13 @@ export async function prepareRelease(
       channelBasePath,
     );
   } catch (cause) {
-    throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage is unavailable', {
-      cause,
-    });
+    throw releasePreparationError(
+      ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
+      'Cache Storage is unavailable',
+      {
+        cause,
+      },
+    );
   }
   if (alreadyAvailable) return;
 
@@ -269,9 +289,13 @@ export async function prepareRelease(
     await caches.delete(cacheName);
     cache = await caches.open(cacheName);
   } catch (cause) {
-    throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage is unavailable', {
-      cause,
-    });
+    throw releasePreparationError(
+      ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
+      'Cache Storage is unavailable',
+      {
+        cause,
+      },
+    );
   }
 
   try {
@@ -280,20 +304,33 @@ export async function prepareRelease(
       try {
         response = await fetch(`${channelBasePath}${file.path}`, { cache: 'no-store' });
       } catch (cause) {
-        throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download release file', {
-          cause,
-        });
+        throw releasePreparationError(
+          ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+          'Failed to download release file',
+          {
+            cause,
+          },
+        );
       }
       if (!response.ok) {
-        throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download release file');
+        throw releasePreparationError(
+          ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+          'Failed to download release file',
+        );
       }
 
       const bytes = await response.arrayBuffer();
       if (bytes.byteLength !== file.byteSize) {
-        throw releasePreparationError('INTEGRITY_FAILURE', 'Byte size mismatch for release file');
+        throw releasePreparationError(
+          ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+          'Byte size mismatch for release file',
+        );
       }
       if ((await sha256Hex(bytes)) !== file.sha256) {
-        throw releasePreparationError('INTEGRITY_FAILURE', 'SHA-256 mismatch for release file');
+        throw releasePreparationError(
+          ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+          'SHA-256 mismatch for release file',
+        );
       }
 
       try {
@@ -302,9 +339,13 @@ export async function prepareRelease(
           new Response(bytes, { headers: response.headers }),
         );
       } catch (cause) {
-        throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage write failed', {
-          cause,
-        });
+        throw releasePreparationError(
+          ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
+          'Cache Storage write failed',
+          {
+            cause,
+          },
+        );
       }
     });
 
@@ -313,19 +354,32 @@ export async function prepareRelease(
     try {
       indexResponse = await fetch(indexPath, { cache: 'no-store' });
     } catch (cause) {
-      throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download archived index', {
-        cause,
-      });
+      throw releasePreparationError(
+        ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+        'Failed to download archived index',
+        {
+          cause,
+        },
+      );
     }
     if (!indexResponse.ok) {
-      throw releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to download archived index');
+      throw releasePreparationError(
+        ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+        'Failed to download archived index',
+      );
     }
     const indexBytes = await indexResponse.arrayBuffer();
     if (indexBytes.byteLength !== descriptor.indexByteSize) {
-      throw releasePreparationError('INTEGRITY_FAILURE', 'Byte size mismatch for archived index');
+      throw releasePreparationError(
+        ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+        'Byte size mismatch for archived index',
+      );
     }
     if ((await sha256Hex(indexBytes)) !== descriptor.indexSha256) {
-      throw releasePreparationError('INTEGRITY_FAILURE', 'SHA-256 mismatch for archived index');
+      throw releasePreparationError(
+        ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+        'SHA-256 mismatch for archived index',
+      );
     }
     const indexHtml = new TextDecoder().decode(indexBytes);
     try {
@@ -335,9 +389,13 @@ export async function prepareRelease(
       // release "available" (see releaseCache.ts).
       await writeReleaseDescriptorMarker(cache, descriptor);
     } catch (cause) {
-      throw releasePreparationError('CACHE_STORAGE_UNAVAILABLE', 'Cache Storage write failed', {
-        cause,
-      });
+      throw releasePreparationError(
+        ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
+        'Cache Storage write failed',
+        {
+          cause,
+        },
+      );
     }
   } catch (error) {
     try {
@@ -347,8 +405,12 @@ export async function prepareRelease(
     }
     throw isReleasePreparationError(error)
       ? error
-      : releasePreparationError('RESTORATION_FAILED', 'Release preparation failed', {
-          cause: error,
-        });
+      : releasePreparationError(
+          ReleasePreparationFailureReason.RESTORATION_FAILED,
+          'Release preparation failed',
+          {
+            cause: error,
+          },
+        );
   }
 }

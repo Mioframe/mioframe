@@ -478,31 +478,50 @@ Required proof includes:
 
 ## TEST IMPACT
 
-Changed contract/scenario groups, primary proof owner, and additional proof:
-
-- Release descriptor / latest-pointer / path validation — one canonical schema in `src/shared/service/appUpdate/releaseWireContract.ts`, imported directly by both the runtime (`contracts.ts`) and the Node publisher (`scripts/pages/lib/releaseDescriptor.mjs`), no duplicate implementation.
-  - Primary proof: `releaseWireContract.test.ts`.
-  - Additional proof: `scripts/pages/lib/releaseDescriptor.test.mjs` (proves plain Node LTS imports the canonical `.ts` module directly, no loader), `retainedReleaseTree.test.mjs`, publisher release-publish tests.
-- Watchdog/runtime protocol wire values — one canonical implementation in `src/shared/service/appUpdate/workerProtocolWireContract.ts`, imported directly by `protocol.ts`, `bootConfirmation.ts`, and the Node publisher's `scripts/pages/lib/watchdogInject.mjs` (interpolated into the generated inline watchdog script).
-  - Primary proof: `scripts/pages/lib/watchdogInject.test.mjs` (generated script's actual runtime behavior).
+- Contract/scenario: release descriptor / latest-pointer / canonical-path wire contract — one canonical schema in `src/shared/service/appUpdate/releaseWireContract.ts` (`zodReleaseDescriptor`, `zodLatestReleasePointer`, `isCanonicalReleasePath`), imported directly by the runtime (`contracts.ts`) and by the Node publisher (`scripts/pages/lib/releaseDescriptor.mjs`, `scripts/pages/lib/retainedReleaseTree.mjs`). No duplicate validation remains: the publisher's local `latest.json` shape check is gone, and the fixture corpus that drove this matrix lives once, at `releaseWireContract.testUtils.ts`.
+  - Primary proof owner: `releaseWireContract.test.ts` — the sole test running the complete matrix (canonical paths, positive release numbers, descriptor validity, duplicate paths, hashes, sizes, metadata, latest pointer).
+  - Additional proof: `scripts/pages/lib/retainedReleaseTree.test.mjs` (retained-tree structural rules built on top of the canonical schema).
+  - Existing proof: `scripts/pages/lib/releaseArtifact.test.mjs`, `contracts.test.ts` (both consume the shared `validReleaseDescriptor`/`invalidReleaseDescriptors` fixtures for their own, narrower scope; neither re-proves the matrix).
+  - New/updated proof: `releaseWireContract.testUtils.ts` (moved from `scripts/pages/lib/releaseDescriptorCorpus.mjs`, now deleted); `releaseWireContract.test.ts` gained the `zodLatestReleasePointer` cases; `scripts/pages/lib/releaseDescriptor.test.mjs` narrowed to publisher-owned behavior only (`buildReleaseDescriptor` success/failure).
+  - Risk or platform matrix: Node-only (publisher) and Vitest-only (runtime schema); no browser risk.
+  - Persistent impact metadata: none — schema values and publisher output are unchanged, only proof ownership moved.
+- Contract/scenario: publisher / plain-Node import seam — Node LTS must execute `scripts/pages/lib/releaseDescriptor.mjs`'s direct import of `releaseWireContract.ts` (erasable-TypeScript syntax only) with no TypeScript loader.
+  - Primary proof owner: `scripts/release/publisherWireContractImportProof.mjs`, run by the verifier as the `publisher-node-import` label (`pnpm verify --full --only publisher-node-import`) via a real `node scripts/release/publisherWireContractImportProof.mjs` child process — genuinely plain Node, not Vitest/Vite/tsx/ts-node. It exercises one representative case: importing the production publisher module (`scripts/pages/lib/releasePublish.mjs`) and, through the same module graph, building and validating one descriptor via `buildReleaseDescriptor`/`isValidReleaseDescriptor`.
+  - Additional proof: `scripts/release/publisherWireContractImportProof.test.mjs` — an ordinary Vitest wrapper around the same exported function, for fast feedback on regular (non-`--full`) changes; it does not itself prove the no-loader property, which only the direct `node` invocation above proves.
+  - Existing proof: none — this seam previously had no real plain-Node execution proof. The prior claim that `scripts/pages/lib/releaseDescriptor.test.mjs` proved plain-Node execution was inaccurate: that file has always run under Vitest.
+  - New/updated proof: `scripts/release/publisherWireContractImportProof.mjs`, `scripts/release/publisherWireContractImportProof.test.mjs`, and the `publisher-node-import` label wiring in `scripts/verify.mjs`, `scripts/lib/verifyInvocation.mjs`, `scripts/lib/commandWeight.mjs`.
+  - Risk or platform matrix: Node LTS only (matches CI's `node-version: lts/*`); no browser risk. A future `releaseWireContract.ts` construct outside Node's erasable-TypeScript-syntax support would fail this check, not silently degrade at publish time.
+  - Persistent impact metadata: `publisher-node-import` added to `FULL_ONLY_LABELS`/`VERIFY_LABELS`, release-only like `release-version`/`release-config`/`build`; runs under `pnpm verify --full` and `pnpm verify:release`.
+- Contract/scenario: watchdog/runtime protocol wire contract — one canonical implementation in `src/shared/service/appUpdate/workerProtocolWireContract.ts`, imported directly by `protocol.ts`, `bootConfirmation.ts`, and the Node publisher's `scripts/pages/lib/watchdogInject.mjs` (interpolated into the generated inline watchdog script). Unchanged by this correction round.
+  - Primary proof owner: `scripts/pages/lib/watchdogInject.test.mjs` — genuinely executes the generated watchdog script's own runtime behavior via `new Function(buildWatchdogScript(...))()`, not merely its source text.
   - Additional proof: `protocol.test.ts` (schema-level).
-- Release-preparation error boundary — `DomainError`-based, classified by the stable `ReleasePreparationFailureReason` code set (`releasePreparation.ts`); `message` stays a short project-controlled safe string, raw detail (paths, HTTP status, external error text) lives only in `cause`.
-  - Primary proof: `releasePreparation.test.ts`.
-  - Additional proof: `preparationCoordinator.test.ts`, `recoveryStateLoss.test.ts`, `recoveryDiagnostics.test.ts`.
-- Recovery orchestration and result-code classification (`recoveryOrchestration.ts`): unchanged result codes and recovery behavior.
-  - Primary proof: `workerMessagesRecovery.test.ts`, `recoveryStateLoss.test.ts`.
-- Controller lifecycle, activation, rollback, and boot confirmation: unchanged.
-  - Primary proof: `workerMessages.test.ts`, `workerMessagesActivation.test.ts`, `stateTransitions.test.ts`.
-- Top-level fetch ownership and serving: unchanged.
-  - Primary proof: `workerFetch.test.ts`.
-- Release publication, retained-tree integrity, and publisher CLI: unchanged.
-  - Primary proof: `scripts/pages/lib/*.test.mjs`.
-- Failed-install browser proof is condition/event based, not time based: the E2E spec now observes the update attempt's installing worker reaching the browser's own terminal `redundant` state, bounded by a maximum wait, instead of a fixed sleep.
-  - Primary proof: `tests/e2e/release/managedUpdatesMigration.spec.ts`.
-- Every other product-facing scenario (lifecycle, activation UI, recovery page, cross-engine, uncontrolled window, automatic check, controller upgrade, develop channel): unchanged, applicable to every supported browser/platform per `docs/testing/architecture.md`.
-  - Primary proof: `managedUpdatesLifecycle.spec.ts`, `managedUpdatesActivationUi.spec.ts`, `managedUpdatesRecovery.spec.ts`, `managedUpdatesCrossEngineLifecycle.spec.ts`, `managedUpdatesUncontrolledWindow.spec.ts`, `managedUpdatesAutomaticCheck.spec.ts`, `managedUpdatesControllerUpgrade.spec.ts`, `managedUpdatesDevelop.spec.ts`.
+  - Existing proof: both unchanged by this round.
+  - New/updated proof: none.
+  - Risk or platform matrix: Vitest/happy-dom execution of the generated script; no browser risk beyond what the E2E lifecycle specs already cover.
+  - Persistent impact metadata: none.
+- Contract/scenario: release-preparation error boundary — `DomainError`-based, classified by the local `ReleasePreparationFailureReason` string enum (`releasePreparation.ts`, values unchanged: `ARCHIVE_UNAVAILABLE`, `INVALID_ARCHIVE_METADATA`, `INTEGRITY_FAILURE`, `CACHE_STORAGE_UNAVAILABLE`, `RESTORATION_FAILED`); `message` stays a short project-controlled safe string with no file names, paths, URLs, ids, HTTP status, or raw external/runtime text; raw detail lives only in `cause`.
+  - Primary proof owner: `releasePreparation.test.ts`, including the dedicated "release-preparation `DomainError` classification" group and the message-safety assertions.
+  - Additional proof: `preparationCoordinator.test.ts`, `recoveryStateLoss.test.ts`, `recoveryDiagnostics.test.ts`, `recoveryPage.test.ts`, `workerFetch.test.ts` (all consume `error.code`/`problemDetail` through the enum, not raw strings, except where a test is asserting rendered recovery-page HTML text rather than a typed code).
+  - Existing proof: `recoveryOrchestration.ts` classification behavior, covered by `workerMessagesRecovery.test.ts`/`recoveryStateLoss.test.ts`; unchanged result codes.
+  - New/updated proof: every consumer above updated to reference `ReleasePreparationFailureReason.<MEMBER>` instead of a bare string literal or the removed `RELEASE_PREPARATION_FAILURE_REASONS` tuple export.
+  - Risk or platform matrix: Vitest-only; no browser or platform risk — wire-visible `problemDetail`/`code` string values are unchanged, so recovery-page rendering and diagnostics payloads are unaffected.
+  - Persistent impact metadata: none — an internal error-model refactor; recovery result codes and user-visible recovery behavior are unchanged.
+- Contract/scenario: failed Service Worker installation lifecycle — condition/event based, not time based: the E2E spec observes the update attempt's installing worker reaching the browser's own terminal `redundant` state, bounded by a maximum wait, instead of a fixed sleep. Unchanged by this round.
+  - Primary proof owner: `tests/e2e/release/managedUpdatesMigration.spec.ts`.
+  - Additional proof: none.
+  - Existing proof: unchanged by this round.
+  - New/updated proof: none.
+  - Risk or platform matrix: Chromium only (see browser matrix below); this lifecycle path is not part of the narrow cross-engine smoke.
+  - Persistent impact metadata: none.
+- Contract/scenario: every other product-facing managed-updates scenario (lifecycle, activation UI, recovery page, cross-engine, uncontrolled window, automatic check, controller upgrade, develop channel) — unchanged by this round.
+  - Primary proof owner: `managedUpdatesLifecycle.spec.ts`, `managedUpdatesActivationUi.spec.ts`, `managedUpdatesRecovery.spec.ts`, `managedUpdatesCrossEngineLifecycle.spec.ts`, `managedUpdatesUncontrolledWindow.spec.ts`, `managedUpdatesAutomaticCheck.spec.ts`, `managedUpdatesControllerUpgrade.spec.ts`, `managedUpdatesDevelop.spec.ts`, `managedUpdatesMigration.spec.ts`.
+  - Additional proof: `workerMessages.test.ts`, `workerMessagesActivation.test.ts`, `stateTransitions.test.ts`, `workerFetch.test.ts` (controller lifecycle, activation, rollback, boot confirmation, top-level fetch ownership).
+  - Existing proof: all of the above; unchanged by this round.
+  - New/updated proof: none.
+  - Risk or platform matrix: see browser matrix below.
+  - Persistent impact metadata: none.
 
-Persistent verification/impact metadata: none — internal contract-ownership and error-model refactor only; persisted controller-state shape, protocol wire values, recovery result codes, and user-visible behavior are unchanged.
+Browser matrix (see `docs/testing/architecture.md`): Chromium owns the complete managed-updates E2E corpus (`MANAGED_UPDATES_LIFECYCLE_SPECS` and `MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS` in `scripts/release/managedUpdatesProof.mjs`). Firefox/WebKit own only the narrow cross-engine lifecycle smoke (`managedUpdatesCrossEngineLifecycle.spec.ts`, `MANAGED_UPDATES_CROSS_ENGINE_SPECS`), run after both Chromium groups pass, in their own isolated Playwright container.
 
 Final unchanged workspace verification:
 
@@ -533,11 +552,3 @@ The exact final head also requires the ordinary GitHub workflow and operator UI/
 - rollback to Workbox;
 - browser-specific reload logic;
 - irreversible user-data migration.
-
-## Implementation readiness
-
-Required product and architecture decisions are resolved.
-
-Unresolved architecture blockers: none.
-
-Verdict: **implemented, including recovery and its required proof (see "TEST IMPACT").**

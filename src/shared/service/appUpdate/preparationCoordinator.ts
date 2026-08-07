@@ -9,6 +9,7 @@ import {
   fetchReleaseDescriptor,
   prepareRelease,
   releasePreparationError,
+  ReleasePreparationFailureReason,
 } from './releasePreparation';
 
 /**
@@ -132,7 +133,7 @@ export function createPreparationCoordinator(): PreparationCoordinator {
           // cached as `target`; see `releaseSummariesMatch`.
           if (!releaseSummariesMatch(toReleaseSummary(fetched), target)) {
             throw releasePreparationError(
-              'INVALID_ARCHIVE_METADATA',
+              ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
               'Fetched release descriptor does not match the expected release identity',
             );
           }

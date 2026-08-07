@@ -3,10 +3,11 @@ import {
   canonicalReleasePathCases,
   invalidReleaseDescriptors,
   validReleaseDescriptor,
-} from '../../../../scripts/pages/lib/releaseDescriptorCorpus.mjs';
+} from './releaseWireContract.testUtils';
 import {
   isCanonicalReleasePath,
   isPositiveSafeInteger,
+  zodLatestReleasePointer,
   zodReleaseDescriptor,
 } from './releaseWireContract';
 
@@ -37,5 +38,19 @@ describe('zodReleaseDescriptor', () => {
 
   it.each(invalidReleaseDescriptors)('rejects: $name', ({ descriptor }) => {
     expect(zodReleaseDescriptor.safeParse(descriptor).success).toBe(false);
+  });
+});
+
+describe('zodLatestReleasePointer', () => {
+  it('accepts a valid latest-release pointer', () => {
+    expect(zodLatestReleasePointer.safeParse({ releaseNumber: 1 }).success).toBe(true);
+  });
+
+  it('rejects a non-positive-safe-integer releaseNumber', () => {
+    expect(zodLatestReleasePointer.safeParse({ releaseNumber: 0 }).success).toBe(false);
+  });
+
+  it('rejects a missing releaseNumber', () => {
+    expect(zodLatestReleasePointer.safeParse({}).success).toBe(false);
   });
 });

@@ -7,10 +7,7 @@ import {
   type StorageErrorName,
 } from './controllerState';
 import { isPositiveSafeInteger, zodManagedChannel, type ManagedChannel } from './contracts';
-import {
-  RELEASE_PREPARATION_FAILURE_REASONS,
-  type ReleasePreparationFailureReason,
-} from './releasePreparation';
+import { ReleasePreparationFailureReason } from './releasePreparation';
 
 /**
  * Every top-level classification the worker-generated recovery page may
@@ -77,7 +74,7 @@ export const zodRecoveryDiagnostics = z.discriminatedUnion('problemCode', [
   z.strictObject({
     problemCode: z.literal('ACTIVE_RELEASE_UNAVAILABLE'),
     /** The stable reason exact-release restoration could not make the selected release servable. */
-    problemDetail: z.enum(RELEASE_PREPARATION_FAILURE_REASONS),
+    problemDetail: z.enum(ReleasePreparationFailureReason),
     /** The known active release number this failure was classified against. */
     selectedReleaseNumber: zodSelectedReleaseNumber,
     ...zodRecoveryDiagnosticsBaseShape,

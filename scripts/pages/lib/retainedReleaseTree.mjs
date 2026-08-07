@@ -13,24 +13,12 @@ import { join } from 'node:path';
 
 import { isPositiveSafeInteger, isValidReleaseDescriptor } from './releaseDescriptor.mjs';
 import { computeFileSha256 } from './releaseArtifact.mjs';
+import { zodLatestReleasePointer } from '../../../src/shared/service/appUpdate/releaseWireContract.ts';
 
 /** Canonical retained descriptor filename: `<releaseNumber>.json`, no leading zeros. */
 const RELEASE_DESCRIPTOR_FILENAME_PATTERN = /^([1-9]\d*)\.json$/;
 /** Canonical retained archive directory name: `<releaseNumber>`, no leading zeros. */
 const RELEASE_ARCHIVE_DIRECTORY_NAME_PATTERN = /^[1-9]\d*$/;
-
-/**
- * Structurally validates the published `updates/latest.json` pointer.
- * @param candidate Value to validate.
- * @returns Whether `candidate` is a valid latest-release pointer.
- */
-function isValidLatestPointer(candidate) {
-  return (
-    typeof candidate === 'object' &&
-    candidate !== null &&
-    isPositiveSafeInteger(candidate.releaseNumber)
-  );
-}
 
 /**
  * Reads and validates every retained release descriptor for a channel, and
@@ -161,10 +149,11 @@ export function readLatestPointer(updatesDir) {
   } catch (error) {
     throw new Error('Retained updates/latest.json is not valid JSON', { cause: error });
   }
-  if (!isValidLatestPointer(parsed)) {
+  const result = zodLatestReleasePointer.safeParse(parsed);
+  if (!result.success) {
     throw new Error('Retained updates/latest.json is structurally invalid');
   }
-  return parsed;
+  return result.data;
 }
 
 /**

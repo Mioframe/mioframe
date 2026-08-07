@@ -14,6 +14,7 @@ import {
   fetchLatestReleasePointer,
   fetchReleaseDescriptor,
   isReleasePreparationError,
+  ReleasePreparationFailureReason,
 } from './releasePreparation';
 import { buildInitialControllerState } from './stateTransitions';
 
@@ -58,7 +59,10 @@ export type RecoverInstallLatestOutcome = {
  * @returns The classified result code.
  */
 function classifyDiscoveryFailure(error: unknown): RecoverInstallLatestResultCode {
-  if (isReleasePreparationError(error) && error.code === 'INVALID_ARCHIVE_METADATA') {
+  if (
+    isReleasePreparationError(error) &&
+    error.code === ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA
+  ) {
     return 'invalid-latest-metadata';
   }
   return 'network-or-latest-unavailable';

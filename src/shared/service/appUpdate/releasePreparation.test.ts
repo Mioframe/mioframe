@@ -3,6 +3,7 @@ import { DomainError } from '@shared/lib/error';
 import type { ReleaseDescriptor } from './contracts';
 import { createFakeCacheStorage } from './fakeCacheStorage.testUtils';
 import { buildReleaseCacheName, readReleaseDescriptorMarker } from './releaseCache';
+import { ReleasePreparationFailureReason } from './releasePreparation';
 
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
 const fetchMock = vi.fn();
@@ -285,7 +286,7 @@ describe('release-preparation DomainError classification', () => {
     const { fetchLatestReleasePointer } = await import('./releasePreparation');
 
     await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
-      code: 'ARCHIVE_UNAVAILABLE',
+      code: ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
     });
     await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toBeInstanceOf(DomainError);
   });
@@ -310,7 +311,7 @@ describe('release-preparation DomainError classification', () => {
     const { fetchLatestReleasePointer } = await import('./releasePreparation');
 
     await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
-      code: 'INVALID_ARCHIVE_METADATA',
+      code: ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
     });
   });
 
@@ -320,7 +321,7 @@ describe('release-preparation DomainError classification', () => {
 
     await expect(
       fetchReleaseDescriptor(BASE_PATH, { releaseNumber: RELEASE_NUMBER }),
-    ).rejects.toMatchObject({ code: 'INVALID_ARCHIVE_METADATA' });
+    ).rejects.toMatchObject({ code: ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA });
   });
 
   it('classifies a network-level throw during file download as ARCHIVE_UNAVAILABLE', async () => {
@@ -328,7 +329,7 @@ describe('release-preparation DomainError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      code: 'ARCHIVE_UNAVAILABLE',
+      code: ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
     });
   });
 
@@ -337,7 +338,7 @@ describe('release-preparation DomainError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      code: 'INTEGRITY_FAILURE',
+      code: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
     });
   });
 
@@ -347,7 +348,7 @@ describe('release-preparation DomainError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      code: 'INTEGRITY_FAILURE',
+      code: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
     });
   });
 
@@ -360,7 +361,7 @@ describe('release-preparation DomainError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      code: 'CACHE_STORAGE_UNAVAILABLE',
+      code: ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
     });
 
     vi.stubGlobal('caches', fakeCaches);
@@ -377,7 +378,7 @@ describe('release-preparation DomainError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      code: 'CACHE_STORAGE_UNAVAILABLE',
+      code: ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
     });
 
     vi.stubGlobal('caches', fakeCaches);
@@ -389,7 +390,7 @@ describe('release-preparation DomainError classification', () => {
     const { prepareRelease } = await import('./releasePreparation');
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
-      code: 'RESTORATION_FAILED',
+      code: ReleasePreparationFailureReason.RESTORATION_FAILED,
     });
   });
 });

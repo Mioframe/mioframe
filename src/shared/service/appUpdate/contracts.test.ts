@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  invalidReleaseDescriptors,
-  validReleaseDescriptor,
-} from '../../../../scripts/pages/lib/releaseDescriptorCorpus.mjs';
+import { invalidReleaseDescriptors, validReleaseDescriptor } from './releaseWireContract.testUtils';
 import {
   releaseSummariesMatch,
   toReleaseSummary,

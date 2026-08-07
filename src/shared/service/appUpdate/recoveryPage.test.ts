@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildRecoveryDiagnostics, type RecoveryDiagnostics } from './recoveryDiagnostics';
 import { buildRecoveryPageHtml, buildRecoveryPageResponse } from './recoveryPage';
+import { ReleasePreparationFailureReason } from './releasePreparation';
 
 const stateLossDiagnostics = buildRecoveryDiagnostics({
   channel: 'stable',
@@ -18,7 +19,7 @@ const invalidStateDiagnostics = buildRecoveryDiagnostics({
 const activeUnavailableDiagnostics = buildRecoveryDiagnostics({
   channel: 'develop',
   problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-  problemDetail: 'INTEGRITY_FAILURE',
+  problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
   selectedReleaseNumber: 7,
   now: () => '2026-08-06T00:00:00.000Z',
 });

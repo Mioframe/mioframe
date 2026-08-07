@@ -221,7 +221,8 @@ describe('createPreparationCoordinator', () => {
       if (!isReleasePreparationError(caught)) {
         throw new Error('Expected a classified release-preparation DomainError');
       }
-      expect(caught.code).toBe('INVALID_ARCHIVE_METADATA');
+      const { ReleasePreparationFailureReason } = await import('./releasePreparation');
+      expect(caught.code).toBe(ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA);
       expect(prepareReleaseMock).not.toHaveBeenCalled();
     },
   );

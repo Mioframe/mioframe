@@ -108,9 +108,13 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
   it('classifies a latest.json/descriptor fetch failure as network-or-latest-unavailable, without preparing, writing, or a cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 5 });
-    const { releasePreparationError } = await import('./releasePreparation');
+    const { releasePreparationError, ReleasePreparationFailureReason } =
+      await import('./releasePreparation');
     fetchReleaseDescriptorMock.mockRejectedValue(
-      releasePreparationError('ARCHIVE_UNAVAILABLE', 'Failed to fetch release descriptor'),
+      releasePreparationError(
+        ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+        'Failed to fetch release descriptor',
+      ),
     );
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
@@ -123,9 +127,13 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
 
   it('classifies structurally invalid latest metadata as invalid-latest-metadata, with no cleanup target', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
-    const { releasePreparationError } = await import('./releasePreparation');
+    const { releasePreparationError, ReleasePreparationFailureReason } =
+      await import('./releasePreparation');
     fetchLatestReleasePointerMock.mockRejectedValue(
-      releasePreparationError('INVALID_ARCHIVE_METADATA', 'latest.json is structurally invalid'),
+      releasePreparationError(
+        ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
+        'latest.json is structurally invalid',
+      ),
     );
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 

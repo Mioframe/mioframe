@@ -8,13 +8,12 @@
  */
 
 import {
-  isCanonicalReleasePath,
   isPositiveSafeInteger,
   RELEASE_DESCRIPTOR_SCHEMA_VERSION,
   zodReleaseDescriptor,
 } from '../../../src/shared/service/appUpdate/releaseWireContract.ts';
 
-export { isCanonicalReleasePath, isPositiveSafeInteger, RELEASE_DESCRIPTOR_SCHEMA_VERSION };
+export { isPositiveSafeInteger, RELEASE_DESCRIPTOR_SCHEMA_VERSION };
 
 /**
  * Structurally validates one `ReleaseDescriptor` record.

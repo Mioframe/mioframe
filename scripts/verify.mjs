@@ -581,7 +581,7 @@ function printHelp() {
   );
   console.log('                      run full proof plus release-version/release-config/build/');
   console.log(
-    '                      artifact/release-smoke/managed-updates. Equivalent to `pnpm verify:release`.',
+    '                      publisher-node-import/artifact/release-smoke/managed-updates. Equivalent to `pnpm verify:release`.',
   );
   console.log('');
   console.log('Labels for --only:');
@@ -1023,6 +1023,14 @@ function addReleaseOnlyCommands(commands) {
     command: 'node',
     args: ['scripts/release/buildArtifact.mjs'],
     weight: classifyCommandWeight({ label: 'build' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'publisher-node-import',
+    command: 'node',
+    args: ['scripts/release/publisherWireContractImportProof.mjs'],
+    weight: classifyCommandWeight({ label: 'publisher-node-import' }),
   });
 
   commands.push({

@@ -7,6 +7,7 @@ import {
   zodRecoveryDiagnostics,
   type RecoveryDiagnostics,
 } from './recoveryDiagnostics';
+import { ReleasePreparationFailureReason } from './releasePreparation';
 
 describe('buildRecoveryDiagnostics', () => {
   it('builds the minimal diagnostic model, deriving the controller database name from the channel', () => {
@@ -77,14 +78,14 @@ describe('buildRecoveryDiagnostics', () => {
     const diagnostics = buildRecoveryDiagnostics({
       channel: 'develop',
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: 'INTEGRITY_FAILURE',
+      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
       selectedReleaseNumber: 4,
       now: () => '2026-08-06T00:00:00.000Z',
     });
 
     expect(diagnostics).toEqual({
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: 'INTEGRITY_FAILURE',
+      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
       channel: 'develop',
       controllerDatabaseName: buildControllerStateDbName('develop'),
       selectedReleaseNumber: 4,
@@ -96,7 +97,7 @@ describe('buildRecoveryDiagnostics', () => {
     buildRecoveryDiagnostics({
       channel: 'develop',
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: 'INTEGRITY_FAILURE',
+      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
       selectedReleaseNumber: 4,
       // @ts-expect-error -- ACTIVE_RELEASE_UNAVAILABLE's input variant has no `errorName` field; only UPDATE_STORAGE_UNAVAILABLE does.
       errorName: 'QuotaExceededError',
@@ -145,7 +146,7 @@ describe('zodRecoveryDiagnostics runtime boundary validation', () => {
   it('rejects ACTIVE_RELEASE_UNAVAILABLE missing its required selectedReleaseNumber even if TypeScript were bypassed', () => {
     const result = zodRecoveryDiagnostics.safeParse({
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: 'INTEGRITY_FAILURE',
+      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
       channel: 'stable',
       controllerDatabaseName: 'db',
       timestamp: '2026-08-06T00:00:00.000Z',
@@ -181,7 +182,7 @@ describe('zodRecoveryDiagnostics runtime boundary validation', () => {
   it('rejects an errorName field on ACTIVE_RELEASE_UNAVAILABLE, which carries none', () => {
     const result = zodRecoveryDiagnostics.safeParse({
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: 'INTEGRITY_FAILURE',
+      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
       selectedReleaseNumber: 4,
       errorName: 'QuotaExceededError',
       channel: 'stable',

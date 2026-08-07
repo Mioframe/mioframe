@@ -1,18 +1,17 @@
+import type { ReleaseDescriptor } from './releaseWireContract';
+
 /**
- * Shared valid/invalid `ReleaseDescriptor` fixture corpus for the single
- * canonical release-wire-contract validator
- * (`src/shared/service/appUpdate/releaseWireContract.ts`).
- *
- * Imported by both `releaseDescriptor.test.mjs` (proving plain Node can
- * import and exercise that `.ts` module directly) and
- * `releaseWireContract.test.ts` (the TS/Vitest project). Kept dependency-free
- * so both Vitest projects can import it directly.
+ * Shared valid/invalid `ReleaseDescriptor` and canonical-path fixture corpus
+ * for the single canonical release-wire-contract validator
+ * (`releaseWireContract.ts`). `releaseWireContract.test.ts` is the sole
+ * consumer: it owns the complete validation matrix for canonical release
+ * paths, release descriptors, and the `latest.json` pointer.
  */
 
 const SHA256_OF_EMPTY_STRING = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
 /** A structurally valid `ReleaseDescriptor`. */
-export const validReleaseDescriptor = {
+export const validReleaseDescriptor: ReleaseDescriptor = {
   schemaVersion: 1,
   releaseNumber: 1,
   appVersion: '1.2.3',
@@ -24,7 +23,7 @@ export const validReleaseDescriptor = {
 };
 
 /** Named structurally invalid `ReleaseDescriptor` variants, each violating exactly one rule. */
-export const invalidReleaseDescriptors = [
+export const invalidReleaseDescriptors: { name: string; descriptor: unknown }[] = [
   {
     name: 'empty files list',
     descriptor: { ...validReleaseDescriptor, files: [] },
@@ -142,14 +141,8 @@ export const invalidReleaseDescriptors = [
   },
 ];
 
-/**
- * Shared canonical-release-path acceptance/rejection corpus for the single
- * canonical `isCanonicalReleasePath` in
- * `src/shared/service/appUpdate/releaseWireContract.ts`, exercised from both
- * `releaseDescriptor.test.mjs` (plain Node) and `releaseWireContract.test.ts`
- * (Vitest).
- */
-export const canonicalReleasePathCases = [
+/** Shared canonical-release-path acceptance/rejection corpus for `isCanonicalReleasePath`. */
+export const canonicalReleasePathCases: { name: string; path: string; valid: boolean }[] = [
   { name: 'empty path', path: '', valid: false },
   { name: 'leading slash', path: '/assets/app.js', valid: false },
   { name: 'trailing slash', path: 'assets/app.js/', valid: false },
