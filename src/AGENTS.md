@@ -81,7 +81,7 @@ The goal is not to hide all unexpected errors from diagnostics. Sentry must stil
 - Wrap boundary failures in a `DomainError` with a project-controlled user-facing `message`, a stable `code` enum value, and the raw runtime error as `cause`.
 - Any `DomainError` crossing a worker or service boundary must use the project service-transfer-safe constructor or transformer pattern. Do not put clients, adapters, providers, callbacks, capabilities, credentials, or service objects in `message`, `cause`, serialization, or user-facing payloads.
 - Do not create feature-local classifiers or manual VFS-to-feature error mappings. Use enum codes and raw cause instead.
-- Keep `DomainError.message` free of paths, names, ids, URLs, and raw external text.
+- Keep `DomainError.message` free of dynamic user-controlled or external values that may contain sensitive data: local or virtual paths, user file/document names, document/file/provider ids, sensitive URLs, record/content values, and raw external text. Stable project-controlled technical identifiers and literals (for example fixed protocol resource names, operation names, enum values, and schema identifiers) are allowed when they cannot contain user data or secrets.
 - `DomainError.cause` may hold the original raw error — the Sentry sanitizer handles scrubbing at the outgoing event boundary.
 - Internal programmer errors and project-controlled invariant failures may be reported as raw `Error` objects when their messages are stable and do not include user-controlled values.
 - Expected user outcomes (cancelled picker, invalid input, permission denied with recovery UI) should not be reported unless there is a specific product reason.
@@ -91,4 +91,4 @@ The goal is not to hide all unexpected errors from diagnostics. Sentry must stil
 - Define each string enum close to the boundary where the error originates (e.g., `RepositoryErrorCode` in the repository layer, `ExampleDocumentsCreateErrorCode` in that feature).
 - Do not create a global error-code registry.
 
-Do not attach local paths, virtual paths, file names, document names, document ids, file ids, Google Drive ids, URLs, record values, document contents, or raw external error text to `captureDiagnosticException` context, Sentry tags, or Sentry extra.
+Do not attach dynamic user-controlled or external sensitive values to `captureDiagnosticException` context, Sentry tags, or Sentry extra: local or virtual paths, user file/document names, document/file/provider ids, sensitive URLs, record values, document contents, or raw external error text. Stable project-controlled technical identifiers may be used as bounded diagnostic metadata when they cannot contain user data or secrets.
