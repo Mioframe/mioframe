@@ -284,6 +284,7 @@ function isVisualRelevantFile(filePath) {
     filePath === 'vite.config.ts' ||
     filePath === 'tsconfig.storybook.json' ||
     filePath === 'scripts/storybook.mjs' ||
+    filePath === 'src/app/styles/base.css' ||
     filePath === 'src/app/styles/styles.css' ||
     filePath === 'src/app/styles/fonts.css' ||
     filePath.startsWith('.storybook/') ||

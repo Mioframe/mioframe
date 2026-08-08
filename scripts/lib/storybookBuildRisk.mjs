@@ -6,9 +6,12 @@ const PACKAGE_JSON_PATH = 'package.json';
 // Storybook static build succeeds at all, so it always selects a full storybook-build run
 // instead of relying on per-story impact.
 const STORYBOOK_BUILD_EXACT_FILES = new Set([
+  'config/alias.ts',
   'config/tooling.json',
   'pnpm-lock.yaml',
   'scripts/storybook.mjs',
+  'src/app/styles/base.css',
+  'tsconfig.src.json',
   'tsconfig.storybook.json',
   'vite.config.ts',
 ]);

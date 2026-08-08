@@ -17,6 +17,9 @@ describe('isStorybookBuildRelevantFile', () => {
     expect(isStorybookBuildRelevantFile('config/tooling.json')).toBe(true);
     expect(isStorybookBuildRelevantFile('vite.config.ts')).toBe(true);
     expect(isStorybookBuildRelevantFile('pnpm-lock.yaml')).toBe(true);
+    expect(isStorybookBuildRelevantFile('config/alias.ts')).toBe(true);
+    expect(isStorybookBuildRelevantFile('src/app/styles/base.css')).toBe(true);
+    expect(isStorybookBuildRelevantFile('tsconfig.src.json')).toBe(true);
   });
 
   it('matches any changed story file', () => {
@@ -50,6 +53,12 @@ describe('resolveStorybookBuildPlan', () => {
     const plan = resolveStorybookBuildPlan(['.storybook/preview.ts']);
 
     expect(plan.mode).toBe('full');
+  });
+
+  it('selects the full lane for a direct Storybook-wide dependency change', () => {
+    expect(resolveStorybookBuildPlan(['config/alias.ts']).mode).toBe('full');
+    expect(resolveStorybookBuildPlan(['src/app/styles/base.css']).mode).toBe('full');
+    expect(resolveStorybookBuildPlan(['tsconfig.src.json']).mode).toBe('full');
   });
 
   it('selects the full lane for a removed/renamed story file without requiring it to exist', () => {

@@ -143,6 +143,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     ],
     specs: ['tests/e2e/storybook/mdBottomSheetContainerKeyboardScroll.spec.ts'],
   },
+  {
+    name: 'checkbox controlled args round-trip',
+    sourcePrefixes: [
+      'src/shared/ui/Checkbox/MDCheckbox.vue',
+      'src/shared/ui/Checkbox/MDCheckbox.stories.ts',
+    ],
+    specs: ['tests/e2e/storybook/mdCheckboxControlledArgs.spec.ts'],
+  },
 ];
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior

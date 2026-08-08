@@ -299,6 +299,15 @@ describe('buildCommands mutation scope', () => {
   });
 });
 
+describe('buildCommands visual relevance', () => {
+  it('selects visual for a change to the global Storybook rendering environment entry', () => {
+    const commands = buildCommands(['src/app/styles/base.css'], { fullMode: false });
+    const visualEntry = commands.find((entry) => entry.label === 'visual');
+
+    expect(visualEntry.kind).toBe('run');
+  });
+});
+
 describe('buildCommands package.json visual relevance', () => {
   beforeEach(() => {
     isVisualRelevantPackageJsonChange.mockReset();
@@ -536,6 +545,15 @@ describe('buildCommands storybook-build lane', () => {
     const entry = commands.find((item) => item.label === 'storybook-build');
 
     expect(entry.kind).toBe('run');
+  });
+
+  it('selects the build for a direct Storybook-wide dependency change', () => {
+    for (const filePath of ['config/alias.ts', 'src/app/styles/base.css', 'tsconfig.src.json']) {
+      const commands = buildCommands([filePath], { fullMode: false });
+      const entry = commands.find((item) => item.label === 'storybook-build');
+
+      expect(entry.kind).toBe('run');
+    }
   });
 
   it('runs unconditionally in full mode', () => {
