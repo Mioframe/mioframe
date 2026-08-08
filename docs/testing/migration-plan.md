@@ -1,6 +1,6 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` defines the durable testing target. `docs/testing/storybook.md` defines Storybook ownership and target placement. This document records the current executable repository state and the safe order for reaching those targets without reducing protection.
+`docs/testing/architecture.md` defines the durable testing target. `docs/testing/storybook.md` defines Storybook ownership, developer-workbench behavior, and target placement. This document records the current executable repository state and the safe order for reaching those targets without reducing protection.
 
 ## Migration constraints
 
@@ -13,6 +13,7 @@
 - Do not move a spec before the owning runner/configuration can discover it.
 - Do not remove old discovery, mappings, or baselines until replacement ownership is proven on the same repository state.
 - Add/move/remove/rename behavior must remain deterministic and must never silently skip relevant proof.
+- Do not satisfy Storybook usability by importing product bootstrap, product routing, stores, persistence, services, or business behavior into stories.
 
 ## Current executable state
 
@@ -23,9 +24,14 @@
 - Storybook stories are already colocated with source owners.
 - Vue component-contract tests are already colocated as `*.test.ts`.
 - Material library family ownership is established under `src/shared/ui/material`.
+- Storybook Essentials provides Controls and other built-in workbench tools.
+- Storybook currently configures representative desktop/mobile viewports and app/surface backgrounds.
+- Storybook currently installs a minimal Vue Router memory history needed by existing shared overlay primitives.
 
 ### Still transitional
 
+- The current Storybook memory router exposes only a minimal `/` route and is not yet the reusable per-story routing harness defined by `docs/testing/storybook.md`.
+- Playground/Controls authoring is not yet normalized across reusable UI stories.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Storybook behavior specs are still executed from `tests/e2e/storybook` and selected through the current resolver/mappings.
@@ -36,7 +42,7 @@
 
 The transitional physical locations above are executable facts. Agents must not place colocated Playwright specs until the corresponding discovery pilot is merged.
 
-## Storybook ownership migration
+## Storybook ownership and workbench migration
 
 Storybook migration is deliberately separated from the broader verifier migration. Do not combine these steps into one large PR.
 
@@ -47,7 +53,7 @@ Owner: architecture/documentation.
 Deliverables:
 
 - canonical testing policy recognizes deterministic owner-local relations;
-- `docs/testing/storybook.md` defines owner, story usage, proof boundaries, target placement, and current executable state;
+- `docs/testing/storybook.md` defines owner, developer workbench, story usage, proof boundaries, target placement, and current executable state;
 - repository rules and testing skills route to the same contract;
 - Material family workflow is referenced, not duplicated.
 
@@ -55,7 +61,42 @@ Acceptance:
 
 - no contradiction remains between `docs/testing/architecture.md`, Storybook rules, `AGENTS.md`, or testing skills;
 - no Playwright runtime/discovery behavior changes in this stage;
-- target colocated specs are not described as already executable.
+- target colocated specs are not described as already executable;
+- Storybook is explicitly a developer workbench with catalogue navigation, Playground/Controls, visual sandbox, and isolated routing responsibilities.
+
+### Stage S0.5 — Storybook workbench foundation
+
+Implement the interactive developer-workbench behavior before moving Playwright specs.
+
+Scope:
+
+- keep Storybook's native manager/sidebar as the catalogue navigation surface;
+- retain Vue docgen-driven Controls and establish the args-driven Playground convention on a small representative set rather than mass-rewriting stories;
+- retain/configure representative viewport, background, measure/outline, and layout behavior for manual appearance inspection;
+- replace the current minimal `/` memory-router setup with one small Storybook-owned routing harness;
+- allow a story to provide deterministic initial location and the minimum story-owned route records needed for path/query/hash/params and `RouterLink`/`useRoute`/`useRouter` behavior;
+- isolate/reset router state between stories;
+- keep copied Storybook URLs useful for story address and serializable args;
+- add focused Storybook infrastructure proof for the harness itself where needed.
+
+Architecture constraints:
+
+- use real `vue-router` memory history rather than a fake router API;
+- do not import the production application router, route guards, stores, auth, persistence, services, network setup, or product bootstrap;
+- do not create a generic story DSL or a second component catalogue;
+- do not mirror public Vue props manually in a global Controls registry;
+- do not add production props merely for Storybook;
+- do not copy Material/application theme token values into Storybook-specific theme infrastructure.
+
+Acceptance:
+
+- a representative configurable component has a useful args-driven Playground with inferred Controls and only minimal explicit `argTypes` where inference is insufficient;
+- a representative routing-aware reusable surface can start at a deterministic route, read route state, navigate, and use back/forward without product bootstrap;
+- switching stories does not leak previous route state;
+- viewport/background/layout controls remain usable for free manual inspection;
+- canonical visual stories may still pin deterministic globals independently from the free Playground;
+- Storybook build and relevant focused verification pass;
+- no browser/visual Playwright spec migration occurs in this stage.
 
 ### Stage S1 — Storybook browser discovery pilot
 
@@ -238,6 +279,7 @@ The testing migration is complete when:
 - migrated resolvers use inspectable `skip | focused | full | invalid` plans;
 - static checks handle removed/moved files safely;
 - unit selection uses direct tests, snapshot ownership, supported related resolution, and safe fallbacks;
+- Storybook provides the documented Playground/Controls, visual sandbox, and isolated reusable routing workbench without product bootstrap;
 - Storybook browser/visual proof is owned by the truthful UI owner and physically colocated after its lane supports discovery;
 - ordinary colocated Storybook relations do not require duplicate registry metadata;
 - explicit mappings remain only for truthful non-local/cross-cutting relations and centralized product scenarios;
