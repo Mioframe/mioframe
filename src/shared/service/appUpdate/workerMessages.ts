@@ -1,3 +1,4 @@
+import { reportActivationRolledBack } from './appUpdateDiagnosticEvents';
 import type { ManagedChannel } from './contracts';
 import { writeControllerState } from './controllerState';
 import type { OperationQueue } from './operationQueue';
@@ -241,6 +242,10 @@ export async function handleWorkerMessage(
           };
         }
         if (outcome.kind === 'rolled-back') {
+          // The write above already succeeded (an earlier failure returned
+          // `ack: 'error'` before reaching here) — a late `BOOT_OK` past the
+          // activation deadline is itself a durably committed rollback.
+          reportActivationRolledBack(channel, 'bootOkExpired', request.releaseNumber);
           return {
             response: withProtocolVersion({
               snapshot: buildAppUpdateSnapshot(outcome.state),
@@ -304,6 +309,10 @@ export async function handleWorkerMessage(
             }),
           };
         }
+        // The write above already succeeded (an earlier failure returned
+        // `ack: 'error'` before reaching here) — this explicit BOOT_FAILED
+        // report is itself a durably committed rollback.
+        reportActivationRolledBack(channel, 'bootFailed', request.releaseNumber);
         return {
           response: withProtocolVersion({
             snapshot: buildAppUpdateSnapshot(outcome.state),

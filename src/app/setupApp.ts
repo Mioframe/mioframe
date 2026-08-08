@@ -7,6 +7,7 @@ import { router } from './router';
 import { backNavigationHandler } from '@shared/lib/onBackNavigation';
 import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, IS_VERBOSE_DIAGNOSTICS } from '@shared/config';
 import { sentryPlugin } from '@shared/lib/diagnostics';
+import { registerLazyVueSentryBackend } from '@shared/lib/diagnostics/sentryVueBackend';
 import { setupStackNavigation } from '@page/routes';
 
 /**
@@ -15,6 +16,7 @@ import { setupStackNavigation } from '@page/routes';
  * @returns The configured Vue app instance.
  */
 export const setupApp = async (app: App = createApp(MainApp)) => {
+  registerLazyVueSentryBackend();
   app.use(sentryPlugin, {
     dsn: SENTRY_DSN,
     isVerbose: IS_VERBOSE_DIAGNOSTICS,

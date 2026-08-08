@@ -1,4 +1,6 @@
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { releaseSummariesMatch, type ManagedChannel, type ReleaseSummary } from './contracts';
+import { reportActivationRolledBack, reportRecoveryRequired } from './appUpdateDiagnosticEvents';
 import {
   readControllerState,
   writeControllerState,
@@ -44,12 +46,18 @@ function buildStateRecoveryResponse(
   channel: ManagedChannel,
   read: Exclude<ControllerStateReadResult, { status: 'valid' }>,
 ): Response {
+  // Only ever reached for a real top-level navigation actually being served
+  // the recovery experience — never for a legitimate absent-state check
+  // elsewhere (e.g. first-install bootstrap) — so every branch here is
+  // exactly the "actual product outcome is recovery-required" case.
   if (read.status === 'absent') {
+    reportRecoveryRequired(channel, 'UPDATE_STATE_ABSENT');
     return buildRecoveryPageResponse(
       buildRecoveryDiagnostics({ channel, problemCode: 'UPDATE_STATE_ABSENT' }),
     );
   }
   if (read.status === 'invalid') {
+    reportRecoveryRequired(channel, 'UPDATE_STATE_INVALID');
     return buildRecoveryPageResponse(
       buildRecoveryDiagnostics({
         channel,
@@ -58,6 +66,7 @@ function buildStateRecoveryResponse(
       }),
     );
   }
+  reportRecoveryRequired(channel, 'UPDATE_STORAGE_UNAVAILABLE');
   return buildRecoveryPageResponse(
     buildRecoveryDiagnostics({
       channel,
@@ -90,8 +99,12 @@ async function resolveActiveReleaseNavigationResponse(
   release: ReleaseSummary,
   coordinator: PreparationCoordinator,
 ): Promise<Response> {
-  const unavailable = (detail: ReleasePreparationFailureReason) =>
-    buildRecoveryPageResponse(
+  const unavailable = (detail: ReleasePreparationFailureReason) => {
+    // Only reached once this navigation has actually decided to serve the
+    // known-active recovery page — the known active release genuinely
+    // cannot be restored — never merely because a check was attempted.
+    reportRecoveryRequired(channel, 'ACTIVE_RELEASE_UNAVAILABLE');
+    return buildRecoveryPageResponse(
       buildRecoveryDiagnostics({
         channel,
         problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
@@ -99,6 +112,7 @@ async function resolveActiveReleaseNavigationResponse(
         selectedReleaseNumber: release.releaseNumber,
       }),
     );
+  };
 
   try {
     const cacheName = buildReleaseCacheName(channel, release.releaseNumber);
@@ -120,6 +134,13 @@ async function resolveActiveReleaseNavigationResponse(
     const revalidated = await tryServeNavigation(cache, release, channelBasePath);
     return revalidated ?? unavailable(ReleasePreparationFailureReason.RESTORATION_FAILED);
   } catch (error) {
+    // Never from `coordinator.prepare()` (already reported at its own
+    // classified boundary above) — this only ever catches an unexpected
+    // Cache Storage access failure outside the coordinator's own flow, never
+    // yet reported anywhere else.
+    if (!isReleasePreparationError(error)) {
+      captureDiagnosticException(error, { operation: 'navigationRecoveryOrchestration' });
+    }
     return unavailable(
       isReleasePreparationError(error)
         ? error.code
@@ -403,6 +424,7 @@ async function tryRollbackActivatingFailure(
     }
     const rolledBack = rollbackActivation(state, failedRelease.releaseNumber);
     await writeControllerState(channel, rolledBack);
+    reportActivationRolledBack(channel, 'activationServeFailed', failedRelease.releaseNumber);
     return rolledBack.activeRelease;
   }).catch(() => undefined);
 
@@ -505,6 +527,7 @@ export async function handleNavigationFetch(
           const failedReleaseNumber = state.candidate.release.releaseNumber;
           const rolledBack = rollbackActivation(state, failedReleaseNumber);
           await writeControllerState(channel, rolledBack);
+          reportActivationRolledBack(channel, 'activationDeadlineExpired', failedReleaseNumber);
           const excludedClientIds = new Set(
             [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
           );

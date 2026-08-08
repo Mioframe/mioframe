@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 declare const self: ServiceWorkerGlobalScope;
 
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { isSameChannelWindowClient } from './cleanLaunch';
 import type { ManagedChannel } from './contracts';
 import {
@@ -71,15 +72,27 @@ export async function broadcastRollback(
   failedReleaseNumber: number,
   excludedClientIds: ReadonlySet<string> = new Set(),
 ): Promise<void> {
-  await broadcastToSameChannelWindows(
-    channelBasePath,
-    channelOrigin,
-    withProtocolVersion({
-      type: 'APP_UPDATE_ROLLBACK' as const,
-      releaseNumber: failedReleaseNumber,
-    }),
-    excludedClientIds,
-  );
+  try {
+    await broadcastToSameChannelWindows(
+      channelBasePath,
+      channelOrigin,
+      withProtocolVersion({
+        type: 'APP_UPDATE_ROLLBACK' as const,
+        releaseNumber: failedReleaseNumber,
+      }),
+      excludedClientIds,
+    );
+  } catch (error) {
+    // A total broadcast failure (never an isolated single-client failure,
+    // already contained above) can leave other windows on a failed
+    // activation with no reload signal — the single reporting owner for
+    // every caller's own best-effort `.catch()`.
+    captureDiagnosticException(error, {
+      operation: 'rollbackBroadcast',
+      failureClassification: 'broadcastFailed',
+    });
+    throw error;
+  }
 }
 
 /**
@@ -122,7 +135,16 @@ export function cleanupReleaseCache(
 ): Promise<void> {
   return coordinator
     .runCleanup((inFlightReleaseNumbers) => runReleaseCacheCleanup(channel, inFlightReleaseNumbers))
-    .catch(() => {});
+    .catch((error: unknown) => {
+      // The single reporting owner for every caller's own best-effort
+      // cleanup: a failed cleanup never changes an already-durable command
+      // result, but a stale/orphaned release cache going unnoticed is a
+      // real storage-growth failure worth observing.
+      captureDiagnosticException(error, {
+        operation: 'releaseCacheCleanup',
+        failureClassification: 'cleanupFailed',
+      });
+    });
 }
 
 /**

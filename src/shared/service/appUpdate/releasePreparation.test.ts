@@ -5,6 +5,11 @@ import { createFakeCacheStorage } from './fakeCacheStorage.testUtils';
 import { buildReleaseCacheName, readReleaseDescriptorMarker } from './releaseCache';
 import { ReleasePreparationFailureReason } from './releasePreparation';
 
+const captureDiagnosticExceptionMock = vi.fn();
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
+}));
+
 const { caches: fakeCaches, cachesByName } = createFakeCacheStorage();
 const fetchMock = vi.fn();
 const digestMock = vi.fn();
@@ -391,6 +396,55 @@ describe('release-preparation DomainError classification', () => {
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
       code: ReleasePreparationFailureReason.RESTORATION_FAILED,
+    });
+  });
+});
+
+describe('reportReleasePreparationFailure', () => {
+  beforeEach(() => {
+    captureDiagnosticExceptionMock.mockReset();
+  });
+
+  it('never reports ARCHIVE_UNAVAILABLE: ordinary offline/network behavior', async () => {
+    const { reportReleasePreparationFailure, releasePreparationError } =
+      await import('./releasePreparation');
+    const error = releasePreparationError(
+      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      'Failed to fetch latest.json',
+    );
+
+    reportReleasePreparationFailure(error);
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
+    ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+    ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
+    ReleasePreparationFailureReason.RESTORATION_FAILED,
+  ])('reports %s using the real DomainError as the captured exception', async (reason) => {
+    const { reportReleasePreparationFailure, releasePreparationError } =
+      await import('./releasePreparation');
+    const error = releasePreparationError(reason, 'classified failure');
+
+    reportReleasePreparationFailure(error);
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(error, {
+      operation: 'releasePreparation',
+      failureClassification: reason,
+    });
+  });
+
+  it('reports an unclassified error escaping the boundary as unexpected', async () => {
+    const { reportReleasePreparationFailure } = await import('./releasePreparation');
+    const error = new Error('something else entirely');
+
+    reportReleasePreparationFailure(error);
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(error, {
+      operation: 'releasePreparation',
+      failureClassification: 'unexpected',
     });
   });
 });

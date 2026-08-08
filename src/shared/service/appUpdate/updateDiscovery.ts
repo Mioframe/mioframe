@@ -114,8 +114,9 @@ async function prepareAutomaticTarget(
 
   try {
     await coordinator.prepare(channel, channelBasePath, target, reusableDescriptor);
-  } catch (error) {
-    console.error('[app-update] Automatic release preparation failed', target.releaseNumber, error);
+  } catch {
+    // The coordinator's own `prepare()` already reported this failure at its
+    // single diagnostic boundary — see `reportReleasePreparationFailure`.
     return { error: 'install-failed', effects: NO_EFFECTS };
   }
 

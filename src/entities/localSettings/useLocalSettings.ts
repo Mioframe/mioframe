@@ -1,11 +1,14 @@
 import { createGlobalState } from '@vueuse/core';
 import { useIDBKeyval } from '@vueuse/integrations/useIDBKeyval';
 import { z } from 'zod/v4-mini';
+import {
+  LOCAL_SETTINGS_STORAGE_KEY,
+  localSettingsDiagnosticsFieldsShape,
+} from '@shared/lib/diagnostics';
 
 const zodSettingsStorage = z._default(
   z.object({
-    diagnosticsEnabled: z._default(z.boolean(), false),
-    diagnosticsConsentRequested: z._default(z.boolean(), false),
+    ...localSettingsDiagnosticsFieldsShape,
     diagnosticsErrorPromptDismissedVersion: z.optional(z.string()),
     showPerformance: z.optional(z.boolean()),
     showAutomergeFiles: z.optional(z.boolean()),
@@ -23,7 +26,7 @@ const zodSettingsStorage = z._default(
 export const useLocalSettings = createGlobalState(() => {
   const defaultValue = zodSettingsStorage.parse(undefined);
 
-  const { data: settings, isFinished } = useIDBKeyval('settings', defaultValue, {
+  const { data: settings, isFinished } = useIDBKeyval(LOCAL_SETTINGS_STORAGE_KEY, defaultValue, {
     serializer: {
       read: (v) => zodSettingsStorage.safeParse(v).data ?? defaultValue,
       write: (v) => zodSettingsStorage.safeParse(v).data,

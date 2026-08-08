@@ -1,4 +1,5 @@
 import { createStore, get, set } from 'idb-keyval';
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import {
   CONTROLLER_STATE_SCHEMA_VERSION,
   zodUpdateControllerState,
@@ -182,6 +183,13 @@ export async function readControllerState(
   try {
     raw = await get(CONTROLLER_STATE_KEY, createControllerStateStore(channel));
   } catch (error) {
+    // The raw cause is passed only to the diagnostics boundary (sanitized by
+    // the existing Sentry sanitizer before export); every other caller only
+    // ever sees the allowlisted `errorName` below.
+    captureDiagnosticException(error, {
+      operation: 'controllerStateRead',
+      failureClassification: 'storageUnavailable',
+    });
     const errorName = extractAllowlistedStorageErrorName(error);
     return errorName
       ? { status: 'storage-unavailable', errorName }
@@ -209,7 +217,24 @@ export async function writeControllerState(
 ): Promise<void> {
   const result = zodUpdateControllerState.safeParse(state);
   if (!result.success) {
-    throw new Error('Refusing to persist an invalid controller state');
+    // An internal attempt to persist a state that violates the canonical
+    // schema is an unexpected consistency/programmer failure, not an
+    // ordinary storage condition — always observable, regardless of consent
+    // state noise policy for expected outcomes.
+    const error = new Error('Refusing to persist an invalid controller state');
+    captureDiagnosticException(error, {
+      operation: 'controllerStateWrite',
+      failureClassification: 'invalidWriteAttempt',
+    });
+    throw error;
   }
-  await set(CONTROLLER_STATE_KEY, result.data, createControllerStateStore(channel));
+  try {
+    await set(CONTROLLER_STATE_KEY, result.data, createControllerStateStore(channel));
+  } catch (error) {
+    captureDiagnosticException(error, {
+      operation: 'controllerStateWrite',
+      failureClassification: 'storageUnavailable',
+    });
+    throw error;
+  }
 }

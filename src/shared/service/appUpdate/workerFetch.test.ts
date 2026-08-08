@@ -28,6 +28,17 @@ const fetchMock = vi.fn();
 vi.stubGlobal('caches', fakeCaches);
 vi.stubGlobal('fetch', fetchMock);
 
+const captureDiagnosticExceptionMock = vi.fn();
+const reportDiagnosticEventMock = vi.fn();
+vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
+  return {
+    ...actual,
+    captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
+    reportDiagnosticEvent: (...args: unknown[]) => reportDiagnosticEventMock(...args),
+  };
+});
+
 const BASE_PATH = '/';
 const CHANNEL = 'stable';
 const activeRelease: ReleaseSummary = {
@@ -152,6 +163,8 @@ describe('workerFetch', () => {
       status: 'valid',
       state: { activeRelease },
     });
+    captureDiagnosticExceptionMock.mockReset();
+    reportDiagnosticEventMock.mockReset();
   });
 
   describe('handleNavigationFetch', () => {
@@ -210,6 +223,12 @@ describe('workerFetch', () => {
       const text = await response.text();
       expect(text).toContain('<h1 id="recovery-heading">');
       expect(text).toContain('UPDATE_STATE_ABSENT');
+      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'appUpdate.recoveryRequired',
+          safeTags: { channel: CHANNEL, problemCode: 'UPDATE_STATE_ABSENT' },
+        }),
+      );
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -227,6 +246,12 @@ describe('workerFetch', () => {
       const text = await response.text();
       expect(text).toContain('UPDATE_STATE_INVALID');
       expect(text).toContain('id="diagnostic-detail">MALFORMED_RECORD<');
+      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'appUpdate.recoveryRequired',
+          safeTags: { channel: CHANNEL, problemCode: 'UPDATE_STATE_INVALID' },
+        }),
+      );
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -247,6 +272,12 @@ describe('workerFetch', () => {
       const text = await response.text();
       expect(text).toContain('UPDATE_STORAGE_UNAVAILABLE');
       expect(text).toContain('<dd>QuotaExceededError</dd>');
+      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'appUpdate.recoveryRequired',
+          safeTags: { channel: CHANNEL, problemCode: 'UPDATE_STORAGE_UNAVAILABLE' },
+        }),
+      );
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -514,6 +545,12 @@ describe('workerFetch', () => {
           candidate: { phase: 'failed', release: candidateRelease },
         }),
       );
+      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'appUpdate.activationRolledBack',
+          safeTags: expect.objectContaining({ trigger: 'activationDeadlineExpired' }),
+        }),
+      );
       expect(await result.response.text()).toBe('<html>archived</html>');
       await result.runLifetimeWork?.();
       expect(oldPostMessage).not.toHaveBeenCalled();
@@ -770,6 +807,10 @@ describe('workerFetch', () => {
         ),
         'RESTORATION_FAILED',
       );
+      // A `coordinator.prepare()` failure is the real coordinator's own single
+      // diagnostic boundary (see preparationCoordinator.test.ts) — never
+      // reported again here, one boundary away.
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     });
 
     it('resolves a known-active recovery page (Cache Storage unavailable) when cache reopening after restoration rejects', async () => {
@@ -790,6 +831,18 @@ describe('workerFetch', () => {
           createFakeCoordinator({ prepare }),
         ),
         'CACHE_STORAGE_UNAVAILABLE',
+      );
+      // Never from `coordinator.prepare()` (already succeeded, and already
+      // reported at its own boundary when it fails) — this Cache Storage
+      // failure happens after, outside that boundary, and is reported here.
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
+        operation: 'navigationRecoveryOrchestration',
+      });
+      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'appUpdate.recoveryRequired',
+          safeTags: { channel: CHANNEL, problemCode: 'ACTIVE_RELEASE_UNAVAILABLE' },
+        }),
       );
       open.mockRestore();
     });
@@ -918,6 +971,12 @@ describe('workerFetch', () => {
         expect(writeControllerStateMock).toHaveBeenCalledTimes(2);
         expect(persistedState.activeRelease).toEqual(activeRelease);
         expect(persistedState.candidate).toEqual({ phase: 'failed', release: candidateRelease });
+        expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'appUpdate.activationRolledBack',
+            safeTags: expect.objectContaining({ trigger: 'activationServeFailed' }),
+          }),
+        );
         expect(await result.response.text()).toBe('<html>archived</html>');
         expect(result.runLifetimeWork).toBeTypeOf('function');
         await result.runLifetimeWork?.();

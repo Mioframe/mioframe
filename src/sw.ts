@@ -19,6 +19,29 @@ declare const self: ServiceWorkerGlobalScope;
  * preparation, and Stage 5 activation and rollback are wired.
  */
 
+// Named imports only — never `import * as`. A namespace import forces rollup
+// to keep every `@sentry/browser` export reachable (tracing, replay,
+// profiling, feedback, and every other integration this worker never uses),
+// defeating tree-shaking for the whole package.
+import {
+  addBreadcrumb as sentryAddBreadcrumb,
+  captureException as sentryCaptureException,
+  captureMessage as sentryCaptureMessage,
+  flush as sentryFlush,
+  init as sentryInit,
+  setUser as sentrySetUser,
+} from '@sentry/browser';
+import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, IS_VERBOSE_DIAGNOSTICS } from './shared/config';
+import {
+  applyDiagnosticsRuntimeState,
+  captureDiagnosticException,
+  drainDiagnostics,
+  getOrCreateSentrySessionId,
+  readPersistedDiagnosticsPolicy,
+  registerSentryBackend,
+  registerSentryConfig,
+  zodDiagnosticsPolicySyncMessage,
+} from './shared/lib/diagnostics';
 import {
   isSameChannelPath,
   isSameChannelWindowClient,
@@ -30,12 +53,13 @@ import {
   zodAppUpdateWorkerRequest,
   zodManagedControllerProbeRequest,
 } from './shared/service/appUpdate/protocol';
-import { runReleaseCacheCleanup } from './shared/service/appUpdate/releaseCache';
+import { isReleasePreparationError } from './shared/service/appUpdate/releasePreparation';
 import {
   buildManagedChannelBasePath,
   deriveManagedChannel,
   deriveManagedChannelOrigin,
 } from './shared/service/appUpdate/workerChannel';
+import { cleanupReleaseCache } from './shared/service/appUpdate/workerBroadcast';
 import { handleAssetFetch, handleNavigationFetch } from './shared/service/appUpdate/workerFetch';
 import { runInstall } from './shared/service/appUpdate/workerInstall';
 import { handleWorkerMessage } from './shared/service/appUpdate/workerMessages';
@@ -47,6 +71,40 @@ import {
   createUpdateReconciler,
   ReconciliationFailure,
 } from './shared/service/appUpdate/updateReconciliation';
+
+// Diagnostics bootstrap: independent of Vue application boot and of the
+// update-controller state below. Registers the same static Sentry
+// configuration the main thread uses, backed by a statically bundled
+// `@sentry/browser` module (never `@sentry/vue`'s lazy dynamic import, which
+// this classic-script build must never contain). Reporting starts `unknown`
+// (diagnostic events/exceptions queue in memory — see reportDiagnosticEvent.ts
+// and captureDiagnosticException.ts) until the persisted local-settings
+// consent record is read and applied; a read failure, missing record, or
+// invalid record all resolve to `unknown` and never enable reporting. This
+// worker uses its own in-memory, session-scoped Sentry id — never persisted.
+registerSentryBackend(() =>
+  Promise.resolve({
+    init: sentryInit,
+    captureException: sentryCaptureException,
+    captureMessage: sentryCaptureMessage,
+    setUser: sentrySetUser,
+    addBreadcrumb: sentryAddBreadcrumb,
+    flush: sentryFlush,
+  }),
+);
+registerSentryConfig({
+  ...(SENTRY_DSN !== undefined && { dsn: SENTRY_DSN }),
+  isVerbose: IS_VERBOSE_DIAGNOSTICS,
+  enabled: import.meta.env.PROD,
+  release: APP_BUILD_ID || APP_VERSION,
+});
+void readPersistedDiagnosticsPolicy()
+  .then((reportingState) =>
+    applyDiagnosticsRuntimeState({ sessionId: getOrCreateSentrySessionId(), reportingState }),
+  )
+  .catch(() => {
+    // Diagnostics bootstrap must never affect managed-update worker startup.
+  });
 
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
@@ -76,19 +134,25 @@ self.addEventListener('install', (event) => {
   // serialized state transition. `self.registration.active` is read
   // synchronously here, at the moment this listener runs, so it reflects
   // this exact install attempt's own predecessor.
+  // `runInstall` is where release preparation — this worker's largest
+  // diagnostics source — happens on first install; the bounded drain below
+  // never changes install's own outcome (`finally` preserves it) and never
+  // blocks it beyond its own small bounded timeout.
   event.waitUntil(
-    runInstall(channel, channelBasePath, self.registration.active, preparationCoordinator),
+    runInstall(channel, channelBasePath, self.registration.active, preparationCoordinator).finally(
+      () => drainDiagnostics(),
+    ),
   );
 });
 
 self.addEventListener('activate', (event) => {
   // Best-effort managed-cache housekeeping only: never selects, initializes,
-  // or verifies an application release. A cleanup failure must not fail
-  // this worker's activation.
+  // or verifies an application release. `cleanupReleaseCache` already
+  // reports its own failure (single diagnostic owner) and never rejects, so
+  // this worker's activation and the bounded diagnostics drain are both
+  // unaffected by a failed cleanup.
   event.waitUntil(
-    preparationCoordinator
-      .runCleanup((inFlightReleaseIds) => runReleaseCacheCleanup(channel, inFlightReleaseIds))
-      .catch(() => {}),
+    cleanupReleaseCache(channel, preparationCoordinator).finally(() => drainDiagnostics()),
   );
 });
 
@@ -144,10 +208,14 @@ self.addEventListener('fetch', (event) => {
     });
     const reconciliation = responsePromise.then(() => updateReconciler.reconcileNavigation());
     event.respondWith(responsePromise);
+    // The bounded diagnostics drain runs only after both follow-up items
+    // settle — reconciliation and recovery are where this navigation's own
+    // diagnostics are generated — and never before `responsePromise` has
+    // already resolved, matching every other follow-up item's ordering here.
     event.waitUntil(
-      Promise.all([navigationLifetimeWork.catch(() => {}), reconciliation.catch(() => {})]).then(
-        () => undefined,
-      ),
+      Promise.all([navigationLifetimeWork.catch(() => {}), reconciliation.catch(() => {})])
+        .then(() => drainDiagnostics())
+        .then(() => undefined),
     );
     return;
   }
@@ -191,6 +259,23 @@ self.addEventListener('message', (event) => {
   // rather than answered.
   if (!isSameChannelWindowClient(event.source, channelBasePath, channelOrigin)) return;
 
+  // The diagnostics-policy live-sync message: independent diagnostics
+  // infrastructure, not part of the private update protocol above. Applies
+  // the pushed runtime state to this worker's own diagnostics runtime so an
+  // already-running worker reacts immediately to a consent change, and never
+  // responds — no port reply, no updater snapshot, no state mutation beyond
+  // the diagnostics runtime itself.
+  const diagnosticsSync = zodDiagnosticsPolicySyncMessage.safeParse(event.data);
+  if (diagnosticsSync.success) {
+    const { reportingState, sessionId } = diagnosticsSync.data;
+    event.waitUntil(
+      applyDiagnosticsRuntimeState({ reportingState, sessionId })
+        .catch(() => {})
+        .then(() => drainDiagnostics()),
+    );
+    return;
+  }
+
   // A malformed payload or an unsupported/missing protocol version is
   // ignored exactly like a foreign-channel request above: no state
   // mutation, no response, and never a thrown error out of this handler.
@@ -231,6 +316,14 @@ self.addEventListener('message', (event) => {
         // exactly once, strictly after the fallback response above has
         // already been posted.
         if (error instanceof ReconciliationFailure) await error.runLifetimeWork().catch(() => {});
+        // A release-preparation failure was already reported once at its own
+        // classified boundary (`PreparationCoordinator.prepare`) — this is the
+        // remaining unexpected-failure safety net for command handling itself.
+        const cause = error instanceof ReconciliationFailure ? error.cause : error;
+        if (!isReleasePreparationError(cause)) {
+          captureDiagnosticException(cause, { operation: 'workerMessageHandling' });
+        }
+        await drainDiagnostics();
         return;
       }
       respond(result.response);
@@ -239,6 +332,7 @@ self.addEventListener('message', (event) => {
       // in depth so a future producer's mistake can never throw out of this
       // handler or surface as an unhandled rejection.
       if (result.runLifetimeWork) await result.runLifetimeWork().catch(() => {});
+      await drainDiagnostics();
     })(),
   );
 });

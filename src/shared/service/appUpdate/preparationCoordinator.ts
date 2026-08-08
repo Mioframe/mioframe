@@ -10,6 +10,7 @@ import {
   prepareRelease,
   releasePreparationError,
   ReleasePreparationFailureReason,
+  reportReleasePreparationFailure,
 } from './releasePreparation';
 
 /**
@@ -156,6 +157,11 @@ export function createPreparationCoordinator(): PreparationCoordinator {
       const ownedAttempt: Promise<ReleaseDescriptor> = Promise.resolve().then(async () => {
         try {
           return await runPreparation();
+        } catch (error) {
+          // The single boundary every caller's own preparation failure funnels
+          // through: reported exactly once here, never again by callers.
+          reportReleasePreparationFailure(error);
+          throw error;
         } finally {
           if (inFlight.get(target.releaseNumber)?.promise === ownedAttempt) {
             inFlight.delete(target.releaseNumber);

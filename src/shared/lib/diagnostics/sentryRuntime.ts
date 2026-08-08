@@ -1,5 +1,5 @@
 import type { App, Plugin } from 'vue';
-import type { Breadcrumb, CaptureContext } from '@sentry/vue';
+import type { Breadcrumb, CaptureContext } from '@sentry/browser';
 import { clearDiagnosticsRuntimeEffects, flushDiagnosticsRuntimeEffects } from './runtimeEffects';
 import type { SentryReportingState, SentryRuntimeState } from './sentryRuntimeState';
 import { createSentryOptions } from './sentryOptions';
@@ -52,12 +52,61 @@ export type SentryFacade = {
    * No-op when Sentry is not yet initialized.
    */
   addBreadcrumb(breadcrumb: Breadcrumb): void;
+  /**
+   * Waits, up to `timeoutMs`, for the SDK's transport to finish delivering already-queued
+   * events (best-effort — used by the managed Service Worker's bounded diagnostics drain
+   * to give in-flight delivery a chance to complete before its event lifetime ends).
+   * Resolves `true` immediately when Sentry is not yet initialized — nothing to flush.
+   */
+  flush(timeoutMs?: number): Promise<boolean>;
 };
 
-type SentryModule = typeof import('@sentry/vue');
+/**
+ * The concrete init options this runtime ever passes to a backend SDK's `init`:
+ * the shared options built by `createSentryOptions`, plus the Vue app instance the
+ * `@sentry/vue` backend uses for its Vue-specific error/integration wiring. A backend
+ * that has no use for `app` (e.g. the managed Service Worker's `@sentry/browser`
+ * backend) simply never reads it.
+ */
+type SentryInitOptions = ReturnType<typeof createSentryOptions> & { app?: App };
 
-let sentryModulePromise: Promise<SentryModule> | undefined;
-let loadedSentryModule: SentryModule | undefined;
+/**
+ * The narrow, backend-agnostic subset of a Sentry SDK module this runtime core
+ * actually calls. Both `@sentry/vue` (main thread, existing DedicatedWorker) and
+ * `@sentry/browser` (managed Service Worker) satisfy this shape with compatible
+ * runtime behavior.
+ */
+export type SentryBackendModule = {
+  init: (options: SentryInitOptions) => unknown;
+  captureException: (exception: unknown, captureContext?: CaptureContext) => string | undefined;
+  captureMessage: (message: string, captureContext?: CaptureContext) => string | undefined;
+  setUser: (user: { id: string } | null) => void;
+  addBreadcrumb: (breadcrumb: Breadcrumb) => void;
+  flush: (timeoutMs?: number) => Promise<boolean>;
+};
+
+/** Lazily resolves the backend SDK module this runtime should initialize. */
+export type SentryBackendLoader = () => Promise<SentryBackendModule>;
+
+let backendLoader: SentryBackendLoader | undefined;
+
+/**
+ * Registers which backend SDK module `ensureSentry()` loads and initializes.
+ *
+ * This runtime core never imports a concrete Sentry SDK itself, so a bootstrap
+ * context must call this once, before any diagnostics call that may trigger
+ * initialization: browser main-thread and DedicatedWorker bootstraps register
+ * `@sentry/vue`'s lazy dynamic import (see `sentryVueBackend.ts`); the managed
+ * Service Worker registers a statically bundled `@sentry/browser` module instead,
+ * so its build never contains a dynamic `import('@sentry/vue')`.
+ * @param loader - Resolves the backend SDK module to initialize.
+ */
+export const registerSentryBackend = (loader: SentryBackendLoader): void => {
+  backendLoader = loader;
+};
+
+let sentryModulePromise: Promise<SentryBackendModule> | undefined;
+let loadedSentryModule: SentryBackendModule | undefined;
 let runtimeConfig: SentryConfig | undefined;
 let initPromise: Promise<SentryFacade> | undefined;
 let appRef: App | undefined;
@@ -90,7 +139,11 @@ const warnInitFailureOnce = (error: unknown) => {
 };
 
 const getSentryModule = async () => {
-  sentryModulePromise ??= import('@sentry/vue');
+  sentryModulePromise ??= backendLoader
+    ? backendLoader()
+    : Promise.reject(
+        new Error('No Sentry backend registered; call registerSentryBackend() at bootstrap.'),
+      );
   return await sentryModulePromise;
 };
 
@@ -187,6 +240,10 @@ export const sentryFacade: SentryFacade = {
   },
   addBreadcrumb(breadcrumb: Breadcrumb): void {
     loadedSentryModule?.addBreadcrumb(breadcrumb);
+  },
+  flush(timeoutMs?: number): Promise<boolean> {
+    if (!loadedSentryModule) return Promise.resolve(true);
+    return loadedSentryModule.flush(timeoutMs);
   },
 };
 

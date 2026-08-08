@@ -470,22 +470,16 @@ describe('runUpdateReconciliationPass', () => {
       expect(currentState.candidate?.phase).toBe('available');
     });
 
-    it('logs the original error to the local diagnostic boundary exactly once', async () => {
+    it('never logs or reports here: the coordinator is this failure single diagnostic owner', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       setState('automatic');
       fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
       fetchReleaseDescriptorMock.mockResolvedValue(descriptor(2));
-      const failure = new Error('network down');
-      prepareMock.mockRejectedValue(failure);
+      prepareMock.mockRejectedValue(new Error('network down'));
 
       await runUpdateReconciliationPass(dependencies);
 
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[app-update] Automatic release preparation failed',
-        2,
-        failure,
-      );
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
       consoleErrorSpy.mockRestore();
     });
   });

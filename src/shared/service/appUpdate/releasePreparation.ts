@@ -1,3 +1,4 @@
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
 import {
   buildArchivedIndexPath,
@@ -125,6 +126,38 @@ export function isReleasePreparationError(
     typeof error.code === 'string' &&
     RELEASE_PREPARATION_FAILURE_REASON_VALUES.has(error.code)
   );
+}
+
+/**
+ * Reports a release discovery/preparation/restoration failure at the single
+ * boundary ({@link PreparationCoordinator.prepare}) every caller — discovery,
+ * install, and recovery — funnels through, so a failure is never reported
+ * twice for the same underlying attempt.
+ *
+ * `ARCHIVE_UNAVAILABLE` is ordinary offline/network behavior and is never
+ * reported. Every other classified reason
+ * ({@link ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA},
+ * {@link ReleasePreparationFailureReason.INTEGRITY_FAILURE},
+ * {@link ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE},
+ * {@link ReleasePreparationFailureReason.RESTORATION_FAILED}) indicates a
+ * broken release invariant or storage failure and is reported using the real
+ * `DomainError` as the captured exception. An error that escapes this
+ * boundary unclassified is reported as an unexpected failure.
+ * @param error - The raw value {@link PreparationCoordinator.prepare} caught.
+ */
+export function reportReleasePreparationFailure(error: unknown): void {
+  if (isReleasePreparationError(error)) {
+    if (error.code === ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE) return;
+    captureDiagnosticException(error, {
+      operation: 'releasePreparation',
+      failureClassification: error.code,
+    });
+    return;
+  }
+  captureDiagnosticException(error, {
+    operation: 'releasePreparation',
+    failureClassification: 'unexpected',
+  });
 }
 
 /**

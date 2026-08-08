@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseSummary } from './contracts';
 import { createPreparationCoordinator } from './preparationCoordinator';
-import { cleanupReleaseCache } from './workerBroadcast';
+import { broadcastRollback, cleanupReleaseCache } from './workerBroadcast';
 
 const readControllerStateMock = vi.fn();
 vi.mock('./controllerState', () => ({
@@ -24,6 +24,11 @@ const cachesKeysMock = vi.fn();
 const cachesDeleteMock = vi.fn();
 vi.stubGlobal('caches', { keys: cachesKeysMock, delete: cachesDeleteMock });
 
+const captureDiagnosticExceptionMock = vi.fn();
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
+}));
+
 const releaseSummary = (releaseNumber: number): ReleaseSummary => ({
   releaseNumber,
   appVersion: '1.0.0',
@@ -37,6 +42,7 @@ beforeEach(() => {
   prepareReleaseMock.mockReset().mockResolvedValue(undefined);
   cachesKeysMock.mockReset().mockResolvedValue([]);
   cachesDeleteMock.mockReset().mockResolvedValue(true);
+  captureDiagnosticExceptionMock.mockReset();
 });
 
 /**
@@ -141,5 +147,60 @@ describe('cleanupReleaseCache — real PreparationCoordinator + runReleaseCacheC
 
     expect(cachesDeleteMock).toHaveBeenCalledWith('stable-release-5');
     expect(cachesDeleteMock).not.toHaveBeenCalledWith('stable-release-1');
+  });
+});
+
+describe('cleanupReleaseCache — diagnostic reporting', () => {
+  it('reports a cleanup failure but still resolves (never rejects)', async () => {
+    readControllerStateMock.mockRejectedValue(new Error('storage broke'));
+    const coordinator = createPreparationCoordinator();
+
+    await expect(cleanupReleaseCache('stable', coordinator)).resolves.toBeUndefined();
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
+      operation: 'releaseCacheCleanup',
+      failureClassification: 'cleanupFailed',
+    });
+  });
+
+  it('never reports a successful cleanup', async () => {
+    readControllerStateMock.mockResolvedValue({ status: 'absent' });
+    const coordinator = createPreparationCoordinator();
+
+    await cleanupReleaseCache('stable', coordinator);
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('broadcastRollback — diagnostic reporting', () => {
+  const clientsMatchAllMock = vi.fn();
+
+  beforeEach(() => {
+    clientsMatchAllMock.mockReset();
+    vi.stubGlobal('self', {
+      clients: { matchAll: (...args: unknown[]) => clientsMatchAllMock(...args) },
+    });
+  });
+
+  it('reports and rethrows when clients.matchAll() itself fails, never an isolated per-client failure', async () => {
+    clientsMatchAllMock.mockRejectedValue(new Error('clients API unavailable'));
+
+    await expect(broadcastRollback('/', 'https://mioframe.example', 3)).rejects.toThrow(
+      'clients API unavailable',
+    );
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
+      operation: 'rollbackBroadcast',
+      failureClassification: 'broadcastFailed',
+    });
+  });
+
+  it('never reports when delivery to every matching client succeeds', async () => {
+    clientsMatchAllMock.mockResolvedValue([]);
+
+    await broadcastRollback('/', 'https://mioframe.example', 3);
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 });

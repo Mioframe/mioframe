@@ -14,6 +14,15 @@ vi.mock('./controllerState', () => ({
 }));
 vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
 
+const reportDiagnosticEventMock = vi.fn();
+vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
+  return {
+    ...actual,
+    reportDiagnosticEvent: (...args: unknown[]) => reportDiagnosticEventMock(...args),
+  };
+});
+
 const PROTOCOL_VERSION = 1 as const;
 const CHANNEL_ORIGIN = 'https://mioframe.example';
 
@@ -71,6 +80,7 @@ beforeEach(() => {
   matchAllMock.mockClear();
   matchAllMock.mockResolvedValue([]);
   readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
+  reportDiagnosticEventMock.mockReset();
 });
 
 afterEach(() => {
@@ -267,6 +277,12 @@ describe('handleWorkerMessage', () => {
         ack: 'rolled-back',
       });
       expect(result.runLifetimeWork).toBeTypeOf('function');
+      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'appUpdate.activationRolledBack',
+          safeTags: expect.objectContaining({ trigger: 'bootOkExpired' }),
+        }),
+      );
 
       await result.runLifetimeWork?.();
       expect(postMessage).toHaveBeenCalledWith({
@@ -482,6 +498,12 @@ describe('handleWorkerMessage', () => {
         }),
         ack: 'rolled-back',
       });
+      expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'appUpdate.activationRolledBack',
+          safeTags: expect.objectContaining({ trigger: 'bootFailed' }),
+        }),
+      );
       await result.runLifetimeWork?.();
       expect(postMessage).toHaveBeenCalledWith({
         protocolVersion: PROTOCOL_VERSION,

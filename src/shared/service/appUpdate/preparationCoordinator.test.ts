@@ -3,6 +3,7 @@ import type { ReleaseDescriptor, ReleaseSummary } from './contracts';
 
 const fetchReleaseDescriptorMock = vi.fn();
 const prepareReleaseMock = vi.fn();
+const captureDiagnosticExceptionMock = vi.fn();
 
 vi.mock('./releasePreparation', async () => {
   const actual =
@@ -13,6 +14,9 @@ vi.mock('./releasePreparation', async () => {
     prepareRelease: (...args: unknown[]) => prepareReleaseMock(...args),
   };
 });
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
+}));
 
 const releaseA: ReleaseSummary = {
   releaseNumber: 1,
@@ -47,6 +51,7 @@ describe('createPreparationCoordinator', () => {
   beforeEach(() => {
     fetchReleaseDescriptorMock.mockReset();
     prepareReleaseMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
   });
 
   it('prepares a release by fetching its descriptor then preparing it', async () => {
@@ -286,6 +291,51 @@ describe('createPreparationCoordinator', () => {
   });
 });
 
+describe('createPreparationCoordinator: diagnostic reporting', () => {
+  beforeEach(() => {
+    fetchReleaseDescriptorMock.mockReset();
+    prepareReleaseMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
+  });
+
+  it('reports a failure exactly once at this single boundary', async () => {
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockRejectedValue(new Error('network down'));
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    await expect(coordinator.prepare('stable', '/', releaseA)).rejects.toThrow('network down');
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('never reports a successful preparation', async () => {
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    await coordinator.prepare('stable', '/', releaseA);
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('still removes the settled attempt from the in-flight map after reporting', async () => {
+    fetchReleaseDescriptorMock.mockResolvedValue(descriptorA);
+    prepareReleaseMock
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const coordinator = createPreparationCoordinator();
+
+    await expect(coordinator.prepare('stable', '/', releaseA)).rejects.toThrow('network down');
+    const retried = await coordinator.prepare('stable', '/', releaseA);
+
+    expect(retried).toBe(descriptorA);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 /**
  * Drains the microtask queue repeatedly. Safe to over-flush: a promise
  * chained off a still-pending deferred never resolves early just because
@@ -318,6 +368,7 @@ describe('createPreparationCoordinator: runCleanup arbitration', () => {
   beforeEach(() => {
     fetchReleaseDescriptorMock.mockReset();
     prepareReleaseMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
   });
 
   it('protects a preparation already in flight: cleanup receives its release number', async () => {

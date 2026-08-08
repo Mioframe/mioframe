@@ -4,11 +4,15 @@ import type { UpdateControllerState } from './contracts';
 const getMock = vi.fn();
 const setMock = vi.fn();
 const createStoreMock = vi.fn((dbName: string, storeName: string) => ({ dbName, storeName }));
+const captureDiagnosticExceptionMock = vi.fn();
 
 vi.mock('idb-keyval', () => ({
   get: (...args: unknown[]) => getMock(...args),
   set: (...args: unknown[]) => setMock(...args),
   createStore: (...args: [string, string]) => createStoreMock(...args),
+}));
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
 }));
 
 const validState: UpdateControllerState = {
@@ -115,6 +119,7 @@ describe('readControllerState / writeControllerState', () => {
     getMock.mockReset();
     setMock.mockReset();
     createStoreMock.mockClear();
+    captureDiagnosticExceptionMock.mockReset();
   });
 
   it('reads through a channel-scoped store and parses the result', async () => {
@@ -168,6 +173,10 @@ describe('readControllerState / writeControllerState', () => {
       'Refusing to persist an invalid controller state',
     );
     expect(setMock).not.toHaveBeenCalled();
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
+      operation: 'controllerStateWrite',
+      failureClassification: 'invalidWriteAttempt',
+    });
   });
 
   it('refuses to persist a candidate that is not strictly newer than activeRelease, even though each field is individually well-formed', async () => {
@@ -205,6 +214,32 @@ describe('readControllerState / writeControllerState', () => {
     const result = await readControllerState('stable');
 
     expect(result).toEqual({ status: 'storage-unavailable', errorName: undefined });
+  });
+
+  it('reports a storage read failure via the diagnostics exception primitive, with the raw error only there', async () => {
+    const rawError = new Error('IndexedDB unavailable');
+    getMock.mockRejectedValue(rawError);
+    const { readControllerState } = await import('./controllerState');
+
+    await readControllerState('stable');
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(rawError, {
+      operation: 'controllerStateRead',
+      failureClassification: 'storageUnavailable',
+    });
+  });
+
+  it('reports a storage write failure via the diagnostics exception primitive and still rejects fail-closed', async () => {
+    const rawError = new Error('IndexedDB write failed');
+    setMock.mockRejectedValue(rawError);
+    const { writeControllerState } = await import('./controllerState');
+
+    await expect(writeControllerState('stable', validState)).rejects.toBe(rawError);
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(rawError, {
+      operation: 'controllerStateWrite',
+      failureClassification: 'storageUnavailable',
+    });
   });
 
   it('refuses to persist a state with an unknown root field, and never calls idb-keyval set', async () => {

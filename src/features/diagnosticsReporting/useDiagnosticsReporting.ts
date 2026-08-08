@@ -1,4 +1,5 @@
 import { useLocalSettings } from '@entity/localSettings';
+import { deriveDiagnosticsPolicy } from '@shared/lib/diagnostics';
 import { applyDiagnosticsPolicy } from '@shared/serviceClient/diagnostics';
 import { watch } from 'vue';
 
@@ -8,7 +9,6 @@ import { watch } from 'vue';
  */
 export const useDiagnosticsReporting = () => {
   const { settings, isFinished } = useLocalSettings();
-  let sequence = 0;
 
   watch(
     [
@@ -16,29 +16,14 @@ export const useDiagnosticsReporting = () => {
       () => settings.value.diagnosticsEnabled,
       () => settings.value.diagnosticsConsentRequested,
     ],
-    async ([hydrated, diagnosticsEnabled, diagnosticsConsentRequested]) => {
-      const currentSequence = ++sequence;
-
+    ([hydrated, diagnosticsEnabled, diagnosticsConsentRequested]) => {
       if (!hydrated) {
         return;
       }
 
-      if (diagnosticsEnabled) {
-        await applyDiagnosticsPolicy('enabled');
-
-        if (currentSequence !== sequence) {
-          return;
-        }
-        return;
-      }
-
-      // oxlint-disable-next-line no-unnecessary-boolean-literal-compare -- strict boolean from watcher callback
-      if (diagnosticsConsentRequested === true) {
-        void applyDiagnosticsPolicy('disabled');
-        return;
-      }
-
-      void applyDiagnosticsPolicy('unknown');
+      void applyDiagnosticsPolicy(
+        deriveDiagnosticsPolicy({ diagnosticsEnabled, diagnosticsConsentRequested }),
+      );
     },
     { immediate: true },
   );

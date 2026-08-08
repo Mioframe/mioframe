@@ -12,6 +12,41 @@ import { ReconciliationFailure } from './shared/service/appUpdate/updateReconcil
 // (navigation vs. owned `assets/**` vs. everything else) is decided purely
 // from the request's URL, never delegated to `workerFetch.ts`.
 
+type FakeSentryBackendModule = { init: unknown; captureException: unknown };
+const registerSentryBackendMock = vi.fn<(loader: () => Promise<FakeSentryBackendModule>) => void>();
+const registerSentryConfigMock = vi.fn();
+const readPersistedDiagnosticsPolicyMock = vi.fn();
+const applyDiagnosticsRuntimeStateMock = vi.fn();
+const getOrCreateSentrySessionIdMock = vi.fn();
+const drainDiagnosticsMock = vi.fn();
+const captureDiagnosticExceptionMock = vi.fn();
+vi.mock('./shared/lib/diagnostics', async (importOriginal) => {
+  // `zodDiagnosticsPolicySyncMessage` is kept real (not mocked): its own
+  // validation behavior is exactly what these tests prove.
+  const actual = await importOriginal<typeof import('./shared/lib/diagnostics')>();
+  return {
+    zodDiagnosticsPolicySyncMessage: actual.zodDiagnosticsPolicySyncMessage,
+    applyDiagnosticsRuntimeState: (...args: unknown[]) => applyDiagnosticsRuntimeStateMock(...args),
+    captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
+    drainDiagnostics: (...args: unknown[]) => drainDiagnosticsMock(...args),
+    getOrCreateSentrySessionId: (...args: unknown[]) => getOrCreateSentrySessionIdMock(...args),
+    readPersistedDiagnosticsPolicy: (...args: unknown[]) =>
+      readPersistedDiagnosticsPolicyMock(...args),
+    registerSentryBackend: registerSentryBackendMock,
+    registerSentryConfig: (...args: unknown[]) => registerSentryConfigMock(...args),
+  };
+});
+
+const sentryBrowserStub = {
+  addBreadcrumb: vi.fn(),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+  init: vi.fn(),
+  setUser: vi.fn(),
+  flush: vi.fn(() => Promise.resolve(true)),
+};
+vi.mock('@sentry/browser', () => sentryBrowserStub);
+
 const handleWorkerMessageMock = vi.fn();
 vi.mock('./shared/service/appUpdate/workerMessages', () => ({
   handleWorkerMessage: (...args: unknown[]) => handleWorkerMessageMock(...args),
@@ -168,6 +203,12 @@ const PROBE_REQUEST = { protocolVersion: 1, type: 'PROBE_MANAGED_UPDATE_CONTROLL
 
 beforeEach(() => {
   vi.resetModules();
+  registerSentryBackendMock.mockReset();
+  registerSentryConfigMock.mockReset();
+  readPersistedDiagnosticsPolicyMock.mockReset().mockResolvedValue('unknown');
+  applyDiagnosticsRuntimeStateMock.mockReset().mockResolvedValue(undefined);
+  getOrCreateSentrySessionIdMock.mockReset().mockReturnValue('session:test-id');
+  drainDiagnosticsMock.mockReset().mockResolvedValue(undefined);
   handleWorkerMessageMock.mockReset();
   isSameChannelPathMock.mockReset();
   isSameChannelPathMock.mockReturnValue(true);
@@ -877,5 +918,354 @@ describe('src/sw.ts fetch routing', () => {
 
     expect(respondWith).not.toHaveBeenCalled();
     expect(handleNavigationFetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('src/sw.ts diagnostics bootstrap', () => {
+  it('registers a statically bundled @sentry/browser backend, never a lazy import', async () => {
+    await importSwAndGetListeners();
+
+    expect(registerSentryBackendMock).toHaveBeenCalledTimes(1);
+    const loader = registerSentryBackendMock.mock.calls[0]?.[0];
+    if (!loader)
+      throw new Error('Expected registerSentryBackend to have been called with a loader');
+    const backendModule = await loader();
+
+    expect(backendModule.init).toBe(sentryBrowserStub.init);
+    expect(backendModule.captureException).toBe(sentryBrowserStub.captureException);
+  });
+
+  it('registers static Sentry config independently of the update-controller state', async () => {
+    await importSwAndGetListeners();
+
+    expect(registerSentryConfigMock).toHaveBeenCalledTimes(1);
+    expect(registerSentryConfigMock).toHaveBeenCalledWith(
+      expect.objectContaining({ isVerbose: expect.any(Boolean), enabled: expect.any(Boolean) }),
+    );
+  });
+
+  it('reads the persisted diagnostics policy and applies it with an in-memory session id', async () => {
+    readPersistedDiagnosticsPolicyMock.mockResolvedValue('enabled');
+    await importSwAndGetListeners();
+    await flushMicrotasks();
+
+    expect(readPersistedDiagnosticsPolicyMock).toHaveBeenCalledTimes(1);
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
+      sessionId: 'session:test-id',
+      reportingState: 'enabled',
+    });
+  });
+
+  it('never lets a persisted-policy read failure affect worker bootstrap', async () => {
+    readPersistedDiagnosticsPolicyMock.mockRejectedValue(new Error('IndexedDB unavailable'));
+
+    await expect(importSwAndGetListeners()).resolves.toBeInstanceOf(Map);
+  });
+});
+
+describe('src/sw.ts diagnostics-policy live sync message', () => {
+  const SYNC_MESSAGE = {
+    type: 'DIAGNOSTICS_POLICY_SYNC',
+    reportingState: 'enabled',
+    sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+  };
+
+  it('applies the synced state and never posts a response or dispatches to the update protocol', async () => {
+    const listener = await importSwAndGetMessageListener();
+    applyDiagnosticsRuntimeStateMock.mockClear();
+    const postMessage = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({ data: SYNC_MESSAGE, source: {}, ports: [{ postMessage }], waitUntil });
+    await flushMicrotasks();
+
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
+      reportingState: 'enabled',
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+    });
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(handleWorkerMessageMock).not.toHaveBeenCalled();
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+  });
+
+  it('is rejected from a foreign-channel window client, exactly like the update protocol', async () => {
+    isSameChannelWindowClientMock.mockReturnValue(false);
+    const listener = await importSwAndGetMessageListener();
+    applyDiagnosticsRuntimeStateMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({ data: SYNC_MESSAGE, source: {}, ports: [], waitUntil });
+    await flushMicrotasks();
+
+    expect(applyDiagnosticsRuntimeStateMock).not.toHaveBeenCalled();
+    expect(waitUntil).not.toHaveBeenCalled();
+  });
+
+  it('ignores a malformed sync payload safely, falling through to normal protocol handling', async () => {
+    const listener = await importSwAndGetMessageListener();
+    applyDiagnosticsRuntimeStateMock.mockClear();
+    const postMessage = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: { type: 'DIAGNOSTICS_POLICY_SYNC', reportingState: 'not-a-real-state' },
+      source: {},
+      ports: [{ postMessage }],
+      waitUntil,
+    });
+    await flushMicrotasks();
+
+    expect(applyDiagnosticsRuntimeStateMock).not.toHaveBeenCalled();
+    expect(handleWorkerMessageMock).not.toHaveBeenCalled();
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(waitUntil).not.toHaveBeenCalled();
+  });
+
+  it('never crashes the handler when applying the runtime state rejects', async () => {
+    applyDiagnosticsRuntimeStateMock.mockRejectedValue(new Error('Sentry init failed'));
+    const listener = await importSwAndGetMessageListener();
+    const waitUntil = vi.fn();
+
+    listener({ data: SYNC_MESSAGE, source: {}, ports: [], waitUntil });
+
+    await expect(waitUntil.mock.calls[0]?.[0]).resolves.toBeUndefined();
+  });
+
+  it('drains diagnostics after applying the synced state', async () => {
+    const listener = await importSwAndGetMessageListener();
+    drainDiagnosticsMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({ data: SYNC_MESSAGE, source: {}, ports: [], waitUntil });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('src/sw.ts bounded diagnostics drain wiring', () => {
+  it('drains after install completes', async () => {
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    const listener = listeners.get('install');
+    if (!listener) throw new Error('Expected an install listener to have been registered');
+    const waitUntil = vi.fn();
+
+    listener({ waitUntil });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('drains after install fails, without changing install failure', async () => {
+    runInstallMock.mockRejectedValue(new Error('preparation failed'));
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    const listener = listeners.get('install');
+    if (!listener) throw new Error('Expected an install listener to have been registered');
+    const waitUntil = vi.fn();
+
+    listener({ waitUntil });
+
+    await expect(waitUntil.mock.calls[0]?.[0]).rejects.toThrow('preparation failed');
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('drains after activate cleanup completes', async () => {
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    const listener = listeners.get('activate');
+    if (!listener) throw new Error('Expected an activate listener to have been registered');
+    const waitUntil = vi.fn();
+
+    listener({ waitUntil });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('drains after navigation follow-up work settles, never inside respondWith', async () => {
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const request = new Request('https://mioframe.example/');
+    Object.defineProperty(request, 'mode', { value: 'navigate' });
+    Object.defineProperty(request, 'destination', { value: 'document' });
+    const respondWith = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({ request, clientId: '', resultingClientId: '', respondWith, waitUntil });
+    const responsePromise = respondWith.mock.calls[0]?.[0];
+    if (!(responsePromise instanceof Promise)) throw new Error('Expected a response promise');
+    await responsePromise;
+    expect(drainDiagnosticsMock).not.toHaveBeenCalled();
+
+    await waitUntil.mock.calls[0]?.[0];
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('never drains for an ordinary asset fetch', async () => {
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const respondWith = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({
+      request: new Request('https://mioframe.example/assets/app.js'),
+      respondWith,
+      waitUntil,
+    });
+    await flushMicrotasks();
+
+    expect(drainDiagnosticsMock).not.toHaveBeenCalled();
+  });
+
+  it('drains after a successful update-protocol command response', async () => {
+    handleWorkerMessageMock.mockResolvedValue({
+      response: { protocolVersion: 1, snapshot: { mode: 'manual' } },
+    });
+    const listener = await importSwAndGetMessageListener();
+    drainDiagnosticsMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('drains after a failed update-protocol command response', async () => {
+    handleWorkerMessageMock.mockRejectedValue(new Error('Controller state is unavailable'));
+    const listener = await importSwAndGetMessageListener();
+    drainDiagnosticsMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('never drains for the Stage 3 predecessor probe', async () => {
+    const listener = await importSwAndGetMessageListener();
+    drainDiagnosticsMock.mockClear();
+
+    listener({
+      data: PROBE_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil: vi.fn(),
+    });
+    await flushMicrotasks();
+
+    expect(drainDiagnosticsMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('src/sw.ts message handler diagnostic reporting', () => {
+  it('reports an unexpected, unclassified handleWorkerMessage failure', async () => {
+    handleWorkerMessageMock.mockRejectedValue(new Error('unexpected bug'));
+    const listener = await importSwAndGetMessageListener();
+    captureDiagnosticExceptionMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
+      operation: 'workerMessageHandling',
+    });
+  });
+
+  it("never reports a release-preparation-classified failure again: already the coordinator's own", async () => {
+    // Imported dynamically, in the same fresh module epoch `./sw`'s own
+    // import of this module resolves to after `vi.resetModules()` — a static
+    // top-level import here would construct the error against a stale
+    // `DomainError` class identity and silently fail its `instanceof` check.
+    const { releasePreparationError, ReleasePreparationFailureReason } =
+      await import('./shared/service/appUpdate/releasePreparation');
+    const classified = releasePreparationError(
+      ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+      'hash mismatch',
+    );
+    handleWorkerMessageMock.mockRejectedValue(classified);
+    const listener = await importSwAndGetMessageListener();
+    captureDiagnosticExceptionMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('unwraps a ReconciliationFailure and reports its cause when unclassified', async () => {
+    const cause = new Error('reconciliation pass bug');
+    handleWorkerMessageMock.mockRejectedValue(
+      new ReconciliationFailure(cause, () => Promise.resolve()),
+    );
+    const listener = await importSwAndGetMessageListener();
+    captureDiagnosticExceptionMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(cause, {
+      operation: 'workerMessageHandling',
+    });
+  });
+
+  it('never reports a ReconciliationFailure whose cause is already release-preparation-classified', async () => {
+    const { releasePreparationError, ReleasePreparationFailureReason } =
+      await import('./shared/service/appUpdate/releasePreparation');
+    const classifiedCause = releasePreparationError(
+      ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
+      'cache write failed',
+    );
+    handleWorkerMessageMock.mockRejectedValue(
+      new ReconciliationFailure(classifiedCause, () => Promise.resolve()),
+    );
+    const listener = await importSwAndGetMessageListener();
+    captureDiagnosticExceptionMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 });
