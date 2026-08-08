@@ -94,9 +94,9 @@ The durable target is being migrated incrementally. Do not place a test where cu
 | Preview style isolation         | Storybook currently imports the complete application stylesheet, including app-shell layout rules; isolation is still migration work             |
 | Theme modes                     | Material theme currently follows production `prefers-color-scheme`; explicit Storybook `System`/`Light`/`Dark` switching is still migration work |
 | Catalogue ordering              | target namespaces are documented, but deterministic global `storySort` and existing-title normalization are not yet complete                     |
-| Autodocs                        | Vue docgen metadata is available; selective public-component Autodocs usage is not yet normalized                                                 |
+| Autodocs                        | Vue docgen metadata is available; selective public-component Autodocs usage is not yet normalized                                                |
 | Vue router context              | one global memory router exists, but only a minimal `/` route is available; the reusable per-story routing harness is still migration work       |
-| Storybook build gate            | Storybook is built by browser lanes when selected, but story/config changes do not yet own a dedicated verifier-managed build gate                |
+| Storybook build gate            | Storybook is built by browser lanes when selected, but story/config changes do not yet own a dedicated verifier-managed build gate               |
 | Vue component contract          | colocated `*.test.ts`                                                                                                                            |
 | Storybook browser behavior spec | keep the current executable location under `tests/e2e/storybook` until the browser-discovery pilot is merged                                     |
 | Visual spec and baseline        | keep the current executable visual location until the visual-discovery pilot is merged                                                           |
