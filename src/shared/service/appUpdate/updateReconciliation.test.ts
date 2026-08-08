@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DomainError } from '@shared/lib/error';
 import type { AppUpdateSnapshot } from './protocol';
 import {
   createUpdateReconciler,
@@ -6,6 +7,11 @@ import {
   type ReconciliationEffects,
   type ReconciliationPassResult,
 } from './updateReconciliation';
+
+const captureDiagnosticExceptionMock = vi.fn();
+vi.mock('@shared/lib/diagnostics', () => ({
+  captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
+}));
 
 const NO_EFFECTS: ReconciliationEffects = {
   broadcastStateChanged: false,
@@ -57,6 +63,10 @@ async function flushMicrotasks(times = 6): Promise<void> {
 }
 
 describe('createUpdateReconciler', () => {
+  beforeEach(() => {
+    captureDiagnosticExceptionMock.mockReset();
+  });
+
   it('starts one pass for idle navigation', async () => {
     const runPass = vi.fn().mockResolvedValue(passResult(1));
     const runEffects = vi.fn().mockResolvedValue(undefined);
@@ -563,6 +573,108 @@ describe('createUpdateReconciler', () => {
       await nextCheck.runLifetimeWork?.();
       expect(runEffects).toHaveBeenCalledTimes(1);
       expect(runEffects).toHaveBeenLastCalledWith(NO_EFFECTS);
+    });
+  });
+
+  describe('unexpected background reconciliation failure reporting', () => {
+    it('reports an unexpected background-created (navigation) attempt failure once', async () => {
+      const unexpected = new Error('reconciliation pass bug');
+      const runPass = vi.fn().mockRejectedValue(unexpected);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      await expect(reconciler.reconcileNavigation()).rejects.toBe(unexpected);
+
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(unexpected, {
+        operation: 'updateReconciliation',
+      });
+    });
+
+    it('reports an unexpected background-created (mode-change) attempt failure once', async () => {
+      const unexpected = new Error('reconciliation pass bug');
+      const runPass = vi.fn().mockRejectedValue(unexpected);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      await expect(reconciler.reconcileAfterModeChange()).rejects.toBe(unexpected);
+
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(unexpected, {
+        operation: 'updateReconciliation',
+      });
+    });
+
+    it('reports a background attempt failure only once even when a second navigation joins it', async () => {
+      const unexpected = new Error('reconciliation pass bug');
+      const pass = deferred<ReconciliationPassResult>();
+      const runPass = vi.fn(() => pass.promise);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      const first = reconciler.reconcileNavigation();
+      const second = reconciler.reconcileNavigation();
+      await startPass();
+      pass.reject(unexpected);
+
+      await expect(first).rejects.toBe(unexpected);
+      await expect(second).rejects.toBe(unexpected);
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(unexpected, {
+        operation: 'updateReconciliation',
+      });
+    });
+
+    it('never reports a Check-created attempt failure here: its own caller reports the thrown ReconciliationFailure', async () => {
+      const unexpected = new Error('reconciliation pass bug');
+      const runPass = vi.fn().mockRejectedValue(unexpected);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      await expect(reconciler.checkForUpdates()).rejects.toBeInstanceOf(ReconciliationFailure);
+
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    });
+
+    it('never reports a background attempt failure already classified as a release-preparation error', async () => {
+      const { releasePreparationError, ReleasePreparationFailureReason } =
+        await import('./releasePreparation');
+      const classified = releasePreparationError(
+        ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
+        'cache write failed',
+      );
+      const runPass = vi.fn().mockRejectedValue(classified);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      await expect(reconciler.reconcileNavigation()).rejects.toBe(classified);
+
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    });
+
+    it('never reports a background attempt failure already classified as a controller-state write error', async () => {
+      const { ControllerStateWriteFailureReason } = await import('./controllerState');
+      const classified = new DomainError('Failed to persist controller state', {
+        code: ControllerStateWriteFailureReason.STORAGE_UNAVAILABLE,
+      });
+      const runPass = vi.fn().mockRejectedValue(classified);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      await expect(reconciler.reconcileNavigation()).rejects.toBe(classified);
+
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    });
+
+    it('never reports a background attempt failure already classified as controller-state-unavailable', async () => {
+      const { ControllerStateUnavailableReason } = await import('./stateLock');
+      const classified = new DomainError('Controller state is unavailable', {
+        code: ControllerStateUnavailableReason.STORAGE_UNAVAILABLE,
+      });
+      const runPass = vi.fn().mockRejectedValue(classified);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      await expect(reconciler.reconcileNavigation()).rejects.toBe(classified);
+
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     });
   });
 });

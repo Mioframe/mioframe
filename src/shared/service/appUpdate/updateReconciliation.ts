@@ -1,4 +1,8 @@
+import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { isControllerStateWriteError } from './controllerState';
 import type { AppUpdateSnapshot } from './protocol';
+import { isReleasePreparationError } from './releasePreparation';
+import { isControllerStateUnavailableError } from './stateLock';
 
 /**
  * Declarative follow-up work one reconciliation pass requires. Never an
@@ -134,6 +138,25 @@ export type UpdateReconciler = {
 /** Which trigger created a given shared attempt. */
 type ReconciliationOwner = 'check' | 'background';
 
+/**
+ * Reports an unexpected background-owned reconciliation attempt's final
+ * failure, exactly once per attempt (see the `owner === 'background'` guard
+ * at its only call site below). A `'check'`-owned attempt's own failure is
+ * never reported here: `checkForUpdates()` already reports it once, at its
+ * own foreground command boundary (`src/sw.ts`'s `workerMessageHandling`
+ * safety net), via the `ReconciliationFailure` it throws when it created the
+ * attempt. Release-preparation, controller-state read, and controller-state
+ * write failures are already reported once at their own classified boundary
+ * and are skipped here so they are never duplicated.
+ * @param error - The reconciliation attempt's final pass error.
+ */
+function reportUnexpectedBackgroundReconciliationFailure(error: unknown): void {
+  if (isReleasePreparationError(error)) return;
+  if (isControllerStateWriteError(error)) return;
+  if (isControllerStateUnavailableError(error)) return;
+  captureDiagnosticException(error, { operation: 'updateReconciliation' });
+}
+
 /** One reconciliation attempt shared by every joining caller. */
 type SharedAttempt = {
   /** Which trigger created this attempt. */
@@ -211,6 +234,15 @@ export function createUpdateReconciler(
       if (isRerunRequested()) return runUntilSettled();
       if (inFlight === attempt) inFlight = undefined;
       if (outcome.status === 'rejected') {
+        // Only a background-owned attempt's final failure is unreported by
+        // every one of its callers (`reconcileNavigation`/
+        // `reconcileAfterModeChange` both discard it after this point) — see
+        // `reportUnexpectedBackgroundReconciliationFailure`. A Check-created
+        // attempt's failure stays unreported here; `checkForUpdates()` throws
+        // it as a `ReconciliationFailure` for its own caller to report once.
+        if (owner === 'background') {
+          reportUnexpectedBackgroundReconciliationFailure(outcome.error);
+        }
         return { status: 'failure', error: outcome.error, effects: mergedEffects };
       }
       return { status: 'success', snapshot: outcome.result.snapshot, effects: mergedEffects };

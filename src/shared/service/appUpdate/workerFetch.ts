@@ -21,7 +21,7 @@ import {
   readReleaseIndexMarker,
 } from './releaseCache';
 import { isReleasePreparationError, ReleasePreparationFailureReason } from './releasePreparation';
-import { withState } from './stateLock';
+import { isControllerStateUnavailableError, withState } from './stateLock';
 import {
   isActivationExpired,
   rollbackActivation,
@@ -176,6 +176,21 @@ export type NavigationFetchResult = {
   runLifetimeWork?: (() => Promise<void>) | undefined;
 };
 
+/** Result of a restoration attempt: whether it succeeded, and whether it queued a diagnostic. */
+type RestoreReleaseResult = {
+  /** Whether `coordinator.prepare()` succeeded. */
+  restored: boolean;
+  /**
+   * Whether `coordinator.prepare()`'s own failure (already reported once at
+   * its own classified boundary, see `reportReleasePreparationFailure`)
+   * actually queued a diagnostic — `false` only for the ordinary, never
+   * reported `ARCHIVE_UNAVAILABLE` classification (offline/network),
+   * mirroring that boundary's own capture decision so the caller can extend
+   * this event's lifetime only when there is something to deliver.
+   */
+  diagnosticsPending: boolean;
+};
+
 /**
  * Attempts to restore a release from its immutable server archive, through
  * the shared {@link PreparationCoordinator} so this never duplicates a
@@ -186,19 +201,23 @@ export type NavigationFetchResult = {
  * @param channelBasePath - This worker's channel base path.
  * @param release - The exact release to restore.
  * @param coordinator - The channel's preparation coordinator.
- * @returns Whether restoration succeeded.
+ * @returns Whether restoration succeeded, and whether it queued a diagnostic.
  */
 async function restoreRelease(
   channel: ManagedChannel,
   channelBasePath: string,
   release: ReleaseSummary,
   coordinator: PreparationCoordinator,
-): Promise<boolean> {
+): Promise<RestoreReleaseResult> {
   try {
     await coordinator.prepare(channel, channelBasePath, release);
-    return true;
-  } catch {
-    return false;
+    return { restored: true, diagnosticsPending: false };
+  } catch (error) {
+    const diagnosticsPending = !(
+      isReleasePreparationError(error) &&
+      error.code === ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE
+    );
+    return { restored: false, diagnosticsPending };
   }
 }
 
@@ -257,6 +276,19 @@ async function tryServeNavigation(
   return readReleaseIndexMarker(cache);
 }
 
+/** {@link serveRelease}'s response, plus whether serving it queued a diagnostic. */
+export type ServeReleaseResult = {
+  /** The response to serve. */
+  response: Response;
+  /**
+   * Whether serving `release` queued a diagnostic that needs a delivery
+   * lifetime — `true` only when restoring `release` failed with something
+   * actually reported (see {@link RestoreReleaseResult}); `false` for every
+   * cache hit and for a successful restoration.
+   */
+  diagnosticsPending: boolean;
+};
+
 /**
  * Serves `request` from `release`'s cache, restoring it from the immutable
  * server archive and retrying exactly once if its local cache is missing,
@@ -281,10 +313,12 @@ async function tryServeNavigation(
  * @param request - The incoming request.
  * @param isNavigation - Whether this is a top-level navigation request.
  * @param coordinator - The channel's preparation coordinator.
- * @returns The response to serve: the archived index for navigation, the
+ * @returns The response to serve — the archived index for navigation, the
  * cached asset, a controlled `404` when an owned asset is not listed by the
  * descriptor, or a controlled `503` when `release` cannot be made completely
- * available.
+ * available — plus whether restoring `release` queued a diagnostic (see
+ * {@link RestoreReleaseResult}; always `false` when no restoration was
+ * needed at all).
  */
 export async function serveRelease(
   channel: ManagedChannel,
@@ -293,7 +327,7 @@ export async function serveRelease(
   request: Request,
   isNavigation: boolean,
   coordinator: PreparationCoordinator,
-): Promise<Response> {
+): Promise<ServeReleaseResult> {
   const cacheName = buildReleaseCacheName(channel, release.releaseNumber);
 
   const tryServe = (cache: Cache): Promise<Response | undefined> =>
@@ -303,14 +337,15 @@ export async function serveRelease(
 
   let cache = await caches.open(cacheName);
   const initial = await tryServe(cache);
-  if (initial) return initial;
+  if (initial) return { response: initial, diagnosticsPending: false };
 
-  if (!(await restoreRelease(channel, channelBasePath, release, coordinator))) {
-    return UNAVAILABLE_RESPONSE();
+  const restoration = await restoreRelease(channel, channelBasePath, release, coordinator);
+  if (!restoration.restored) {
+    return { response: UNAVAILABLE_RESPONSE(), diagnosticsPending: restoration.diagnosticsPending };
   }
   cache = await caches.open(cacheName);
   const revalidated = await tryServe(cache);
-  return revalidated ?? UNAVAILABLE_RESPONSE();
+  return { response: revalidated ?? UNAVAILABLE_RESPONSE(), diagnosticsPending: false };
 }
 
 /**
@@ -323,21 +358,31 @@ export async function serveRelease(
  * unavailable exact release, returns a controlled `503`; a path not listed
  * by the selected release's descriptor returns a controlled `404`. Never
  * falls through to a live network fetch.
+ *
+ * `respondWith()`-bound: `src/sw.ts` uses the returned `response` for that
+ * alone. `diagnosticsPending` tells `src/sw.ts` whether this call actually
+ * queued a diagnostic that needs its own `FetchEvent.waitUntil()` delivery
+ * lifetime (asset serving has none otherwise, since `respondWith()` does not
+ * extend the event) — `false` for a normal cache hit, a controlled `404`, or
+ * a controlled `503` from an expected (never-reported) preparation failure;
+ * `true` only when this call actually queued a diagnostic.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param request - The incoming request.
  * @param coordinator - The channel's preparation coordinator.
- * @returns The response to serve.
+ * @returns The response to serve, plus whether a diagnostic is pending delivery.
  */
 export async function handleAssetFetch(
   channel: ManagedChannel,
   channelBasePath: string,
   request: Request,
   coordinator: PreparationCoordinator,
-): Promise<Response> {
+): Promise<ServeReleaseResult> {
   try {
     const read = await readControllerState(channel);
-    if (read.status !== 'valid') return UNAVAILABLE_RESPONSE();
+    if (read.status !== 'valid') {
+      return { response: UNAVAILABLE_RESPONSE(), diagnosticsPending: false };
+    }
     const release =
       read.state.candidate?.phase === 'activating'
         ? read.state.candidate.release
@@ -348,10 +393,11 @@ export async function handleAssetFetch(
     // (already reported at its own classified boundary) — this only ever
     // catches an unexpected Cache Storage/marker-read failure outside that
     // flow, never yet reported anywhere else.
-    if (!isReleasePreparationError(error)) {
+    const diagnosticsPending = !isReleasePreparationError(error);
+    if (diagnosticsPending) {
       captureDiagnosticException(error, { operation: 'assetFetchServing' });
     }
-    return UNAVAILABLE_RESPONSE();
+    return { response: UNAVAILABLE_RESPONSE(), diagnosticsPending };
   }
 }
 
@@ -586,14 +632,17 @@ export async function handleNavigationFetch(
       // unavailable response instead.
       let response: Response | undefined;
       try {
-        response = await serveRelease(
+        // Navigation always drains diagnostics unconditionally on its own
+        // event lifetime (see `src/sw.ts`), so `diagnosticsPending` is
+        // irrelevant here — only the asset-fetch caller needs it.
+        ({ response } = await serveRelease(
           channel,
           channelBasePath,
           selection.release,
           request,
           true,
           coordinator,
-        );
+        ));
       } catch (error) {
         // Never from `coordinator.prepare()` inside `serveRelease`/`restoreRelease`
         // (already reported at its own classified boundary) — this only ever
@@ -637,9 +686,17 @@ export async function handleNavigationFetch(
     // block (expired-activation rollback, activation start) already report
     // their own failure once, at their own storage boundary — never reported
     // again here. A release-preparation failure is likewise already reported
-    // at its own classified boundary. Any other unexpected exception reaching
-    // this outer catch has not been reported anywhere else yet.
-    if (!isReleasePreparationError(error) && !isControllerStateWriteError(error)) {
+    // at its own classified boundary, and `withState()`'s own classified
+    // "state not ready" outcome (absent/invalid, never reported; or
+    // storage-unavailable, already reported once by `readControllerState()`)
+    // must never be reported again here either. Any other unexpected
+    // exception reaching this outer catch has not been reported anywhere
+    // else yet.
+    if (
+      !isReleasePreparationError(error) &&
+      !isControllerStateWriteError(error) &&
+      !isControllerStateUnavailableError(error)
+    ) {
       captureDiagnosticException(error, { operation: 'navigationOrchestration' });
     }
     return { response: UNAVAILABLE_RESPONSE() };

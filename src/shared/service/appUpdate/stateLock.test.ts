@@ -33,22 +33,67 @@ describe('withState', () => {
     expect(result).toBe('manual');
   });
 
-  it('throws when persisted state is absent', async () => {
+  it('throws a classified ABSENT error when persisted state is absent', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
-    const { withState } = await import('./stateLock');
+    const { withState, isControllerStateUnavailableError, ControllerStateUnavailableReason } =
+      await import('./stateLock');
 
-    await expect(withState('stable', enqueue, (state) => state)).rejects.toThrow(
-      'Controller state is unavailable',
-    );
+    let caught: unknown;
+    try {
+      await withState('stable', enqueue, (state) => state);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Error);
+    if (!isControllerStateUnavailableError(caught)) {
+      throw new Error('Expected a classified controller-state-unavailable error');
+    }
+    expect(caught.message).toContain('Controller state is unavailable');
+    expect(caught.code).toBe(ControllerStateUnavailableReason.ABSENT);
   });
 
-  it('throws when persisted state is invalid', async () => {
+  it('throws a classified INVALID error when persisted state is invalid', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'invalid' });
-    const { withState } = await import('./stateLock');
+    const { withState, isControllerStateUnavailableError, ControllerStateUnavailableReason } =
+      await import('./stateLock');
 
-    await expect(withState('stable', enqueue, (state) => state)).rejects.toThrow(
-      'Controller state is unavailable',
-    );
+    let caught: unknown;
+    try {
+      await withState('stable', enqueue, (state) => state);
+    } catch (error) {
+      caught = error;
+    }
+
+    if (!isControllerStateUnavailableError(caught)) {
+      throw new Error('Expected a classified controller-state-unavailable error');
+    }
+    expect(caught.code).toBe(ControllerStateUnavailableReason.INVALID);
+  });
+
+  it('throws a classified STORAGE_UNAVAILABLE error when persisted state is storage-unavailable', async () => {
+    readControllerStateMock.mockResolvedValue({ status: 'storage-unavailable' });
+    const { withState, isControllerStateUnavailableError, ControllerStateUnavailableReason } =
+      await import('./stateLock');
+
+    let caught: unknown;
+    try {
+      await withState('stable', enqueue, (state) => state);
+    } catch (error) {
+      caught = error;
+    }
+
+    if (!isControllerStateUnavailableError(caught)) {
+      throw new Error('Expected a classified controller-state-unavailable error');
+    }
+    expect(caught.code).toBe(ControllerStateUnavailableReason.STORAGE_UNAVAILABLE);
+  });
+
+  it('isControllerStateUnavailableError never misclassifies an unrelated error', async () => {
+    const { isControllerStateUnavailableError } = await import('./stateLock');
+
+    expect(isControllerStateUnavailableError(new Error('unrelated'))).toBe(false);
+    expect(isControllerStateUnavailableError(undefined)).toBe(false);
   });
 
   it('serializes through the provided operation queue', async () => {

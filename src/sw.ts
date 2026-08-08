@@ -47,6 +47,7 @@ import {
 } from './shared/service/appUpdate/cleanLaunch';
 import { isControllerStateWriteError } from './shared/service/appUpdate/controllerState';
 import { createOperationQueue } from './shared/service/appUpdate/operationQueue';
+import { isControllerStateUnavailableError } from './shared/service/appUpdate/stateLock';
 import { readPersistedDiagnosticsPolicy } from './shared/service/diagnostics/readPersistedDiagnosticsPolicy';
 import { createPreparationCoordinator } from './shared/service/appUpdate/preparationCoordinator';
 import {
@@ -149,6 +150,21 @@ function waitForDiagnosticsBootstrap(): Promise<void> {
   });
 }
 
+/**
+ * The one bounded diagnostics-producing-work follow-up used after `install`,
+ * a top-level managed navigation, a managed-update/recovery protocol message,
+ * and `activate` cleanup: {@link waitForDiagnosticsBootstrap}'s own small
+ * bounded opportunity for persisted consent to resolve, then
+ * {@link drainDiagnostics}. Never rejects, never retries, and never delays
+ * product behavior beyond the two bounds those already impose — this adds no
+ * new bound of its own. Deliberately never used inside `respondWith()`:
+ * response delivery must stay independent of diagnostics bootstrap.
+ * @returns A promise that always resolves, once the bounded bootstrap wait and drain both settle.
+ */
+function drainDiagnosticsAfterBootstrap(): Promise<void> {
+  return waitForDiagnosticsBootstrap().then(() => drainDiagnostics());
+}
+
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
 const channelOrigin = deriveManagedChannelOrigin(self.registration.scope);
@@ -178,17 +194,17 @@ self.addEventListener('install', (event) => {
   // synchronously here, at the moment this listener runs, so it reflects
   // this exact install attempt's own predecessor.
   // `runInstall` is where release preparation — this worker's largest
-  // diagnostics source — happens on first install; neither the bounded
-  // bootstrap wait nor the drain below ever changes install's own outcome
-  // (`finally` preserves it) or blocks it beyond their own small bounded
-  // timeouts. The bootstrap wait runs first so consent — read at worker
+  // diagnostics source — happens on first install;
+  // `drainDiagnosticsAfterBootstrap` never changes install's own outcome
+  // (`finally` preserves it) or blocks it beyond its own small bounded
+  // timeouts. Its bootstrap wait runs first so consent — read at worker
   // startup, concurrently with `runInstall` itself — has a real chance to
-  // resolve before the drain below decides whether anything queued during
-  // install can actually be flushed.
+  // resolve before its drain decides whether anything queued during install
+  // can actually be flushed.
   event.waitUntil(
-    runInstall(channel, channelBasePath, self.registration.active, preparationCoordinator)
-      .finally(() => waitForDiagnosticsBootstrap())
-      .finally(() => drainDiagnostics()),
+    runInstall(channel, channelBasePath, self.registration.active, preparationCoordinator).finally(
+      () => drainDiagnosticsAfterBootstrap(),
+    ),
   );
 });
 
@@ -199,7 +215,9 @@ self.addEventListener('activate', (event) => {
   // this worker's activation and the bounded diagnostics drain are both
   // unaffected by a failed cleanup.
   event.waitUntil(
-    cleanupReleaseCache(channel, preparationCoordinator).finally(() => drainDiagnostics()),
+    cleanupReleaseCache(channel, preparationCoordinator).finally(() =>
+      drainDiagnosticsAfterBootstrap(),
+    ),
   );
 });
 
@@ -259,9 +277,13 @@ self.addEventListener('fetch', (event) => {
     // settle — reconciliation and recovery are where this navigation's own
     // diagnostics are generated — and never before `responsePromise` has
     // already resolved, matching every other follow-up item's ordering here.
+    // Uses `drainDiagnosticsAfterBootstrap` (not a bare drain) so a Service
+    // Worker restarted directly by this navigation still gives persisted
+    // consent a bounded chance to hydrate before deciding whether anything
+    // queued during this navigation can actually be flushed.
     event.waitUntil(
       Promise.all([navigationLifetimeWork.catch(() => {}), reconciliation.catch(() => {})])
-        .then(() => drainDiagnostics())
+        .then(() => drainDiagnosticsAfterBootstrap())
         .then(() => undefined),
     );
     return;
@@ -276,8 +298,23 @@ self.addEventListener('fetch', (event) => {
   const relativePath = pathname.slice(channelBasePath.length);
   if (!relativePath.startsWith('assets/')) return;
 
-  event.respondWith(
-    handleAssetFetch(channel, channelBasePath, event.request, preparationCoordinator),
+  const assetResultPromise = handleAssetFetch(
+    channel,
+    channelBasePath,
+    event.request,
+    preparationCoordinator,
+  );
+  event.respondWith(assetResultPromise.then((result) => result.response));
+  // Ordinary successful/controlled asset serving never queues a diagnostic
+  // and gets no `waitUntil()` at all — see `handleAssetFetch`'s own
+  // `diagnosticsPending` contract. Only an unexpected, actually-captured
+  // serving failure extends this event's lifetime long enough to drain it;
+  // this never delays or affects the response above, which is already an
+  // independent `.then()` off the same `assetResultPromise`.
+  event.waitUntil(
+    assetResultPromise
+      .then((result) => (result.diagnosticsPending ? drainDiagnosticsAfterBootstrap() : undefined))
+      .catch(() => {}),
   );
 });
 
@@ -367,15 +404,22 @@ self.addEventListener('message', (event) => {
         // already been posted.
         if (error instanceof ReconciliationFailure) await error.runLifetimeWork().catch(() => {});
         // A release-preparation failure was already reported once at its own
-        // classified boundary (`PreparationCoordinator.prepare`), and a
+        // classified boundary (`PreparationCoordinator.prepare`), a
         // controller-state write failure at its own storage boundary
-        // (`writeControllerState`) — this is the remaining unexpected-failure
+        // (`writeControllerState`), and `withState()`'s own classified "state
+        // not ready" outcome either never reported (absent/invalid) or
+        // already reported once by `readControllerState()`
+        // (storage-unavailable) — this is the remaining unexpected-failure
         // safety net for command handling itself.
         const cause = error instanceof ReconciliationFailure ? error.cause : error;
-        if (!isReleasePreparationError(cause) && !isControllerStateWriteError(cause)) {
+        if (
+          !isReleasePreparationError(cause) &&
+          !isControllerStateWriteError(cause) &&
+          !isControllerStateUnavailableError(cause)
+        ) {
           captureDiagnosticException(cause, { operation: 'workerMessageHandling' });
         }
-        await drainDiagnostics();
+        await drainDiagnosticsAfterBootstrap();
         return;
       }
       respond(result.response);
@@ -384,7 +428,7 @@ self.addEventListener('message', (event) => {
       // in depth so a future producer's mistake can never throw out of this
       // handler or surface as an unhandled rejection.
       if (result.runLifetimeWork) await result.runLifetimeWork().catch(() => {});
-      await drainDiagnostics();
+      await drainDiagnosticsAfterBootstrap();
     })(),
   );
 });

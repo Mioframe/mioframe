@@ -13,13 +13,29 @@ import { ReconciliationFailure } from './shared/service/appUpdate/updateReconcil
 // from the request's URL, never delegated to `workerFetch.ts`.
 
 type FakeSentryBackendModule = { init: unknown; captureException: unknown };
-const registerSentryBackendMock = vi.fn<(loader: () => Promise<FakeSentryBackendModule>) => void>();
-const registerSentryConfigMock = vi.fn();
-const readPersistedDiagnosticsPolicyMock = vi.fn();
-const applyDiagnosticsRuntimeStateMock = vi.fn();
-const getOrCreateSentrySessionIdMock = vi.fn();
-const drainDiagnosticsMock = vi.fn();
-const captureDiagnosticExceptionMock = vi.fn();
+// Hoisted (not plain top-level `const`): `updateReconciliation.ts`'s real
+// module — reached through this file's own `vi.mock('./shared/service/
+// appUpdate/updateReconciliation', ...)` `importOriginal()` call below —
+// itself now statically imports `@shared/lib/diagnostics`, so this factory
+// can run before an ordinary `const` declared later in this file would have
+// initialized; `vi.hoisted()` guarantees these are ready first.
+const {
+  registerSentryBackendMock,
+  registerSentryConfigMock,
+  readPersistedDiagnosticsPolicyMock,
+  applyDiagnosticsRuntimeStateMock,
+  getOrCreateSentrySessionIdMock,
+  drainDiagnosticsMock,
+  captureDiagnosticExceptionMock,
+} = vi.hoisted(() => ({
+  registerSentryBackendMock: vi.fn<(loader: () => Promise<FakeSentryBackendModule>) => void>(),
+  registerSentryConfigMock: vi.fn(),
+  readPersistedDiagnosticsPolicyMock: vi.fn(),
+  applyDiagnosticsRuntimeStateMock: vi.fn(),
+  getOrCreateSentrySessionIdMock: vi.fn(),
+  drainDiagnosticsMock: vi.fn(),
+  captureDiagnosticExceptionMock: vi.fn(),
+}));
 vi.mock('./shared/lib/diagnostics', async (importOriginal) => {
   // `zodDiagnosticsPolicySyncMessage` is kept real (not mocked): its own
   // validation behavior is exactly what these tests prove.
@@ -218,6 +234,10 @@ beforeEach(() => {
   isSameChannelWindowClientMock.mockReturnValue(true);
   enqueueMock.mockClear();
   handleAssetFetchMock.mockReset();
+  handleAssetFetchMock.mockResolvedValue({
+    response: new Response('asset'),
+    diagnosticsPending: false,
+  });
   handleNavigationFetchMock.mockReset();
   handleNavigationFetchMock.mockResolvedValue({ response: new Response('navigation') });
   runInstallMock.mockReset();
@@ -263,8 +283,7 @@ describe('src/sw.ts message handler', () => {
     expect(isSettled()).toBe(false);
 
     deferredLifetimeWork.resolve();
-    await flushMicrotasks();
-
+    await expect(waitUntilPromise).resolves.toBeUndefined();
     expect(isSettled()).toBe(true);
   });
 
@@ -1207,6 +1226,37 @@ describe('src/sw.ts bounded diagnostics drain wiring', () => {
     expect(drainDiagnosticsMock).not.toHaveBeenCalled();
   });
 
+  it('drains after an unexpected asset-serving failure flags a diagnostic pending, without delaying the response', async () => {
+    handleAssetFetchMock.mockResolvedValue({
+      response: new Response('unavailable', { status: 503 }),
+      diagnosticsPending: true,
+    });
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    const listener = listeners.get('fetch');
+    if (!listener) throw new Error('Expected a fetch listener to have been registered');
+    const respondWith = vi.fn();
+    const waitUntil = vi.fn();
+
+    listener({
+      request: new Request('https://mioframe.example/assets/app.js'),
+      respondWith,
+      waitUntil,
+    });
+
+    const responsePromise = respondWith.mock.calls[0]?.[0];
+    if (!(responsePromise instanceof Promise)) throw new Error('Expected a response promise');
+    const response = await responsePromise;
+    if (!(response instanceof Response)) throw new Error('Expected a Response');
+    expect(response.status).toBe(503);
+    // The response already resolved above, independent of the diagnostics
+    // drain below, which is only awaited afterwards.
+    expect(drainDiagnosticsMock).not.toHaveBeenCalled();
+
+    await waitUntil.mock.calls[0]?.[0];
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
   it('drains after a successful update-protocol command response', async () => {
     handleWorkerMessageMock.mockResolvedValue({
       response: { protocolVersion: 1, snapshot: { mode: 'manual' } },
@@ -1313,6 +1363,35 @@ describe('src/sw.ts message handler diagnostic reporting', () => {
     const classified = new DomainError('Failed to persist controller state', {
       code: ControllerStateWriteFailureReason.STORAGE_UNAVAILABLE,
     });
+    handleWorkerMessageMock.mockRejectedValue(classified);
+    const listener = await importSwAndGetMessageListener();
+    captureDiagnosticExceptionMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it("never reports a controller-state-unavailable-classified failure again: already withState()'s own boundary", async () => {
+    const { isControllerStateUnavailableError } =
+      await import('./shared/service/appUpdate/stateLock');
+    const { DomainError } = await import('./shared/lib/error');
+    // `withState()`'s own thrown shape; verified against the real predicate
+    // rather than hand-rolling a code value, so this test tracks the real
+    // classification contract.
+    const classified = new DomainError('Controller state is unavailable', { code: 'ABSENT' });
+    if (!isControllerStateUnavailableError(classified)) {
+      throw new Error(
+        'Expected the constructed error to be classified as controller-state-unavailable',
+      );
+    }
     handleWorkerMessageMock.mockRejectedValue(classified);
     const listener = await importSwAndGetMessageListener();
     captureDiagnosticExceptionMock.mockClear();

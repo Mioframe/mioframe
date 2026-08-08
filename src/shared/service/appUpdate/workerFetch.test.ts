@@ -218,6 +218,30 @@ describe('workerFetch', () => {
       // its own storage boundary — never reported again by this outer catch.
       expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     });
+
+    it('never double-reports a controller-state-unavailable failure that escapes withState() to the outer catch', async () => {
+      // The initial read (outside `withState`) still observes valid state
+      // with no candidate, reaching the `withState()` selection step; a
+      // concurrent state loss between the two reads is what `withState()`
+      // itself then classifies and throws.
+      readControllerStateMock
+        .mockResolvedValueOnce({ status: 'valid', state: { activeRelease } })
+        .mockResolvedValue({ status: 'storage-unavailable' });
+
+      const responsePromise = invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+      );
+
+      await expectUnavailableNavigation(responsePromise);
+      // `readControllerState()` already owns reporting its own storage
+      // failure; `withState()`'s own classified "state not ready" outcome
+      // must never be reported again by this outer catch.
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    });
+
     it('serves the active release navigation from its archived index', async () => {
       await seedAvailableRelease();
 
@@ -1369,41 +1393,43 @@ describe('workerFetch', () => {
   });
 
   describe('handleAssetFetch', () => {
-    it('resolves a controlled unavailable response when Cache Storage access rejects, and reports the unexpected exception once', async () => {
+    it('resolves a controlled unavailable response when Cache Storage access rejects, reports the unexpected exception once, and flags a diagnostic pending', async () => {
       const cacheError = new Error('cache failed');
       const open = vi.spyOn(fakeCaches, 'open').mockRejectedValueOnce(cacheError);
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const responsePromise = handleAssetFetch(
+      const resultPromise = handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
         createFakeCoordinator(),
       );
 
-      await expectUnavailable(responsePromise);
+      await expectUnavailable(resultPromise.then((result) => result.response));
       expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(cacheError, {
         operation: 'assetFetchServing',
       });
+      expect((await resultPromise).diagnosticsPending).toBe(true);
       open.mockRestore();
     });
 
-    it('resolves a controlled unavailable response when restoration succeeds but the release remains unavailable on revalidation', async () => {
+    it('resolves a controlled unavailable response when restoration succeeds but the release remains unavailable on revalidation, with no diagnostic pending', async () => {
       const prepare = vi.fn().mockResolvedValue(activeDescriptor);
       const { handleAssetFetch } = await import('./workerFetch');
 
-      await expectUnavailable(
-        handleAssetFetch(
-          CHANNEL,
-          BASE_PATH,
-          new Request('https://mioframe.example/assets/app.js'),
-          createFakeCoordinator({ prepare }),
-        ),
+      const resultPromise = handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator({ prepare }),
       );
+
+      await expectUnavailable(resultPromise.then((result) => result.response));
       expect(prepare).toHaveBeenCalledTimes(1);
+      expect((await resultPromise).diagnosticsPending).toBe(false);
     });
 
-    it('resolves a controlled unavailable response when the requested asset read rejects, and reports the unexpected exception once', async () => {
+    it('resolves a controlled unavailable response when the requested asset read rejects, reports the unexpected exception once, and flags a diagnostic pending', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
@@ -1418,17 +1444,43 @@ describe('workerFetch', () => {
       });
       const { handleAssetFetch } = await import('./workerFetch');
 
-      await expectUnavailable(
-        handleAssetFetch(
-          CHANNEL,
-          BASE_PATH,
-          new Request('https://mioframe.example/assets/app.js'),
-          createFakeCoordinator(),
-        ),
+      const resultPromise = handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator(),
       );
+
+      await expectUnavailable(resultPromise.then((result) => result.response));
       expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(readError, {
         operation: 'assetFetchServing',
       });
+      expect((await resultPromise).diagnosticsPending).toBe(true);
+    });
+
+    it('never flags a diagnostic pending when release restoration fails with the ordinary, never-reported ARCHIVE_UNAVAILABLE classification', async () => {
+      const { ReleasePreparationFailureReason, releasePreparationError } =
+        await import('./releasePreparation');
+      const prepare = vi
+        .fn()
+        .mockRejectedValue(
+          releasePreparationError(
+            ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+            'Failed to fetch release descriptor',
+          ),
+        );
+      const { handleAssetFetch } = await import('./workerFetch');
+
+      const result = await handleAssetFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/assets/app.js'),
+        createFakeCoordinator({ prepare }),
+      );
+
+      expect(result.response.status).toBe(503);
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+      expect(result.diagnosticsPending).toBe(false);
     });
 
     it('does not enumerate the complete release cache for a healthy asset request', async () => {
@@ -1438,30 +1490,31 @@ describe('workerFetch', () => {
       const keysSpy = vi.spyOn(cache, 'keys');
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
         createFakeCoordinator(),
       );
 
-      expect(await response.text()).toBe('console.log(1)');
+      expect(await result.response.text()).toBe('console.log(1)');
       expect(keysSpy).not.toHaveBeenCalled();
     });
 
-    it('serves an exact active-release asset from its cache', async () => {
+    it('serves an exact active-release asset from its cache, with no diagnostic pending', async () => {
       await seedAvailableRelease();
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
         createFakeCoordinator(),
       );
 
-      expect(await response.text()).toBe('console.log(1)');
+      expect(await result.response.text()).toBe('console.log(1)');
       expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.diagnosticsPending).toBe(false);
     });
 
     it('serves cached offline assets with no network calls at all', async () => {
@@ -1478,21 +1531,22 @@ describe('workerFetch', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('returns a controlled 404 for an assets/** path not listed by the active descriptor, never falling through to the network', async () => {
+    it('returns a controlled 404 for an assets/** path not listed by the active descriptor, never falling through to the network, with no diagnostic pending', async () => {
       await seedAvailableRelease();
       const prepare = vi.fn();
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/unlisted.js'),
         createFakeCoordinator({ prepare }),
       );
 
-      expect(response.status).toBe(404);
+      expect(result.response.status).toBe(404);
       expect(fetchMock).not.toHaveBeenCalled();
       expect(prepare).not.toHaveBeenCalled();
+      expect(result.diagnosticsPending).toBe(false);
     });
 
     it('restores a missing listed asset through the shared preparation coordinator', async () => {
@@ -1503,7 +1557,7 @@ describe('workerFetch', () => {
       });
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
@@ -1511,52 +1565,55 @@ describe('workerFetch', () => {
       );
 
       expect(prepare).toHaveBeenCalledWith(CHANNEL, BASE_PATH, activeRelease);
-      expect(await response.text()).toBe('console.log(1)');
+      expect(await result.response.text()).toBe('console.log(1)');
+      expect(result.diagnosticsPending).toBe(false);
     });
 
     it('returns the controlled unavailable response when the release cannot be restored, never falling through to the current live deployment', async () => {
       await seedAvailableRelease(activeRelease, activeDescriptor, false);
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
         createFakeCoordinator(),
       );
 
-      expect(response.status).toBe(503);
+      expect(result.response.status).toBe(503);
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('returns the controlled unavailable response when there is no managed state yet (absent), never falling through to the live deployment', async () => {
+    it('returns the controlled unavailable response when there is no managed state yet (absent), never falling through to the live deployment, with no diagnostic pending', async () => {
       readControllerStateMock.mockResolvedValue({ status: 'absent' });
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
         createFakeCoordinator(),
       );
 
-      expect(response.status).toBe(503);
+      expect(result.response.status).toBe(503);
       expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.diagnosticsPending).toBe(false);
     });
 
-    it('returns the controlled unavailable response for an assets/** path when controller state is invalid, without calling network fetch', async () => {
+    it('returns the controlled unavailable response for an assets/** path when controller state is invalid, without calling network fetch, with no diagnostic pending', async () => {
       readControllerStateMock.mockResolvedValue({ status: 'invalid' });
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
         createFakeCoordinator(),
       );
 
-      expect(response.status).toBe(503);
+      expect(result.response.status).toBe(503);
       expect(fetchMock).not.toHaveBeenCalled();
+      expect(result.diagnosticsPending).toBe(false);
     });
 
     it('serves the activating candidate for an owned asset request', async () => {
@@ -1587,14 +1644,14 @@ describe('workerFetch', () => {
       });
       const { handleAssetFetch } = await import('./workerFetch');
 
-      const response = await handleAssetFetch(
+      const result = await handleAssetFetch(
         CHANNEL,
         BASE_PATH,
         new Request('https://mioframe.example/assets/app.js'),
         createFakeCoordinator(),
       );
 
-      expect(await response.text()).toBe('console.log(1)');
+      expect(await result.response.text()).toBe('console.log(1)');
     });
 
     it.each(['available', 'ready', 'failed'] as const)(
@@ -1618,14 +1675,14 @@ describe('workerFetch', () => {
         });
         const { handleAssetFetch } = await import('./workerFetch');
 
-        const response = await handleAssetFetch(
+        const result = await handleAssetFetch(
           CHANNEL,
           BASE_PATH,
           new Request('https://mioframe.example/assets/app.js'),
           createFakeCoordinator(),
         );
 
-        expect(await response.text()).toBe('console.log(1)');
+        expect(await result.response.text()).toBe('console.log(1)');
       },
     );
   });
