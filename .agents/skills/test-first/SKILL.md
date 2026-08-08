@@ -7,6 +7,8 @@ description: 'Use when observable behavior, a reproducible defect, migration, pe
 
 Follow `docs/testing/architecture.md`. This skill runs one narrow red/green cycle at the already-defined proof type. It does not decide the full `TEST IMPACT`, automatic resolver scope, or a new execution lane.
 
+For Storybook-owned UI proof, use `docs/testing/storybook.md` for ownership and `docs/testing/migration-plan.md` for the currently executable Playwright location.
+
 ## Activation
 
 Use only when all conditions are true:
@@ -18,20 +20,20 @@ Use only when all conditions are true:
 
 Skip for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, and appearance-only changes without a meaningful pre-implementation failure.
 
-Skipping test-first does not skip required proof from `TEST IMPACT`, repository impact-metadata maintenance, or the top-level task's final task-scope verification.
+Skipping test-first does not skip required proof from `TEST IMPACT`, durable ownership maintenance, or the top-level task's final task-scope verification.
 
 ## Workflow
 
 1. Name the changed contract and proof type.
 2. Select the highest-risk applicable acceptance case.
 3. Add or update one focused test before production edits.
-4. Update required repository impact metadata when adding or moving a Playwright spec or persistent audit target.
+4. Maintain required durable ownership facts for any new/moved Playwright spec: use local ownership only when current discovery supports it; otherwise preserve the current truthful transitional/explicit relation.
 5. Run the owning verify-managed lane and confirm the expected failure.
 6. If a faithful red check cannot be produced without brittle or duplicative coverage, stop expanding and record the limitation.
 7. Implement the minimum production change.
 8. Rerun the same target and confirm it passes.
 9. Complete the remaining minimum acceptance set from `TEST IMPACT`; the initial red test does not cap final proof.
-10. Return to the top-level task after focused proof. This skill does not run a separate final gate; the top-level task runs one final read-only task-scope verification after all passes are complete.
+10. Return to the top-level task after focused proof. This skill does not run a separate final gate.
 
 ## Proof routing
 
@@ -59,5 +61,6 @@ Raw Vitest or Playwright commands are diagnostic exceptions, not completion gate
 - Do not broaden coverage beyond the changed contract and confirmed risk.
 - Do not duplicate an existing owner at another proof type.
 - Do not create a framework, DSL, fixture system, registry, or helper for one case.
+- Do not create a colocated Playwright spec before the owning lane can discover it.
 - Do not stop after one passing red/green test when the accepted contract requires additional cases.
-- Do not treat a passing focused run as proof that automatic impact metadata is complete.
+- Do not treat a passing focused run as proof that automatic ownership/impact resolution is complete.
