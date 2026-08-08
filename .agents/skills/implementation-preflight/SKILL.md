@@ -68,10 +68,10 @@ TEST IMPACT
   - Existing proof:
   - New/updated proof:
   - Risk or platform matrix:
-  - Persistent impact metadata:
+  - Durable ownership/impact updates:
 ```
 
-Follow `docs/testing/architecture.md`.
+Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md` and current executable state from `docs/testing/migration-plan.md`.
 
 The record must resolve:
 
@@ -80,9 +80,11 @@ The record must resolve:
 - every additional proof type required because the change crosses multiple contracts;
 - existing tests, stories, snapshots, browser specs, consumer flows, performance evidence, or mutation targets affected;
 - new, moved, renamed, or removed proof files;
-- required automatic impact metadata updates;
+- required durable automatic ownership changes: local convention, explicit/transitional mapping, snapshot ownership, standalone ownership, or full fallback as applicable;
 - browser, mobile, accessibility, visual, release, data-safety, and performance risks that apply;
 - exact metric and budget when the task makes a performance or optimization claim.
+
+Do not add explicit registry metadata when a currently supported deterministic local owner convention already expresses the relation. Do not rely on target colocation before the owning runner supports it.
 
 Do not list proof merely because a lane exists. Every selected proof maps to a changed contract or risk.
 
@@ -114,7 +116,7 @@ Use the domain workflow as the execution contract:
 
 Use testing skills according to proof selected in `TEST IMPACT`: `unit-testing`, `component-contract-testing`, `ui-browser-behavior`, `visual-regression-testing`, `mutation-testing`, and `verification`.
 
-The preflight records only task-specific owners, risks, pass order, proof, and metadata changes. It must not restate general workflow or testing policy.
+The preflight records only task-specific owners, risks, pass order, proof, and ownership/impact changes. It must not restate general workflow or testing policy.
 
 ## Breadth control
 
