@@ -114,16 +114,15 @@ const flushOnce = async (): Promise<void> => {
   }
 };
 
-const doFlush = (): void => {
-  if (flushPromise) return;
-
-  flushPromise = flushOnce()
+const doFlush = (): Promise<void> => {
+  flushPromise ??= flushOnce()
     .catch(() => {
       // Fire-and-forget: swallow errors to prevent unhandled rejections.
     })
     .finally(() => {
       flushPromise = undefined;
     });
+  return flushPromise;
 };
 
 /**
@@ -132,8 +131,16 @@ const doFlush = (): void => {
  * A concurrent flush cycle is a no-op; call again after the in-flight flush finishes.
  */
 export const flushQueuedDiagnosticExceptions = (): void => {
-  doFlush();
+  void doFlush();
 };
+
+/**
+ * Awaitable counterpart to {@link flushQueuedDiagnosticExceptions}: starts a flush cycle if
+ * none is running, or joins the one already in flight, resolving only once every entry that
+ * flush cycle owns has been passed to the Sentry facade. Never rejects.
+ * @returns A promise that resolves once the current or a newly started flush cycle settles.
+ */
+export const drainQueuedDiagnosticExceptions = (): Promise<void> => doFlush();
 
 registerDiagnosticsRuntimeEffects('diagnosticExceptions', {
   flush: flushQueuedDiagnosticExceptions,

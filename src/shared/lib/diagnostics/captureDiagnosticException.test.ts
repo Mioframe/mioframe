@@ -224,4 +224,49 @@ describe('captureDiagnosticException', () => {
 
     await expect(waitForAsyncWork()).resolves.toBeUndefined();
   });
+
+  describe('drainQueuedDiagnosticExceptions', () => {
+    it('resolves only after the queued exception has been passed to the Sentry facade', async () => {
+      getSentryReportingStateMock.mockReturnValue('unknown');
+      const { captureDiagnosticException, drainQueuedDiagnosticExceptions } =
+        await import('./captureDiagnosticException');
+      const error = new Error('queued boom');
+
+      captureDiagnosticException(error);
+      getSentryReportingStateMock.mockReturnValue('enabled');
+
+      await drainQueuedDiagnosticExceptions();
+
+      expect(captureExceptionMock).toHaveBeenCalledWith(error, {
+        tags: { eventKind: 'handledException' },
+      });
+    });
+
+    it('joins an already in-flight flush instead of starting a second one', async () => {
+      getSentryReportingStateMock.mockReturnValue('unknown');
+      const {
+        captureDiagnosticException,
+        drainQueuedDiagnosticExceptions,
+        flushQueuedDiagnosticExceptions,
+      } = await import('./captureDiagnosticException');
+
+      captureDiagnosticException(new Error('boom'));
+      getSentryReportingStateMock.mockReturnValue('enabled');
+      flushQueuedDiagnosticExceptions();
+
+      await drainQueuedDiagnosticExceptions();
+
+      expect(ensureSentryMock).toHaveBeenCalledOnce();
+    });
+
+    it('never rejects when ensureSentry rejects', async () => {
+      ensureSentryMock.mockRejectedValue(new Error('Sentry init failed'));
+      const { captureDiagnosticException, drainQueuedDiagnosticExceptions } =
+        await import('./captureDiagnosticException');
+
+      captureDiagnosticException(new Error('boom'));
+
+      await expect(drainQueuedDiagnosticExceptions()).resolves.toBeUndefined();
+    });
+  });
 });

@@ -168,8 +168,9 @@ describe('workerFetch', () => {
   });
 
   describe('handleNavigationFetch', () => {
-    it('resolves a controlled unavailable response when controller-state access rejects', async () => {
-      readControllerStateMock.mockRejectedValue(new Error('IndexedDB failed'));
+    it('resolves a controlled unavailable response when controller-state access rejects, and reports the unexpected exception once', async () => {
+      const readError = new Error('IndexedDB failed');
+      readControllerStateMock.mockRejectedValue(readError);
 
       const responsePromise = invokeNavigationFetch(
         CHANNEL,
@@ -179,6 +180,43 @@ describe('workerFetch', () => {
       );
 
       await expectUnavailableNavigation(responsePromise);
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(readError, {
+        operation: 'navigationOrchestration',
+      });
+    });
+
+    it('never double-reports a controller-state write failure that escapes to the outer catch', async () => {
+      const { ControllerStateWriteFailureReason } = await import('./controllerState');
+      const { DomainError } = await import('@shared/lib/error');
+      const writeError = new DomainError('Failed to persist controller state', {
+        code: ControllerStateWriteFailureReason.STORAGE_UNAVAILABLE,
+      });
+      readControllerStateMock.mockResolvedValue({
+        status: 'valid',
+        state: {
+          schemaVersion: 1,
+          mode: 'manual',
+          activeRelease,
+          candidate: {
+            phase: 'activating',
+            release: activeRelease,
+            deadlineAt: '2020-01-01T00:00:00.000Z',
+          },
+        },
+      });
+      writeControllerStateMock.mockRejectedValue(writeError);
+
+      const responsePromise = invokeNavigationFetch(
+        CHANNEL,
+        BASE_PATH,
+        new Request('https://mioframe.example/'),
+        createFakeCoordinator(),
+      );
+
+      await expectUnavailableNavigation(responsePromise);
+      // `writeControllerState` already reports its own classified failure at
+      // its own storage boundary — never reported again by this outer catch.
+      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     });
     it('serves the active release navigation from its archived index', async () => {
       await seedAvailableRelease();
@@ -1040,6 +1078,11 @@ describe('workerFetch', () => {
           releaseNumber: candidateRelease.releaseNumber,
         });
         expect(fetchMock).not.toHaveBeenCalled();
+        // The unexpected Cache Storage exception that triggered this rollback
+        // is itself reported once — a rollback event does not replace it.
+        expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
+          operation: 'activatingCandidateServing',
+        });
         open.mockRestore();
       });
 
@@ -1326,8 +1369,9 @@ describe('workerFetch', () => {
   });
 
   describe('handleAssetFetch', () => {
-    it('resolves a controlled unavailable response when Cache Storage access rejects', async () => {
-      const open = vi.spyOn(fakeCaches, 'open').mockRejectedValueOnce(new Error('cache failed'));
+    it('resolves a controlled unavailable response when Cache Storage access rejects, and reports the unexpected exception once', async () => {
+      const cacheError = new Error('cache failed');
+      const open = vi.spyOn(fakeCaches, 'open').mockRejectedValueOnce(cacheError);
       const { handleAssetFetch } = await import('./workerFetch');
 
       const responsePromise = handleAssetFetch(
@@ -1338,6 +1382,9 @@ describe('workerFetch', () => {
       );
 
       await expectUnavailable(responsePromise);
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(cacheError, {
+        operation: 'assetFetchServing',
+      });
       open.mockRestore();
     });
 
@@ -1356,16 +1403,17 @@ describe('workerFetch', () => {
       expect(prepare).toHaveBeenCalledTimes(1);
     });
 
-    it('resolves a controlled unavailable response when the requested asset read rejects', async () => {
+    it('resolves a controlled unavailable response when the requested asset read rejects, and reports the unexpected exception once', async () => {
       await seedAvailableRelease();
       const cache = cachesByName.get(buildReleaseCacheName(CHANNEL, activeRelease.releaseNumber));
       if (!cache) throw new Error('Expected seeded release cache');
       const originalMatch = cache.match.bind(cache);
+      const readError = new Error('asset read failed');
       let matchCount = 0;
       vi.spyOn(cache, 'match').mockImplementation((request) => {
         matchCount += 1;
         // The first match reads the descriptor marker; the second is the requested asset.
-        if (matchCount === 2) return Promise.reject(new Error('asset read failed'));
+        if (matchCount === 2) return Promise.reject(readError);
         return originalMatch(request);
       });
       const { handleAssetFetch } = await import('./workerFetch');
@@ -1378,6 +1426,9 @@ describe('workerFetch', () => {
           createFakeCoordinator(),
         ),
       );
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(readError, {
+        operation: 'assetFetchServing',
+      });
     });
 
     it('does not enumerate the complete release cache for a healthy asset request', async () => {

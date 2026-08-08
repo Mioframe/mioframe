@@ -13,6 +13,7 @@ const readControllerStateMock = vi.fn();
 const writeControllerStateMock = vi.fn();
 const fetchLatestReleasePointerMock = vi.fn();
 const fetchReleaseDescriptorMock = vi.fn();
+const reportReleasePreparationFailureMock = vi.fn();
 const prepareMock = vi.fn();
 const postMessageMock = vi.fn();
 const cachesKeysMock = vi.fn();
@@ -25,6 +26,8 @@ vi.mock('./controllerState', () => ({
 vi.mock('./releasePreparation', () => ({
   fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
   fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
+  reportReleasePreparationFailure: (...args: unknown[]) =>
+    reportReleasePreparationFailureMock(...args),
 }));
 vi.stubGlobal('self', {
   clients: {
@@ -94,6 +97,7 @@ beforeEach(() => {
   });
   fetchLatestReleasePointerMock.mockReset();
   fetchReleaseDescriptorMock.mockReset();
+  reportReleasePreparationFailureMock.mockReset();
   prepareMock.mockReset().mockResolvedValue(undefined);
   postMessageMock.mockReset();
   cachesKeysMock.mockReset().mockResolvedValue([]);
@@ -250,6 +254,28 @@ describe('runUpdateReconciliationPass', () => {
       expect(prepareMock).not.toHaveBeenCalled();
     },
   );
+
+  it('reports a direct discovery failure exactly once at the release-preparation boundary', async () => {
+    const discoveryError = new Error('offline');
+    fetchLatestReleasePointerMock.mockRejectedValue(discoveryError);
+
+    await runUpdateReconciliationPass(dependencies);
+
+    expect(reportReleasePreparationFailureMock).toHaveBeenCalledExactlyOnceWith(discoveryError);
+  });
+
+  it('never double-reports when the fallback preparation attempt also fails after a discovery failure', async () => {
+    setState('automatic', candidate('available', 2));
+    const discoveryError = new Error('offline');
+    fetchLatestReleasePointerMock.mockRejectedValue(discoveryError);
+    prepareMock.mockRejectedValue(new Error('network down'));
+
+    await runUpdateReconciliationPass(dependencies);
+
+    // discoverLatest reports its own discovery failure once; the coordinator
+    // owns prepareMock's own rejection separately (not through this mock).
+    expect(reportReleasePreparationFailureMock).toHaveBeenCalledExactlyOnceWith(discoveryError);
+  });
 
   it('does not advance lastSuccessfulCheckAt after discovery failure', async () => {
     setState('manual');

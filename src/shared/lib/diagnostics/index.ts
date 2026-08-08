@@ -40,7 +40,6 @@ export {
   zodLocalSettingsDiagnosticsFields,
 } from './localSettingsDiagnosticsContract';
 export type { LocalSettingsDiagnosticsFields } from './localSettingsDiagnosticsContract';
-export { readPersistedDiagnosticsPolicy } from './readPersistedDiagnosticsPolicy';
 export {
   DIAGNOSTICS_POLICY_SYNC_MESSAGE_TYPE,
   zodDiagnosticsPolicySyncMessage,

@@ -175,8 +175,29 @@ describe('readControllerState / writeControllerState', () => {
     expect(setMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
       operation: 'controllerStateWrite',
-      failureClassification: 'invalidWriteAttempt',
+      failureClassification: 'INVALID_WRITE_ATTEMPT',
     });
+  });
+
+  it('rejects an invalid write attempt with a classified controller-state write error', async () => {
+    const { writeControllerState, isControllerStateWriteError, ControllerStateWriteFailureReason } =
+      await import('./controllerState');
+    const invalidState: UpdateControllerState = {
+      ...validState,
+      activeRelease: { ...validState.activeRelease, releaseNumber: 0 },
+    };
+
+    let caught: unknown;
+    try {
+      await writeControllerState('develop', invalidState);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(isControllerStateWriteError(caught)).toBe(true);
+    if (isControllerStateWriteError(caught)) {
+      expect(caught.code).toBe(ControllerStateWriteFailureReason.INVALID_WRITE_ATTEMPT);
+    }
   });
 
   it('refuses to persist a candidate that is not strictly newer than activeRelease, even though each field is individually well-formed', async () => {
@@ -232,13 +253,24 @@ describe('readControllerState / writeControllerState', () => {
   it('reports a storage write failure via the diagnostics exception primitive and still rejects fail-closed', async () => {
     const rawError = new Error('IndexedDB write failed');
     setMock.mockRejectedValue(rawError);
-    const { writeControllerState } = await import('./controllerState');
+    const { writeControllerState, isControllerStateWriteError, ControllerStateWriteFailureReason } =
+      await import('./controllerState');
 
-    await expect(writeControllerState('stable', validState)).rejects.toBe(rawError);
+    let caught: unknown;
+    try {
+      await writeControllerState('stable', validState);
+    } catch (error) {
+      caught = error;
+    }
 
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(rawError, {
+    expect(isControllerStateWriteError(caught)).toBe(true);
+    if (isControllerStateWriteError(caught)) {
+      expect(caught.code).toBe(ControllerStateWriteFailureReason.STORAGE_UNAVAILABLE);
+      expect(caught.cause).toBe(rawError);
+    }
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(caught, {
       operation: 'controllerStateWrite',
-      failureClassification: 'storageUnavailable',
+      failureClassification: 'STORAGE_UNAVAILABLE',
     });
   });
 

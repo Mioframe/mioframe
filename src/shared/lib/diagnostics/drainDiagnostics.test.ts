@@ -4,36 +4,57 @@ const { getSentryReportingStateMock, flushMock } = vi.hoisted(() => ({
   getSentryReportingStateMock: vi.fn(() => 'enabled'),
   flushMock: vi.fn(() => Promise.resolve(true)),
 }));
-const flushQueuedDiagnosticEventsMock = vi.hoisted(() => vi.fn());
-const flushQueuedDiagnosticExceptionsMock = vi.hoisted(() => vi.fn());
+const drainQueuedDiagnosticEventsMock = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const drainQueuedDiagnosticExceptionsMock = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 vi.mock('./sentryRuntime', () => ({
   getSentryReportingState: getSentryReportingStateMock,
   useSentry: () => ({ flush: flushMock }),
 }));
 vi.mock('./reportDiagnosticEvent', () => ({
-  flushQueuedDiagnosticEvents: flushQueuedDiagnosticEventsMock,
+  drainQueuedDiagnosticEvents: drainQueuedDiagnosticEventsMock,
 }));
 vi.mock('./captureDiagnosticException', () => ({
-  flushQueuedDiagnosticExceptions: flushQueuedDiagnosticExceptionsMock,
+  drainQueuedDiagnosticExceptions: drainQueuedDiagnosticExceptionsMock,
 }));
 
 describe('drainDiagnostics', () => {
   beforeEach(() => {
     getSentryReportingStateMock.mockReset().mockReturnValue('enabled');
     flushMock.mockReset().mockResolvedValue(true);
-    flushQueuedDiagnosticEventsMock.mockReset();
-    flushQueuedDiagnosticExceptionsMock.mockReset();
+    drainQueuedDiagnosticEventsMock.mockReset().mockResolvedValue(undefined);
+    drainQueuedDiagnosticExceptionsMock.mockReset().mockResolvedValue(undefined);
   });
 
-  it('flushes both queues and waits on the SDK transport flush when enabled', async () => {
+  it('drains both queues and waits on the SDK transport flush when enabled', async () => {
     const { drainDiagnostics, DIAGNOSTICS_DRAIN_TIMEOUT_MS } = await import('./drainDiagnostics');
 
     await drainDiagnostics();
 
-    expect(flushQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
-    expect(flushQueuedDiagnosticExceptionsMock).toHaveBeenCalledOnce();
+    expect(drainQueuedDiagnosticEventsMock).toHaveBeenCalledOnce();
+    expect(drainQueuedDiagnosticExceptionsMock).toHaveBeenCalledOnce();
     expect(flushMock).toHaveBeenCalledWith(DIAGNOSTICS_DRAIN_TIMEOUT_MS);
+  });
+
+  it('awaits both queue drains before calling the SDK transport flush', async () => {
+    const callOrder: string[] = [];
+    drainQueuedDiagnosticEventsMock.mockImplementation(() => {
+      callOrder.push('drainEvents');
+      return Promise.resolve();
+    });
+    drainQueuedDiagnosticExceptionsMock.mockImplementation(() => {
+      callOrder.push('drainExceptions');
+      return Promise.resolve();
+    });
+    flushMock.mockImplementation(() => {
+      callOrder.push('flush');
+      return Promise.resolve(true);
+    });
+    const { drainDiagnostics } = await import('./drainDiagnostics');
+
+    await drainDiagnostics();
+
+    expect(callOrder).toEqual(['drainEvents', 'drainExceptions', 'flush']);
   });
 
   it('is a no-op when reporting state is unknown', async () => {
@@ -42,8 +63,8 @@ describe('drainDiagnostics', () => {
 
     await drainDiagnostics();
 
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
-    expect(flushQueuedDiagnosticExceptionsMock).not.toHaveBeenCalled();
+    expect(drainQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
+    expect(drainQueuedDiagnosticExceptionsMock).not.toHaveBeenCalled();
     expect(flushMock).not.toHaveBeenCalled();
   });
 
@@ -53,7 +74,7 @@ describe('drainDiagnostics', () => {
 
     await drainDiagnostics();
 
-    expect(flushQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
+    expect(drainQueuedDiagnosticEventsMock).not.toHaveBeenCalled();
     expect(flushMock).not.toHaveBeenCalled();
   });
 

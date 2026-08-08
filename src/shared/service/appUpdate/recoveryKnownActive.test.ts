@@ -6,6 +6,7 @@ const writeControllerStateMock = vi.fn();
 const fetchLatestReleasePointerMock = vi.fn();
 const fetchReleaseDescriptorMock = vi.fn();
 const prepareMock = vi.fn();
+const reportReleasePreparationFailureMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
@@ -18,6 +19,8 @@ vi.mock('./releasePreparation', async () => {
     ...actual,
     fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
     fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
+    reportReleasePreparationFailure: (...args: unknown[]) =>
+      reportReleasePreparationFailureMock(...args),
   };
 });
 
@@ -61,7 +64,31 @@ beforeEach(() => {
   writeControllerStateMock.mockReset().mockResolvedValue(undefined);
   fetchLatestReleasePointerMock.mockReset();
   fetchReleaseDescriptorMock.mockReset();
+  reportReleasePreparationFailureMock.mockReset();
   prepareMock.mockReset().mockResolvedValue(undefined);
+});
+
+describe('direct discovery failure reporting', () => {
+  it('reports a latest.json/descriptor fetch failure exactly once, before any preparation attempt', async () => {
+    readControllerStateMock.mockResolvedValue({
+      status: 'valid',
+      state: { schemaVersion: 1, mode: 'automatic', activeRelease: release(1) },
+    });
+    const { releasePreparationError, ReleasePreparationFailureReason } =
+      await import('./releasePreparation');
+    const discoveryError = releasePreparationError(
+      ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
+      'latest.json is structurally invalid',
+    );
+    fetchLatestReleasePointerMock.mockRejectedValue(discoveryError);
+    const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
+
+    const outcome = await runRecoverInstallLatest(buildDependencies());
+
+    expect(outcome).toEqual({ result: 'invalid-latest-metadata', stateChanged: false });
+    expect(prepareMock).not.toHaveBeenCalled();
+    expect(reportReleasePreparationFailureMock).toHaveBeenCalledExactlyOnceWith(discoveryError);
+  });
 });
 
 describe('known-active recovery (valid initial state)', () => {

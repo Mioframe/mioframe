@@ -9,7 +9,11 @@ import { writeControllerState } from './controllerState';
 import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
 import type { AppUpdateErrorCode } from './protocol';
-import { fetchLatestReleasePointer, fetchReleaseDescriptor } from './releasePreparation';
+import {
+  fetchLatestReleasePointer,
+  fetchReleaseDescriptor,
+  reportReleasePreparationFailure,
+} from './releasePreparation';
 import { buildAppUpdateSnapshot } from './snapshot';
 import { withState } from './stateLock';
 import { applyDiscovery, completeAutomaticPreparation } from './stateTransitions';
@@ -58,7 +62,8 @@ async function discoverLatest(
   try {
     const pointer = await fetchLatestReleasePointer(channelBasePath);
     descriptor = await fetchReleaseDescriptor(channelBasePath, pointer);
-  } catch {
+  } catch (error) {
+    reportReleasePreparationFailure(error);
     return {
       error: 'check-failed',
       stateAfterDiscovery: await readCurrentState(channel, enqueue),

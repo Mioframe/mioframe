@@ -7,6 +7,7 @@ const writeControllerStateMock = vi.fn();
 const fetchLatestReleasePointerMock = vi.fn();
 const fetchReleaseDescriptorMock = vi.fn();
 const prepareMock = vi.fn();
+const reportReleasePreparationFailureMock = vi.fn();
 
 vi.mock('./controllerState', () => ({
   readControllerState: (...args: unknown[]) => readControllerStateMock(...args),
@@ -19,6 +20,8 @@ vi.mock('./releasePreparation', async () => {
     ...actual,
     fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
     fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
+    reportReleasePreparationFailure: (...args: unknown[]) =>
+      reportReleasePreparationFailureMock(...args),
   };
 });
 
@@ -62,6 +65,7 @@ beforeEach(() => {
   writeControllerStateMock.mockReset().mockResolvedValue(undefined);
   fetchLatestReleasePointerMock.mockReset();
   fetchReleaseDescriptorMock.mockReset();
+  reportReleasePreparationFailureMock.mockReset();
   prepareMock.mockReset().mockResolvedValue(undefined);
 });
 
@@ -105,17 +109,16 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
     },
   );
 
-  it('classifies a latest.json/descriptor fetch failure as network-or-latest-unavailable, without preparing, writing, or a cleanup target', async () => {
+  it('classifies a latest.json/descriptor fetch failure as network-or-latest-unavailable, without preparing, writing, or a cleanup target, and reports it once', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
     fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 5 });
     const { releasePreparationError, ReleasePreparationFailureReason } =
       await import('./releasePreparation');
-    fetchReleaseDescriptorMock.mockRejectedValue(
-      releasePreparationError(
-        ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
-        'Failed to fetch release descriptor',
-      ),
+    const discoveryError = releasePreparationError(
+      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      'Failed to fetch release descriptor',
     );
+    fetchReleaseDescriptorMock.mockRejectedValue(discoveryError);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
     const outcome = await runRecoverInstallLatest(buildDependencies());
@@ -123,24 +126,25 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
     expect(outcome).toEqual({ result: 'network-or-latest-unavailable', stateChanged: false });
     expect(prepareMock).not.toHaveBeenCalled();
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(reportReleasePreparationFailureMock).toHaveBeenCalledExactlyOnceWith(discoveryError);
   });
 
-  it('classifies structurally invalid latest metadata as invalid-latest-metadata, with no cleanup target', async () => {
+  it('classifies structurally invalid latest metadata as invalid-latest-metadata, with no cleanup target, and reports it once', async () => {
     readControllerStateMock.mockResolvedValue({ status: 'absent' });
     const { releasePreparationError, ReleasePreparationFailureReason } =
       await import('./releasePreparation');
-    fetchLatestReleasePointerMock.mockRejectedValue(
-      releasePreparationError(
-        ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
-        'latest.json is structurally invalid',
-      ),
+    const discoveryError = releasePreparationError(
+      ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
+      'latest.json is structurally invalid',
     );
+    fetchLatestReleasePointerMock.mockRejectedValue(discoveryError);
     const { runRecoverInstallLatest } = await import('./recoveryOrchestration');
 
     const outcome = await runRecoverInstallLatest(buildDependencies());
 
     expect(outcome).toEqual({ result: 'invalid-latest-metadata', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(reportReleasePreparationFailureMock).toHaveBeenCalledExactlyOnceWith(discoveryError);
   });
 
   it('classifies a preparation failure as release-preparation-failed, without writing or a cleanup target (prepareRelease already self-cleans)', async () => {
@@ -153,6 +157,10 @@ describe('state-loss recovery (absent/invalid initial state)', () => {
 
     expect(outcome).toEqual({ result: 'release-preparation-failed', stateChanged: false });
     expect(writeControllerStateMock).not.toHaveBeenCalled();
+    // Discovery itself succeeded here; only coordinator.prepare() failed, and
+    // the coordinator is its own single diagnostic owner — never reported
+    // through this discovery-boundary mock.
+    expect(reportReleasePreparationFailureMock).not.toHaveBeenCalled();
   });
 
   it('never overwrites another window’s already-completed identical recovery: idempotent success, no write, no cleanup target', async () => {

@@ -1,5 +1,6 @@
 import { createStore, get, set } from 'idb-keyval';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { DomainError } from '@shared/lib/error';
 import {
   CONTROLLER_STATE_SCHEMA_VERSION,
   zodUpdateControllerState,
@@ -199,6 +200,58 @@ export async function readControllerState(
 }
 
 /**
+ * Stable classification codes for a controller-state persistence (write)
+ * failure — the single diagnostic boundary {@link writeControllerState} owns
+ * for its own failures, mirroring `releasePreparation.ts`'s
+ * enum/throw-helper/guard shape so a generic safety net can recognize an
+ * already-reported controller-state error and never report it again.
+ */
+export enum ControllerStateWriteFailureReason {
+  INVALID_WRITE_ATTEMPT = 'INVALID_WRITE_ATTEMPT',
+  STORAGE_UNAVAILABLE = 'STORAGE_UNAVAILABLE',
+}
+
+const CONTROLLER_STATE_WRITE_FAILURE_REASON_VALUES = new Set<string>(
+  Object.values(ControllerStateWriteFailureReason),
+);
+
+/**
+ * Builds a `DomainError` for {@link writeControllerState}'s own persistence
+ * failures, classified by {@link ControllerStateWriteFailureReason} as `code`.
+ * @param code - Stable failure classification.
+ * @param message - Safe, project-controlled message.
+ * @param options - Optional raw cause preserved for debugging.
+ * @returns The classified `DomainError`.
+ */
+function controllerStateWriteError(
+  code: ControllerStateWriteFailureReason,
+  message: string,
+  options?: { cause?: unknown },
+): DomainError<ControllerStateWriteFailureReason> {
+  return new DomainError(message, { cause: options?.cause, code });
+}
+
+/**
+ * Returns `true` when `error` is a `DomainError` classified with one of
+ * {@link ControllerStateWriteFailureReason} — {@link writeControllerState}'s
+ * own already-reported failures, narrowed from any other `DomainError` so a
+ * generic worker-message/navigation safety net can skip re-reporting it.
+ * @param error - The raw thrown value.
+ * @returns Whether `error` is a classified controller-state write failure.
+ */
+export function isControllerStateWriteError(
+  error: unknown,
+): error is DomainError<ControllerStateWriteFailureReason> & {
+  code: ControllerStateWriteFailureReason;
+} {
+  return (
+    error instanceof DomainError &&
+    typeof error.code === 'string' &&
+    CONTROLLER_STATE_WRITE_FAILURE_REASON_VALUES.has(error.code)
+  );
+}
+
+/**
  * Atomically persists this channel's complete controller state.
  *
  * Validates `state` against the canonical {@link zodUpdateControllerState}
@@ -207,9 +260,12 @@ export async function readControllerState(
  * durable storage, since only the next read would otherwise catch it —
  * turning a rejected write into a later full outage for this channel. Never
  * silently normalizes or resets `state`; throws instead.
+ *
+ * Reports its own failure exactly once, here, as the single diagnostic owner
+ * for controller-state persistence — see {@link isControllerStateWriteError}.
  * @param channel - Managed channel.
  * @param state - The complete state to persist.
- * @throws {Error} When `state` does not satisfy the canonical controller-state schema.
+ * @throws {DomainError} A {@link ControllerStateWriteFailureReason}-classified error when `state` fails schema validation or the underlying storage write fails.
  */
 export async function writeControllerState(
   channel: ManagedChannel,
@@ -221,19 +277,25 @@ export async function writeControllerState(
     // schema is an unexpected consistency/programmer failure, not an
     // ordinary storage condition — always observable, regardless of consent
     // state noise policy for expected outcomes.
-    const error = new Error('Refusing to persist an invalid controller state');
+    const code = ControllerStateWriteFailureReason.INVALID_WRITE_ATTEMPT;
+    const error = controllerStateWriteError(
+      code,
+      'Refusing to persist an invalid controller state',
+    );
     captureDiagnosticException(error, {
       operation: 'controllerStateWrite',
-      failureClassification: 'invalidWriteAttempt',
+      failureClassification: code,
     });
     throw error;
   }
   try {
     await set(CONTROLLER_STATE_KEY, result.data, createControllerStateStore(channel));
-  } catch (error) {
+  } catch (cause) {
+    const code = ControllerStateWriteFailureReason.STORAGE_UNAVAILABLE;
+    const error = controllerStateWriteError(code, 'Failed to persist controller state', { cause });
     captureDiagnosticException(error, {
       operation: 'controllerStateWrite',
-      failureClassification: 'storageUnavailable',
+      failureClassification: code,
     });
     throw error;
   }

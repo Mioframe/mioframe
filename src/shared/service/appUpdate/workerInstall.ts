@@ -1,10 +1,14 @@
 /// <reference lib="webworker" />
 
-import { toReleaseSummary, type ManagedChannel } from './contracts';
+import { toReleaseSummary, type ManagedChannel, type ReleaseDescriptor } from './contracts';
 import { readControllerState, writeControllerState } from './controllerState';
 import { probePredecessor, type PredecessorLike } from './predecessorProbe';
 import type { PreparationCoordinator } from './preparationCoordinator';
-import { fetchLatestReleasePointer, fetchReleaseDescriptor } from './releasePreparation';
+import {
+  fetchLatestReleasePointer,
+  fetchReleaseDescriptor,
+  reportReleasePreparationFailure,
+} from './releasePreparation';
 import { buildInitialControllerState } from './stateTransitions';
 
 /**
@@ -18,6 +22,10 @@ import { buildInitialControllerState } from './stateTransitions';
  * this never duplicates a concurrent preparation of the same release number,
  * and passes the already-validated descriptor so preparation does not fetch
  * it twice.
+ * Reports a direct discovery failure (fetching/validating `latest.json` or
+ * its descriptor, before `coordinator.prepare()` even starts) at the same
+ * classified boundary preparation failures use — never reported twice, since
+ * `coordinator.prepare()` owns its own failures separately.
  * @param channel - Managed channel.
  * @param channelBasePath - This worker's channel base path.
  * @param coordinator - The channel's preparation coordinator.
@@ -28,8 +36,14 @@ export async function prepareInitialManagedRelease(
   channelBasePath: string,
   coordinator: PreparationCoordinator,
 ): Promise<void> {
-  const latest = await fetchLatestReleasePointer(channelBasePath);
-  const descriptor = await fetchReleaseDescriptor(channelBasePath, latest);
+  let descriptor: ReleaseDescriptor;
+  try {
+    const latest = await fetchLatestReleasePointer(channelBasePath);
+    descriptor = await fetchReleaseDescriptor(channelBasePath, latest);
+  } catch (error) {
+    reportReleasePreparationFailure(error);
+    throw error;
+  }
   const activeRelease = toReleaseSummary(descriptor);
   await coordinator.prepare(channel, channelBasePath, activeRelease, descriptor);
   await writeControllerState(channel, buildInitialControllerState(activeRelease));

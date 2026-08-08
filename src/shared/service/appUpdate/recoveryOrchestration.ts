@@ -14,6 +14,7 @@ import {
   fetchLatestReleasePointer,
   fetchReleaseDescriptor,
   isReleasePreparationError,
+  reportReleasePreparationFailure,
   ReleasePreparationFailureReason,
 } from './releasePreparation';
 import { buildInitialControllerState } from './stateTransitions';
@@ -70,14 +71,24 @@ function classifyDiscoveryFailure(error: unknown): RecoverInstallLatestResultCod
 
 /**
  * Fetches and validates `latest.json` and its exact descriptor, outside any
- * lock — shared by both recovery flows' first network step.
+ * lock — shared by both recovery flows' first network step. Reports its own
+ * failure once here, at the same classified boundary preparation failures
+ * use, before either caller classifies it into a
+ * {@link RecoverInstallLatestResultCode} — never reported twice, since a
+ * later `coordinator.prepare()` failure in the same attempt owns its own
+ * failures separately.
  * @param channelBasePath - This worker's channel base path.
  * @returns The validated exact descriptor.
  * @throws {DomainError} When the fetch or validation fails.
  */
 async function fetchValidatedLatestDescriptor(channelBasePath: string): Promise<ReleaseDescriptor> {
-  const pointer = await fetchLatestReleasePointer(channelBasePath);
-  return fetchReleaseDescriptor(channelBasePath, pointer);
+  try {
+    const pointer = await fetchLatestReleasePointer(channelBasePath);
+    return await fetchReleaseDescriptor(channelBasePath, pointer);
+  } catch (error) {
+    reportReleasePreparationFailure(error);
+    throw error;
+  }
 }
 
 /**

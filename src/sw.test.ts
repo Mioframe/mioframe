@@ -30,12 +30,14 @@ vi.mock('./shared/lib/diagnostics', async (importOriginal) => {
     captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
     drainDiagnostics: (...args: unknown[]) => drainDiagnosticsMock(...args),
     getOrCreateSentrySessionId: (...args: unknown[]) => getOrCreateSentrySessionIdMock(...args),
-    readPersistedDiagnosticsPolicy: (...args: unknown[]) =>
-      readPersistedDiagnosticsPolicyMock(...args),
     registerSentryBackend: registerSentryBackendMock,
     registerSentryConfig: (...args: unknown[]) => registerSentryConfigMock(...args),
   };
 });
+vi.mock('./shared/service/diagnostics/readPersistedDiagnosticsPolicy', () => ({
+  readPersistedDiagnosticsPolicy: (...args: unknown[]) =>
+    readPersistedDiagnosticsPolicyMock(...args),
+}));
 
 const sentryBrowserStub = {
   addBreadcrumb: vi.fn(),
@@ -961,6 +963,61 @@ describe('src/sw.ts diagnostics bootstrap', () => {
 
     await expect(importSwAndGetListeners()).resolves.toBeInstanceOf(Map);
   });
+
+  it('gives the persisted-policy read a bounded opportunity to apply before install drains, so pre-bootstrap queued diagnostics can still be delivered', async () => {
+    let resolvePolicy!: (state: string) => void;
+    readPersistedDiagnosticsPolicyMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePolicy = resolve;
+      }),
+    );
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    applyDiagnosticsRuntimeStateMock.mockClear();
+    const listener = listeners.get('install');
+    if (!listener) throw new Error('Expected an install listener to have been registered');
+    const waitUntil = vi.fn();
+
+    listener({ waitUntil });
+    await flushMicrotasks();
+    // `runInstall` has already resolved, but the persisted-policy read is
+    // still in flight: the drain must not have run yet.
+    expect(drainDiagnosticsMock).not.toHaveBeenCalled();
+
+    resolvePolicy('enabled');
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledWith({
+      sessionId: 'session:test-id',
+      reportingState: 'enabled',
+    });
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('never lets a stuck persisted-policy read indefinitely hold the install event lifetime', async () => {
+    vi.useFakeTimers();
+    readPersistedDiagnosticsPolicyMock.mockReturnValue(new Promise(() => {}));
+    const listeners = await importSwAndGetListeners();
+    drainDiagnosticsMock.mockClear();
+    const listener = listeners.get('install');
+    if (!listener) throw new Error('Expected an install listener to have been registered');
+    const waitUntil = vi.fn();
+
+    listener({ waitUntil });
+    const installPromise = waitUntil.mock.calls[0]?.[0];
+    if (!(installPromise instanceof Promise)) throw new Error('Expected a waitUntil promise');
+    const isSettled = trackSettled(installPromise);
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(isSettled()).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await installPromise;
+
+    expect(isSettled()).toBe(true);
+    expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });
 
 describe('src/sw.ts diagnostics-policy live sync message', () => {
@@ -1040,6 +1097,33 @@ describe('src/sw.ts diagnostics-policy live sync message', () => {
     await waitUntil.mock.calls[0]?.[0];
 
     expect(drainDiagnosticsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('a live sync received while the startup bootstrap read is still in flight wins: the later-resolving stale read never overwrites it', async () => {
+    let resolveStartupPolicy!: (state: string) => void;
+    readPersistedDiagnosticsPolicyMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveStartupPolicy = resolve;
+      }),
+    );
+    const listener = await importSwAndGetMessageListener();
+    applyDiagnosticsRuntimeStateMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({ data: SYNC_MESSAGE, source: {}, ports: [], waitUntil });
+    await flushMicrotasks();
+
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledExactlyOnceWith({
+      reportingState: 'enabled',
+      sessionId: 'session:aaaabbbb-cccc-dddd-eeee-ffffaaaabbbb',
+    });
+
+    // The startup bootstrap read now resolves with a stale value, after the
+    // live sync above already applied — it must never overwrite it.
+    resolveStartupPolicy('disabled');
+    await flushMicrotasks();
+
+    expect(applyDiagnosticsRuntimeStateMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -1206,6 +1290,29 @@ describe('src/sw.ts message handler diagnostic reporting', () => {
       ReleasePreparationFailureReason.INTEGRITY_FAILURE,
       'hash mismatch',
     );
+    handleWorkerMessageMock.mockRejectedValue(classified);
+    const listener = await importSwAndGetMessageListener();
+    captureDiagnosticExceptionMock.mockClear();
+    const waitUntil = vi.fn();
+
+    listener({
+      data: VALID_REQUEST,
+      source: {},
+      ports: [{ postMessage: vi.fn() }],
+      waitUntil,
+    });
+    await waitUntil.mock.calls[0]?.[0];
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('never reports a controller-state-write-classified failure again: already its own boundary', async () => {
+    const { DomainError } = await import('./shared/lib/error');
+    const { ControllerStateWriteFailureReason } =
+      await import('./shared/service/appUpdate/controllerState');
+    const classified = new DomainError('Failed to persist controller state', {
+      code: ControllerStateWriteFailureReason.STORAGE_UNAVAILABLE,
+    });
     handleWorkerMessageMock.mockRejectedValue(classified);
     const listener = await importSwAndGetMessageListener();
     captureDiagnosticExceptionMock.mockClear();

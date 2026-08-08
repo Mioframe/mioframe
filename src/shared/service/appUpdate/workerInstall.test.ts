@@ -14,9 +14,12 @@ vi.mock('./controllerState', () => ({
 
 const fetchLatestReleasePointerMock = vi.fn();
 const fetchReleaseDescriptorMock = vi.fn();
+const reportReleasePreparationFailureMock = vi.fn();
 vi.mock('./releasePreparation', () => ({
   fetchLatestReleasePointer: (...args: unknown[]) => fetchLatestReleasePointerMock(...args),
   fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
+  reportReleasePreparationFailure: (...args: unknown[]) =>
+    reportReleasePreparationFailureMock(...args),
 }));
 
 const latestPointer = { releaseNumber: 1 };
@@ -95,6 +98,7 @@ describe('runInstall', () => {
     writeControllerStateMock.mockReset();
     fetchLatestReleasePointerMock.mockReset();
     fetchReleaseDescriptorMock.mockReset();
+    reportReleasePreparationFailureMock.mockReset();
     stubFakeMessageChannel();
   });
 
@@ -389,6 +393,7 @@ describe('prepareInitialManagedRelease', () => {
   beforeEach(() => {
     fetchLatestReleasePointerMock.mockReset();
     fetchReleaseDescriptorMock.mockReset();
+    reportReleasePreparationFailureMock.mockReset();
     writeControllerStateMock.mockReset();
   });
 
@@ -422,6 +427,23 @@ describe('prepareInitialManagedRelease', () => {
     await expect(prepareInitialManagedRelease('stable', '/', coordinator)).rejects.toThrow(
       'download failed',
     );
+    expect(writeControllerStateMock).not.toHaveBeenCalled();
+    // The coordinator itself is the single diagnostic owner for its own
+    // prepare() failure — never reported again here.
+    expect(reportReleasePreparationFailureMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a direct discovery failure (before the coordinator ever runs) exactly once', async () => {
+    const discoveryError = new Error('offline');
+    fetchLatestReleasePointerMock.mockRejectedValue(discoveryError);
+    const coordinator = createFakeCoordinator();
+
+    await expect(prepareInitialManagedRelease('stable', '/', coordinator)).rejects.toThrow(
+      'offline',
+    );
+
+    expect(reportReleasePreparationFailureMock).toHaveBeenCalledExactlyOnceWith(discoveryError);
+    expect(coordinator.prepare).not.toHaveBeenCalled();
     expect(writeControllerStateMock).not.toHaveBeenCalled();
   });
 });

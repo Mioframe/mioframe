@@ -37,7 +37,6 @@ import {
   captureDiagnosticException,
   drainDiagnostics,
   getOrCreateSentrySessionId,
-  readPersistedDiagnosticsPolicy,
   registerSentryBackend,
   registerSentryConfig,
   zodDiagnosticsPolicySyncMessage,
@@ -46,7 +45,9 @@ import {
   isSameChannelPath,
   isSameChannelWindowClient,
 } from './shared/service/appUpdate/cleanLaunch';
+import { isControllerStateWriteError } from './shared/service/appUpdate/controllerState';
 import { createOperationQueue } from './shared/service/appUpdate/operationQueue';
+import { readPersistedDiagnosticsPolicy } from './shared/service/diagnostics/readPersistedDiagnosticsPolicy';
 import { createPreparationCoordinator } from './shared/service/appUpdate/preparationCoordinator';
 import {
   withProtocolVersion,
@@ -98,13 +99,55 @@ registerSentryConfig({
   enabled: import.meta.env.PROD,
   release: APP_BUILD_ID || APP_VERSION,
 });
-void readPersistedDiagnosticsPolicy()
-  .then((reportingState) =>
-    applyDiagnosticsRuntimeState({ sessionId: getOrCreateSentrySessionId(), reportingState }),
-  )
+/**
+ * Small bounded opportunity {@link waitForDiagnosticsBootstrap} gives the
+ * startup persisted-policy read to finish before a diagnostics drain. Short
+ * enough that a stuck/slow read can never meaningfully delay `install`
+ * beyond this fixed bound, matching {@link DIAGNOSTICS_DRAIN_TIMEOUT_MS}'s
+ * order of magnitude for a different bounded operation (an IndexedDB read,
+ * not an HTTP flush).
+ */
+const DIAGNOSTICS_BOOTSTRAP_TIMEOUT_MS = 1000;
+
+// Set once a live `DIAGNOSTICS_POLICY_SYNC` message has been applied, so the
+// startup bootstrap read below — which can still be in flight when that
+// happens — never overwrites it with its own now-stale result.
+let liveDiagnosticsSyncApplied = false;
+
+const diagnosticsBootstrap: Promise<void> = readPersistedDiagnosticsPolicy()
+  .then((reportingState) => {
+    if (liveDiagnosticsSyncApplied) return;
+    return applyDiagnosticsRuntimeState({
+      sessionId: getOrCreateSentrySessionId(),
+      reportingState,
+    });
+  })
   .catch(() => {
     // Diagnostics bootstrap must never affect managed-update worker startup.
   });
+
+/**
+ * Gives {@link diagnosticsBootstrap} a small bounded opportunity to finish
+ * before a diagnostics drain, so diagnostics queued before consent resolves
+ * (e.g. from `install`, this worker's largest diagnostics source — see
+ * below) can still be delivered once it does. Never rejects, and never holds
+ * an event lifetime beyond {@link DIAGNOSTICS_BOOTSTRAP_TIMEOUT_MS} even if
+ * the persisted-policy read hangs.
+ * @returns A promise that always resolves, once the bootstrap settles or the bound elapses.
+ */
+function waitForDiagnosticsBootstrap(): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(finish, DIAGNOSTICS_BOOTSTRAP_TIMEOUT_MS);
+    diagnosticsBootstrap.then(finish, finish);
+  });
+}
 
 const channel = deriveManagedChannel(self.registration.scope);
 const channelBasePath = buildManagedChannelBasePath(channel);
@@ -135,13 +178,17 @@ self.addEventListener('install', (event) => {
   // synchronously here, at the moment this listener runs, so it reflects
   // this exact install attempt's own predecessor.
   // `runInstall` is where release preparation — this worker's largest
-  // diagnostics source — happens on first install; the bounded drain below
-  // never changes install's own outcome (`finally` preserves it) and never
-  // blocks it beyond its own small bounded timeout.
+  // diagnostics source — happens on first install; neither the bounded
+  // bootstrap wait nor the drain below ever changes install's own outcome
+  // (`finally` preserves it) or blocks it beyond their own small bounded
+  // timeouts. The bootstrap wait runs first so consent — read at worker
+  // startup, concurrently with `runInstall` itself — has a real chance to
+  // resolve before the drain below decides whether anything queued during
+  // install can actually be flushed.
   event.waitUntil(
-    runInstall(channel, channelBasePath, self.registration.active, preparationCoordinator).finally(
-      () => drainDiagnostics(),
-    ),
+    runInstall(channel, channelBasePath, self.registration.active, preparationCoordinator)
+      .finally(() => waitForDiagnosticsBootstrap())
+      .finally(() => drainDiagnostics()),
   );
 });
 
@@ -268,6 +315,9 @@ self.addEventListener('message', (event) => {
   const diagnosticsSync = zodDiagnosticsPolicySyncMessage.safeParse(event.data);
   if (diagnosticsSync.success) {
     const { reportingState, sessionId } = diagnosticsSync.data;
+    // Marked before applying: a still-in-flight startup bootstrap read must
+    // see this and skip overwriting the live value it is about to apply.
+    liveDiagnosticsSyncApplied = true;
     event.waitUntil(
       applyDiagnosticsRuntimeState({ reportingState, sessionId })
         .catch(() => {})
@@ -317,10 +367,12 @@ self.addEventListener('message', (event) => {
         // already been posted.
         if (error instanceof ReconciliationFailure) await error.runLifetimeWork().catch(() => {});
         // A release-preparation failure was already reported once at its own
-        // classified boundary (`PreparationCoordinator.prepare`) — this is the
-        // remaining unexpected-failure safety net for command handling itself.
+        // classified boundary (`PreparationCoordinator.prepare`), and a
+        // controller-state write failure at its own storage boundary
+        // (`writeControllerState`) — this is the remaining unexpected-failure
+        // safety net for command handling itself.
         const cause = error instanceof ReconciliationFailure ? error.cause : error;
-        if (!isReleasePreparationError(cause)) {
+        if (!isReleasePreparationError(cause) && !isControllerStateWriteError(cause)) {
           captureDiagnosticException(cause, { operation: 'workerMessageHandling' });
         }
         await drainDiagnostics();

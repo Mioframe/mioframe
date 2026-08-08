@@ -2,6 +2,7 @@ import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { releaseSummariesMatch, type ManagedChannel, type ReleaseSummary } from './contracts';
 import { reportActivationRolledBack, reportRecoveryRequired } from './appUpdateDiagnosticEvents';
 import {
+  isControllerStateWriteError,
   readControllerState,
   writeControllerState,
   type ControllerStateReadResult,
@@ -342,7 +343,14 @@ export async function handleAssetFetch(
         ? read.state.candidate.release
         : read.state.activeRelease;
     return await serveRelease(channel, channelBasePath, release, request, false, coordinator);
-  } catch {
+  } catch (error) {
+    // Never from `coordinator.prepare()` inside `serveRelease`/`restoreRelease`
+    // (already reported at its own classified boundary) — this only ever
+    // catches an unexpected Cache Storage/marker-read failure outside that
+    // flow, never yet reported anywhere else.
+    if (!isReleasePreparationError(error)) {
+      captureDiagnosticException(error, { operation: 'assetFetchServing' });
+    }
     return UNAVAILABLE_RESPONSE();
   }
 }
@@ -586,8 +594,15 @@ export async function handleNavigationFetch(
           true,
           coordinator,
         );
-      } catch {
-        // Swallowed here; handled uniformly below via `response === undefined`.
+      } catch (error) {
+        // Never from `coordinator.prepare()` inside `serveRelease`/`restoreRelease`
+        // (already reported at its own classified boundary) — this only ever
+        // catches an unexpected Cache Storage/marker-read failure outside that
+        // flow, never yet reported anywhere else. Handled uniformly below via
+        // `response === undefined`, same as a controlled 503 would be.
+        if (!isReleasePreparationError(error)) {
+          captureDiagnosticException(error, { operation: 'activatingCandidateServing' });
+        }
       }
 
       if (response === undefined || response.status === 503) {
@@ -617,7 +632,16 @@ export async function handleNavigationFetch(
       coordinator,
     );
     return { response, runLifetimeWork: selection.runLifetimeWork };
-  } catch {
+  } catch (error) {
+    // The two `writeControllerState` calls inside this function's own `try`
+    // block (expired-activation rollback, activation start) already report
+    // their own failure once, at their own storage boundary — never reported
+    // again here. A release-preparation failure is likewise already reported
+    // at its own classified boundary. Any other unexpected exception reaching
+    // this outer catch has not been reported anywhere else yet.
+    if (!isReleasePreparationError(error) && !isControllerStateWriteError(error)) {
+      captureDiagnosticException(error, { operation: 'navigationOrchestration' });
+    }
     return { response: UNAVAILABLE_RESPONSE() };
   }
 }

@@ -3,8 +3,8 @@ import {
   deriveDiagnosticsPolicy,
   LOCAL_SETTINGS_STORAGE_KEY,
   zodLocalSettingsDiagnosticsFields,
-} from './localSettingsDiagnosticsContract';
-import type { SentryReportingState } from './sentryRuntimeState';
+  type SentryReportingState,
+} from '@shared/lib/diagnostics';
 
 /**
  * Reads the persisted local-settings diagnostics-consent fields directly through
