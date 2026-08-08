@@ -75,8 +75,16 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
 /**
  * Stable classification codes for a release-discovery/preparation/restoration
  * failure (see the managed pinned application updates architecture, "Release
- * preparation failure classification"). Safe for the worker fetch/recovery
- * boundary to surface directly as a recovery diagnostic `problemDetail`.
+ * preparation failure classification"). This is the internal
+ * service/preparation diagnostic classification, useful for Sentry (e.g.
+ * distinguishing {@link ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE}
+ * from ordinary offline behavior, or flagging
+ * {@link ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY} as an
+ * internal invariant failure). It is not itself safe to surface directly as a
+ * recovery-page `problemDetail` — the worker fetch/recovery boundary must
+ * route it through `getRecoveryReleaseFailureReason` (`recoveryDiagnostics.ts`)
+ * to reach the narrower, stable `RecoveryReleaseFailureReason` the recovery
+ * page actually shows.
  */
 export enum ReleasePreparationFailureReason {
   ARCHIVE_UNAVAILABLE = 'ARCHIVE_UNAVAILABLE',

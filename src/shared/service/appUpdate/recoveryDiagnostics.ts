@@ -15,7 +15,7 @@ import { ReleasePreparationFailureReason } from './releasePreparation';
  * "Recovery classifications"). `UPDATE_STATE_INVALID` and
  * `ACTIVE_RELEASE_UNAVAILABLE` each carry a further stable `problemDetail`
  * (a {@link ControllerStateInvalidReason} or a
- * {@link ReleasePreparationFailureReason} respectively) — see
+ * {@link RecoveryReleaseFailureReason} respectively) — see
  * {@link RecoveryDiagnostics}, which encodes exactly which fields each
  * problem code may carry.
  */
@@ -39,6 +39,61 @@ const zodRecoveryDiagnosticsBaseShape = {
 };
 
 const zodSelectedReleaseNumber = z.number().check(z.refine(isPositiveSafeInteger));
+
+/**
+ * Every stable `problemDetail` the recovery page may show for
+ * `ACTIVE_RELEASE_UNAVAILABLE` (see the managed pinned application updates
+ * architecture, "Recovery classifications"). Deliberately narrower than
+ * {@link ReleasePreparationFailureReason}: that internal enum also carries
+ * preparation/diagnostic classifications (e.g.
+ * {@link ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE},
+ * {@link ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY}) that
+ * are useful for Sentry but must never expand this user-visible contract.
+ * {@link getRecoveryReleaseFailureReason} is the one place an internal reason
+ * becomes one of these values.
+ */
+export const RECOVERY_RELEASE_FAILURE_REASONS = [
+  'ARCHIVE_UNAVAILABLE',
+  'INVALID_ARCHIVE_METADATA',
+  'INTEGRITY_FAILURE',
+  'CACHE_STORAGE_UNAVAILABLE',
+  'RESTORATION_FAILED',
+] as const;
+/** One of {@link RECOVERY_RELEASE_FAILURE_REASONS}. */
+export type RecoveryReleaseFailureReason = (typeof RECOVERY_RELEASE_FAILURE_REASONS)[number];
+
+/**
+ * The single, exhaustive mapping from the internal preparation/diagnostic
+ * classification ({@link ReleasePreparationFailureReason}) to the stable
+ * user-visible recovery-page classification
+ * ({@link RecoveryReleaseFailureReason}). This is the only place that
+ * mapping happens — callers building an `ACTIVE_RELEASE_UNAVAILABLE`
+ * diagnostic must route through this function rather than passing a raw
+ * {@link ReleasePreparationFailureReason} through directly. Sentry reporting
+ * is unaffected: it continues to use the original internal reason, reported
+ * separately at the release-preparation boundary (see
+ * `reportReleasePreparationFailure`).
+ * @param reason - The internal preparation/diagnostic classification.
+ * @returns The corresponding stable recovery-page classification.
+ */
+export function getRecoveryReleaseFailureReason(
+  reason: ReleasePreparationFailureReason,
+): RecoveryReleaseFailureReason {
+  switch (reason) {
+    case ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE:
+    case ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE:
+      return 'ARCHIVE_UNAVAILABLE';
+    case ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA:
+      return 'INVALID_ARCHIVE_METADATA';
+    case ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY:
+    case ReleasePreparationFailureReason.RESTORATION_FAILED:
+      return 'RESTORATION_FAILED';
+    case ReleasePreparationFailureReason.INTEGRITY_FAILURE:
+      return 'INTEGRITY_FAILURE';
+    case ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE:
+      return 'CACHE_STORAGE_UNAVAILABLE';
+  }
+}
 
 /**
  * The complete, safe diagnostic model the recovery page may render or copy —
@@ -74,7 +129,7 @@ export const zodRecoveryDiagnostics = z.discriminatedUnion('problemCode', [
   z.strictObject({
     problemCode: z.literal('ACTIVE_RELEASE_UNAVAILABLE'),
     /** The stable reason exact-release restoration could not make the selected release servable. */
-    problemDetail: z.enum(ReleasePreparationFailureReason),
+    problemDetail: z.enum(RECOVERY_RELEASE_FAILURE_REASONS),
     /** The known active release number this failure was classified against. */
     selectedReleaseNumber: zodSelectedReleaseNumber,
     ...zodRecoveryDiagnosticsBaseShape,
@@ -102,7 +157,7 @@ export type BuildRecoveryDiagnosticsInput = {
   | {
       channel: ManagedChannel;
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE';
-      problemDetail: ReleasePreparationFailureReason;
+      problemDetail: RecoveryReleaseFailureReason;
       selectedReleaseNumber: number;
     }
 );

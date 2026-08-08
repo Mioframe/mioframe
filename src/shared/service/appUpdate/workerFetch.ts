@@ -11,7 +11,7 @@ import { BOOT_CONFIRMATION_TIMEOUT_MS } from './bootConfirmation';
 import { countSameChannelWindowClients, type WindowClientIdentity } from './cleanLaunch';
 import type { OperationQueue } from './operationQueue';
 import type { PreparationCoordinator } from './preparationCoordinator';
-import { buildRecoveryDiagnostics } from './recoveryDiagnostics';
+import { buildRecoveryDiagnostics, getRecoveryReleaseFailureReason } from './recoveryDiagnostics';
 import { buildRecoveryPageResponse } from './recoveryPage';
 import {
   buildReleaseCacheName,
@@ -109,7 +109,7 @@ async function resolveActiveReleaseNavigationResponse(
       buildRecoveryDiagnostics({
         channel,
         problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-        problemDetail: detail,
+        problemDetail: getRecoveryReleaseFailureReason(detail),
         selectedReleaseNumber: release.releaseNumber,
       }),
     );

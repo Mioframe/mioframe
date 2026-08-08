@@ -3,6 +3,8 @@ import { buildControllerStateDbName } from './controllerState';
 import {
   buildRecoveryDiagnostics,
   escapeHtml,
+  getRecoveryReleaseFailureReason,
+  RECOVERY_RELEASE_FAILURE_REASONS,
   serializeDiagnosticsForEmbedding,
   zodRecoveryDiagnostics,
   type RecoveryDiagnostics,
@@ -78,14 +80,14 @@ describe('buildRecoveryDiagnostics', () => {
     const diagnostics = buildRecoveryDiagnostics({
       channel: 'develop',
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+      problemDetail: 'INTEGRITY_FAILURE',
       selectedReleaseNumber: 4,
       now: () => '2026-08-06T00:00:00.000Z',
     });
 
     expect(diagnostics).toEqual({
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+      problemDetail: 'INTEGRITY_FAILURE',
       channel: 'develop',
       controllerDatabaseName: buildControllerStateDbName('develop'),
       selectedReleaseNumber: 4,
@@ -97,12 +99,29 @@ describe('buildRecoveryDiagnostics', () => {
     buildRecoveryDiagnostics({
       channel: 'develop',
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+      problemDetail: 'INTEGRITY_FAILURE',
       selectedReleaseNumber: 4,
       // @ts-expect-error -- ACTIVE_RELEASE_UNAVAILABLE's input variant has no `errorName` field; only UPDATE_STORAGE_UNAVAILABLE does.
       errorName: 'QuotaExceededError',
     });
   });
+
+  it.each(RECOVERY_RELEASE_FAILURE_REASONS)(
+    'accepts the canonical recovery release failure reason %s',
+    (problemDetail) => {
+      const diagnostics = buildRecoveryDiagnostics({
+        channel: 'develop',
+        problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
+        problemDetail,
+        selectedReleaseNumber: 4,
+        now: () => '2026-08-06T00:00:00.000Z',
+      });
+
+      expect(
+        diagnostics.problemCode === 'ACTIVE_RELEASE_UNAVAILABLE' && diagnostics.problemDetail,
+      ).toBe(problemDetail);
+    },
+  );
 
   it('defaults to the current time when no clock is injected', () => {
     const before = Date.now();
@@ -146,7 +165,7 @@ describe('zodRecoveryDiagnostics runtime boundary validation', () => {
   it('rejects ACTIVE_RELEASE_UNAVAILABLE missing its required selectedReleaseNumber even if TypeScript were bypassed', () => {
     const result = zodRecoveryDiagnostics.safeParse({
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+      problemDetail: 'INTEGRITY_FAILURE',
       channel: 'stable',
       controllerDatabaseName: 'db',
       timestamp: '2026-08-06T00:00:00.000Z',
@@ -182,7 +201,7 @@ describe('zodRecoveryDiagnostics runtime boundary validation', () => {
   it('rejects an errorName field on ACTIVE_RELEASE_UNAVAILABLE, which carries none', () => {
     const result = zodRecoveryDiagnostics.safeParse({
       problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
-      problemDetail: ReleasePreparationFailureReason.INTEGRITY_FAILURE,
+      problemDetail: 'INTEGRITY_FAILURE',
       selectedReleaseNumber: 4,
       errorName: 'QuotaExceededError',
       channel: 'stable',
@@ -192,6 +211,22 @@ describe('zodRecoveryDiagnostics runtime boundary validation', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it.each(['ARCHIVE_RESPONSE_FAILURE', 'CONFLICTING_RELEASE_IDENTITY'])(
+    'rejects the internal-only preparation reason %s as an ACTIVE_RELEASE_UNAVAILABLE problemDetail, even though it is a valid ReleasePreparationFailureReason',
+    (problemDetail) => {
+      const result = zodRecoveryDiagnostics.safeParse({
+        problemCode: 'ACTIVE_RELEASE_UNAVAILABLE',
+        problemDetail,
+        selectedReleaseNumber: 4,
+        channel: 'stable',
+        controllerDatabaseName: 'db',
+        timestamp: '2026-08-06T00:00:00.000Z',
+      });
+
+      expect(result.success).toBe(false);
+    },
+  );
 
   it.each(['UPDATE_STATE_ABSENT', 'UPDATE_STATE_INVALID', 'UPDATE_STORAGE_UNAVAILABLE'] as const)(
     'rejects a selectedReleaseNumber field on %s, which forbids it',
@@ -219,6 +254,20 @@ describe('zodRecoveryDiagnostics runtime boundary validation', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe('getRecoveryReleaseFailureReason', () => {
+  it.each([
+    [ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE, 'ARCHIVE_UNAVAILABLE'],
+    [ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE, 'ARCHIVE_UNAVAILABLE'],
+    [ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA, 'INVALID_ARCHIVE_METADATA'],
+    [ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY, 'RESTORATION_FAILED'],
+    [ReleasePreparationFailureReason.INTEGRITY_FAILURE, 'INTEGRITY_FAILURE'],
+    [ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE, 'CACHE_STORAGE_UNAVAILABLE'],
+    [ReleasePreparationFailureReason.RESTORATION_FAILED, 'RESTORATION_FAILED'],
+  ] as const)('maps %s to recovery reason %s', (internal, expected) => {
+    expect(getRecoveryReleaseFailureReason(internal)).toBe(expected);
   });
 });
 
