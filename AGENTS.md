@@ -9,6 +9,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Inspect task-relevant files and direct dependencies first. Expand only when evidence shows wider impact.
 - Verify uncertain workspace behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy.
+- `docs/testing/storybook.md` is the canonical Storybook ownership, authoring, and target-placement policy; `docs/testing/migration-plan.md` records which target locations and verifier mechanisms are currently executable.
 - `src/shared/ui/material/docs/component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
@@ -84,6 +85,8 @@ For the Material workflow, the thin orchestrator selects, launches, validates, a
 - Keep public APIs narrow. Every touched public export must have accurate, complete TSDoc.
 - Keep validation, parsing, and extraction close to the defining boundary.
 - Follow `docs/testing/architecture.md`: one primary proof owner per contract, multiple proof types when required, the lowest faithful proof, and proportional coverage.
+- Follow `docs/testing/storybook.md` for isolated UI stories and Storybook-owned browser/visual proof. Colocate `*.stories.ts` now; place browser/visual Playwright specs only where `docs/testing/migration-plan.md` says the current runner can discover them. Do not treat target colocation as already implemented.
+- Keep complete cross-owner product scenarios centralized in application E2E; do not move them into Storybook fixtures.
 - Keep unit tests and helpers colocated as sibling `*.test.ts` and `*.testUtils.ts` files. Do not introduce `__tests__` directories or export test helpers from production barrels.
 - Split tests by behavior when setup becomes conditional or failures no longer identify one contract.
 - `!important` is forbidden. Shared UI changes require consumer and blast-radius review.

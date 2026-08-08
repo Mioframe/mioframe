@@ -6,6 +6,7 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component targets.
 - Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. One operator command orchestrates every internally actionable stage through separate fresh workers.
+- Follow `docs/testing/storybook.md` for Storybook ownership, story authoring, catalogue hierarchy, and UI-owned browser/visual proof; follow `docs/testing/migration-plan.md` for the current executable Playwright spec location.
 - Do not route official Material work through a unified reasoning task or treat current code or README as a substitute for missing stage artifacts.
 
 ## Contains
@@ -22,6 +23,7 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 - Generic shared UI must not depend directly on `@m3e/web`, render `m3e-*` elements, use renderer element types, or consume `--m3e-*` variables. Those renderer details are private to `src/shared/ui/material`.
 - Existing Material components outside `src/shared/ui/material` remain valid legacy owners until their focused migration stage; do not add new Material ownership at legacy paths.
 - Do not move product behavior into a shared primitive merely to reuse an official Material component.
+- Do not place complete product scenarios in Storybook fixtures or create a shared-UI-specific Storybook taxonomy that conflicts with the canonical hierarchy.
 
 ## Verification
 
