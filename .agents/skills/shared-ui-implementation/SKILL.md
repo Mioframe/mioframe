@@ -107,8 +107,11 @@ Follow `docs/testing/storybook.md`.
 - Colocate stories as `<Owner>.stories.ts` next to the truthful shared-UI owner.
 - Use the deterministic `Shared/<Slice>/<Owner>` catalogue hierarchy for non-Material shared UI.
 - Do not place project-specific components under `Material 3/...` or imply their APIs are official Material.
-- Create stories only when the owner has meaningful isolated documentation, fixture, or visual value; do not add them mechanically.
-- Keep stories deterministic and free of product stores, services, workers, persistence, navigation, network, diagnostics, and business behavior.
+- Create stories only when the owner has meaningful isolated Playground, documentation, fixture, or visual value; do not add them mechanically.
+- For a reusable component with meaningful configurable public inputs, provide or preserve an args-driven `Playground` story unless another story already gives the same interactive value.
+- Let Vue metadata generate Controls by default. Add `argTypes` only for public options/inference gaps; do not mirror the component API manually or expose private implementation state.
+- Keep stories deterministic and free of product stores, services, workers, persistence, product routing, network, diagnostics, and business behavior.
+- Routing-aware reusable UI uses only the Storybook-owned router harness defined by `docs/testing/storybook.md`; application route workflows stay in E2E.
 - Storybook `play` is not merge proof.
 - Physical browser/visual Playwright spec placement follows the current executable state in `docs/testing/migration-plan.md`.
 
@@ -118,7 +121,7 @@ Use the proof layer that owns the changed contract:
 
 - Vue Test Utils for props, emits, slots, actual native/ARIA owner, root structure, attribute forwarding, bubbling, and structural wiring;
 - focused Vitest for extracted pure behavior;
-- Storybook browser behavior for reusable focus, keyboard, pointer/touch, event propagation, layout, scrolling, overlays, responsive behavior, and cleanup when the isolated UI owner owns the contract;
+- Storybook browser behavior for reusable focus, keyboard, pointer/touch, event propagation, layout, scrolling, overlays, responsive behavior, routing, and cleanup when the isolated UI owner owns the contract;
 - application E2E for complete cross-owner product scenarios;
 - visual regression for stable appearance only;
 - focused consumer checks when a shared public contract changes.
@@ -137,6 +140,8 @@ Before completion confirm:
 - ARIA/native state is attached to the actual owner;
 - child variant/state/color logic is not duplicated;
 - applicable stories are colocated under the correct `Shared/...` hierarchy;
+- configurable reusable UI has a useful Controls/Playground surface when applicable;
+- routing-aware stories use isolated Storybook routing rather than product bootstrap;
 - browser/visual proof follows current executable placement rather than unsupported target colocation;
 - consumers and preserved scenarios were reviewed;
 - no obsolete path, alias, wrapper, or parallel implementation remains without an explicit requirement;
