@@ -334,6 +334,38 @@ describe('createPreparationCoordinator: diagnostic reporting', () => {
     expect(retried).toBe(descriptorA);
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
   });
+
+  it('reports a conflicting in-flight release identity exactly once, and never disturbs the legitimate attempt', async () => {
+    const fetchGate = createDeferred<ReleaseDescriptor>();
+    fetchReleaseDescriptorMock.mockReturnValue(fetchGate.promise);
+    prepareReleaseMock.mockResolvedValue(undefined);
+    const { createPreparationCoordinator } = await import('./preparationCoordinator');
+    const { ReleasePreparationFailureReason, isReleasePreparationError } =
+      await import('./releasePreparation');
+    const coordinator = createPreparationCoordinator();
+
+    const legitimateAttempt = coordinator.prepare('stable', '/', releaseA);
+    let caught: unknown;
+    try {
+      await coordinator.prepare('stable', '/', { ...releaseA, buildId: 'conflicting-build' });
+    } catch (error) {
+      caught = error;
+    }
+
+    if (!isReleasePreparationError(caught)) {
+      throw new Error('Expected a classified release-preparation DomainError');
+    }
+    expect(caught.code).toBe(ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(caught, {
+      operation: 'releasePreparation',
+      failureClassification: ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY,
+    });
+
+    fetchGate.resolve(descriptorA);
+    await expect(legitimateAttempt).resolves.toBe(descriptorA);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 /**

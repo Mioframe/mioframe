@@ -112,11 +112,23 @@ export async function broadcastStateChanged(
   channelBasePath: string,
   channelOrigin: string,
 ): Promise<void> {
-  await broadcastToSameChannelWindows(
-    channelBasePath,
-    channelOrigin,
-    withProtocolVersion({ type: 'APP_UPDATE_STATE_CHANGED' as const }),
-  );
+  try {
+    await broadcastToSameChannelWindows(
+      channelBasePath,
+      channelOrigin,
+      withProtocolVersion({ type: 'APP_UPDATE_STATE_CHANGED' as const }),
+    );
+  } catch (error) {
+    // A total broadcast failure (never an isolated single-client failure,
+    // already contained above) can leave other windows unaware of a state
+    // change they should refresh for — the single reporting owner for every
+    // caller's own best-effort `.catch()`.
+    captureDiagnosticException(error, {
+      operation: 'stateChangedBroadcast',
+      failureClassification: 'broadcastFailed',
+    });
+    throw error;
+  }
 }
 
 /**

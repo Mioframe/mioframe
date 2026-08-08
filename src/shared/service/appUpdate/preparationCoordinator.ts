@@ -106,7 +106,15 @@ export function createPreparationCoordinator(): PreparationCoordinator {
       const existing = inFlight.get(target.releaseNumber);
       if (existing) {
         if (releaseSummariesMatch(existing.expectedRelease, target)) return existing.promise;
-        return Promise.reject(new Error('Conflicting release identity is already being prepared'));
+        // Rejected here, before ever registering an attempt of its own, so
+        // this caller never reaches `runPreparation`'s catch below — reported
+        // once directly instead, at this same single boundary.
+        const conflict = releasePreparationError(
+          ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY,
+          'Conflicting release identity is already being prepared',
+        );
+        reportReleasePreparationFailure(conflict);
+        return Promise.reject(conflict);
       }
 
       const reusableDescriptor =

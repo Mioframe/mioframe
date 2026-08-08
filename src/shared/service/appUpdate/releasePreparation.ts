@@ -80,7 +80,9 @@ async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
  */
 export enum ReleasePreparationFailureReason {
   ARCHIVE_UNAVAILABLE = 'ARCHIVE_UNAVAILABLE',
+  ARCHIVE_RESPONSE_FAILURE = 'ARCHIVE_RESPONSE_FAILURE',
   INVALID_ARCHIVE_METADATA = 'INVALID_ARCHIVE_METADATA',
+  CONFLICTING_RELEASE_IDENTITY = 'CONFLICTING_RELEASE_IDENTITY',
   INTEGRITY_FAILURE = 'INTEGRITY_FAILURE',
   CACHE_STORAGE_UNAVAILABLE = 'CACHE_STORAGE_UNAVAILABLE',
   RESTORATION_FAILED = 'RESTORATION_FAILED',
@@ -134,12 +136,16 @@ export function isReleasePreparationError(
  * install, and recovery — funnels through, so a failure is never reported
  * twice for the same underlying attempt.
  *
- * `ARCHIVE_UNAVAILABLE` is ordinary offline/network behavior and is never
- * reported. Every other classified reason
- * ({@link ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA},
+ * `ARCHIVE_UNAVAILABLE` is ordinary offline/network behavior (`fetch()`
+ * itself rejecting) and is never reported. Every other classified reason —
+ * including {@link ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE}
+ * (a received, non-OK HTTP response from a required managed archive
+ * resource, which is not ordinary offline behavior),
+ * {@link ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA},
+ * {@link ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY},
  * {@link ReleasePreparationFailureReason.INTEGRITY_FAILURE},
- * {@link ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE},
- * {@link ReleasePreparationFailureReason.RESTORATION_FAILED}) indicates a
+ * {@link ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE}, and
+ * {@link ReleasePreparationFailureReason.RESTORATION_FAILED} — indicates a
  * broken release invariant or storage failure and is reported using the real
  * `DomainError` as the captured exception. An error that escapes this
  * boundary unclassified is reported as an unexpected failure.
@@ -181,7 +187,7 @@ export async function fetchLatestReleasePointer(
   }
   if (!response.ok) {
     throw releasePreparationError(
-      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE,
       'Failed to fetch latest.json',
     );
   }
@@ -233,7 +239,7 @@ export async function fetchReleaseDescriptor(
   }
   if (!response.ok) {
     throw releasePreparationError(
-      ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+      ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE,
       'Failed to fetch release descriptor',
     );
   }
@@ -347,7 +353,7 @@ export async function prepareRelease(
       }
       if (!response.ok) {
         throw releasePreparationError(
-          ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+          ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE,
           'Failed to download release file',
         );
       }
@@ -397,7 +403,7 @@ export async function prepareRelease(
     }
     if (!indexResponse.ok) {
       throw releasePreparationError(
-        ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+        ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE,
         'Failed to download archived index',
       );
     }

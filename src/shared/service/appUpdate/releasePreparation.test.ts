@@ -286,8 +286,8 @@ describe('release-preparation DomainError classification', () => {
     mockDigestMatchesFileHash();
   });
 
-  it('classifies latest.json fetch failure as ARCHIVE_UNAVAILABLE', async () => {
-    fetchMock.mockResolvedValue(new Response('nope', { status: 500 }));
+  it('classifies a network-level throw fetching latest.json as ARCHIVE_UNAVAILABLE', async () => {
+    fetchMock.mockRejectedValue(new Error('network down'));
     const { fetchLatestReleasePointer } = await import('./releasePreparation');
 
     await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
@@ -335,6 +335,33 @@ describe('release-preparation DomainError classification', () => {
 
     await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
       code: ReleasePreparationFailureReason.ARCHIVE_UNAVAILABLE,
+    });
+  });
+
+  it('classifies a non-OK latest.json response as ARCHIVE_RESPONSE_FAILURE, distinct from a network-level throw', async () => {
+    fetchMock.mockResolvedValue(new Response('not found', { status: 404 }));
+    const { fetchLatestReleasePointer } = await import('./releasePreparation');
+
+    await expect(fetchLatestReleasePointer(BASE_PATH)).rejects.toMatchObject({
+      code: ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE,
+    });
+  });
+
+  it('classifies a non-OK release descriptor response as ARCHIVE_RESPONSE_FAILURE, distinct from a network-level throw', async () => {
+    fetchMock.mockResolvedValue(new Response('server error', { status: 500 }));
+    const { fetchReleaseDescriptor } = await import('./releasePreparation');
+
+    await expect(
+      fetchReleaseDescriptor(BASE_PATH, { releaseNumber: RELEASE_NUMBER }),
+    ).rejects.toMatchObject({ code: ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE });
+  });
+
+  it('classifies a non-OK HTTP response during file download as ARCHIVE_RESPONSE_FAILURE, distinct from a network-level throw', async () => {
+    fetchMock.mockResolvedValue(new Response('not found', { status: 404 }));
+    const { prepareRelease } = await import('./releasePreparation');
+
+    await expect(prepareRelease(BASE_PATH, CHANNEL, descriptor)).rejects.toMatchObject({
+      code: ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE,
     });
   });
 
@@ -419,7 +446,9 @@ describe('reportReleasePreparationFailure', () => {
   });
 
   it.each([
+    ReleasePreparationFailureReason.ARCHIVE_RESPONSE_FAILURE,
     ReleasePreparationFailureReason.INVALID_ARCHIVE_METADATA,
+    ReleasePreparationFailureReason.CONFLICTING_RELEASE_IDENTITY,
     ReleasePreparationFailureReason.INTEGRITY_FAILURE,
     ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
     ReleasePreparationFailureReason.RESTORATION_FAILED,
@@ -447,4 +476,40 @@ describe('reportReleasePreparationFailure', () => {
       failureClassification: 'unexpected',
     });
   });
+});
+
+describe('release archive fetch failure observability: network vs HTTP response', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    captureDiagnosticExceptionMock.mockReset();
+  });
+
+  it('fetch() rejecting (offline/network unavailable) stays silent', async () => {
+    fetchMock.mockRejectedValue(new Error('offline'));
+    const { fetchLatestReleasePointer, reportReleasePreparationFailure } =
+      await import('./releasePreparation');
+
+    const error: unknown = await fetchLatestReleasePointer(BASE_PATH).catch(
+      (caught: unknown) => caught,
+    );
+    reportReleasePreparationFailure(error);
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it.each([404, 500])(
+    'a received non-OK HTTP %i response is reported exactly once, unlike ordinary offline behavior',
+    async (status) => {
+      fetchMock.mockResolvedValue(new Response('error body', { status }));
+      const { fetchReleaseDescriptor, reportReleasePreparationFailure } =
+        await import('./releasePreparation');
+
+      const error: unknown = await fetchReleaseDescriptor(BASE_PATH, {
+        releaseNumber: RELEASE_NUMBER,
+      }).catch((caught: unknown) => caught);
+      reportReleasePreparationFailure(error);
+
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    },
+  );
 });

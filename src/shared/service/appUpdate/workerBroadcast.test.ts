@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReleaseSummary } from './contracts';
 import { createPreparationCoordinator } from './preparationCoordinator';
-import { broadcastRollback, cleanupReleaseCache } from './workerBroadcast';
+import { broadcastRollback, broadcastStateChanged, cleanupReleaseCache } from './workerBroadcast';
 
 const readControllerStateMock = vi.fn();
 vi.mock('./controllerState', () => ({
@@ -201,6 +201,66 @@ describe('broadcastRollback — diagnostic reporting', () => {
 
     await broadcastRollback('/', 'https://mioframe.example', 3);
 
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('broadcastStateChanged — diagnostic reporting', () => {
+  const clientsMatchAllMock = vi.fn();
+
+  beforeEach(() => {
+    clientsMatchAllMock.mockReset();
+    vi.stubGlobal('self', {
+      clients: { matchAll: (...args: unknown[]) => clientsMatchAllMock(...args) },
+    });
+  });
+
+  it('reports and rethrows when clients.matchAll() itself fails, and the caller may swallow the rejection', async () => {
+    clientsMatchAllMock.mockRejectedValue(new Error('clients API unavailable'));
+
+    const rejection = broadcastStateChanged('/', 'https://mioframe.example');
+
+    await expect(rejection).rejects.toThrow('clients API unavailable');
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(expect.any(Error), {
+      operation: 'stateChangedBroadcast',
+      failureClassification: 'broadcastFailed',
+    });
+    // Mirrors every real caller's own best-effort handling (see
+    // workerBroadcast's callers in updateDiscovery.ts/workerMessages.ts): the
+    // boundary above has already reported it, so swallowing here is safe.
+    await expect(rejection.catch(() => {})).resolves.toBeUndefined();
+  });
+
+  it('never reports when clients.matchAll() succeeds, even with no matching clients', async () => {
+    clientsMatchAllMock.mockResolvedValue([]);
+
+    await broadcastStateChanged('/', 'https://mioframe.example');
+
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('isolates one client postMessage() failure: other clients still receive the broadcast, and no diagnostic is reported', async () => {
+    const broken = {
+      id: 'broken-client',
+      type: 'window' as const,
+      url: 'https://mioframe.example/',
+      postMessage: vi.fn(() => {
+        throw new Error('channel closed');
+      }),
+    };
+    const healthy = {
+      id: 'healthy-client',
+      type: 'window' as const,
+      url: 'https://mioframe.example/',
+      postMessage: vi.fn(),
+    };
+    clientsMatchAllMock.mockResolvedValue([broken, healthy]);
+
+    await broadcastStateChanged('/', 'https://mioframe.example');
+
+    expect(broken.postMessage).toHaveBeenCalledTimes(1);
+    expect(healthy.postMessage).toHaveBeenCalledTimes(1);
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 });
