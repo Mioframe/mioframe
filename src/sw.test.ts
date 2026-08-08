@@ -1408,7 +1408,7 @@ describe('src/sw.ts message handler diagnostic reporting', () => {
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('unwraps a ReconciliationFailure and reports its cause when unclassified', async () => {
+  it("never reports a ReconciliationFailure's cause: UpdateReconciler already reported it", async () => {
     const cause = new Error('reconciliation pass bug');
     handleWorkerMessageMock.mockRejectedValue(
       new ReconciliationFailure(cause, () => Promise.resolve()),
@@ -1425,21 +1425,19 @@ describe('src/sw.ts message handler diagnostic reporting', () => {
     });
     await waitUntil.mock.calls[0]?.[0];
 
-    expect(captureDiagnosticExceptionMock).toHaveBeenCalledWith(cause, {
-      operation: 'workerMessageHandling',
-    });
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('never reports a ReconciliationFailure whose cause is already release-preparation-classified', async () => {
+  it('never reports a ReconciliationFailure whose cause is already release-preparation-classified, and tolerates a joiner with no owned runLifetimeWork', async () => {
     const { releasePreparationError, ReleasePreparationFailureReason } =
       await import('./shared/service/appUpdate/releasePreparation');
     const classifiedCause = releasePreparationError(
       ReleasePreparationFailureReason.CACHE_STORAGE_UNAVAILABLE,
       'cache write failed',
     );
-    handleWorkerMessageMock.mockRejectedValue(
-      new ReconciliationFailure(classifiedCause, () => Promise.resolve()),
-    );
+    // A joining Check's ReconciliationFailure carries no runLifetimeWork at
+    // all: this caller never owns another caller's effects.
+    handleWorkerMessageMock.mockRejectedValue(new ReconciliationFailure(classifiedCause));
     const listener = await importSwAndGetMessageListener();
     captureDiagnosticExceptionMock.mockClear();
     const waitUntil = vi.fn();
@@ -1450,7 +1448,7 @@ describe('src/sw.ts message handler diagnostic reporting', () => {
       ports: [{ postMessage: vi.fn() }],
       waitUntil,
     });
-    await waitUntil.mock.calls[0]?.[0];
+    await expect(waitUntil.mock.calls[0]?.[0]).resolves.toBeUndefined();
 
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });

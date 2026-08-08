@@ -397,27 +397,35 @@ self.addEventListener('message', (event) => {
         // Never a raw exception message: this private protocol only ever
         // sends the stable, versioned failure envelope across the boundary.
         respond(withProtocolVersion({ error: 'unavailable' as const }));
-        // A CHECK_FOR_UPDATES whose reconciliation attempt it created failed
-        // still owns that attempt's own effects (broadcast/cleanup from an
-        // earlier successful pass this same attempt ran) — run them here,
-        // exactly once, strictly after the fallback response above has
-        // already been posted.
-        if (error instanceof ReconciliationFailure) await error.runLifetimeWork().catch(() => {});
-        // A release-preparation failure was already reported once at its own
-        // classified boundary (`PreparationCoordinator.prepare`), a
-        // controller-state write failure at its own storage boundary
-        // (`writeControllerState`), and `withState()`'s own classified "state
-        // not ready" outcome either never reported (absent/invalid) or
-        // already reported once by `readControllerState()`
-        // (storage-unavailable) — this is the remaining unexpected-failure
-        // safety net for command handling itself.
-        const cause = error instanceof ReconciliationFailure ? error.cause : error;
-        if (
-          !isReleasePreparationError(cause) &&
-          !isControllerStateWriteError(cause) &&
-          !isControllerStateUnavailableError(cause)
+        if (error instanceof ReconciliationFailure) {
+          // A CHECK_FOR_UPDATES whose reconciliation attempt it created
+          // failed still owns that attempt's own effects (broadcast/cleanup
+          // from an earlier successful pass this same attempt ran) — run
+          // them here, exactly once, strictly after the fallback response
+          // above has already been posted. A joined attempt's
+          // `ReconciliationFailure` carries no `runLifetimeWork` at all: this
+          // caller never owns another caller's effects.
+          if (error.runLifetimeWork) await error.runLifetimeWork().catch(() => {});
+          // `UpdateReconciler` is the single diagnostic owner for every final
+          // reconciliation attempt failure and has already reported (or
+          // deliberately skipped, when already classified as a
+          // release-preparation, controller-state write, or
+          // controller-state-unavailable failure) this exact error — never
+          // report it again here.
+        } else if (
+          !isReleasePreparationError(error) &&
+          !isControllerStateWriteError(error) &&
+          !isControllerStateUnavailableError(error)
         ) {
-          captureDiagnosticException(cause, { operation: 'workerMessageHandling' });
+          // A release-preparation failure was already reported once at its
+          // own classified boundary (`PreparationCoordinator.prepare`), a
+          // controller-state write failure at its own storage boundary
+          // (`writeControllerState`), and `withState()`'s own classified
+          // "state not ready" outcome either never reported (absent/invalid)
+          // or already reported once by `readControllerState()`
+          // (storage-unavailable) — this is the remaining unexpected-failure
+          // safety net for command handling itself.
+          captureDiagnosticException(error, { operation: 'workerMessageHandling' });
         }
         await drainDiagnosticsAfterBootstrap();
         return;

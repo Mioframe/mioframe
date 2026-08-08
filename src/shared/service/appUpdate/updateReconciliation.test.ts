@@ -531,6 +531,7 @@ describe('createUpdateReconciler', () => {
       const failure = caught;
       expect(failure.cause).toBe(finalFailure);
       expect(runEffects).not.toHaveBeenCalled();
+      if (!failure.runLifetimeWork) throw new Error('Expected the creator to own runLifetimeWork');
 
       await failure.runLifetimeWork();
       expect(runEffects).toHaveBeenCalledTimes(1);
@@ -576,7 +577,7 @@ describe('createUpdateReconciler', () => {
     });
   });
 
-  describe('unexpected background reconciliation failure reporting', () => {
+  describe('unexpected reconciliation failure reporting', () => {
     it('reports an unexpected background-created (navigation) attempt failure once', async () => {
       const unexpected = new Error('reconciliation pass bug');
       const runPass = vi.fn().mockRejectedValue(unexpected);
@@ -622,15 +623,75 @@ describe('createUpdateReconciler', () => {
       });
     });
 
-    it('never reports a Check-created attempt failure here: its own caller reports the thrown ReconciliationFailure', async () => {
+    it('reports an unexpected Check-created attempt failure once, and its ReconciliationFailure retains runLifetimeWork', async () => {
       const unexpected = new Error('reconciliation pass bug');
       const runPass = vi.fn().mockRejectedValue(unexpected);
       const runEffects = vi.fn().mockResolvedValue(undefined);
       const reconciler = createUpdateReconciler({ runPass, runEffects });
 
-      await expect(reconciler.checkForUpdates()).rejects.toBeInstanceOf(ReconciliationFailure);
+      let caught: unknown;
+      try {
+        await reconciler.checkForUpdates();
+      } catch (error) {
+        caught = error;
+      }
+      if (!(caught instanceof ReconciliationFailure))
+        throw new Error('Expected a ReconciliationFailure');
+      expect(caught.cause).toBe(unexpected);
+      expect(caught.runLifetimeWork).toBeTypeOf('function');
 
-      expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(unexpected, {
+        operation: 'updateReconciliation',
+      });
+    });
+
+    it('reports a Check-created attempt failure once even when a background call joins it', async () => {
+      const unexpected = new Error('reconciliation pass bug');
+      const pass = deferred<ReconciliationPassResult>();
+      const runPass = vi.fn(() => pass.promise);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      const check = reconciler.checkForUpdates();
+      const navigation = reconciler.reconcileNavigation();
+      await startPass();
+      pass.reject(unexpected);
+
+      await expect(check).rejects.toBeInstanceOf(ReconciliationFailure);
+      await expect(navigation).rejects.toBe(unexpected);
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(unexpected, {
+        operation: 'updateReconciliation',
+      });
+    });
+
+    it('reports a background-created attempt failure once even when a Check joins it', async () => {
+      const unexpected = new Error('reconciliation pass bug');
+      const pass = deferred<ReconciliationPassResult>();
+      const runPass = vi.fn(() => pass.promise);
+      const runEffects = vi.fn().mockResolvedValue(undefined);
+      const reconciler = createUpdateReconciler({ runPass, runEffects });
+
+      const navigation = reconciler.reconcileNavigation();
+      const check = reconciler.checkForUpdates();
+      await startPass();
+      pass.reject(unexpected);
+
+      await expect(navigation).rejects.toBe(unexpected);
+      let caught: unknown;
+      try {
+        await check;
+      } catch (error) {
+        caught = error;
+      }
+      if (!(caught instanceof ReconciliationFailure))
+        throw new Error('Expected a ReconciliationFailure');
+      expect(caught.cause).toBe(unexpected);
+      // A joining Check never created the attempt, so it must never gain
+      // ownership of the background creator's effects.
+      expect(caught.runLifetimeWork).toBeUndefined();
+      expect(captureDiagnosticExceptionMock).toHaveBeenCalledExactlyOnceWith(unexpected, {
+        operation: 'updateReconciliation',
+      });
     });
 
     it('never reports a background attempt failure already classified as a release-preparation error', async () => {

@@ -82,23 +82,28 @@ export type ReconciliationResult = {
 };
 
 /**
- * Thrown by `checkForUpdates()` when this call created the shared attempt and
- * the attempt's final pass failed. Carries the original pass error as
- * `cause`, plus this attempt's own merged effects (from any earlier
- * successful pass this same attempt ran) as `runLifetimeWork`, so a catching
- * `src/sw.ts` can still run them exactly once, strictly after it has posted
- * its own fallback response — never before, and never lost to a later,
- * independent reconciliation attempt.
+ * Thrown by `checkForUpdates()` whenever the shared attempt it joined or
+ * created has finally failed. Always carries the original pass error as
+ * `cause`. Only carries `runLifetimeWork` — this attempt's own merged effects
+ * (from any earlier successful pass this same attempt ran) — when this call
+ * itself created the attempt: a catching `src/sw.ts` can then run them
+ * exactly once, strictly after it has posted its own fallback response, and
+ * never before. A call that only joined another caller's attempt must never
+ * gain ownership of that attempt's effects, so its `ReconciliationFailure`
+ * leaves `runLifetimeWork` undefined.
  */
 export class ReconciliationFailure extends Error {
-  /** Idempotently starts and awaits this failed attempt's own merged effects. */
-  public readonly runLifetimeWork: () => Promise<void>;
+  /**
+   * Idempotently starts and awaits this failed attempt's own merged effects.
+   * Undefined when this call only joined another caller's attempt.
+   */
+  public readonly runLifetimeWork: (() => Promise<void>) | undefined;
 
   /**
    * @param cause - The original error the attempt's final pass rejected with.
-   * @param runLifetimeWork - Idempotently starts and awaits this attempt's own merged effects.
+   * @param runLifetimeWork - Idempotently starts and awaits this attempt's own merged effects, when this call created the attempt.
    */
-  constructor(cause: unknown, runLifetimeWork: () => Promise<void>) {
+  constructor(cause: unknown, runLifetimeWork?: () => Promise<void>) {
     super('Update reconciliation failed', { cause });
     this.name = 'ReconciliationFailure';
     this.runLifetimeWork = runLifetimeWork;
@@ -121,9 +126,10 @@ export type UpdateReconciler = {
    * Never invokes effects itself — the caller (a foreground
    * `CHECK_FOR_UPDATES` command) owns invoking `runLifetimeWork` only after
    * posting its own response, and only when this call is the one that
-   * created the shared attempt. On a failed final pass, throws a
-   * {@link ReconciliationFailure} carrying this attempt's own effects when
-   * this call created the attempt, or the raw pass error when it only joined.
+   * created the shared attempt. On a failed final pass, always throws a
+   * {@link ReconciliationFailure} carrying the original error as `cause`,
+   * plus this attempt's own effects as `runLifetimeWork` when this call
+   * created the attempt — never when it only joined.
    */
   checkForUpdates(): Promise<ReconciliationResult>;
   /**
@@ -135,22 +141,18 @@ export type UpdateReconciler = {
   reconcileAfterModeChange(): Promise<void>;
 };
 
-/** Which trigger created a given shared attempt. */
-type ReconciliationOwner = 'check' | 'background';
-
 /**
- * Reports an unexpected background-owned reconciliation attempt's final
- * failure, exactly once per attempt (see the `owner === 'background'` guard
- * at its only call site below). A `'check'`-owned attempt's own failure is
- * never reported here: `checkForUpdates()` already reports it once, at its
- * own foreground command boundary (`src/sw.ts`'s `workerMessageHandling`
- * safety net), via the `ReconciliationFailure` it throws when it created the
- * attempt. Release-preparation, controller-state read, and controller-state
- * write failures are already reported once at their own classified boundary
- * and are skipped here so they are never duplicated.
+ * Reports one reconciliation attempt's final failure, exactly once per
+ * attempt, regardless of which trigger created it — see the single call site
+ * below, at the attempt's final failed settlement. The caller never decides
+ * whether a failure is reported: a thrown {@link ReconciliationFailure}
+ * carries the same already-reported error, so no catching caller must ever
+ * report it again. Release-preparation, controller-state read, and
+ * controller-state write failures are already reported once at their own
+ * classified boundary and are skipped here so they are never duplicated.
  * @param error - The reconciliation attempt's final pass error.
  */
-function reportUnexpectedBackgroundReconciliationFailure(error: unknown): void {
+function reportUnexpectedReconciliationFailure(error: unknown): void {
   if (isReleasePreparationError(error)) return;
   if (isControllerStateWriteError(error)) return;
   if (isControllerStateUnavailableError(error)) return;
@@ -159,8 +161,6 @@ function reportUnexpectedBackgroundReconciliationFailure(error: unknown): void {
 
 /** One reconciliation attempt shared by every joining caller. */
 type SharedAttempt = {
-  /** Which trigger created this attempt. */
-  owner: ReconciliationOwner;
   /** Resolves to this attempt's final (rerun-combined) settlement. Never itself rejects. */
   settlementPromise: Promise<ReconciliationSettlement>;
   /**
@@ -204,7 +204,7 @@ export function createUpdateReconciler(
   let rerunRequested = false;
   const isRerunRequested = (): boolean => rerunRequested;
 
-  function startOrJoin(owner: ReconciliationOwner): { attempt: SharedAttempt; created: boolean } {
+  function startOrJoin(): { attempt: SharedAttempt; created: boolean } {
     if (inFlight) return { attempt: inFlight, created: false };
 
     let mergedEffects: ReconciliationEffects = NO_EFFECTS;
@@ -234,15 +234,12 @@ export function createUpdateReconciler(
       if (isRerunRequested()) return runUntilSettled();
       if (inFlight === attempt) inFlight = undefined;
       if (outcome.status === 'rejected') {
-        // Only a background-owned attempt's final failure is unreported by
-        // every one of its callers (`reconcileNavigation`/
-        // `reconcileAfterModeChange` both discard it after this point) — see
-        // `reportUnexpectedBackgroundReconciliationFailure`. A Check-created
-        // attempt's failure stays unreported here; `checkForUpdates()` throws
-        // it as a `ReconciliationFailure` for its own caller to report once.
-        if (owner === 'background') {
-          reportUnexpectedBackgroundReconciliationFailure(outcome.error);
-        }
+        // The attempt's final failure is reported exactly once here,
+        // regardless of which trigger created it. Every caller — a
+        // `ReconciliationFailure` thrown by `checkForUpdates()` included —
+        // only ever rethrows this same already-reported error; none of them
+        // report it again.
+        reportUnexpectedReconciliationFailure(outcome.error);
         return { status: 'failure', error: outcome.error, effects: mergedEffects };
       }
       return { status: 'success', snapshot: outcome.result.snapshot, effects: mergedEffects };
@@ -273,24 +270,26 @@ export function createUpdateReconciler(
       return effectsCompletion;
     };
 
-    const attempt: SharedAttempt = { owner, settlementPromise, runEffectsOnce, effectsCompletion };
+    const attempt: SharedAttempt = { settlementPromise, runEffectsOnce, effectsCompletion };
     inFlight = attempt;
     return { attempt, created: true };
   }
 
   return {
     async checkForUpdates() {
-      const { attempt, created } = startOrJoin('check');
+      const { attempt, created } = startOrJoin();
       const settlement = await attempt.settlementPromise;
       if (settlement.status === 'failure') {
-        if (created) throw new ReconciliationFailure(settlement.error, attempt.runEffectsOnce);
-        throw settlement.error;
+        throw new ReconciliationFailure(
+          settlement.error,
+          created ? attempt.runEffectsOnce : undefined,
+        );
       }
       if (!created) return { snapshot: settlement.snapshot };
       return { snapshot: settlement.snapshot, runLifetimeWork: attempt.runEffectsOnce };
     },
     async reconcileNavigation() {
-      const { attempt, created } = startOrJoin('background');
+      const { attempt, created } = startOrJoin();
       const settlement = await attempt.settlementPromise;
       if (settlement.status === 'failure') {
         if (created) await attempt.runEffectsOnce();
@@ -301,7 +300,7 @@ export function createUpdateReconciler(
     },
     async reconcileAfterModeChange() {
       if (inFlight) rerunRequested = true;
-      const { attempt, created } = startOrJoin('background');
+      const { attempt, created } = startOrJoin();
       const settlement = await attempt.settlementPromise;
       if (settlement.status === 'failure') {
         if (created) await attempt.runEffectsOnce();
