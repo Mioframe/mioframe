@@ -82,11 +82,13 @@ Do not create duplicate public owners, compatibility token aliases, token regist
 Architecture selects proof owners before implementation. Use the lowest faithful proof and preserve shared-UI blast-radius coverage.
 
 - The Material family is the Storybook owner for its component stories and family-owned browser/visual proof.
-- Follow `docs/testing/storybook.md` for story authoring, catalogue naming, proof boundaries, target placement, and ownership conventions.
-- Follow `docs/testing/migration-plan.md` for the current executable Playwright spec location. Do not place colocated Material `*.browser.spec.ts` or `*.visual.spec.ts` until the owning lane can discover them.
-- Keep stories deterministic and family-local; do not introduce product stores, services, workers, persistence, routing, network, or business behavior into family stories.
+- Follow `docs/testing/storybook.md` for Storybook workbench behavior, Playground/Controls, story authoring, catalogue naming, routing sandbox, proof boundaries, target placement, and ownership conventions.
+- A configurable public Material component should expose a useful args-driven Playground through its family stories when the public surface has meaningful options; Controls represent only the curated Mioframe Vue API, never raw m3e/private inputs.
+- Follow `docs/testing/migration-plan.md` for the current executable Playwright spec location and workbench capabilities. Do not place colocated Material `*.browser.spec.ts` or `*.visual.spec.ts` until the owning lane can discover them.
+- Keep stories deterministic and family-local; do not introduce product stores, services, workers, persistence, production routing, network, or business behavior into family stories.
+- Routing-aware reusable Material composition may use the project-wide Storybook router harness only when routing is part of the reusable contract; product navigation remains outside Material.
 - Family browser proof contains no screenshots. Family visual proof contains no browser-behavior success criteria.
-- Do not introduce a Material-specific Storybook runner, registry, taxonomy, or workflow that duplicates project-wide testing rules.
+- Do not introduce a Material-specific Storybook runner, controls registry, router, taxonomy, or workflow that duplicates project-wide Storybook/testing rules.
 
 Renderer-owned appearance requires browser or visual evidence. Host state, token presence, source inspection, or a story alone is insufficient.
 
