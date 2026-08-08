@@ -81,16 +81,16 @@ Stories, fixtures, specs, snapshots, and test helpers are never exported from pr
 
 The durable target is being migrated incrementally. Do not place a test where current Playwright discovery cannot execute it.
 
-| Capability | Current state |
-| --- | --- |
-| Story discovery | colocated `src/**/*.stories.*` is already supported |
-| Controls | Storybook Essentials controls are available; Vue metadata drives automatic controls |
-| Viewport/background sandbox | global desktop/mobile viewports and app/surface backgrounds are already configured |
-| Vue router context | one global memory router exists, but only a minimal `/` route is available; the reusable per-story routing harness is still migration work |
-| Vue component contract | colocated `*.test.ts` |
-| Storybook browser behavior spec | keep the current executable location under `tests/e2e/storybook` until the browser-discovery pilot is merged |
-| Visual spec and baseline | keep the current executable visual location until the visual-discovery pilot is merged |
-| Product E2E | centralized under `tests/e2e` |
+| Capability                      | Current state                                                                                                                              |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Story discovery                 | colocated `src/**/*.stories.*` is already supported                                                                                        |
+| Controls                        | Storybook Essentials controls are available; Vue metadata drives automatic controls                                                        |
+| Viewport/background sandbox     | global desktop/mobile viewports and app/surface backgrounds are already configured                                                         |
+| Vue router context              | one global memory router exists, but only a minimal `/` route is available; the reusable per-story routing harness is still migration work |
+| Vue component contract          | colocated `*.test.ts`                                                                                                                      |
+| Storybook browser behavior spec | keep the current executable location under `tests/e2e/storybook` until the browser-discovery pilot is merged                               |
+| Visual spec and baseline        | keep the current executable visual location until the visual-discovery pilot is merged                                                     |
+| Product E2E                     | centralized under `tests/e2e`                                                                                                              |
 
 During migration, conceptual ownership and physical execution location may temporarily differ for browser/visual specs. The owner still determines the contract and impact relation. `docs/testing/migration-plan.md` is the source of truth for when a target location or workbench capability becomes executable.
 
@@ -180,14 +180,14 @@ If the behavior being inspected is the application's actual route graph, navigat
 
 ## Proof decision
 
-| Contract | Primary proof owner |
-| --- | --- |
-| Props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, non-browser wiring | colocated `*.test.ts` |
-| Interactive public-API exploration | Playground story with Controls; not merge proof |
-| Isolated supported rendering state | colocated `*.stories.ts` |
+| Contract                                                                                                                                         | Primary proof owner                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| Props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, non-browser wiring                            | colocated `*.test.ts`                                 |
+| Interactive public-API exploration                                                                                                               | Playground story with Controls; not merge proof       |
+| Isolated supported rendering state                                                                                                               | colocated `*.stories.ts`                              |
 | Real focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, reusable routing, motion lifecycle, browser APIs | Storybook browser behavior spec owned by the UI owner |
-| Bounded accepted appearance | visual spec against a canonical story tagged `visual` |
-| Complete scenario crossing FSD, service, worker, persistence, navigation, provider, permission, reload, app router, or bootstrap boundaries | `tests/e2e/*.spec.ts` |
+| Bounded accepted appearance                                                                                                                      | visual spec against a canonical story tagged `visual` |
+| Complete scenario crossing FSD, service, worker, persistence, navigation, provider, permission, reload, app router, or bootstrap boundaries      | `tests/e2e/*.spec.ts`                                 |
 
 One observable contract has one primary proof owner. Higher-level proof may cover an integration seam or complete user outcome, but must not duplicate the full lower-level contract.
 
