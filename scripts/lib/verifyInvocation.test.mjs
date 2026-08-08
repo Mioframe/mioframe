@@ -79,6 +79,18 @@ describe('resolveVerifyInvocation', () => {
     );
   });
 
+  it('accepts storybook-build as a focused label without requiring --full', () => {
+    expect(resolveVerifyInvocation(['--only', 'storybook-build'], {}).onlyLabel).toBe(
+      'storybook-build',
+    );
+  });
+
+  it('accepts storybook-build alongside --full, unlike release-only labels', () => {
+    expect(resolveVerifyInvocation(['--full', '--only', 'storybook-build'], {}).onlyLabel).toBe(
+      'storybook-build',
+    );
+  });
+
   it('rejects mutation in full mode', () => {
     expect(() => resolveVerifyInvocation(['--full', '--only', 'mutation'], {})).toThrow(
       '--only mutation is not available with --full',

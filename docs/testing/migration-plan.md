@@ -26,19 +26,21 @@
 - Vue component-contract tests are already colocated as `*.test.ts`.
 - Material library family ownership is established under `src/shared/ui/material`.
 - Storybook Essentials provides Controls and other built-in workbench tools.
-- Storybook currently configures representative desktop/mobile viewports and app/surface backgrounds.
-- Storybook currently installs a minimal Vue Router memory history needed by existing shared overlay primitives.
+- Storybook currently configures representative desktop/mobile viewports and app/surface Material-token backgrounds, freely selectable; the default remains the plain Canvas, never checkerboard.
+- Storybook preview isolates Canvas styling through `src/app/styles/base.css`, the same low-level entrypoint the application shell composes; the application shell (`src/app/styles/styles.css`) owns only `html`/`body`/`#app` layout on top of it.
+- Material foundation owns an explicit `data-md-color-scheme="light"`/`"dark"` seam (`src/shared/ui/material/foundation/theme.css`); no attribute preserves the production `prefers-color-scheme` default. Storybook exposes this through a `System`/`Light`/`Dark` toolbar global that only sets/removes the attribute.
+- Storybook installs a per-story Vue Router memory-history instance (`.storybook/router/routerHarness.ts`) through a small typed `parameters.router` shape (routes, initial location); a fresh app/router is created on every story remount, so route/history state does not leak between stories. Existing shared overlay primitives continue to work through the deterministic default `/` route.
+- Storybook's native `storySort` gives the documented top-level namespaces (`Material 3`, `Shared`, `Entities`, `Features`, `Widgets`, `Pages`) deterministic ordering, case-insensitively matching already-colocated legacy titles, without renaming any existing story address.
+- `MDCheckbox` (`src/shared/ui/Checkbox/MDCheckbox.stories.ts`) is the representative args-driven controlled Playground: Controls and direct interaction stay synchronized through `useArgs`.
+- `MDButton` (`src/shared/ui/material/components/button/MDButton.stories.ts`) is the representative public Material component with selective Autodocs (`tags: ['autodocs']`) generated from the existing `vue-component-meta` docgen.
+- A dedicated verifier label `storybook-build` runs `pnpm storybook:build` for changed `*.stories.*`, `.storybook/**`, and other Storybook-relevant configuration; it is selectable through `pnpm verify --only storybook-build`, not full-only, and runs in full verification.
 - Vue component metadata is available to Storybook through the current docgen configuration.
 
 ### Still transitional
 
-- Storybook preview currently imports the complete application stylesheet, so app-shell `html`/`body`/`#app` layout behavior can leak into isolated Canvas rendering.
-- Material theme follows the production `prefers-color-scheme` path; Storybook does not yet provide explicit `System`/`Light`/`Dark` inspection modes.
-- The current Storybook memory router exposes only a minimal `/` route and is not yet the reusable per-story routing harness defined by `docs/testing/storybook.md`.
-- Playground/Controls authoring and controlled args round-trip are not yet normalized across reusable UI stories.
-- Global Storybook catalogue ordering is not yet made deterministic through the target native `storySort`; title normalization remains later migration work.
-- Selective Autodocs usage for public reusable UI is not yet normalized.
-- A story/config change does not yet own a dedicated verifier-managed Storybook build gate independent of browser/visual lane selection.
+- Playground/Controls authoring and controlled args round-trip are established as a convention on one representative component (`MDCheckbox`); repository-wide normalization across other reusable UI stories remains later migration work.
+- Selective Autodocs usage is established as a convention on one representative public Material component (`MDButton`); broader selective adoption across other public reusable UI remains later migration work.
+- Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming existing titles.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Storybook behavior specs are still executed from `tests/e2e/storybook` and selected through the current resolver/mappings.

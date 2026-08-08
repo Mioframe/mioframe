@@ -127,6 +127,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/md-loading-indicator.spec.ts'],
   },
   {
+    name: 'Storybook router harness demonstration',
+    sourcePrefixes: [
+      'src/shared/lib/router/RouterHarnessRegressionStory.vue',
+      'src/shared/lib/router/RouterHarnessRegression.stories.ts',
+    ],
+    specs: ['tests/e2e/storybook/routerHarness.spec.ts'],
+  },
+  {
     name: 'bottom sheet keyboard focus wrap visibility',
     sourcePrefixes: [
       'src/shared/ui/Sheets/MDBottomSheetContainer2.vue',

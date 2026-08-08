@@ -10,6 +10,7 @@ const LOADING_INDICATOR_TOKENS_PATH =
   './src/shared/ui/material/components/loadingIndicator/tokens.css';
 const BUTTON_TOKENS_PATH = './src/shared/ui/material/components/button/tokens.css';
 const APP_STYLES_PATH = './src/app/styles/styles.css';
+const BASE_STYLES_PATH = './src/app/styles/base.css';
 const MD_INDEX_PATH = './src/shared/lib/md/index.css';
 const TOKEN_API_DOC_PATH = './src/shared/ui/material/docs/token-api.md';
 
@@ -85,6 +86,7 @@ describe('Material foundation token ownership', () => {
   const loadingIndicatorTokens = readFileSync(LOADING_INDICATOR_TOKENS_PATH, 'utf8');
   const buttonTokens = readFileSync(BUTTON_TOKENS_PATH, 'utf8');
   const appStyles = readFileSync(APP_STYLES_PATH, 'utf8');
+  const baseStyles = readFileSync(BASE_STYLES_PATH, 'utf8');
   const mdIndex = readFileSync(MD_INDEX_PATH, 'utf8');
   const catalogue = readFileSync(TOKEN_API_DOC_PATH, 'utf8');
 
@@ -101,13 +103,22 @@ describe('Material foundation token ownership', () => {
   });
 
   it('loads the canonical foundation entry before legacy shared MD styles', () => {
-    const foundationImportIndex = appStyles.indexOf(
+    const foundationImportIndex = baseStyles.indexOf(
       "@import '../../shared/ui/material/foundation/index.css';",
     );
-    const legacyMdImportIndex = appStyles.indexOf("@import '../../shared/lib/md/index.css';");
+    const legacyMdImportIndex = baseStyles.indexOf("@import '../../shared/lib/md/index.css';");
 
     expect(foundationImportIndex).toBeGreaterThanOrEqual(0);
     expect(legacyMdImportIndex).toBeGreaterThan(foundationImportIndex);
+  });
+
+  it('composes the application shell stylesheet from the shared base stylesheet', () => {
+    expect(appStyles).toContain("@import './base.css';");
+  });
+
+  it('keeps the application shell stylesheet free of low-level style ownership', () => {
+    expect(appStyles).not.toContain("@import '../../shared/ui/material/foundation/index.css';");
+    expect(appStyles).not.toContain("@import '../../shared/lib/md/index.css';");
   });
 
   it('no longer imports the legacy token file from shared MD styles', () => {
