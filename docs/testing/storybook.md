@@ -234,7 +234,7 @@ Pages/<Slice>/<Owner>
 
 Do not introduce `Project UI` or another arbitrary top-level namespace. A title may omit redundant path segments, but must not hide or contradict the owning FSD layer, slice, or Material family.
 
-Catalogue normalization is a separate migration because title changes can change story IDs, URLs, and baselines.
+Catalogue normalization is a separate migration because title changes can change story IDs, URLs, and baselines. Existing non-conforming titles remain migration debt until that stage; do not rename them opportunistically in unrelated PRs.
 
 ## TypeScript and Playwright boundaries
 
@@ -263,6 +263,7 @@ Shared helpers may open a named story, wait for deterministic fonts/rendering, s
 - test-only exports from production barrels;
 - a generic Storybook registry/DSL/generated runner without demonstrated repeated need and an architecture decision;
 - arbitrary per-story taxonomy;
+- opportunistic story-title normalization before the dedicated catalogue migration;
 - moving product behavior into Storybook fixtures;
 - duplicating Material workflow policy here.
 
