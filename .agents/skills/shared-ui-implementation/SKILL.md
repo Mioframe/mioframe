@@ -102,9 +102,15 @@ Do not move product behavior into shared UI merely to centralize files or reduce
 
 ## Stories and documentation
 
-- Colocate stories as `<Component>.stories.ts` next to the component.
-- A non-Material component must have its own non-Material Storybook title and documentation. Do not place it under an `MD*` story family or imply that its API belongs to Material.
-- Stories must demonstrate the component's own public contract, including disabled, busy, focus, and inherited presentation combinations that it owns.
+Follow `docs/testing/storybook.md`.
+
+- Colocate stories as `<Owner>.stories.ts` next to the truthful shared-UI owner.
+- Use the deterministic `Shared/<Slice>/<Owner>` catalogue hierarchy for non-Material shared UI.
+- Do not place project-specific components under `Material 3/...` or imply their APIs are official Material.
+- Create stories only when the owner has meaningful isolated documentation, fixture, or visual value; do not add them mechanically.
+- Keep stories deterministic and free of product stores, services, workers, persistence, navigation, network, diagnostics, and business behavior.
+- Storybook `play` is not merge proof.
+- Physical browser/visual Playwright spec placement follows the current executable state in `docs/testing/migration-plan.md`.
 
 ## Testing
 
@@ -112,13 +118,14 @@ Use the proof layer that owns the changed contract:
 
 - Vue Test Utils for props, emits, slots, actual native/ARIA owner, root structure, attribute forwarding, bubbling, and structural wiring;
 - focused Vitest for extracted pure behavior;
-- Playwright for focus, keyboard, pointer/touch, event propagation, layout, scrolling, overlays, responsive behavior, and cleanup;
-- visual regression for appearance and layout;
-- focused consumer checks when a shared contract changes.
+- Storybook browser behavior for reusable focus, keyboard, pointer/touch, event propagation, layout, scrolling, overlays, responsive behavior, and cleanup when the isolated UI owner owns the contract;
+- application E2E for complete cross-owner product scenarios;
+- visual regression for stable appearance only;
+- focused consumer checks when a shared public contract changes.
 
-For wrappers or compositions, test production-used combinations rather than only the happy path. Include disabled plus busy/loading, restoration of replaced slot content, inherited color/state, native form behavior, and click bubbling when those scenarios exist.
+For wrappers/compositions, test production-used combinations rather than only the happy path. Include disabled plus busy/loading, restoration of replaced slot content, inherited color/state, native form behavior, and click bubbling when those scenarios exist.
 
-Do not use unit tests to claim browser behavior or visual correctness. Do not duplicate framework/browser behavior without a project-owned contract.
+Do not use unit tests to claim browser behavior or visual correctness. Do not put screenshots in browser-behavior specs or behavior assertions in visual specs. Do not duplicate framework/browser behavior without a project-owned contract.
 
 ## Completion
 
@@ -129,7 +136,8 @@ Before completion confirm:
 - one meaningful root owns the component semantics;
 - ARIA/native state is attached to the actual owner;
 - child variant/state/color logic is not duplicated;
-- the component has colocated stories under its own correct category;
+- applicable stories are colocated under the correct `Shared/...` hierarchy;
+- browser/visual proof follows current executable placement rather than unsupported target colocation;
 - consumers and preserved scenarios were reviewed;
 - no obsolete path, alias, wrapper, or parallel implementation remains without an explicit requirement;
 - applicable focused checks and final repository verification pass.
