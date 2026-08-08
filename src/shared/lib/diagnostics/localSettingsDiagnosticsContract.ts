@@ -39,7 +39,7 @@ export type LocalSettingsDiagnosticsFields = z.infer<typeof zodLocalSettingsDiag
 export const deriveDiagnosticsPolicy = (
   fields: LocalSettingsDiagnosticsFields,
 ): SentryReportingState => {
-  if (fields.diagnosticsEnabled === true) return 'enabled';
-  if (fields.diagnosticsConsentRequested === true) return 'disabled';
+  if (fields.diagnosticsEnabled) return 'enabled';
+  if (fields.diagnosticsConsentRequested) return 'disabled';
   return 'unknown';
 };
