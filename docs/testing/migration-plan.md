@@ -1,370 +1,320 @@
 # Testing architecture migration plan
 
-`docs/testing/architecture.md` defines the durable target. This plan applies it to the current repository without reducing existing protection before replacement mechanisms are implemented and verified.
+`docs/testing/architecture.md` defines the durable testing target. `docs/testing/storybook.md` defines Storybook ownership, developer-workbench behavior, and target placement. This document records the current executable repository state and the safe order for reaching those targets without reducing protection.
 
 ## Migration constraints
 
-- Use focused PRs with one resolver or ownership problem per PR.
-- Preserve current production behavior.
-- Preserve or strengthen current test coverage before narrowing execution.
-- Keep safe broad fallback until a deterministic replacement is implemented and tested.
+- Every migration PR must be independently safe to merge into `develop`.
+- Preserve production behavior unless the PR explicitly changes a product contract.
+- Preserve or strengthen current proof before narrowing execution or deleting legacy paths.
+- Keep broad fail-closed fallback until a deterministic replacement is implemented and tested.
 - Do not make `verify` depend on `TEST IMPACT` or any uncommitted agent report.
-- Do not redesign proof ownership inside resolver implementation.
-- Every migration PR must be independently safe to merge into `develop`: broadening an upstream input contract (for example, exposing deleted paths or both rename sides through `getChangedFileProjection()`) requires auditing and adapting all existing downstream consumers in the same PR. Deferred phases may postpone new capabilities, but must not leave invalid commands, false skips, false failures, or dependence on a later PR.
-- Remove this document after all completion criteria are satisfied.
+- Do not redesign proof ownership inside resolver implementation; architecture must already be resolved.
+- Do not move a spec before the owning runner/configuration can discover it.
+- Do not remove old discovery, mappings, or baselines until replacement ownership is proven on the same repository state.
+- Add/move/remove/rename behavior must remain deterministic and must never silently skip relevant proof.
+- Do not satisfy Storybook usability by importing product bootstrap, product routing, stores, persistence, services, or business behavior into stories.
+- Do not satisfy Storybook theme or preview needs by copying production token/style ownership into `.storybook`.
 
-## Current mismatches
+## Current executable state
 
-### Diff planning (resolved)
+### Completed foundation
 
-`scripts/lib/verifyInvocation.mjs` owns effective invocation precedence and resolves full, explicit-files, GitHub-base, local-base, and local scopes. For non-full scopes, `scripts/lib/changedPaths.mjs` owns the repository-wide, status-aware Git changed-path model (see Phase 1, step 1, below). Git-backed planning uses NUL-delimited `git diff --name-status` output, preserves deleted paths, and exposes both sides of a rename. `--files` remains an explicit existing-path override handled separately from Git diff planning.
+- Git-backed changed-path planning preserves deletion and both sides of rename through `scripts/lib/changedPaths.mjs`.
+- Existing consumers receive a compatibility projection and must avoid passing removed files to child commands.
+- Storybook stories are already colocated with source owners.
+- Vue component-contract tests are already colocated as `*.test.ts`.
+- Material library family ownership is established under `src/shared/ui/material`.
+- Storybook Essentials provides Controls and other built-in workbench tools.
+- Storybook currently configures representative desktop/mobile viewports and app/surface backgrounds.
+- Storybook currently installs a minimal Vue Router memory history needed by existing shared overlay primitives.
+- Vue component metadata is available to Storybook through the current docgen configuration.
 
-Resolvers still consume filenames, not status-aware records: `scripts/verify.mjs` and its command planners read the transitional `getChangedFileProjection()` string-path projection rather than the underlying `ChangedPath[]` records. This PR does not migrate their resolver-specific contracts. It includes the compatibility adaptations required by the broader projection: missing mutation targets are excluded, and deleted or renamed-away app E2E and Storybook behavior specs select their full owning lane instead of becoming invalid focused command arguments. Format/lint, unit, type-check, visual, and package-impact behavior remains compatible with the existing planners. Full status-aware behavior inside each lane is tracked separately in Phase 2 ("Static check planning") and later phases.
+### Still transitional
 
-### Static verification
+- Storybook preview currently imports the complete application stylesheet, so app-shell `html`/`body`/`#app` layout behavior can leak into isolated Canvas rendering.
+- Material theme follows the production `prefers-color-scheme` path; Storybook does not yet provide explicit `System`/`Light`/`Dark` inspection modes.
+- The current Storybook memory router exposes only a minimal `/` route and is not yet the reusable per-story routing harness defined by `docs/testing/storybook.md`.
+- Playground/Controls authoring and controlled args round-trip are not yet normalized across reusable UI stories.
+- Global Storybook catalogue ordering is not yet made deterministic through the target native `storySort`; title normalization remains later migration work.
+- Selective Autodocs usage for public reusable UI is not yet normalized.
+- A story/config change does not yet own a dedicated verifier-managed Storybook build gate independent of browser/visual lane selection.
+- Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
+- Unit selection does not yet fully use the durable related-test/snapshot target.
+- Storybook behavior specs are still executed from `tests/e2e/storybook` and selected through the current resolver/mappings.
+- Visual specs/baselines still use the current central visual execution structure.
+- App E2E uses centralized scenario mappings and remains centralized by design.
+- Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
+- Persistent mutation and release-impact migration remain separate work.
 
-- existing-file filtering happens before some checks can reason about deletion or rename;
-- the status-aware effect of deleted/renamed typed files, declarations, aliases, package, and lockfile changes is not expressed by one planner contract;
-- instruction compatibility is mandatory but not described alongside the other automatic lanes.
+The transitional physical locations above are executable facts. Agents must not place colocated Playwright specs until the corresponding discovery pilot is merged.
 
-### Unit selection
+## Storybook ownership and workbench migration
 
-- focused unit selection is mainly changed tests plus colocated siblings;
-- imported non-sibling tests may be missed;
-- snapshot ownership is not resolved explicitly;
-- deletion, rename, dynamic imports, global setup, and unknown relations lack one explicit full-unit policy;
-- the current implementation does not use official Vitest related resolution for changed source inputs.
+Storybook migration is deliberately separated from the broader verifier migration. Do not combine these steps into one large PR.
 
-### Playwright selection
+### Stage S0 — architecture and rules
 
-- app E2E and Storybook behavior already use separate scenario mappings, but their semantics differ;
-- Storybook mappings currently use spec paths inside `sourcePrefixes` to group tests;
-- visual selection is broad and has no explicit baseline-owner resolver;
-- lane relevance, full-lane paths, mappings, and standalone rules are not represented consistently;
-- common helper consumer ownership is not uniformly validated.
+Owner: architecture/documentation.
 
-### Release selection
+Deliverables:
 
-- production-artifact checks run only in full/release mode;
-- focused development verification cannot automatically select build, artifact, or release-smoke proof for release-only contract changes;
-- release-relevant paths and exact owning checks are not represented by one resolver.
+- canonical testing policy recognizes deterministic owner-local relations;
+- `docs/testing/storybook.md` defines owner, developer workbench, story usage, proof boundaries, target placement, and current executable state;
+- repository rules and testing skills route to the same contract;
+- Material family workflow is referenced, not duplicated.
 
-### Project execution
+Acceptance:
 
-- every selected app E2E scenario currently runs on desktop and mobile;
-- no complete audit exists for safe proportional project selection;
-- changing this matrix now would reduce coverage without evidence.
+- no contradiction remains between `docs/testing/architecture.md`, Storybook rules, `AGENTS.md`, or testing skills;
+- no Storybook runtime or Playwright discovery behavior changes in this stage;
+- target colocated specs and target workbench capabilities are not described as already executable;
+- Storybook is explicitly a developer workbench with catalogue navigation, Playground/Controls, visual sandbox, generated documentation, isolated preview styling, and isolated routing responsibilities.
 
-### Mutation and performance
+### Stage S0.5 — Storybook workbench foundation
 
-- mutation scope is inferred from source location and sibling tests rather than explicit high-risk targets;
-- no persistent performance-impact mechanism exists because no repeated durable need has yet been established.
+Implement the interactive developer-workbench behavior before moving Playwright specs.
 
-### Proof ownership
+Scope:
 
-- some visual specs contain browser-behavior or computed token/geometry assertions;
-- generic Material foundation behavior is repeated across component families;
-- some broad component tests reconstruct product behavior through global stubs;
-- some helpers silently recover from missing expected state.
+- keep Storybook's native manager/sidebar as the catalogue navigation surface;
+- isolate Canvas styling from the application shell while preserving the real normalization, fonts/icons, Material foundation/theme/tokens, and shared low-level styles required by reusable UI;
+- retain Vue docgen-driven Controls and establish the args-driven Playground convention on a small representative set rather than mass-rewriting stories;
+- for a representative controlled component, round-trip its public update event back into Storybook args so Controls and direct UI interaction stay synchronized;
+- configure representative viewport, background, measure/outline, and layout behavior for manual appearance inspection;
+- add explicit `System`, `Light`, and `Dark` Storybook theme modes through the production Material/theme owner rather than a Storybook token copy;
+- keep the normal Playground on a truthful semantic surface; checkerboard/transparency backdrops remain specialized visual fixtures only;
+- replace the current minimal `/` memory-router setup with one small Storybook-owned routing harness;
+- allow a story to provide deterministic initial location and the minimum story-owned route records needed for path/query/hash/params and `RouterLink`/`useRoute`/`useRouter` behavior;
+- isolate/reset router state between stories;
+- keep copied Storybook URLs useful for story address and serializable args;
+- configure deterministic native story ordering for the documented top-level namespaces without opportunistically renaming existing story addresses;
+- prove selective Autodocs on representative public Material/reusable shared UI without making Autodocs mandatory for every FSD story;
+- add one verifier-owned Storybook build check for relevant story/configuration changes, reusing the existing Storybook build entrypoint;
+- add focused Storybook infrastructure proof for the workbench foundation where needed.
 
-## Phase 1: status-aware planning foundation
+Architecture constraints:
 
-### 1. Changed-path model — complete
+- use real `vue-router` memory history rather than a fake router API;
+- do not import the production application router, route guards, stores, auth, persistence, services, network setup, or product bootstrap;
+- do not keep the complete application shell stylesheet as the permanent Storybook preview environment merely to obtain shared styling;
+- reuse existing production-owned low-level style entrypoints or expose the smallest correctly owned entrypoint when one is missing; do not duplicate declarations in `.storybook`;
+- Material/theme foundation owns Material theme mode application. `System` preserves the current production system-following behavior;
+- if deterministic `Light`/`Dark` inspection requires a new override seam, implement the minimum foundation-owned seam while preserving the current production default; do not copy light/dark token values into Storybook configuration or fixture CSS;
+- do not create a generic story DSL, theme DSL, or a second component catalogue;
+- do not mirror public Vue props manually in a global Controls registry;
+- do not create a global Storybook state store merely to synchronize controlled args;
+- do not add production props merely for Storybook;
+- do not make Autodocs a global requirement for feature/widget/page stories;
+- do not create another Storybook build runner when `storybook:build` already owns the build operation;
+- do not combine this stage with browser/visual spec relocation or catalogue title normalization.
 
-`scripts/lib/changedPaths.mjs` introduces the repository-owned changed-path model, carrying:
+Acceptance:
 
-- added path;
-- modified path;
-- deleted path;
-- renamed path with old and new names.
+- Storybook Canvas no longer inherits unrelated application-shell viewport/layout/scroll/transition behavior while required shared production styling remains present;
+- `System`, `Light`, and `Dark` are usable from the Storybook workbench, use one foundation-owned theme implementation, and do not change the application's existing default theme behavior;
+- a representative configurable component has a useful args-driven Playground with inferred Controls and only minimal explicit `argTypes` where inference is insufficient;
+- a representative controlled public value stays synchronized after either a Controls change or direct component interaction without a global story state store;
+- a representative routing-aware reusable surface can start at a deterministic route, read route state, navigate, and use back/forward without product bootstrap;
+- switching stories does not leak previous route state;
+- viewport/background/layout/theme controls remain usable for free manual inspection;
+- normal Playgrounds use a semantic surface, while checkerboard/transparency fixtures are opt-in specialized cases;
+- native Storybook navigation has deterministic top-level ordering without changing existing story IDs merely for ordering;
+- representative public Material/reusable shared UI can expose useful Autodocs from the real Vue metadata without a duplicated handwritten API catalogue;
+- Storybook configuration and changed `*.stories.*` files select a verifier-managed static Storybook build check even when no browser/visual lane is otherwise selected;
+- canonical visual stories may still pin deterministic globals independently from the free Playground;
+- Storybook build and relevant focused verification pass;
+- no browser/visual Playwright spec migration occurs in this stage.
 
-It uses NUL-delimited, status-aware Git output (`git diff --name-status -z --find-renames --diff-filter=ADMRT`) for local, local-base (fork-point), and GitHub Actions (merge-base) planning, and preserves `packageJsonOldRef` package comparison support for every Git-backed scope. `scripts/verify.mjs` consumes the invocation resolved by `verifyInvocation`, calls `resolveChangedPathsScope()` only for non-full changed-path execution, and uses `getChangedFileProjection()` to obtain the transitional string-path list its current command planners still consume (see "Diff planning" above).
+### Stage S1 — Storybook browser discovery pilot
 
-Acceptance (met):
+Preferred pilot: Loading Indicator Material family.
 
-- deleted files reach every affected resolver through the transitional projection;
-- rename exposes both old and new paths;
-- existing ignored-path behavior remains intentional, including renames that cross an ignored/relevant boundary;
-- `--files` remains an explicit existing-target override and is not treated as deletion/rename planning;
-- legacy consumers remain independently safe: they either receive valid existing targets or conservatively select the full owning lane;
-- planner tests (`scripts/lib/changedPaths.test.mjs`) cover local, local-base, GitHub Actions, last-commit fallback, deletion, and rename cases using temporary Git repositories.
+Why:
 
-### 2. Common lane-plan contract — not started
+- narrow family owner;
+- existing colocated story/component proof;
+- lower mixed-owner risk than Button;
+- current Storybook browser spec already has one clear family relation.
 
-The `skip | focused | full | invalid` shared lane-plan contract below remains unimplemented. Current resolvers retain their existing resolver-specific result shapes. The changed-path model required only local compatibility adaptations for missing mutation and Playwright targets; it did not introduce the shared contract or make any lane consume `ChangedPath[]` directly.
+Implement only the minimum tooling required to support one colocated `*.browser.spec.ts` while preserving current central discovery for all unmigrated specs.
 
-Introduce a small mechanical result contract shared by resolvers:
+Required behavior:
+
+- Playwright discovers the pilot spec beside its owner;
+- production TypeScript/runtime source excludes the Playwright spec;
+- changed pilot spec selects itself;
+- changed owner/story/owned fixture selects the pilot through deterministic local ownership;
+- add/modify/delete/rename are covered;
+- unresolved relevant impact selects full Storybook behavior;
+- existing central specs remain runnable and mapped exactly as before.
+
+Forbidden:
+
+- visual migration;
+- broad behavior-spec moves;
+- generic Storybook runner/DSL;
+- app E2E changes;
+- Storybook catalogue normalization.
+
+### Stage S2 — remaining Storybook browser migration
+
+Move component/family/module-owned Storybook behavior specs incrementally after S1 is proven.
+
+Rules:
+
+- ordinary truthful local owner relations use naming/placement convention, not explicit registry entries;
+- family/module specs may use one explicit mapping only when one sibling stem cannot express the real relation;
+- cross-cutting foundations use explicit mapping or full-lane fallback;
+- infrastructure smoke remains central and justified standalone;
+- split mixed-owner suites only where contracts have distinct owners;
+- preserve full-lane fallback until no legacy behavior spec depends on the old central ownership tree.
+
+Acceptance before removing legacy central discovery:
+
+- every behavior spec has deterministic local, explicit, or infrastructure ownership;
+- current coverage is preserved or strengthened;
+- deleted/renamed owner/spec cases cannot silently skip;
+- complete Storybook behavior lane passes with only the new ownership model.
+
+### Stage S3 — visual discovery and snapshot pilot
+
+Introduce one colocated `*.visual.spec.ts` owner and its deterministic snapshot directory while preserving all legacy visual execution.
+
+Required behavior:
+
+- Playwright discovers the colocated pilot visual spec;
+- production TypeScript excludes it;
+- snapshot ownership is deterministic for add/modify/delete/rename;
+- changed component/story/spec/baseline selects the owner where resolvable;
+- unresolved baseline ownership selects full visual;
+- theme/fonts/icons/Storybook renderer/config remain broad fallback unless a complete stable consumer set is explicit;
+- visual spec contains preparation plus bounded screenshot assertions only.
+
+Do not combine this with browser discovery work.
+
+### Stage S4 — remaining visual migration
+
+Move remaining UI-owned visual specs and baselines after S3 is proven.
+
+Rules:
+
+- ordinary owner-local visual relations use colocation convention;
+- non-local/cross-cutting impact uses explicit mapping or full fallback;
+- do not rename stories/titles merely as part of file movement;
+- preserve exact intended screenshot coverage before deleting old baseline paths.
+
+Acceptance before removing legacy visual discovery:
+
+- every visual spec/baseline has deterministic ownership or justified broad fallback;
+- add/modify/delete/rename cases are covered by resolver tests;
+- complete visual lane passes with the new ownership model;
+- no behavior success criteria remain necessary to keep a baseline meaningful.
+
+### Stage S5 — proof ownership cleanup
+
+Only after browser and visual ownership are stable:
+
+- move reusable browser interaction out of visual specs;
+- move deterministic/component contracts to the lowest faithful Vitest owner;
+- move complete product outcomes to application E2E only when product composition owns them;
+- remove proven duplicate assertions;
+- consolidate generic foundation behavior at foundation owners;
+- make browser helpers strict rather than recovery-oriented.
+
+This stage changes proof ownership, not resolver architecture.
+
+### Stage S6 — Storybook catalogue normalization
+
+Normalize titles only after spec/baseline ownership is stable.
+
+Target hierarchy:
+
+```text
+Material 3/Components/<Family>/<Component>
+Material 3/Patterns/<Pattern>
+Shared/<Slice>/<Owner>
+Entities/<Slice>/<Owner>
+Features/<Slice>/<Owner>
+Widgets/<Slice>/<Owner>
+Pages/<Slice>/<Owner>
+```
+
+Treat title/export renames as address changes because they may alter story IDs, URLs, and visual baselines.
+
+## Other testing migration work
+
+The Storybook sequence does not replace the remaining project-wide migration.
+
+### Common lane-plan contract
+
+Migrate resolvers to the small mechanical result shape:
 
 - `skip` with reasons;
-- `focused` with non-empty exact lane-defined execution inputs and reasons;
+- `focused` with non-empty exact inputs and reasons;
 - `full` with reasons;
 - `invalid` with blocking errors.
 
-A focused input may be a spec, direct test, source path for the official Vitest related resolver, release check, mutation target, or another exact repository-owned check.
+Do not add product semantics to the shared helper.
 
-Acceptance:
+### Static verification
 
-- full overrides focused;
-- inputs are sorted and deduplicated;
-- empty focused plans are invalid;
-- every decision is printed in verify planning output;
-- invalid metadata fails before test execution;
-- no product semantics or cross-lane orchestration enters the shared helper.
+Status-aware static planning must ensure:
 
-## Phase 2: status-aware static verification
+- removed files never become formatter/linter targets;
+- typed add/modify/delete/rename cannot silently skip required type-check;
+- instruction-tree changes validate agent compatibility;
+- shared static config selects the complete owning check.
 
-### 3. Static check planning
+### Unit selection
 
-Adapt format, lint, type-check, and instruction compatibility planning to the changed-path model.
+Durable target:
 
-- format and lint only added or modified existing supported files;
-- deletion does not produce a formatting/lint target;
-- added, modified, deleted, or renamed TypeScript, Vue, declaration, alias, typed configuration, package, and lockfile changes select full type-check when they can affect the program graph;
-- shared formatter/linter/type-check configuration selects the complete owning check;
-- `AGENTS.md`, skills, or generator changes select instruction compatibility validation;
-- unsupported paths do not select unrelated static tools.
+1. directly changed tests;
+2. deterministic snapshot ownership;
+3. changed source/test-support passed to supported Vitest related resolution;
+4. full fallback for deleted/renamed/dynamic/global relations that cannot be represented safely.
 
-Acceptance:
+Do not build a second persistent dependency graph.
 
-- deleting or renaming a typed source cannot skip type-check;
-- deleting a file never sends a nonexistent path to format or lint;
-- instruction-tree edits validate generated compatibility state;
-- package and lockfile changes preserve current field-sensitive behavior where safe;
-- command planning is covered for add/modify/delete/rename and shared config.
+### Application E2E
 
-## Phase 3: deterministic unit impact
+Application E2E stays centralized by design.
 
-### 4. Unit related and snapshot selection
-
-Implement focused unit execution inputs as:
-
-1. directly added or modified test files;
-2. owning tests for added, modified, or deleted snapshots;
-3. changed existing source and local test-support paths passed to the supported Vitest related CLI or API.
-
-Sort and deduplicate direct tests, snapshot owners, and related source inputs. Let Vitest own static-import graph resolution; do not build a parallel dependency graph merely to enumerate every resulting test file.
-
-Use full-unit fallback for unresolved snapshots, deleted/renamed dependencies whose old relation cannot be represented safely, Vitest config/setup, global utilities, known dynamic-import boundaries, generated aliases, and unknown relations.
-
-If a focused related run finds no tests, report that result explicitly instead of converting it to a full run. It is not evidence that no unit proof is needed.
-
-Acceptance:
-
-- a changed imported source or fixture selects non-sibling importing tests through official Vitest related resolution;
-- a changed test runs directly;
-- a changed snapshot runs its owner;
-- deletion, rename, dynamic import, setup, and unresolved ownership cannot silently skip proof;
-- a no-match related result does not trigger an unhelpful full unit run;
-- the summary states that no matching related tests is not evidence of sufficient proof;
-- no custom dependency graph is introduced;
-- verify integration tests assert the exact inputs and resulting commands.
-
-## Phase 4: independent Playwright registries
-
-Implement each lane separately. Do not introduce all three in one PR.
-
-Shared mechanical fields may cover:
-
-- spec directory;
-- relevant source domains;
-- full-lane files and prefixes;
-- source-to-spec mappings;
-- justified standalone specs;
-- visual snapshot ownership where applicable.
-
-Source mappings contain only production, story, fixture, or owned support paths. They never contain spec paths to group tests.
-
-### 5. Storybook behavior resolver
-
-Correct the existing Storybook behavior resolver first because it already has the clearest bounded ownership.
-
-- changed spec selects itself;
-- remove spec paths from `sourcePrefixes`;
-- explicitly map reusable UI/foundation/story/fixture sources;
-- use full-lane fallback for shared config, setup, common helpers, and unmapped relevant sources;
-- validate all discovered behavior specs.
-
-Acceptance:
-
-- editing one spec does not implicitly select unrelated grouped specs;
-- source changes select all matching specs;
-- overlapping mappings union cleanly;
-- unknown relevant source selects full Storybook behavior;
-- irrelevant source skips the lane;
-- moved/deleted specs cannot leave stale registry records.
-
-### 6. App E2E resolver
-
-Adapt the current app scenario registry to the shared mechanical contract without changing scenario ownership.
-
-- retain safe full app E2E for bootstrap, cross-cutting worker/service protocols, E2E infrastructure, and unknown relevant product source;
 - changed app spec selects itself;
-- mappings represent only stable source-to-product-scenario impact;
-- common helpers default to full app E2E unless their complete consumer set is explicit and validated.
+- stable product source-to-scenario impact remains explicit;
+- bootstrap, cross-cutting service/worker protocols, E2E infrastructure, and unknown relevant product source use full fallback;
+- common helpers default to full E2E unless every consumer is explicit and validated;
+- desktop/mobile coverage must not be narrowed without a separate audited project-applicability migration.
 
-Acceptance:
+### Release impact
 
-- mapped local source runs owning product scenarios;
-- unmapped relevant product source remains fail-closed;
-- irrelevant source does not run app E2E;
-- every discovered app spec is mapped or has a justified standalone reason;
-- coverage is not reduced relative to the current resolver.
+Focused release selection remains separate work. It must eventually select exact build/artifact/release-smoke proof for known release-sensitive changes while retaining `pnpm verify:release` as the unconditional release-sensitive final gate when required.
 
-### 7. Visual resolver and snapshot ownership
+### Mutation
 
-Replace broad visual relevance with an explicit independent resolver.
+Persistent mutation ownership requires explicit high-risk source/test targets and validation. Preserve current legacy mutation behavior until its replacement is complete.
 
-- define the real repository convention from visual spec to baseline paths;
-- changed spec selects itself;
-- changed component, foundation, story, theme, font, icon, or rendering source selects mapped visual specs;
-- unresolved baseline ownership selects full visual;
-- global visual/Storybook configuration selects full visual;
-- all visual specs are mapped or justified standalone.
+### Performance
 
-Acceptance:
-
-- added, modified, deleted, and renamed baselines resolve safely;
-- mapped local visible changes do not require the full visual suite;
-- unknown relevant visual impact remains full-lane;
-- source mappings do not duplicate browser-behavior ownership;
-- baseline naming and project suffixes are covered by resolver tests.
-
-## Phase 5: focused release impact
-
-### 8. Release resolver
-
-Add an independent release resolver before allowing release-only proof to remain manual.
-
-It owns stable source-to-check impact for:
-
-- build and release configuration;
-- routing and base-path behavior in the built artifact;
-- manifest, service worker, PWA, and channel isolation;
-- release scripts and artifact assembly;
-- runtime dependency changes affecting production output.
-
-Known local impact selects exact checks such as build, artifact smoke, or first/returning-user release smoke. Shared release infrastructure and unknown relevant impact select the full release lane.
-
-Acceptance:
-
-- a release-only contract change cannot pass focused `pnpm verify` with every release check skipped;
-- known local impact runs only the necessary release checks;
-- shared or unknown release impact runs the full release lane;
-- stale/missing release targets or invalid mappings block verification;
-- focused release planning does not weaken unconditional `pnpm verify:release` for `main`;
-- default, focused `--only`, and full release command modes are covered by tests.
-
-## Phase 6: mutation targets
-
-### 9. Persistent mutation registry
-
-Replace sibling-based applicability only after a persistent target registry and validation are implemented.
-
-Start with exact files:
-
-- unique target name;
-- exact high-risk source files;
-- exact owning focused tests;
-- concrete risk reason.
-
-Select a target when registered source or owning tests change.
-
-Acceptance:
-
-- ordinary UI, documentation, low-risk, and unrelated changes do not schedule mutation;
-- registered high-risk changes automatically schedule narrow Stryker scope;
-- missing source/tests, duplicate ownership, deletion, or rename without maintenance is invalid;
-- current legacy mutation remains mandatory until replacement coverage and command behavior pass;
-- removal of legacy sibling inference happens in the same PR that activates the validated registry.
-
-## Phase 7: browser project applicability
-
-### 10. Audit before changing desktop/mobile execution
-
-Do not change the current two-project matrix during earlier resolver work.
-
-First audit every app E2E scenario for observable platform risk:
-
-- touch or pointer modality;
-- viewport and responsive composition;
-- overlays or mobile navigation;
-- browser capability or permission differences;
-- lifecycle differences;
-- scenarios that are genuinely platform-independent.
-
-Then choose the smallest persistent test metadata supported by Playwright and the repository. Do not introduce a generic criticality tag.
-
-Acceptance before narrowing:
-
-- every existing scenario is classified;
-- mobile-risk scenarios remain directly exercised;
-- the previous mobile protection is accounted for explicitly;
-- execution-time benefit is measured;
-- project filtering is covered by configuration and verify-planning tests;
-- no scenario is silently dropped from all projects.
-
-## Phase 8: durable performance checks when needed
-
-### 11. Separate one-off measurements from budgets
-
-Do not add a performance registry without an actual durable contract.
-
-When a repeated need appears:
-
-- define a named budget or baseline;
-- add a reproducible repository-owned check;
-- map stable source impact to that check;
-- validate missing commands and stale mappings.
-
-One-off PR optimization claims remain task-specific before/after measurements and are not automatically inferred by `verify`.
-
-## Phase 9: correct proof ownership
-
-These cleanups follow resolver stability and should remain separate from impact infrastructure.
-
-### 12. Remove behavior from visual specs
-
-- retain deterministic preparation and bounded screenshots;
-- move reusable browser behavior to Storybook behavior;
-- move complete product outcomes to app E2E only when product composition owns them;
-- delete duplicate behavior already proved elsewhere.
-
-### 13. Make browser helpers strict
-
-- separate required action/assertion helpers from optional cleanup;
-- remove silent returns, repeated fallback delivery, and arbitrary delay recovery;
-- make missing preconditions and outcomes fail with clear diagnostics;
-- update helper impact ownership.
-
-### 14. Consolidate foundation proof
-
-- prove generic focus, state layer, ripple, elevation, motion, and token precedence at foundation owners;
-- retain family-specific routing, anatomy, deviations, and unique outcomes;
-- preserve canonical Material evidence.
-
-### 15. Decompose broad mocked component suites
-
-For touched suites:
-
-- move deterministic decisions to their real owner;
-- retain narrow Vue public wiring in component-contract tests;
-- retain complete product outcomes in app E2E when needed;
-- delete broad stubs and duplicate assertions.
+Do not create a performance registry without a durable named budget. One-off optimization claims remain task-specific reproducible measurements.
 
 ## Completion criteria
 
-Migration is complete when:
+The testing migration is complete when:
 
-- Git diff planning includes deletion and rename status;
-- every resolver uses `skip | focused | full | invalid` with inspectable lane-defined inputs;
-- static verification handles add/modify/delete/rename without passing nonexistent targets or skipping typed impact;
-- unit selection uses direct tests, snapshot ownership, official Vitest static-import resolution, explicit no-match reporting, and tested full fallbacks;
-- Storybook behavior, app E2E, and visual use independent validated source-impact registries;
-- spec paths are not overloaded as source mappings;
-- visual baseline ownership handles add/change/delete/rename safely;
-- focused verification automatically selects release-only proof while `pnpm verify:release` remains unconditional for `main`;
-- mutation is automatically selected from validated persistent high-risk targets;
-- any project filtering was introduced only after complete audit and preserved mobile-risk coverage;
-- task-specific `TEST IMPACT` is not consumed by automation;
-- focused development and full release verification remain green and diagnostically useful;
-- broad fallback remains only where impact is genuinely unknown or cross-cutting.
+- changed-path planning preserves add/modify/delete/rename status;
+- migrated resolvers use inspectable `skip | focused | full | invalid` plans;
+- static checks handle removed/moved files safely;
+- unit selection uses direct tests, snapshot ownership, supported related resolution, and safe fallbacks;
+- Storybook provides the documented Playground/Controls round-trip, isolated preview styling, `System`/`Light`/`Dark` visual sandbox, deterministic navigation, selective public Autodocs, and isolated reusable routing workbench without product bootstrap;
+- relevant Storybook story/config changes have verifier-owned static-build proof independent of whether a browser/visual lane is otherwise selected;
+- Storybook browser/visual proof is owned by the truthful UI owner and physically colocated after its lane supports discovery;
+- ordinary colocated Storybook relations do not require duplicate registry metadata;
+- explicit mappings remain only for truthful non-local/cross-cutting relations and centralized product scenarios;
+- Storybook infrastructure smoke is explicitly justified rather than treated as component ownership;
+- visual baseline ownership handles add/modify/delete/rename safely;
+- application E2E remains centralized and fail closed for unknown relevant product impact;
+- proof ownership contains no known behavior-in-visual or product-in-component duplication;
+- focused release proof, persistent mutation ownership, and any later project filtering satisfy their own acceptance gates;
+- target and current executable state are no longer different, allowing transitional Storybook location notes to be removed.

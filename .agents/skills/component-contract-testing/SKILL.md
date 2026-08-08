@@ -7,7 +7,9 @@ description: 'Use for narrow Vue component tests covering public render, props, 
 
 Follow `docs/testing/architecture.md`. Component-contract proof runs in the `unit-tests` execution lane through Vue Test Utils.
 
-Every new or migrated public `MD*` adapter requires a colocated `<Component>.test.ts` component-contract test. Material adapter details and additional proof requirements are defined by `src/shared/ui/material/docs/component-adapter.md`.
+For UI owners that also have Storybook stories, follow `docs/testing/storybook.md`: stories document or prepare deterministic isolated states; component assertions remain in `*.test.ts` rather than stories.
+
+Every new or migrated public `MD*` adapter requires a colocated `<Component>.test.ts` component-contract test. Material adapter details and additional proof requirements are defined by `src/shared/ui/material/docs/component-adapter.md` and the family architecture.
 
 ## Activation
 
@@ -20,26 +22,27 @@ Use for applicable:
 - invalid public combinations and documented normalization;
 - simple child or foundation wiring;
 - explicit custom-element property, attribute, event, slot, and documented CSS-variable mapping owned by a public adapter;
-- framework typing glue derived from a dependency's exported element types;
+- framework typing glue derived from dependency-exported element types;
 - small structural invariants explicitly included in the public contract.
 
 ## Workflow
 
-1. Name the stable public contract.
-2. Confirm real browser semantics or computed rendered appearance are not required for each assertion.
+1. Name the stable public contract and truthful UI owner.
+2. Confirm real browser semantics or computed appearance are not required for each assertion.
 3. Test the smallest representative set of configurations, states, invalid combinations, explicit attributes, and adapter mappings.
-4. For third-party custom elements, inspect and use exact installed package types. Keep compile-time proof in type-check; unit tests exercise runtime mapping only.
+4. For third-party custom elements, use exact installed package types. Keep compile-time proof in type-check; unit tests exercise runtime mapping only.
 5. For CSS mapping, assert only adapter-owned public-to-documented-renderer wiring visible at the Vue boundary.
-6. Route proof that an override changes geometry, color, motion, focus, or another rendered effect to browser behavior or visual proof.
+6. Route geometry, rendered color, motion, focus, interaction, or other browser-owned effects to browser/visual proof.
 7. Stub only direct dependencies whose public wiring is the assertion.
 8. Assert public output or explicit child wiring.
-9. Run focused unit and type-check feedback and return to the top-level task. This skill does not run a separate final gate.
+9. If a Storybook story is also needed, keep it assertion-free and deterministic; do not duplicate the component contract in `play` or story code.
+10. Run focused unit/type-check feedback and return to the top-level task.
 
 ## Typed custom-element boundary
 
 A framework declaration may add only integration glue that the dependency cannot express for Vue templates.
 
-- Derive custom-element property types from the package-exported element class, exported aliases, or `HTMLElementTagNameMap`.
+- Derive custom-element property types from the package-exported element class, aliases, or `HTMLElementTagNameMap`.
 - Keep the public Vue component types Mioframe-owned, but make adapter outputs satisfy dependency types.
 - Prefer `Pick`, indexed access, `InstanceType`, or another direct type relation.
 - Do not duplicate dependency literal unions or manually synchronize a complete `*Props` interface.
@@ -49,9 +52,9 @@ Runtime unit tests do not prove type ownership. Type-check must fail when an inc
 
 ## Assertions
 
-Prefer emitted events, native tags and attributes, direct-child props, slots, accessible names, documented warning/normalization output, and explicit custom-element mapping visible at the Vue boundary.
+Prefer emitted events, native tags/attributes, direct-child props, slots, accessible names, documented warning/normalization output, and explicit custom-element mapping visible at the Vue boundary.
 
-A custom-property declaration, alias, or resolved value does not by itself prove that the token is an active public contract. Unit proof may establish public-to-renderer wiring; browser proof must establish any claimed rendered effect.
+A custom-property declaration, alias, or resolved value does not by itself prove that the token has the claimed rendered effect. Unit proof may establish public-to-renderer wiring; browser or visual proof owns rendered behavior/appearance.
 
 Avoid complete rendered-tree snapshots, incidental internal classes, test-only ids, template restatement, private renderer DOM, computed appearance, and broad global mock sets.
 
@@ -69,14 +72,16 @@ Until unit-impact migration is complete, prefer the exact owning component test 
 
 ## Forbidden
 
+- assertions or interaction scripts inside Storybook stories;
+- Storybook `play` as a duplicate component-contract proof system;
 - focus-visible, keyboard navigation, pointer/touch, drag, or mobile gestures;
 - layout, geometry, scrolling, responsive rendering, sticky/fixed positioning;
-- overlay, teleport, dialog, sheet, menu, tooltip, or popover lifecycle;
+- overlay, teleport, dialog, sheet, menu, tooltip, or popover browser lifecycle;
 - browser APIs, persistence, permissions, OPFS, or service workers;
 - hover, pressed, ripple, focus-indicator, elevation, shape, motion, screenshots, or computed appearance;
 - complete product flows through component stubs;
 - duplicated deterministic logic already owned by `unit-testing`;
 - forced visual-state assertions that claim appearance or behavior;
 - private renderer DOM or implementation details;
-- reading a custom property's value and presenting that alone as proof of a public token contract or observable behavior;
+- reading a custom property's value and presenting that alone as proof of rendered behavior;
 - avoidable handwritten mirrors of third-party element properties, exported unions, or defaults.

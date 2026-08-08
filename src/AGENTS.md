@@ -56,13 +56,16 @@ Verification must exercise the resulting user path at the same level as the chan
 
 ## Vue, styling, stories, and copy
 
-For Vue and user-visible UI work, follow the applicable Vue, browser, and visual skills and preserve these project conventions:
+For Vue and user-visible UI work, follow the applicable Vue, browser, visual, and Storybook rules and preserve these project conventions:
 
 - The root class of a Vue component matches the component name in kebab-case. Components keep one stable meaningful root; parent composition owns whether the component renders.
 - Use classic BEM syntax: `block`, `block__element`, `block_modifier`, and explicit key-value modifiers such as `block_size_medium`. Do not introduce `block--modifier`, loose unowned classes, or ambiguous modifier names.
 - Keep component implementation styles scoped. Global CSS belongs only in app-level style modules or documented token/theme files.
 - When visually resetting a native interactive element, restore the enabled clickable cursor and visible focus/state-layer behavior. Disabled or non-action states must not appear clickable.
-- Colocate CSF stories as `<Component>.stories.ts`. Add the `visual` tag only to stories intentionally used for screenshot coverage.
+- Follow `docs/testing/storybook.md`: colocate CSF stories as `<Owner>.stories.ts`, keep them deterministic, and use only the documented catalogue hierarchy.
+- Add the `visual` tag only to stories intentionally used as canonical screenshot inputs.
+- Do not place `*.browser.spec.ts` or `*.visual.spec.ts` under `src` until `docs/testing/migration-plan.md` says that owning Playwright lane supports colocated discovery. Until then keep executable specs in the current runner-owned location while preserving the source owner contract.
+- Keep complete product scenarios out of Storybook fixtures; they remain application E2E.
 - Keep user-facing copy in the application's established UI language. After user-visible changes, scan touched surfaces for mixed-language strings, stale task wording, and unnecessary technical terms.
 
 ## Diagnostics and privacy

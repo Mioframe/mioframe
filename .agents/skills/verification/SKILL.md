@@ -5,15 +5,15 @@ description: 'Use to run verifier-managed project checks, apply focused override
 
 # Verification workflow
 
-Follow `docs/testing/architecture.md`.
+Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md`; `docs/testing/migration-plan.md` is the source of truth for which target discovery/ownership mechanisms are currently implemented.
 
-The agent designs appropriate proof and maintains workspace impact metadata. The verifier independently selects checks from readable workspace files, test ownership, snapshots, and persistent project mappings. It never reads `TEST IMPACT` prose.
+The agent designs appropriate proof and maintains required workspace ownership facts. The verifier independently selects checks from readable workspace files, supported local ownership conventions, snapshots, and persistent project mappings. It never reads `TEST IMPACT` prose.
 
-A skipped or empty lane is not evidence that the proof type is unnecessary. When impact metadata is incomplete, fix it or use an explicit owning-lane fallback.
+A skipped or empty lane is not evidence that the proof type is unnecessary. When ownership is incomplete or unresolved, fix the durable relation or use the owning lane's documented full fallback.
 
 ## Command scope
 
-Use documented project commands and their readable outputs. When a command fails before reaching its relevant project check, record the exact command and visible failure. Do not infer a cause that is not shown by the command output.
+Use documented project commands and readable outputs. When a command fails before reaching its relevant project check, record the exact command and visible failure. Do not infer a cause that is not shown by command output.
 
 ## Focused execution
 
@@ -31,7 +31,7 @@ pnpm verify --only visual --files <paths...>
 pnpm verify --only mutation --files <paths...>
 ```
 
-Use focused runs for development feedback and explicit existing targets. `--files` represents only the named readable paths; when removed, moved, or uncertain ownership is relevant, use the full owning lane selected by the verifier.
+`--files` names readable existing paths. Removed, moved, or uncertain ownership must be handled by automatic status-aware planning or a full owning-lane fallback, not by passing nonexistent paths.
 
 Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or mutation commands are narrow diagnostic exceptions only. Return to a verifier-managed command for accepted proof.
 
@@ -40,40 +40,53 @@ Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or mutat
 - Unknown, positional, or repeated arguments are rejected rather than silently changing scope.
 - `--full` is unconditional full-project scope and must not be combined with `--files`.
 - Release-only labels require `--full`.
-- Mutation is a targeted quality tool and is not available as `--full --only mutation`.
-- `--fix --only` and `--fix-only --only` are limited to checks that actually apply safe fixers.
+- Mutation is targeted and is not available as `--full --only mutation`.
+- Fix modes are limited to checks that actually own safe automatic fixes.
 
 ## Automatic scope
 
-The automatic planner uses workspace facts:
+The durable automatic planner may use workspace facts such as:
 
-- added, modified, removed, and moved paths available to the verifier;
-- directly changed tests and specs;
+- added, modified, removed, and moved paths;
+- directly changed tests/specs;
 - snapshot ownership;
-- static-import related unit selection and safe full-unit fallback;
-- Storybook behavior, application E2E, and visual impact mappings;
-- release-impact mappings to build, artifact, and release-smoke checks;
-- full-lane paths and standalone specs;
+- supported unit related-test resolution and safe unit fallback;
+- deterministic owner-local Storybook behavior/visual relations when implemented;
+- explicit non-local Storybook, application E2E, release, mutation, and other stable mappings;
+- full-lane paths and justified infrastructure/standalone specs;
 - persistent project applicability metadata;
-- persistent mutation targets;
 - persistent performance checks.
 
-Each lane resolves to `skip`, `focused`, `full`, or blocking `invalid` with inspectable reasons. Unknown relevant impact selects the full owning lane. Full execution never bypasses invalid impact metadata.
+Migrated lanes resolve to `skip`, `focused`, `full`, or blocking `invalid` with inspectable reasons. Unknown relevant impact selects the full owning lane.
 
-Do not describe planned resolver behavior as already implemented. Use only behavior visible from current project-command output and current tests.
+Do not describe planned resolver behavior as already implemented. Use current verifier output plus `docs/testing/migration-plan.md` to distinguish executable state from target architecture.
 
-## Impact metadata
+## Storybook and Playwright ownership
 
-When adding, moving, renaming, or removing a Playwright spec:
+For Storybook behavior and visual proof:
 
-- update its owning lane mapping in the same change;
-- map production, story, fixture, or owned support sources only;
-- use standalone ownership only when no truthful stable source mapping exists;
-- keep shared configuration and helpers on full-lane fallback unless the complete consumer set is explicit and validated.
+- ordinary UI-owned relations should use deterministic local owner convention once the lane supports it;
+- do not add duplicate registry entries merely to mirror a supported colocated relation;
+- family/module/cross-file/cross-cutting relations use the smallest truthful explicit mapping when local naming cannot express ownership;
+- Storybook infrastructure smoke may remain justified standalone;
+- shared Storybook/Playwright configuration and broad helpers normally select the full owning lane;
+- removed/moved/unresolved relevant ownership must fall back safely or fail validation, never skip silently.
 
-When changing a release-sensitive contract, maintain its mapping to the exact build, artifact, or release-smoke checks. Shared or unknown release impact uses full release fallback.
+During migration, specs still executed from legacy central locations must continue to satisfy the current resolver's mapping/validation requirements. Do not place a colocated Playwright spec before its lane can discover it.
 
-A broken mapping must fail verification before tests run.
+Application E2E remains centralized and therefore continues to use explicit stable source-to-product-scenario impact rather than component colocation.
+
+## Visual baselines
+
+For intentional visual changes:
+
+- inspect every baseline change;
+- run the owning visual proof through verifier-managed commands;
+- preserve the current executable snapshot convention until the visual colocation migration is merged;
+- after migration, use the owner-local snapshot convention from `docs/testing/storybook.md`;
+- unresolved baseline ownership uses full visual fallback.
+
+A passing screenshot comparison does not prove Material correctness or browser behavior.
 
 ## Mutation
 
@@ -83,41 +96,27 @@ A focused mutation audit may run after focused deterministic tests pass:
 pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 ```
 
-Use persistent registered high-risk source/test pairs. Do not infer semantic applicability merely from neighboring files or agent prose.
+Use persistent registered high-risk ownership when implemented. Do not infer semantic applicability merely from neighboring files or agent prose.
 
-When `pnpm verify:release` is the final gate, run required mutation proof beforehand because mutation is intentionally outside release mode.
-
-## Browser and visual proof
-
-Run exact Storybook behavior, application E2E, and visual specs needed for focused feedback when automatic inference is incomplete or impact metadata is being corrected.
-
-Preserve the current application E2E desktop/mobile coverage unless a dedicated audited migration changes project applicability.
-
-For intentional visual changes, inspect baseline diffs and run the owning visual specs. If baseline ownership is unresolved, use the full visual lane.
-
-If no faithful target exists, report and resolve the proof gap when the changed contract requires it. Do not substitute a less faithful proof type.
+When `pnpm verify:release` is the final gate, complete required mutation proof beforehand because mutation is intentionally outside release mode.
 
 ## Release-sensitive proof
 
-A task changing build configuration, routing/base paths, manifest/PWA/service-worker behavior, channel isolation, release scripts, artifact assembly, or production-output dependencies requires:
+A task changing build/release configuration, routing/base paths, manifest/PWA/service-worker/channel isolation, release scripts, artifact assembly, or production-output dependencies requires the release-sensitive final gate selected by repository policy.
 
-```bash
-pnpm verify:release
-```
-
-This replaces the ordinary final gate for that task. Do not run both as final gates.
+Do not run both ordinary and release final gates as competing completion evidence.
 
 ## Performance evidence
 
 For a one-off performance, memory, startup, main-thread, or bundle-size claim:
 
 1. run the reproducible measurement named in preflight;
-2. use the recorded representative scenario and execution setup;
-3. report the baseline or budget and measured result;
+2. use the recorded representative scenario/setup;
+3. report baseline/budget and measured result;
 4. rerun after implementation when comparison is required;
 5. run the one applicable final completion gate.
 
-A durable product budget belongs in an automated check with impact metadata. Do not create permanent benchmark infrastructure for one task.
+A durable product budget belongs in an automated check with stable impact ownership. Do not create permanent benchmark infrastructure for one task.
 
 ## Fix mode
 
@@ -127,11 +126,11 @@ When only automatic formatting, lint fixes, or instruction compatibility generat
 pnpm verify --fix-only
 ```
 
-Inspect resulting file changes. `pnpm verify --fix` remains a convenience mode but never replaces the final read-only gate.
+Inspect resulting file changes. Fix mode never replaces the final read-only gate.
 
 ## Final completion gate
 
-The top-level task owns exactly one final read-only completion gate after all implementation and focused proof are complete.
+The top-level task owns exactly one final read-only completion gate after all edits and focused proof are complete.
 
 Ordinary task:
 
@@ -145,39 +144,39 @@ Release-sensitive task:
 pnpm verify:release
 ```
 
-A broad passing run does not replace missing proof, stale impact metadata, performance evidence, architecture review, or a genuine operator-reported visual/motion defect.
+When branch-diff scope is required by repository/workflow rules, preserve that exact base in the final command.
+
+A broad passing run does not replace missing proof, stale ownership metadata, architecture review, required measurements, or a concrete reported visual/motion defect.
 
 ## Mode-specific changes
 
-When verifier tooling, scripts, Storybook, Playwright, build configuration, package scripts, resolver logic, or command output changes, verify every affected user-visible mode during focused development proof.
+When verifier tooling, Storybook, Playwright configuration, resolver logic, build configuration, package scripts, or command output changes, verify every affected user-visible mode during focused development proof.
 
 Examples:
 
-- verifier runner: default and affected `--only`, `--files`, `--fix`, `--fix-only`, `--verbose`, resume, or full modes;
-- path planner: added, removed, and moved-file cases;
+- path planner: added/removed/moved cases;
 - resolver: table-driven resolver tests plus representative command planning;
-- Playwright configuration: every affected project and lane;
+- Playwright discovery: every affected lane and both legacy/new paths during migration;
 - Storybook harness: affected build, behavior, and visual modes;
-- release resolver: focused planning and unconditional full release mode;
-- package/build configuration: affected type-check, build, artifact, or release mode.
+- release resolver: focused planning and unconditional full release mode.
 
 Mode-specific focused proof is not another final gate.
 
 ## Failure handling
 
-When a required check, mapping validation, or measurement fails:
+When a required check, ownership validation, or measurement fails:
 
-1. identify the failed label, plan state, command, metric, or budget;
-2. determine whether current file changes caused it;
-3. fix in-scope failures or stale impact metadata;
-4. rerun the narrow failed proof through `pnpm verify --only <label>` while preserving applicable `--full`, `--profile`, and `--files` arguments;
+1. identify the failed label/plan/command/metric;
+2. determine whether current changes caused it;
+3. fix in-scope failures or stale ownership facts;
+4. rerun the narrow failed proof through `pnpm verify --only <label>` while preserving applicable scope;
 5. after fixes, rerun the original final completion-gate command without fix mode;
-6. report unrelated or unresolved failures exactly;
-7. never claim completion while required verification or evidence is missing or failing.
+6. report unrelated/unresolved failures exactly;
+7. never claim completion while required verification/evidence is missing or failing.
 
 Do not substitute a raw child command printed by a failed step for the verifier-managed rerun.
 
-If verification is active, use `pnpm verify:status`, inspect `.verify/logs`, and use `pnpm verify:resume` only when instructed by status. Do not start duplicate expensive runs. After resume, rerun the exact completion-gate command reported by the verifier.
+If verification is active, use `pnpm verify:status` and `pnpm verify:resume` according to repository output rather than starting duplicate expensive runs.
 
 ## Warnings
 
@@ -196,4 +195,4 @@ status: passed | failed | not run | blocked by active local verification
 reason if not run:
 ```
 
-`complete` requires assigned scope, acceptance criteria, required proof and measurements, consistent impact metadata, and the one applicable final completion gate to pass.
+`complete` requires assigned scope, acceptance criteria, required proof/measurements, consistent durable ownership facts, and the one applicable final completion gate to pass.

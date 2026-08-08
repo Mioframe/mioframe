@@ -4,59 +4,62 @@ This document is the canonical project-wide testing policy for Mioframe.
 
 Its purpose is to keep two decisions reliable and separate:
 
-1. the coding worker chooses proof that matches the changed contract and risk;
-2. `verify` automatically resolves current workspace changes to the smallest confirmed set of checks, with safe full-lane fallback for unknown relevant impact.
+1. coding work chooses proof that matches the changed contract and risk;
+2. `verify` resolves workspace changes to the smallest confirmed set of checks, with safe full-lane fallback for unknown relevant impact.
 
-`verify` executes workspace-backed facts. It never parses or depends on an agent report.
+`verify` executes workspace-backed facts. It never parses or depends on agent prose.
+
+`docs/testing/storybook.md` defines Storybook ownership, authoring, and file-placement rules. `docs/testing/migration-plan.md` records which target mechanisms are currently executable.
 
 ## Goal
 
 Use the smallest reliable set of tests and measurements that completely protects changed observable contracts without duplicating framework, browser, foundation, component, or product behavior.
 
-Automatic selection must be deterministic, inspectable, and fail closed. An empty inferred lane is never evidence that a proof type is unnecessary.
+Automatic selection must be deterministic, inspectable, and fail closed. An empty or skipped lane is never evidence that a proof type is unnecessary.
 
 ## Responsibilities
 
-### Agent: test design
+### Coding work: proof design
 
 Before non-trivial implementation, identify:
 
 - changed observable contracts and scenarios;
 - applicable risks;
 - the lowest faithful proof type;
-- existing tests that already own the contract;
-- tests that must be added or changed;
-- workspace impact metadata that must be added or updated;
+- existing proof that already owns the contract;
+- proof that must be added or changed;
+- durable workspace impact facts that must be maintained;
 - task-specific measurements that cannot be automated yet.
 
-Record this in implementation preflight as `TEST IMPACT`. It is a reviewable decision record, not input to `verify`.
+Implementation preflight records this as `TEST IMPACT`. It is a reviewable decision record, not input to `verify`.
 
-### Workspace: durable impact facts
+### Workspace: durable facts
 
-The workspace stores facts that automation can validate:
+The workspace may encode:
 
-- static imports between unit tests and source modules;
-- snapshot-to-test ownership conventions;
-- lane-specific source-to-spec mappings;
+- static import relations used by supported unit-test resolution;
+- deterministic snapshot-to-test ownership conventions;
+- deterministic owner-local Playwright relations where a lane supports them;
+- explicit source-to-spec mappings for non-local, family/module, cross-cutting, or product-scenario relations;
 - lane relevance and full-lane fallback paths;
-- justified standalone specs;
+- justified infrastructure/standalone specs;
 - release-sensitive source-to-check mappings;
 - persistent project applicability metadata when introduced;
 - persistent mutation targets;
 - persistent performance checks for durable budgets.
 
+Do not create metadata when the repository structure already expresses the relation mechanically.
+
 ### Verify: planning and execution
 
 `verify`:
 
-- obtains changed path identities and statuses from its internal workspace planner;
-- validates impact metadata;
-- resolves each execution lane independently;
+- obtains changed path identities and statuses from workspace planning;
+- validates durable impact facts;
+- resolves execution lanes independently;
 - prints why each lane is skipped, focused, full, or invalid;
 - executes the resulting plan;
 - never infers test sufficiency from a skipped lane or a focused command with no matching tests.
-
-The internal mechanism that supplies changed-path status is outside coding-agent scope. Agents consume only verifier commands and readable verifier output.
 
 ## Core rules
 
@@ -64,11 +67,11 @@ The internal mechanism that supplies changed-path status is outside coding-agent
 
 Every test protects observable behavior, a public contract, persisted state, data safety, accessibility, accepted visible output, release behavior, or an explicit non-functional requirement.
 
-Do not test private methods, incidental classes, render counts, framework lifecycle, internal branches, or third-party behavior unless Mioframe owns the adaptation or outcome.
+Do not test private methods, incidental classes, render counts, framework lifecycle, internal branches, or third-party behavior unless Mioframe owns the adaptation or observable outcome.
 
 ### One contract has one primary proof owner
 
-Each contract has one primary proof type. Other proof types may verify a narrow integration seam or complete user outcome, but must not repeat the complete contract.
+Each observable contract has one primary proof type. Other proof types may verify a narrow integration seam or complete user outcome, but must not repeat the complete contract.
 
 One production file may affect several contracts and therefore require several proof types.
 
@@ -82,7 +85,7 @@ Choose the cheapest environment that reproduces the real semantics. A cheaper en
 
 Add or change proof when observable behavior, a public contract, persistence, migration, transformation, accessibility, performance, release behavior, or a reproducible defect changes.
 
-Do not require a new test merely because a production file changed. A behavior-preserving refactor may rely on existing relevant proof when the accepted contract is already protected.
+Do not add a test merely because a production file changed. A behavior-preserving refactor may rely on existing relevant proof when the accepted contract is already protected.
 
 ### Duplication is not additional assurance
 
@@ -90,46 +93,45 @@ Do not repeat the same algorithm matrix, browser behavior, foundation behavior, 
 
 ### Failures remain visible
 
-Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated action delivery, silent recovery, or helpers that accept a missing required state.
+Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated action delivery, silent recovery, or helpers that accept missing required state.
 
-## Contract proof types
+## Proof types
 
-| Proof type                | Owns                                                                                                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Deterministic behavior    | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, and deterministic multi-module outcomes |
-| Component contract        | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, and non-browser wiring                            |
-| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, and browser APIs                                    |
-| Product scenario          | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries               |
-| Visual regression         | Bounded deterministic appearance of canonical Storybook stories and accepted visual state matrices                                                                                    |
-| Release behavior          | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-sensitive invariants                                                              |
+| Proof type                | Owns                                                                                                                                                                              |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deterministic behavior    | Pure helpers, schemas, domain decisions, service/storage/CRDT boundaries, migrations, transformations, cancellation, conflicts, typed errors, deterministic multi-module outcomes |
+| Component contract        | Public Vue props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, invalid combinations, non-browser wiring                            |
+| Reusable browser behavior | Isolated reusable UI focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, browser APIs                                    |
+| Product scenario          | Complete user scenarios crossing page, feature, widget, service, worker, persistence, navigation, permission, provider, reload, import/export, or repository boundaries           |
+| Visual regression         | Bounded deterministic appearance of canonical Storybook stories                                                                                                                   |
+| Release behavior          | Production artifact bootstrap, routing, service-worker/channel isolation, installation, and release-sensitive invariants                                                          |
 
-## Supplemental evidence and human gates
+Supplemental evidence:
 
-- **Mutation audit** checks whether focused tests reject meaningful incorrect implementations of registered high-risk deterministic logic.
-- **Performance evidence** measures an optimization claim or protects a durable named budget.
-- **Automated accessibility scans** provide supplemental evidence; semantic and interaction contracts remain owned by component and browser proof.
-- **Operator Material acceptance** compares prepared rendered evidence with canonical Material sources. Automation never reports this as accepted.
+- mutation audit tests high-risk deterministic proof quality;
+- performance evidence protects explicit claims or durable budgets;
+- automated accessibility scans are supplemental to semantic and interaction proof;
+- Material visual/motion inspection is an external defect-reporting channel, not automated conformance proof.
 
 ## Execution lanes
 
-| Verify label or process      | Executes                                                                                                |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------- |
-| static verification          | Formatting, linting, type-checking, instruction compatibility, and other deterministic workspace checks |
-| `unit-tests`                 | Deterministic behavior and component-contract tests through Vitest                                      |
-| `storybook-behavior`         | Reusable browser behavior through Playwright against isolated Storybook                                 |
-| `e2e`                        | Complete product scenarios through application Playwright tests                                         |
-| `visual`                     | Screenshot regression against canonical Storybook stories                                               |
-| release verification         | Release behavior against the built production artifact                                                  |
-| `mutation`                   | Registered narrow mutation targets                                                                      |
-| persistent performance check | Existing automated benchmark or budget selected by impact metadata                                      |
-| task-specific measurement    | Reproducible one-off measurement named in preflight; not automatically inferred                         |
-| operator review              | Manual Material comparison                                                                              |
+| Verify label/process         | Executes                                                                            |
+| ---------------------------- | ----------------------------------------------------------------------------------- |
+| static verification          | format, lint, type-check, instruction compatibility, deterministic workspace checks |
+| `unit-tests`                 | deterministic behavior and component contracts through Vitest                       |
+| `storybook-behavior`         | reusable browser behavior through Playwright against isolated Storybook             |
+| `e2e`                        | complete product scenarios through application Playwright tests                     |
+| `visual`                     | screenshot regression against canonical Storybook stories                           |
+| release verification         | release behavior against the built production artifact                              |
+| `mutation`                   | registered narrow mutation targets                                                  |
+| persistent performance check | repository-owned benchmark/budget selected by impact facts                          |
+| task-specific measurement    | reproducible one-off measurement named in preflight                                 |
 
 ## Proof boundaries
 
 ### Deterministic behavior
 
-Use direct inputs, outputs, transitions, persisted effects, protocol messages, and typed failures. Use real owned modules where practical and mock only real external or nondeterministic boundaries.
+Use direct inputs, outputs, transitions, persisted effects, protocol messages, and typed failures. Mock only real external or nondeterministic boundaries.
 
 A deterministic multi-module test remains in `unit-tests` when it proves a boundary result without browser rendering or complete application orchestration.
 
@@ -141,7 +143,9 @@ Do not prove real focus, keyboard operation, pointer/touch, layout, geometry, sc
 
 ### Reusable browser behavior
 
-Use isolated deterministic Storybook fixtures and real public browser input. Behavior specs contain no screenshots.
+Use isolated deterministic Storybook state and real public browser input. Behavior specs contain no screenshots.
+
+Storybook ownership and physical placement follow `docs/testing/storybook.md`. During migration, conceptual ownership may be colocated while executable specs remain in the current central Playwright location until the lane supports colocated discovery.
 
 ### Product scenario
 
@@ -151,12 +155,12 @@ Use application E2E when the complete user outcome or cross-boundary integration
 
 A visual spec opens a canonical deterministic story, waits for stable rendering, and captures a bounded surface. It contains no behavioral success criteria and does not reproduce token tables through computed-style matrices.
 
-A baseline detects change; it does not prove Material correctness.
+A baseline detects change; it does not prove Material correctness, accessibility, or interaction.
 
 ### Accessibility
 
 - native semantics, accessible name, explicit ARIA ownership, disabled/readonly semantics: component contract;
-- focus order, keyboard operation, focus restoration, actionability, overlay containment: reusable browser behavior or product scenario;
+- focus order, keyboard operation, focus restoration, actionability, overlay containment: browser behavior or product scenario;
 - automated scans: supplemental only;
 - screenshot appearance alone does not prove accessibility.
 
@@ -164,193 +168,172 @@ A baseline detects change; it does not prove Material correctness.
 
 ### Changed paths
 
-Automatic planning must preserve path status:
+Automatic planning preserves:
 
-- added path;
-- modified path;
-- removed path;
-- moved path with both previous and current identities.
+- added paths;
+- modified paths;
+- removed paths;
+- moved paths with previous and current identities.
 
-Resolvers must not receive only currently existing filenames. Removal and movement are first-class risks because imports, mappings, snapshots, helpers, and specs may disappear.
+Removal and movement are first-class risks because imports, mappings, snapshots, helpers, and specs may disappear.
 
-`--files` is an explicit focused target override for existing paths. It is not a substitute for the verifier's status-aware automatic planning of removals or moves.
+`--files` is an explicit focused target override for readable existing paths. It is not a substitute for status-aware automatic planning of removals or moves.
 
 ### Lane plan
 
-Every automatic resolver returns one of:
+Every migrated automatic resolver uses:
 
 - `skip`: no workspace-backed impact for the lane;
 - `focused`: a non-empty sorted set of lane-defined execution inputs;
 - `full`: the complete owning lane is required;
 - `invalid`: impact metadata is inconsistent and verification must fail before test execution.
 
-A focused input is exact and inspectable, but its meaning is lane-specific: a Playwright spec path, a direct unit test, a source path passed to the official Vitest related resolver, a release check, a mutation target, or another workspace-owned check.
-
 Rules:
 
-- `invalid` blocks the run;
+- `invalid` blocks execution;
 - `full` overrides focused inputs;
-- overlapping mappings and duplicate inputs are unioned and deduplicated;
-- every decision includes inspectable reasons;
+- overlapping relations union and deduplicate;
+- every decision has inspectable reasons;
 - unknown relevant impact uses `full`, never `skip`;
 - paths outside a lane's declared relevance do not select that lane.
+
+Do not describe a migration target as already implemented; current behavior is recorded in `docs/testing/migration-plan.md` and observable verifier output.
 
 ## Static verification impact
 
 Static checks use direct file capability rather than semantic test ownership:
 
-- format and lint run for added or modified existing files supported by the corresponding tool;
-- removed files are not formatted or linted, but their removal still participates in type-check and affected metadata validation;
-- type-check runs for added, modified, removed, or moved TypeScript, Vue, declaration, alias, typed configuration, package, or lockfile changes that can affect the program graph;
-- instruction compatibility validation runs when `AGENTS.md`, skills, or their generator changes;
-- shared static configuration changes run the complete owning static check;
-- a path unsupported by a static tool does not select that tool.
+- format/lint run for added or modified readable supported files;
+- removed files are never passed as formatter/linter targets;
+- typed graph changes select type-check according to current planner policy;
+- `AGENTS.md`, skills, or generator changes select instruction compatibility validation;
+- shared static configuration changes run the complete owning static check.
 
-Static checks do not replace behavioral, browser, visual, release, mutation, performance, or operator proof.
+Static checks do not replace behavioral, browser, visual, release, mutation, or performance proof.
 
-## Unit-test impact resolution
+## Unit-test impact
 
-A dedicated unit resolver builds focused inputs from:
+The durable target uses:
 
-1. directly added or modified test files;
-2. owning tests for added, modified, or removed Vitest snapshots;
-3. changed existing source modules and local test-support modules passed to the official Vitest related-test resolver.
+1. directly changed tests;
+2. deterministic snapshot ownership;
+3. changed source/test-support paths passed to supported Vitest related resolution;
+4. full-unit fallback for relations that cannot be represented safely.
 
-The unit executor may use the supported Vitest CLI or API to resolve static-import relations. It must not build or persist a second dependency graph merely to precompute every related test path.
+Do not build a second persistent dependency graph merely to enumerate unit tests.
 
-Direct tests, snapshot owners, and related source inputs are sorted and deduplicated. If a related run finds no tests, report that result explicitly; do not convert it to a full unit run. A no-match result is not evidence that the changed contract needs no unit test.
+A focused related run with no matching tests must be reported explicitly; it is not evidence that no unit proof is needed.
 
-Select the full unit lane for:
+## Playwright impact model
 
-- unresolved snapshots;
-- removed or moved dependencies whose previous relation cannot be represented safely;
-- Vitest config or setup;
-- global test utilities;
-- known dynamic-import boundaries;
-- generated aliases;
-- any relation the official resolver cannot represent safely.
+`storybook-behavior`, `e2e`, and `visual` remain independent. They may share only mechanical plan/validation helpers.
 
-Return `skip` only when no direct test, snapshot owner, related source input, or full-fallback category applies.
+Each lane declares only what it needs from:
 
-## Playwright impact registries
-
-`storybook-behavior`, `e2e`, and `visual` own separate registries. They may share only mechanical plan and validation helpers.
-
-Each lane declares:
-
-- its spec directory;
-- broad stable relevant source domains;
-- exact files and prefixes that require the full lane;
-- source-to-spec mappings;
-- justified standalone specs;
+- discovered spec patterns;
+- broad relevant source domains;
+- full-lane files/prefixes;
+- deterministic owner-local relations where supported;
+- explicit non-local source-to-spec mappings;
+- justified infrastructure/standalone specs;
 - snapshot ownership convention where applicable.
 
-A source mapping means only production, story, fixture, or owned support source can affect listed specs. Spec paths must not be placed in `sourcePrefixes` to group tests.
+There are three valid relation forms:
 
-Resolution order:
+1. **owner-local convention** — repository naming/placement deterministically identifies a UI-owned Storybook behavior or visual spec;
+2. **explicit mapping** — required when family/module/cross-file/cross-cutting ownership cannot be expressed by one local convention, and for product E2E scenario impact;
+3. **standalone/infrastructure ownership** — only when no truthful stable production/source relation exists.
 
-1. full-lane file or prefix → full lane;
-2. added or modified spec → that spec;
-3. removed or moved spec → validate registry and run full owning lane unless the previous relation is deterministically preserved;
+Do not create an explicit mapping for a relation that the local owner convention already expresses.
+
+A source mapping contains production, story, fixture, or owned support sources only. Spec paths are never source prefixes used to group tests.
+
+### Resolution order
+
+For a migrated Playwright lane:
+
+1. full-lane file/prefix → full lane;
+2. added/modified spec → that spec;
+3. removed/moved spec → validate ownership and use full lane unless the previous relation is preserved deterministically;
 4. visual snapshot → owning visual spec, or full visual lane when unresolved;
-5. mapped source → union of matching specs;
-6. unmapped source inside relevant source domains → full lane;
-7. path outside lane domains → no selection.
+5. deterministic owner-local source relation → matching owner specs;
+6. explicit source mapping → union of matching specs;
+7. unmapped relevant source → full lane;
+8. path outside lane domains → no selection.
 
 Shared config, setup, global fixtures, and common helpers select the full owning lane unless the complete consumer set is explicit, small, stable, and validated.
 
-Validation must reject:
+### Validation
+
+Validation rejects applicable:
 
 - referenced missing specs;
-- discovered specs with neither a source mapping nor justified standalone entry;
-- duplicate mapping names;
-- duplicate paths within one entry;
-- empty mappings, targets, or standalone reasons;
-- paths outside the owning lane;
-- stale entries after spec movement or removal;
-- snapshot ownership that cannot be resolved without the documented full-lane fallback.
-
-A standalone spec is valid only when no truthful stable source mapping exists, such as lane-infrastructure smoke.
+- discovered specs with no deterministic local owner, explicit mapping, or justified infrastructure ownership;
+- duplicate/empty explicit mapping entries;
+- invalid paths outside the owning lane;
+- stale ownership facts after movement/removal;
+- snapshot ownership that cannot be resolved without the documented full fallback.
 
 No cross-lane registry, production test annotations, or generic test DSL is allowed.
 
-## Lane-specific rules
-
 ### Storybook behavior
 
-Maps reusable component, foundation, story, and deterministic fixture sources to isolated browser behavior specs.
+The durable target uses owner-local colocated `*.browser.spec.ts` for ordinary component/family/module ownership, with explicit mappings only for truthful non-local or cross-cutting relations.
 
 Changing a story may independently affect Storybook behavior and visual lanes. One lane must not infer the other.
 
+Until colocated browser discovery is implemented, preserve the current executable Storybook behavior spec location and current resolver metadata as required by `docs/testing/migration-plan.md`.
+
 ### Application E2E
 
-Maps feature, entity, widget, page, service-client, provider, bootstrap, and cross-boundary sources to complete product scenarios.
+Application E2E remains centralized because product scenarios cross owners. Stable source-to-product-scenario impact is explicit rather than inferred from colocation.
 
 Broad application bootstrap, worker/service protocol, E2E infrastructure, and unknown relevant product source use full application E2E fallback.
 
 ### Visual
 
-Maps visible component, foundation, story, theme, font, icon, and rendering sources to canonical visual specs.
+The durable target uses owner-local colocated `*.visual.spec.ts` and deterministic colocated baseline ownership for ordinary UI owners, with explicit mappings only for non-local and cross-cutting visible impact.
 
-Visual snapshot ownership must be deterministic. An unresolved added, modified, removed, or moved baseline selects the full visual lane.
+Theme, fonts, icons, Storybook renderer/configuration, and other broad rendering infrastructure normally select full visual unless a complete stable consumer set is explicit.
 
-### Release verification
+Unresolved added, modified, removed, or moved baseline ownership selects the full visual lane.
 
-Focused development verification must automatically select release checks when the changed contract can only be proved against the built production artifact.
+Until colocated visual discovery is implemented, preserve the current executable visual spec/baseline location and current resolver behavior.
 
-Release impact is workspace-owned and independent from application E2E mappings. It covers:
+## Release verification
 
-- build and release configuration;
-- routing/base-path behavior in the built artifact;
-- manifest, service worker, PWA, and channel isolation;
-- release scripts and artifact assembly;
-- runtime dependency changes that affect production output.
+Focused development verification must select release checks when a changed contract can only be proved against the built artifact.
 
-A release resolver uses the same `skip | focused | full | invalid` contract:
+Release impact covers build/release configuration, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts/artifact assembly, and runtime dependency changes affecting production output.
 
-- known local impact selects exact build, artifact, or release-smoke checks;
-- shared release infrastructure or unknown relevant release impact selects the full release lane;
-- invalid or stale release metadata blocks verification.
+Known local impact may select exact checks. Shared release infrastructure or unknown relevant release impact selects the full release lane.
 
-`pnpm verify:release` is the unconditional full-project release-sensitive gate. Automatic focused release selection during ordinary development does not replace it when the verification skill requires full release proof.
+`pnpm verify:release` remains the unconditional release-sensitive final gate when the verification skill requires it.
 
 ## Browser project applicability
 
-Source impact chooses specs. Project applicability belongs to persistent test metadata, not to changed-file paths or agent prose.
+Source impact chooses specs. Project applicability belongs to persistent test metadata, not changed-file paths or agent prose.
 
-The current desktop/mobile matrix must remain unchanged until all existing application E2E scenarios are audited and classified. Introducing project filtering must be a separate migration step that demonstrates preserved mobile-risk coverage and measured execution benefit.
-
-Do not introduce a generic criticality tag as a substitute for platform risk. Add platform metadata only for an observable browser, viewport, touch, capability, lifecycle, or composition difference.
+Do not narrow the current application E2E desktop/mobile matrix until a separate audited migration classifies every scenario, preserves mobile-risk coverage, and measures the benefit.
 
 ## Mutation impact
 
-Mutation remains automatically selected only from persistent registered targets rather than neighboring-test guesses or transient agent decisions.
+Persistent mutation selection, when implemented, owns unique high-risk targets with exact source files, exact focused tests, and a concrete risk reason.
 
-A mutation target owns:
-
-- a unique name;
-- exact high-risk source files;
-- exact focused test files;
-- a concrete risk reason.
-
-The resolver selects a target when a registered source or owning focused test changes. Missing source/tests, duplicate ownership, empty reasons, removal, or movement without registry maintenance is invalid.
-
-Use exact files initially. Broad prefixes require demonstrated stable need and bounded cost.
-
-Until this registry is implemented, existing legacy mutation behavior remains mandatory and is documented as a migration mismatch.
+Do not infer mutation applicability from neighboring files or transient agent prose. Until the target registry is implemented, preserve current legacy behavior recorded in the migration plan.
 
 ## Performance impact
 
 Distinguish:
 
-- a one-off task claim, which requires a reproducible before/after measurement recorded in preflight;
-- a durable product budget, which requires a workspace-owned automated check and impact mapping.
+- a one-off task claim, requiring reproducible before/after measurement in preflight;
+- a durable product budget, requiring a workspace-owned automated check and impact relation.
 
-`verify` can automatically select only persistent checks. Do not create a benchmark framework for one task.
+Do not create permanent benchmark infrastructure for one task.
 
 ## TEST IMPACT
 
-Implementation preflight records only task-specific design:
+Implementation preflight records task-specific design:
 
 ```text
 TEST IMPACT
@@ -366,16 +349,16 @@ Task-specific measurements:
 Rules:
 
 - include only applicable proof;
-- name exact existing or planned tests;
-- update mappings, standalone records, platform metadata, mutation targets, release impact metadata, or persistent performance checks when the workspace relation changes;
-- update preflight if implementation changes planned contracts or proof;
+- name exact existing/planned tests where known;
+- maintain durable ownership/mapping/snapshot/release/mutation/performance facts when their relation changes;
+- update preflight when implementation changes planned contracts or proof;
 - `verify` never consumes this artifact.
 
 ## Shared code and consumer preservation
 
 A shared change does not automatically require every product suite. Test the shared owner fully, then select representative consumers only where public APIs, composition, platform behavior, or integration paths differ materially.
 
-Generic foundation behavior is tested once at the foundation owner. Consumers prove only routing, extension, deviation, or complete product outcome.
+Generic foundation behavior is proved once at the foundation owner. Consumers prove only routing, extension, deviation, or complete product outcome.
 
 ## Test helpers
 
@@ -387,23 +370,15 @@ Create shared helpers only after multiple current tests prove the same concrete 
 
 Reject or revise proof when:
 
-1. it uses a less faithful proof type than the behavior requires;
+1. it uses a less faithful proof type than required;
 2. the same contract is already fully owned elsewhere;
-3. assertions follow implementation rather than accepted contracts;
+3. assertions follow implementation instead of accepted contracts;
 4. fixtures reconstruct broad product behavior through mocks;
 5. browser instability is hidden by sleeps, force, retries, or recovery loops;
-6. visual tests contain behavior or token-table assertions;
+6. visual tests contain behavior/token-table assertions;
 7. product E2E repeats deterministic logic branches or shared component states;
-8. workspace impact metadata is missing, stale, or semantically overloaded;
-9. a spec path is used as a source mapping to group tests;
-10. mobile coverage is reduced without complete audit and explicit evidence;
-11. mutation applicability depends only on neighboring files or transient agent prose;
-12. a durable performance contract has no persistent automated protection;
-13. release-sensitive behavior changes without focused release proof or the full release gate;
-14. a new framework, DSL, registry, validator, or abstraction has no repeated demonstrated need.
-
-## Migration
-
-Adopt this architecture incrementally through `docs/testing/migration-plan.md`.
-
-Each migration step must preserve or strengthen current regression protection before narrowing execution. Do not redesign test ownership inside an ordinary product task.
+8. ownership/impact facts are missing, stale, duplicated, or overloaded;
+9. a local relation is replaced by unnecessary registry infrastructure;
+10. a spec path is used as a source-mapping prefix to group tests;
+11. current migration state is ignored and tests are placed where the runner cannot discover them;
+12. proof depends on private third-party implementation that Mioframe does not own.
