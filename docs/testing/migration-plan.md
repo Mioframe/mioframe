@@ -14,6 +14,7 @@
 - Do not remove old discovery, mappings, or baselines until replacement ownership is proven on the same repository state.
 - Add/move/remove/rename behavior must remain deterministic and must never silently skip relevant proof.
 - Do not satisfy Storybook usability by importing product bootstrap, product routing, stores, persistence, services, or business behavior into stories.
+- Do not satisfy Storybook theme or preview needs by copying production token/style ownership into `.storybook`.
 
 ## Current executable state
 
@@ -27,11 +28,17 @@
 - Storybook Essentials provides Controls and other built-in workbench tools.
 - Storybook currently configures representative desktop/mobile viewports and app/surface backgrounds.
 - Storybook currently installs a minimal Vue Router memory history needed by existing shared overlay primitives.
+- Vue component metadata is available to Storybook through the current docgen configuration.
 
 ### Still transitional
 
+- Storybook preview currently imports the complete application stylesheet, so app-shell `html`/`body`/`#app` layout behavior can leak into isolated Canvas rendering.
+- Material theme follows the production `prefers-color-scheme` path; Storybook does not yet provide explicit `System`/`Light`/`Dark` inspection modes.
 - The current Storybook memory router exposes only a minimal `/` route and is not yet the reusable per-story routing harness defined by `docs/testing/storybook.md`.
-- Playground/Controls authoring is not yet normalized across reusable UI stories.
+- Playground/Controls authoring and controlled args round-trip are not yet normalized across reusable UI stories.
+- Global Storybook catalogue ordering is not yet made deterministic through the target native `storySort`; title normalization remains later migration work.
+- Selective Autodocs usage for public reusable UI is not yet normalized.
+- A story/config change does not yet own a dedicated verifier-managed Storybook build gate independent of browser/visual lane selection.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Storybook behavior specs are still executed from `tests/e2e/storybook` and selected through the current resolver/mappings.
@@ -60,9 +67,9 @@ Deliverables:
 Acceptance:
 
 - no contradiction remains between `docs/testing/architecture.md`, Storybook rules, `AGENTS.md`, or testing skills;
-- no Playwright runtime/discovery behavior changes in this stage;
-- target colocated specs are not described as already executable;
-- Storybook is explicitly a developer workbench with catalogue navigation, Playground/Controls, visual sandbox, and isolated routing responsibilities.
+- no Storybook runtime or Playwright discovery behavior changes in this stage;
+- target colocated specs and target workbench capabilities are not described as already executable;
+- Storybook is explicitly a developer workbench with catalogue navigation, Playground/Controls, visual sandbox, generated documentation, isolated preview styling, and isolated routing responsibilities.
 
 ### Stage S0.5 — Storybook workbench foundation
 
@@ -71,29 +78,50 @@ Implement the interactive developer-workbench behavior before moving Playwright 
 Scope:
 
 - keep Storybook's native manager/sidebar as the catalogue navigation surface;
+- isolate Canvas styling from the application shell while preserving the real normalization, fonts/icons, Material foundation/theme/tokens, and shared low-level styles required by reusable UI;
 - retain Vue docgen-driven Controls and establish the args-driven Playground convention on a small representative set rather than mass-rewriting stories;
-- retain/configure representative viewport, background, measure/outline, and layout behavior for manual appearance inspection;
+- for a representative controlled component, round-trip its public update event back into Storybook args so Controls and direct UI interaction stay synchronized;
+- configure representative viewport, background, measure/outline, and layout behavior for manual appearance inspection;
+- add explicit `System`, `Light`, and `Dark` Storybook theme modes through the production Material/theme owner rather than a Storybook token copy;
+- keep the normal Playground on a truthful semantic surface; checkerboard/transparency backdrops remain specialized visual fixtures only;
 - replace the current minimal `/` memory-router setup with one small Storybook-owned routing harness;
 - allow a story to provide deterministic initial location and the minimum story-owned route records needed for path/query/hash/params and `RouterLink`/`useRoute`/`useRouter` behavior;
 - isolate/reset router state between stories;
 - keep copied Storybook URLs useful for story address and serializable args;
-- add focused Storybook infrastructure proof for the harness itself where needed.
+- configure deterministic native story ordering for the documented top-level namespaces without opportunistically renaming existing story addresses;
+- prove selective Autodocs on representative public Material/reusable shared UI without making Autodocs mandatory for every FSD story;
+- add one verifier-owned Storybook build check for relevant story/configuration changes, reusing the existing Storybook build entrypoint;
+- add focused Storybook infrastructure proof for the workbench foundation where needed.
 
 Architecture constraints:
 
 - use real `vue-router` memory history rather than a fake router API;
 - do not import the production application router, route guards, stores, auth, persistence, services, network setup, or product bootstrap;
-- do not create a generic story DSL or a second component catalogue;
+- do not keep the complete application shell stylesheet as the permanent Storybook preview environment merely to obtain shared styling;
+- reuse existing production-owned low-level style entrypoints or expose the smallest correctly owned entrypoint when one is missing; do not duplicate declarations in `.storybook`;
+- Material/theme foundation owns Material theme mode application. `System` preserves the current production system-following behavior;
+- if deterministic `Light`/`Dark` inspection requires a new override seam, implement the minimum foundation-owned seam while preserving the current production default; do not copy light/dark token values into Storybook configuration or fixture CSS;
+- do not create a generic story DSL, theme DSL, or a second component catalogue;
 - do not mirror public Vue props manually in a global Controls registry;
+- do not create a global Storybook state store merely to synchronize controlled args;
 - do not add production props merely for Storybook;
-- do not copy Material/application theme token values into Storybook-specific theme infrastructure.
+- do not make Autodocs a global requirement for feature/widget/page stories;
+- do not create another Storybook build runner when `storybook:build` already owns the build operation;
+- do not combine this stage with browser/visual spec relocation or catalogue title normalization.
 
 Acceptance:
 
+- Storybook Canvas no longer inherits unrelated application-shell viewport/layout/scroll/transition behavior while required shared production styling remains present;
+- `System`, `Light`, and `Dark` are usable from the Storybook workbench, use one foundation-owned theme implementation, and do not change the application's existing default theme behavior;
 - a representative configurable component has a useful args-driven Playground with inferred Controls and only minimal explicit `argTypes` where inference is insufficient;
+- a representative controlled public value stays synchronized after either a Controls change or direct component interaction without a global story state store;
 - a representative routing-aware reusable surface can start at a deterministic route, read route state, navigate, and use back/forward without product bootstrap;
 - switching stories does not leak previous route state;
-- viewport/background/layout controls remain usable for free manual inspection;
+- viewport/background/layout/theme controls remain usable for free manual inspection;
+- normal Playgrounds use a semantic surface, while checkerboard/transparency fixtures are opt-in specialized cases;
+- native Storybook navigation has deterministic top-level ordering without changing existing story IDs merely for ordering;
+- representative public Material/reusable shared UI can expose useful Autodocs from the real Vue metadata without a duplicated handwritten API catalogue;
+- Storybook configuration and changed `*.stories.*` files select a verifier-managed static Storybook build check even when no browser/visual lane is otherwise selected;
 - canonical visual stories may still pin deterministic globals independently from the free Playground;
 - Storybook build and relevant focused verification pass;
 - no browser/visual Playwright spec migration occurs in this stage.
@@ -279,7 +307,8 @@ The testing migration is complete when:
 - migrated resolvers use inspectable `skip | focused | full | invalid` plans;
 - static checks handle removed/moved files safely;
 - unit selection uses direct tests, snapshot ownership, supported related resolution, and safe fallbacks;
-- Storybook provides the documented Playground/Controls, visual sandbox, and isolated reusable routing workbench without product bootstrap;
+- Storybook provides the documented Playground/Controls round-trip, isolated preview styling, `System`/`Light`/`Dark` visual sandbox, deterministic navigation, selective public Autodocs, and isolated reusable routing workbench without product bootstrap;
+- relevant Storybook story/config changes have verifier-owned static-build proof independent of whether a browser/visual lane is otherwise selected;
 - Storybook browser/visual proof is owned by the truthful UI owner and physically colocated after its lane supports discovery;
 - ordinary colocated Storybook relations do not require duplicate registry metadata;
 - explicit mappings remain only for truthful non-local/cross-cutting relations and centralized product scenarios;
