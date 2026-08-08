@@ -74,13 +74,13 @@ Stories, fixtures, specs, snapshots, and test helpers are never exported from pr
 
 The durable target above is being migrated incrementally. Do not place a test where current Playwright discovery cannot execute it.
 
-| Artifact | Current rule |
-| --- | --- |
-| Vue component contract | colocated `*.test.ts` |
-| Storybook story | colocated `*.stories.ts` |
+| Artifact                        | Current rule                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Vue component contract          | colocated `*.test.ts`                                                                                        |
+| Storybook story                 | colocated `*.stories.ts`                                                                                     |
 | Storybook browser behavior spec | keep the current executable location under `tests/e2e/storybook` until the browser-discovery pilot is merged |
-| Visual spec and baseline | keep the current executable visual location until the visual-discovery pilot is merged |
-| Product E2E | centralized under `tests/e2e` |
+| Visual spec and baseline        | keep the current executable visual location until the visual-discovery pilot is merged                       |
+| Product E2E                     | centralized under `tests/e2e`                                                                                |
 
 During migration, conceptual ownership and physical execution location may temporarily differ for browser/visual specs. The owner still determines the contract and impact relation. `docs/testing/migration-plan.md` is the source of truth for when a target location becomes executable.
 
@@ -88,13 +88,13 @@ Never describe target colocated Playwright discovery as implemented before the c
 
 ## Proof decision
 
-| Contract | Primary proof owner |
-| --- | --- |
-| Props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, non-browser wiring | colocated `*.test.ts` |
-| Isolated supported rendering state | colocated `*.stories.ts` |
-| Real focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, browser APIs | Storybook browser behavior spec owned by the UI owner |
-| Bounded accepted appearance | visual spec against a canonical story tagged `visual` |
-| Complete scenario crossing FSD, service, worker, persistence, navigation, provider, permission, reload, or app bootstrap boundaries | `tests/e2e/*.spec.ts` |
+| Contract                                                                                                                            | Primary proof owner                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Props, emits, slots, native owner, explicit attributes, ARIA ownership, controlled semantic state, non-browser wiring               | colocated `*.test.ts`                                 |
+| Isolated supported rendering state                                                                                                  | colocated `*.stories.ts`                              |
+| Real focus, keyboard, pointer/touch, drag, geometry, scrolling, overlays, responsive rendering, motion lifecycle, browser APIs      | Storybook browser behavior spec owned by the UI owner |
+| Bounded accepted appearance                                                                                                         | visual spec against a canonical story tagged `visual` |
+| Complete scenario crossing FSD, service, worker, persistence, navigation, provider, permission, reload, or app bootstrap boundaries | `tests/e2e/*.spec.ts`                                 |
 
 One observable contract has one primary proof owner. Higher-level proof may cover an integration seam or complete user outcome, but must not duplicate the full lower-level contract.
 
