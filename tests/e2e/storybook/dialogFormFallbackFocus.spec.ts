@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { openStory } from './storybook.testUtils';
 
-const STORY_ID = 'shared-ui-dialog-dialogform--zero-tabbable-actions';
+const STORY_ID = 'shared-dialog-dialogform--zero-tabbable-actions';
 
 // Proves DialogForm.vue's real fallback-focus fix: the form's tabindex="-1"
 // plus useFocusTrap's fallbackFocus keeps the real focus-trap library usable

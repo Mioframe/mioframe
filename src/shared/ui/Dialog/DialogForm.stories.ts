@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import DialogForm from './DialogForm.vue';
 
 const meta = {
-  title: 'shared/ui/Dialog/DialogForm',
+  title: 'Shared/Dialog/DialogForm',
   component: DialogForm,
   parameters: {
     layout: 'fullscreen',
@@ -18,7 +18,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Playground: Story = {};
 
 /**
  * `loading` disables every rendered action control (both apply and cancel),
