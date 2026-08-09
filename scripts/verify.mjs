@@ -249,6 +249,11 @@ function getVitestScope(changedFiles) {
       continue;
     }
 
+    if (filePath.endsWith('.browser.spec.ts')) {
+      // Colocated browser specs belong to the storybook-behavior Playwright lane; vitest.config.ts does not include them.
+      continue;
+    }
+
     if (
       (filePath.endsWith('.test.ts') ||
         filePath.endsWith('.spec.ts') ||
