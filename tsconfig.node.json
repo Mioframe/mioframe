@@ -10,7 +10,14 @@
     "pwa-assets.config.*",
     "eslint.config.*",
     "tests/**/*.ts",
-    "**/*.d.mts"
+    "**/*.d.mts",
+    // The canonical channel/cache/path pure contract (see its own doc
+    // comment): deliberately owned by `src/` alongside its other
+    // `appUpdate` runtime consumers, but has zero imports of its own, so
+    // this single explicit entry is enough for `config/plugins/pwa.ts` to
+    // import it without pulling the application's `tsconfig.app.json`
+    // project into this one.
+    "src/shared/service/appUpdate/channelContract.ts"
   ],
   "compilerOptions": {
     "composite": true,

@@ -17,10 +17,12 @@ const EXPECTED_CORPUS = [
   'tests/e2e/release/managedUpdatesMigration.spec.ts',
   'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
   'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
+  'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
   'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
   'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
   'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
   'tests/e2e/release/managedUpdatesRecovery.spec.ts',
+  'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
 ];
 
 function passingResult() {
@@ -28,19 +30,21 @@ function passingResult() {
 }
 
 describe('MANAGED_UPDATES_GROUPS composition', () => {
-  it('group 1 contains exactly its five expected specs', () => {
+  it('group 1 contains exactly its six expected specs', () => {
     expect(MANAGED_UPDATES_LIFECYCLE_SPECS).toEqual([
       'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
       'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
       'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
       'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
       'tests/e2e/release/managedUpdatesRecovery.spec.ts',
+      'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
     ]);
   });
 
-  it('group 2 contains exactly its three expected specs, controller-upgrade first', () => {
+  it('group 2 contains exactly its four expected specs, controller-upgrade first', () => {
     expect(MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS).toEqual([
       'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
+      'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
       'tests/e2e/release/managedUpdatesDevelop.spec.ts',
       'tests/e2e/release/managedUpdatesMigration.spec.ts',
     ]);
@@ -67,7 +71,7 @@ describe('MANAGED_UPDATES_GROUPS composition', () => {
     }
   });
 
-  it('the union is exactly the current eight-spec managed-update corpus', () => {
+  it('the union is exactly the current eleven-spec managed-update corpus', () => {
     const union = [
       ...MANAGED_UPDATES_LIFECYCLE_SPECS,
       ...MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,

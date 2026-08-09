@@ -1,12 +1,13 @@
 /// <reference lib="webworker" />
 
+import { isForeignChannelPath } from './channelContract';
+
 /**
  * Returns `true` when `url` belongs to this worker's own managed channel:
  * same origin as `channelOrigin`, under `channelBasePath`, and — for the
  * stable channel (where `channelBasePath` is `/`) — not under a foreign
- * `/branch/**` or `/pr/**` deployment. Mirrors `isForeignChannelPath` in
- * `config/plugins/pwa.ts`, reimplemented here because this runs inside the
- * browser worker bundle, which cannot depend on Node-only Vite config.
+ * `/branch/**` or `/pr/**` deployment, per the canonical
+ * {@link isForeignChannelPath}.
  *
  * The origin check runs first: a service worker's `fetch` event fires for
  * every request a controlled page makes, including cross-origin ones (a
@@ -15,6 +16,13 @@
  * so a pathname-only check could otherwise misclassify a cross-origin
  * request whose pathname happens to match this channel's shape (trivially
  * true for the stable channel, whose `channelBasePath` is `/`).
+ *
+ * The foreign-path check only runs for the stable channel
+ * (`channelBasePath === '/'`): a branch channel's own scope (e.g.
+ * `/branch/develop/`) is already narrower than any other channel's path, so
+ * the browser never dispatches fetch/navigate events for foreign paths to it
+ * in the first place, and a path merely nested under that narrower scope
+ * (e.g. `/branch/develop/branch/x`) must still count as same-channel.
  *
  * Used both to filter window client URLs and, in `sw.ts`'s top-level
  * `fetch` handler, to keep the stable worker's otherwise site-wide scope
@@ -34,8 +42,7 @@ export function isSameChannelPath(
   if (parsed.origin !== channelOrigin) return false;
   if (!parsed.pathname.startsWith(channelBasePath)) return false;
   if (channelBasePath !== '/') return true;
-  const rest = parsed.pathname.slice(channelBasePath.length);
-  return !/^(?:branch|pr)\//.test(rest);
+  return !isForeignChannelPath(parsed.pathname, channelBasePath);
 }
 
 /** The minimal identity {@link countSameChannelWindowClients} needs from a live window client. */

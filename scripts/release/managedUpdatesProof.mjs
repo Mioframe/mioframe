@@ -15,6 +15,7 @@ export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
   'tests/e2e/release/managedUpdatesUncontrolledWindow.spec.ts',
   'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
   'tests/e2e/release/managedUpdatesRecovery.spec.ts',
+  'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
 ];
 
 // Group 2: controller-upgrade, develop, and migration specs (Chromium).
@@ -24,6 +25,7 @@ export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL = 'managed-updates-migration-isolation';
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS = [
   'tests/e2e/release/managedUpdatesControllerUpgrade.spec.ts',
+  'tests/e2e/release/managedUpdatesControllerArtifactIdentity.spec.ts',
   'tests/e2e/release/managedUpdatesDevelop.spec.ts',
   'tests/e2e/release/managedUpdatesMigration.spec.ts',
 ];

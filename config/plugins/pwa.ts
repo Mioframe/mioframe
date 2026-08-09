@@ -1,8 +1,12 @@
 import type { PluginOption } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { VitePWAOptions } from 'vite-plugin-pwa';
-
-type ReleaseChannel = 'stable' | 'branch';
+import {
+  buildChannelCacheNamespace,
+  buildForeignChannelDenylistPattern,
+  isForeignChannelPath,
+  type ReleaseChannel,
+} from '../../src/shared/service/appUpdate/channelContract';
 
 type WorkboxOptions = VitePWAOptions['workbox'];
 
@@ -16,61 +20,6 @@ type GetPwaPluginsParams = {
 };
 
 const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
-
-/**
- * Build the Cache Storage name prefix for a release channel.
- *
- * Cache Storage is per-origin, not per service-worker-scope, so channel
- * isolation across `/`, `/branch/<slug>/`, and `/pr/<number>/` depends on
- * this prefix, not on scope alone. Must match the prefix
- * `scripts/pages/lib/tombstoneContent.mjs` uses when clearing a removed
- * branch's caches. Also passed as Workbox's `cacheId` (see
- * {@link buildWorkboxOptions}) so Workbox's own default-named precache cache
- * carries the same prefix as the explicit runtime caches below.
- * @param channel - Release channel.
- * @param channelId - Channel identifier; required for the `branch` channel.
- * @returns Cache name prefix, e.g. `stable` or `branch-develop`.
- */
-export function buildChannelCacheNamespace(channel: ReleaseChannel, channelId?: string): string {
-  if (channel === 'branch') {
-    if (!channelId) {
-      throw new Error('channelId is required for the "branch" release channel.');
-    }
-    return `branch-${channelId}`;
-  }
-  return 'stable';
-}
-
-/**
- * Returns true when `pathname` is under `base` but belongs to a different
- * top-level channel namespace (`/branch/*` or `/pr/*`).
- *
- * Only meaningful for the stable channel: its service worker scope is `/`,
- * so it is the only one whose fetch handler can ever see requests for other
- * channels' paths. A branch channel's scope (e.g. `/branch/develop/`) is
- * narrower than any other channel's path, so the browser never dispatches
- * fetch/navigate events for foreign paths to it in the first place.
- * @param pathname - The URL pathname to test, e.g. `/branch/develop/assets/app.js`.
- * @param base - The Vite `base` URL for this build, e.g. `/`.
- * @returns `true` when the pathname belongs to a different channel's deployment.
- */
-export function isForeignChannelPath(pathname: string, base: string): boolean {
-  if (!pathname.startsWith(base)) return false;
-  const rest = pathname.slice(base.length);
-  return /^(?:branch|pr)\/.*$/.test(rest);
-}
-
-/**
- * Builds a RegExp that matches foreign-channel paths (`/branch/*`, `/pr/*`)
- * under the given Vite base path, for the stable service worker's
- * `navigateFallbackDenylist`.
- * @param base - The Vite `base` URL, e.g. `/`.
- * @returns A RegExp matching `/branch/*` and `/pr/*` path prefixes under `base`.
- */
-export function buildForeignChannelDenylistPattern(base: string): RegExp {
-  const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escapedBase}(?:branch|pr)\\/`);
-}
 
 /**
  * Builds a Workbox `urlPattern` function that matches `url.pathname` against

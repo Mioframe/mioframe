@@ -31,7 +31,7 @@ import {
   init as sentryInit,
   setUser as sentrySetUser,
 } from '@sentry/browser';
-import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, IS_VERBOSE_DIAGNOSTICS } from './shared/config';
+import { SENTRY_DSN, IS_VERBOSE_DIAGNOSTICS } from './shared/config';
 import {
   applyDiagnosticsRuntimeState,
   captureDiagnosticException,
@@ -98,7 +98,6 @@ registerSentryConfig({
   ...(SENTRY_DSN !== undefined && { dsn: SENTRY_DSN }),
   isVerbose: IS_VERBOSE_DIAGNOSTICS,
   enabled: import.meta.env.PROD,
-  release: APP_BUILD_ID || APP_VERSION,
 });
 /**
  * Small bounded opportunity {@link waitForDiagnosticsBootstrap} gives the

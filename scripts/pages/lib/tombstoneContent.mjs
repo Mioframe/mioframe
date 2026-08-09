@@ -1,14 +1,4 @@
-/**
- * Build the Cache Storage name prefix owned by a branch channel's service
- * worker. Must match the prefix `config/plugins/pwa.ts` uses when building
- * `runtimeCaching` cache names for the same branch channel, so a tombstone
- * clears exactly (and only) the caches its own branch ever wrote.
- * @param slug Branch slug.
- * @returns Cache name prefix, e.g. `branch-develop-`.
- */
-export function buildBranchCacheNamePrefix(slug) {
-  return `branch-${slug}-`;
-}
+import { buildBranchCacheNamePrefix } from '../../../src/shared/service/appUpdate/channelContract.ts';
 
 /**
  * Build the literal `sw.js` source for a branch tombstone.

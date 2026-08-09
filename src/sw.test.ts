@@ -965,6 +965,14 @@ describe('src/sw.ts diagnostics bootstrap', () => {
     );
   });
 
+  it('never passes an application release identity into worker Sentry config', async () => {
+    await importSwAndGetListeners();
+
+    expect(registerSentryConfigMock).toHaveBeenCalledTimes(1);
+    const config = registerSentryConfigMock.mock.calls[0]?.[0];
+    expect(config).not.toHaveProperty('release');
+  });
+
   it('reads the persisted diagnostics policy and applies it with an in-memory session id', async () => {
     readPersistedDiagnosticsPolicyMock.mockResolvedValue('enabled');
     await importSwAndGetListeners();

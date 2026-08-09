@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toReleaseSummary, type ReleaseDescriptor } from './contracts';
 import {
-  buildManagedCacheNamespace,
   buildReleaseCacheName,
   checkReleaseAvailability,
   computeCacheNamesToDelete,
@@ -45,12 +44,6 @@ const releaseSummary = (releaseNumber: number) => ({
   appVersion: '1.0.0',
   buildId: `build-${releaseNumber}`,
   buildDate: '2026-07-24T00:00:00.000Z',
-});
-
-describe('buildManagedCacheNamespace', () => {
-  it('produces distinct namespaces for stable and develop', () => {
-    expect(buildManagedCacheNamespace('stable')).not.toBe(buildManagedCacheNamespace('develop'));
-  });
 });
 
 describe('buildReleaseCacheName', () => {

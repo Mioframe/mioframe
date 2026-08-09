@@ -8,21 +8,8 @@ import {
   type ReleaseSummary,
   type UpdateCandidate,
 } from './contracts';
+import { buildManagedCacheNamespace } from './channelContract';
 import { readControllerState } from './controllerState';
-
-/**
- * Builds this channel's Cache Storage name prefix.
- *
- * Intentionally a small, fixed two-channel mapping rather than an import of
- * `config/plugins/pwa.ts`'s general `{ channel, channelId }` build-time cache
- * namespacing: this runs inside the browser worker bundle, which cannot
- * depend on Node-only Vite config. Keep the produced names aligned with
- * `buildChannelCacheNamespace('stable')` / `buildChannelCacheNamespace('branch', 'develop')`.
- * @param channel - Managed channel.
- * @returns The channel's Cache Storage name prefix.
- */
-export const buildManagedCacheNamespace = (channel: ManagedChannel): string =>
-  channel === 'stable' ? 'stable' : 'branch-develop';
 
 /**
  * Builds the one immutable Cache Storage name for a release.
