@@ -1,4 +1,5 @@
 import * as z from 'zod/v4-mini';
+import { MANAGED_CHANNELS, type ManagedChannel } from './channelContract';
 import { zodReleaseNumber, type ReleaseDescriptor } from './releaseWireContract';
 
 export {
@@ -11,10 +12,9 @@ export {
 } from './releaseWireContract';
 export type { LatestReleasePointer, ReleaseDescriptor, ReleaseFile } from './releaseWireContract';
 
-/** The two channels the managed pinned-update controller supports. */
-export const zodManagedChannel = z.enum(['stable', 'develop']);
-/** A {@link zodManagedChannel}-validated managed channel. */
-export type ManagedChannel = z.infer<typeof zodManagedChannel>;
+/** A {@link MANAGED_CHANNELS}-validated managed channel. */
+export const zodManagedChannel = z.enum(MANAGED_CHANNELS);
+export type { ManagedChannel };
 
 /**
  * Builds the channel-root-relative path of a release's published descriptor.

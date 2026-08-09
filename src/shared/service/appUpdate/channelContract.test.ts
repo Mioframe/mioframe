@@ -5,7 +5,14 @@ import {
   buildForeignChannelDenylistPattern,
   buildManagedCacheNamespace,
   isForeignChannelPath,
+  MANAGED_CHANNELS,
 } from './channelContract';
+
+describe('MANAGED_CHANNELS', () => {
+  it('is exactly the canonical managed-channel value set', () => {
+    expect(MANAGED_CHANNELS).toStrictEqual(['stable', 'develop']);
+  });
+});
 
 describe('buildChannelCacheNamespace', () => {
   it('returns "stable" for the stable channel', () => {

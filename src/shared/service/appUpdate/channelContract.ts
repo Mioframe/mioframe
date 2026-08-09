@@ -21,20 +21,21 @@
  * duplicating its cache-prefix derivation.
  *
  * Kept free of any import from this directory's other modules (e.g.
- * `contracts.ts`'s zod-derived `ManagedChannel`) so `config/plugins/pwa.ts`
- * — a separate `tsconfig.node.json` TypeScript project that does not
- * reference the application's own `tsconfig.app.json` project — can import
- * this one file directly without pulling in the rest of the runtime wire
- * contract. {@link ManagedChannel} below is structurally identical to (and
- * therefore freely interchangeable with) `contracts.ts`'s own
- * `ManagedChannel`.
+ * `contracts.ts`'s zod runtime schema, which is built from this module's
+ * {@link MANAGED_CHANNELS}) so `config/plugins/pwa.ts` — a separate
+ * `tsconfig.node.json` TypeScript project that does not reference the
+ * application's own `tsconfig.app.json` project — can import this one file
+ * directly without pulling in the rest of the runtime wire contract.
  */
 
 /** A build's deployment channel: the stable production deployment, or a branch/PR-preview deployment. */
 export type ReleaseChannel = 'stable' | 'branch';
 
-/** The two channels the managed pinned-update controller worker supports. */
-export type ManagedChannel = 'stable' | 'develop';
+/** The canonical set of channels the managed pinned-update controller worker supports. */
+export const MANAGED_CHANNELS = ['stable', 'develop'] as const;
+
+/** One of {@link MANAGED_CHANNELS}. */
+export type ManagedChannel = (typeof MANAGED_CHANNELS)[number];
 
 /**
  * Build the Cache Storage name prefix for a release channel.
