@@ -671,6 +671,78 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([ownerSpec]);
   });
+
+  it('selects every colocated browser spec in the same owner directory for an owner-source change', () => {
+    const firstSpec = 'src/shared/ui/Example/First.browser.spec.ts';
+    const secondSpec = 'src/shared/ui/Example/Second.browser.spec.ts';
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Example/Example.vue'], {
+      colocatedSpecFiles: [firstSpec, secondSpec],
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([firstSpec, secondSpec]);
+  });
+
+  it('includes the directly changed spec in the focused selection regardless of discovered-spec ordering, alongside its owner-directory sibling', () => {
+    const firstSpec = 'src/shared/ui/Example/First.browser.spec.ts';
+    const secondSpec = 'src/shared/ui/Example/Second.browser.spec.ts';
+
+    const inDiscoveryOrder = resolveStorybookBehaviorPlan([secondSpec], {
+      colocatedSpecFiles: [firstSpec, secondSpec],
+      fileExists: () => true,
+    });
+    const inReverseDiscoveryOrder = resolveStorybookBehaviorPlan([secondSpec], {
+      colocatedSpecFiles: [secondSpec, firstSpec],
+      fileExists: () => true,
+    });
+
+    expect(inDiscoveryOrder.mode).toBe('focused');
+    expect(inDiscoveryOrder.specs).toContain(secondSpec);
+    expect(inDiscoveryOrder.specs).toEqual([firstSpec, secondSpec]);
+    expect(inReverseDiscoveryOrder.specs).toEqual([firstSpec, secondSpec]);
+  });
+
+  it('includes a newly added second browser spec injected via colocatedSpecFiles when that new spec changes', () => {
+    const existingSpec = 'src/shared/ui/Example/First.browser.spec.ts';
+    const newSpec = 'src/shared/ui/Example/Second.browser.spec.ts';
+    const plan = resolveStorybookBehaviorPlan([newSpec], {
+      colocatedSpecFiles: [existingSpec, newSpec],
+      fileExists: () => true,
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toContain(newSpec);
+    expect(plan.specs).toEqual([existingSpec, newSpec]);
+  });
+
+  it('selects every applicable owner-local spec for nested parent/nested owner directories', () => {
+    const parentSpec = 'src/shared/ui/Example/Parent.browser.spec.ts';
+    const nestedSpec = 'src/shared/ui/Example/nested/Nested.browser.spec.ts';
+    const changedNestedSource = 'src/shared/ui/Example/nested/NestedHelper.ts';
+
+    const plan = resolveStorybookBehaviorPlan([changedNestedSource], {
+      colocatedSpecFiles: [parentSpec, nestedSpec],
+    });
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([nestedSpec, parentSpec]);
+  });
+
+  it('produces the same nested-ownership result regardless of injected spec order', () => {
+    const parentSpec = 'src/shared/ui/Example/Parent.browser.spec.ts';
+    const nestedSpec = 'src/shared/ui/Example/nested/Nested.browser.spec.ts';
+    const changedNestedSource = 'src/shared/ui/Example/nested/NestedHelper.ts';
+
+    const inDiscoveryOrder = resolveStorybookBehaviorPlan([changedNestedSource], {
+      colocatedSpecFiles: [parentSpec, nestedSpec],
+    });
+    const inReverseDiscoveryOrder = resolveStorybookBehaviorPlan([changedNestedSource], {
+      colocatedSpecFiles: [nestedSpec, parentSpec],
+    });
+
+    expect(inDiscoveryOrder.specs).toEqual([nestedSpec, parentSpec]);
+    expect(inReverseDiscoveryOrder.specs).toEqual(inDiscoveryOrder.specs);
+  });
 });
 
 describe('resolveStorybookBehaviorPlan removed/renamed spec safety', () => {

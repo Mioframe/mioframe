@@ -211,11 +211,15 @@ function findFilesRecursive(dir, suffix) {
 
 /**
  * Recursively discover `*.spec.ts` files under `dir`, matching Playwright's
- * recursive `testDir` discovery so nested behavior specs (for example
- * `tests/e2e/storybook/reorder/reorder.spec.ts`) are covered by registry
- * validation instead of being silently invisible to it. Exported so tests
- * can exercise recursive discovery directly against an OS temporary
- * directory instead of the real Storybook behavior spec directory.
+ * recursive `testDir` discovery so nested legacy centralized behavior specs
+ * (for example `tests/e2e/storybook/reorder/reorder.spec.ts`) are covered by
+ * registry validation instead of being silently invisible to it. This
+ * discovers only the legacy centralized spec tree; colocated
+ * `*.browser.spec.ts` specs are discovered separately by
+ * {@link findColocatedBrowserSpecFiles} and use owner-local ownership
+ * instead of registry validation. Exported so tests can exercise recursive
+ * discovery directly against an OS temporary directory instead of the real
+ * Storybook behavior spec directory.
  * @param dir Directory to walk, relative to the repository root or absolute.
  * @returns Sorted unique list of discovered spec file paths.
  */
@@ -281,16 +285,21 @@ function getColocatedBrowserSpecOwnerRoot(specPath) {
 }
 
 /**
- * Resolve which existing colocated browser spec, if any, owns a changed
- * path: the spec whose owner root (its containing directory) is a prefix of
- * `filePath`. This also matches the spec's own path, since a directory is a
- * prefix of the files inside it.
+ * Resolve every existing colocated browser spec that owns a changed path:
+ * every spec whose owner root (its containing directory) is a prefix of
+ * `filePath`. This also matches a spec's own path, since a directory is a
+ * prefix of the files inside it. A changed path can fall under more than one
+ * owner root at once — an owner directory can hold multiple browser specs,
+ * and a nested owner directory's specs can also sit under a parent owner
+ * directory's root — so every matching spec is returned instead of only the
+ * first discovered one, keeping selection independent of filesystem/spec
+ * discovery order.
  * @param filePath Repository-relative changed file path.
  * @param colocatedSpecs Existing colocated browser spec paths.
- * @returns The owning spec path, or `undefined` when no owner root matches.
+ * @returns Every owning spec path; empty when no owner root matches.
  */
-function findColocatedBrowserSpecOwner(filePath, colocatedSpecs) {
-  return colocatedSpecs.find((specPath) =>
+function findColocatedBrowserSpecOwners(filePath, colocatedSpecs) {
+  return colocatedSpecs.filter((specPath) =>
     filePath.startsWith(getColocatedBrowserSpecOwnerRoot(specPath)),
   );
 }
@@ -328,11 +337,16 @@ export function isFullStorybookBehaviorLanePath(filePath) {
  * Validate the scenario registry and standalone exception list as a
  * verification contract: every referenced spec must exist, be a `.spec.ts`
  * file, and live under `tests/e2e/storybook/` (rejecting app e2e, visual,
- * release, or otherwise arbitrary paths), and every existing Storybook
- * behavior spec on disk — discovered recursively, matching Playwright's
- * `testDir` discovery — must be covered by the registry or the standalone
- * list. A broken registry must fail verification rather than degrade to a
- * skipped behavior run.
+ * release, or otherwise arbitrary paths), and every existing legacy
+ * centralized Storybook behavior spec on disk under `tests/e2e/storybook/`
+ * — discovered recursively, matching Playwright's `testDir` discovery — must
+ * be covered by the registry or the standalone list. A broken registry must
+ * fail verification rather than degrade to a skipped behavior run.
+ *
+ * This registry intentionally does not cover colocated `*.browser.spec.ts`
+ * specs discovered under `src/`: those use filesystem-derived owner-local
+ * ownership (see {@link findColocatedBrowserSpecOwners}) and require no
+ * registry entry.
  * @param overrides Test-only overrides for the scenario registry, standalone
  * exception list, spec directory, discovered spec paths, and spec-existence
  * check. Production callers should omit this argument so the real registry,
@@ -502,9 +516,9 @@ export function resolveStorybookBehaviorPlan(
       focusedReasons.push(`changed behavior spec ${filePath} -> ${filePath}`);
     }
 
-    const colocatedOwner = findColocatedBrowserSpecOwner(filePath, existingColocatedSpecs);
+    const colocatedOwners = findColocatedBrowserSpecOwners(filePath, existingColocatedSpecs);
 
-    if (colocatedOwner) {
+    for (const colocatedOwner of colocatedOwners) {
       focusedSpecs.add(colocatedOwner);
       focusedReasons.push(
         filePath === colocatedOwner
