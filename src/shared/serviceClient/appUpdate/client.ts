@@ -7,7 +7,7 @@ import {
   type AppUpdateSnapshot,
   type AppUpdateWorkerRequest,
 } from '@shared/service/appUpdate/protocol';
-import type { UpdateMode } from '@shared/service/appUpdate/contracts';
+import type { ManagedChannel, UpdateMode } from '@shared/service/appUpdate/contracts';
 import { MANAGED_APP_UPDATE_CHANNEL } from '@shared/config';
 
 // Re-exported so UI-facing layers (entities, features) never need to import
@@ -78,7 +78,7 @@ const capabilityByController = new WeakMap<ServiceWorker, Promise<ManagedCapabil
  */
 function probeManagedController(
   controller: ServiceWorker,
-  expectedChannel: 'stable' | 'develop',
+  expectedChannel: ManagedChannel,
 ): Promise<ManagedCapabilityProbeResult> {
   let channel: MessageChannel;
   try {

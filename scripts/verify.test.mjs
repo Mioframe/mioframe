@@ -106,10 +106,10 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     }
   });
 
-  it('sizes the managed-updates aggregate timeout for exactly three sequential container sessions', () => {
+  it('sizes the managed-updates aggregate timeout for exactly four sequential container sessions', () => {
     const singleSessionTimeoutMs = resolvePlaywrightCommandTimeoutMs();
 
-    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(3 * singleSessionTimeoutMs);
+    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(4 * singleSessionTimeoutMs);
   });
 });
 

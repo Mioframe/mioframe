@@ -4,7 +4,6 @@ import {
   buildSameOriginMatcher,
   buildWorkboxOptions,
   getPwaPlugins,
-  isManagedChannel,
   resolveManagedAppUpdateChannel,
 } from './pwa.ts';
 // `buildChannelCacheNamespace`, `isForeignChannelPath`, and
@@ -85,27 +84,20 @@ describe('buildWorkboxOptions', () => {
   });
 });
 
-describe('isManagedChannel', () => {
-  it('is true for the stable channel', () => {
-    expect(isManagedChannel('stable')).toBe(true);
-  });
-
-  it('is true for the develop branch channel', () => {
-    expect(isManagedChannel('branch', 'develop')).toBe(true);
-  });
-
-  it('is false for any other branch channel', () => {
-    expect(isManagedChannel('branch', 'feature-x')).toBe(false);
-    expect(isManagedChannel('branch')).toBe(false);
-  });
-});
-
+// The channel -> managed-channel classification matrix itself (which
+// channel/channelId combinations map to 'stable', 'develop', or undefined)
+// is canonically owned and fully proven by channelContract.test.ts's
+// `resolveManagedChannel` suite. The tests below prove only this module's
+// own composition on top of that canonical classification: that PWA
+// enablement gating (`disablePwa`, `mode`, `isPreview`) is applied before
+// delegating, and that a representative managed and unmanaged channel are
+// actually wired through to the canonical resolver.
 describe('resolveManagedAppUpdateChannel', () => {
-  it('is "stable" for an enabled stable production build', () => {
+  it('delegates to the canonical classification for an enabled stable production build', () => {
     expect(resolveManagedAppUpdateChannel({ mode: 'production', isPreview: false })).toBe('stable');
   });
 
-  it('is "develop" for an enabled develop branch production build', () => {
+  it('delegates to the canonical classification for an enabled develop branch production build', () => {
     expect(
       resolveManagedAppUpdateChannel({
         mode: 'production',
@@ -116,11 +108,7 @@ describe('resolveManagedAppUpdateChannel', () => {
     ).toBe('develop');
   });
 
-  it('is "stable" for an enabled stable preview build', () => {
-    expect(resolveManagedAppUpdateChannel({ mode: 'development', isPreview: true })).toBe('stable');
-  });
-
-  it('is undefined for an ordinary (non-develop) branch build', () => {
+  it('delegates to the canonical classification for an enabled unmanaged branch build', () => {
     expect(
       resolveManagedAppUpdateChannel({
         mode: 'production',
@@ -129,6 +117,10 @@ describe('resolveManagedAppUpdateChannel', () => {
         channelId: 'feature-x',
       }),
     ).toBeUndefined();
+  });
+
+  it('is "stable" for an enabled stable preview build', () => {
+    expect(resolveManagedAppUpdateChannel({ mode: 'development', isPreview: true })).toBe('stable');
   });
 
   it('is undefined for a PR preview build (disablePwa: true)', () => {
@@ -146,12 +138,6 @@ describe('resolveManagedAppUpdateChannel', () => {
   it('is undefined for a development build without preview', () => {
     expect(
       resolveManagedAppUpdateChannel({ mode: 'development', isPreview: false }),
-    ).toBeUndefined();
-  });
-
-  it('is undefined for the branch channel used without a channelId (not "develop")', () => {
-    expect(
-      resolveManagedAppUpdateChannel({ mode: 'production', isPreview: false, channel: 'branch' }),
     ).toBeUndefined();
   });
 });

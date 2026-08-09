@@ -30,8 +30,7 @@ import {
 import { assertReleaseNumberNotRetained, resolvePublicationPlan } from './retainedReleaseTree.mjs';
 import { applyManagedBranchPublish, applyManagedStablePublish } from './pagesFs.mjs';
 import { injectWatchdogScript } from './watchdogInject.mjs';
-
-const MANAGED_CHANNELS = new Set(['stable', 'develop']);
+import { MANAGED_CHANNELS } from '../../../src/shared/service/appUpdate/channelContract.ts';
 
 /**
  * Rejects a build whose `dist/updates` exists, before any publication write
@@ -57,7 +56,7 @@ function assertDistHasNoReservedUpdatesDir(distDir) {
  * @param channel Managed channel: `'stable'` or `'develop'`.
  * @returns The channel's base directory, containing its `assets/` and `updates/`.
  */
-function resolveChannelBase(workDir, channel) {
+export function resolveChannelBase(workDir, channel) {
   return channel === 'stable' ? workDir : join(workDir, 'branch', 'develop');
 }
 
@@ -85,7 +84,7 @@ export function publishManagedRelease({
   buildId,
   buildDate,
 }) {
-  if (!MANAGED_CHANNELS.has(channel)) {
+  if (!MANAGED_CHANNELS.includes(channel)) {
     throw new Error(`Unsupported managed channel: ${String(channel)}`);
   }
   if (typeof buildId !== 'string' || buildId.length === 0) {

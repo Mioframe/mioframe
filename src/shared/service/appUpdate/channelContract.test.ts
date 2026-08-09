@@ -6,11 +6,48 @@ import {
   buildManagedCacheNamespace,
   isForeignChannelPath,
   MANAGED_CHANNELS,
+  resolveManagedChannel,
 } from './channelContract';
 
 describe('MANAGED_CHANNELS', () => {
   it('is exactly the canonical managed-channel value set', () => {
     expect(MANAGED_CHANNELS).toStrictEqual(['stable', 'develop']);
+  });
+});
+
+describe('resolveManagedChannel', () => {
+  it('classifies the stable channel as the stable managed channel', () => {
+    expect(resolveManagedChannel('stable')).toBe('stable');
+  });
+
+  it('classifies the stable channel as managed regardless of a stray channelId', () => {
+    expect(resolveManagedChannel('stable', 'develop')).toBe('stable');
+  });
+
+  it('classifies the develop branch channel as the develop managed channel', () => {
+    expect(resolveManagedChannel('branch', 'develop')).toBe('develop');
+  });
+
+  it('classifies every other branch channelId as unmanaged', () => {
+    expect(resolveManagedChannel('branch', 'feature-x')).toBeUndefined();
+    expect(resolveManagedChannel('branch', 'pr-86')).toBeUndefined();
+  });
+
+  it('classifies a branch channel with no channelId as unmanaged', () => {
+    expect(resolveManagedChannel('branch')).toBeUndefined();
+  });
+
+  it('only ever returns a value from MANAGED_CHANNELS or undefined', () => {
+    const cases: Array<[Parameters<typeof resolveManagedChannel>[0], string | undefined]> = [
+      ['stable', undefined],
+      ['branch', 'develop'],
+      ['branch', 'feature-x'],
+      ['branch', undefined],
+    ];
+    for (const [channel, channelId] of cases) {
+      const result = resolveManagedChannel(channel, channelId);
+      expect(result === undefined || MANAGED_CHANNELS.includes(result)).toBe(true);
+    }
   });
 });
 

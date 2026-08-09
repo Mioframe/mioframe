@@ -11,9 +11,13 @@ vi.mock('./lib/ghPagesBranch.mjs', () => ({
 vi.mock('./lib/releasePublish.mjs', () => ({
   publishManagedRelease: vi.fn(() => ({ releaseNumber: 1 })),
 }));
+vi.mock('./lib/managedCompatibilityPreflight.mjs', () => ({
+  runManagedPublicationPreflight: vi.fn(async () => ({ decision: 'not-applicable' })),
+}));
 
 const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
 const { publishManagedRelease } = await import('./lib/releasePublish.mjs');
+const { runManagedPublicationPreflight } = await import('./lib/managedCompatibilityPreflight.mjs');
 const { publishStable } = await import('./publishStable.mjs');
 
 let distDir = '';
@@ -21,7 +25,10 @@ let distDir = '';
 beforeEach(() => {
   distDir = mkdtempSync(join(tmpdir(), 'pages-dist-'));
   vi.mocked(withGhPagesBranch).mockClear();
-  vi.mocked(publishManagedRelease).mockClear();
+  vi.mocked(publishManagedRelease).mockReset().mockReturnValue({ releaseNumber: 1 });
+  vi.mocked(runManagedPublicationPreflight)
+    .mockReset()
+    .mockResolvedValue({ decision: 'not-applicable' });
 });
 
 afterEach(() => {
@@ -129,6 +136,49 @@ describe('publishStable target repository', () => {
         buildDate: '2026-07-24T00:00:00.000Z',
       }),
     );
+  });
+
+  it('runs the data-compatibility preflight, with the same publication inputs, before the real publication write', async () => {
+    const callOrder = [];
+    vi.mocked(runManagedPublicationPreflight).mockImplementation(async () => {
+      callOrder.push('preflight');
+      return { decision: 'not-applicable' };
+    });
+    vi.mocked(publishManagedRelease).mockImplementation(() => {
+      callOrder.push('publish');
+      return { releaseNumber: 1 };
+    });
+
+    await publishStable(requiredFlags(distDir), {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'Mioframe/mioframe.github.io',
+    });
+
+    expect(runManagedPublicationPreflight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        distDir,
+        channel: 'stable',
+        appVersion: '1.2.3',
+        buildId: 'abc123',
+        buildDate: '2026-07-24T00:00:00.000Z',
+      }),
+    );
+    expect(callOrder).toEqual(['preflight', 'publish']);
+  });
+
+  it('never reaches the real publication write when the preflight rejects', async () => {
+    vi.mocked(runManagedPublicationPreflight).mockRejectedValue(
+      new Error('data-compatibility proof failed'),
+    );
+
+    await expect(
+      publishStable(requiredFlags(distDir), {
+        GITHUB_TOKEN: 'token',
+        PAGES_REPOSITORY: 'Mioframe/mioframe.github.io',
+      }),
+    ).rejects.toThrow('data-compatibility proof failed');
+
+    expect(publishManagedRelease).not.toHaveBeenCalled();
   });
 
   // publishManagedRelease() resolves a latest-build no-op before ever

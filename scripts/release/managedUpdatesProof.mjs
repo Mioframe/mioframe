@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 
 import { applyProcessResult } from '../lib/processResult.mjs';
 import { runLocalCommand } from '../lib/runLocalCommand.mjs';
+import { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL } from './runManagedReleaseDataCompatibilityProof.mjs';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 
@@ -40,8 +41,15 @@ export const MANAGED_UPDATES_CROSS_ENGINE_SPECS = [
   'tests/e2e/release/managedUpdatesCrossEngineLifecycle.spec.ts',
 ];
 
-// Fixed run order: group 1 must complete before group 2 starts, and group 2
-// must complete before group 3 starts.
+// Group 4: the data-compatibility publication gate's own browser proof (see
+// scripts/pages/lib/managedCompatibilityPreflight.mjs), run hermetically
+// against two releases it builds and publishes itself. Runs in a fourth
+// fresh Playwright container, only after group 3 passes.
+export const MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS = [
+  'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
+];
+
+// Fixed run order: each group must complete before the next starts.
 export const MANAGED_UPDATES_GROUPS = [
   { label: MANAGED_UPDATES_LIFECYCLE_LABEL, specs: MANAGED_UPDATES_LIFECYCLE_SPECS },
   {
@@ -49,6 +57,10 @@ export const MANAGED_UPDATES_GROUPS = [
     specs: MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,
   },
   { label: MANAGED_UPDATES_CROSS_ENGINE_LABEL, specs: MANAGED_UPDATES_CROSS_ENGINE_SPECS },
+  {
+    label: MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL,
+    specs: MANAGED_UPDATES_DATA_COMPATIBILITY_SPECS,
+  },
 ];
 
 const defaultDeps = {

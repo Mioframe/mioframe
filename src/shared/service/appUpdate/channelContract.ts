@@ -38,6 +38,24 @@ export const MANAGED_CHANNELS = ['stable', 'develop'] as const;
 export type ManagedChannel = (typeof MANAGED_CHANNELS)[number];
 
 /**
+ * Classifies a build's release channel into the managed channel it maps to,
+ * if any. The single canonical decision every managed-channel consumer
+ * (PWA build config, publisher validation, controller-state database
+ * naming) must share instead of re-deriving its own `'stable'`/`'develop'`
+ * check.
+ * @param channel - Release channel.
+ * @param channelId - Channel identifier; only meaningful for the `branch` channel.
+ * @returns `'stable'` for the stable channel, `'develop'` for the `develop` branch channel, `undefined` for every other channel/channelId combination.
+ */
+export function resolveManagedChannel(
+  channel: ReleaseChannel,
+  channelId?: string,
+): ManagedChannel | undefined {
+  if (channel === 'stable') return 'stable';
+  return channelId === 'develop' ? 'develop' : undefined;
+}
+
+/**
  * Build the Cache Storage name prefix for a release channel.
  * @param channel - Release channel.
  * @param channelId - Channel identifier; required for the `branch` channel.

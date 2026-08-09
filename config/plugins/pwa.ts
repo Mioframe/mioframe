@@ -5,6 +5,8 @@ import {
   buildChannelCacheNamespace,
   buildForeignChannelDenylistPattern,
   isForeignChannelPath,
+  resolveManagedChannel,
+  type ManagedChannel,
   type ReleaseChannel,
 } from '../../src/shared/service/appUpdate/channelContract';
 
@@ -176,35 +178,19 @@ export function buildWorkboxOptions({
 }
 
 /**
- * Returns `true` for the two channels the managed pinned-update controller
- * worker supports: stable, and the `develop` branch channel. Every other
- * branch and PR previews keep the ordinary generated (`generateSW`) worker
- * (or no worker at all for PR previews), per the managed pinned application
- * updates feature's scope decision.
- * @param channel - Release channel.
- * @param channelId - Channel identifier; only meaningful for the `branch` channel.
- * @returns Whether this build should use the managed controller worker.
- */
-export function isManagedChannel(channel: ReleaseChannel, channelId?: string): boolean {
-  // `channel` is only ever 'stable' or 'branch', so once it isn't 'stable'
-  // it is necessarily 'branch' — checking channelId alone is sufficient.
-  return channel === 'stable' || channelId === 'develop';
-}
-
-/**
  * Resolves this build's managed application-update channel, the value
  * embedded into the `__MANAGED_APP_UPDATE_CHANNEL__` build-time define
  * (see `vite.config.ts` and `src/shared/config.ts`).
  *
  * Reuses exactly the same gating decisions as {@link getPwaPlugins} — PWA
  * enablement ({@link GetPwaPluginsParams.disablePwa}, `mode`, `isPreview`)
- * and {@link isManagedChannel} — so channel classification is never
- * duplicated between the two. `undefined` for an ordinary branch, a PR
- * preview (always passes `disablePwa: true`), a disabled-PWA build, or a
- * development/Storybook build (never calls this at all; see
- * `vite.config.ts`).
+ * and the canonical {@link resolveManagedChannel} — so channel
+ * classification is never duplicated between the two. `undefined` for an
+ * ordinary branch, a PR preview (always passes `disablePwa: true`), a
+ * disabled-PWA build, or a development/Storybook build (never calls this at
+ * all; see `vite.config.ts`).
  * @param params - The same build parameters passed to {@link getPwaPlugins} (minus `base`, which this decision does not need).
- * @returns `'stable'` or `'develop'` only for an enabled managed-channel build; `undefined` otherwise.
+ * @returns The managed channel only for an enabled managed-channel build; `undefined` otherwise.
  */
 export function resolveManagedAppUpdateChannel({
   mode,
@@ -212,10 +198,9 @@ export function resolveManagedAppUpdateChannel({
   disablePwa,
   channel = 'stable',
   channelId,
-}: Omit<GetPwaPluginsParams, 'base'>): 'stable' | 'develop' | undefined {
+}: Omit<GetPwaPluginsParams, 'base'>): ManagedChannel | undefined {
   if (disablePwa || (mode !== 'production' && !isPreview)) return undefined;
-  if (!isManagedChannel(channel, channelId)) return undefined;
-  return channel === 'stable' ? 'stable' : 'develop';
+  return resolveManagedChannel(channel, channelId);
 }
 
 /**
@@ -227,8 +212,8 @@ export function resolveManagedAppUpdateChannel({
  * and namespaced to the given release channel:
  * - `scope`/`start_url`/`id` are pinned to `base`, so the manifest never
  *   drifts from the deployment it was built for;
- * - stable and the `develop` branch channel ({@link isManagedChannel}) use
- *   the custom `injectManifest` controller worker (`src/sw.ts`, see the
+ * - stable and the `develop` branch channel ({@link resolveManagedChannel})
+ *   use the custom `injectManifest` controller worker (`src/sw.ts`, see the
  *   managed pinned application updates feature) with no precache manifest
  *   of its own — it must never embed this build's application release
  *   identity or asset list;
@@ -264,7 +249,7 @@ export const getPwaPlugins = ({
   };
   const pwaAssets = { config: true, overrideManifestIcons: true };
 
-  if (isManagedChannel(channel, channelId)) {
+  if (resolveManagedChannel(channel, channelId)) {
     return [
       VitePWA({
         strategies: 'injectManifest',

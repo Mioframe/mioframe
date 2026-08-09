@@ -33,9 +33,9 @@ import { pathToFileURL } from 'node:url';
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
 import { applyBranchPublish } from './lib/pagesFs.mjs';
 import { publishManagedRelease } from './lib/releasePublish.mjs';
+import { runManagedPublicationPreflight } from './lib/managedCompatibilityPreflight.mjs';
 import { validateBranchSlug } from './lib/slug.mjs';
-
-const MANAGED_BRANCH_SLUG = 'develop';
+import { resolveManagedChannel } from '../../src/shared/service/appUpdate/channelContract.ts';
 
 function readFlag(argv, flag) {
   const index = argv.indexOf(flag);
@@ -58,7 +58,8 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
   }
 
   const slug = validateBranchSlug(rawSlug);
-  const isManaged = slug === MANAGED_BRANCH_SLUG;
+  const managedChannel = resolveManagedChannel('branch', slug);
+  const isManaged = managedChannel !== undefined;
 
   const appVersion = readFlag(argv, '--app-version');
   const buildId = readFlag(argv, '--build-id');
@@ -88,12 +89,26 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
     repository: PAGES_REPOSITORY,
     commitMessage: `chore(pages): deploy branch ${slug}`,
     outputDir,
-    fn(workDir) {
+    async fn(workDir) {
       if (isManaged) {
+        // Fails closed, before any real publication write, unless a
+        // candidate build with an existing previous release proves backward
+        // data compatibility (see the managed pinned application updates
+        // feature's "Data compatibility" invariant and
+        // scripts/pages/lib/managedCompatibilityPreflight.mjs). Ordinary
+        // unmanaged branch slugs never reach this branch at all.
+        await runManagedPublicationPreflight({
+          workDir,
+          distDir,
+          channel: managedChannel,
+          appVersion,
+          buildId,
+          buildDate,
+        });
         publishManagedRelease({
           workDir,
           distDir,
-          channel: 'develop',
+          channel: managedChannel,
           appVersion,
           buildId,
           buildDate,

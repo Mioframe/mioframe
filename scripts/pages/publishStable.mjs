@@ -27,6 +27,7 @@ import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
 import { publishManagedRelease } from './lib/releasePublish.mjs';
+import { runManagedPublicationPreflight } from './lib/managedCompatibilityPreflight.mjs';
 
 function readFlag(argv, flag) {
   const index = argv.indexOf(flag);
@@ -59,7 +60,22 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
     repository: PAGES_REPOSITORY,
     commitMessage: 'chore(pages): deploy stable build',
     outputDir,
-    fn(workDir) {
+    async fn(workDir) {
+      // Fails closed, before any real publication write, unless a candidate
+      // build with an existing previous release proves backward data
+      // compatibility (see the managed pinned application updates feature's
+      // "Data compatibility" invariant and
+      // scripts/pages/lib/managedCompatibilityPreflight.mjs). A first
+      // release or an idempotent republish of the current latest proceeds
+      // immediately without running the proof.
+      await runManagedPublicationPreflight({
+        workDir,
+        distDir,
+        channel: 'stable',
+        appVersion,
+        buildId,
+        buildDate,
+      });
       publishManagedRelease({
         workDir,
         distDir,

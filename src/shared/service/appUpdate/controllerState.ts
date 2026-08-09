@@ -1,6 +1,7 @@
 import { createStore, get, set } from 'idb-keyval';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
+import { buildManagedCacheNamespace } from './channelContract';
 import {
   CONTROLLER_STATE_SCHEMA_VERSION,
   zodUpdateControllerState,
@@ -14,18 +15,17 @@ const CONTROLLER_STATE_KEY = 'controllerState';
 /**
  * Builds this channel's persisted-state IndexedDB database name.
  *
- * Intentionally a small, fixed two-channel mapping rather than an import of
+ * Derived from the canonical {@link buildManagedCacheNamespace} rather than
+ * a hand-maintained mapping, so it can never silently drift from the same
+ * channel identity used for Cache Storage namespacing. Unlike
  * `config/plugins/pwa.ts`'s general `{ channel, channelId }` build-time cache
- * namespacing: this runs inside the browser worker bundle, which cannot
- * depend on Node-only Vite config. Keep the produced names aligned with
- * `buildChannelCacheNamespace('stable')` / `buildChannelCacheNamespace('branch', 'develop')`.
+ * namespacing, `channelContract.ts` has no Node-only Vite dependency, so it
+ * is safe to import here inside the browser worker bundle.
  * @param channel - Managed channel.
  * @returns The channel's IndexedDB database name.
  */
 export const buildControllerStateDbName = (channel: ManagedChannel): string =>
-  channel === 'stable'
-    ? 'mioframe-update-controller-stable'
-    : 'mioframe-update-controller-branch-develop';
+  `mioframe-update-controller-${buildManagedCacheNamespace(channel)}`;
 
 /**
  * Creates this channel's `idb-keyval` custom store for the persisted
