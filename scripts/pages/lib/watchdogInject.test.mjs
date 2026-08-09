@@ -949,6 +949,200 @@ describe('watchdog transport resilience', () => {
   });
 });
 
+describe('boot outcome arbitration: BOOT_OK and BOOT_FAILED are never concurrently in flight', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  /**
+   * Runs the watchdog against a controller that immediately answers
+   * `GET_ACTIVATION_STATUS` with `isActivationTarget: false` (armed, no
+   * deadline timer) and captures the most recently opened `MessagePort` for
+   * each of `BOOT_OK`/`BOOT_FAILED`, without auto-replying to either, so a
+   * test can control exactly when -- or whether -- each acknowledgement is
+   * delivered.
+   * @returns The list of messages sent to the controller (live-updated) and
+   * the captured ports, keyed by message type.
+   */
+  function createControlledArbitrationController() {
+    const postMessageCalls = [];
+    const ports = {};
+    const controller = {
+      postMessage: (message, transfer) => {
+        postMessageCalls.push(message);
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          transfer[0].postMessage({ protocolVersion: 1, isActivationTarget: false });
+          return;
+        }
+        if (message.type === 'BOOT_FAILED') {
+          ports.bootFailed = transfer[0];
+        }
+        if (message.type === 'BOOT_OK') {
+          ports.bootOk = transfer[0];
+        }
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+    return { postMessageCalls, ports };
+  }
+
+  async function startWatchdog(releaseNumber = 1) {
+    const setup = createControlledArbitrationController();
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(releaseNumber))();
+    await Promise.resolve();
+    await flushTasks();
+    return setup;
+  }
+
+  function hasType(postMessageCalls, type) {
+    return postMessageCalls.some((message) => message.type === type);
+  }
+
+  it('failure observed first blocks a concurrently requested success; a durable rollback discards the deferred success with exactly one reload', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const { postMessageCalls, ports } = await startWatchdog();
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_FAILED')).toBe(true);
+    expect(ports.bootFailed).toBeDefined();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(false);
+
+    ports.bootFailed.postMessage({ protocolVersion: 1, ack: 'rolled-back' });
+    await flushTasks();
+
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(false);
+  });
+
+  it('an ignored failure releases a deferred success, which then commits and settles without reload', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const { postMessageCalls, ports } = await startWatchdog();
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_FAILED')).toBe(true);
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(false);
+
+    ports.bootFailed.postMessage({ protocolVersion: 1, ack: 'ignored' });
+    await flushTasks();
+
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(true);
+    expect(ports.bootOk).toBeDefined();
+
+    ports.bootOk.postMessage({ protocolVersion: 1, ack: 'committed' });
+    await flushTasks();
+
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('an unconfirmed/timed-out failure acknowledgement keeps the watchdog fail-closed: a deferred success is never sent, and the failure stays retriable', async () => {
+    // Uses fake timers from the start (rather than the shared
+    // startWatchdog()/flushTasks() helpers, which drive real macrotasks) so
+    // the BOOT_FAILED acknowledgement's ack-timeout can be advanced
+    // deterministically instead of actually waiting it out.
+    vi.useFakeTimers();
+    const postMessageCalls = [];
+    const controller = {
+      postMessage: (message, transfer) => {
+        postMessageCalls.push(message);
+        if (message.type === 'GET_ACTIVATION_STATUS') {
+          transfer[0].postMessage({ protocolVersion: 1, isActivationTarget: false });
+        }
+        // BOOT_FAILED is deliberately never acknowledged here, so its
+        // acknowledgement times out.
+      },
+    };
+    vi.stubGlobal('navigator', {
+      serviceWorker: { ready: Promise.resolve(), controller, addEventListener: vi.fn() },
+    });
+
+    // oxlint-disable-next-line no-implied-eval -- runs the built watchdog source in isolation to prove real runtime behavior, not user input.
+    new Function(buildWatchdogScript(1))();
+    await vi.advanceTimersByTimeAsync(0);
+
+    window.dispatchEvent(new Event('error'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hasType(postMessageCalls, 'BOOT_FAILED')).toBe(true);
+
+    window.mioframeAppUpdateBootOk();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(false);
+
+    // Let the BOOT_FAILED acknowledgement time out without ever replying.
+    await vi.advanceTimersByTimeAsync(WATCHDOG_ACK_TIMEOUT_MS);
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(false);
+
+    const bootFailedCallsBeforeRetry = postMessageCalls.filter(
+      (message) => message.type === 'BOOT_FAILED',
+    ).length;
+
+    // Fail-closed but retriable: a later fatal error reports BOOT_FAILED
+    // again, and the deferred success still does not overtake it.
+    window.dispatchEvent(new Event('error'));
+    await vi.advanceTimersByTimeAsync(0);
+    const bootFailedCallsAfterRetry = postMessageCalls.filter(
+      (message) => message.type === 'BOOT_FAILED',
+    ).length;
+    expect(bootFailedCallsAfterRetry).toBeGreaterThan(bootFailedCallsBeforeRetry);
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(false);
+  });
+
+  it('success observed first blocks a concurrently requested failure; a durable commit discards the deferred failure', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {});
+    const { postMessageCalls, ports } = await startWatchdog();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(true);
+    expect(ports.bootOk).toBeDefined();
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_FAILED')).toBe(false);
+
+    ports.bootOk.postMessage({ protocolVersion: 1, ack: 'committed' });
+    await flushTasks();
+
+    // Settled by the committed acknowledgement: a later fatal error must
+    // send nothing, proving the deferred failure was discarded rather than
+    // merely delayed.
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+
+    expect(hasType(postMessageCalls, 'BOOT_FAILED')).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('a success acknowledgement with no durable outcome releases a deferred failure to proceed', async () => {
+    const { postMessageCalls, ports } = await startWatchdog();
+
+    window.mioframeAppUpdateBootOk();
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_OK')).toBe(true);
+
+    window.dispatchEvent(new Event('error'));
+    await flushTasks();
+    expect(hasType(postMessageCalls, 'BOOT_FAILED')).toBe(false);
+
+    ports.bootOk.postMessage({ protocolVersion: 1, ack: 'ignored' });
+    await flushTasks();
+
+    expect(hasType(postMessageCalls, 'BOOT_FAILED')).toBe(true);
+  });
+});
+
 describe('injectWatchdogScript', () => {
   it('inserts the watchdog script immediately before the main module entry', () => {
     const html =

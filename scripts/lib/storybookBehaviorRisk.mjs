@@ -135,6 +135,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     ],
     specs: ['tests/e2e/storybook/mdBottomSheetContainerKeyboardScroll.spec.ts'],
   },
+  {
+    name: 'dialog form fallback focus',
+    sourcePrefixes: [
+      'src/shared/ui/Dialog/DialogForm.vue',
+      'src/shared/ui/Dialog/DialogForm.stories.ts',
+    ],
+    specs: ['tests/e2e/storybook/dialogFormFallbackFocus.spec.ts'],
+  },
 ];
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior

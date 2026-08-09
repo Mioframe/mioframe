@@ -45,6 +45,18 @@
  * its other fields are read; a missing, mismatched, or otherwise malformed
  * message is ignored — never thrown — exactly like "no response at all"
  * (timeout, or no controller).
+ *
+ * `BOOT_OK` and `BOOT_FAILED` are never in flight concurrently: the
+ * watchdog is the single transient arbiter of which local boot outcome it
+ * observed first, so the durable result never depends on which request
+ * happens to reach the worker's queue first. Whichever is requested second
+ * while the other is still unresolved is deferred rather than sent; a
+ * failure's `ignored` acknowledgement (or a success's non-durable
+ * acknowledgement) releases the deferred counterpart, while a durable
+ * `committed`/`rolled-back` outcome discards it. A failure whose
+ * acknowledgement is missing, timed out, or malformed never releases a
+ * deferred success — it stays fail-closed and armed for retry — matching
+ * the required activation fail-closed behavior.
  */
 
 import {
@@ -95,6 +107,19 @@ export function buildWatchdogScript(releaseNumber) {
   var settled = false;
   var bootOkReported = false;
   var bootFailedReported = false;
+  // Which report currently owns the single in-flight controller round trip
+  // ('ok', 'failed', or null): guarantees BOOT_OK and BOOT_FAILED are never
+  // sent concurrently, so the durable outcome is decided by which local
+  // boot event was observed first, not by worker message arrival order.
+  var reportInFlight = null;
+  // A BOOT_OK request made while a BOOT_FAILED report is unresolved: sent
+  // only once that failure resolves 'ignored'; discarded on 'rolled-back'
+  // or 'error'; left pending (fail-closed) on a missing/malformed ack.
+  var deferredBootOk = false;
+  // A BOOT_FAILED report requested while a BOOT_OK report is unresolved:
+  // sent once that success fails to reach a durable outcome; discarded on
+  // 'committed' or 'rolled-back'.
+  var deferredBootFailed = false;
   var deadlineTimer = null;
   var reloadScheduled = false;
 
@@ -183,7 +208,16 @@ export function buildWatchdogScript(releaseNumber) {
 
   function reportBootFailed() {
     if (settled || bootFailedReported) return;
+    if (reportInFlight === 'ok') {
+      // A BOOT_OK report currently owns arbitration and is unresolved:
+      // defer this failure instead of sending it concurrently. If that
+      // BOOT_OK later fails to reach a durable outcome, it releases this
+      // deferred failure by calling this function again.
+      deferredBootFailed = true;
+      return;
+    }
     bootFailedReported = true;
+    reportInFlight = 'failed';
     sendToController({
       protocolVersion: PROTOCOL_VERSION,
       type: BOOT_FAILED,
@@ -192,6 +226,7 @@ export function buildWatchdogScript(releaseNumber) {
       var ack = response && response.protocolVersion === PROTOCOL_VERSION ? response.ack : null;
       if (ack === ACK_ERROR) {
         settled = true;
+        reportInFlight = null;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
         showRecoveryMessage();
         return;
@@ -201,22 +236,34 @@ export function buildWatchdogScript(releaseNumber) {
         // possibly before this window's own broadcast delivery: reload
         // immediately rather than waiting for the matching
         // APP_UPDATE_ROLLBACK broadcast below, which may never arrive (see
-        // broadcastToSameChannelWindows()'s best-effort delivery).
+        // broadcastToSameChannelWindows()'s best-effort delivery). A
+        // success deferred while this failure was unresolved must never
+        // overtake a durably rolled-back boot.
         settled = true;
+        reportInFlight = null;
+        deferredBootOk = false;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
         scheduleReload();
         return;
       }
-      if (ack === ACK_IGNORED || ack === null) {
-        // No durable outcome recorded (an explicit ignore, a timeout, or no
-        // controller): allow a later genuine failure to be reported again
-        // instead of latching forever.
+      if (ack === ACK_IGNORED) {
+        // The worker explicitly confirms this release is not an activation
+        // failure: allow a later genuine failure to be reported again
+        // instead of latching forever, and release any success that was
+        // deferred while this report was unresolved.
         bootFailedReported = false;
+        reportInFlight = null;
+        if (deferredBootOk) {
+          deferredBootOk = false;
+          window.mioframeAppUpdateBootOk();
+        }
         return;
       }
-      // Any other unexpected acknowledgement value: fail closed the same
-      // way, so a malformed report can never latch this session out of ever
-      // reporting a failure again.
+      // Missing, timed-out, or malformed acknowledgement: no durable
+      // outcome was confirmed for this fatal boot failure. Stay fail-closed
+      // -- keep arbitration on this failure and any deferred success unsent
+      // -- while remaining retriable through a later fatal error or
+      // deadline, exactly like the previous latch-free retry behavior.
       bootFailedReported = false;
     });
   }
@@ -237,7 +284,15 @@ export function buildWatchdogScript(releaseNumber) {
 
   window.mioframeAppUpdateBootOk = function () {
     if (settled || bootOkReported) return;
+    if (reportInFlight === 'failed') {
+      // A BOOT_FAILED report currently owns arbitration and is unresolved:
+      // defer this success instead of sending it concurrently. It is sent
+      // only if that failure resolves 'ignored'.
+      deferredBootOk = true;
+      return;
+    }
     bootOkReported = true;
+    reportInFlight = 'ok';
     var request = {
       protocolVersion: PROTOCOL_VERSION,
       type: BOOT_OK,
@@ -247,7 +302,11 @@ export function buildWatchdogScript(releaseNumber) {
       var isCommitted =
         response && response.protocolVersion === PROTOCOL_VERSION && response.ack === ACK_COMMITTED;
       if (isCommitted) {
+        // A failure deferred while this success was unresolved must never
+        // surface after a durably committed boot.
         settled = true;
+        reportInFlight = null;
+        deferredBootFailed = false;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
         window.removeEventListener('error', onEarlyFatalError, true);
         window.removeEventListener('unhandledrejection', onEarlyFatalError);
@@ -263,6 +322,8 @@ export function buildWatchdogScript(releaseNumber) {
         // confirmation arrived): reload immediately rather than waiting for
         // a later broadcast.
         settled = true;
+        reportInFlight = null;
+        deferredBootFailed = false;
         if (deadlineTimer !== null) clearTimeout(deadlineTimer);
         window.removeEventListener('error', onEarlyFatalError, true);
         window.removeEventListener('unhandledrejection', onEarlyFatalError);
@@ -272,7 +333,14 @@ export function buildWatchdogScript(releaseNumber) {
       // Not committed or rolled back ('ignored', 'error', or no
       // acknowledgement at all): the worker did not confirm a durable
       // outcome, so the watchdog stays armed rather than claiming success.
+      // Release arbitration: an already-observed failure/deadline outcome
+      // deferred while this success was unresolved may now proceed.
       bootOkReported = false;
+      reportInFlight = null;
+      if (deferredBootFailed) {
+        deferredBootFailed = false;
+        reportBootFailed();
+      }
     });
   };
 

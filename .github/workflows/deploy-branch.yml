@@ -98,6 +98,7 @@ jobs:
           BASE_URL: /branch/${{ steps.slug.outputs.slug }}/
           VITE_RELEASE_CHANNEL: branch
           VITE_RELEASE_CHANNEL_ID: ${{ steps.slug.outputs.slug }}
+          VITE_BUILD_ID: ${{ steps.selected-commit.outputs.sha }}
           VITE_BUILD_DATE: ${{ steps.build-date.outputs.date }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}

@@ -23,6 +23,7 @@ import { describe, expect, it } from 'vitest';
 const COMMITTER_TIMESTAMP_COMMAND =
   "TZ=UTC git show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd ${{ github.sha }}";
 const CANONICAL_DATE_REF = '${{ steps.build-date.outputs.date }}';
+const CANONICAL_SHA_REF = '${{ steps.selected-commit.outputs.sha }}';
 
 /**
  * Extracts one top-level job's YAML block (2-space indented job name, e.g.
@@ -42,16 +43,28 @@ function extractJob(source, jobName) {
 }
 
 /**
- * Extracts the value passed to `--build-date` on the line immediately
- * following `marker` in `jobBlock` (each CLI flag is authored on its own
+ * Extracts the value passed to `flag` on the line following the first
+ * occurrence of `marker` in `jobBlock` (each CLI flag is authored on its own
  * source line in these workflows' folded `run: >-` blocks).
+ * @param jobBlock One job's YAML block text.
+ * @param marker A unique substring identifying the step's command (e.g. a script filename).
+ * @param flag The CLI flag to capture the value of, e.g. `--build-date`.
+ * @returns The captured flag value, or `undefined` when absent.
+ */
+function extractFlagValue(jobBlock, marker, flag) {
+  const match = new RegExp(`${marker}[\\s\\S]*?${flag}\\s+(.+)`).exec(jobBlock);
+  return match?.[1].trim();
+}
+
+/**
+ * Extracts the value passed to `--build-date` on the line immediately
+ * following `marker` in `jobBlock`.
  * @param jobBlock One job's YAML block text.
  * @param marker A unique substring identifying the step's command (e.g. a script filename).
  * @returns The captured `--build-date` value, or `undefined` when absent.
  */
 function extractBuildDateArg(jobBlock, marker) {
-  const match = new RegExp(`${marker}[\\s\\S]*?--build-date\\s+(.+)`).exec(jobBlock);
-  return match?.[1].trim();
+  return extractFlagValue(jobBlock, marker, '--build-date');
 }
 
 describe.each([
@@ -109,6 +122,34 @@ describe('deploy-branch.yml deploy-branch: manual develop deployment build ident
 
     expect(viteBuildDate).toBe(CANONICAL_DATE_REF);
     expect(deploymentMetadataBuildDate).toBe(CANONICAL_DATE_REF);
+  });
+
+  it('passes the exact same selected app-source commit SHA to Vite, deployment metadata, and the managed publisher as the build identity', () => {
+    const viteBuildId = /VITE_BUILD_ID:\s*(.+)/.exec(jobBlock)?.[1].trim();
+    const deploymentMetadataSha = extractFlagValue(
+      jobBlock,
+      'writeDeploymentMetadata\\.mjs',
+      '--sha',
+    );
+    const PUBLISH_INVOCATION = 'tooling/scripts/pages/publishBranch.mjs';
+    const steps = jobBlock.split(/\n {6}- name: /).slice(1);
+    const managedPublishStep = steps.find(
+      (step) => step.includes(PUBLISH_INVOCATION) && step.includes('--app-version "'),
+    );
+
+    if (!managedPublishStep) throw new Error('Expected a managed develop publish step');
+
+    const managedPublisherBuildId = extractFlagValue(
+      managedPublishStep,
+      PUBLISH_INVOCATION,
+      '--build-id',
+    );
+
+    expect(viteBuildId).toBe(CANONICAL_SHA_REF);
+    expect(deploymentMetadataSha).toBe(CANONICAL_SHA_REF);
+    expect(managedPublisherBuildId).toBe(CANONICAL_SHA_REF);
+    // Never the trusted tooling checkout's own commit, only the selected app-source commit.
+    expect(viteBuildId).not.toBe('${{ github.sha }}');
   });
 
   it('gates the managed publish call behind the develop slug and supplies app-source-derived identity, distinct from the unmanaged branch publish call', () => {
