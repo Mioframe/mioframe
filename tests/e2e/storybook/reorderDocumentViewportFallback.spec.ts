@@ -38,11 +38,11 @@ interface DragProgressionResult {
   ancestorMoveFrames: number;
   /** Real rendered frames spent waiting for the ancestor to reach its own native scroll limit. */
   ancestorMaxFrames: number;
-  /** Real rendered frames spent waiting for `document.scrollingElement`'s `scrollTop` to first move. */
+  /** Real rendered frames spent waiting for `document.body.scrollTop` to first move. */
   documentMoveFrames: number;
-  /** `document.scrollingElement`'s remaining native scroll room the instant its movement was first detected. */
+  /** `document.body`'s remaining native scroll room the instant its movement was first detected. */
   remainingRoom: number;
-  /** `document.scrollingElement`'s `scrollTop` sampled once per rendered frame, starting from the first detected move. */
+  /** `document.body.scrollTop` sampled once per rendered frame, starting from the first detected move. */
   samples: number[];
 }
 
@@ -60,7 +60,7 @@ interface DragProgressionResult {
  * @param page - The Playwright page driving the drag.
  * @param args - Baseline scroll positions, viewport height, and per-phase frame budgets.
  * @returns Per-phase frame counts, the document's remaining room, and the sampled
- * `document.scrollingElement`'s `scrollTop` trace.
+ * `document.body.scrollTop` trace.
  */
 const observeDragProgression = (
   page: Page,
@@ -77,10 +77,10 @@ const observeDragProgression = (
     (p) => {
       const containerEl = document.querySelector(p.containerSelector);
       const ancestorEl = document.querySelector(p.ancestorSelector);
-      const docEl = document.scrollingElement;
-      if (!containerEl || !ancestorEl || !docEl) {
-        throw new Error('missing reorder container, ancestor, or document scrolling element');
+      if (!containerEl || !ancestorEl) {
+        throw new Error('missing reorder container or ancestor element');
       }
+      const docEl = document.body;
 
       const nextFrame = () =>
         new Promise<void>((resolve) => {
@@ -164,24 +164,31 @@ interface ReleaseScrollObservation {
   samples: ReleaseScrollSamples;
 }
 
+declare global {
+  interface Window {
+    __releaseScrollObservation?: Promise<ReleaseScrollObservation>;
+  }
+}
+
 /**
- * Arms a capture-phase `pointerup` observer before release. The observer records all three
- * scroll positions synchronously at the actual browser event boundary, then samples subsequent
- * rendered frames. This removes the Node-to-browser blind window that made a pre-release baseline
- * stale before post-release sampling began.
+ * Arms a capture-phase `pointerup` observer and returns only once the listener is actually
+ * installed in the browser. The observer's result promise is stashed on `window` rather than
+ * returned directly, so this call's own round trip cannot race a `page.mouse.up()` dispatched
+ * immediately afterward — the previous single-call shape returned a promise that resolved only
+ * after `pointerup` fired, letting `mouse.up()` reach the browser before the listener was armed.
  * @param page - The Playwright page driving the drag.
  * @param frameCount - Number of rendered frames to sample after pointer release.
- * @returns Pointer-up baselines and aligned post-release samples for all three scroll levels.
+ * @returns Resolves once the capture-phase listener is installed.
  */
-const observeReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseScrollObservation> =>
+const armReleaseScrollObserver = (page: Page, frameCount = 10): Promise<void> =>
   page.evaluate(
     (args) => {
       const containerEl = document.querySelector(args.containerSelector);
       const ancestorEl = document.querySelector(args.ancestorSelector);
-      const docEl = document.scrollingElement;
-      if (!containerEl || !ancestorEl || !docEl) {
-        throw new Error('missing reorder container, ancestor, or document scrolling element');
+      if (!containerEl || !ancestorEl) {
+        throw new Error('missing reorder container or ancestor element');
       }
+      const docEl = document.body;
 
       const readPositions = (): ReleaseScrollPositions => ({
         container: containerEl.scrollTop,
@@ -189,7 +196,7 @@ const observeReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseS
         document: docEl.scrollTop,
       });
 
-      return new Promise<ReleaseScrollObservation>((resolve) => {
+      window.__releaseScrollObservation = new Promise<ReleaseScrollObservation>((resolve) => {
         window.addEventListener(
           'pointerup',
           () => {
@@ -227,6 +234,21 @@ const observeReleaseScrollTops = (page: Page, frameCount = 10): Promise<ReleaseS
     { containerSelector: CONTAINER_SELECTOR, ancestorSelector: ANCESTOR_SELECTOR, frameCount },
   );
 
+/**
+ * Reads the result of an already-armed {@link armReleaseScrollObserver} listener. Must be called
+ * after the real `pointerup` has been dispatched (e.g. via `page.mouse.up()`).
+ * @param page - The Playwright page driving the drag.
+ * @returns Pointer-up baselines and aligned post-release samples for all three scroll levels.
+ */
+const readReleaseScrollObservation = (page: Page): Promise<ReleaseScrollObservation> =>
+  page.evaluate(() => {
+    const observation = window.__releaseScrollObservation;
+    if (!observation) {
+      throw new Error('release scroll observer was not armed before reading its result');
+    }
+    return observation;
+  });
+
 test.describe('document viewport autoscroll fallback', () => {
   test('a drag uses the container, its ancestor, and the real document viewport, and release stops all three', async ({
     page,
@@ -236,25 +258,19 @@ test.describe('document viewport autoscroll fallback', () => {
 
     const container = page.getByRole('list', { name: 'Document viewport reorder items' });
     const ancestor = page.getByRole('region', { name: 'Reorder scroll ancestor' });
+    // This app's global layout pins `html` to exactly one viewport tall with its own
+    // `overflow: auto`, so `body` (not `document.scrollingElement`) is the element that actually
+    // scrolls for page-level content — it is the real, observable "document viewport" here.
+    const documentViewport = page.locator('body');
     const firstItem = page.getByRole('listitem', { name: 'row-0', exact: true });
-
-    // The reorder library's autoscroll fallback targets `document.scrollingElement` generically
-    // (see ReorderAutoScroller.ts's `candidate.ownerDocument.scrollingElement` check), so this
-    // reads the same real element rather than assuming a specific tag: Storybook's isolated
-    // Canvas does not pin `html`/`body` to the application's own forced-viewport-height layout.
-    const getDocumentExtent = (): Promise<number> =>
-      page.evaluate(() => {
-        const el = document.scrollingElement;
-        return el ? el.scrollHeight - el.clientHeight : 0;
-      });
-    const getDocumentScrollTop = (): Promise<number> =>
-      page.evaluate(() => document.scrollingElement?.scrollTop ?? 0);
 
     // Preconditions: all three levels have real, independent scroll room, or this would not
     // actually exercise the document-viewport fallback scenario.
     const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
     const ancestorExtent = await ancestor.evaluate((el) => el.scrollHeight - el.clientHeight);
-    const documentExtent = await getDocumentExtent();
+    const documentExtent = await documentViewport.evaluate(
+      (el) => el.scrollHeight - el.clientHeight,
+    );
     expect(containerExtent).toBeGreaterThan(0);
     expect(ancestorExtent).toBeGreaterThan(0);
     expect(documentExtent).toBeGreaterThan(0);
@@ -268,7 +284,7 @@ test.describe('document viewport autoscroll fallback', () => {
     const centerX = itemBox.x + itemBox.width / 2;
     const containerScrollTopStart = await container.evaluate((el) => el.scrollTop);
     const ancestorScrollTopStart = await ancestor.evaluate((el) => el.scrollTop);
-    const documentScrollTopStart = await getDocumentScrollTop();
+    const documentScrollTopStart = await documentViewport.evaluate((el) => el.scrollTop);
 
     await page.mouse.move(centerX, itemBox.y + itemBox.height / 2);
     await page.mouse.down();
@@ -311,12 +327,14 @@ test.describe('document viewport autoscroll fallback', () => {
     expect(progression.remainingRoom).toBeGreaterThan(4);
     assertViewportSettlesWithoutResuming(progression.samples);
 
-    // 7. Arm browser-side release observation before dispatching pointer-up. This captures the
-    // exact event-boundary baseline without a Node round trip, then proves that no scroll level
-    // resumes forward autoscroll while any reverse browser correction settles.
-    const releaseObservationPromise = observeReleaseScrollTops(page);
+    // 7. Arm browser-side release observation and wait for the listener to actually be installed
+    // before dispatching pointer-up, then read its already-armed result. This captures the exact
+    // event-boundary baseline without a race between listener installation and the real
+    // `pointerup`, and proves that no scroll level resumes forward autoscroll while any reverse
+    // browser correction settles.
+    await armReleaseScrollObserver(page);
     await page.mouse.up();
-    const releaseObservation = await releaseObservationPromise;
+    const releaseObservation = await readReleaseScrollObservation(page);
     await expect(firstItem).not.toHaveClass(/_dragging/);
 
     assertNoForwardScrollAfterRelease(
