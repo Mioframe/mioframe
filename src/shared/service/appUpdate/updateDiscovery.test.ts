@@ -14,6 +14,7 @@ const writeControllerStateMock = vi.fn();
 const fetchLatestReleasePointerMock = vi.fn();
 const fetchReleaseDescriptorMock = vi.fn();
 const reportReleasePreparationFailureMock = vi.fn();
+const reportDiscoveryIdentityConflictMock = vi.fn();
 const prepareMock = vi.fn();
 const postMessageMock = vi.fn();
 const cachesKeysMock = vi.fn();
@@ -28,6 +29,10 @@ vi.mock('./releasePreparation', () => ({
   fetchReleaseDescriptor: (...args: unknown[]) => fetchReleaseDescriptorMock(...args),
   reportReleasePreparationFailure: (...args: unknown[]) =>
     reportReleasePreparationFailureMock(...args),
+}));
+vi.mock('./appUpdateDiagnosticEvents', () => ({
+  reportDiscoveryIdentityConflict: (...args: unknown[]) =>
+    reportDiscoveryIdentityConflictMock(...args),
 }));
 vi.stubGlobal('self', {
   clients: {
@@ -98,6 +103,7 @@ beforeEach(() => {
   fetchLatestReleasePointerMock.mockReset();
   fetchReleaseDescriptorMock.mockReset();
   reportReleasePreparationFailureMock.mockReset();
+  reportDiscoveryIdentityConflictMock.mockReset();
   prepareMock.mockReset().mockResolvedValue(undefined);
   postMessageMock.mockReset();
   cachesKeysMock.mockReset().mockResolvedValue([]);
@@ -309,6 +315,22 @@ describe('runUpdateReconciliationPass', () => {
     fetchReleaseDescriptorMock.mockResolvedValue(conflicting);
     await runUpdateReconciliationPass(dependencies);
     expect(prepareMock.mock.calls[0]?.[3]).toBeUndefined();
+  });
+
+  it('fails closed as check-failed and reports the conflict once, without writing state, broadcasting, or cleaning caches, for a same-number conflicting discovery', async () => {
+    setState('manual');
+    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 1 });
+    fetchReleaseDescriptorMock.mockResolvedValue({
+      ...descriptor(1),
+      buildId: 'conflicting-build',
+    });
+
+    const result = await runUpdateReconciliationPass(dependencies);
+
+    expect(result.snapshot.error).toBe('check-failed');
+    expect(result.effects).toEqual({ broadcastStateChanged: false, cleanupReleaseCache: false });
+    expect(writeControllerStateMock).not.toHaveBeenCalled();
+    expect(reportDiscoveryIdentityConflictMock).toHaveBeenCalledExactlyOnceWith('stable', 1);
   });
 
   it('does not run fallback preparation when discovery fails without a candidate', async () => {

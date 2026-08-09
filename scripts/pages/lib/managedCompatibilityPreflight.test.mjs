@@ -108,7 +108,7 @@ describe('runManagedPublicationPreflight', () => {
       expect(readdirSync(join(workDir, 'updates', 'releases')).sort()).toStrictEqual(
         releaseEntriesBefore,
       );
-      expect(args.previousReleaseNumber).toBe(1);
+      expect(args.previousReleaseNumbers).toStrictEqual([1]);
       expect(args.candidateReleaseNumber).toBe(2);
       expect(args.channel).toBe('stable');
       return { passed: true };
@@ -127,7 +127,7 @@ describe('runManagedPublicationPreflight', () => {
     );
 
     expect(result.decision).toBe('proved');
-    expect(result.previousReleaseNumber).toBe(1);
+    expect(result.previousReleaseNumbers).toStrictEqual([1]);
     expect(result.descriptor.releaseNumber).toBe(2);
     expect(runCompatibilityProof).toHaveBeenCalledTimes(1);
     // The real workDir remains exactly as it was before this call: still
@@ -135,6 +135,61 @@ describe('runManagedPublicationPreflight', () => {
     expect(readdirSync(join(workDir, 'updates', 'releases')).sort()).toStrictEqual(
       releaseEntriesBefore,
     );
+  });
+
+  it('proves compatibility against every retained previous release, not only the immediately preceding one', async () => {
+    writeDist('<release-1/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      appVersion: '1.0.0',
+      buildId: 'sha-1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+    writeDist('<release-2/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      appVersion: '1.1.0',
+      buildId: 'sha-2',
+      buildDate: '2026-07-25T00:00:00.000Z',
+    });
+    writeDist('<release-3/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      appVersion: '1.2.0',
+      buildId: 'sha-3',
+      buildDate: '2026-07-26T00:00:00.000Z',
+    });
+
+    writeDist('<release-4/>');
+    const runCompatibilityProof = vi.fn().mockImplementation(async (args) => {
+      // release 1 is a non-immediate old release (candidate is 4, N-1 is 3):
+      // this proves every retained release is collected, not only N-1.
+      expect(args.previousReleaseNumbers).toStrictEqual([1, 2, 3]);
+      expect(args.candidateReleaseNumber).toBe(4);
+      return { passed: true };
+    });
+
+    const result = await runManagedPublicationPreflight(
+      {
+        workDir,
+        distDir,
+        channel: 'stable',
+        appVersion: '1.3.0',
+        buildId: 'sha-4',
+        buildDate: '2026-07-27T00:00:00.000Z',
+      },
+      { runCompatibilityProof },
+    );
+
+    expect(result.decision).toBe('proved');
+    expect(result.previousReleaseNumbers).toStrictEqual([1, 2, 3]);
+    expect(runCompatibilityProof).toHaveBeenCalledTimes(1);
   });
 
   it('fails closed before publication when the compatibility proof reports non-pass, leaving the real workDir untouched', async () => {

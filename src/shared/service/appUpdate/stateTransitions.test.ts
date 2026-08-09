@@ -139,6 +139,49 @@ describe('applyDiscovery', () => {
     expect(result.outcome).toBe('skipped');
     expect(result.state).toBe(withActivating);
   });
+
+  it('fails closed as identity-conflict, state unchanged, for a same-number discovery with a different buildId', () => {
+    const conflicting = { ...releaseA, buildId: 'build-a-conflicting' };
+    const result = applyDiscovery(baseState, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('identity-conflict');
+    expect(result.state).toBe(baseState);
+  });
+
+  it('fails closed as identity-conflict for a same-number discovery with a different appVersion', () => {
+    const conflicting = { ...releaseA, appVersion: '9.9.9' };
+    const result = applyDiscovery(baseState, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('identity-conflict');
+    expect(result.state).toBe(baseState);
+  });
+
+  it('fails closed as identity-conflict for a same-number discovery with a different buildDate', () => {
+    const conflicting = { ...releaseA, buildDate: '2026-07-25T00:00:00.000Z' };
+    const result = applyDiscovery(baseState, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('identity-conflict');
+    expect(result.state).toBe(baseState);
+  });
+
+  it('fails closed as identity-conflict when the conflicting number matches an existing available candidate', () => {
+    const withAvailable: UpdateControllerState = {
+      ...baseState,
+      candidate: { phase: 'available', release: releaseB },
+    };
+    const conflicting = { ...releaseB, buildId: 'build-b-conflicting' };
+    const result = applyDiscovery(withAvailable, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('identity-conflict');
+    expect(result.state).toBe(withAvailable);
+  });
+
+  it('fails closed as identity-conflict when the conflicting number matches an existing failed candidate', () => {
+    const withFailed: UpdateControllerState = {
+      ...baseState,
+      candidate: { phase: 'failed', release: releaseB },
+    };
+    const conflicting = { ...releaseB, buildId: 'build-b-conflicting' };
+    const result = applyDiscovery(withFailed, conflicting, '2026-07-24T00:00:00.000Z');
+    expect(result.outcome).toBe('identity-conflict');
+    expect(result.state).toBe(withFailed);
+  });
 });
 
 describe('resolveAutomaticPreparationTarget', () => {

@@ -76,3 +76,27 @@ export function reportRecoveryRequired(
     safeTags: { channel, problemCode },
   });
 }
+
+/**
+ * Reports `appUpdate.discoveryIdentityConflict` when a discovered release
+ * shares `known`'s `releaseNumber` but conflicts on `appVersion`, `buildId`,
+ * or `buildDate` (see `applyDiscovery`'s `identity-conflict` outcome in
+ * `./stateTransitions`) — a fail-closed invariant violation, never an
+ * ordinary stale or successful discovery. Never serializes the conflicting
+ * `appVersion`/`buildId`/`buildDate` values themselves — only the safe
+ * `releaseNumber` they collided on.
+ * @param channel - Managed channel.
+ * @param releaseNumber - The release number the conflicting discovery shared with `known`.
+ */
+export function reportDiscoveryIdentityConflict(
+  channel: ManagedChannel,
+  releaseNumber: number,
+): void {
+  reportDiagnosticEvent({
+    name: 'appUpdate.discoveryIdentityConflict',
+    severity: DiagnosticSeverity.Error,
+    result: DiagnosticResult.Failed,
+    classification: DiagnosticClassification.Consistency,
+    safeTags: { channel, releaseNumber: String(releaseNumber) },
+  });
+}

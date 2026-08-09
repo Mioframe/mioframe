@@ -1,3 +1,4 @@
+import { reportDiscoveryIdentityConflict } from './appUpdateDiagnosticEvents';
 import {
   releaseSummariesMatch,
   toReleaseSummary,
@@ -78,6 +79,16 @@ async function discoverLatest(
     if (result.state !== state) await writeControllerState(channel, result.state);
     return result;
   });
+
+  if (applied.outcome === 'identity-conflict') {
+    // Fail closed at the existing safe `check-failed` surface: controller
+    // state is already untouched (applyDiscovery returned the same
+    // reference, so writeControllerState above never ran), and the raw
+    // conflicting metadata never leaves this boundary — only the safe
+    // releaseNumber reaches diagnostics.
+    reportDiscoveryIdentityConflict(channel, discovered.releaseNumber);
+    return { error: 'check-failed', stateAfterDiscovery: applied.state, effects: NO_EFFECTS };
+  }
 
   const effects: ReconciliationEffects = {
     broadcastStateChanged: applied.outcome !== 'skipped',

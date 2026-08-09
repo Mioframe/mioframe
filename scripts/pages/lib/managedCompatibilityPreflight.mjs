@@ -28,8 +28,7 @@
  * staging is attempted.
  */
 
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 import { resolvePublicationPlan } from './retainedReleaseTree.mjs';
@@ -38,15 +37,26 @@ import { runManagedReleaseDataCompatibilityProof } from '../../release/runManage
 
 const defaultDeps = { runCompatibilityProof: runManagedReleaseDataCompatibilityProof };
 
+/** Repository-owned, gitignored scratch root also used for verifier locks and logs. */
+const VERIFY_SCRATCH_ROOT = join(process.cwd(), '.verify');
+
 /**
  * Copies `workDir` (the real cloned Pages work directory) into a fresh
- * temporary directory, excluding `.git` — the staged copy never needs, and
- * must never perform, any git operation.
+ * temporary directory under the repository's own `.verify/` scratch root,
+ * excluding `.git` — the staged copy never needs, and must never perform,
+ * any git operation.
+ *
+ * Staged under the repository root (not the OS temp directory) so the
+ * staged tree is visible inside the Playwright container the compatibility
+ * proof runs in: the container only ever mounts the repository root at
+ * `/work` (see `scripts/playwrightContainer.mjs`), never the host OS temp
+ * directory.
  * @param workDir The real Pages work directory to copy.
  * @returns The staged copy's root directory. Caller owns removing it.
  */
 function stagePublishedTreeCopy(workDir) {
-  const stagedRoot = mkdtempSync(join(tmpdir(), 'managed-compat-staged-'));
+  mkdirSync(VERIFY_SCRATCH_ROOT, { recursive: true });
+  const stagedRoot = mkdtempSync(join(VERIFY_SCRATCH_ROOT, 'managed-compat-staged-'));
   cpSync(workDir, stagedRoot, {
     recursive: true,
     filter: (src) => basename(src) !== '.git',
@@ -94,7 +104,10 @@ export async function runManagedPublicationPreflight(
     return { decision: 'not-applicable' };
   }
 
-  const previousReleaseNumber = plan.nextReleaseNumber - 1;
+  // Every retained previous release remains a possible active pin/rollback
+  // target under the current append-only/no-pruning retained-tree
+  // architecture — never only the immediately preceding one.
+  const previousReleaseNumbers = plan.descriptors.map((descriptor) => descriptor.releaseNumber);
   const stagedWorkDir = stagePublishedTreeCopy(workDir);
 
   try {
@@ -118,17 +131,17 @@ export async function runManagedPublicationPreflight(
     const proof = await deps.runCompatibilityProof({
       stagedWorkDir,
       channel,
-      previousReleaseNumber,
+      previousReleaseNumbers,
       candidateReleaseNumber: stagedDescriptor.releaseNumber,
     });
     if (!proof.passed) {
       throw new Error(
         `Managed release data-compatibility proof failed for channel "${channel}": ` +
-          `release ${previousReleaseNumber} could not prove it can read data written by candidate release ${stagedDescriptor.releaseNumber}. Publication blocked.`,
+          `one or more of retained releases [${previousReleaseNumbers.join(', ')}] could not prove they can read data written by candidate release ${stagedDescriptor.releaseNumber}. Publication blocked.`,
       );
     }
 
-    return { decision: 'proved', descriptor: stagedDescriptor, previousReleaseNumber };
+    return { decision: 'proved', descriptor: stagedDescriptor, previousReleaseNumbers };
   } finally {
     rmSync(stagedWorkDir, { recursive: true, force: true });
   }

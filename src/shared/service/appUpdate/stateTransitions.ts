@@ -164,8 +164,13 @@ export function buildInitialControllerState(
   };
 }
 
-/** Outcome of {@link applyDiscovery}. */
-export type CheckForUpdatesOutcome = 'updated' | 'ignored-stale' | 'skipped';
+/**
+ * Outcome of {@link applyDiscovery}. `identity-conflict` is a same-`releaseNumber`
+ * discovery whose `appVersion`/`buildId`/`buildDate` does not exactly match
+ * `known` (see {@link releaseSummariesMatch}) — a genuine identity conflict,
+ * never folded into ordinary `ignored-stale` staleness.
+ */
+export type CheckForUpdatesOutcome = 'updated' | 'ignored-stale' | 'skipped' | 'identity-conflict';
 
 /** Result of {@link applyDiscovery}: the outcome and the resulting state. */
 export type CheckForUpdatesResult = {
@@ -188,11 +193,19 @@ export type CheckForUpdatesResult = {
  * `available` and `failed` candidates may be replaced by a strictly newer
  * discovered release, uniformly, regardless of mode: retry/replacement
  * policy for a `failed` candidate is entirely a consequence of this "strictly
- * newer" rule — an equal `discovered` (an exact automatic retry of the
- * failed release) is always ignored here, while an explicit Manual retry of
- * the exact failed release happens through {@link completeManualInstall}, not
- * discovery. Whether discovery runs at all for a Manual `failed` candidate is
- * an orchestration-level gate applied before this function is called.
+ * newer" rule — an equal `discovered` with the exact same complete identity
+ * (an exact automatic retry of the failed release) is always ignored here,
+ * while an explicit Manual retry of the exact failed release happens through
+ * {@link completeManualInstall}, not discovery. Whether discovery runs at all
+ * for a Manual `failed` candidate is an orchestration-level gate applied
+ * before this function is called.
+ *
+ * A same-`releaseNumber` discovery whose `appVersion`/`buildId`/`buildDate`
+ * conflicts with `known` (see {@link releaseSummariesMatch}) is never treated
+ * as ordinary staleness: it is a genuine identity conflict, reported as
+ * `identity-conflict` with the state left completely unchanged (same
+ * reference, `lastSuccessfulCheckAt` not advanced) — the caller decides how
+ * to surface and report it.
  * @param state - Current controller state.
  * @param discovered - The validated release summary for the discovered release.
  * @param checkedAt - ISO timestamp of this successful check.
@@ -209,8 +222,14 @@ export function applyDiscovery(
   }
 
   const known = candidate?.release ?? state.activeRelease;
-  if (discovered.releaseNumber <= known.releaseNumber) {
+  if (discovered.releaseNumber < known.releaseNumber) {
     return { outcome: 'ignored-stale', state: { ...state, lastSuccessfulCheckAt: checkedAt } };
+  }
+  if (discovered.releaseNumber === known.releaseNumber) {
+    if (releaseSummariesMatch(discovered, known)) {
+      return { outcome: 'ignored-stale', state: { ...state, lastSuccessfulCheckAt: checkedAt } };
+    }
+    return { outcome: 'identity-conflict', state };
   }
 
   return {

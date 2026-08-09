@@ -51,3 +51,18 @@ describe('reportRecoveryRequired', () => {
     );
   });
 });
+
+describe('reportDiscoveryIdentityConflict', () => {
+  it('reports appUpdate.discoveryIdentityConflict with only the safe releaseNumber, never the conflicting metadata', async () => {
+    const { reportDiscoveryIdentityConflict } = await import('./appUpdateDiagnosticEvents');
+
+    reportDiscoveryIdentityConflict('develop', 5);
+
+    expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'appUpdate.discoveryIdentityConflict',
+        safeTags: { channel: 'develop', releaseNumber: '5' },
+      }),
+    );
+  });
+});

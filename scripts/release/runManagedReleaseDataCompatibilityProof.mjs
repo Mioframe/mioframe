@@ -11,6 +11,8 @@
  * Playwright-free and independently unit-testable.
  */
 
+import { relative } from 'node:path';
+
 import { runLocalCommand } from '../lib/runLocalCommand.mjs';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
@@ -25,19 +27,27 @@ const defaultDeps = { runLocalCommand };
 
 /**
  * Runs the data-compatibility proof spec against a staged work directory
- * that already contains both the previous retained release and the newly
+ * that already contains every retained previous release and the newly
  * staged candidate release (see
  * `scripts/pages/lib/managedCompatibilityPreflight.mjs`).
+ *
+ * `stagedWorkDir` is forwarded as a path relative to this process's own
+ * working directory (the repository root), never an absolute host path: the
+ * Playwright container mounts the whole repository root at `/work` and runs
+ * with `/work` as its own working directory, so a repo-relative path
+ * resolves identically on the host and inside the container, while an
+ * absolute host path (e.g. under the OS temp directory) would not be visible
+ * inside the container at all.
  * @param options Proof inputs.
- * @param options.stagedWorkDir The staged retained-release work directory to serve.
+ * @param options.stagedWorkDir The staged retained-release work directory to serve; must be under the repository root.
  * @param options.channel Managed channel: `'stable'` or `'develop'`.
- * @param options.previousReleaseNumber The previously retained release ("A") to prove read-back against.
- * @param options.candidateReleaseNumber The newly staged candidate release ("B") whose data A must be able to read.
+ * @param options.previousReleaseNumbers Every retained previous release ("A") to prove read-back against, in ascending order.
+ * @param options.candidateReleaseNumber The newly staged candidate release ("B") whose data every A must be able to read.
  * @param [deps] Test seam for child-process execution.
  * @returns `{ passed }`; `passed` is `true` only when the container process exits 0 with no signal.
  */
 export async function runManagedReleaseDataCompatibilityProof(
-  { stagedWorkDir, channel, previousReleaseNumber, candidateReleaseNumber },
+  { stagedWorkDir, channel, previousReleaseNumbers, candidateReleaseNumber },
   deps = defaultDeps,
 ) {
   const result = await deps.runLocalCommand({
@@ -50,9 +60,9 @@ export async function runManagedReleaseDataCompatibilityProof(
     ],
     env: {
       ...process.env,
-      MANAGED_COMPAT_WORK_DIR: stagedWorkDir,
+      MANAGED_COMPAT_WORK_DIR: relative(process.cwd(), stagedWorkDir),
       MANAGED_COMPAT_CHANNEL: channel,
-      MANAGED_COMPAT_PREVIOUS_RELEASE: String(previousReleaseNumber),
+      MANAGED_COMPAT_PREVIOUS_RELEASES: previousReleaseNumbers.join(','),
       MANAGED_COMPAT_CANDIDATE_RELEASE: String(candidateReleaseNumber),
     },
   });
