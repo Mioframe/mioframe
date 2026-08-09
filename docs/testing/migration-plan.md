@@ -47,7 +47,7 @@
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Loading Indicator is the only S1-authorized owner-local browser pilot. Its behavior spec is colocated at `src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts`; all other Storybook behavior specs remain in `tests/e2e/storybook` with their existing transitional mappings.
-- S1 remains in review until the Loading Indicator browser proof depends only on truthful owner-local stories/fixtures or an explicitly justified non-local relation. The current legacy-surface browser assertion still opens the Button-family `LegacySurfaceColorOwnership` story, so owner-local impact is incomplete until that fixture dependency is corrected.
+- S1 remains in review pending final acceptance. The Loading Indicator legacy-surface browser assertion now opens the Loading Indicator-owned `LegacySurfaceIsolation` story instead of the Button-family `LegacySurfaceColorOwnership` story, so the pilot's browser proof depends only on truthful owner-local stories/fixtures.
 - Visual specs/baselines still use the current central visual execution structure.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
@@ -157,9 +157,9 @@ The executable S1 mechanism is already present in the branch:
 - the old explicit Loading Indicator central mapping is removed;
 - legacy centralized specs and mappings remain intact.
 
-Remaining blocker before S1 can be marked complete:
+Former blocker, now corrected:
 
-- the Loading Indicator legacy-surface browser assertion currently uses the Button-family `LegacySurfaceColorOwnership` story. This creates a non-local fixture dependency that local directory ownership cannot observe. Prefer the minimum truthful fix: add an equivalent Loading Indicator-owned standalone legacy-surface fixture/story and point the Loading Indicator browser assertion to it, preserving the assertion contract. Do not add a cross-family mapping merely to retain accidental fixture placement.
+- the Loading Indicator legacy-surface browser assertion previously used the Button-family `LegacySurfaceColorOwnership` story, a non-local fixture dependency that local directory ownership could not observe. The fix added an equivalent Loading Indicator-owned standalone legacy-surface story (`LegacySurfaceIsolation`) and pointed the Loading Indicator browser assertion to it, preserving the assertion contract without a cross-family mapping.
 
 Required final behavior:
 

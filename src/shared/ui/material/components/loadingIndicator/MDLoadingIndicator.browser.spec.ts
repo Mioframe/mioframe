@@ -63,7 +63,10 @@ test('MDLoadingIndicator exposes the official primary default and accepts its pu
 test('MDLoadingIndicator keeps its standalone primary presentation inside a legacy Material surface', async ({
   page,
 }) => {
-  await openStory(page, 'material-3-components-buttons-mdbutton--legacy-surface-color-ownership');
+  await openStory(
+    page,
+    'material-3-components-loading-indicator-mdloadingindicator--legacy-surface-isolation',
+  );
 
   const indicator = page.getByRole('progressbar', { name: 'Surface standalone loading' });
   await expect(indicator).toHaveCSS(

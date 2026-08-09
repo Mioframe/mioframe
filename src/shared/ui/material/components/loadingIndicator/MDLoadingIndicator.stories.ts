@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
+import '../../../../lib/md/index.css';
 import MDLoadingIndicator from './MDLoadingIndicator.vue';
 
 const meta = {
@@ -87,6 +88,22 @@ export const ColorContract: Story = {
             style="--md-comp-loading-indicator-active-indicator-color: #006e1c;"
           />
         </div>
+      </div>
+    `,
+  }),
+};
+
+export const LegacySurfaceIsolation: Story = {
+  render: () => ({
+    components: { MDLoadingIndicator },
+    template: `
+      <div
+        data-testid="visual-md-loading-indicator-legacy-surface"
+        class="md visual-checker-backdrop"
+        style="--md-container-color: #fff8f7; --md-content-color: #b3261e;"
+      >
+        <p data-testid="legacy-surface-text">Surface-owned ordinary text</p>
+        <MDLoadingIndicator label="Surface standalone loading" />
       </div>
     `,
   }),
