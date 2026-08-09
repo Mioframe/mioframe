@@ -26,7 +26,7 @@
 - Vue component-contract tests are already colocated as `*.test.ts`.
 - Material library family ownership is established under `src/shared/ui/material`.
 - Storybook Essentials provides Controls and other built-in workbench tools.
-- Storybook currently configures representative desktop/mobile viewports and app/surface Material-token backgrounds, freely selectable; the default remains the plain Canvas, never checkerboard.
+- Storybook currently configures representative desktop/mobile viewports and app/surface Material-token backgrounds, freely selectable; the default is the semantic `App` background, never checkerboard.
 - Storybook preview isolates Canvas styling through `src/app/styles/base.css`, the same low-level entrypoint the application shell composes; the application shell (`src/app/styles/styles.css`) owns only `html`/`body`/`#app` layout on top of it.
 - Material foundation owns an explicit `data-md-color-scheme="light"`/`"dark"` seam (`src/shared/ui/material/foundation/theme.css`); no attribute preserves the production `prefers-color-scheme` default. Storybook exposes this through a `System`/`Light`/`Dark` toolbar global that only sets/removes the attribute.
 - Storybook installs a per-story Vue Router memory-history instance (`.storybook/router/routerHarness.ts`) through a small typed `parameters.router` shape (routes, initial location); a fresh app/router is created on every story remount, so route/history state does not leak between stories. Existing shared overlay primitives continue to work through the deterministic default `/` route.

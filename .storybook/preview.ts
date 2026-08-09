@@ -92,6 +92,9 @@ const preview: Preview = {
   decorators: [withColorScheme],
   initialGlobals: {
     [STORYBOOK_COLOR_SCHEME_GLOBAL_KEY]: STORYBOOK_COLOR_SCHEME_DEFAULT,
+    backgrounds: {
+      value: 'app',
+    },
   },
   globalTypes: {
     [STORYBOOK_COLOR_SCHEME_GLOBAL_KEY]: {
