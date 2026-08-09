@@ -72,7 +72,7 @@ For Storybook behavior and visual proof:
 - shared Storybook/Playwright configuration and broad helpers normally select the full owning lane;
 - removed/moved/unresolved relevant ownership must fall back safely or fail validation, never skip silently.
 
-During migration, specs still executed from legacy central locations must continue to satisfy the current resolver's mapping/validation requirements. Do not place a colocated Playwright spec before its lane can discover it.
+During the browser migration, migrated `src/**/*.browser.spec.ts` specs use the implemented filesystem-derived owner-local convention and require no duplicate central registry entry. Specs still executed from `tests/e2e/storybook` remain legacy-central and must continue to satisfy the current resolver's mapping/validation requirements. Do not move an additional spec until the current migration stage authorizes that owner and the lane can discover it.
 
 Application E2E remains centralized and therefore continues to use explicit stable source-to-product-scenario impact rather than component colocation.
 

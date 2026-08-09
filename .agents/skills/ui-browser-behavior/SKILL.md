@@ -33,7 +33,7 @@ Before writing a Storybook behavior spec:
 
 The durable target is an owner-local `*.browser.spec.ts`. Physical placement must follow the current executable state in `docs/testing/migration-plan.md`.
 
-Until colocated browser discovery is merged, keep executable Storybook behavior specs under the current `tests/e2e/storybook` runner-owned location and maintain its required transitional impact relation. Do not create an undiscoverable colocated spec merely because the target architecture describes it.
+The `storybook-behavior` lane currently supports mixed discovery during migration: migrated owners may execute colocated `src/**/*.browser.spec.ts` through filesystem-derived owner-local ownership, while unmigrated specs remain under `tests/e2e/storybook` with their required transitional mappings. Use owner-local placement only for owners the current migration state marks as migrated; do not move unrelated specs opportunistically.
 
 ## Workflow
 

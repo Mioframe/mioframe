@@ -83,28 +83,30 @@ Stories, fixtures, specs, snapshots, and test helpers are never exported from pr
 
 ## Current executable state
 
-The durable target is being migrated incrementally. Do not place a test where current Playwright discovery cannot execute it.
+The durable target is being migrated incrementally. Do not place a test where current Playwright discovery cannot execute it, and do not migrate an owner before the current migration stage authorizes it.
 
-| Capability                      | Current state                                                                                                                                                                         |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Story discovery                 | colocated `src/**/*.stories.*` is already supported                                                                                                                                   |
-| Controls                        | Storybook Essentials controls are available; Vue metadata drives automatic controls                                                                                                   |
-| Controlled args round-trip      | established as a convention on one representative component (`MDCheckbox`, via `useArgs`); repository-wide normalization is later migration work                                      |
-| Viewport/background sandbox     | global desktop/mobile viewports and app/surface Material-token backgrounds are configured and freely selectable; the default is the semantic `App` background, never checkerboard     |
-| Preview style isolation         | Storybook imports `src/app/styles/base.css` (fonts, normalize, Material foundation, shared MD base); the application-shell stylesheet is no longer part of the Storybook preview      |
-| Theme modes                     | Material foundation owns a `data-md-color-scheme="light"`/`"dark"` seam; Storybook exposes `System`/`Light`/`Dark` through a toolbar global that only sets/removes the attribute      |
-| Catalogue ordering              | deterministic native `storySort` orders the target top-level namespaces case-insensitively; existing-title normalization remains Stage S6                                             |
-| Autodocs                        | selective Autodocs established on one representative public Material component (`MDButton`); broader selective adoption is later migration work                                       |
-| Vue router context              | a per-story memory-history harness (`.storybook/router/routerHarness.ts`) installs a fresh isolated router per story remount via a small typed `parameters.router` shape              |
-| Storybook build gate            | the verifier-managed `storybook-build` label runs `pnpm storybook:build` for changed stories/configuration, selectable via `--only storybook-build` and included in full verification |
-| Vue component contract          | colocated `*.test.ts`                                                                                                                                                                 |
-| Storybook browser behavior spec | keep the current executable location under `tests/e2e/storybook` until the browser-discovery pilot is merged                                                                          |
-| Visual spec and baseline        | keep the current executable visual location until the visual-discovery pilot is merged                                                                                                |
-| Product E2E                     | centralized under `tests/e2e`                                                                                                                                                         |
+| Capability                      | Current state                                                                                                                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Story discovery                 | colocated `src/**/*.stories.*` is already supported                                                                                                                                                           |
+| Controls                        | Storybook Essentials controls are available; Vue metadata drives automatic controls                                                                                                                           |
+| Controlled args round-trip      | established as a convention on one representative component (`MDCheckbox`, via `useArgs`); repository-wide normalization is later migration work                                                              |
+| Viewport/background sandbox     | global desktop/mobile viewports and app/surface Material-token backgrounds are configured and freely selectable; the default is the semantic `App` background, never checkerboard                             |
+| Preview style isolation         | Storybook imports `src/app/styles/base.css` (fonts, normalize, Material foundation, shared MD base); the application-shell stylesheet is no longer part of the Storybook preview                              |
+| Theme modes                     | Material foundation owns a `data-md-color-scheme="light"`/`"dark"` seam; Storybook exposes `System`/`Light`/`Dark` through a toolbar global that only sets/removes the attribute                              |
+| Catalogue ordering              | deterministic native `storySort` orders the target top-level namespaces case-insensitively; existing-title normalization remains Stage S6                                                                     |
+| Autodocs                        | selective Autodocs established on one representative public Material component (`MDButton`); broader selective adoption is later migration work                                                               |
+| Vue router context              | a per-story memory-history harness (`.storybook/router/routerHarness.ts`) installs a fresh isolated router per story remount via a small typed `parameters.router` shape                                      |
+| Storybook build gate            | the verifier-managed `storybook-build` label runs `pnpm storybook:build` for changed stories/configuration, selectable via `--only storybook-build` and included in full verification                         |
+| Vue component contract          | colocated `*.test.ts`                                                                                                                                                                                         |
+| Storybook browser behavior spec | mixed discovery is executable: migrated `src/**/*.browser.spec.ts` use filesystem-derived owner-local ownership; the S1 authorized pilot is Loading Indicator; unmigrated specs remain under `tests/e2e/storybook` |
+| Visual spec and baseline        | keep the current executable visual location until the visual-discovery pilot is implemented                                                                                                                    |
+| Product E2E                     | centralized under `tests/e2e`                                                                                                                                                                                 |
 
-During migration, conceptual ownership and physical execution location may temporarily differ for browser/visual specs. The owner still determines the contract and impact relation. `docs/testing/migration-plan.md` is the source of truth for when a target location or workbench capability becomes executable.
+Browser behavior is currently in a mixed transitional state. The runner can execute both owner-local `src/**/*.browser.spec.ts` and legacy centralized `tests/e2e/storybook/**/*.spec.ts`. Owner-local selection is filesystem-derived and requires no duplicate registry relation; legacy centralized specs retain their explicit transitional mappings. `docs/testing/migration-plan.md` determines which owners are authorized to migrate at each stage.
 
-Never describe target colocated Playwright discovery, isolated preview styles, explicit theme modes, the target routing harness, or the dedicated Storybook build gate as implemented before the corresponding migration stage is merged.
+Conceptual ownership and physical execution location may still differ for unmigrated browser specs and all visual specs. The owner still determines the contract and impact relation.
+
+Never describe a later migration capability as implemented before the current repository state supports it. In particular, owner-local browser discovery is implemented for the S1 migration path, while visual colocation and repository-wide browser migration remain later stages.
 
 ## Developer workbench contract
 
@@ -313,6 +315,8 @@ Browser specs:
 
 A family/module-level browser spec is allowed only when one shared observable contract truthfully belongs to that family/module. Otherwise split by owner.
 
+For owners already migrated by `docs/testing/migration-plan.md`, place the spec beside its truthful owner as `src/**/*.browser.spec.ts`; local owner changes select all applicable colocated specs. Specs for owners not yet migrated remain in the legacy `tests/e2e/storybook` location with their transitional mappings. A colocated spec should prefer owner-local stories/fixtures; a non-local fixture dependency requires a truthful explicit relation or, when the scenario belongs to the local owner, should be replaced by the smallest local fixture.
+
 ## Visual proof
 
 Use explicit visual specs. A small repeated open-stabilize-screenshot sequence is preferable to a generated runner that hides story selection and baseline ownership.
@@ -403,7 +407,7 @@ Catalogue normalization is a separate migration because title changes can change
 
 Production application type-checking must not treat Storybook stories or Playwright specs as application runtime source.
 
-When colocated Playwright discovery is introduced, dedicated Storybook/Playwright configuration must include those files while production TypeScript configuration excludes them.
+Owner-local Storybook browser discovery is executable through the dedicated Storybook behavior Playwright configuration. Production application and Storybook source type-checking exclude `src/**/*.browser.spec.ts`; the Node/tooling type-check includes those specs. Legacy centralized behavior specs continue to execute through the same lane during migration.
 
 Do not create a mirrored central component-spec tree as permanent ownership metadata.
 
@@ -440,7 +444,7 @@ Shared infrastructure must not select product behavior, silently recover from mi
 - central component-spec trees as permanent ownership mirrors;
 - a custom catalogue/navigation shell that duplicates Storybook manager navigation;
 - importing the complete application shell stylesheet as the permanent Storybook preview environment when only lower-level shared styles are required;
-- colocated Playwright specs before the owning lane can discover them;
+- migrating a colocated Playwright spec for an owner before the current migration stage authorizes that owner;
 - assertions or behavior-under-test scripts in stories;
 - Storybook `play` as a parallel merge-proof system;
 - screenshots in browser-behavior specs;
