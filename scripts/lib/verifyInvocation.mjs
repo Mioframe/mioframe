@@ -15,6 +15,7 @@ export const VERIFY_LABELS = [
   'e2e',
   'storybook-behavior',
   'visual',
+  'storybook-build',
   'mutation',
   'release-version',
   'release-config',

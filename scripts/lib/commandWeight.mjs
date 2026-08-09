@@ -37,6 +37,7 @@ export function classifyCommandWeight({ label, fileCount = 0, isFullRepo = false
     case 'publisher-node-import':
       return 'light';
     case 'build':
+    case 'storybook-build':
       return 'medium';
     default:
       return 'medium';

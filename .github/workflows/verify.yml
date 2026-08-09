@@ -164,6 +164,9 @@ jobs:
       - name: Verify visual
         run: pnpm verify --verbose --only visual
 
+      - name: Verify storybook build
+        run: pnpm verify --verbose --only storybook-build
+
       - name: Verify mutation
         run: pnpm verify --verbose --only mutation
 

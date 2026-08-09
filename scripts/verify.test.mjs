@@ -81,6 +81,7 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
     mutation: 20 * 60 * 1000,
     build: 10 * 60 * 1000,
     artifact: 8 * 60 * 1000,
+    'storybook-build': 10 * 60 * 1000,
   };
 
   it('derives Playwright-backed lane timeouts from the canonical container timeout', () => {
@@ -516,6 +517,87 @@ describe('buildCommands storybook-behavior lane', () => {
 
     expect(entry.kind).toBe('run');
     expect(entry.triggerReason).toContain('runtime-relevant package.json change');
+  });
+});
+
+describe('buildCommands storybook-build lane', () => {
+  beforeEach(() => {
+    isPackageJsonRuntimeRelevantChange.mockReset();
+  });
+
+  it('runs storybook-build in full mode', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const entry = commands.find((item) => item.label === 'storybook-build');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.command).toBe('pnpm');
+    expect(entry.args).toEqual(['storybook:build']);
+  });
+
+  it('runs after visual', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const labels = commands.map((entry) => entry.label);
+
+    expect(labels.indexOf('visual')).toBeLessThan(labels.indexOf('storybook-build'));
+  });
+
+  it('skips storybook-build for an unrelated focused scope', () => {
+    const commands = buildCommands(['src/app/main.ts'], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'storybook-build');
+
+    expect(entry.kind).toBe('skipped');
+    expect(entry.reason).toBe('no storybook-relevant changes');
+  });
+
+  it('selects storybook-build for a changed story file', () => {
+    const commands = buildCommands(['src/shared/ui/Checkbox/MDCheckbox.stories.ts'], {
+      fullMode: false,
+    });
+    const entry = commands.find((item) => item.label === 'storybook-build');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.triggerReason).toContain('Storybook-relevant path');
+  });
+
+  it('selects storybook-build for a Storybook-wide dependency change', () => {
+    const commands = buildCommands(['config/alias.ts'], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'storybook-build');
+
+    expect(entry.kind).toBe('run');
+  });
+
+  it('skips storybook-build for a confirmed version-only package.json change', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const entry = commands.find((item) => item.label === 'storybook-build');
+
+    expect(entry.kind).toBe('skipped');
+  });
+
+  it('runs storybook-build when the package.json impact check is runtime-relevant', () => {
+    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
+
+    const commands = buildCommands(['package.json'], {
+      fullMode: false,
+      packageJsonOldRef: 'HEAD~1',
+    });
+    const entry = commands.find((item) => item.label === 'storybook-build');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.triggerReason).toContain('runtime-relevant package.json change');
+  });
+});
+
+describe('buildCommands visual relevance for src/app/styles/base.css', () => {
+  it('selects visual for a base.css change', () => {
+    const commands = buildCommands(['src/app/styles/base.css'], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'visual');
+
+    expect(entry.kind).toBe('run');
   });
 });
 

@@ -38,11 +38,11 @@ interface DragProgressionResult {
   ancestorMoveFrames: number;
   /** Real rendered frames spent waiting for the ancestor to reach its own native scroll limit. */
   ancestorMaxFrames: number;
-  /** Real rendered frames spent waiting for `document.body.scrollTop` to first move. */
+  /** Real rendered frames spent waiting for `document.scrollingElement`'s `scrollTop` to first move. */
   documentMoveFrames: number;
-  /** `document.body`'s remaining native scroll room the instant its movement was first detected. */
+  /** `document.scrollingElement`'s remaining native scroll room the instant its movement was first detected. */
   remainingRoom: number;
-  /** `document.body.scrollTop` sampled once per rendered frame, starting from the first detected move. */
+  /** `document.scrollingElement.scrollTop` sampled once per rendered frame, starting from the first detected move. */
   samples: number[];
 }
 
@@ -60,7 +60,7 @@ interface DragProgressionResult {
  * @param page - The Playwright page driving the drag.
  * @param args - Baseline scroll positions, viewport height, and per-phase frame budgets.
  * @returns Per-phase frame counts, the document's remaining room, and the sampled
- * `document.body.scrollTop` trace.
+ * `document.scrollingElement.scrollTop` trace.
  */
 const observeDragProgression = (
   page: Page,
@@ -77,10 +77,10 @@ const observeDragProgression = (
     (p) => {
       const containerEl = document.querySelector(p.containerSelector);
       const ancestorEl = document.querySelector(p.ancestorSelector);
-      if (!containerEl || !ancestorEl) {
-        throw new Error('missing reorder container or ancestor element');
+      const docEl = document.scrollingElement;
+      if (!containerEl || !ancestorEl || !docEl) {
+        throw new Error('missing reorder container, ancestor, or document scrolling element');
       }
-      const docEl = document.body;
 
       const nextFrame = () =>
         new Promise<void>((resolve) => {
@@ -185,10 +185,10 @@ const armReleaseScrollObserver = (page: Page, frameCount = 10): Promise<void> =>
     (args) => {
       const containerEl = document.querySelector(args.containerSelector);
       const ancestorEl = document.querySelector(args.ancestorSelector);
-      if (!containerEl || !ancestorEl) {
-        throw new Error('missing reorder container or ancestor element');
+      const docEl = document.scrollingElement;
+      if (!containerEl || !ancestorEl || !docEl) {
+        throw new Error('missing reorder container, ancestor, or document scrolling element');
       }
-      const docEl = document.body;
 
       const readPositions = (): ReleaseScrollPositions => ({
         container: containerEl.scrollTop,
@@ -258,19 +258,34 @@ test.describe('document viewport autoscroll fallback', () => {
 
     const container = page.getByRole('list', { name: 'Document viewport reorder items' });
     const ancestor = page.getByRole('region', { name: 'Reorder scroll ancestor' });
-    // This app's global layout pins `html` to exactly one viewport tall with its own
-    // `overflow: auto`, so `body` (not `document.scrollingElement`) is the element that actually
-    // scrolls for page-level content — it is the real, observable "document viewport" here.
-    const documentViewport = page.locator('body');
     const firstItem = page.getByRole('listitem', { name: 'row-0', exact: true });
+
+    // The Storybook preview canvas is an isolated iframe document: this app's global layout
+    // override that pins `html` to exactly one viewport tall with its own `overflow: auto` does
+    // not apply inside it, so `document.scrollingElement` is the real, standard scrolling element
+    // for page-level content here — the true "document viewport" for this scenario.
+    const readDocumentScrollingElementExtent = (): Promise<number> =>
+      page.evaluate(() => {
+        const el = document.scrollingElement;
+        if (!el) {
+          throw new Error('missing document.scrollingElement');
+        }
+        return el.scrollHeight - el.clientHeight;
+      });
+    const readDocumentScrollingElementScrollTop = (): Promise<number> =>
+      page.evaluate(() => {
+        const el = document.scrollingElement;
+        if (!el) {
+          throw new Error('missing document.scrollingElement');
+        }
+        return el.scrollTop;
+      });
 
     // Preconditions: all three levels have real, independent scroll room, or this would not
     // actually exercise the document-viewport fallback scenario.
     const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
     const ancestorExtent = await ancestor.evaluate((el) => el.scrollHeight - el.clientHeight);
-    const documentExtent = await documentViewport.evaluate(
-      (el) => el.scrollHeight - el.clientHeight,
-    );
+    const documentExtent = await readDocumentScrollingElementExtent();
     expect(containerExtent).toBeGreaterThan(0);
     expect(ancestorExtent).toBeGreaterThan(0);
     expect(documentExtent).toBeGreaterThan(0);
@@ -284,7 +299,7 @@ test.describe('document viewport autoscroll fallback', () => {
     const centerX = itemBox.x + itemBox.width / 2;
     const containerScrollTopStart = await container.evaluate((el) => el.scrollTop);
     const ancestorScrollTopStart = await ancestor.evaluate((el) => el.scrollTop);
-    const documentScrollTopStart = await documentViewport.evaluate((el) => el.scrollTop);
+    const documentScrollTopStart = await readDocumentScrollingElementScrollTop();
 
     await page.mouse.move(centerX, itemBox.y + itemBox.height / 2);
     await page.mouse.down();

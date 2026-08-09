@@ -308,13 +308,44 @@ describe('runUpdateReconciliationPass', () => {
     expect(prepareMock.mock.calls[0]?.[3]).toEqual(descriptor(2));
   });
 
-  it('refetches instead of reusing a same-number descriptor with conflicting identity', async () => {
-    setState('automatic', candidate('available', 2));
-    const conflicting = { ...descriptor(2), buildId: 'conflicting-build' };
-    fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
-    fetchReleaseDescriptorMock.mockResolvedValue(conflicting);
-    await runUpdateReconciliationPass(dependencies);
-    expect(prepareMock.mock.calls[0]?.[3]).toBeUndefined();
+  describe('Automatic same-number identity conflict', () => {
+    it('does not call prepare, write state, broadcast, or clean up, and fails closed as check-failed, for an available candidate', async () => {
+      setState('automatic', candidate('available', 2));
+      const conflicting = { ...descriptor(2), buildId: 'conflicting-build' };
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
+      fetchReleaseDescriptorMock.mockResolvedValue(conflicting);
+
+      const result = await runUpdateReconciliationPass(dependencies);
+
+      expect(prepareMock).not.toHaveBeenCalled();
+      expect(writeControllerStateMock).not.toHaveBeenCalled();
+      expect(currentState.candidate).toEqual(candidate('available', 2));
+      expect(result.effects).toEqual({ broadcastStateChanged: false, cleanupReleaseCache: false });
+      expect(result.snapshot.error).toBe('check-failed');
+      expect(reportDiscoveryIdentityConflictMock).toHaveBeenCalledExactlyOnceWith('stable', 2);
+    });
+
+    it('does not prepare for a failed candidate either', async () => {
+      setState('automatic', candidate('failed', 2));
+      const conflicting = { ...descriptor(2), buildId: 'conflicting-build' };
+      fetchLatestReleasePointerMock.mockResolvedValue({ releaseNumber: 2 });
+      fetchReleaseDescriptorMock.mockResolvedValue(conflicting);
+
+      const result = await runUpdateReconciliationPass(dependencies);
+
+      expect(prepareMock).not.toHaveBeenCalled();
+      expect(result.snapshot.error).toBe('check-failed');
+    });
+
+    it('still uses fallback preparation for an ordinary discovery failure, unlike an identity conflict', async () => {
+      setState('automatic', candidate('available', 2));
+      fetchLatestReleasePointerMock.mockRejectedValue(new Error('offline'));
+
+      const result = await runUpdateReconciliationPass(dependencies);
+
+      expect(prepareMock.mock.calls.map((call) => call[2].releaseNumber)).toEqual([2]);
+      expect(result.snapshot.candidate?.phase).toBe('ready');
+    });
   });
 
   it('fails closed as check-failed and reports the conflict once, without writing state, broadcasting, or cleaning caches, for a same-number conflicting discovery', async () => {

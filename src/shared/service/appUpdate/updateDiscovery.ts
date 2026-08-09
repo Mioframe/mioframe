@@ -47,6 +47,14 @@ export type UpdateDiscoveryDependencies = {
 type DiscoveryOutcome = {
   descriptor?: ReleaseDescriptor;
   error?: AppUpdateErrorCode;
+  /**
+   * `true` only when `error` was caused by a same-`releaseNumber` identity
+   * conflict (see `applyDiscovery`'s `identity-conflict` outcome), as opposed
+   * to an ordinary transient discovery/network failure. Distinguishes the two
+   * `check-failed` causes for the Automatic fallback decision below, without
+   * exposing a new public error code or protocol field.
+   */
+  identityConflict?: boolean;
   stateAfterDiscovery: Awaited<ReturnType<typeof readCurrentState>>;
   /** Follow-up work this discovery step requires. Not executed here. */
   effects: ReconciliationEffects;
@@ -87,7 +95,12 @@ async function discoverLatest(
     // conflicting metadata never leaves this boundary — only the safe
     // releaseNumber reaches diagnostics.
     reportDiscoveryIdentityConflict(channel, discovered.releaseNumber);
-    return { error: 'check-failed', stateAfterDiscovery: applied.state, effects: NO_EFFECTS };
+    return {
+      error: 'check-failed',
+      identityConflict: true,
+      stateAfterDiscovery: applied.state,
+      effects: NO_EFFECTS,
+    };
   }
 
   const effects: ReconciliationEffects = {
@@ -179,7 +192,14 @@ export async function runUpdateReconciliationPass(
   let target: ReleaseSummary | undefined;
   if (passMode === 'automatic') {
     if (discovery.error) {
-      target = initialCandidate?.phase === 'available' ? initialCandidate.release : undefined;
+      // An identity conflict must fail closed as `check-failed` outright: it
+      // never falls through to Automatic fallback preparation of an existing
+      // `available` candidate. An ordinary transient discovery/network
+      // failure still may.
+      target =
+        !discovery.identityConflict && initialCandidate?.phase === 'available'
+          ? initialCandidate.release
+          : undefined;
     } else if (discovery.stateAfterDiscovery.candidate?.phase === 'available') {
       target = discovery.stateAfterDiscovery.candidate.release;
     }
