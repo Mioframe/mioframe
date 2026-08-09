@@ -1,0 +1,4 @@
+@import './fonts.css';
+@import 'modern-normalize/modern-normalize.css';
+@import '../../shared/ui/material/foundation/index.css';
+@import '../../shared/lib/md/index.css';

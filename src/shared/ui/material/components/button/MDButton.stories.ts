@@ -9,6 +9,10 @@ import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
 const meta = {
   title: 'Material 3/Components/Buttons/MDButton',
   component: MDButton,
+  // Selective Autodocs (docs/testing/storybook.md "Documentation and Autodocs"): generated
+  // from the real vue-component-meta docgen already configured for Storybook, not a
+  // handwritten duplicate of the public props/emits/slots below.
+  tags: ['autodocs'],
   args: { color: 'filled', label: 'Save' },
   argTypes: { onClick: { action: 'click' } },
   parameters: {

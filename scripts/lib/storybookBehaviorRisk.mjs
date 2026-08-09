@@ -127,6 +127,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/md-loading-indicator.spec.ts'],
   },
   {
+    name: 'Storybook router harness demonstration',
+    sourcePrefixes: [
+      'src/shared/lib/router/RouterHarnessRegressionStory.vue',
+      'src/shared/lib/router/RouterHarnessRegression.stories.ts',
+    ],
+    specs: ['tests/e2e/storybook/routerHarness.spec.ts'],
+  },
+  {
     name: 'bottom sheet keyboard focus wrap visibility',
     sourcePrefixes: [
       'src/shared/ui/Sheets/MDBottomSheetContainer2.vue',
@@ -134,6 +142,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScrollStoryHarness.vue',
     ],
     specs: ['tests/e2e/storybook/mdBottomSheetContainerKeyboardScroll.spec.ts'],
+  },
+  {
+    name: 'checkbox controlled args round-trip',
+    sourcePrefixes: [
+      'src/shared/ui/Checkbox/MDCheckbox.vue',
+      'src/shared/ui/Checkbox/MDCheckbox.stories.ts',
+    ],
+    specs: ['tests/e2e/storybook/mdCheckboxControlledArgs.spec.ts'],
   },
 ];
 
