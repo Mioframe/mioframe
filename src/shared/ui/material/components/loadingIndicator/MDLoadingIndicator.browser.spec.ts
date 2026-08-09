@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../../../../../tests/e2e/storybook/storybook.testUtils';
 
 // Small rendering tolerance for direct geometry comparisons: browser layout can
 // differ from the requested CSS pixel value by a sub-pixel rounding amount.

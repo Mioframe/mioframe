@@ -8,6 +8,15 @@ const STORYBOOK_BEHAVIOR_SPEC_PREFIX = `${STORYBOOK_BEHAVIOR_SPEC_DIR}/`;
 const PACKAGE_JSON_PATH = 'package.json';
 
 /**
+ * Root directory owner-local `*.browser.spec.ts` behavior specs are
+ * discovered under, matching `playwright.storybook.config.ts`'s owner-local
+ * `testMatch` pattern.
+ */
+const COLOCATED_BROWSER_SPEC_ROOT_DIR = 'src';
+const COLOCATED_BROWSER_SPEC_ROOT_PREFIX = `${COLOCATED_BROWSER_SPEC_ROOT_DIR}/`;
+const COLOCATED_BROWSER_SPEC_SUFFIX = '.browser.spec.ts';
+
+/**
  * Storybook behavior specs that are intentionally not covered by
  * {@link STORYBOOK_BEHAVIOR_SCENARIO_SCOPES}. Keep this list small; every
  * entry must explain why it has no scenario mapping. Adding a new
@@ -122,11 +131,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
   },
   {
-    name: 'loading indicator standalone accessibility',
-    sourcePrefixes: ['src/shared/ui/material/components/loadingIndicator/'],
-    specs: ['tests/e2e/storybook/md-loading-indicator.spec.ts'],
-  },
-  {
     name: 'Storybook router harness demonstration',
     sourcePrefixes: [
       'src/shared/lib/router/RouterHarnessRegressionStory.vue',
@@ -183,18 +187,8 @@ function isExistingFile(filePath) {
   }
 }
 
-/**
- * Recursively discover `*.spec.ts` files under `dir`, matching Playwright's
- * recursive `testDir` discovery so nested behavior specs (for example
- * `tests/e2e/storybook/reorder/reorder.spec.ts`) are covered by registry
- * validation instead of being silently invisible to it. Exported so tests
- * can exercise recursive discovery directly against an OS temporary
- * directory instead of the real Storybook behavior spec directory.
- * @param dir Directory to walk, relative to the repository root or absolute.
- * @returns Sorted unique list of discovered spec file paths.
- */
-export function findStorybookBehaviorSpecFiles(dir) {
-  const specFiles = [];
+function findFilesRecursive(dir, suffix) {
+  const matchedFiles = [];
   const pendingDirs = [dir];
 
   while (pendingDirs.length > 0) {
@@ -206,13 +200,40 @@ export function findStorybookBehaviorSpecFiles(dir) {
 
       if (entry.isDirectory()) {
         pendingDirs.push(entryPath);
-      } else if (entry.isFile() && entryPath.endsWith('.spec.ts')) {
-        specFiles.push(entryPath);
+      } else if (entry.isFile() && entryPath.endsWith(suffix)) {
+        matchedFiles.push(entryPath);
       }
     }
   }
 
-  return uniqSorted(specFiles);
+  return uniqSorted(matchedFiles);
+}
+
+/**
+ * Recursively discover `*.spec.ts` files under `dir`, matching Playwright's
+ * recursive `testDir` discovery so nested behavior specs (for example
+ * `tests/e2e/storybook/reorder/reorder.spec.ts`) are covered by registry
+ * validation instead of being silently invisible to it. Exported so tests
+ * can exercise recursive discovery directly against an OS temporary
+ * directory instead of the real Storybook behavior spec directory.
+ * @param dir Directory to walk, relative to the repository root or absolute.
+ * @returns Sorted unique list of discovered spec file paths.
+ */
+export function findStorybookBehaviorSpecFiles(dir) {
+  return findFilesRecursive(dir, '.spec.ts');
+}
+
+/**
+ * Recursively discover owner-local `*.browser.spec.ts` files under `dir`,
+ * matching `playwright.storybook.config.ts`'s owner-local `testMatch`
+ * pattern. Exported so tests can exercise recursive discovery directly
+ * against an OS temporary directory instead of the real `src` tree.
+ * @param [dir] Directory to walk, relative to the repository root or
+ * absolute. Defaults to the real `src` tree.
+ * @returns Sorted unique list of discovered colocated browser spec paths.
+ */
+export function findColocatedBrowserSpecFiles(dir = COLOCATED_BROWSER_SPEC_ROOT_DIR) {
+  return findFilesRecursive(dir, COLOCATED_BROWSER_SPEC_SUFFIX);
 }
 
 function getAllRegistrySpecs(scenarios) {
@@ -233,6 +254,45 @@ function getScenariosForPath(filePath) {
  */
 export function isStorybookBehaviorSpecPath(filePath) {
   return filePath.startsWith(STORYBOOK_BEHAVIOR_SPEC_PREFIX) && filePath.endsWith('.spec.ts');
+}
+
+/**
+ * Check whether a changed file is an owner-local Storybook browser behavior
+ * spec, discovered beside its owner under `src/`.
+ * @param filePath Repository-relative changed file path.
+ * @returns True when the path is a colocated `*.browser.spec.ts` file.
+ */
+export function isColocatedBrowserSpecPath(filePath) {
+  return (
+    filePath.startsWith(COLOCATED_BROWSER_SPEC_ROOT_PREFIX) &&
+    filePath.endsWith(COLOCATED_BROWSER_SPEC_SUFFIX)
+  );
+}
+
+/**
+ * The owner root a colocated browser spec's local ownership applies to: the
+ * directory containing the spec. A changed path starting with this root
+ * (including the spec itself) belongs to the spec's owner.
+ * @param specPath Repository-relative colocated browser spec path.
+ * @returns The owner root, as a directory path with a trailing slash.
+ */
+function getColocatedBrowserSpecOwnerRoot(specPath) {
+  return `${path.posix.dirname(specPath)}/`;
+}
+
+/**
+ * Resolve which existing colocated browser spec, if any, owns a changed
+ * path: the spec whose owner root (its containing directory) is a prefix of
+ * `filePath`. This also matches the spec's own path, since a directory is a
+ * prefix of the files inside it.
+ * @param filePath Repository-relative changed file path.
+ * @param colocatedSpecs Existing colocated browser spec paths.
+ * @returns The owning spec path, or `undefined` when no owner root matches.
+ */
+function findColocatedBrowserSpecOwner(filePath, colocatedSpecs) {
+  return colocatedSpecs.find((specPath) =>
+    filePath.startsWith(getColocatedBrowserSpecOwnerRoot(specPath)),
+  );
 }
 
 /**
@@ -349,10 +409,10 @@ export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
  * Resolve the Storybook behavior lane mode for the given changed files, in
  * priority order: invalid (scenario registry failed self-validation; fail
  * closed instead of silently skipping), full (global infrastructure risk,
- * behavior support file changes, removed or renamed directly changed specs,
- * or a Storybook/Playwright-relevant `package.json` change), focused
- * (scenario registry matches and/or changed behavior specs), or none (no
- * relevant changes).
+ * behavior support file changes, removed or renamed directly changed specs
+ * (legacy or colocated), or a Storybook/Playwright-relevant `package.json`
+ * change), focused (scenario registry matches, changed behavior specs,
+ * and/or colocated owner-local relations), or none (no relevant changes).
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Resolution options.
  * @param [options.packageJsonOldRef] Git ref to compare the current
@@ -363,11 +423,15 @@ export function validateStorybookBehaviorScenarioRegistry(overrides = {}) {
  * spec existence check, bypassing the real filesystem. Production callers
  * should omit this so a deleted or renamed-away spec is detected against the
  * real repository state.
+ * @param [options.colocatedSpecFiles] Test-only override for the discovered
+ * owner-local `*.browser.spec.ts` paths, bypassing filesystem discovery
+ * under `src/`. Production callers should omit this so real colocated
+ * ownership is resolved against the repository state.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
  */
 export function resolveStorybookBehaviorPlan(
   changedFiles,
-  { packageJsonOldRef = null, fileExists = isExistingFile } = {},
+  { packageJsonOldRef = null, fileExists = isExistingFile, colocatedSpecFiles = null } = {},
 ) {
   const registryValidation = validateStorybookBehaviorScenarioRegistry();
 
@@ -379,6 +443,9 @@ export function resolveStorybookBehaviorPlan(
   const supportHit = changedFiles.find(isStorybookBehaviorSupportPath);
   const missingSpecHit = changedFiles.find(
     (filePath) => isStorybookBehaviorSpecPath(filePath) && !fileExists(filePath),
+  );
+  const missingColocatedSpecHit = changedFiles.find(
+    (filePath) => isColocatedBrowserSpecPath(filePath) && !fileExists(filePath),
   );
   const isPackageJsonRelevant =
     changedFiles.includes(PACKAGE_JSON_PATH) &&
@@ -405,10 +472,17 @@ export function resolveStorybookBehaviorPlan(
     );
   }
 
+  if (missingColocatedSpecHit) {
+    fullReasons.push(
+      `removed or renamed colocated browser spec ${missingColocatedSpecHit} -> full behavior lane`,
+    );
+  }
+
   if (fullReasons.length > 0) {
     return { mode: 'full', specs: [], reasons: fullReasons };
   }
 
+  const existingColocatedSpecs = colocatedSpecFiles ?? findColocatedBrowserSpecFiles();
   const focusedSpecs = new Set();
   const focusedReasons = [];
 
@@ -426,6 +500,17 @@ export function resolveStorybookBehaviorPlan(
     if (isStorybookBehaviorSpecPath(filePath)) {
       focusedSpecs.add(filePath);
       focusedReasons.push(`changed behavior spec ${filePath} -> ${filePath}`);
+    }
+
+    const colocatedOwner = findColocatedBrowserSpecOwner(filePath, existingColocatedSpecs);
+
+    if (colocatedOwner) {
+      focusedSpecs.add(colocatedOwner);
+      focusedReasons.push(
+        filePath === colocatedOwner
+          ? `changed colocated browser spec ${filePath} -> ${filePath}`
+          : `colocated owner-local relation ${filePath} -> ${colocatedOwner}`,
+      );
     }
   }
 

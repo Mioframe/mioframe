@@ -13,6 +13,7 @@
     "src/**/*.stories.mjs",
     "src/**/*.stories.vue"
   ],
+  "exclude": ["src/**/*.browser.spec.ts"],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.storybook.tsbuildinfo",
     "types": ["node", "@types/wicg-file-system-access"],
