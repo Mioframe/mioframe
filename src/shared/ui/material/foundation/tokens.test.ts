@@ -66,7 +66,9 @@ const extractSelectedMappings = (css: string, dark: boolean): Record<string, str
   );
   const nodes = dark ? darkMedia?.nodes : root.nodes;
   const rootRule = nodes?.find(
-    (node): node is postcss.Rule => node.type === 'rule' && node.selector === ':root',
+    (node): node is postcss.Rule =>
+      node.type === 'rule' &&
+      node.selector === (dark ? ":root:not([data-md-color-scheme='light'])" : ':root'),
   );
   const mappings: Record<string, string> = {};
 

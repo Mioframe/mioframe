@@ -35,7 +35,8 @@ describe('Material foundation theme-mode seam', () => {
       node.params === '(prefers-color-scheme: dark)',
   );
   const systemDarkRootRule = darkMediaRule?.nodes?.find(
-    (node): node is postcss.Rule => node.type === 'rule' && node.selector === ':root',
+    (node): node is postcss.Rule =>
+      node.type === 'rule' && node.selector === ":root:not([data-md-color-scheme='light'])",
   );
   const forcedLightRule = root.nodes.find(
     (node): node is postcss.Rule =>
@@ -46,15 +47,26 @@ describe('Material foundation theme-mode seam', () => {
       node.type === 'rule' && node.selector === ":root[data-md-color-scheme='dark']",
   );
 
-  it('keeps the default :root and the system-dark media query unguarded by the mode attribute, so System stays the default', () => {
+  it('keeps the default :root unguarded, so System with a light OS preference uses the default light mappings', () => {
     expect(defaultRootRule).toBeDefined();
-    expect(darkMediaRule?.params).toBe('(prefers-color-scheme: dark)');
-    expect(systemDarkRootRule?.selector).toBe(':root');
+    expect(Object.keys(getSysColorDeclarations(defaultRootRule)).length).toBeGreaterThan(0);
   });
 
-  it('declares at least one token in every forced-mode block, so equality checks below cannot pass vacuously', () => {
+  it('applies the system-dark media query so System with a dark OS preference uses the canonical dark mappings', () => {
+    expect(darkMediaRule?.params).toBe('(prefers-color-scheme: dark)');
+    expect(Object.keys(getSysColorDeclarations(systemDarkRootRule)).length).toBeGreaterThan(0);
+  });
+
+  it('scopes the system-dark media rule to exclude forced Light, so forced Light cannot inherit any dark-only override', () => {
+    expect(systemDarkRootRule?.selector).toBe(":root:not([data-md-color-scheme='light'])");
+  });
+
+  it('does not duplicate a forced-light token matrix, since excluding forced Light from the dark media rule already restores default light mappings', () => {
+    expect(forcedLightRule).toBeUndefined();
+  });
+
+  it('declares at least one token in the forced-dark block, so the equality check below cannot pass vacuously', () => {
     expect(Object.keys(getSysColorDeclarations(forcedDarkRule)).length).toBeGreaterThan(0);
-    expect(Object.keys(getSysColorDeclarations(forcedLightRule)).length).toBeGreaterThan(0);
   });
 
   it('resolves forced Dark to the exact same token mappings as system Dark', () => {
@@ -63,9 +75,28 @@ describe('Material foundation theme-mode seam', () => {
     );
   });
 
-  it('resolves forced Light to the exact same token mappings as the default light :root', () => {
-    expect(getSysColorDeclarations(forcedLightRule)).toEqual(
-      getSysColorDeclarations(defaultRootRule),
-    );
+  it('keeps the canonical dark elevation override values unchanged', () => {
+    const elevation1 =
+      '0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3), 0px 1px 3px 1px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15)';
+    const elevation2 =
+      '0px 1px 2px 0px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.3), 0px 2px 6px 2px rgb(from var(--md-private-elevation-shadow-color) r g b / 0.15)';
+
+    const getElevation = (rule: postcss.Rule | undefined): Record<string, string> => {
+      const declarations: Record<string, string> = {};
+      rule?.each((node) => {
+        if (node.type === 'decl' && node.prop.startsWith('--md-sys-elevation-'))
+          declarations[node.prop] = node.value.replace(/\s+/g, ' ').trim();
+      });
+      return declarations;
+    };
+
+    expect(getElevation(systemDarkRootRule)).toEqual({
+      '--md-sys-elevation-level1': elevation1,
+      '--md-sys-elevation-level2': elevation2,
+    });
+    expect(getElevation(forcedDarkRule)).toEqual({
+      '--md-sys-elevation-level1': elevation1,
+      '--md-sys-elevation-level2': elevation2,
+    });
   });
 });
