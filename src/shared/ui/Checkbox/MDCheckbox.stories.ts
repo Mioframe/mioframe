@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { useArgs } from 'storybook/preview-api';
 import MDCheckbox from './MDCheckbox.vue';
 
 const meta = {
@@ -68,7 +69,31 @@ const checkboxInteractionStatesTemplate = `
   </div>
 `;
 
-export const Default: Story = {};
+// The Playground surface: Controls drive `modelValue` through Storybook's args, and direct
+// checkbox interaction round-trips back into args via `useArgs` so Controls and the rendered
+// component stay synchronized either way (docs/testing/storybook.md "Args and Controls").
+// `useArgs` is a Storybook preview hook, so it must run in the story's `render` function (a
+// valid Storybook hook context), not inside the returned Vue component's `setup()`; the
+// resolved args and update callback are then passed into `setup()` as plain closure data.
+export const Default: Story = {
+  render: function Render() {
+    const [args, updateArgs] = useArgs<{
+      /** Checked, unchecked, or indeterminate checkbox state. */
+      modelValue?: boolean | undefined;
+    }>();
+    const onUpdateModelValue = (modelValue: boolean | undefined) => {
+      updateArgs({ modelValue });
+    };
+
+    return {
+      components: { MDCheckbox },
+      setup() {
+        return { args, onUpdateModelValue };
+      },
+      template: '<MDCheckbox v-bind="args" @update:model-value="onUpdateModelValue" />',
+    };
+  },
+};
 
 export const Checked: Story = {
   args: {
