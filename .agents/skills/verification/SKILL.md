@@ -74,6 +74,8 @@ For Storybook behavior and visual proof:
 
 During the browser migration, migrated `src/**/*.browser.spec.ts` specs use the implemented filesystem-derived owner-local convention and require no duplicate central registry entry. Specs still executed from `tests/e2e/storybook` remain legacy-central and must continue to satisfy the current resolver's mapping/validation requirements. Do not move an additional spec until the current migration stage authorizes that owner and the lane can discover it.
 
+Colocated `src/**/*.browser.spec.ts` files are Playwright proof inputs only. Automatic unit-test scope must not classify them as Vitest tests merely because their filenames end in `.spec.ts`; unit selection follows the Vitest-owned test patterns and keeps browser proof in the `storybook-behavior` lane.
+
 Application E2E remains centralized and therefore continues to use explicit stable source-to-product-scenario impact rather than component colocation.
 
 ## Visual baselines
