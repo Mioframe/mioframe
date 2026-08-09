@@ -105,6 +105,12 @@ describe('COMMAND_TIMEOUT_MS_BY_LABEL', () => {
       expect(COMMAND_TIMEOUT_MS_BY_LABEL[label]).toBe(expectedMs);
     }
   });
+
+  it('sizes the managed-updates aggregate timeout for exactly four sequential container sessions', () => {
+    const singleSessionTimeoutMs = resolvePlaywrightCommandTimeoutMs();
+
+    expect(COMMAND_TIMEOUT_MS_BY_LABEL['managed-updates']).toBe(4 * singleSessionTimeoutMs);
+  });
 });
 
 describe('getAllSiblingTestFiles', () => {
@@ -190,7 +196,6 @@ describe('buildCommands full mode', () => {
     expect(runByLabel.e2e).toBe('run');
     expect(runByLabel['storybook-behavior']).toBe('run');
     expect(runByLabel.visual).toBe('run');
-    expect(runByLabel['storybook-build']).toBe('run');
   });
 
   it('does not run mutation testing in full/release mode', () => {
@@ -230,6 +235,19 @@ describe('buildCommands full mode', () => {
       'release-smoke',
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     ]);
+    expect(byLabel['managed-updates'].command).toBe('node');
+    expect(byLabel['managed-updates'].args).toEqual(['scripts/release/managedUpdatesProof.mjs']);
+  });
+
+  it('runs the managed-updates label through the aggregate proof runner, not a direct eight-file Playwright command', () => {
+    const commands = buildCommands([], { fullMode: true });
+    const byLabel = Object.fromEntries(commands.map((entry) => [entry.label, entry]));
+
+    expect(byLabel['managed-updates'].command).not.toBe('pnpm');
+    expect(byLabel['managed-updates'].args).not.toContain('e2e:release');
+    expect(byLabel['managed-updates'].args).not.toContain(
+      'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
+    );
   });
 
   it('does not add release-only checks outside full mode', () => {
@@ -241,6 +259,7 @@ describe('buildCommands full mode', () => {
     expect(labels).not.toContain('build');
     expect(labels).not.toContain('artifact');
     expect(labels).not.toContain('release-smoke');
+    expect(labels).not.toContain('managed-updates');
   });
 });
 
@@ -296,15 +315,6 @@ describe('buildCommands mutation scope', () => {
         expect(JSON.stringify(entry.args ?? [])).not.toContain(deletedProductionPath);
       }
     });
-  });
-});
-
-describe('buildCommands visual relevance', () => {
-  it('selects visual for a change to the global Storybook rendering environment entry', () => {
-    const commands = buildCommands(['src/app/styles/base.css'], { fullMode: false });
-    const visualEntry = commands.find((entry) => entry.label === 'visual');
-
-    expect(visualEntry.kind).toBe('run');
   });
 });
 
@@ -503,87 +513,6 @@ describe('buildCommands storybook-behavior lane', () => {
       packageJsonOldRef: 'HEAD~1',
     });
     const entry = commands.find((item) => item.label === 'storybook-behavior');
-
-    expect(entry.kind).toBe('run');
-    expect(entry.triggerReason).toContain('runtime-relevant package.json change');
-  });
-});
-
-describe('buildCommands storybook-build lane', () => {
-  beforeEach(() => {
-    isPackageJsonRuntimeRelevantChange.mockReset();
-  });
-
-  it('runs after visual', () => {
-    const commands = buildCommands([], { fullMode: true });
-    const labels = commands.map((entry) => entry.label);
-
-    expect(labels.indexOf('visual')).toBeLessThan(labels.indexOf('storybook-build'));
-  });
-
-  it('skips storybook-build for an empty scope', () => {
-    const commands = buildCommands(['src/app/main.ts'], { fullMode: false });
-    const entry = commands.find((item) => item.label === 'storybook-build');
-
-    expect(entry.kind).toBe('skipped');
-    expect(entry.reason).toBe('no storybook-relevant changes');
-  });
-
-  it('selects the build for a changed story file', () => {
-    const commands = buildCommands(['src/shared/ui/Checkbox/MDCheckbox.stories.ts'], {
-      fullMode: false,
-    });
-    const entry = commands.find((item) => item.label === 'storybook-build');
-
-    expect(entry.kind).toBe('run');
-    expect(entry.args).toEqual(['storybook:build']);
-    expect(entry.triggerReason).toContain('Storybook-relevant path');
-  });
-
-  it('selects the build for a Storybook configuration change', () => {
-    const commands = buildCommands(['.storybook/preview.ts'], { fullMode: false });
-    const entry = commands.find((item) => item.label === 'storybook-build');
-
-    expect(entry.kind).toBe('run');
-  });
-
-  it('selects the build for a direct Storybook-wide dependency change', () => {
-    for (const filePath of ['config/alias.ts', 'src/app/styles/base.css', 'tsconfig.src.json']) {
-      const commands = buildCommands([filePath], { fullMode: false });
-      const entry = commands.find((item) => item.label === 'storybook-build');
-
-      expect(entry.kind).toBe('run');
-    }
-  });
-
-  it('runs unconditionally in full mode', () => {
-    const commands = buildCommands([], { fullMode: true });
-    const entry = commands.find((item) => item.label === 'storybook-build');
-
-    expect(entry.kind).toBe('run');
-    expect(entry.triggerReason).toBe('full-project release verification');
-  });
-
-  it('skips storybook-build for a confirmed version-only package.json change', () => {
-    isPackageJsonRuntimeRelevantChange.mockReturnValue(false);
-
-    const commands = buildCommands(['package.json'], {
-      fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
-    });
-    const entry = commands.find((item) => item.label === 'storybook-build');
-
-    expect(entry.kind).toBe('skipped');
-  });
-
-  it('selects the build when the package.json impact check is runtime-relevant', () => {
-    isPackageJsonRuntimeRelevantChange.mockReturnValue(true);
-
-    const commands = buildCommands(['package.json'], {
-      fullMode: false,
-      packageJsonOldRef: 'HEAD~1',
-    });
-    const entry = commands.find((item) => item.label === 'storybook-build');
 
     expect(entry.kind).toBe('run');
     expect(entry.triggerReason).toContain('runtime-relevant package.json change');

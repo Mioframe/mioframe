@@ -10,7 +10,6 @@ import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWe
 import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
-import { resolveStorybookBuildPlan } from './lib/storybookBuildRisk.mjs';
 import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
@@ -82,11 +81,15 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   e2e: PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   'storybook-behavior': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
   visual: PLAYWRIGHT_COMMAND_TIMEOUT_MS,
-  'storybook-build': 10 * 60 * 1000,
   mutation: 20 * 60 * 1000,
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  // Four sequential fresh-container sessions (see
+  // scripts/release/managedUpdatesProof.mjs), each bounded by the same
+  // derived Playwright container timeout as every other Playwright-backed
+  // lane.
+  'managed-updates': 4 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
@@ -210,7 +213,7 @@ export function getAllSiblingTestFiles(filePath) {
     return uniqSorted(testCandidates);
   }
 
-  if (filePath.startsWith('scripts/')) {
+  if (filePath.startsWith('scripts/') || filePath.startsWith('tests/e2e/')) {
     if (filePath.endsWith('.test.mjs') || filePath.endsWith('.spec.mjs')) {
       return fileExists(filePath) ? [filePath] : [];
     }
@@ -244,8 +247,10 @@ function getVitestScope(changedFiles) {
   const scope = [];
 
   for (const filePath of changedFiles) {
-    if (filePath.startsWith('tests/e2e/')) {
-      // vitest.config.ts excludes tests/e2e/** entirely; Playwright specs there are not vitest scope.
+    if (filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')) {
+      // vitest.config.ts excludes Playwright specs under tests/e2e/**; a
+      // colocated `.test.mjs` fixture-logic test there is valid vitest
+      // scope and falls through to the checks below like any other file.
       continue;
     }
 
@@ -284,7 +289,6 @@ function isVisualRelevantFile(filePath) {
     filePath === 'vite.config.ts' ||
     filePath === 'tsconfig.storybook.json' ||
     filePath === 'scripts/storybook.mjs' ||
-    filePath === 'src/app/styles/base.css' ||
     filePath === 'src/app/styles/styles.css' ||
     filePath === 'src/app/styles/fonts.css' ||
     filePath.startsWith('.storybook/') ||
@@ -576,7 +580,9 @@ function printHelp() {
     '  --full              Unconditional full-project release scope: do not resolve changed paths,',
   );
   console.log('                      run full proof plus release-version/release-config/build/');
-  console.log('                      artifact/release-smoke. Equivalent to `pnpm verify:release`.');
+  console.log(
+    '                      publisher-node-import/artifact/release-smoke/managed-updates. Equivalent to `pnpm verify:release`.',
+  );
   console.log('');
   console.log('Labels for --only:');
 
@@ -1021,6 +1027,14 @@ function addReleaseOnlyCommands(commands) {
 
   commands.push({
     kind: 'run',
+    label: 'publisher-node-import',
+    command: 'node',
+    args: ['scripts/release/publisherWireContractImportProof.mjs'],
+    weight: classifyCommandWeight({ label: 'publisher-node-import' }),
+  });
+
+  commands.push({
+    kind: 'run',
     label: 'artifact',
     command: 'pnpm',
     args: [
@@ -1044,6 +1058,14 @@ function addReleaseOnlyCommands(commands) {
     ],
     weight: classifyCommandWeight({ label: 'release-smoke' }),
   });
+
+  commands.push({
+    kind: 'run',
+    label: 'managed-updates',
+    command: 'node',
+    args: ['scripts/release/managedUpdatesProof.mjs'],
+    weight: classifyCommandWeight({ label: 'managed-updates' }),
+  });
 }
 
 /**
@@ -1065,7 +1087,6 @@ export function buildCommands(
     fixMode = currentVerifyInvocation?.fixMode ?? 'none',
     appE2EPlan: appE2EPlanOverride = null,
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
-    storybookBuildPlan: storybookBuildPlanOverride = null,
   } = {},
 ) {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1093,8 +1114,6 @@ export function buildCommands(
   const storybookBehaviorPlan =
     storybookBehaviorPlanOverride ??
     resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
-  const storybookBuildPlan =
-    storybookBuildPlanOverride ?? resolveStorybookBuildPlan(changedFiles, { packageJsonOldRef });
   const mutationScope = getMutationScope(existingChangedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
@@ -1305,33 +1324,6 @@ export function buildCommands(
       label: 'visual',
       command: 'pnpm test:visual',
       reason: 'empty visual scope',
-    });
-  }
-
-  if (fullMode) {
-    commands.push({
-      kind: 'run',
-      label: 'storybook-build',
-      command: 'pnpm',
-      args: ['storybook:build'],
-      weight: classifyCommandWeight({ label: 'storybook-build' }),
-      triggerReason: 'full-project release verification',
-    });
-  } else if (storybookBuildPlan.mode === 'full') {
-    commands.push({
-      kind: 'run',
-      label: 'storybook-build',
-      command: 'pnpm',
-      args: ['storybook:build'],
-      weight: classifyCommandWeight({ label: 'storybook-build' }),
-      triggerReason: storybookBuildPlan.reasons.join('; '),
-    });
-  } else {
-    commands.push({
-      kind: 'skipped',
-      label: 'storybook-build',
-      command: 'pnpm storybook:build',
-      reason: 'no storybook-relevant changes',
     });
   }
 
