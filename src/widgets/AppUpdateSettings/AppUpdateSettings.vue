@@ -194,7 +194,7 @@ const onToggleAutomaticUpdates = () => {
         Activating version: {{ activatingVersion }}
       </p>
       <p v-if="displayStatus === 'ready'">
-        Update ready. Close all Mioframe windows and reopen Mioframe to guarantee the update.
+        Update ready. Close all Mioframe windows and reopen Mioframe to apply the update.
       </p>
       <p v-if="displayStatus === 'activating'">
         Activating the update now. The status will update automatically when activation completes.
@@ -237,7 +237,7 @@ const onToggleAutomaticUpdates = () => {
         mode="single-action"
         role="switch"
         label-text="Automatic updates"
-        supporting-text="Download and prepare newer releases automatically. Updates apply when Mioframe restarts. Close all Mioframe windows and reopen it to guarantee the update."
+        supporting-text="Download and prepare newer releases automatically. Updates apply when Mioframe restarts. Close all Mioframe windows and reopen it to apply the update."
         :line-count="2"
         :aria-checked="mode === 'automatic'"
         :aria-disabled="isAutomaticToggleDisabled ? 'true' : undefined"
