@@ -21,7 +21,7 @@ export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
 
 // Group 2: controller-upgrade, develop, and migration specs (Chromium).
 // Runs in a second fresh Playwright container, only after group 1 passes.
-// managedUpdatesControllerUpgrade.spec.ts runs first, in its own fresh
+// managedUpdatesControllerUpgrade.spec.ts runs first within this fresh
 // Chromium container, before the longer migration suites.
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_LABEL = 'managed-updates-migration-isolation';
 export const MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS = [
@@ -72,7 +72,7 @@ function isPassingResult(result) {
 }
 
 /**
- * Run the managed-update release proof as three fixed sequential groups,
+ * Run the managed-update release proof as four fixed sequential groups,
  * each in its own fresh Playwright container via
  * `scripts/e2eReleaseContainer.mjs` (see `pnpm e2e:release`). A later group
  * never starts unless every earlier group passes; the aggregate result
