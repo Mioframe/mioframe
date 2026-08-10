@@ -46,7 +46,7 @@
 - Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming any existing story address.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, and the legacy `src/shared/ui/Button` module now use owner-local browser specs. S2-A through S2-D are complete; `DialogForm` fallback-focus browser proof remains transitional-central and S2-E remains to be implemented.
+- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, and `DialogForm` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete.
 - Visual specs/baselines still use the current central visual execution structure.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
@@ -176,7 +176,7 @@ Forbidden during S1:
 
 ### Stage S2 — remaining Storybook browser migration
 
-Status: **in progress; S2-A, S2-B, S2-C, and S2-D complete**.
+Status: **complete; S2-A, S2-B, S2-C, S2-D, and S2-E complete**.
 
 S2 migrates ordinary component/family/module-owned behavior to the owner-local convention established by S1. It does not force genuinely cross-owner or Storybook-infrastructure proof into a false local owner. Central discovery remains while such central consumers exist.
 
@@ -221,7 +221,7 @@ S2 migrates ordinary component/family/module-owned behavior to the owner-local c
 - `dialogFormFallbackFocus.spec.ts`
   - Contract: real focus-trap activation with zero tabbable action controls uses the form fallback target and keeps Tab/Shift+Tab focus inside the dialog.
   - Final owner: `src/shared/ui/Dialog/DialogForm.browser.spec.ts`.
-  - Current state: transitional central proof introduced after the original S2 inventory. S2-E must move the assertion owner-local and remove its explicit `dialog form fallback focus` registry mapping without changing the story ID or focus-trap behavior.
+  - Current state: complete — migrated owner-local as `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserving the story ID and focus-trap assertion; the replaced `dialog form fallback focus` registry mapping is removed. `tests/e2e/storybook/dialogFormFallbackFocus.spec.ts` no longer exists.
 - `colorOwnership.spec.ts`
   - Contract: Snackbar inverse surface/message/action/close color behavior across Snackbar-owned contextual values and Material Button public contextual tokens.
   - Final owner: keep `tests/e2e/storybook/colorOwnership.spec.ts`.
@@ -245,9 +245,9 @@ Implement S2 as independently mergeable groups from current `develop`:
 2. **S2-B — Sheets module (complete):** `mdBottomSheetContainerKeyboardScroll.spec.ts` is now `src/shared/ui/Sheets/MDBottomSheetContainer2.browser.spec.ts`; its replaced registry entry is removed. The local resolver intentionally treats `Sheets/` as the owner root, so no second mapping was added to recover the old narrower exact-file selection.
 3. **S2-C — Reorder module (complete):** all four Reorder browser specs are now distinct colocated `*.browser.spec.ts` files under `src/shared/lib/reorder`; the two replaced Reorder registry mappings are removed. The owner-local resolver intentionally selects all four for module-local changes rather than recreating the former narrower mapping split.
 4. **S2-D — Button decomposition (complete):** `md-button-family.spec.ts` is split by Material Button, legacy `shared/ui/Button`, and cross-owner focus-indicator ownership; the old `storybook.smoke.spec.ts` assertion is folded into the Material Button local proof (`src/shared/ui/material/components/button/MDButton.browser.spec.ts`); legacy Button-module contracts moved to `src/shared/ui/Button/LegacyButton.browser.spec.ts`; the shared focus-indicator integration remains one central explicit spec, `tests/e2e/storybook/focusIndicator.spec.ts`. `storybook.smoke.spec.ts` and `md-button-family.spec.ts` no longer exist, and the stale `src/shared/ui/LoadingButton/` mapping is removed. Icon Button/FAB remain outside the canonical Material `button` family, as its architecture explicitly excludes those contracts.
-5. **S2-E — DialogForm migration and final ownership audit:** move `tests/e2e/storybook/dialogFormFallbackFocus.spec.ts` to `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserve its real focus-trap browser contract and story address, remove the replaced explicit DialogForm mapping, then validate that the remaining central behavior specs are exactly justified cross-owner/infrastructure proof (`colorOwnership`, `overlayLifecycle`, `focusIndicator`, `routerHarness`) plus the central helper. Keep central discovery because these are real consumers; do not remove it merely to make the directory empty.
+5. **S2-E — DialogForm migration and final ownership audit (complete):** `dialogFormFallbackFocus.spec.ts` is now `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserving its real focus-trap browser contract and story address; the replaced explicit DialogForm mapping is removed. The remaining central behavior specs are exactly justified cross-owner/infrastructure proof (`colorOwnership`, `overlayLifecycle`, `focusIndicator`, `routerHarness`) plus the central helper (`storybook.testUtils.ts`). Central discovery remains because these are real consumers.
 
-S2-A through S2-D are complete. The next authorized implementation group is S2-E. Each remaining group starts from the then-current `develop` and preserves the assertions and story addresses it migrates. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
+S2-A through S2-E are complete. Stage S2 is complete. Each group started from the then-current `develop` and preserved the assertions and story addresses it migrated. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
 
 #### S2 architecture constraints
 
@@ -258,7 +258,7 @@ S2-A through S2-D are complete. The next authorized implementation group is S2-E
 - `routerHarness.spec.ts` proves `.storybook/router/routerHarness.ts`; the `src/shared/lib/router` story files are fixtures, not a reason to claim shared-lib ownership.
 - Material `button` owns `MDButton`; Icon Button and FAB contracts are explicitly outside that family architecture and remain owned by the existing `src/shared/ui/Button` module until their own Material migrations occur.
 - Focus-indicator integration remains cross-owner in S2 because one State foundation is exercised against hosts from both the Material Button family and the legacy Button module. Consolidating that foundation proof is S5 work, not a prerequisite for file placement.
-- `DialogForm` fallback-focus is an ordinary component-owned browser contract. Its current central placement is transitional only until S2-E; do not preserve an explicit mapping after owner-local migration.
+- `DialogForm` fallback-focus is an ordinary component-owned browser contract, now colocated as `src/shared/ui/Dialog/DialogForm.browser.spec.ts`; no explicit mapping remains for it.
 - `colorOwnership.spec.ts` and `overlayLifecycle.spec.ts` remain central. Creating a local copy plus a cross-owner mapping would add metadata without reducing ownership complexity.
 - Keep the current `openStory` helper and one Playwright Storybook runner; no new runner, generic registry DSL, mapping layer, or test helper framework.
 - Do not change browser project coverage, screenshots, visual baselines, story titles/IDs, app E2E, or production behavior in S2.
@@ -266,19 +266,21 @@ S2-A through S2-D are complete. The next authorized implementation group is S2-E
 
 #### Acceptance
 
-S2 is complete when:
+S2 is complete:
 
 - every ordinary component/family/module browser contract listed above, including `DialogForm` fallback-focus, is colocated with its truthful owner;
 - the old `storybook.smoke.spec.ts` infrastructure classification no longer exists and its MDButton assertion remains protected;
 - the mixed Button suite no longer gives Material Button, legacy Button, and focus-indicator foundation one false owner;
 - local owners have no duplicate explicit registry mapping;
-- `dialogFormFallbackFocus.spec.ts` is removed from the central directory after its assertion moves to `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, and its explicit mapping is removed;
+- `dialogFormFallbackFocus.spec.ts` is removed from the central directory after its assertion moved to `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, and its explicit mapping is removed;
 - the remaining central specs are only `colorOwnership.spec.ts`, `overlayLifecycle.spec.ts`, `focusIndicator.spec.ts`, and `routerHarness.spec.ts`, each with truthful explicit or infrastructure ownership;
 - the stale `src/shared/ui/LoadingButton/` behavior mapping is gone;
 - coverage and story addresses are preserved during migration; proof cleanup remains deferred to S5;
 - add/modify/delete/rename behavior for colocated specs remains fail closed as established by S1;
 - complete `storybook-behavior` passes after every group and after the final ownership audit;
 - legacy central discovery remains enabled while the justified central specs above exist.
+
+The next authorized Storybook migration stage is **S3 — visual discovery and snapshot pilot**.
 
 ### Stage S3 — visual discovery and snapshot pilot
 

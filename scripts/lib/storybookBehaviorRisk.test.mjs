@@ -179,6 +179,36 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     );
   });
 
+  it('removes the transitional DialogForm central scenario after S2-E', () => {
+    const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name);
+
+    expect(scenarioNames).not.toContain('dialog form fallback focus');
+  });
+
+  it('contains exactly the S2-final justified central ownership relations', () => {
+    const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name).sort(
+      (left, right) => left.localeCompare(right),
+    );
+
+    expect(scenarioNames).toEqual(
+      [
+        'Storybook router harness demonstration',
+        'shared color ownership',
+        'shared focus-indicator integration',
+        'shared overlay outside-interaction lifecycle',
+      ].sort((left, right) => left.localeCompare(right)),
+    );
+  });
+
+  it('leaves exactly the four justified central behavior specs plus the helper on disk', () => {
+    expect(findStorybookBehaviorSpecFiles('tests/e2e/storybook')).toEqual([
+      'tests/e2e/storybook/colorOwnership.spec.ts',
+      'tests/e2e/storybook/focusIndicator.spec.ts',
+      'tests/e2e/storybook/overlayLifecycle.spec.ts',
+      'tests/e2e/storybook/routerHarness.spec.ts',
+    ]);
+  });
+
   it('no longer maps the stale src/shared/ui/LoadingButton/ prefix', () => {
     const allSourcePrefixes = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.flatMap(
       (scenario) => scenario.sourcePrefixes,
@@ -319,6 +349,18 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     ).toBe(false);
     expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(buttonBrowserSpec);
     expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(legacyButtonBrowserSpec);
+    expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
+  });
+
+  it('passes for the real registry with the new colocated DialogForm browser spec unregistered', () => {
+    const dialogFormBrowserSpec = 'src/shared/ui/Dialog/DialogForm.browser.spec.ts';
+
+    expect(
+      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.some((scenario) =>
+        scenario.specs.includes(dialogFormBrowserSpec),
+      ),
+    ).toBe(false);
+    expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(dialogFormBrowserSpec);
     expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
   });
 
@@ -824,6 +866,47 @@ describe('resolveStorybookBehaviorPlan colocated browser spec ownership', () => 
 
     expect(inDiscoveryOrder.specs).toEqual([nestedSpec, parentSpec]);
     expect(inReverseDiscoveryOrder.specs).toEqual(inDiscoveryOrder.specs);
+  });
+});
+
+describe('resolveStorybookBehaviorPlan DialogForm owner-local ownership (S2-E)', () => {
+  const DIALOG_FORM_BROWSER_SPEC = 'src/shared/ui/Dialog/DialogForm.browser.spec.ts';
+
+  it('discovers the real colocated DialogForm browser spec under src/', () => {
+    expect(findColocatedBrowserSpecFiles()).toContain(DIALOG_FORM_BROWSER_SPEC);
+  });
+
+  it('selects the local DialogForm spec, with no central mapping, for a DialogForm.vue change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Dialog/DialogForm.vue']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([DIALOG_FORM_BROWSER_SPEC]);
+  });
+
+  it('selects the local DialogForm spec, with no central mapping, for a DialogForm.stories.ts change', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Dialog/DialogForm.stories.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([DIALOG_FORM_BROWSER_SPEC]);
+  });
+
+  it('selects itself for a changed local DialogForm browser spec, with no central mapping', () => {
+    const plan = resolveStorybookBehaviorPlan([DIALOG_FORM_BROWSER_SPEC]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([DIALOG_FORM_BROWSER_SPEC]);
+  });
+
+  it('runs the full lane for a removed DialogForm colocated browser spec', () => {
+    const plan = resolveStorybookBehaviorPlan([DIALOG_FORM_BROWSER_SPEC], {
+      fileExists: () => false,
+    });
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+    expect(plan.reasons[0]).toContain(
+      `removed or renamed colocated browser spec ${DIALOG_FORM_BROWSER_SPEC}`,
+    );
   });
 });
 
