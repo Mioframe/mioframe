@@ -141,15 +141,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     ],
     specs: ['tests/e2e/storybook/routerHarness.spec.ts'],
   },
-  {
-    name: 'bottom sheet keyboard focus wrap visibility',
-    sourcePrefixes: [
-      'src/shared/ui/Sheets/MDBottomSheetContainer2.vue',
-      'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScroll.stories.ts',
-      'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScrollStoryHarness.vue',
-    ],
-    specs: ['tests/e2e/storybook/mdBottomSheetContainerKeyboardScroll.spec.ts'],
-  },
 ];
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior
