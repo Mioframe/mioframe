@@ -155,26 +155,23 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     const coveredSpecs = new Set([...registrySpecs, ...STORYBOOK_BEHAVIOR_STANDALONE_SPECS]);
 
     expect(coveredSpecs.has('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
-    expect(coveredSpecs.has('tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts')).toBe(
-      true,
-    );
     expect(coveredSpecs.has('tests/e2e/storybook/md-button-family.spec.ts')).toBe(true);
   });
 
-  it('keeps other existing central scenario mappings unchanged after the S2-A owner-local Checkbox/Navigation Path migration', () => {
+  it('keeps other existing central scenario mappings unchanged after the S2-C owner-local Reorder migration', () => {
     const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name);
 
     expect(scenarioNames).not.toContain('loading indicator standalone accessibility');
     expect(scenarioNames).not.toContain('navigation path button geometry and overflow');
     expect(scenarioNames).not.toContain('checkbox controlled args round-trip');
     expect(scenarioNames).not.toContain('bottom sheet keyboard focus wrap visibility');
+    expect(scenarioNames).not.toContain('reorder self-scrollable container autoscroll');
+    expect(scenarioNames).not.toContain('reorder generic layout support');
     expect(scenarioNames).toEqual(
       expect.arrayContaining([
         'storybook behavior infrastructure smoke',
         'shared color ownership',
         'shared overlay outside-interaction lifecycle',
-        'reorder self-scrollable container autoscroll',
-        'reorder generic layout support',
         'button family behavior',
         'Storybook router harness demonstration',
       ]),
@@ -463,38 +460,44 @@ describe('resolveStorybookBehaviorPlan', () => {
     expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
   });
 
-  it('focuses the self-scrollable-container and document-viewport specs for a reorderAutoscrollEnvironment change', () => {
+  it('selects every colocated Reorder browser spec for a reorderAutoscrollEnvironment change, via generic owner-local ownership', () => {
     const plan = resolveStorybookBehaviorPlan([
       'src/shared/lib/reorder/reorderAutoscrollEnvironment.ts',
     ]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
-      'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
-      'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
-      'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
+      'src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts',
+      'src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts',
+      'src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts',
+      'src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts',
     ]);
   });
 
-  it('selects both the self-scrollable/document-viewport autoscroll specs and the wrap-layout bounds spec for a getReorderContainer.ts change', () => {
+  it('selects every colocated Reorder browser spec for a getReorderContainer.ts change, via generic owner-local ownership', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/lib/reorder/getReorderContainer.ts']);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual([
-      'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
-      'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
-      'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
-      'tests/e2e/storybook/reorderWrapLayout.spec.ts',
+      'src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts',
+      'src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts',
+      'src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts',
+      'src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts',
     ]);
   });
 
-  it('focuses the wrap-layout spec for a wrap-layout fixture source change', () => {
+  it('selects every colocated Reorder browser spec for a wrap-layout fixture source change, via conservative owner-directory selection', () => {
     const plan = resolveStorybookBehaviorPlan([
       'src/shared/lib/reorder/ReorderWrapStoryHarness.vue',
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/reorderWrapLayout.spec.ts']);
+    expect(plan.specs).toEqual([
+      'src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts',
+      'src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts',
+      'src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts',
+      'src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts',
+    ]);
   });
 
   it('does not run the full lane for an arbitrary unrelated src change', () => {

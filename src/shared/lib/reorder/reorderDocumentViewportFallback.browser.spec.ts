@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../../../tests/e2e/storybook/storybook.testUtils';
 
 const STORY_ID = 'shared-lib-reorder-reorderdocumentviewportstoryharness--default';
 
@@ -42,7 +42,7 @@ interface DragProgressionResult {
   documentMoveFrames: number;
   /** `document.scrollingElement`'s remaining native scroll room the instant its movement was first detected. */
   remainingRoom: number;
-  /** `document.scrollingElement.scrollTop` sampled once per rendered frame, starting from the first detected move. */
+  /** `document.scrollingElement`'s `scrollTop` sampled once per rendered frame, starting from the first detected move. */
   samples: number[];
 }
 
@@ -60,7 +60,7 @@ interface DragProgressionResult {
  * @param page - The Playwright page driving the drag.
  * @param args - Baseline scroll positions, viewport height, and per-phase frame budgets.
  * @returns Per-phase frame counts, the document's remaining room, and the sampled
- * `document.scrollingElement.scrollTop` trace.
+ * `document.scrollingElement`'s `scrollTop` trace.
  */
 const observeDragProgression = (
   page: Page,
@@ -166,19 +166,20 @@ interface ReleaseScrollObservation {
 
 declare global {
   interface Window {
-    __releaseScrollObservation?: Promise<ReleaseScrollObservation>;
+    /** Pending release observation stashed by {@link armReleaseScrollObserver} for {@link awaitReleaseScrollObserver}. */
+    reorderReleaseScrollObservation?: Promise<ReleaseScrollObservation>;
   }
 }
 
 /**
- * Arms a capture-phase `pointerup` observer and returns only once the listener is actually
- * installed in the browser. The observer's result promise is stashed on `window` rather than
- * returned directly, so this call's own round trip cannot race a `page.mouse.up()` dispatched
- * immediately afterward — the previous single-call shape returned a promise that resolved only
- * after `pointerup` fired, letting `mouse.up()` reach the browser before the listener was armed.
+ * Installs a capture-phase `pointerup` observer and waits for the browser to confirm it is
+ * registered before returning. The pending observation promise is stashed on `window` rather than
+ * returned directly, so this call resolves as soon as the listener is armed instead of waiting for
+ * `pointerup` itself — removing the window in which a real `page.mouse.up()` could fire before the
+ * browser-side listener exists.
  * @param page - The Playwright page driving the drag.
  * @param frameCount - Number of rendered frames to sample after pointer release.
- * @returns Resolves once the capture-phase listener is installed.
+ * @returns Resolves once the browser-side `pointerup` observer is armed.
  */
 const armReleaseScrollObserver = (page: Page, frameCount = 10): Promise<void> =>
   page.evaluate(
@@ -196,7 +197,7 @@ const armReleaseScrollObserver = (page: Page, frameCount = 10): Promise<void> =>
         document: docEl.scrollTop,
       });
 
-      window.__releaseScrollObservation = new Promise<ReleaseScrollObservation>((resolve) => {
+      window.reorderReleaseScrollObservation = new Promise<ReleaseScrollObservation>((resolve) => {
         window.addEventListener(
           'pointerup',
           () => {
@@ -235,16 +236,16 @@ const armReleaseScrollObserver = (page: Page, frameCount = 10): Promise<void> =>
   );
 
 /**
- * Reads the result of an already-armed {@link armReleaseScrollObserver} listener. Must be called
- * after the real `pointerup` has been dispatched (e.g. via `page.mouse.up()`).
+ * Awaits the release observation armed by {@link armReleaseScrollObserver}, returning its
+ * pointer-up baselines and aligned post-release samples for all three scroll levels.
  * @param page - The Playwright page driving the drag.
  * @returns Pointer-up baselines and aligned post-release samples for all three scroll levels.
  */
-const readReleaseScrollObservation = (page: Page): Promise<ReleaseScrollObservation> =>
+const awaitReleaseScrollObserver = (page: Page): Promise<ReleaseScrollObservation> =>
   page.evaluate(() => {
-    const observation = window.__releaseScrollObservation;
+    const observation = window.reorderReleaseScrollObservation;
     if (!observation) {
-      throw new Error('release scroll observer was not armed before reading its result');
+      throw new Error('release scroll observer was not armed before release');
     }
     return observation;
   });
@@ -260,32 +261,23 @@ test.describe('document viewport autoscroll fallback', () => {
     const ancestor = page.getByRole('region', { name: 'Reorder scroll ancestor' });
     const firstItem = page.getByRole('listitem', { name: 'row-0', exact: true });
 
-    // The Storybook preview canvas is an isolated iframe document: this app's global layout
-    // override that pins `html` to exactly one viewport tall with its own `overflow: auto` does
-    // not apply inside it, so `document.scrollingElement` is the real, standard scrolling element
-    // for page-level content here — the true "document viewport" for this scenario.
-    const readDocumentScrollingElementExtent = (): Promise<number> =>
+    // The reorder library's autoscroll fallback targets `document.scrollingElement` generically
+    // (see ReorderAutoScroller.ts's `candidate.ownerDocument.scrollingElement` check), so this
+    // reads the same real element rather than assuming a specific tag: Storybook's isolated
+    // Canvas does not pin `html`/`body` to the application's own forced-viewport-height layout.
+    const getDocumentExtent = (): Promise<number> =>
       page.evaluate(() => {
         const el = document.scrollingElement;
-        if (!el) {
-          throw new Error('missing document.scrollingElement');
-        }
-        return el.scrollHeight - el.clientHeight;
+        return el ? el.scrollHeight - el.clientHeight : 0;
       });
-    const readDocumentScrollingElementScrollTop = (): Promise<number> =>
-      page.evaluate(() => {
-        const el = document.scrollingElement;
-        if (!el) {
-          throw new Error('missing document.scrollingElement');
-        }
-        return el.scrollTop;
-      });
+    const getDocumentScrollTop = (): Promise<number> =>
+      page.evaluate(() => document.scrollingElement?.scrollTop ?? 0);
 
     // Preconditions: all three levels have real, independent scroll room, or this would not
     // actually exercise the document-viewport fallback scenario.
     const containerExtent = await container.evaluate((el) => el.scrollHeight - el.clientHeight);
     const ancestorExtent = await ancestor.evaluate((el) => el.scrollHeight - el.clientHeight);
-    const documentExtent = await readDocumentScrollingElementExtent();
+    const documentExtent = await getDocumentExtent();
     expect(containerExtent).toBeGreaterThan(0);
     expect(ancestorExtent).toBeGreaterThan(0);
     expect(documentExtent).toBeGreaterThan(0);
@@ -299,7 +291,7 @@ test.describe('document viewport autoscroll fallback', () => {
     const centerX = itemBox.x + itemBox.width / 2;
     const containerScrollTopStart = await container.evaluate((el) => el.scrollTop);
     const ancestorScrollTopStart = await ancestor.evaluate((el) => el.scrollTop);
-    const documentScrollTopStart = await readDocumentScrollingElementScrollTop();
+    const documentScrollTopStart = await getDocumentScrollTop();
 
     await page.mouse.move(centerX, itemBox.y + itemBox.height / 2);
     await page.mouse.down();
@@ -342,14 +334,14 @@ test.describe('document viewport autoscroll fallback', () => {
     expect(progression.remainingRoom).toBeGreaterThan(4);
     assertViewportSettlesWithoutResuming(progression.samples);
 
-    // 7. Arm browser-side release observation and wait for the listener to actually be installed
-    // before dispatching pointer-up, then read its already-armed result. This captures the exact
-    // event-boundary baseline without a race between listener installation and the real
-    // `pointerup`, and proves that no scroll level resumes forward autoscroll while any reverse
-    // browser correction settles.
+    // 7. Arm browser-side release observation and wait for the browser to confirm the listener is
+    // registered before dispatching the real pointer-up — otherwise pointerup could fire before
+    // the listener exists. The armed observer still captures the exact event-boundary baseline
+    // without a further Node round trip, then proves that no scroll level resumes forward
+    // autoscroll while any reverse browser correction settles.
     await armReleaseScrollObserver(page);
     await page.mouse.up();
-    const releaseObservation = await readReleaseScrollObservation(page);
+    const releaseObservation = await awaitReleaseScrollObserver(page);
     await expect(firstItem).not.toHaveClass(/_dragging/);
 
     assertNoForwardScrollAfterRelease(
