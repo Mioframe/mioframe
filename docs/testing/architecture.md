@@ -145,7 +145,7 @@ Do not prove real focus, keyboard operation, pointer/touch, layout, geometry, sc
 
 Use isolated deterministic Storybook state and real public browser input. Behavior specs contain no screenshots.
 
-Storybook ownership and physical placement follow `docs/testing/storybook.md`. During migration, conceptual ownership may be colocated while executable specs remain in the current central Playwright location until the lane supports colocated discovery.
+Storybook ownership and physical placement follow `docs/testing/storybook.md`. The behavior lane supports mixed discovery: migrated owners use colocated `src/**/*.browser.spec.ts`, and unmigrated owners remain in the current central Playwright location. `docs/testing/migration-plan.md` controls which owners are currently authorized to migrate.
 
 ### Product scenario
 
@@ -282,7 +282,7 @@ The durable target uses owner-local colocated `*.browser.spec.ts` for ordinary c
 
 Changing a story may independently affect Storybook behavior and visual lanes. One lane must not infer the other.
 
-Until colocated browser discovery is implemented, preserve the current executable Storybook behavior spec location and current resolver metadata as required by `docs/testing/migration-plan.md`.
+Colocated browser discovery is implemented: one Storybook behavior Playwright configuration discovers both legacy central specs and owner-local `src/**/*.browser.spec.ts`, with filesystem-derived ownership that selects every applicable colocated spec for an owner path and fails closed to the full lane for unresolved add/remove/rename. `docs/testing/migration-plan.md` controls which owners are currently authorized to migrate; unmigrated owners remain in the current central location.
 
 ### Application E2E
 

@@ -7,7 +7,8 @@
     "src/**/*.stories.js",
     "src/**/*.stories.jsx",
     "src/**/*.stories.mjs",
-    "src/**/*.stories.vue"
+    "src/**/*.stories.vue",
+    "src/**/*.browser.spec.ts"
   ],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"

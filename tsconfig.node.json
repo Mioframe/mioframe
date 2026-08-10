@@ -11,6 +11,7 @@
     "eslint.config.*",
     "tests/**/*.ts",
     "**/*.d.mts",
+    "src/**/*.browser.spec.ts",
     // The canonical channel/cache/path pure contract (see its own doc
     // comment): deliberately owned by `src/` alongside its other
     // `appUpdate` runtime consumers, but has zero imports of its own, so

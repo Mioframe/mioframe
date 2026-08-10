@@ -91,3 +91,19 @@ export const ColorContract: Story = {
     `,
   }),
 };
+
+export const LegacySurfaceIsolation: Story = {
+  render: () => ({
+    components: { MDLoadingIndicator },
+    template: `
+      <div
+        data-testid="visual-md-loading-indicator-legacy-surface"
+        class="md"
+        style="--md-container-color: #fff8f7; --md-content-color: #b3261e;"
+      >
+        <p data-testid="legacy-surface-text">Surface-owned ordinary text</p>
+        <MDLoadingIndicator label="Surface standalone loading" />
+      </div>
+    `,
+  }),
+};
