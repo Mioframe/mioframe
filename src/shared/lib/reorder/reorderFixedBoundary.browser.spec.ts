@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../../../tests/e2e/storybook/storybook.testUtils';
 
 const STORY_ID = 'shared-lib-reorder-reorderfixedboundarystoryharness--default';
 
