@@ -62,51 +62,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/overlayLifecycle.spec.ts'],
   },
   {
-    name: 'reorder self-scrollable container autoscroll',
-    sourcePrefixes: [
-      'src/shared/lib/reorder/ReorderAutoScroller.ts',
-      'src/shared/lib/reorder/getReorderContainer.ts',
-      'src/shared/lib/reorder/getReorderScrollCandidates.ts',
-      'src/shared/lib/reorder/reorderAutoscrollEnvironment.ts',
-      'src/shared/lib/reorder/reorderAutoscrollGeometry.ts',
-      'src/shared/lib/reorder/reorderConfig.ts',
-      'src/shared/lib/reorder/ReorderSurface.vue',
-      'src/shared/lib/reorder/useReorderItem.ts',
-      'src/shared/lib/reorder/ReorderActivation.stories.ts',
-      'src/shared/lib/reorder/ReorderActivationStoryHarness.vue',
-      'src/shared/lib/reorder/ReorderSelfScrollable.stories.ts',
-      'src/shared/lib/reorder/ReorderSelfScrollableStoryHarness.vue',
-      'src/shared/lib/reorder/ReorderSelfScrollableStoryItem.vue',
-      'src/shared/lib/reorder/ReorderDocumentViewport.stories.ts',
-      'src/shared/lib/reorder/ReorderDocumentViewportStoryHarness.vue',
-      'src/shared/lib/reorder/ReorderFixedBoundary.stories.ts',
-      'src/shared/lib/reorder/ReorderFixedBoundaryStoryHarness.vue',
-    ],
-    specs: [
-      'tests/e2e/storybook/reorderSelfScrollableContainer.spec.ts',
-      'tests/e2e/storybook/reorderDocumentViewportFallback.spec.ts',
-      'tests/e2e/storybook/reorderFixedBoundary.spec.ts',
-    ],
-  },
-  {
-    name: 'reorder generic layout support',
-    sourcePrefixes: [
-      'src/shared/lib/reorder/ReorderSurface.vue',
-      'src/shared/lib/reorder/useReorderItem.ts',
-      'src/shared/lib/reorder/reorderConfig.ts',
-      'src/shared/lib/reorder/reorderArray.ts',
-      // getReorderContainer.ts also owns RestrictToElement's direct-parent drag bounds (see
-      // reorderConfig.ts's REORDER_MODIFIERS), not just autoscroll container resolution, so a
-      // change here must select this bounds spec in addition to the autoscroll-container scope
-      // below.
-      'src/shared/lib/reorder/getReorderContainer.ts',
-      'src/shared/lib/reorder/ReorderWrap.stories.ts',
-      'src/shared/lib/reorder/ReorderWrapStoryHarness.vue',
-      'src/shared/lib/reorder/ReorderWrapStoryItem.vue',
-    ],
-    specs: ['tests/e2e/storybook/reorderWrapLayout.spec.ts'],
-  },
-  {
     name: 'button family behavior',
     // A directory-wide prefix so every Button-family component, story, and colocated behavior
     // fixture (for example the target-hit and toolbar story helpers) selects this scenario,
