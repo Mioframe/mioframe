@@ -46,8 +46,7 @@
 - Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming existing titles.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator is the only S1-authorized owner-local browser pilot. Its behavior spec is colocated at `src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts`; all other Storybook behavior specs remain in `tests/e2e/storybook` with their existing transitional mappings.
-- S1 remains in review pending final acceptance. The Loading Indicator legacy-surface browser assertion now opens the Loading Indicator-owned `LegacySurfaceIsolation` story instead of the Button-family `LegacySurfaceColorOwnership` story, so the pilot's browser proof depends only on truthful owner-local stories/fixtures.
+- Loading Indicator is the only S1-authorized owner-local browser pilot. Its behavior spec is colocated at `src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts`; all other Storybook behavior specs remain in `tests/e2e/storybook` with their existing transitional mappings. Stage S2 (moving those remaining owners) has not started.
 - Visual specs/baselines still use the current central visual execution structure.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
@@ -134,9 +133,9 @@ Acceptance:
 
 ### Stage S1 — Storybook browser discovery pilot
 
-Status: **in review**.
+Status: **complete**.
 
-Authorized pilot: Loading Indicator Material family only.
+Authorized and completed pilot: Loading Indicator Material family only.
 
 Why:
 
@@ -145,37 +144,30 @@ Why:
 - lower mixed-owner risk than Button;
 - current Storybook browser spec has a clear family owner once its fixtures are local to that owner.
 
-The executable S1 mechanism is already present in the branch:
+Final executable S1 state:
 
-- one Storybook behavior Playwright configuration discovers both legacy central specs and `src/**/*.browser.spec.ts`;
-- `MDLoadingIndicator.browser.spec.ts` is colocated beside the Loading Indicator owner;
+- one Storybook behavior Playwright configuration discovers both legacy central specs and owner-local `src/**/*.browser.spec.ts`, so discovery is mixed legacy plus colocated;
+- `MDLoadingIndicator.browser.spec.ts` is colocated beside the Loading Indicator owner, and its Storybook fixtures are owner-local (the assertion opens the Loading Indicator-owned `LegacySurfaceIsolation` story rather than the Button-family `LegacySurfaceColorOwnership` story), so focused owner impact cannot silently omit the proof;
 - production/Storybook TypeScript excludes colocated browser specs while tooling type-check includes them;
 - resolver ownership is derived from the filesystem rather than a colocated-spec registry;
-- an owner path selects every applicable existing colocated browser spec, including same-directory and nested-owner cases;
+- an owner path selects every applicable matching owner-local colocated browser spec, including same-directory and nested-owner cases;
 - changed existing specs select themselves;
-- removed/renamed colocated specs fail closed to the full Storybook behavior lane;
-- the old explicit Loading Indicator central mapping is removed;
-- legacy centralized specs and mappings remain intact.
+- add, remove, and rename of colocated specs fail closed to the full Storybook behavior lane;
+- colocated browser specs (`src/**/*.browser.spec.ts`) are excluded from Vitest's unit-tests scope, so a colocated-spec-only change does not run unit-tests and still selects the focused `storybook-behavior` lane;
+- the old explicit Loading Indicator central mapping is removed; legacy centralized specs and mappings for all other owners remain intact and unaffected;
+- Storybook behavior full-lane impact includes the production-owned Storybook preview style dependency closure imported by `.storybook/preview.ts` via `src/app/styles/base.css`:
+  - `src/app/styles/base.css`
+  - `src/app/styles/fonts.css`
+  - `src/shared/ui/material/foundation/index.css`
+  - `src/shared/ui/material/foundation/tokens.css`
+  - `src/shared/ui/material/foundation/theme.css`
+  - `src/shared/lib/md/index.css`
+  - `src/shared/lib/md/typography.css`
+  - `src/shared/lib/md/space.css`
 
-Former blocker, now corrected:
+Forbidden (still applicable until S2 starts):
 
-- the Loading Indicator legacy-surface browser assertion previously used the Button-family `LegacySurfaceColorOwnership` story, a non-local fixture dependency that local directory ownership could not observe. The fix added an equivalent Loading Indicator-owned standalone legacy-surface story (`LegacySurfaceIsolation`) and pointed the Loading Indicator browser assertion to it, preserving the assertion contract without a cross-family mapping.
-
-Required final behavior:
-
-- Playwright discovers the pilot spec beside its owner;
-- production TypeScript/runtime source excludes the Playwright spec;
-- changed pilot spec selects itself;
-- changed owner/story/owned fixture selects the pilot through deterministic local ownership;
-- all applicable colocated specs are selected when ownership overlaps;
-- add/modify/delete/rename are covered;
-- unresolved relevant impact selects full Storybook behavior;
-- existing central specs remain runnable and mapped exactly as before;
-- the pilot spec's Storybook fixtures are truthful to its owner, so focused owner impact cannot silently omit the proof.
-
-Forbidden:
-
-- migrating another browser owner before S1 is accepted;
+- migrating another browser owner;
 - visual migration;
 - broad behavior-spec moves;
 - generic Storybook runner/DSL;
