@@ -163,6 +163,8 @@ test('an uncontrolled same-channel window blocks activation until it closes', as
 
       const start = Date.now();
       for (;;) {
+        // oxlint-disable-next-line no-await-in-loop -- bounded polling: each read must observe current activation state before deciding whether to keep waiting.
+        // eslint-disable-next-line no-await-in-loop -- bounded polling: each read must observe current activation state before deciding whether to keep waiting.
         const result = await readControllerState(activatedPage);
         if (
           result.status === 'valid' &&
@@ -175,6 +177,8 @@ test('an uncontrolled same-channel window blocks activation until it closes', as
             `Timed out waiting for release B to activate. Last: ${JSON.stringify(result)}`,
           );
         }
+        // oxlint-disable-next-line no-await-in-loop -- bounded polling delay between sequential state reads.
+        // eslint-disable-next-line no-await-in-loop -- bounded polling delay between sequential state reads.
         await activatedPage.waitForTimeout(250);
       }
 

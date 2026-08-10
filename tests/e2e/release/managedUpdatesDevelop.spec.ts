@@ -43,8 +43,9 @@ async function readControllerStateDbNames(page: Page): Promise<string[]> {
  * `indexedDB.databases()` regardless of which channel that page belongs to,
  * so isolation is proven by each channel's *content* staying independent,
  * not by one channel's database name being invisible to the other.
- * @param page
- * @param dbName
+ * @param page - The page to evaluate the IndexedDB read against.
+ * @param dbName - The channel's controller-state IndexedDB database name.
+ * @returns The persisted `activeRelease`, or `undefined` when the database or record is absent.
  */
 async function readActiveRelease(
   page: Page,
@@ -97,9 +98,10 @@ async function waitForControlledPage(page: Page): Promise<void> {
  * worker's execution context can very briefly lag behind that from a
  * different page's read, so a one-shot read right after
  * `waitForControlledPage` is not reliable.
- * @param page
- * @param dbName
- * @param timeoutMs
+ * @param page - The page to poll the IndexedDB read against.
+ * @param dbName - The channel's controller-state IndexedDB database name.
+ * @param timeoutMs - The maximum time to keep polling before giving up.
+ * @returns The persisted `activeRelease` once available, or `undefined` if `timeoutMs` elapses first.
  */
 async function waitForActiveRelease(
   page: Page,
@@ -108,9 +110,13 @@ async function waitForActiveRelease(
 ): Promise<{ releaseNumber: number } | undefined> {
   const start = Date.now();
   for (;;) {
+    // oxlint-disable-next-line no-await-in-loop -- bounded polling: each read must observe current persisted state before deciding whether to keep waiting.
+    // eslint-disable-next-line no-await-in-loop -- bounded polling: each read must observe current persisted state before deciding whether to keep waiting.
     const result = await readActiveRelease(page, dbName);
     if (result) return result;
     if (Date.now() - start > timeoutMs) return undefined;
+    // oxlint-disable-next-line no-await-in-loop -- bounded polling delay between sequential state reads.
+    // eslint-disable-next-line no-await-in-loop -- bounded polling delay between sequential state reads.
     await page.waitForTimeout(200);
   }
 }
@@ -367,10 +373,14 @@ test.describe('managed pinned application updates: develop channel isolation', (
     // guessing how long a broken channel takes to roll back.
     const start = Date.now();
     for (;;) {
+      // oxlint-disable-next-line no-await-in-loop -- bounded polling: each read must observe current rollback state before deciding whether to keep waiting.
+      // eslint-disable-next-line no-await-in-loop -- bounded polling: each read must observe current rollback state before deciding whether to keep waiting.
       if ((await readDevelopCandidatePhase()) === 'failed') break;
       if (Date.now() - start > 30_000) {
         throw new Error('Timed out waiting for the develop channel to roll back');
       }
+      // oxlint-disable-next-line no-await-in-loop -- bounded polling delay between sequential state reads.
+      // eslint-disable-next-line no-await-in-loop -- bounded polling delay between sequential state reads.
       await stableWatchPage.waitForTimeout(250);
     }
 

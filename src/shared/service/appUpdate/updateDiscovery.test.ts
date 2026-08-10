@@ -539,10 +539,10 @@ describe('runUpdateReconciliationPass', () => {
 
       const persistedPhases = writeControllerStateMock.mock.calls.map((call: unknown[]) => {
         const state = call[1];
-        const candidate =
+        const persistedCandidate =
           typeof state === 'object' && state !== null ? Reflect.get(state, 'candidate') : undefined;
-        return typeof candidate === 'object' && candidate !== null
-          ? Reflect.get(candidate, 'phase')
+        return typeof persistedCandidate === 'object' && persistedCandidate !== null
+          ? Reflect.get(persistedCandidate, 'phase')
           : undefined;
       });
       expect(persistedPhases).not.toContain('ready');

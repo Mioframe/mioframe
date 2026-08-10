@@ -739,6 +739,7 @@ describe('watchdog transport resilience', () => {
    * `sendToController` promise (via the Promise constructor's own
    * throw-in-executor -> reject behavior) is caught directly, not merely
    * inferred from absence of a crash.
+   * @returns The live-updated list of captured rejection reasons, and a `stop` function that removes the listener.
    */
   function trackUnhandledRejections() {
     const reasons = [];

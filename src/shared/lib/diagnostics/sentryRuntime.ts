@@ -77,11 +77,23 @@ type SentryInitOptions = ReturnType<typeof createSentryOptions> & { app?: App };
  * runtime behavior.
  */
 export type SentryBackendModule = {
+  /** Initializes the backend SDK using this runtime's shared init options. */
   init: (options: SentryInitOptions) => unknown;
+  /**
+   * Captures a caught Error as a Sentry exception.
+   * Returns the event id string, or `undefined` when no event id is produced.
+   */
   captureException: (exception: unknown, captureContext?: CaptureContext) => string | undefined;
+  /**
+   * Captures a message-level event.
+   * Returns the event id string, or `undefined` when no event id is produced.
+   */
   captureMessage: (message: string, captureContext?: CaptureContext) => string | undefined;
+  /** Sets or clears the backend SDK's current user identity. */
   setUser: (user: { id: string } | null) => void;
+  /** Adds a breadcrumb to the backend SDK's current scope. */
   addBreadcrumb: (breadcrumb: Breadcrumb) => void;
+  /** Waits, up to `timeoutMs`, for the backend SDK's transport to finish delivering already-queued events. */
   flush: (timeoutMs?: number) => Promise<boolean>;
 };
 

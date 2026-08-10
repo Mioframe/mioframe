@@ -67,6 +67,7 @@ const setupSentryMocks = (options?: { importErrorOnce?: unknown }) => {
  * registers the same lazy `@sentry/vue` backend the main thread/DedicatedWorker use in
  * production, so `ensureSentry()` behaves exactly as it did before the runtime core was
  * split from its backend loader.
+ * @returns The freshly imported `sentryRuntime` module namespace, with the lazy `@sentry/vue` backend registered.
  */
 const importSentryRuntime = async () => {
   const runtime = await import('./sentryRuntime');
