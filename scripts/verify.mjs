@@ -215,7 +215,7 @@ export function getAllSiblingTestFiles(filePath) {
     return uniqSorted(testCandidates);
   }
 
-  if (filePath.startsWith('scripts/')) {
+  if (filePath.startsWith('scripts/') || filePath.startsWith('tests/e2e/')) {
     if (filePath.endsWith('.test.mjs') || filePath.endsWith('.spec.mjs')) {
       return fileExists(filePath) ? [filePath] : [];
     }
@@ -249,8 +249,10 @@ function getVitestScope(changedFiles) {
   const scope = [];
 
   for (const filePath of changedFiles) {
-    if (filePath.startsWith('tests/e2e/')) {
-      // vitest.config.ts excludes tests/e2e/** entirely; Playwright specs there are not vitest scope.
+    if (filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')) {
+      // vitest.config.ts excludes Playwright specs under tests/e2e/**; a
+      // colocated `.test.mjs` fixture-logic test there is valid vitest
+      // scope and falls through to the checks below like any other file.
       continue;
     }
 
@@ -294,9 +296,9 @@ function isVisualRelevantFile(filePath) {
     filePath === 'vite.config.ts' ||
     filePath === 'tsconfig.storybook.json' ||
     filePath === 'scripts/storybook.mjs' ||
-    filePath === 'src/app/styles/base.css' ||
     filePath === 'src/app/styles/styles.css' ||
     filePath === 'src/app/styles/fonts.css' ||
+    filePath === 'src/app/styles/base.css' ||
     filePath.startsWith('.storybook/') ||
     filePath.startsWith('tests/e2e/visual/') ||
     filePath.startsWith('src/shared/ui/') ||
@@ -929,6 +931,7 @@ async function runCommand(label, command, args, extraEnv = {}, verboseMode = isV
     blockingLogIssue,
     triggerReason: null,
     terminatedBySignal: forwarder.terminatedBySignal,
+    // Populated for expensive commands to support applyProcessResult.
     signal: forwarder.terminatedBySignal,
   };
 }
@@ -1073,6 +1076,17 @@ function addReleaseOnlyCommands(commands) {
   });
 }
 
+/**
+ * Build the verify command list for a given changed-file set.
+ * @param changedFiles Sorted unique list of repository-relative changed file paths.
+ * @param [options] Build options.
+ * @param [options.fullMode] Full-project release mode; defaults to the `--full` CLI flag.
+ * @param [options.packageJsonOldRef] Git ref to compare the current
+ * `package.json` against, for the version-only visual impact refinement.
+ * Pass `null` when no reliable base ref is known; that fails closed to
+ * visual-relevant.
+ * @returns Command entries in run order.
+ */
 export function buildCommands(
   changedFiles,
   {
@@ -1397,6 +1411,12 @@ function selectOnlyCommands(commands, onlyLabel = cliOnlyLabel) {
   throw new Error(`Verify command list is missing required label: ${onlyLabel}`);
 }
 
+/**
+ * Build a supported read-only verify command from the resolved invocation.
+ * @param invocation Resolved verify invocation.
+ * @param [overrides] Optional profile and label overrides.
+ * @returns Canonical shell-safe pnpm verify command.
+ */
 export function getVerifyRerunCommand(invocation, overrides = {}) {
   return formatVerifyInvocationCommand(invocation, {
     ...overrides,
@@ -1404,6 +1424,14 @@ export function getVerifyRerunCommand(invocation, overrides = {}) {
   });
 }
 
+/**
+ * Build the `action required` lines for the verify summary.
+ * @param results Collected command results in run order.
+ * @param [options] Summary options.
+ * @param [options.ciProfileRisk] Pending GitHub Actions profile risk details.
+ * @param [options.invocation] Resolved verify invocation.
+ * @returns Action lines; `['None.']` when nothing failed or warned.
+ */
 export function getActionRequired(results, options = {}) {
   const { ciProfileRisk = null, invocation = currentVerifyInvocation } = options;
   const actions = [];
@@ -1462,6 +1490,22 @@ export function getActionRequired(results, options = {}) {
   return actions;
 }
 
+/**
+ * Print the agent-facing `VERIFY RESULT` summary for a finished run.
+ * Every executed, skipped, or failed command result must flow through this
+ * summary instead of an early exit.
+ * @param changedFiles Changed files the run was scoped to.
+ * @param scope Human-readable changed-file scope description.
+ * @param results Collected command results in run order.
+ * @param [options] Summary overrides for tests and caller-provided context.
+ * @param [options.baseRef] Changed-file base ref used by this run, when known.
+ * @param [options.processEnv] Environment object used for profile resolution.
+ * @param [options.ciProfileRisk] Precomputed GitHub Actions profile risk details.
+ * @param [options.profileSummary] Precomputed verify profile summary details.
+ * @param [options.heavyCheckTriggers] Precomputed heavy-check trigger lines.
+ * @param [options.invocation] Resolved verify invocation.
+ * @returns Overall run status derived from the results.
+ */
 export function printSummary(changedFiles, scope, results, options = {}) {
   const invocation = options.invocation ?? currentVerifyInvocation;
   const hasFailed = results.some((result) => result.status === 'failed');
@@ -1546,8 +1590,21 @@ export function printSummary(changedFiles, scope, results, options = {}) {
   };
 }
 
+// Release Playwright checks whose webServer builds the production artifact
+// itself (see playwright.release.config.ts). Reused only when the `build`
+// check already produced a fresh artifact earlier in this same run.
 const ARTIFACT_REUSE_LABELS = new Set(['artifact', 'release-smoke']);
 
+/**
+ * Resolve extra env for a command entry, based on prior results in this run.
+ * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact`/`release-smoke`
+ * release-only checks once the `build` check has already produced a fresh
+ * production artifact in this same `pnpm verify` invocation, so a single
+ * release gate does not rebuild the artifact once per check that needs it.
+ * @param entry Command entry about to run.
+ * @param priorResults Results already collected earlier in this run.
+ * @returns Extra env to merge into the command's environment.
+ */
 export function getExtraEnvForEntry(entry, priorResults) {
   if (!ARTIFACT_REUSE_LABELS.has(entry.label)) {
     return {};
@@ -1558,6 +1615,16 @@ export function getExtraEnvForEntry(entry, priorResults) {
   return buildResult?.status === 'passed' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
 }
 
+/**
+ * Build the child command environment for a verify entry.
+ * @param entry Command entry about to run.
+ * @param priorResults Results already collected earlier in this run.
+ * @param [options] Environment inputs for the child command.
+ * @param [options.verifyLockEnv] Env inherited from the verify lock.
+ * @param [options.verifyProcessEnv] Env carrying verify-level overrides such as profile selection.
+ * @param [options.expensiveLockEnv] Env added only for expensive-command lock ownership.
+ * @returns Environment passed to the child process.
+ */
 export function buildCommandEnv(entry, priorResults, options = {}) {
   const { verifyLockEnv = {}, verifyProcessEnv = process.env, expensiveLockEnv = {} } = options;
   const extraEnv = getExtraEnvForEntry(entry, priorResults);
@@ -1576,6 +1643,15 @@ export function buildCommandEnv(entry, priorResults, options = {}) {
       };
 }
 
+/**
+ * Resolve changed-path context only for focused invocations. Full mode is an
+ * unconditional scope and must not depend on Git refs, a working tree, or file projection.
+ * @param invocation Resolved verify invocation.
+ * @param [deps] Test seams for changed-path execution.
+ * @param [deps.resolveScope] Changed-path scope resolver.
+ * @param [deps.projectChangedFiles] Changed-file projection.
+ * @returns Execution context used by command planning and summary output.
+ */
 export function resolveVerifyChangedPathContext(invocation, deps = {}) {
   if (invocation.scope.kind === 'full') {
     return {
@@ -1656,9 +1732,11 @@ async function main(
       activeLabel: entry.label,
     });
 
+    // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
     let result;
 
     if (entry.weight === 'expensive') {
+      // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
       result = await withExpensiveCommandLock(
         {
           label: entry.label,
@@ -1678,10 +1756,14 @@ async function main(
           ),
       );
 
+      // Signal propagation must happen after withExpensiveCommandLock cleanup,
+      // not inside the child close handler, so lock release completes before
+      // the process receives the termination signal.
       if (result.terminatedBySignal) {
         applyProcessResult({ signal: result.terminatedBySignal });
       }
     } else {
+      // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
       result = await runCommand(
         entry.label,
         entry.command,
@@ -1718,6 +1800,12 @@ async function main(
   process.exitCode = summary.hasFailed ? 1 : 0;
 }
 
+/**
+ * Build persisted metadata for the top-level verify lock.
+ * The structured invocation is the retry source of truth; command is display-only.
+ * @param invocation Resolved verify invocation.
+ * @returns Lock metadata with structured scope and a shell-safe display command.
+ */
 export function getVerifyLockMetadata(invocation) {
   return {
     command: formatVerifyInvocationCommand(invocation),
@@ -1727,6 +1815,13 @@ export function getVerifyLockMetadata(invocation) {
   };
 }
 
+/**
+ * Run the verify CLI when the module is executed directly.
+ * @param [deps] Test seams for top-level verify execution.
+ * @param [deps.runMain] Override for the main verify implementation.
+ * @param [deps.withVerifyLock] Override for top-level verify locking.
+ * @returns Process exit code that should be reported to the shell.
+ */
 export async function runVerifyCli(deps = {}) {
   const {
     invocation = currentVerifyInvocation,
