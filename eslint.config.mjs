@@ -96,7 +96,7 @@ export default defineConfigWithVueTs(
 
   {
     ...pluginPlaywright.configs['flat/recommended'],
-    files: ['tests/e2e/**/*.ts'],
+    files: ['tests/e2e/**/*.ts', 'src/**/*.browser.spec.ts'],
     languageOptions: {
       parserOptions: {
         project: ['./tsconfig.node.json'],

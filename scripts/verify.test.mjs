@@ -433,6 +433,44 @@ describe('buildCommands removed/renamed spec safety', () => {
   });
 });
 
+describe('buildCommands unit-tests scope excludes colocated browser specs', () => {
+  const loadingIndicatorBrowserSpec =
+    'src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts';
+
+  it('skips unit-tests when only a colocated browser spec changed', () => {
+    const commands = buildCommands([loadingIndicatorBrowserSpec], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'unit-tests');
+
+    expect(entry.kind).toBe('skipped');
+    expect(entry.reason).toBe('empty focused unit-test scope');
+  });
+
+  it('still runs a focused storybook-behavior lane for the same colocated browser spec change', () => {
+    const commands = buildCommands([loadingIndicatorBrowserSpec], { fullMode: false });
+    const entry = commands.find((item) => item.label === 'storybook-behavior');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.args).toEqual(['test:storybook-behavior', loadingIndicatorBrowserSpec]);
+  });
+
+  it('scopes unit-tests to only the real Vitest test when a browser spec changes alongside it', () => {
+    const commands = buildCommands(
+      [loadingIndicatorBrowserSpec, 'src/shared/lib/cache/index.test.ts'],
+      { fullMode: false },
+    );
+    const entry = commands.find((item) => item.label === 'unit-tests');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.args).toEqual([
+      'exec',
+      'vitest',
+      'run',
+      '--reporter=verbose',
+      'src/shared/lib/cache/index.test.ts',
+    ]);
+  });
+});
+
 describe('buildCommands storybook-behavior lane', () => {
   beforeEach(() => {
     isPackageJsonRuntimeRelevantChange.mockReset();
