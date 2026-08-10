@@ -161,22 +161,22 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     expect(coveredSpecs.has('tests/e2e/storybook/md-button-family.spec.ts')).toBe(true);
   });
 
-  it('keeps other existing central scenario mappings unchanged after the Loading Indicator local-ownership migration', () => {
+  it('keeps other existing central scenario mappings unchanged after the S2-A owner-local Checkbox/Navigation Path migration', () => {
     const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name);
 
     expect(scenarioNames).not.toContain('loading indicator standalone accessibility');
+    expect(scenarioNames).not.toContain('navigation path button geometry and overflow');
+    expect(scenarioNames).not.toContain('checkbox controlled args round-trip');
     expect(scenarioNames).toEqual(
       expect.arrayContaining([
         'storybook behavior infrastructure smoke',
         'shared color ownership',
-        'navigation path button geometry and overflow',
         'shared overlay outside-interaction lifecycle',
         'reorder self-scrollable container autoscroll',
         'reorder generic layout support',
         'button family behavior',
         'Storybook router harness demonstration',
         'bottom sheet keyboard focus wrap visibility',
-        'checkbox controlled args round-trip',
       ]),
     );
   });

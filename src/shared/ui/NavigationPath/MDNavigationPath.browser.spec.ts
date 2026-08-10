@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../../../tests/e2e/storybook/storybook.testUtils';
 
 test('Navigation Path keeps normal small Button geometry and scrolls long breadcrumbs', async ({
   page,

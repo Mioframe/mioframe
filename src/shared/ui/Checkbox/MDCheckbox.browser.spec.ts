@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../../../tests/e2e/storybook/storybook.testUtils';
 
 // MDCheckbox's native `<input>` has `pointer-events: none` (the visible `<label>` owns click
 // handling instead), so the public interaction surface a real user activates is the label, not
