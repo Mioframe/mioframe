@@ -43,10 +43,10 @@
 
 - Playground/Controls authoring and controlled args round-trip are established as a convention on one representative component (`MDCheckbox`); repository-wide normalization across other reusable UI stories remains later migration work.
 - Selective Autodocs usage is established as a convention on one representative public Material component (`MDButton`); broader selective adoption across other public reusable UI remains later migration work.
-- Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming existing titles.
+- Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming any existing story address.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator is the only S1-authorized owner-local browser pilot. Its behavior spec is colocated at `src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts`; all other Storybook behavior specs remain in `tests/e2e/storybook` with their existing transitional mappings. Stage S2 (moving those remaining owners) has not started.
+- Loading Indicator is the only owner-local browser spec migrated so far. Stage S2 ownership inventory and migration groups are resolved below, but the remaining implementation migrations have not started; all other current Storybook behavior specs therefore still remain under `tests/e2e/storybook` with their existing transitional mappings until their listed S2 group is implemented.
 - Visual specs/baselines still use the current central visual execution structure.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
@@ -165,7 +165,7 @@ Final executable S1 state:
   - `src/shared/lib/md/typography.css`
   - `src/shared/lib/md/space.css`
 
-Forbidden (still applicable until S2 starts):
+Forbidden during S1:
 
 - migrating another browser owner;
 - visual migration;
@@ -176,23 +176,103 @@ Forbidden (still applicable until S2 starts):
 
 ### Stage S2 — remaining Storybook browser migration
 
-Move component/family/module-owned Storybook behavior specs incrementally after S1 is proven.
+Status: **architecture ready; implementation not started**.
 
-Rules:
+S2 migrates ordinary component/family/module-owned behavior to the owner-local convention established by S1. It does not force genuinely cross-owner or Storybook-infrastructure proof into a false local owner. Central discovery remains while such central consumers exist.
 
-- ordinary truthful local owner relations use naming/placement convention, not explicit registry entries;
-- family/module specs may use one explicit mapping only when one sibling stem cannot express the real relation;
-- cross-cutting foundations use explicit mapping or full-lane fallback;
-- infrastructure smoke remains central and justified standalone;
-- split mixed-owner suites only where contracts have distinct owners;
-- preserve full-lane fallback until no legacy behavior spec depends on the old central ownership tree.
+#### Inventory and final ownership
 
-Acceptance before removing legacy central discovery:
+- `mdCheckboxControlledArgs.spec.ts`
+  - Contract: real pointer interaction round-trips controlled `checked` state through the MDCheckbox Storybook args contract.
+  - Final owner: `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts`.
+  - Decision: migrate owner-local and remove its legacy registry mapping.
+- `navigationPath.spec.ts`
+  - Contract: small Button geometry inside Navigation Path, horizontal overflow/scrolling, and final segment selection.
+  - Final owner: `src/shared/ui/NavigationPath/MDNavigationPath.browser.spec.ts`.
+  - Decision: migrate owner-local and remove its legacy registry mapping.
+- `mdBottomSheetContainerKeyboardScroll.spec.ts`
+  - Contract: Tab/Shift+Tab wrap keeps the focused control visible; non-Tab focus does not perform the keyboard-only scroll correction.
+  - Final owner: `src/shared/ui/Sheets/MDBottomSheetContainer2.browser.spec.ts`.
+  - Decision: migrate owner-local under the existing cohesive `Sheets` module. Accept conservative module-wide selection rather than inventing a narrower registry relation or restructuring production code for test ownership.
+- `reorderSelfScrollableContainer.spec.ts`
+  - Contract: pointer activation/recovery plus self-scroll, clipped-surface reveal, scroll-snap suppression/restoration, autoscroll lifecycle and release behavior.
+  - Final owner: `src/shared/lib/reorder/reorderSelfScrollableContainer.browser.spec.ts`.
+  - Decision: migrate owner-local and preserve it as a distinct spec.
+- `reorderDocumentViewportFallback.spec.ts`
+  - Contract: container → ancestor → document viewport autoscroll progression, visibility-first stopping, and release stopping every level.
+  - Final owner: `src/shared/lib/reorder/reorderDocumentViewportFallback.browser.spec.ts`.
+  - Decision: migrate owner-local and preserve it as a distinct spec.
+- `reorderFixedBoundary.spec.ts`
+  - Contract: transformed-ancestor/fixed-surface autoscroll and release stopping.
+  - Final owner: `src/shared/lib/reorder/reorderFixedBoundary.browser.spec.ts`.
+  - Decision: migrate owner-local and preserve it as a distinct spec.
+- `reorderWrapLayout.spec.ts`
+  - Contract: forward/backward cross-row reorder and direct-parent drag bounds in wrapping layout.
+  - Final owner: `src/shared/lib/reorder/reorderWrapLayout.browser.spec.ts`.
+  - Decision: migrate owner-local and preserve it as a distinct spec.
+- `storybook.smoke.spec.ts`
+  - Contract: MDButton Default renders an enabled, focusable interactive Button.
+  - Final owner: `src/shared/ui/material/components/button/MDButton.browser.spec.ts`.
+  - Decision: this is not Storybook infrastructure proof. Preserve the assertion under the Material Button owner and remove the misleading central smoke classification.
+- `md-button-family.spec.ts`
+  - Contract: mixed Material MDButton, legacy Button-module, and shared focus-indicator behavior.
+  - Final ownership: split by truthful owner.
+  - Decision: move MDButton-only contracts to `src/shared/ui/material/components/button/MDButton.browser.spec.ts`; move MDIconButton/MDFab/MDExtendedFab-only contracts to `src/shared/ui/Button/LegacyButton.browser.spec.ts`; keep the shared focus-indicator integration central as `tests/e2e/storybook/focusIndicator.spec.ts` with explicit cross-owner mapping. Remove the stale/non-existent `src/shared/ui/LoadingButton/` mapping while rewriting this scope.
+- `colorOwnership.spec.ts`
+  - Contract: Snackbar inverse surface/message/action/close color behavior across Snackbar-owned contextual values and Material Button public contextual tokens.
+  - Final owner: keep `tests/e2e/storybook/colorOwnership.spec.ts`.
+  - Decision: justified cross-owner proof. Keep the explicit Snackbar + Button-token mapping rather than assigning false local ownership.
+- `overlayLifecycle.spec.ts`
+  - Contract: outside-interaction lifecycle across `onInteractionOutside`, Menu and Tooltips using the composed Overlay regression fixture.
+  - Final owner: keep `tests/e2e/storybook/overlayLifecycle.spec.ts`.
+  - Decision: justified cross-owner proof. Keep explicit mapping. Existing appearance assertions are preserved in S2 and may be reconsidered only in S5 proof cleanup.
+- `routerHarness.spec.ts`
+  - Contract: Storybook-owned memory-router initial state, RouterLink/push/back/forward behavior, and per-story route isolation.
+  - Final owner: keep `tests/e2e/storybook/routerHarness.spec.ts`.
+  - Decision: Storybook infrastructure regression proof, not a `src/shared/lib/router` production owner. `.storybook/**` remains full-lane impact and fixture-source mapping stays explicit.
 
-- every behavior spec has deterministic local, explicit, or infrastructure ownership;
-- current coverage is preserved or strengthened;
-- deleted/renamed owner/spec cases cannot silently skip;
-- complete Storybook behavior lane passes with only the new ownership model.
+`storybook.testUtils.ts` remains the current central mechanical Storybook behavior helper. Colocated specs may continue importing it as the S1 pilot does. Moving or replacing that helper is not required by S2 and would only add migration infrastructure without changing proof ownership.
+
+#### Migration groups
+
+Implement S2 as independently mergeable groups from current `develop`:
+
+1. **S2-A — simple owner-local UI:** migrate `mdCheckboxControlledArgs.spec.ts` and `navigationPath.spec.ts`; remove only their replaced registry entries. The generic owner-local resolver contract is already proved by S1, so do not add owner-specific resolver tests unless the migration exposes a new resolver case.
+2. **S2-B — Sheets module:** migrate the bottom-sheet keyboard-scroll spec into `src/shared/ui/Sheets`. The local resolver intentionally treats `Sheets/` as the owner root; do not add a second mapping merely to recover the old narrower exact-file selection.
+3. **S2-C — Reorder module:** move all four Reorder browser specs into `src/shared/lib/reorder` without merging their distinct contracts. Files in the module may conservatively select all four specs; remove the replaced Reorder registry entries only after local selection is proven.
+4. **S2-D — Button decomposition:** split `md-button-family.spec.ts` by Material Button, legacy `shared/ui/Button`, and cross-owner focus-indicator ownership; fold the old `storybook.smoke.spec.ts` assertion into the Material Button local proof; retain one central explicit focus-indicator spec and delete only mappings made obsolete by the two local owners. Do not treat Icon Button/FAB as part of the canonical Material `button` family; its architecture explicitly excludes those contracts.
+5. **S2-E — final ownership audit:** validate that the remaining central behavior specs are exactly justified cross-owner/infrastructure proof (`colorOwnership`, `overlayLifecycle`, `focusIndicator`, `routerHarness`) plus the central helper. Keep central discovery because these are real consumers; do not remove it merely to make the directory empty.
+
+Each group starts from the then-current `develop` and preserves the assertions and story addresses it migrates. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
+
+#### S2 architecture constraints
+
+- Ordinary local ownership is expressed only by `*.browser.spec.ts` placement; do not add duplicate registry entries for migrated owners.
+- The owner root for a colocated spec is its containing directory. Conservative same-module over-selection is acceptable when that directory is the truthful cohesive owner; do not introduce narrower metadata solely to reduce test count.
+- Multiple browser specs in one owner directory are valid and are all selected. Reorder therefore keeps its four distinct specs.
+- A central spec is valid only for a real cross-owner or Storybook-infrastructure contract. Its explicit source mapping must remain the smallest truthful relation supported by the existing resolver.
+- `routerHarness.spec.ts` proves `.storybook/router/routerHarness.ts`; the `src/shared/lib/router` story files are fixtures, not a reason to claim shared-lib ownership.
+- Material `button` owns `MDButton`; Icon Button and FAB contracts are explicitly outside that family architecture and remain owned by the existing `src/shared/ui/Button` module until their own Material migrations occur.
+- Focus-indicator integration remains cross-owner in S2 because one State foundation is exercised against hosts from both the Material Button family and the legacy Button module. Consolidating that foundation proof is S5 work, not a prerequisite for file placement.
+- `colorOwnership.spec.ts` and `overlayLifecycle.spec.ts` remain central. Creating a local copy plus a cross-owner mapping would add metadata without reducing ownership complexity.
+- Keep the current `openStory` helper and one Playwright Storybook runner; no new runner, generic registry DSL, mapping layer, or test helper framework.
+- Do not change browser project coverage, screenshots, visual baselines, story titles/IDs, app E2E, or production behavior in S2.
+- Do not use S2 to remove computed-style/appearance assertions or other existing proof merely because S5 may later choose a lower or different owner. S2 first preserves coverage while fixing physical and impact ownership.
+
+#### Acceptance
+
+S2 is complete when:
+
+- every ordinary component/family/module browser contract listed above is colocated with its truthful owner;
+- the old `storybook.smoke.spec.ts` infrastructure classification no longer exists and its MDButton assertion remains protected;
+- the mixed Button suite no longer gives Material Button, legacy Button, and focus-indicator foundation one false owner;
+- local owners have no duplicate explicit registry mapping;
+- the remaining central specs are only `colorOwnership.spec.ts`, `overlayLifecycle.spec.ts`, `focusIndicator.spec.ts`, and `routerHarness.spec.ts`, each with truthful explicit or infrastructure ownership;
+- the stale `src/shared/ui/LoadingButton/` behavior mapping is gone;
+- coverage and story addresses are preserved during migration; proof cleanup remains deferred to S5;
+- add/modify/delete/rename behavior for colocated specs remains fail closed as established by S1;
+- complete `storybook-behavior` passes after every group and after the final ownership audit;
+- legacy central discovery remains enabled while the justified central specs above exist.
 
 ### Stage S3 — visual discovery and snapshot pilot
 
@@ -329,7 +409,7 @@ The testing migration is complete when:
 - Storybook browser/visual proof is owned by the truthful UI owner and physically colocated after its lane supports discovery;
 - ordinary colocated Storybook relations do not require duplicate registry metadata;
 - explicit mappings remain only for truthful non-local/cross-cutting relations and centralized product scenarios;
-- Storybook infrastructure smoke is explicitly justified rather than treated as component ownership;
+- Storybook infrastructure proof is explicitly justified, and component-owned proof is not mislabeled as infrastructure smoke;
 - visual baseline ownership handles add/modify/delete/rename safely;
 - application E2E remains centralized and fail closed for unknown relevant product impact;
 - proof ownership contains no known behavior-in-visual or product-in-component duplication;
