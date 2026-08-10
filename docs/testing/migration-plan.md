@@ -46,7 +46,7 @@
 - Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming any existing story address.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator is the only owner-local browser spec migrated so far. Stage S2 ownership inventory and migration groups are resolved below, but the remaining implementation migrations have not started; all other current Storybook behavior specs therefore still remain under `tests/e2e/storybook` with their existing transitional mappings until their listed S2 group is implemented.
+- Loading Indicator, MDCheckbox, and MDNavigationPath now use owner-local browser specs. S2-A is complete; S2-B through S2-E remain to be implemented, and their current Storybook behavior specs therefore remain under `tests/e2e/storybook` with the transitional mappings listed below.
 - Visual specs/baselines still use the current central visual execution structure.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
@@ -176,7 +176,7 @@ Forbidden during S1:
 
 ### Stage S2 — remaining Storybook browser migration
 
-Status: **architecture ready; implementation not started**.
+Status: **in progress; S2-A complete**.
 
 S2 migrates ordinary component/family/module-owned behavior to the owner-local convention established by S1. It does not force genuinely cross-owner or Storybook-infrastructure proof into a false local owner. Central discovery remains while such central consumers exist.
 
@@ -185,11 +185,11 @@ S2 migrates ordinary component/family/module-owned behavior to the owner-local c
 - `mdCheckboxControlledArgs.spec.ts`
   - Contract: real pointer interaction round-trips controlled `checked` state through the MDCheckbox Storybook args contract.
   - Final owner: `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts`.
-  - Decision: migrate owner-local and remove its legacy registry mapping.
+  - Current state: complete — migrated owner-local and the legacy registry mapping is removed.
 - `navigationPath.spec.ts`
   - Contract: small Button geometry inside Navigation Path, horizontal overflow/scrolling, and final segment selection.
   - Final owner: `src/shared/ui/NavigationPath/MDNavigationPath.browser.spec.ts`.
-  - Decision: migrate owner-local and remove its legacy registry mapping.
+  - Current state: complete — migrated owner-local and the legacy registry mapping is removed.
 - `mdBottomSheetContainerKeyboardScroll.spec.ts`
   - Contract: Tab/Shift+Tab wrap keeps the focused control visible; non-Tab focus does not perform the keyboard-only scroll correction.
   - Final owner: `src/shared/ui/Sheets/MDBottomSheetContainer2.browser.spec.ts`.
@@ -237,13 +237,13 @@ S2 migrates ordinary component/family/module-owned behavior to the owner-local c
 
 Implement S2 as independently mergeable groups from current `develop`:
 
-1. **S2-A — simple owner-local UI:** migrate `mdCheckboxControlledArgs.spec.ts` and `navigationPath.spec.ts`; remove only their replaced registry entries. The generic owner-local resolver contract is already proved by S1, so do not add owner-specific resolver tests unless the migration exposes a new resolver case.
+1. **S2-A — simple owner-local UI (complete):** `mdCheckboxControlledArgs.spec.ts` and `navigationPath.spec.ts` are now `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` and `src/shared/ui/NavigationPath/MDNavigationPath.browser.spec.ts`; their replaced registry entries are removed. The generic owner-local resolver contract remains the only ownership mechanism; no owner-specific metadata was added.
 2. **S2-B — Sheets module:** migrate the bottom-sheet keyboard-scroll spec into `src/shared/ui/Sheets`. The local resolver intentionally treats `Sheets/` as the owner root; do not add a second mapping merely to recover the old narrower exact-file selection.
 3. **S2-C — Reorder module:** move all four Reorder browser specs into `src/shared/lib/reorder` without merging their distinct contracts. Files in the module may conservatively select all four specs; remove the replaced Reorder registry entries only after local selection is proven.
 4. **S2-D — Button decomposition:** split `md-button-family.spec.ts` by Material Button, legacy `shared/ui/Button`, and cross-owner focus-indicator ownership; fold the old `storybook.smoke.spec.ts` assertion into the Material Button local proof; retain one central explicit focus-indicator spec and delete only mappings made obsolete by the two local owners. Do not treat Icon Button/FAB as part of the canonical Material `button` family; its architecture explicitly excludes those contracts.
 5. **S2-E — final ownership audit:** validate that the remaining central behavior specs are exactly justified cross-owner/infrastructure proof (`colorOwnership`, `overlayLifecycle`, `focusIndicator`, `routerHarness`) plus the central helper. Keep central discovery because these are real consumers; do not remove it merely to make the directory empty.
 
-Each group starts from the then-current `develop` and preserves the assertions and story addresses it migrates. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
+S2-A is complete. The next authorized implementation group is S2-B. Each remaining group starts from the then-current `develop` and preserves the assertions and story addresses it migrates. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
 
 #### S2 architecture constraints
 
