@@ -167,6 +167,7 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     expect(scenarioNames).not.toContain('loading indicator standalone accessibility');
     expect(scenarioNames).not.toContain('navigation path button geometry and overflow');
     expect(scenarioNames).not.toContain('checkbox controlled args round-trip');
+    expect(scenarioNames).not.toContain('bottom sheet keyboard focus wrap visibility');
     expect(scenarioNames).toEqual(
       expect.arrayContaining([
         'storybook behavior infrastructure smoke',
@@ -176,7 +177,6 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
         'reorder generic layout support',
         'button family behavior',
         'Storybook router harness demonstration',
-        'bottom sheet keyboard focus wrap visibility',
       ]),
     );
   });
