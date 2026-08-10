@@ -2,6 +2,7 @@
 
 import { SENTRY_DSN, APP_BUILD_ID, APP_VERSION, IS_VERBOSE_DIAGNOSTICS } from '@shared/config';
 import { registerSentryConfig } from '@shared/lib/diagnostics';
+import { registerLazyVueSentryBackend } from '@shared/lib/diagnostics/sentryVueBackend';
 import { setupMainService, serviceId } from './setupMainService';
 import { defineWorkerService } from '@shared/lib/wrapWorker/defineWorkerService';
 import { registerWorkerSentrySyncService } from './sentryWorkerSync';
@@ -12,6 +13,7 @@ declare const self: DedicatedWorkerGlobalScope;
 // Static config is imported directly — the same path used by the main thread.
 // Reporting state starts as `unknown` (events queued) until the main thread
 // applies dynamic state via the sentryWorkerSync service.
+registerLazyVueSentryBackend();
 registerSentryConfig({
   ...(SENTRY_DSN !== undefined && { dsn: SENTRY_DSN }),
   isVerbose: IS_VERBOSE_DIAGNOSTICS,

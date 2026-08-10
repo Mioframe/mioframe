@@ -1,4 +1,5 @@
 import { applyDiagnosticsRuntimeState, getOrCreateSentrySessionId } from '@shared/lib/diagnostics';
+import { syncDiagnosticsPolicyToManagedServiceWorker } from '@shared/service/managedServiceWorkerDiagnosticsSync';
 import { syncSentryStateToWorker } from '@shared/service/sentryWorkerSync';
 
 /** App-level diagnostics reporting policy derived from user consent. */
@@ -19,5 +20,6 @@ export const applyDiagnosticsPolicy = async (policy: DiagnosticsPolicy): Promise
     reportingState: policy,
   };
   syncSentryStateToWorker(state);
+  syncDiagnosticsPolicyToManagedServiceWorker(state);
   await applyDiagnosticsRuntimeState(state);
 };

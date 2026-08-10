@@ -1,5 +1,23 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync, readdirSync } from 'node:fs';
+import { extname, join } from 'node:path';
 import { launchApp, openOpfs } from '../helpers';
+import { buildAndServeOrdinaryBranchArtifact } from './fixtures/ordinaryBranchArtifactFixture.mjs';
+
+declare global {
+  interface Window {
+    /** Test-only counter installed by `page.addInitScript` to prove `MessageChannel` was never constructed. */
+    __messageChannelConstructions?: number;
+  }
+}
+
+function collectJsFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return collectJsFiles(full);
+    return entry.isFile() && ['.js', '.mjs'].includes(extname(entry.name)) ? [full] : [];
+  });
+}
 
 // Validates the published production artifact itself (base path, SPA
 // fallback, critical assets, PWA manifest sanity), not internal build or
@@ -68,4 +86,105 @@ test('reloading after a deep client route falls back to the app instead of a bro
 
   await expect(page.getByRole('button', { name: /^add$/i })).toBeVisible();
   await expect(page.getByRole('heading', { name: /not found|404/i })).toHaveCount(0);
+});
+
+// Managed pinned application updates feature: prove the normal production
+// artifact never embeds the release-test-only legacy migration fixture, and
+// that the compiled controller worker never embeds application release
+// identity. Scans every emitted JS chunk, not only the main entry — the
+// legacy fixture must only ever be reachable via the release-test-only
+// `RELEASE_TEST_LEGACY_PWA_FIXTURE` env var, never present in the artifact
+// this spec's own `dist/` was built from.
+test('no chunk embeds the release-test-only legacy migration fixture or application release identity', () => {
+  const forbiddenPatterns = [
+    'RELEASE_TEST_LEGACY_PWA_FIXTURE',
+    'legacyGeneratedWorkboxPwaConfig',
+    '__RELEASE_ID__',
+    '__RELEASE_SEQUENCE__',
+  ];
+
+  const jsFiles = collectJsFiles('dist');
+  expect(jsFiles.length).toBeGreaterThan(0);
+
+  const offenders: string[] = [];
+  for (const file of jsFiles) {
+    const content = readFileSync(file, 'utf8');
+    for (const pattern of forbiddenPatterns) {
+      if (content.includes(pattern)) {
+        offenders.push(`${file}: ${pattern}`);
+      }
+    }
+  }
+
+  expect(offenders).toEqual([]);
+});
+
+// Managed pinned application updates feature: the managed controller worker
+// (dist/sw.js for this spec's stable-channel build, compiled directly from
+// src/sw.ts via the injectManifest strategy — see config/plugins/pwa.ts)
+// must never manage its own code's lifecycle: no skipWaiting(), no
+// clients.claim(). Scoped to this one managed-worker artifact only — an
+// ordinary branch build's Workbox-generated `generateSW` worker legitimately
+// calls both, and a tombstone page has no service worker at all, so neither
+// is in scope for this rule.
+test('the built managed controller worker never calls skipWaiting() or clients.claim()', () => {
+  const swSource = readFileSync(join('dist', 'sw.js'), 'utf8');
+
+  expect(swSource).not.toMatch(/\bskipWaiting\s*\(/);
+  expect(swSource).not.toMatch(/\bclients\s*\.\s*claim\s*\(/);
+});
+
+// Managed pinned application updates feature, Correction 3 (managed-controller
+// capability): an ordinary branch build (not stable, not the develop managed
+// channel) never gets a managed controller worker — only the ordinary
+// generated (`generateSW`) Workbox worker — so its `__MANAGED_APP_UPDATE_CHANNEL__`
+// build-time define is `undefined`. The client must report managed updates
+// unavailable immediately from that build-time fact alone, without ever
+// constructing a `MessageChannel` to probe whatever controller (if any)
+// happens to be present. Builds and serves a real, separate production
+// artifact for this one branch build (the shared release artifact this
+// spec file otherwise exercises is the stable managed channel).
+test('an ordinary non-develop branch build (generated Workbox) reports managed updates unavailable without sending a managed controller message', async ({
+  page,
+}, testInfo) => {
+  testInfo.setTimeout(120_000);
+  let server: Awaited<ReturnType<typeof buildAndServeOrdinaryBranchArtifact>> | undefined;
+  const previousExternalBaseUrl = process.env.PLAYWRIGHT_EXTERNAL_BASE_URL;
+
+  try {
+    server = await buildAndServeOrdinaryBranchArtifact({ channelId: 'feature-x' });
+    process.env.PLAYWRIGHT_EXTERNAL_BASE_URL = server.url;
+
+    // Records every `MessageChannel` construction this page ever performs,
+    // installed before any application script runs. The capability probe is
+    // the app's only user of `MessageChannel`; zero constructions is direct
+    // proof the controller was never accessed or messaged at all.
+    await page.addInitScript(() => {
+      window.__messageChannelConstructions = 0;
+      const OriginalMessageChannel = window.MessageChannel;
+      class TrackedMessageChannel extends OriginalMessageChannel {
+        constructor() {
+          super();
+          window.__messageChannelConstructions = (window.__messageChannelConstructions ?? 0) + 1;
+        }
+      }
+      window.MessageChannel = TrackedMessageChannel;
+    });
+
+    await launchApp(page);
+    await page.getByRole('button', { name: /^settings$/i }).click();
+    await page.getByRole('button', { name: /^app updates/i }).click();
+    const pane = page.locator('.app-updates-pane');
+
+    await expect(pane.getByText(/updates unavailable/i)).toBeVisible();
+    await expect(pane.getByRole('button', { name: /^check for updates$/i })).toBeDisabled();
+
+    const messageChannelConstructions = await page.evaluate(
+      () => window.__messageChannelConstructions ?? 0,
+    );
+    expect(messageChannelConstructions).toBe(0);
+  } finally {
+    process.env.PLAYWRIGHT_EXTERNAL_BASE_URL = previousExternalBaseUrl;
+    await server?.close();
+  }
 });

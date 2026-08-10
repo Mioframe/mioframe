@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { computed } from 'vue';
+import {
+  deriveAppUpdatesDisplayStatus,
+  getAppUpdatesDisplayStatusText,
+  useAppUpdate,
+} from '@entity/appUpdate';
 import { useDiagnosticsSettings, useLocalSettings } from '@entity/localSettings';
 import { PwaInstallSettingsListItem, usePwaInstallAction } from '@feature/pwaInstall';
 import { GOOGLE_DRIVE_INTEGRATION_AVAILABLE, SENTRY_DIAGNOSTICS_AVAILABLE } from '@shared/config';
@@ -12,11 +18,19 @@ const emit = defineEmits<{
   selectPrivacyPolicy: [];
   selectHelp: [];
   selectAboutMioframe: [];
+  selectAppUpdates: [];
 }>();
 
 const { settings } = useLocalSettings();
 const { diagnosticsEnabled, setDiagnosticsEnabledByUser } = useDiagnosticsSettings();
 const { isSettingsEntryVisible } = usePwaInstallAction();
+
+// The Settings entry shows concise stable entity presentation only. It never
+// reads an action feature's busy or transport outcome state.
+const { status: appUpdateStatus } = useAppUpdate();
+const appUpdatesStatusText = computed(() =>
+  getAppUpdatesDisplayStatusText(deriveAppUpdatesDisplayStatus({ status: appUpdateStatus.value })),
+);
 
 const onToggleStarterExamples = () => {
   settings.value.hideStarterWidget = settings.value.hideStarterWidget === true ? undefined : true;
@@ -50,6 +64,10 @@ const onClickHelp = () => {
 const onClickAboutMioframe = () => {
   emit('selectAboutMioframe');
 };
+
+const onClickAppUpdates = () => {
+  emit('selectAppUpdates');
+};
 </script>
 
 <template>
@@ -59,6 +77,17 @@ const onClickAboutMioframe = () => {
     <SettingsSection v-if="isSettingsEntryVisible" title="App">
       <MDList tag="div">
         <PwaInstallSettingsListItem />
+      </MDList>
+    </SettingsSection>
+
+    <SettingsSection title="Updates">
+      <MDList tag="div">
+        <MDListItem
+          mode="single-action"
+          label-text="App updates"
+          :supporting-text="appUpdatesStatusText"
+          @action="onClickAppUpdates"
+        />
       </MDList>
     </SettingsSection>
 

@@ -1,13 +1,19 @@
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import DialogForm from './DialogForm.vue';
+
+const useFocusTrapMock = vi.fn((_target: unknown, _options?: { fallbackFocus: () => unknown }) => ({
+  activate: vi.fn(),
+  deactivate: vi.fn(),
+}));
 
 vi.mock('../AriaHidden', () => ({ useModalAriaHidden: () => false }));
 vi.mock('@shared/lib/onBackNavigation', () => ({ useOnBackNavigationStacked: vi.fn() }));
 vi.mock('@shared/lib/useOnEscapeKeyStacked', () => ({ useOnEscapeKeyStacked: vi.fn() }));
 vi.mock('@vueuse/integrations/useFocusTrap', () => ({
-  useFocusTrap: () => ({ activate: vi.fn(), deactivate: vi.fn() }),
+  useFocusTrap: (target: unknown, options?: { fallbackFocus: () => unknown }) =>
+    useFocusTrapMock(target, options),
 }));
 vi.mock('./Alert', () => ({ useMonitorOpenDialog: vi.fn() }));
 
@@ -46,6 +52,36 @@ const mountForm = (loading: boolean) =>
     },
     global: { stubs: { MDButton: MDButtonStub } },
   });
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('DialogForm focus trap', () => {
+  it('gives the focus trap a fallback focus target that is always programmatically focusable', () => {
+    const wrapper = mountForm(true);
+    const form = wrapper.get('form');
+
+    expect(form.attributes('tabindex')).toBe('-1');
+    expect(useFocusTrapMock).toHaveBeenCalledTimes(1);
+
+    const [, options] = useFocusTrapMock.mock.calls[0] ?? [];
+    expect(options?.fallbackFocus()).toBe(form.element);
+  });
+
+  it('throws explicitly if the fallback resolver is invoked after the form is unavailable', () => {
+    const wrapper = mountForm(true);
+    const [, options] = useFocusTrapMock.mock.calls[0] ?? [];
+
+    if (!options) throw new Error('Missing useFocusTrap options.');
+
+    wrapper.unmount();
+
+    expect(() => options.fallbackFocus()).toThrow(
+      'DialogForm focus trap is active without its form container',
+    );
+  });
+});
 
 describe('DialogForm busy ownership', () => {
   it('marks the form busy, disables both actions, and blocks submit and cancel', async () => {

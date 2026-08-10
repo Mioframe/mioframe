@@ -16,6 +16,12 @@ full policy this checklist enforces.
 - [ ] No storage format, data model, routing model, or product UX behavior
       changed unintentionally as a side effect of release infrastructure
       work.
+- [ ] For the first managed release, the complete promoted artifact is accepted
+      as the managed baseline: it may include already-reviewed product changes
+      (including local fixes retained in the managed-update PR), rollback to
+      legacy Workbox is unsupported after activation, no irreversible
+      user-data migration is included, and the complete product/UI surface has
+      been manually accepted.
 
 ## Opening the PR into `main`
 
@@ -26,7 +32,8 @@ full policy this checklist enforces.
       `squash` for direct hotfix or pre-tag repair PRs.
 - [ ] The `release` workflow run is green:
   - [ ] `pnpm verify:release` full-project gate passed (format, lint,
-        type-check, unit tests, full app e2e, full visual regression).
+        type-check, unit tests, full app e2e, full visual regression, managed
+        update lifecycle proof).
   - [ ] production build and artifact validation passed.
   - [ ] release smoke coverage (first-user and returning-user flows)
         passed.
@@ -40,6 +47,13 @@ full policy this checklist enforces.
         release-mode misconfiguration (wrong base path, PWA disabled, a
         PR-preview base path, or an explicitly empty optional value outside
         GitHub Actions) does.
+- [ ] For a release containing managed-update changes, the focused
+      `pnpm verify --full --only managed-updates` gate passed without flaky
+      classification before the final `pnpm verify:release` run.
+- [ ] Operator UI/accessibility acceptance covers update settings,
+      notifications, clean-launch activation, rollback, controller-state-loss
+      recovery, known-active-release recovery, and the rest of the promoted
+      product changes.
 
 ## After merging into `main`
 
@@ -47,6 +61,10 @@ full policy this checklist enforces.
       full release gate before `deploy-stable`).
 - [ ] `deploy-stable` succeeded and the stable GitHub Pages deployment shows
       the new version.
+- [ ] For the first managed release, confirm the managed worker became active
+      and the application completed `BOOT_OK`; treat that deployed artifact as
+      managed release 1. Full rollback guarantees begin with the next managed
+      release.
 - [ ] Create and push the `vX.Y.Z` tag matching `package.json` version.
       The tag push runs the lightweight `release-tag` workflow, which only
       confirms the tag matches `package.json` — it does not rerun the full

@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.2.21",
+  "version": "0.3.0",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -56,6 +56,7 @@
     "@floating-ui/vue": "^2.0.1",
     "@fontsource/roboto": "5.2.10",
     "@m3e/web": "^2.6.3",
+    "@sentry/browser": "^10.68.0",
     "@sentry/vue": "^10.68.0",
     "@unhead/vue": "^3.2.3",
     "@vueuse/components": "^14.3.0",

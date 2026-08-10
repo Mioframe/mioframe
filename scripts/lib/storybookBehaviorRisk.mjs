@@ -81,6 +81,14 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
   },
   {
+    name: 'dialog form fallback focus',
+    sourcePrefixes: [
+      'src/shared/ui/Dialog/DialogForm.vue',
+      'src/shared/ui/Dialog/DialogForm.stories.ts',
+    ],
+    specs: ['tests/e2e/storybook/dialogFormFallbackFocus.spec.ts'],
+  },
+  {
     name: 'Storybook router harness demonstration',
     sourcePrefixes: [
       'src/shared/lib/router/RouterHarnessRegressionStory.vue',

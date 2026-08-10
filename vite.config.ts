@@ -10,7 +10,22 @@ import {
   getPwaPlugins,
   getSentryPlugins,
   getSslPlugins,
+  resolveManagedAppUpdateChannel,
 } from './config/plugins';
+
+// Release-test-only escape hatch for the managed pinned application updates
+// migration proof (tests/e2e/release/managedUpdatesMigration.spec.ts): builds
+// the exact frozen pre-feature generateSW worker instead of the live managed
+// controller. No normal dev/build/deploy path ever sets this env var, so this
+// top-level dynamic import is never resolved outside that one release test —
+// normal Vite config carries no static dependency on the frozen test fixture
+// (see config/viteConfigFixtureImport.test.ts). Resolved once, at module
+// scope, rather than inside `defineConfig`'s callback, so the callback stays
+// a plain synchronous `UserConfigFnObject` for Vite's config type inference.
+const legacyPwaPluginsModule =
+  process.env.RELEASE_TEST_LEGACY_PWA_FIXTURE === '1'
+    ? await import('./tests/e2e/release/fixtures/legacyGeneratedWorkboxPwaConfig')
+    : undefined;
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, isPreview }) => {
@@ -23,9 +38,10 @@ export default defineConfig(({ mode, isPreview }) => {
   const releaseChannel = env.VITE_RELEASE_CHANNEL === 'branch' ? 'branch' : 'stable';
   const releaseChannelId = env.VITE_RELEASE_CHANNEL_ID || undefined;
   const sslPlugins = isStorybookBuild ? [] : getSslPlugins({ mode, isPreview: isPreviewBuild });
+  const resolvePwaPlugins = legacyPwaPluginsModule?.getLegacyPwaPlugins ?? getPwaPlugins;
   const pwaPlugins = isStorybookBuild
     ? []
-    : getPwaPlugins({
+    : resolvePwaPlugins({
         base: env.BASE_URL,
         mode,
         isPreview: isPreviewBuild,
@@ -41,10 +57,30 @@ export default defineConfig(({ mode, isPreview }) => {
         authToken: env.SENTRY_AUTH_TOKEN,
         release: buildId || undefined,
       });
+  // Never derived independently of pwaPlugins' own gating: reuses the exact
+  // same enablement and channel-classification decision (see
+  // resolveManagedAppUpdateChannel), so this can never disagree with
+  // whether a managed controller worker was actually emitted.
+  const managedAppUpdateChannel = isStorybookBuild
+    ? undefined
+    : resolveManagedAppUpdateChannel({
+        mode,
+        isPreview: isPreviewBuild,
+        disablePwa: isDisablePwa,
+        channel: releaseChannel,
+        channelId: releaseChannelId,
+      });
 
+  // Managed stable/develop publication derives one canonical UTC committer
+  // timestamp per deployment job and passes it here explicitly, so the same
+  // value reaches Vite, release descriptor generation, and deployment.json
+  // (see docs/managed-pinned-updates.md, "Deterministic build inputs").
+  // Every other build (dev, PR preview, manual branch, Storybook) has no
+  // such canonical value and keeps using the actual build wall-clock time.
+  const explicitBuildDate = env.VITE_BUILD_DATE || process.env.VITE_BUILD_DATE;
   const buildDate = isStorybookBuild
     ? toolingConfig.storybook.deterministicBuildDate
-    : new Date().toISOString();
+    : explicitBuildDate || new Date().toISOString();
   const dependencyNames = Object.keys({
     ...dependencies,
     ...devDependencies,
@@ -112,6 +148,10 @@ export default defineConfig(({ mode, isPreview }) => {
       __BUILD_DATE__: JSON.stringify(buildDate),
       __BUILD_ID__: JSON.stringify(buildId),
       __DIAGNOSTICS_MODE__: JSON.stringify(isPreviewBuild ? 'preview' : 'production'),
+      __MANAGED_APP_UPDATE_CHANNEL__:
+        managedAppUpdateChannel === undefined
+          ? 'undefined'
+          : JSON.stringify(managedAppUpdateChannel),
     },
   };
 });

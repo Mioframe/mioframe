@@ -1,0 +1,446 @@
+/**
+ * Builds and injects the boot watchdog: a small, self-contained inline
+ * script the publisher writes into every archived release's `index.html`,
+ * before the main module entry, so it can detect an early fatal boot
+ * failure even if the main application bundle itself is the failing
+ * component. Its `error` listener is registered on `window` with capture
+ * enabled so a linked resource's own non-bubbling load failure (a script or
+ * stylesheet this document references) is observed too, not only an
+ * ordinary runtime error dispatched at `window` itself.
+ *
+ * The watchdog never implements release selection or storage rules itself:
+ * it only relays `BOOT_OK`/`BOOT_FAILED` to the controller worker over an
+ * acknowledged `MessageChannel` request, asks the worker (via
+ * `GET_ACTIVATION_STATUS`) whether this exact release is currently the
+ * activation target and, if so, for exactly how long it has left before the
+ * worker's own boot-confirmation deadline, and reloads as soon as either its
+ * own direct acknowledgement or the worker's `APP_UPDATE_ROLLBACK` broadcast
+ * confirms `rolled-back` — the direct acknowledgement guarantees recovery of
+ * this exact reporting window without depending on best-effort broadcast
+ * delivery, while the broadcast still recovers every other already-open
+ * same-channel window; a shared idempotent reload guard means whichever of
+ * the two arrives first is the only one that actually reloads. It never
+ * disables its own error handlers or deadline timer on a bare "message
+ * sent" — only on a worker-confirmed `committed` or `rolled-back`
+ * acknowledgement, matching `stateTransitions.ts`/`workerMessages.ts`'s
+ * durable commit and rollback semantics. In particular, `isActivationTarget:
+ * false` from `GET_ACTIVATION_STATUS` never settles the watchdog by itself:
+ * it answers only whether this release is currently the activation target,
+ * not whether it is the current active release or an already-rolled-back
+ * stale one, so it merely skips arming a deadline and leaves the watchdog
+ * fully armed for the application's own `BOOT_OK` or an early fatal error's
+ * `BOOT_FAILED` to determine the durable outcome.
+ *
+ * The private protocol message type strings, protocol version, and ack
+ * timeout below are interpolated directly from the single canonical
+ * `src/shared/service/appUpdate/workerProtocolWireContract.ts` — imported
+ * here directly, since Node LTS can execute that module's erasable
+ * TypeScript syntax with no loader. The generated inline script below
+ * contains literal values, which is expected and not a second source of
+ * truth.
+ *
+ * Every message the watchdog sends carries `protocolVersion: 1`. Every
+ * message it consumes (an acknowledgement, the activation-status response,
+ * or the rollback broadcast) is checked for that exact field before any of
+ * its other fields are read; a missing, mismatched, or otherwise malformed
+ * message is ignored — never thrown — exactly like "no response at all"
+ * (timeout, or no controller).
+ *
+ * `BOOT_OK` and `BOOT_FAILED` are never in flight concurrently: the
+ * watchdog is the single transient arbiter of which local boot outcome it
+ * observed first, so the durable result never depends on which request
+ * happens to reach the worker's queue first. Whichever is requested second
+ * while the other is still unresolved is deferred rather than sent; a
+ * failure's `ignored` acknowledgement (or a success's non-durable
+ * acknowledgement) releases the deferred counterpart, while a durable
+ * `committed`/`rolled-back` outcome discards it. A failure whose
+ * acknowledgement is missing, timed out, or malformed never releases a
+ * deferred success — it stays fail-closed and armed for retry — matching
+ * the required activation fail-closed behavior.
+ */
+
+import {
+  APP_UPDATE_PROTOCOL_VERSION,
+  BOOT_ACK_OUTCOMES,
+  WATCHDOG_ACK_TIMEOUT_MS,
+  WATCHDOG_PROTOCOL_MESSAGE_TYPES,
+} from '../../../src/shared/service/appUpdate/workerProtocolWireContract.ts';
+
+const MAIN_MODULE_SCRIPT_MARKER = '<script type="module"';
+
+const [ACK_COMMITTED_LITERAL, ACK_ROLLED_BACK_LITERAL, ACK_IGNORED_LITERAL, ACK_ERROR_LITERAL] =
+  BOOT_ACK_OUTCOMES;
+
+/**
+ * Wraps a trusted constant string value (never user input) as a
+ * single-quoted JavaScript string literal, matching the generated watchdog
+ * script's own quoting convention.
+ * @param value Trusted constant string value.
+ * @returns The single-quoted literal source text.
+ */
+function toSingleQuotedLiteral(value) {
+  return `'${value}'`;
+}
+
+/**
+ * Builds the watchdog's self-contained inline script source for one
+ * release.
+ * @param releaseNumber The exact archived release number this watchdog belongs to.
+ * @returns The watchdog's JavaScript source (without `<script>` tags).
+ */
+export function buildWatchdogScript(releaseNumber) {
+  const releaseNumberLiteral = JSON.stringify(releaseNumber);
+
+  return `(function () {
+  var RELEASE_NUMBER = ${releaseNumberLiteral};
+  var PROTOCOL_VERSION = ${APP_UPDATE_PROTOCOL_VERSION};
+  var BOOT_OK = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.BOOT_OK)};
+  var BOOT_FAILED = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.BOOT_FAILED)};
+  var GET_ACTIVATION_STATUS = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.GET_ACTIVATION_STATUS)};
+  var ROLLBACK = ${toSingleQuotedLiteral(WATCHDOG_PROTOCOL_MESSAGE_TYPES.ROLLBACK_BROADCAST)};
+  var ACK_TIMEOUT_MS = ${WATCHDOG_ACK_TIMEOUT_MS};
+  var ACK_COMMITTED = ${toSingleQuotedLiteral(ACK_COMMITTED_LITERAL)};
+  var ACK_ROLLED_BACK = ${toSingleQuotedLiteral(ACK_ROLLED_BACK_LITERAL)};
+  var ACK_IGNORED = ${toSingleQuotedLiteral(ACK_IGNORED_LITERAL)};
+  var ACK_ERROR = ${toSingleQuotedLiteral(ACK_ERROR_LITERAL)};
+
+  var settled = false;
+  var bootOkReported = false;
+  var bootFailedReported = false;
+  // Which report currently owns the single in-flight controller round trip
+  // ('ok', 'failed', or null): guarantees BOOT_OK and BOOT_FAILED are never
+  // sent concurrently, so the durable outcome is decided by which local
+  // boot event was observed first, not by worker message arrival order.
+  var reportInFlight = null;
+  // A BOOT_OK request made while a BOOT_FAILED report is unresolved: sent
+  // only once that failure resolves 'ignored'; discarded on 'rolled-back'
+  // or 'error'; left pending (fail-closed) on a missing/malformed ack.
+  var deferredBootOk = false;
+  // A BOOT_FAILED report requested while a BOOT_OK report is unresolved:
+  // sent once that success fails to reach a durable outcome; discarded on
+  // 'committed' or 'rolled-back'.
+  var deferredBootFailed = false;
+  var deadlineTimer = null;
+  var reloadScheduled = false;
+
+  // Idempotent: a direct rolled-back acknowledgement (from either BOOT_OK or
+  // BOOT_FAILED) and a later duplicate APP_UPDATE_ROLLBACK broadcast for this
+  // same release must never schedule two reloads.
+  function scheduleReload() {
+    if (reloadScheduled) return;
+    reloadScheduled = true;
+    location.reload();
+  }
+
+  // Bounded, never-rejecting controller-message transport, shared by every
+  // outgoing message (BOOT_OK, BOOT_FAILED, GET_ACTIVATION_STATUS). Every
+  // failure mode -- no controller, a throwing controller getter, a throwing
+  // MessageChannel constructor, or a synchronously throwing postMessage --
+  // resolves null exactly like "no response" (an unacknowledged send or a
+  // timeout), so a transport failure can never turn into an unhandled
+  // promise rejection or permanently latch a caller's own report flag.
+  function sendToController(message) {
+    return new Promise(function (resolve) {
+      var settledLocal = false;
+      var timer = null;
+      var channel = null;
+
+      function settle(value) {
+        if (settledLocal) return;
+        settledLocal = true;
+        if (timer !== null) clearTimeout(timer);
+        if (channel) {
+          try {
+            channel.port1.onmessage = null;
+            channel.port1.close();
+          } catch (closeError) {
+            // Port cleanup must never throw out of this boundary.
+          }
+        }
+        resolve(value);
+      }
+
+      var controller;
+      try {
+        controller = navigator.serviceWorker && navigator.serviceWorker.controller;
+      } catch (controllerError) {
+        resolve(null);
+        return;
+      }
+      if (!controller) {
+        resolve(null);
+        return;
+      }
+
+      try {
+        channel = new MessageChannel();
+      } catch (channelError) {
+        resolve(null);
+        return;
+      }
+
+      channel.port1.onmessage = function (event) {
+        settle((event && event.data) || null);
+      };
+      timer = setTimeout(function () {
+        settle(null);
+      }, ACK_TIMEOUT_MS);
+
+      try {
+        controller.postMessage(message, [channel.port2]);
+      } catch (postError) {
+        settle(null);
+      }
+    });
+  }
+
+  function showRecoveryMessage() {
+    var el = document.createElement('div');
+    el.setAttribute('role', 'alert');
+    el.style.cssText =
+      'position:fixed;bottom:0;left:0;right:0;padding:12px 16px;' +
+      'background:#3a1212;color:#fff;font:14px/1.4 system-ui,sans-serif;' +
+      'z-index:2147483647;text-align:center;';
+    el.textContent =
+      'This update could not finish safely. Please close and reopen Mioframe to continue.';
+    (document.body || document.documentElement).appendChild(el);
+  }
+
+  function reportBootFailed() {
+    if (settled || bootFailedReported) return;
+    if (reportInFlight === 'ok') {
+      // A BOOT_OK report currently owns arbitration and is unresolved:
+      // defer this failure instead of sending it concurrently. If that
+      // BOOT_OK later fails to reach a durable outcome, it releases this
+      // deferred failure by calling this function again.
+      deferredBootFailed = true;
+      return;
+    }
+    bootFailedReported = true;
+    reportInFlight = 'failed';
+    sendToController({
+      protocolVersion: PROTOCOL_VERSION,
+      type: BOOT_FAILED,
+      releaseNumber: RELEASE_NUMBER,
+    }).then(function (response) {
+      var ack = response && response.protocolVersion === PROTOCOL_VERSION ? response.ack : null;
+      if (ack === ACK_ERROR) {
+        settled = true;
+        reportInFlight = null;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        showRecoveryMessage();
+        return;
+      }
+      if (ack === ACK_ROLLED_BACK) {
+        // A durable rollback was already recorded for this exact report,
+        // possibly before this window's own broadcast delivery: reload
+        // immediately rather than waiting for the matching
+        // APP_UPDATE_ROLLBACK broadcast below, which may never arrive (see
+        // broadcastToSameChannelWindows()'s best-effort delivery). A
+        // success deferred while this failure was unresolved must never
+        // overtake a durably rolled-back boot.
+        settled = true;
+        reportInFlight = null;
+        deferredBootOk = false;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        scheduleReload();
+        return;
+      }
+      if (ack === ACK_IGNORED) {
+        // The worker explicitly confirms this release is not an activation
+        // failure: allow a later genuine failure to be reported again
+        // instead of latching forever, and release any success that was
+        // deferred while this report was unresolved.
+        bootFailedReported = false;
+        reportInFlight = null;
+        if (deferredBootOk) {
+          deferredBootOk = false;
+          window.mioframeAppUpdateBootOk();
+        }
+        return;
+      }
+      // Missing, timed-out, or malformed acknowledgement: no durable
+      // outcome was confirmed for this fatal boot failure. Stay fail-closed
+      // -- keep arbitration on this failure and any deferred success unsent
+      // -- while remaining retriable through a later fatal error or
+      // deadline, exactly like the previous latch-free retry behavior.
+      bootFailedReported = false;
+    });
+  }
+
+  function onEarlyFatalError() {
+    reportBootFailed();
+  }
+
+  // Capture phase: a linked resource's own load failure (a script, style, or
+  // other subresource this document's own index references) fires a
+  // non-bubbling 'error' event at that element. Registering on window with
+  // capture: true still observes it during the capture phase, which reaches
+  // every ancestor -- including window -- before the event would otherwise
+  // stop at its non-bubbling target. An ordinary runtime error still reaches
+  // this same listener exactly as before (its target is window itself).
+  window.addEventListener('error', onEarlyFatalError, true);
+  window.addEventListener('unhandledrejection', onEarlyFatalError);
+
+  window.mioframeAppUpdateBootOk = function () {
+    if (settled || bootOkReported) return;
+    if (reportInFlight === 'failed') {
+      // A BOOT_FAILED report currently owns arbitration and is unresolved:
+      // defer this success instead of sending it concurrently. It is sent
+      // only if that failure resolves 'ignored'.
+      deferredBootOk = true;
+      return;
+    }
+    bootOkReported = true;
+    reportInFlight = 'ok';
+    var request = {
+      protocolVersion: PROTOCOL_VERSION,
+      type: BOOT_OK,
+      releaseNumber: RELEASE_NUMBER,
+    };
+    sendToController(request).then(function (response) {
+      var isCommitted =
+        response && response.protocolVersion === PROTOCOL_VERSION && response.ack === ACK_COMMITTED;
+      if (isCommitted) {
+        // A failure deferred while this success was unresolved must never
+        // surface after a durably committed boot.
+        settled = true;
+        reportInFlight = null;
+        deferredBootFailed = false;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        window.removeEventListener('error', onEarlyFatalError, true);
+        window.removeEventListener('unhandledrejection', onEarlyFatalError);
+        return;
+      }
+      var isRolledBack =
+        response &&
+        response.protocolVersion === PROTOCOL_VERSION &&
+        response.ack === ACK_ROLLED_BACK;
+      if (isRolledBack) {
+        // This release is no longer active or the current activation target
+        // (a stale window, or an activation that expired before this
+        // confirmation arrived): reload immediately rather than waiting for
+        // a later broadcast.
+        settled = true;
+        reportInFlight = null;
+        deferredBootFailed = false;
+        if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+        window.removeEventListener('error', onEarlyFatalError, true);
+        window.removeEventListener('unhandledrejection', onEarlyFatalError);
+        scheduleReload();
+        return;
+      }
+      // Not committed or rolled back ('ignored', 'error', or no
+      // acknowledgement at all): the worker did not confirm a durable
+      // outcome, so the watchdog stays armed rather than claiming success.
+      // Release arbitration: an already-observed failure/deadline outcome
+      // deferred while this success was unresolved may now proceed.
+      bootOkReported = false;
+      reportInFlight = null;
+      if (deferredBootFailed) {
+        deferredBootFailed = false;
+        reportBootFailed();
+      }
+    });
+  };
+
+  // Parses one GET_ACTIVATION_STATUS response, accepting only the exact
+  // two v1 shapes: { protocolVersion, isActivationTarget: false } or
+  // { protocolVersion, isActivationTarget: true, deadlineAt: <valid ISO
+  // string> }. Any other shape (missing/mismatched protocolVersion, a
+  // truthy non-boolean isActivationTarget, a missing/non-string/unparsable
+  // deadlineAt) returns null so the caller can ignore it completely, never
+  // disarming, arming a timer, or reporting a boot failure from malformed
+  // data. Returns the deadline as a parsed number so the caller never
+  // re-parses the same string twice.
+  function parseActivationStatusResponse(data) {
+    if (!data || data.protocolVersion !== PROTOCOL_VERSION) return null;
+    if (data.isActivationTarget === false) return { isActivationTarget: false };
+    if (data.isActivationTarget !== true) return null;
+    if (typeof data.deadlineAt !== 'string') return null;
+    var deadlineAtMs = Date.parse(data.deadlineAt);
+    if (!isFinite(deadlineAtMs)) return null;
+    return { isActivationTarget: true, deadlineAtMs: deadlineAtMs };
+  }
+
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.ready
+      .then(function () {
+        if (settled) return;
+        return sendToController({
+          protocolVersion: PROTOCOL_VERSION,
+          type: GET_ACTIVATION_STATUS,
+          releaseNumber: RELEASE_NUMBER,
+        }).then(function (data) {
+          var parsed = parseActivationStatusResponse(data);
+          if (!parsed) return;
+          // A direct BOOT_OK/BOOT_FAILED acknowledgement (committed,
+          // rolled-back, or ignored) may already have settled this watchdog
+          // while this response was in flight -- e.g. the application called
+          // mioframeAppUpdateBootOk() before this round trip completed.
+          // Applying a late GET_ACTIVATION_STATUS result on top of that
+          // would be a no-op at best and a bogus re-arm at worst, so bail
+          // out before touching any of it.
+          if (settled) return;
+          if (!parsed.isActivationTarget) {
+            // GET_ACTIVATION_STATUS answers only "is this release currently
+            // the activation target", not "is this release the current
+            // active release or an already-rolled-back stale one" -- so
+            // false is not proof this window can ever safely stop
+            // reporting. A stale window can miss its rollback broadcast
+            // entirely (see the module doc comment), and only a direct
+            // BOOT_OK/BOOT_FAILED acknowledgement can durably classify this
+            // release as committed or rolled-back. Leave the watchdog fully
+            // armed: no deadline to race, but the early-error listeners stay
+            // installed and the application's own BOOT_OK (or an early
+            // fatal error's BOOT_FAILED) still determines the outcome.
+            return;
+          }
+          var msRemaining = parsed.deadlineAtMs - Date.now();
+          if (msRemaining <= 0) {
+            reportBootFailed();
+            return;
+          }
+          deadlineTimer = setTimeout(reportBootFailed, msRemaining);
+        });
+      })
+      .catch(function (readyError) {
+        // navigator.serviceWorker.ready rejecting must never surface as an
+        // unhandled rejection; it simply means activation status can never
+        // be learned for this session, so the watchdog stays armed for
+        // window.mioframeAppUpdateBootOk / an early fatal error as-is.
+      });
+
+    navigator.serviceWorker.addEventListener('message', function (event) {
+      var data = event.data;
+      if (
+        data &&
+        data.protocolVersion === PROTOCOL_VERSION &&
+        data.type === ROLLBACK &&
+        data.releaseNumber === RELEASE_NUMBER
+      ) {
+        scheduleReload();
+      }
+    });
+  }
+})();`;
+}
+
+/**
+ * Injects the watchdog script into an archived `index.html` document, right
+ * before the main module entry script tag.
+ * @param html The archived release's built `index.html` content.
+ * @param releaseNumber The exact archived release number this watchdog belongs to.
+ * @returns The `index.html` content with the watchdog script injected.
+ * @throws {Error} When the main module entry script tag cannot be found.
+ */
+export function injectWatchdogScript(html, releaseNumber) {
+  const insertAt = html.indexOf(MAIN_MODULE_SCRIPT_MARKER);
+  if (insertAt === -1) {
+    throw new Error(
+      'Could not find the main module script entry to inject the boot watchdog before',
+    );
+  }
+  const watchdogTag = `<script>${buildWatchdogScript(releaseNumber)}</script>`;
+  return html.slice(0, insertAt) + watchdogTag + html.slice(insertAt);
+}

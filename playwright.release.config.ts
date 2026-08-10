@@ -20,6 +20,8 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // Retries collect diagnostics, but a flaky release proof must still fail the gate.
+  failOnFlakyTests: !!process.env.CI,
   reporter: process.env.CI
     ? [['line'], ['html', { open: 'never', outputFolder: 'playwright-report-release' }]]
     : 'list',
@@ -51,6 +53,23 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         channel: 'chromium',
       },
+      // The complete managed-update corpus is Chromium's authoritative
+      // proof; the cross-engine spec below is Firefox/WebKit-only narrow
+      // smoke and must not duplicate onto Chromium too.
+      testIgnore: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
+    },
+    // Narrow cross-engine lifecycle smoke only: these two projects are
+    // scoped to a single spec so the complete managed-update corpus stays
+    // Chromium-only, per the managed pinned application updates feature.
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+      testMatch: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /managedUpdatesCrossEngineLifecycle\.spec\.ts/,
     },
   ],
 });

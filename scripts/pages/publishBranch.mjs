@@ -6,11 +6,20 @@
  * shared root `404.html` SPA fallback invariant. Used both by the develop
  * push deployment and the manual branch-dispatch deployment.
  *
+ * The `develop` slug is the one managed channel among branch deploys (see
+ * the managed pinned application updates feature): it publishes a new
+ * immutable release into its retained `updates/`/`assets/` archive and
+ * requires `--app-version`, `--build-id`, and `--build-date`. Every other
+ * branch slug keeps publishing as an ordinary, unmanaged branch slot.
+ *
  * When --output-dir is provided, the final staging content is also copied
  * there so the caller can upload it as a GitHub Pages artifact.
  *
  * Usage:
- *   node scripts/pages/publishBranch.mjs --dist ./dist --slug develop [--output-dir ./pages-staging]
+ *   node scripts/pages/publishBranch.mjs --dist ./dist --slug develop \
+ *     --app-version 1.2.3 --build-id <sha> --build-date <canonical-utc-committer-iso> \
+ *     [--output-dir ./pages-staging]
+ *   node scripts/pages/publishBranch.mjs --dist ./dist --slug my-branch [--output-dir ./pages-staging]
  *
  * Required env:
  *   GITHUB_TOKEN      - token with contents:write on the target Pages repository
@@ -23,31 +32,53 @@ import { pathToFileURL } from 'node:url';
 
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
 import { applyBranchPublish } from './lib/pagesFs.mjs';
+import { publishManagedRelease } from './lib/releasePublish.mjs';
+import { runManagedPublicationPreflight } from './lib/managedCompatibilityPreflight.mjs';
 import { validateBranchSlug } from './lib/slug.mjs';
+import { resolveManagedChannel } from '../../src/shared/service/appUpdate/channelContract.ts';
+
+function readFlag(argv, flag) {
+  const index = argv.indexOf(flag);
+  return index !== -1 ? argv[index + 1] : undefined;
+}
 
 /**
  * @param argv Process arguments (process.argv.slice(2)).
  * @param env Process environment.
  */
 export async function publishBranch(argv = process.argv.slice(2), env = process.env) {
-  const distIndex = argv.indexOf('--dist');
-  const slugIndex = argv.indexOf('--slug');
+  const distDir = readFlag(argv, '--dist');
+  const rawSlug = readFlag(argv, '--slug');
 
-  if (distIndex === -1 || !argv[distIndex + 1]) {
+  if (!distDir) {
     throw new Error('Usage: publishBranch.mjs --dist <dist-dir> --slug <branch-slug>');
   }
-  if (slugIndex === -1 || !argv[slugIndex + 1]) {
+  if (!rawSlug) {
     throw new Error('Usage: publishBranch.mjs --dist <dist-dir> --slug <branch-slug>');
   }
 
-  const distDir = argv[distIndex + 1];
-  if (!existsSync(distDir)) {
+  const slug = validateBranchSlug(rawSlug);
+  const managedChannel = resolveManagedChannel('branch', slug);
+  const isManaged = managedChannel !== undefined;
+
+  const appVersion = readFlag(argv, '--app-version');
+  const buildId = readFlag(argv, '--build-id');
+  const buildDate = readFlag(argv, '--build-date');
+  if (isManaged && (!appVersion || !buildId || !buildDate)) {
+    throw new Error(
+      'Usage: publishBranch.mjs --dist <dist-dir> --slug develop --app-version <version> --build-id <id> --build-date <canonical-utc-committer-iso>',
+    );
+  }
+
+  // The managed 'develop' slug delegates retained-tree planning to
+  // publishManagedRelease(), which resolves a latest-build no-op before ever
+  // requiring dist; only an ordinary unmanaged branch slug needs dist to
+  // exist up front.
+  if (!isManaged && !existsSync(distDir)) {
     throw new Error(`dist directory does not exist: ${distDir}`);
   }
-  const slug = validateBranchSlug(argv[slugIndex + 1]);
 
-  const outputIndex = argv.indexOf('--output-dir');
-  const outputDir = outputIndex !== -1 ? argv[outputIndex + 1] : undefined;
+  const outputDir = readFlag(argv, '--output-dir');
 
   const { GITHUB_TOKEN, PAGES_REPOSITORY } = env;
   if (!GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is required');
@@ -58,8 +89,33 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
     repository: PAGES_REPOSITORY,
     commitMessage: `chore(pages): deploy branch ${slug}`,
     outputDir,
-    fn(workDir) {
-      applyBranchPublish(workDir, distDir, slug);
+    async fn(workDir) {
+      if (isManaged) {
+        // Fails closed, before any real publication write, unless a
+        // candidate build with an existing previous release proves backward
+        // data compatibility (see the managed pinned application updates
+        // feature's "Data compatibility" invariant and
+        // scripts/pages/lib/managedCompatibilityPreflight.mjs). Ordinary
+        // unmanaged branch slugs never reach this branch at all.
+        await runManagedPublicationPreflight({
+          workDir,
+          distDir,
+          channel: managedChannel,
+          appVersion,
+          buildId,
+          buildDate,
+        });
+        publishManagedRelease({
+          workDir,
+          distDir,
+          channel: managedChannel,
+          appVersion,
+          buildId,
+          buildDate,
+        });
+      } else {
+        applyBranchPublish(workDir, distDir, slug);
+      }
     },
   });
 

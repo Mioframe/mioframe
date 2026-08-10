@@ -63,6 +63,21 @@ jobs:
           ref: ${{ inputs.branch }}
           path: app-source
 
+      - name: Resolve selected commit SHA
+        id: selected-commit
+        run: echo "sha=$(git -C app-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # The canonical UTC committer timestamp of the selected app-source
+      # commit — never workflow execution time, the trusted tooling
+      # checkout's own SHA, or the workflow run id/attempt. When the
+      # computed slug is exactly `develop`, this is the same managed build
+      # identity contract the automatic develop-push deployment uses (see
+      # docs/managed-pinned-updates.md, "Deterministic build inputs").
+      - name: Resolve canonical build date
+        id: build-date
+        run: |
+          echo "date=$(TZ=UTC git -C app-source show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd HEAD)" >> "$GITHUB_OUTPUT"
+
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: app-source/package.json
@@ -83,14 +98,12 @@ jobs:
           BASE_URL: /branch/${{ steps.slug.outputs.slug }}/
           VITE_RELEASE_CHANNEL: branch
           VITE_RELEASE_CHANNEL_ID: ${{ steps.slug.outputs.slug }}
+          VITE_BUILD_ID: ${{ steps.selected-commit.outputs.sha }}
+          VITE_BUILD_DATE: ${{ steps.build-date.outputs.date }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm run build
-
-      - name: Compute deployed commit SHA
-        id: deployed-sha
-        run: echo "sha=$(git -C app-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Write deployment metadata
         env:
@@ -104,8 +117,9 @@ jobs:
           --ref "$BRANCH"
           --branch "$BRANCH"
           --slug ${{ steps.slug.outputs.slug }}
-          --sha ${{ steps.deployed-sha.outputs.sha }}
+          --sha ${{ steps.selected-commit.outputs.sha }}
           --app-version "$(node -p "require('./app-source/package.json').version")"
+          --build-date ${{ steps.build-date.outputs.date }}
 
       - name: Generate Pages deploy token
         id: pages-app-token
@@ -117,7 +131,27 @@ jobs:
           repositories: mioframe.github.io
           permission-contents: write
 
+      # The `develop` slug is the one managed channel among branch deploys:
+      # publishBranch.mjs requires --app-version/--build-id/--build-date for
+      # it (see the managed pinned application updates feature). The
+      # selected app-source commit is the sole source of this identity —
+      # never the trusted tooling checkout's own SHA or workflow execution
+      # time.
+      - name: Publish managed develop release to Mioframe/mioframe.github.io
+        if: steps.slug.outputs.slug == 'develop'
+        env:
+          GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
+          PAGES_REPOSITORY: Mioframe/mioframe.github.io
+        run: >-
+          node tooling/scripts/pages/publishBranch.mjs
+          --dist app-source/dist
+          --slug develop
+          --app-version "$(node -p "require('./app-source/package.json').version")"
+          --build-id ${{ steps.selected-commit.outputs.sha }}
+          --build-date ${{ steps.build-date.outputs.date }}
+
       - name: Publish branch build to Mioframe/mioframe.github.io
+        if: steps.slug.outputs.slug != 'develop'
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
           PAGES_REPOSITORY: Mioframe/mioframe.github.io

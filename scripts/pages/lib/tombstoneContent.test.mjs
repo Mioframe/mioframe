@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildBranchCacheNamePrefix,
   buildTombstoneFiles,
   buildTombstoneHtml,
   buildTombstoneManifest,
   buildTombstoneServiceWorker,
 } from './tombstoneContent.mjs';
-
-describe('buildBranchCacheNamePrefix', () => {
-  it('builds a branch-scoped cache prefix', () => {
-    expect(buildBranchCacheNamePrefix('develop')).toBe('branch-develop-');
-    expect(buildBranchCacheNamePrefix('feature-x')).toBe('branch-feature-x-');
-  });
-});
+// `buildBranchCacheNamePrefix` is canonically owned and tested by
+// channelContract.test.ts; this file only proves its own composition (that
+// the generated tombstone service worker source embeds and uses that
+// prefix), never the prefix-derivation matrix itself.
 
 describe('buildTombstoneServiceWorker', () => {
   it('embeds the branch-scoped cache prefix', () => {

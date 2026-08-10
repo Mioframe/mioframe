@@ -4,10 +4,24 @@ import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./lib/ghPagesBranch.mjs', () => ({
-  withGhPagesBranch: vi.fn(async () => {}),
+  withGhPagesBranch: vi.fn(async (options) => {
+    await options.fn('/fake-work-dir');
+  }),
+}));
+vi.mock('./lib/pagesFs.mjs', () => ({
+  applyBranchPublish: vi.fn(),
+}));
+vi.mock('./lib/releasePublish.mjs', () => ({
+  publishManagedRelease: vi.fn(() => ({ releaseNumber: 1 })),
+}));
+vi.mock('./lib/managedCompatibilityPreflight.mjs', () => ({
+  runManagedPublicationPreflight: vi.fn(async () => ({ decision: 'not-applicable' })),
 }));
 
 const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
+const { applyBranchPublish } = await import('./lib/pagesFs.mjs');
+const { publishManagedRelease } = await import('./lib/releasePublish.mjs');
+const { runManagedPublicationPreflight } = await import('./lib/managedCompatibilityPreflight.mjs');
 const { publishBranch } = await import('./publishBranch.mjs');
 
 let distDir = '';
@@ -15,16 +29,21 @@ let distDir = '';
 beforeEach(() => {
   distDir = mkdtempSync(join(tmpdir(), 'pages-dist-'));
   vi.mocked(withGhPagesBranch).mockClear();
+  vi.mocked(applyBranchPublish).mockClear();
+  vi.mocked(publishManagedRelease).mockReset().mockReturnValue({ releaseNumber: 1 });
+  vi.mocked(runManagedPublicationPreflight)
+    .mockReset()
+    .mockResolvedValue({ decision: 'not-applicable' });
 });
 
 afterEach(() => {
   rmSync(distDir, { recursive: true, force: true });
 });
 
-describe('publishBranch validation', () => {
+describe('publishBranch validation (ordinary, non-managed slug)', () => {
   it('throws before git operations when distDir does not exist', async () => {
     await expect(
-      publishBranch(['--dist', '/nonexistent/dist-12345', '--slug', 'develop'], {
+      publishBranch(['--dist', '/nonexistent/dist-12345', '--slug', 'my-branch'], {
         GITHUB_TOKEN: 'token',
         PAGES_REPOSITORY: 'owner/pages-repo',
       }),
@@ -33,7 +52,7 @@ describe('publishBranch validation', () => {
 
   it('throws when --dist argument is missing', async () => {
     await expect(
-      publishBranch(['--slug', 'develop'], {
+      publishBranch(['--slug', 'my-branch'], {
         GITHUB_TOKEN: 'token',
         PAGES_REPOSITORY: 'owner/pages-repo',
       }),
@@ -69,7 +88,7 @@ describe('publishBranch validation', () => {
 
   it('throws when GITHUB_TOKEN is missing', async () => {
     await expect(
-      publishBranch(['--dist', distDir, '--slug', 'develop'], {
+      publishBranch(['--dist', distDir, '--slug', 'my-branch'], {
         PAGES_REPOSITORY: 'owner/pages-repo',
       }),
     ).rejects.toThrow('GITHUB_TOKEN is required');
@@ -77,16 +96,14 @@ describe('publishBranch validation', () => {
 
   it('throws when PAGES_REPOSITORY is missing', async () => {
     await expect(
-      publishBranch(['--dist', distDir, '--slug', 'develop'], {
+      publishBranch(['--dist', distDir, '--slug', 'my-branch'], {
         GITHUB_TOKEN: 'token',
       }),
     ).rejects.toThrow('PAGES_REPOSITORY is required');
   });
-});
 
-describe('publishBranch target repository', () => {
   it('publishes to PAGES_REPOSITORY and ignores GITHUB_REPOSITORY', async () => {
-    await publishBranch(['--dist', distDir, '--slug', 'develop'], {
+    await publishBranch(['--dist', distDir, '--slug', 'my-branch'], {
       GITHUB_TOKEN: 'token',
       PAGES_REPOSITORY: 'Mioframe/mioframe.github.io',
       // The reserved Actions default env var; must never be used as the
@@ -97,5 +114,206 @@ describe('publishBranch target repository', () => {
     expect(withGhPagesBranch).toHaveBeenCalledWith(
       expect.objectContaining({ repository: 'Mioframe/mioframe.github.io' }),
     );
+  });
+
+  it('uses the ordinary unmanaged publish path, not the managed release publisher', async () => {
+    await publishBranch(['--dist', distDir, '--slug', 'my-branch'], {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'owner/pages-repo',
+    });
+
+    expect(applyBranchPublish).toHaveBeenCalledWith('/fake-work-dir', distDir, 'my-branch');
+    expect(publishManagedRelease).not.toHaveBeenCalled();
+  });
+
+  it('never runs the data-compatibility preflight for an ordinary unmanaged branch slug', async () => {
+    await publishBranch(['--dist', distDir, '--slug', 'my-branch'], {
+      GITHUB_TOKEN: 'token',
+      PAGES_REPOSITORY: 'owner/pages-repo',
+    });
+
+    expect(runManagedPublicationPreflight).not.toHaveBeenCalled();
+  });
+});
+
+describe('publishBranch validation (managed "develop" slug)', () => {
+  it('throws when --app-version is missing', async () => {
+    await expect(
+      publishBranch(
+        [
+          '--dist',
+          distDir,
+          '--slug',
+          'develop',
+          '--build-id',
+          'abc123',
+          '--build-date',
+          '2026-07-24T00:00:00.000Z',
+        ],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
+    ).rejects.toThrow('Usage:');
+  });
+
+  it('throws when --build-id is missing', async () => {
+    await expect(
+      publishBranch(
+        [
+          '--dist',
+          distDir,
+          '--slug',
+          'develop',
+          '--app-version',
+          '1.2.3',
+          '--build-date',
+          '2026-07-24T00:00:00.000Z',
+        ],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
+    ).rejects.toThrow('Usage:');
+  });
+
+  it('throws when --build-date is missing', async () => {
+    await expect(
+      publishBranch(
+        ['--dist', distDir, '--slug', 'develop', '--app-version', '1.2.3', '--build-id', 'abc123'],
+        {
+          GITHUB_TOKEN: 'token',
+          PAGES_REPOSITORY: 'owner/pages-repo',
+        },
+      ),
+    ).rejects.toThrow('Usage:');
+  });
+
+  it('publishes a managed develop release with the given app version, build id, and build date', async () => {
+    await publishBranch(
+      [
+        '--dist',
+        distDir,
+        '--slug',
+        'develop',
+        '--app-version',
+        '1.2.3',
+        '--build-id',
+        'abc123',
+        '--build-date',
+        '2026-07-24T00:00:00.000Z',
+      ],
+      { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
+    );
+
+    expect(publishManagedRelease).toHaveBeenCalledWith(
+      expect.objectContaining({
+        distDir,
+        channel: 'develop',
+        appVersion: '1.2.3',
+        buildId: 'abc123',
+        buildDate: '2026-07-24T00:00:00.000Z',
+      }),
+    );
+    expect(applyBranchPublish).not.toHaveBeenCalled();
+  });
+
+  // publishManagedRelease() resolves a latest-build no-op before ever
+  // requiring dist; the managed 'develop' entry point must not duplicate
+  // that check up front, unlike an ordinary unmanaged branch slug (see
+  // 'publishBranch validation (ordinary, non-managed slug)' above).
+  // publishManagedRelease is mocked to always succeed, so this proves
+  // publishBranch.mjs itself carries no early distDir existence gate for
+  // the managed slug, whatever the retained publication decision turns
+  // out to be.
+  it('accepts a missing/nonexistent distDir and delegates to publishManagedRelease()', async () => {
+    const missingDistDir = '/nonexistent/dist-12345';
+
+    await publishBranch(
+      [
+        '--dist',
+        missingDistDir,
+        '--slug',
+        'develop',
+        '--app-version',
+        '1.2.3',
+        '--build-id',
+        'abc123',
+        '--build-date',
+        '2026-07-24T00:00:00.000Z',
+      ],
+      { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
+    );
+
+    expect(publishManagedRelease).toHaveBeenCalledWith(
+      expect.objectContaining({ distDir: missingDistDir, channel: 'develop' }),
+    );
+  });
+
+  it('runs the data-compatibility preflight, with the same publication inputs, before the real publication write', async () => {
+    const callOrder = [];
+    vi.mocked(runManagedPublicationPreflight).mockImplementation(async () => {
+      callOrder.push('preflight');
+      return { decision: 'not-applicable' };
+    });
+    vi.mocked(publishManagedRelease).mockImplementation(() => {
+      callOrder.push('publish');
+      return { releaseNumber: 1 };
+    });
+
+    await publishBranch(
+      [
+        '--dist',
+        distDir,
+        '--slug',
+        'develop',
+        '--app-version',
+        '1.2.3',
+        '--build-id',
+        'abc123',
+        '--build-date',
+        '2026-07-24T00:00:00.000Z',
+      ],
+      { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
+    );
+
+    expect(runManagedPublicationPreflight).toHaveBeenCalledWith(
+      expect.objectContaining({
+        distDir,
+        channel: 'develop',
+        appVersion: '1.2.3',
+        buildId: 'abc123',
+        buildDate: '2026-07-24T00:00:00.000Z',
+      }),
+    );
+    expect(callOrder).toEqual(['preflight', 'publish']);
+  });
+
+  it('never reaches the real publication write when the preflight rejects', async () => {
+    vi.mocked(runManagedPublicationPreflight).mockRejectedValue(
+      new Error('data-compatibility proof failed'),
+    );
+
+    await expect(
+      publishBranch(
+        [
+          '--dist',
+          distDir,
+          '--slug',
+          'develop',
+          '--app-version',
+          '1.2.3',
+          '--build-id',
+          'abc123',
+          '--build-date',
+          '2026-07-24T00:00:00.000Z',
+        ],
+        { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
+      ),
+    ).rejects.toThrow('data-compatibility proof failed');
+
+    expect(publishManagedRelease).not.toHaveBeenCalled();
   });
 });

@@ -14,3 +14,4 @@ declare const __BUILD_DATE__: string;
 declare const __APP_VERSION__: string;
 declare const __BUILD_ID__: string;
 declare const __DIAGNOSTICS_MODE__: 'preview' | 'production';
+declare const __MANAGED_APP_UPDATE_CHANNEL__: 'stable' | 'develop' | undefined;

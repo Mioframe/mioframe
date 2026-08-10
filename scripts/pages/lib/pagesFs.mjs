@@ -7,11 +7,38 @@ import { buildSpaFallbackHtml } from './spaFallback.mjs';
 const PRESERVED_STABLE_ROOT_DIRS = new Set(['branch', 'pr']);
 
 /**
+ * Additionally preserved top-level directories for a managed channel's root
+ * (stable) or slot (develop branch): `assets/` and `updates/` accumulate the
+ * channel's retained immutable release archive across deploys and must never
+ * be wiped by an ordinary publish. See `docs/release.md` and the managed
+ * pinned application updates feature.
+ */
+const MANAGED_RELEASE_DIRS = new Set(['assets', 'updates']);
+
+/**
  * Ensure the site-level GitHub Pages SPA fallback exists at the repository root.
  * @param workDir Path to the Pages staging working directory.
  */
 function ensureRootSpaFallback(workDir) {
   writeFileSync(join(workDir, '404.html'), buildSpaFallbackHtml(), 'utf8');
+}
+
+/**
+ * Removes every entry in `targetDir` except `.git` and `preservedNames`,
+ * then copies `distDir`'s contents into `targetDir`. Directories in
+ * `preservedNames` are never removed, so a fresh `dist` build's own copy of
+ * that name (if any) is merged into, not replacing, what is already there.
+ * @param targetDir Directory to replace the contents of.
+ * @param distDir Built dist directory to copy in.
+ * @param preservedNames Top-level entry names under `targetDir` to never remove.
+ */
+function replaceEntriesExcept(targetDir, distDir, preservedNames) {
+  for (const entry of readdirSync(targetDir, { withFileTypes: true })) {
+    if (entry.name === '.git') continue;
+    if (entry.isDirectory() && preservedNames.has(entry.name)) continue;
+    rmSync(join(targetDir, entry.name), { recursive: true, force: true });
+  }
+  cpSync(distDir, targetDir, { recursive: true });
 }
 
 /**
@@ -25,12 +52,27 @@ function ensureRootSpaFallback(workDir) {
  * @param distDir Path to the built dist directory to publish.
  */
 export function applyStablePublish(workDir, distDir) {
-  for (const entry of readdirSync(workDir, { withFileTypes: true })) {
-    if (entry.name === '.git') continue;
-    if (entry.isDirectory() && PRESERVED_STABLE_ROOT_DIRS.has(entry.name)) continue;
-    rmSync(join(workDir, entry.name), { recursive: true, force: true });
-  }
-  cpSync(distDir, workDir, { recursive: true });
+  replaceEntriesExcept(workDir, distDir, PRESERVED_STABLE_ROOT_DIRS);
+  ensureRootSpaFallback(workDir);
+}
+
+/**
+ * Apply a managed stable build (see the managed pinned application updates
+ * feature) to the root of a Pages work directory.
+ *
+ * Same as {@link applyStablePublish}, but also preserves the root-level
+ * `assets/` and `updates/` directories so the channel's retained immutable
+ * release archive accumulates across deploys instead of being wiped by
+ * every publish.
+ * @param workDir Path to the Pages staging working directory.
+ * @param distDir Path to the built dist directory to publish.
+ */
+export function applyManagedStablePublish(workDir, distDir) {
+  replaceEntriesExcept(
+    workDir,
+    distDir,
+    new Set([...PRESERVED_STABLE_ROOT_DIRS, ...MANAGED_RELEASE_DIRS]),
+  );
   ensureRootSpaFallback(workDir);
 }
 
@@ -49,6 +91,26 @@ export function applyBranchPublish(workDir, distDir, slug) {
   rmSync(slotDir, { recursive: true, force: true });
   mkdirSync(slotDir, { recursive: true });
   cpSync(distDir, slotDir, { recursive: true });
+  ensureRootSpaFallback(workDir);
+}
+
+/**
+ * Apply a managed branch build (see the managed pinned application updates
+ * feature; used only for the `develop` slot) to its `branch/<slug>/` slot in
+ * a Pages work directory.
+ *
+ * Unlike {@link applyBranchPublish}, the slot's `assets/` and `updates/`
+ * directories are preserved rather than wiped, so the channel's retained
+ * immutable release archive accumulates across deploys.
+ * @param workDir Path to the Pages staging working directory.
+ * @param distDir Path to the built dist directory to publish.
+ * @param slug Branch slug (see `slugifyBranch`/`validateBranchSlug`).
+ */
+export function applyManagedBranchPublish(workDir, distDir, slug) {
+  validateBranchSlug(slug);
+  const slotDir = join(workDir, 'branch', slug);
+  mkdirSync(slotDir, { recursive: true });
+  replaceEntriesExcept(slotDir, distDir, MANAGED_RELEASE_DIRS);
   ensureRootSpaFallback(workDir);
 }
 

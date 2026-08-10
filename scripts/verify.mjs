@@ -87,6 +87,11 @@ export const COMMAND_TIMEOUT_MS_BY_LABEL = {
   build: 10 * 60 * 1000,
   artifact: 8 * 60 * 1000,
   'release-smoke': PLAYWRIGHT_COMMAND_TIMEOUT_MS,
+  // Four sequential fresh-container sessions (see
+  // scripts/release/managedUpdatesProof.mjs), each bounded by the same
+  // derived Playwright container timeout as every other Playwright-backed
+  // lane.
+  'managed-updates': 4 * PLAYWRIGHT_COMMAND_TIMEOUT_MS,
 };
 const cliOnlyLabel = currentVerifyInvocation?.onlyLabel ?? null;
 const cliProfile = currentVerifyInvocation?.profile ?? null;
@@ -210,7 +215,7 @@ export function getAllSiblingTestFiles(filePath) {
     return uniqSorted(testCandidates);
   }
 
-  if (filePath.startsWith('scripts/')) {
+  if (filePath.startsWith('scripts/') || filePath.startsWith('tests/e2e/')) {
     if (filePath.endsWith('.test.mjs') || filePath.endsWith('.spec.mjs')) {
       return fileExists(filePath) ? [filePath] : [];
     }
@@ -244,8 +249,10 @@ function getVitestScope(changedFiles) {
   const scope = [];
 
   for (const filePath of changedFiles) {
-    if (filePath.startsWith('tests/e2e/')) {
-      // vitest.config.ts excludes tests/e2e/** entirely; Playwright specs there are not vitest scope.
+    if (filePath.startsWith('tests/e2e/') && filePath.endsWith('.spec.ts')) {
+      // vitest.config.ts excludes Playwright specs under tests/e2e/**; a
+      // colocated `.test.mjs` fixture-logic test there is valid vitest
+      // scope and falls through to the checks below like any other file.
       continue;
     }
 
@@ -289,9 +296,9 @@ function isVisualRelevantFile(filePath) {
     filePath === 'vite.config.ts' ||
     filePath === 'tsconfig.storybook.json' ||
     filePath === 'scripts/storybook.mjs' ||
-    filePath === 'src/app/styles/base.css' ||
     filePath === 'src/app/styles/styles.css' ||
     filePath === 'src/app/styles/fonts.css' ||
+    filePath === 'src/app/styles/base.css' ||
     filePath.startsWith('.storybook/') ||
     filePath.startsWith('tests/e2e/visual/') ||
     filePath.startsWith('src/shared/ui/') ||
@@ -581,7 +588,9 @@ function printHelp() {
     '  --full              Unconditional full-project release scope: do not resolve changed paths,',
   );
   console.log('                      run full proof plus release-version/release-config/build/');
-  console.log('                      artifact/release-smoke. Equivalent to `pnpm verify:release`.');
+  console.log(
+    '                      publisher-node-import/artifact/release-smoke/managed-updates. Equivalent to `pnpm verify:release`.',
+  );
   console.log('');
   console.log('Labels for --only:');
 
@@ -1026,6 +1035,14 @@ function addReleaseOnlyCommands(commands) {
 
   commands.push({
     kind: 'run',
+    label: 'publisher-node-import',
+    command: 'node',
+    args: ['scripts/release/publisherWireContractImportProof.mjs'],
+    weight: classifyCommandWeight({ label: 'publisher-node-import' }),
+  });
+
+  commands.push({
+    kind: 'run',
     label: 'artifact',
     command: 'pnpm',
     args: [
@@ -1048,6 +1065,14 @@ function addReleaseOnlyCommands(commands) {
       'tests/e2e/release/firstUserAndReturningUserSmoke.spec.ts',
     ],
     weight: classifyCommandWeight({ label: 'release-smoke' }),
+  });
+
+  commands.push({
+    kind: 'run',
+    label: 'managed-updates',
+    command: 'node',
+    args: ['scripts/release/managedUpdatesProof.mjs'],
+    weight: classifyCommandWeight({ label: 'managed-updates' }),
   });
 }
 

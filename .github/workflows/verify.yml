@@ -114,7 +114,7 @@ jobs:
       !cancelled() &&
       (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     permissions:
       contents: read
 
@@ -388,6 +388,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The canonical UTC committer timestamp of the checked-out commit,
+      # derived once per job and passed to every managed build-metadata
+      # consumer (Vite __BUILD_DATE__, release descriptor generation, and
+      # deployment.json) — never the workflow's own execution time. See
+      # docs/managed-pinned-updates.md, "Deterministic build inputs".
+      - name: Resolve canonical build date
+        id: build-date
+        run: |
+          echo "date=$(TZ=UTC git show -s --date=format-local:'%Y-%m-%dT%H:%M:%SZ' --format=%cd ${{ github.sha }})" >> "$GITHUB_OUTPUT"
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -403,6 +413,7 @@ jobs:
           BASE_URL: /branch/develop/
           VITE_RELEASE_CHANNEL: branch
           VITE_RELEASE_CHANNEL_ID: develop
+          VITE_BUILD_DATE: ${{ steps.build-date.outputs.date }}
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -420,6 +431,7 @@ jobs:
           --slug develop
           --sha ${{ github.sha }}
           --app-version "$(node -p "require('./package.json').version")"
+          --build-date ${{ steps.build-date.outputs.date }}
 
       - name: Generate Pages deploy token
         id: pages-app-token
@@ -435,4 +447,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.pages-app-token.outputs.token }}
           PAGES_REPOSITORY: Mioframe/mioframe.github.io
-        run: node scripts/pages/publishBranch.mjs --dist dist --slug develop
+        run: >-
+          node scripts/pages/publishBranch.mjs --dist dist --slug develop
+          --app-version "$(node -p "require('./package.json').version")"
+          --build-id ${{ github.sha }}
+          --build-date ${{ steps.build-date.outputs.date }}

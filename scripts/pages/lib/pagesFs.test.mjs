@@ -7,6 +7,8 @@ import { buildSpaFallbackHtml } from './spaFallback.mjs';
 import {
   applyBranchPublish,
   applyBranchRemoval,
+  applyManagedBranchPublish,
+  applyManagedStablePublish,
   applyPrCleanup,
   applyPrPublish,
   applyStablePublish,
@@ -116,6 +118,46 @@ describe('applyStablePublish', () => {
   });
 });
 
+describe('applyManagedStablePublish', () => {
+  it('preserves assets/ and updates/ while replacing everything else', () => {
+    write(workDir, 'assets/old-release.js', 'retained-old');
+    write(workDir, 'updates/latest.json', '{"releaseId":"old"}');
+    write(workDir, 'updates/releases/old.json', '{}');
+    write(workDir, 'old-file.txt', 'stale');
+    write(distDir, 'index.html', '<new/>');
+    write(distDir, 'assets/new-release.js', 'new-content');
+
+    applyManagedStablePublish(workDir, distDir);
+
+    expect(fileExists(workDir, 'assets/old-release.js')).toBe(true);
+    expect(fileExists(workDir, 'assets/new-release.js')).toBe(true);
+    expect(fileExists(workDir, 'updates/latest.json')).toBe(true);
+    expect(fileExists(workDir, 'updates/releases/old.json')).toBe(true);
+    expect(fileExists(workDir, 'old-file.txt')).toBe(false);
+    expect(fileExists(workDir, 'index.html')).toBe(true);
+  });
+
+  it('still preserves branch/ and pr/ namespaces', () => {
+    write(workDir, 'branch/develop/index.html', '<develop/>');
+    write(workDir, 'pr/5/index.html', '<pr5/>');
+    write(distDir, 'index.html', '<stable/>');
+
+    applyManagedStablePublish(workDir, distDir);
+
+    expect(fileExists(workDir, 'branch/develop/index.html')).toBe(true);
+    expect(fileExists(workDir, 'pr/5/index.html')).toBe(true);
+  });
+
+  it('works on a first-ever publish with no prior assets/updates', () => {
+    write(distDir, 'index.html', '<stable/>');
+    write(distDir, 'assets/app.js', 'content');
+
+    applyManagedStablePublish(workDir, distDir);
+
+    expect(fileExists(workDir, 'assets/app.js')).toBe(true);
+  });
+});
+
 describe('applyBranchPublish', () => {
   it('creates the branch slot from dist', () => {
     write(distDir, 'index.html', '<develop/>');
@@ -185,6 +227,51 @@ describe('applyBranchPublish', () => {
 
   it('rejects the reserved "pr" slug', () => {
     expect(() => applyBranchPublish(workDir, distDir, 'pr')).toThrow('is reserved');
+  });
+});
+
+describe('applyManagedBranchPublish', () => {
+  it("preserves the slot's assets/ and updates/ while replacing everything else", () => {
+    write(workDir, 'branch/develop/assets/old-release.js', 'retained-old');
+    write(workDir, 'branch/develop/updates/latest.json', '{"releaseId":"old"}');
+    write(workDir, 'branch/develop/old-file.txt', 'stale');
+    write(distDir, 'index.html', '<new/>');
+    write(distDir, 'assets/new-release.js', 'new-content');
+
+    applyManagedBranchPublish(workDir, distDir, 'develop');
+
+    expect(fileExists(workDir, 'branch/develop/assets/old-release.js')).toBe(true);
+    expect(fileExists(workDir, 'branch/develop/assets/new-release.js')).toBe(true);
+    expect(fileExists(workDir, 'branch/develop/updates/latest.json')).toBe(true);
+    expect(fileExists(workDir, 'branch/develop/old-file.txt')).toBe(false);
+    expect(fileExists(workDir, 'branch/develop/index.html')).toBe(true);
+  });
+
+  it('creates the slot from scratch on a first-ever publish', () => {
+    write(distDir, 'index.html', '<develop/>');
+
+    applyManagedBranchPublish(workDir, distDir, 'develop');
+
+    expect(fileExists(workDir, 'branch/develop/index.html')).toBe(true);
+  });
+
+  it('does not modify stable root files or other slots', () => {
+    write(workDir, 'index.html', '<stable/>');
+    write(workDir, 'assets/main.js', '// stable');
+    write(workDir, 'branch/other/index.html', '<other/>');
+    write(distDir, 'index.html', '<develop/>');
+
+    applyManagedBranchPublish(workDir, distDir, 'develop');
+
+    expect(readFileSync(join(workDir, 'index.html'), 'utf8')).toBe('<stable/>');
+    expect(readFileSync(join(workDir, 'assets/main.js'), 'utf8')).toBe('// stable');
+    expect(fileExists(workDir, 'branch/other/index.html')).toBe(true);
+  });
+
+  it('rejects an invalid branch slug', () => {
+    expect(() => applyManagedBranchPublish(workDir, distDir, '../etc')).toThrow(
+      'Invalid branch slug',
+    );
   });
 });
 
