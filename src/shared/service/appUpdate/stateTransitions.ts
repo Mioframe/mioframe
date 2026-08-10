@@ -174,7 +174,7 @@ export type CheckForUpdatesOutcome = 'updated' | 'ignored-stale' | 'skipped' | '
 
 /** Result of {@link applyDiscovery}: the outcome and the resulting state. */
 export type CheckForUpdatesResult = {
-  /** Which of the three discovery outcomes occurred. */
+  /** Which discovery outcome occurred. */
   outcome: CheckForUpdatesOutcome;
   /** The resulting controller state. */
   state: UpdateControllerState;
@@ -445,8 +445,10 @@ export type CleanLaunchInputs = {
  * client outside this exact channel (other channels, branches, and PR
  * previews). Zero other same-channel windows is a qualifying clean launch;
  * one or more other same-channel windows blocks activation. `false`
- * whenever the candidate is not `ready`: every qualifying navigation while
- * already `activating` is served its target without starting another one.
+ * whenever the candidate is not `ready`: a navigation that encounters an
+ * already `activating` candidate must not start another activation; worker
+ * orchestration handles that state and returns a controlled `503` for an
+ * unexpired activation this navigation did not start.
  *
  * Has no concept of "reload": it only ever consumes `otherLiveClientCount`,
  * never a request type, navigation history, or a URL heuristic — this pure
