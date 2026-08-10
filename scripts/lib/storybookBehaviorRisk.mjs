@@ -33,14 +33,6 @@ export const STORYBOOK_BEHAVIOR_STANDALONE_SPECS = [];
  */
 export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
   {
-    name: 'storybook behavior infrastructure smoke',
-    sourcePrefixes: [
-      'src/shared/ui/material/components/button/MDButton.stories.ts',
-      'src/shared/ui/material/components/button/MDButton.vue',
-    ],
-    specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
-  },
-  {
     name: 'shared color ownership',
     sourcePrefixes: [
       'src/shared/ui/Snackbar/MDSnackbar.vue',
@@ -62,23 +54,18 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/overlayLifecycle.spec.ts'],
   },
   {
-    name: 'button family behavior',
-    // A directory-wide prefix so every Button-family component, story, and colocated behavior
-    // fixture (for example the target-hit and toolbar story helpers) selects this scenario,
-    // instead of an explicit per-file list that silently misses new colocated fixtures. This is
-    // intentionally broader than `md-button-family.spec.ts` alone exercises (it also covers
-    // `FabContainer`/`MDSegmentedButtons`), trading a wider full-lane trigger for not missing a
-    // real Button-family behavior source. Also includes the shared focus-indicator sources that
-    // directly affect this spec's real-keyboard-focus assertions, and the spec's own path (see
-    // the `reorder` scenario comment above) so editing it re-selects itself.
+    name: 'shared focus-indicator integration',
+    // Cross-owner: one State foundation is exercised against hosts from both the Material Button
+    // family and the legacy Button module, so neither owner-local spec alone can claim this
+    // contract. `Button/` and `material/components/button/` are directory-wide so every
+    // Button-family component/story selects this scenario alongside its own owner-local spec.
     sourcePrefixes: [
       'src/shared/ui/Button/',
-      'src/shared/ui/LoadingButton/',
       'src/shared/ui/material/components/button/',
       'src/shared/ui/State/useFocusIndicator.ts',
       'src/shared/ui/State/md-focus-indicator.css',
     ],
-    specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
+    specs: ['tests/e2e/storybook/focusIndicator.spec.ts'],
   },
   {
     name: 'dialog form fallback focus',

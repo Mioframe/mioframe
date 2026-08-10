@@ -26,7 +26,7 @@ const LOADING_INDICATOR_BROWSER_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoading
 
 describe('isStorybookBehaviorSpecPath', () => {
   it('flags specs under tests/e2e/storybook/', () => {
-    expect(isStorybookBehaviorSpecPath('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
+    expect(isStorybookBehaviorSpecPath('tests/e2e/storybook/routerHarness.spec.ts')).toBe(true);
   });
 
   it('does not flag visual or app e2e specs', () => {
@@ -41,7 +41,7 @@ describe('isColocatedBrowserSpecPath', () => {
   });
 
   it('does not flag legacy centralized specs or non-browser src files', () => {
-    expect(isColocatedBrowserSpecPath('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(false);
+    expect(isColocatedBrowserSpecPath('tests/e2e/storybook/routerHarness.spec.ts')).toBe(false);
     expect(
       isColocatedBrowserSpecPath(
         'src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue',
@@ -88,9 +88,7 @@ describe('isStorybookBehaviorSupportPath', () => {
   });
 
   it('does not flag the spec files themselves', () => {
-    expect(isStorybookBehaviorSupportPath('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(
-      false,
-    );
+    expect(isStorybookBehaviorSupportPath('tests/e2e/storybook/routerHarness.spec.ts')).toBe(false);
   });
 
   it('does not flag files outside tests/e2e/storybook/', () => {
@@ -154,11 +152,13 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     );
     const coveredSpecs = new Set([...registrySpecs, ...STORYBOOK_BEHAVIOR_STANDALONE_SPECS]);
 
-    expect(coveredSpecs.has('tests/e2e/storybook/storybook.smoke.spec.ts')).toBe(true);
-    expect(coveredSpecs.has('tests/e2e/storybook/md-button-family.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/colorOwnership.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/overlayLifecycle.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/focusIndicator.spec.ts')).toBe(true);
+    expect(coveredSpecs.has('tests/e2e/storybook/routerHarness.spec.ts')).toBe(true);
   });
 
-  it('keeps other existing central scenario mappings unchanged after the S2-C owner-local Reorder migration', () => {
+  it('keeps other existing central scenario mappings truthful after the S2-D Button decomposition', () => {
     const scenarioNames = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.map((scenario) => scenario.name);
 
     expect(scenarioNames).not.toContain('loading indicator standalone accessibility');
@@ -167,15 +167,24 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     expect(scenarioNames).not.toContain('bottom sheet keyboard focus wrap visibility');
     expect(scenarioNames).not.toContain('reorder self-scrollable container autoscroll');
     expect(scenarioNames).not.toContain('reorder generic layout support');
+    expect(scenarioNames).not.toContain('storybook behavior infrastructure smoke');
+    expect(scenarioNames).not.toContain('button family behavior');
     expect(scenarioNames).toEqual(
       expect.arrayContaining([
-        'storybook behavior infrastructure smoke',
         'shared color ownership',
         'shared overlay outside-interaction lifecycle',
-        'button family behavior',
+        'shared focus-indicator integration',
         'Storybook router harness demonstration',
       ]),
     );
+  });
+
+  it('no longer maps the stale src/shared/ui/LoadingButton/ prefix', () => {
+    const allSourcePrefixes = STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.flatMap(
+      (scenario) => scenario.sourcePrefixes,
+    );
+
+    expect(allSourcePrefixes).not.toContain('src/shared/ui/LoadingButton/');
   });
 
   it('fails when a scenario references a spec missing from disk', () => {
@@ -206,7 +215,7 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
     expect(validation.valid).toBe(false);
     expect(
       validation.errors.some((error) =>
-        error.includes('tests/e2e/storybook/storybook.smoke.spec.ts is not covered'),
+        error.includes('tests/e2e/storybook/colorOwnership.spec.ts is not covered'),
       ),
     ).toBe(true);
   });
@@ -291,6 +300,25 @@ describe('validateStorybookBehaviorScenarioRegistry', () => {
       ),
     ).toBe(false);
     expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(LOADING_INDICATOR_BROWSER_SPEC);
+    expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
+  });
+
+  it('passes for the real registry with the new colocated Button-family browser specs unregistered', () => {
+    const buttonBrowserSpec = 'src/shared/ui/material/components/button/MDButton.browser.spec.ts';
+    const legacyButtonBrowserSpec = 'src/shared/ui/Button/LegacyButton.browser.spec.ts';
+
+    expect(
+      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.some((scenario) =>
+        scenario.specs.includes(buttonBrowserSpec),
+      ),
+    ).toBe(false);
+    expect(
+      STORYBOOK_BEHAVIOR_SCENARIO_SCOPES.some((scenario) =>
+        scenario.specs.includes(legacyButtonBrowserSpec),
+      ),
+    ).toBe(false);
+    expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(buttonBrowserSpec);
+    expect(STORYBOOK_BEHAVIOR_STANDALONE_SPECS).not.toContain(legacyButtonBrowserSpec);
     expect(validateStorybookBehaviorScenarioRegistry()).toEqual({ valid: true, errors: [] });
   });
 
@@ -454,10 +482,10 @@ describe('resolveStorybookBehaviorPlan', () => {
   });
 
   it('runs the changed behavior spec directly', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/colorOwnership.spec.ts']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+    expect(plan.specs).toEqual(['tests/e2e/storybook/colorOwnership.spec.ts']);
   });
 
   it('selects every colocated Reorder browser spec for a reorderAutoscrollEnvironment change, via generic owner-local ownership', () => {
@@ -522,86 +550,102 @@ describe('resolveStorybookBehaviorPlan', () => {
     );
   });
 
-  it('focuses the smoke spec and the button family spec for an MDButton story change', () => {
+  const MD_BUTTON_BROWSER_SPEC =
+    'src/shared/ui/material/components/button/MDButton.browser.spec.ts';
+  const LEGACY_BUTTON_BROWSER_SPEC = 'src/shared/ui/Button/LegacyButton.browser.spec.ts';
+  const FOCUS_INDICATOR_SPEC = 'tests/e2e/storybook/focusIndicator.spec.ts';
+
+  it('selects the local MDButton spec and the central focus-indicator spec for an MDButton story change', () => {
     const plan = resolveStorybookBehaviorPlan([
       'src/shared/ui/material/components/button/MDButton.stories.ts',
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([
-      'tests/e2e/storybook/md-button-family.spec.ts',
-      'tests/e2e/storybook/storybook.smoke.spec.ts',
-    ]);
+    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
   });
 
-  it('focuses the smoke spec and the button family spec for an MDButton component change', () => {
+  it('selects the local MDButton spec and the central focus-indicator spec for an MDButton component change', () => {
     const plan = resolveStorybookBehaviorPlan([
       'src/shared/ui/material/components/button/MDButton.vue',
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([
-      'tests/e2e/storybook/md-button-family.spec.ts',
-      'tests/e2e/storybook/storybook.smoke.spec.ts',
-    ]);
+    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
   });
 
-  it('focuses the button family spec for an MDIconButton component or story change', () => {
+  it('selects the local LegacyButton spec and the central focus-indicator spec for an MDIconButton component or story change', () => {
     expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDIconButton.vue']).specs).toEqual([
-      'tests/e2e/storybook/md-button-family.spec.ts',
+      LEGACY_BUTTON_BROWSER_SPEC,
+      FOCUS_INDICATOR_SPEC,
     ]);
     expect(
       resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDIconButton.stories.ts']).specs,
-    ).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    ).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
   });
 
-  it('focuses the button family spec for an MDFab component or story change', () => {
+  it('selects the local LegacyButton spec and the central focus-indicator spec for an MDFab component or story change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.vue']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    expect(plan.specs).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
     expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDFab.stories.ts']).specs).toEqual([
-      'tests/e2e/storybook/md-button-family.spec.ts',
+      LEGACY_BUTTON_BROWSER_SPEC,
+      FOCUS_INDICATOR_SPEC,
     ]);
   });
 
-  it('focuses the button family spec for an MDExtendedFab component or story change', () => {
+  it('selects the local LegacyButton spec and the central focus-indicator spec for an MDExtendedFab component or story change', () => {
     expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDExtendedFab.vue']).specs).toEqual([
-      'tests/e2e/storybook/md-button-family.spec.ts',
+      LEGACY_BUTTON_BROWSER_SPEC,
+      FOCUS_INDICATOR_SPEC,
     ]);
     expect(
       resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDExtendedFab.stories.ts']).specs,
-    ).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    ).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
   });
 
-  it('focuses the button family spec for a colocated Button story fixture change', () => {
+  it('selects the local MDButton spec and the central focus-indicator spec for a colocated Button story fixture change', () => {
     const plan = resolveStorybookBehaviorPlan([
       'src/shared/ui/material/components/button/MDButtonTargetHitVisualStory.vue',
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
   });
 
-  it('focuses the button family spec for a useFocusIndicator change', () => {
+  it('focuses only the central focus-indicator spec for a useFocusIndicator change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/useFocusIndicator.ts']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    expect(plan.specs).toEqual([FOCUS_INDICATOR_SPEC]);
   });
 
-  it('focuses the button family spec for a focus-indicator component/style change', () => {
+  it('focuses only the central focus-indicator spec for a focus-indicator component/style change', () => {
     const plan = resolveStorybookBehaviorPlan(['src/shared/ui/State/md-focus-indicator.css']);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    expect(plan.specs).toEqual([FOCUS_INDICATOR_SPEC]);
   });
 
-  it('runs the changed button family behavior spec directly', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/md-button-family.spec.ts']);
+  it('runs the changed central focus-indicator behavior spec directly', () => {
+    const plan = resolveStorybookBehaviorPlan([FOCUS_INDICATOR_SPEC]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual(['tests/e2e/storybook/md-button-family.spec.ts']);
+    expect(plan.specs).toEqual([FOCUS_INDICATOR_SPEC]);
+  });
+
+  it('selects itself for a changed local MDButton browser spec, with no central mapping', () => {
+    const plan = resolveStorybookBehaviorPlan([MD_BUTTON_BROWSER_SPEC]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([MD_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
+  });
+
+  it('selects itself for a changed local LegacyButton browser spec, with no central mapping', () => {
+    const plan = resolveStorybookBehaviorPlan([LEGACY_BUTTON_BROWSER_SPEC]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
   });
 
   it('does not run the full lane for an unrelated src/shared/ui change', () => {
@@ -798,7 +842,7 @@ describe('resolveStorybookBehaviorPlan removed/renamed spec safety', () => {
 
   it('runs the full lane for a rename-like input where the old spec no longer exists', () => {
     const plan = resolveStorybookBehaviorPlan(
-      ['tests/e2e/storybook/oldFlow.spec.ts', 'tests/e2e/storybook/storybook.smoke.spec.ts'],
+      ['tests/e2e/storybook/oldFlow.spec.ts', 'tests/e2e/storybook/routerHarness.spec.ts'],
       { fileExists: (filePath) => filePath !== 'tests/e2e/storybook/oldFlow.spec.ts' },
     );
 
@@ -818,13 +862,13 @@ describe('resolveStorybookBehaviorPlan removed/renamed spec safety', () => {
   });
 
   it('keeps an existing directly changed behavior spec focused', () => {
-    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/storybook.smoke.spec.ts']);
+    const plan = resolveStorybookBehaviorPlan(['tests/e2e/storybook/colorOwnership.spec.ts']);
 
     expect(plan).toEqual({
       mode: 'focused',
-      specs: ['tests/e2e/storybook/storybook.smoke.spec.ts'],
+      specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
       reasons: [
-        'changed behavior spec tests/e2e/storybook/storybook.smoke.spec.ts -> tests/e2e/storybook/storybook.smoke.spec.ts',
+        'changed behavior spec tests/e2e/storybook/colorOwnership.spec.ts -> tests/e2e/storybook/colorOwnership.spec.ts',
       ],
     });
   });
