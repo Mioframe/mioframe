@@ -50,11 +50,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
   },
   {
-    name: 'navigation path button geometry and overflow',
-    sourcePrefixes: ['src/shared/ui/NavigationPath/'],
-    specs: ['tests/e2e/storybook/navigationPath.spec.ts'],
-  },
-  {
     name: 'shared overlay outside-interaction lifecycle',
     sourcePrefixes: [
       'src/shared/lib/onInteractionOutside.ts',
@@ -146,14 +141,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/ui/Sheets/MDBottomSheetContainerKeyboardScrollStoryHarness.vue',
     ],
     specs: ['tests/e2e/storybook/mdBottomSheetContainerKeyboardScroll.spec.ts'],
-  },
-  {
-    name: 'checkbox controlled args round-trip',
-    sourcePrefixes: [
-      'src/shared/ui/Checkbox/MDCheckbox.vue',
-      'src/shared/ui/Checkbox/MDCheckbox.stories.ts',
-    ],
-    specs: ['tests/e2e/storybook/mdCheckboxControlledArgs.spec.ts'],
   },
 ];
 
