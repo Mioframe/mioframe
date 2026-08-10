@@ -255,6 +255,8 @@ Mode behavior per fresh pass:
 | `failed(B)`             | discover strictly newer; never retry B                             | discover strictly newer; never retry B automatically |
 | `ready` or `activating` | no-op                                                              | no-op                                                |
 
+For any successful discovery comparison, a lower `releaseNumber` is stale, an equal number with exact full identity is idempotent, and an equal number with conflicting `appVersion`, `buildId`, or `buildDate` is an invariant failure. That conflict fails closed as `check-failed`: controller state stays unchanged, no Automatic fallback preparation runs, and the pass requests no broadcast or cache cleanup. Ordinary discovery/network failures remain distinct and may still fall back to preparing an already-known `available` candidate in Automatic mode.
+
 Network, hashing, preparation, and cleanup remain outside `OperationQueue`.
 
 ## Fetch ownership and exact restoration
@@ -499,13 +501,20 @@ Required proof includes:
   - New/updated proof: none.
   - Risk or platform matrix: Vitest/happy-dom execution of the generated script; no browser risk beyond what the E2E lifecycle specs already cover.
   - Persistent impact metadata: none.
-- Contract/scenario: release-preparation error boundary — `DomainError`-based, classified by the local `ReleasePreparationFailureReason` string enum (`releasePreparation.ts`, values unchanged: `ARCHIVE_UNAVAILABLE`, `INVALID_ARCHIVE_METADATA`, `INTEGRITY_FAILURE`, `CACHE_STORAGE_UNAVAILABLE`, `RESTORATION_FAILED`); `message` stays a short project-controlled safe string with no dynamic user-controlled or external sensitive values. Fixed Mioframe-owned technical identifiers such as the literal resource name `latest.json` are permitted; raw runtime/external detail lives only in `cause`.
+- Contract/scenario: release-preparation error boundary — `DomainError`-based, classified by the local `ReleasePreparationFailureReason` string enum (`releasePreparation.ts`, values: `ARCHIVE_UNAVAILABLE`, `ARCHIVE_RESPONSE_FAILURE`, `INVALID_ARCHIVE_METADATA`, `CONFLICTING_RELEASE_IDENTITY`, `INTEGRITY_FAILURE`, `CACHE_STORAGE_UNAVAILABLE`, `RESTORATION_FAILED`); `message` stays a short project-controlled safe string with no dynamic user-controlled or external sensitive values. Fixed Mioframe-owned technical identifiers such as the literal resource name `latest.json` are permitted; raw runtime/external detail lives only in `cause`.
   - Primary proof owner: `releasePreparation.test.ts`, including the dedicated "release-preparation `DomainError` classification" group and the message-safety assertions.
   - Additional proof: `preparationCoordinator.test.ts`, `recoveryStateLoss.test.ts`, `recoveryDiagnostics.test.ts`, `recoveryPage.test.ts`, `workerFetch.test.ts` (all consume `error.code`/`problemDetail` through the enum, not raw strings, except where a test is asserting rendered recovery-page HTML text rather than a typed code).
   - Existing proof: `recoveryOrchestration.ts` classification behavior, covered by `workerMessagesRecovery.test.ts`/`recoveryStateLoss.test.ts`; unchanged result codes.
-  - New/updated proof: every consumer above updated to reference `ReleasePreparationFailureReason.<MEMBER>` instead of a bare string literal or the removed `RELEASE_PREPARATION_FAILURE_REASONS` tuple export.
+  - New/updated proof: every consumer above references `ReleasePreparationFailureReason.<MEMBER>` instead of a bare string literal or a duplicate value list.
   - Risk or platform matrix: Vitest-only; no browser or platform risk — wire-visible `problemDetail`/`code` string values are unchanged, so recovery-page rendering and diagnostics payloads are unaffected.
-  - Persistent impact metadata: none — an internal error-model refactor; recovery result codes and user-visible recovery behavior are unchanged.
+  - Persistent impact metadata: none — the error classifications are internal service diagnostics; recovery result codes and user-visible recovery behavior remain independently bounded.
+- Contract/scenario: discovery ordering and exact identity — `releaseNumber` is the ordering key, but equal-number discovery is only idempotent when all `ReleaseSummary` fields match. A same-number metadata conflict fails closed as `check-failed`, reports one bounded identity-conflict diagnostic, leaves controller state unchanged, and does not prepare the existing Automatic candidate or request broadcast/cache-cleanup effects. Ordinary discovery/network failure remains distinct and may still use Automatic fallback preparation for an existing `available` candidate.
+  - Primary proof owner: `src/shared/service/appUpdate/updateDiscovery.test.ts`, `Automatic same-number identity conflict` — covers an `available` candidate with no `prepare()`/write/effects and one diagnostic, a `failed` candidate with no preparation, and an ordinary-failure control proving fallback preparation still occurs.
+  - Additional proof: `stateTransitions.test.ts` owns the pure `applyDiscovery` ordering/identity classification; `appUpdateDiagnosticEvents.test.ts` owns the bounded diagnostic payload.
+  - Existing proof: the reconciliation mode matrix in `updateDiscovery.test.ts` continues to cover ordinary stale/equal/newer discovery and Automatic/Manual candidate policy.
+  - New/updated proof: the conflict-specific tests replace the old expectation that an Automatic same-number identity conflict could fall through to fallback preparation.
+  - Risk or platform matrix: Vitest-only; no browser/platform-specific behavior.
+  - Persistent impact metadata: none — no new persisted state, public protocol field, retry mechanism, or effect owner.
 - Contract/scenario: failed Service Worker installation lifecycle — condition/event based, not time based: the E2E spec observes the update attempt's installing worker reaching the browser's own terminal `redundant` state, bounded by a maximum wait, instead of a fixed sleep. Unchanged by this round.
   - Primary proof owner: `tests/e2e/release/managedUpdatesMigration.spec.ts`.
   - Additional proof: none.
