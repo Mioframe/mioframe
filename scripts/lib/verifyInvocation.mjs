@@ -20,16 +20,20 @@ export const VERIFY_LABELS = [
   'release-version',
   'release-config',
   'build',
+  'publisher-node-import',
   'artifact',
   'release-smoke',
+  'managed-updates',
 ];
 
 export const FULL_ONLY_LABELS = new Set([
   'release-version',
   'release-config',
   'build',
+  'publisher-node-import',
   'artifact',
   'release-smoke',
+  'managed-updates',
 ]);
 
 export const FIX_ONLY_LABELS = new Set(['agent-environment', 'format', 'oxlint', 'eslint']);

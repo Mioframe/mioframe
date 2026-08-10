@@ -1,8 +1,14 @@
 import type { PluginOption } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { VitePWAOptions } from 'vite-plugin-pwa';
-
-type ReleaseChannel = 'stable' | 'branch';
+import {
+  buildChannelCacheNamespace,
+  buildForeignChannelDenylistPattern,
+  isForeignChannelPath,
+  resolveManagedChannel,
+  type ManagedChannel,
+  type ReleaseChannel,
+} from '../../src/shared/service/appUpdate/channelContract';
 
 type WorkboxOptions = VitePWAOptions['workbox'];
 
@@ -16,61 +22,6 @@ type GetPwaPluginsParams = {
 };
 
 const daysToSeconds = (days: number) => 24 * 60 * 60 * days;
-
-/**
- * Build the Cache Storage name prefix for a release channel.
- *
- * Cache Storage is per-origin, not per service-worker-scope, so channel
- * isolation across `/`, `/branch/<slug>/`, and `/pr/<number>/` depends on
- * this prefix, not on scope alone. Must match the prefix
- * `scripts/pages/lib/tombstoneContent.mjs` uses when clearing a removed
- * branch's caches. Also passed as Workbox's `cacheId` (see
- * {@link buildWorkboxOptions}) so Workbox's own default-named precache cache
- * carries the same prefix as the explicit runtime caches below.
- * @param channel - Release channel.
- * @param channelId - Channel identifier; required for the `branch` channel.
- * @returns Cache name prefix, e.g. `stable` or `branch-develop`.
- */
-export function buildChannelCacheNamespace(channel: ReleaseChannel, channelId?: string): string {
-  if (channel === 'branch') {
-    if (!channelId) {
-      throw new Error('channelId is required for the "branch" release channel.');
-    }
-    return `branch-${channelId}`;
-  }
-  return 'stable';
-}
-
-/**
- * Returns true when `pathname` is under `base` but belongs to a different
- * top-level channel namespace (`/branch/*` or `/pr/*`).
- *
- * Only meaningful for the stable channel: its service worker scope is `/`,
- * so it is the only one whose fetch handler can ever see requests for other
- * channels' paths. A branch channel's scope (e.g. `/branch/develop/`) is
- * narrower than any other channel's path, so the browser never dispatches
- * fetch/navigate events for foreign paths to it in the first place.
- * @param pathname - The URL pathname to test, e.g. `/branch/develop/assets/app.js`.
- * @param base - The Vite `base` URL for this build, e.g. `/`.
- * @returns `true` when the pathname belongs to a different channel's deployment.
- */
-export function isForeignChannelPath(pathname: string, base: string): boolean {
-  if (!pathname.startsWith(base)) return false;
-  const rest = pathname.slice(base.length);
-  return /^(?:branch|pr)\/.*$/.test(rest);
-}
-
-/**
- * Builds a RegExp that matches foreign-channel paths (`/branch/*`, `/pr/*`)
- * under the given Vite base path, for the stable service worker's
- * `navigateFallbackDenylist`.
- * @param base - The Vite `base` URL, e.g. `/`.
- * @returns A RegExp matching `/branch/*` and `/pr/*` path prefixes under `base`.
- */
-export function buildForeignChannelDenylistPattern(base: string): RegExp {
-  const escapedBase = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`^${escapedBase}(?:branch|pr)\\/`);
-}
 
 /**
  * Builds a Workbox `urlPattern` function that matches `url.pathname` against
@@ -227,6 +178,32 @@ export function buildWorkboxOptions({
 }
 
 /**
+ * Resolves this build's managed application-update channel, the value
+ * embedded into the `__MANAGED_APP_UPDATE_CHANNEL__` build-time define
+ * (see `vite.config.ts` and `src/shared/config.ts`).
+ *
+ * Reuses exactly the same gating decisions as {@link getPwaPlugins} — PWA
+ * enablement ({@link GetPwaPluginsParams.disablePwa}, `mode`, `isPreview`)
+ * and the canonical {@link resolveManagedChannel} — so channel
+ * classification is never duplicated between the two. `undefined` for an
+ * ordinary branch, a PR preview (always passes `disablePwa: true`), a
+ * disabled-PWA build, or a development/Storybook build (never calls this at
+ * all; see `vite.config.ts`).
+ * @param params - The same build parameters passed to {@link getPwaPlugins} (minus `base`, which this decision does not need).
+ * @returns The managed channel only for an enabled managed-channel build; `undefined` otherwise.
+ */
+export function resolveManagedAppUpdateChannel({
+  mode,
+  isPreview,
+  disablePwa,
+  channel = 'stable',
+  channelId,
+}: Omit<GetPwaPluginsParams, 'base'>): ManagedChannel | undefined {
+  if (disablePwa || (mode !== 'production' && !isPreview)) return undefined;
+  return resolveManagedChannel(channel, channelId);
+}
+
+/**
  * Returns the Vite PWA plugin array for the given build parameters.
  *
  * Returns an empty array when PWA is disabled or the mode is not production
@@ -235,9 +212,15 @@ export function buildWorkboxOptions({
  * and namespaced to the given release channel:
  * - `scope`/`start_url`/`id` are pinned to `base`, so the manifest never
  *   drifts from the deployment it was built for;
- * - cache names, including Workbox's own precache, are namespaced per
- *   channel ({@link buildWorkboxOptions}) so stable, develop, and other
- *   branches never share Cache Storage entries;
+ * - stable and the `develop` branch channel ({@link resolveManagedChannel})
+ *   use the custom `injectManifest` controller worker (`src/sw.ts`, see the
+ *   managed pinned application updates feature) with no precache manifest
+ *   of its own — it must never embed this build's application release
+ *   identity or asset list;
+ * - every other channel keeps the generated (`generateSW`) worker, with
+ *   cache names — including Workbox's own precache — namespaced per channel
+ *   ({@link buildWorkboxOptions}) so different branches never share Cache
+ *   Storage entries;
  * - the stable channel additionally denies `/branch/*` and `/pr/*` from its
  *   navigation fallback and runtime caching, since its scope (`/`) is the
  *   only one wide enough to otherwise intercept them.
@@ -256,21 +239,59 @@ export const getPwaPlugins = ({
     return [];
   }
 
+  const manifest = {
+    ...buildManifestIdentity(channel, channelId),
+    scope: base,
+    start_url: base,
+    id: base,
+    theme_color: 'rgb(33, 31, 38)',
+    background_color: 'rgb(33, 31, 38)',
+  };
+  const pwaAssets = { config: true, overrideManifestIcons: true };
+
+  if (resolveManagedChannel(channel, channelId)) {
+    return [
+      VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.js',
+        // The controller worker has no precache manifest of its own (it
+        // must never embed this build's application release identity or
+        // asset list), so there is no `self.__WB_MANIFEST` injection point
+        // to find. An empty string is a falsy `injectionPoint`, which is
+        // exactly what vite-plugin-pwa itself checks to skip the injection
+        // step entirely (see its `injectManifestChunk`); this is preferred
+        // over the documented `injectionPoint: undefined` FAQ workaround
+        // since it satisfies the declared `injectionPoint?: string` type
+        // without a type assertion.
+        //
+        // `rollupFormat: 'iife'` is required, not cosmetic: the plugin's
+        // production registration script always calls
+        // `navigator.serviceWorker.register(url, { scope })` with no
+        // `type: 'module'`, so the compiled worker is always executed as a
+        // classic script regardless of build format. The default `'es'`
+        // format only "worked" here because this worker's static import
+        // graph happens to bundle into a chunk with no literal `import`/
+        // `export` syntax; it would break the moment that stopped being
+        // true, and it also forces vite-plugin-pwa to rename the output to
+        // `.mjs`. IIFE format matches what is actually registered and keeps
+        // the plain `sw.js` filename — the same filename every previously
+        // installed legacy `generateSW` worker is already registered
+        // against, which is required for that legacy worker's native
+        // update check to ever discover this worker at all (see the
+        // managed pinned application updates feature, "Worker migration").
+        injectManifest: { injectionPoint: '', rollupFormat: 'iife' },
+        manifest,
+        pwaAssets,
+      }),
+    ];
+  }
+
   return [
     VitePWA({
-      manifest: {
-        ...buildManifestIdentity(channel, channelId),
-        scope: base,
-        start_url: base,
-        id: base,
-        theme_color: 'rgb(33, 31, 38)',
-        background_color: 'rgb(33, 31, 38)',
-      },
+      manifest,
       workbox: buildWorkboxOptions({ base, channel, channelId }),
-      pwaAssets: {
-        config: true,
-        overrideManifestIcons: true,
-      },
+      pwaAssets,
     }),
   ];
 };

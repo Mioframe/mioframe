@@ -43,7 +43,9 @@ export function resolveArtifactFilePath(distDir, basePath, pathname) {
     return null;
   }
 
-  const relative = pathname.slice(basePath.length) || 'index.html';
+  const relativePath = pathname.slice(basePath.length);
+  const relative =
+    relativePath === '' || relativePath.endsWith('/') ? `${relativePath}index.html` : relativePath;
   const absoluteDistDir = resolve(distDir);
   const candidate = normalize(join(absoluteDistDir, relative));
 

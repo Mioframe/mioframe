@@ -20,6 +20,7 @@ describe('classifyCommandWeight', () => {
   it('treats release artifact and smoke checks as expensive', () => {
     expect(classifyCommandWeight({ label: 'artifact' })).toBe('expensive');
     expect(classifyCommandWeight({ label: 'release-smoke' })).toBe('expensive');
+    expect(classifyCommandWeight({ label: 'managed-updates' })).toBe('expensive');
   });
 
   it('keeps release-version and release-config light, and build medium', () => {

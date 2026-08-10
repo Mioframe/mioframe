@@ -138,6 +138,16 @@ export const E2E_SCENARIO_SCOPES = [
     specs: ['tests/e2e/helpNavigation.spec.ts'],
   },
   {
+    name: 'app updates settings entry and pane',
+    sourcePrefixes: [
+      'src/pages/AppUpdatesPane/',
+      'src/widgets/AppUpdateSettings/',
+      'src/widgets/SettingsSections/',
+      'src/entities/appUpdate/',
+    ],
+    specs: ['tests/e2e/appUpdatesNavigation.spec.ts'],
+  },
+  {
     name: 'directory and document flows',
     sourcePrefixes: [
       'src/features/directoryCreate/',

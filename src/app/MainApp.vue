@@ -12,7 +12,9 @@ import { setupMetaThemeColor } from '@shared/lib/metaThemeColor';
 import { usePreventUnloadDuringActiveWrites } from '@feature/preventUnloadDuringActiveWrites';
 import { useOptionalGoogleDriveIntegration } from '@feature/googleDriveIntegration';
 import { useDiagnosticsReporting } from '@feature/diagnosticsReporting';
+import { useAppUpdateNotify } from '@feature/appUpdateNotify';
 import { setupPwaInstallRuntime } from '@feature/pwaInstall';
+import { useStackNavigation } from '@page/routes';
 
 const { addSnackbar } = useSnackbar();
 
@@ -34,6 +36,11 @@ useFocusIndicator();
 usePreventUnloadDuringActiveWrites();
 useDiagnosticsReporting();
 useOptionalGoogleDriveIntegration();
+
+const { open: openPane } = useStackNavigation();
+useAppUpdateNotify(() => {
+  void openPane('appUpdates', {}, { target: 'appUpdates' });
+});
 
 setupMetaThemeColor();
 setupPwaInstallRuntime();

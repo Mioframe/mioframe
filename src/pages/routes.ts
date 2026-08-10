@@ -1,4 +1,5 @@
 import { aboutMioframePane } from './AboutMioframePane';
+import { appUpdatesPane } from './AppUpdatesPane';
 import { documentViewPane } from './DocumentViewPane';
 import { dataStoragePrivacyPane } from './DataStoragePrivacyPane';
 import { helpArticlePane, helpIndexPane } from './Help';
@@ -20,6 +21,7 @@ const { setupStackNavigation: setup, useStackNavigation: use } = createStackNavi
     helpIndex: helpIndexPane,
     helpArticle: helpArticlePane,
     aboutMioframe: aboutMioframePane,
+    appUpdates: appUpdatesPane,
   },
   {
     defaultPane: 'home',

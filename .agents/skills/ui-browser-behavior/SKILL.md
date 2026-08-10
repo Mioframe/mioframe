@@ -13,6 +13,14 @@ Browser proof uses Playwright and real public input. It does not own determinist
 
 Use when behavior depends on focus, keyboard, pointer/touch, drag, geometry, scrolling, viewport, overlays, responsive rendering, browser capabilities, permissions, service-worker-visible outcomes, public motion outcomes, or an observable rendered effect that cannot be faithfully proved in Vitest.
 
+## Supported-browser policy
+
+`.browserslistrc` is the canonical product browser baseline. A browser matching that query is supported; one missing browser-specific capability does not make the whole browser unsupported.
+
+- When a supported browser implements the standard Web APIs required by a scenario, Mioframe must provide the normal product behavior and the applicable browser engine must remain in the owning proof matrix.
+- When a supported browser does not implement a required API, detect the capability and provide an explicit user-visible unavailable state or supported alternative. Do not expose a broken action, fail silently, or use the unrelated missing capability to exclude that browser from standards-based scenarios.
+- Project applicability must follow the observable API, engine, viewport, input, lifecycle, or composition difference. Browser-name filtering without a confirmed capability or engine reason is invalid.
+
 ## Choose the execution lane
 
 Use `storybook-behavior` when the observable contract belongs to reusable UI and can be exercised without product routing, persistence, services, or feature orchestration.

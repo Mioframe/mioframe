@@ -1,85 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  buildChannelCacheNamespace,
-  buildForeignChannelDenylistPattern,
   buildSameOriginMatcher,
   buildWorkboxOptions,
   getPwaPlugins,
-  isForeignChannelPath,
+  resolveManagedAppUpdateChannel,
 } from './pwa.ts';
-
-describe('buildChannelCacheNamespace', () => {
-  it('returns "stable" for the stable channel', () => {
-    expect(buildChannelCacheNamespace('stable')).toBe('stable');
-  });
-
-  it('returns a branch-prefixed namespace including the channel id', () => {
-    expect(buildChannelCacheNamespace('branch', 'develop')).toBe('branch-develop');
-    expect(buildChannelCacheNamespace('branch', 'feature-x')).toBe('branch-feature-x');
-  });
-
-  it('produces different namespaces for different branch channel ids', () => {
-    expect(buildChannelCacheNamespace('branch', 'develop')).not.toBe(
-      buildChannelCacheNamespace('branch', 'feature-x'),
-    );
-  });
-
-  it('throws when the branch channel is used without a channelId', () => {
-    expect(() => buildChannelCacheNamespace('branch')).toThrow('channelId is required');
-  });
-});
-
-describe('isForeignChannelPath', () => {
-  describe('foreign channel paths return true (stable base)', () => {
-    it('matches a branch path', () => {
-      expect(isForeignChannelPath('/branch/develop/', '/')).toBe(true);
-      expect(isForeignChannelPath('/branch/develop/assets/app.js', '/')).toBe(true);
-    });
-
-    it('matches a PR preview path', () => {
-      expect(isForeignChannelPath('/pr/86/', '/')).toBe(true);
-      expect(isForeignChannelPath('/pr/86/assets/app.js', '/')).toBe(true);
-    });
-  });
-
-  describe('own-channel paths return false', () => {
-    it('does not match the stable root path', () => {
-      expect(isForeignChannelPath('/', '/')).toBe(false);
-    });
-
-    it('does not match stable asset paths', () => {
-      expect(isForeignChannelPath('/assets/app.js', '/')).toBe(false);
-    });
-
-    it('does not match a path that starts with "branch" but has no separator', () => {
-      expect(isForeignChannelPath('/branchfoo', '/')).toBe(false);
-    });
-
-    it('does not match paths outside the configured base', () => {
-      expect(isForeignChannelPath('/other/branch/x', '/mioframe/')).toBe(false);
-    });
-  });
-
-  it('is scoped relative to a non-root base too', () => {
-    expect(isForeignChannelPath('/branch/develop/branch/nested/', '/branch/develop/')).toBe(true);
-    expect(isForeignChannelPath('/branch/develop/assets/app.js', '/branch/develop/')).toBe(false);
-  });
-});
-
-describe('buildForeignChannelDenylistPattern', () => {
-  it('matches branch and pr paths under the stable root', () => {
-    const pattern = buildForeignChannelDenylistPattern('/');
-    expect(pattern.test('/branch/develop/')).toBe(true);
-    expect(pattern.test('/pr/86/')).toBe(true);
-  });
-
-  it('does not match stable paths', () => {
-    const pattern = buildForeignChannelDenylistPattern('/');
-    expect(pattern.test('/')).toBe(false);
-    expect(pattern.test('/assets/app.js')).toBe(false);
-  });
-});
+// `buildChannelCacheNamespace`, `isForeignChannelPath`, and
+// `buildForeignChannelDenylistPattern` are canonically owned and tested by
+// channelContract.test.ts; used here only for this file's own composition
+// assertions (e.g. that buildWorkboxOptions's cacheId matches the canonical
+// namespace), never to re-prove the primitives' own matrix.
+import { buildChannelCacheNamespace } from '../../src/shared/service/appUpdate/channelContract.ts';
 
 describe('buildSameOriginMatcher', () => {
   it('excludes foreign-channel paths for the stable channel', () => {
@@ -152,6 +84,64 @@ describe('buildWorkboxOptions', () => {
   });
 });
 
+// The channel -> managed-channel classification matrix itself (which
+// channel/channelId combinations map to 'stable', 'develop', or undefined)
+// is canonically owned and fully proven by channelContract.test.ts's
+// `resolveManagedChannel` suite. The tests below prove only this module's
+// own composition on top of that canonical classification: that PWA
+// enablement gating (`disablePwa`, `mode`, `isPreview`) is applied before
+// delegating, and that a representative managed and unmanaged channel are
+// actually wired through to the canonical resolver.
+describe('resolveManagedAppUpdateChannel', () => {
+  it('delegates to the canonical classification for an enabled stable production build', () => {
+    expect(resolveManagedAppUpdateChannel({ mode: 'production', isPreview: false })).toBe('stable');
+  });
+
+  it('delegates to the canonical classification for an enabled develop branch production build', () => {
+    expect(
+      resolveManagedAppUpdateChannel({
+        mode: 'production',
+        isPreview: false,
+        channel: 'branch',
+        channelId: 'develop',
+      }),
+    ).toBe('develop');
+  });
+
+  it('delegates to the canonical classification for an enabled unmanaged branch build', () => {
+    expect(
+      resolveManagedAppUpdateChannel({
+        mode: 'production',
+        isPreview: false,
+        channel: 'branch',
+        channelId: 'feature-x',
+      }),
+    ).toBeUndefined();
+  });
+
+  it('is "stable" for an enabled stable preview build', () => {
+    expect(resolveManagedAppUpdateChannel({ mode: 'development', isPreview: true })).toBe('stable');
+  });
+
+  it('is undefined for a PR preview build (disablePwa: true)', () => {
+    expect(
+      resolveManagedAppUpdateChannel({ mode: 'production', isPreview: false, disablePwa: true }),
+    ).toBeUndefined();
+  });
+
+  it('is undefined when PWA is explicitly disabled even for an otherwise-managed preview build', () => {
+    expect(
+      resolveManagedAppUpdateChannel({ mode: 'development', isPreview: true, disablePwa: true }),
+    ).toBeUndefined();
+  });
+
+  it('is undefined for a development build without preview', () => {
+    expect(
+      resolveManagedAppUpdateChannel({ mode: 'development', isPreview: false }),
+    ).toBeUndefined();
+  });
+});
+
 describe('getPwaPlugins', () => {
   it('returns empty array when disablePwa is true (PR preview builds)', () => {
     const plugins = getPwaPlugins({
@@ -172,13 +162,24 @@ describe('getPwaPlugins', () => {
     expect(plugins.length).toBeGreaterThan(0);
   });
 
-  it('returns plugins for the branch channel when a channelId is provided', () => {
+  it('returns plugins for the develop branch channel (managed, injectManifest)', () => {
     const plugins = getPwaPlugins({
       base: '/branch/develop/',
       isPreview: false,
       mode: 'production',
       channel: 'branch',
       channelId: 'develop',
+    });
+    expect(plugins.length).toBeGreaterThan(0);
+  });
+
+  it('returns plugins for an ordinary branch channel (unmanaged, generateSW)', () => {
+    const plugins = getPwaPlugins({
+      base: '/branch/feature-x/',
+      isPreview: false,
+      mode: 'production',
+      channel: 'branch',
+      channelId: 'feature-x',
     });
     expect(plugins.length).toBeGreaterThan(0);
   });
