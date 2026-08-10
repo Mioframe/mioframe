@@ -46,7 +46,7 @@
 - Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming any existing story address.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, and Reorder now use owner-local browser specs. S2-A through S2-C are complete; S2-D and S2-E remain to be implemented, and their current Storybook behavior specs therefore remain under `tests/e2e/storybook` with the transitional mappings listed below.
+- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, and the legacy `src/shared/ui/Button` module now use owner-local browser specs. S2-A through S2-D are complete; S2-E remains to be implemented.
 - Visual specs/baselines still use the current central visual execution structure.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
@@ -176,7 +176,7 @@ Forbidden during S1:
 
 ### Stage S2 — remaining Storybook browser migration
 
-Status: **in progress; S2-A, S2-B, and S2-C complete**.
+Status: **in progress; S2-A, S2-B, S2-C, and S2-D complete**.
 
 S2 migrates ordinary component/family/module-owned behavior to the owner-local convention established by S1. It does not force genuinely cross-owner or Storybook-infrastructure proof into a false local owner. Central discovery remains while such central consumers exist.
 
@@ -213,11 +213,11 @@ S2 migrates ordinary component/family/module-owned behavior to the owner-local c
 - `storybook.smoke.spec.ts`
   - Contract: MDButton Default renders an enabled, focusable interactive Button.
   - Final owner: `src/shared/ui/material/components/button/MDButton.browser.spec.ts`.
-  - Decision: this is not Storybook infrastructure proof. Preserve the assertion under the Material Button owner and remove the misleading central smoke classification.
+  - Current state: complete — this was not Storybook infrastructure proof. The assertion is preserved under the Material Button owner-local spec; the misleading central smoke classification and file no longer exist.
 - `md-button-family.spec.ts`
   - Contract: mixed Material MDButton, legacy Button-module, and shared focus-indicator behavior.
   - Final ownership: split by truthful owner.
-  - Decision: move MDButton-only contracts to `src/shared/ui/material/components/button/MDButton.browser.spec.ts`; move MDIconButton/MDFab/MDExtendedFab-only contracts to `src/shared/ui/Button/LegacyButton.browser.spec.ts`; keep the shared focus-indicator integration central as `tests/e2e/storybook/focusIndicator.spec.ts` with explicit cross-owner mapping. Remove the stale/non-existent `src/shared/ui/LoadingButton/` mapping while rewriting this scope.
+  - Current state: complete — MDButton-only contracts moved to `src/shared/ui/material/components/button/MDButton.browser.spec.ts`; MDIconButton/MDFab/MDExtendedFab-only contracts moved to `src/shared/ui/Button/LegacyButton.browser.spec.ts`; the shared focus-indicator integration remains central as `tests/e2e/storybook/focusIndicator.spec.ts` with one explicit cross-owner mapping. The stale/non-existent `src/shared/ui/LoadingButton/` mapping is removed. The file no longer exists.
 - `colorOwnership.spec.ts`
   - Contract: Snackbar inverse surface/message/action/close color behavior across Snackbar-owned contextual values and Material Button public contextual tokens.
   - Final owner: keep `tests/e2e/storybook/colorOwnership.spec.ts`.
@@ -240,10 +240,10 @@ Implement S2 as independently mergeable groups from current `develop`:
 1. **S2-A — simple owner-local UI (complete):** `mdCheckboxControlledArgs.spec.ts` and `navigationPath.spec.ts` are now `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` and `src/shared/ui/NavigationPath/MDNavigationPath.browser.spec.ts`; their replaced registry entries are removed. The generic owner-local resolver contract remains the only ownership mechanism; no owner-specific metadata was added.
 2. **S2-B — Sheets module (complete):** `mdBottomSheetContainerKeyboardScroll.spec.ts` is now `src/shared/ui/Sheets/MDBottomSheetContainer2.browser.spec.ts`; its replaced registry entry is removed. The local resolver intentionally treats `Sheets/` as the owner root, so no second mapping was added to recover the old narrower exact-file selection.
 3. **S2-C — Reorder module (complete):** all four Reorder browser specs are now distinct colocated `*.browser.spec.ts` files under `src/shared/lib/reorder`; the two replaced Reorder registry mappings are removed. The owner-local resolver intentionally selects all four for module-local changes rather than recreating the former narrower mapping split.
-4. **S2-D — Button decomposition:** split `md-button-family.spec.ts` by Material Button, legacy `shared/ui/Button`, and cross-owner focus-indicator ownership; fold the old `storybook.smoke.spec.ts` assertion into the Material Button local proof; retain one central explicit focus-indicator spec and delete only mappings made obsolete by the two local owners. Do not treat Icon Button/FAB as part of the canonical Material `button` family; its architecture explicitly excludes those contracts.
+4. **S2-D — Button decomposition (complete):** `md-button-family.spec.ts` is split by Material Button, legacy `shared/ui/Button`, and cross-owner focus-indicator ownership; the old `storybook.smoke.spec.ts` assertion is folded into the Material Button local proof (`src/shared/ui/material/components/button/MDButton.browser.spec.ts`); legacy Button-module contracts moved to `src/shared/ui/Button/LegacyButton.browser.spec.ts`; the shared focus-indicator integration remains one central explicit spec, `tests/e2e/storybook/focusIndicator.spec.ts`. `storybook.smoke.spec.ts` and `md-button-family.spec.ts` no longer exist, and the stale `src/shared/ui/LoadingButton/` mapping is removed. Icon Button/FAB remain outside the canonical Material `button` family, as its architecture explicitly excludes those contracts.
 5. **S2-E — final ownership audit:** validate that the remaining central behavior specs are exactly justified cross-owner/infrastructure proof (`colorOwnership`, `overlayLifecycle`, `focusIndicator`, `routerHarness`) plus the central helper. Keep central discovery because these are real consumers; do not remove it merely to make the directory empty.
 
-S2-A through S2-C are complete. The next authorized implementation group is S2-D. Each remaining group starts from the then-current `develop` and preserves the assertions and story addresses it migrates. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
+S2-A through S2-D are complete. The next authorized implementation group is S2-E. Each remaining group starts from the then-current `develop` and preserves the assertions and story addresses it migrates. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
 
 #### S2 architecture constraints
 
