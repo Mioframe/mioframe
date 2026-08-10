@@ -158,8 +158,9 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
 ];
 
 // Broad blast-radius paths: the Storybook build/runtime, the behavior
-// Playwright config, the shared container runner, and this resolver's own
-// registry. A change here can affect every behavior spec, so it always
+// Playwright config, the shared container runner, this resolver's own
+// registry, and the production-owned Storybook preview style dependency
+// closure. A change here can affect every behavior spec, so it always
 // triggers a full lane run instead of relying on scenario mapping.
 const FULL_LANE_EXACT_FILES = new Set([
   'config/tooling.json',
@@ -171,6 +172,16 @@ const FULL_LANE_EXACT_FILES = new Set([
   'scripts/storybookBehavior.mjs',
   'scripts/verify.mjs',
   'tsconfig.storybook.json',
+  // Preview style dependency closure imported by .storybook/preview.ts via
+  // src/app/styles/base.css.
+  'src/app/styles/base.css',
+  'src/app/styles/fonts.css',
+  'src/shared/ui/material/foundation/index.css',
+  'src/shared/ui/material/foundation/tokens.css',
+  'src/shared/ui/material/foundation/theme.css',
+  'src/shared/lib/md/index.css',
+  'src/shared/lib/md/typography.css',
+  'src/shared/lib/md/space.css',
 ]);
 
 const FULL_LANE_PREFIXES = ['.storybook/'];

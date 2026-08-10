@@ -119,6 +119,28 @@ describe('isFullStorybookBehaviorLanePath', () => {
   it('does not flag unrelated source paths', () => {
     expect(isFullStorybookBehaviorLanePath('src/features/documentCreate/index.ts')).toBe(false);
   });
+
+  it('flags every production-owned Storybook preview style dependency', () => {
+    expect(isFullStorybookBehaviorLanePath('src/app/styles/base.css')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('src/app/styles/fonts.css')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('src/shared/ui/material/foundation/index.css')).toBe(
+      true,
+    );
+    expect(isFullStorybookBehaviorLanePath('src/shared/ui/material/foundation/tokens.css')).toBe(
+      true,
+    );
+    expect(isFullStorybookBehaviorLanePath('src/shared/ui/material/foundation/theme.css')).toBe(
+      true,
+    );
+    expect(isFullStorybookBehaviorLanePath('src/shared/lib/md/index.css')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('src/shared/lib/md/typography.css')).toBe(true);
+    expect(isFullStorybookBehaviorLanePath('src/shared/lib/md/space.css')).toBe(true);
+  });
+
+  it('does not flag the application-shell stylesheet or unrelated non-preview files', () => {
+    expect(isFullStorybookBehaviorLanePath('src/app/styles/styles.css')).toBe(false);
+    expect(isFullStorybookBehaviorLanePath('src/shared/lib/md/index.test.ts')).toBe(false);
+  });
 });
 
 describe('validateStorybookBehaviorScenarioRegistry', () => {
@@ -406,6 +428,19 @@ describe('resolveStorybookBehaviorPlan', () => {
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('Storybook/Playwright infrastructure path');
+  });
+
+  it('runs the full lane for the Storybook preview style entrypoint', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/app/styles/base.css']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('Storybook/Playwright infrastructure path');
+  });
+
+  it('does not run the full lane for the application-shell stylesheet', () => {
+    const plan = resolveStorybookBehaviorPlan(['src/app/styles/styles.css']);
+
+    expect(plan.mode).toBe('none');
   });
 
   it('runs the full lane for any .storybook/ path change', () => {
