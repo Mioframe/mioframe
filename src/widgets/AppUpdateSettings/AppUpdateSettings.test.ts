@@ -281,7 +281,7 @@ describe('AppUpdateSettings', () => {
 
     expect(root.textContent).toContain('Update ready');
     expect(root.textContent).toContain(
-      'Close all Mioframe windows and reopen Mioframe to guarantee the update.',
+      'Close all Mioframe windows and reopen Mioframe to apply the update.',
     );
     expect(getButtonByText(root, 'Install on next launch')).toBeNull();
     getButtonByText(root, 'Cancel scheduled update')?.click();
