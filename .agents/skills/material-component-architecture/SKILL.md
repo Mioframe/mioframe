@@ -21,6 +21,8 @@ Run in a fresh isolated context. Use task-relevant workspace files, applicable r
 
 Treat code, tests, stories, and README files as implementation evidence, not architecture authority.
 
+Before selecting proof placement or impact ownership, read the current `docs/testing/migration-plan.md`; do not copy an older family’s transitional test location or registry pattern when the executable testing architecture has advanced.
+
 ## Output
 
 Write exactly:
@@ -79,14 +81,15 @@ Resolve:
 4. complete direct dependency set, queue, and dependency review revisions;
 5. ownership of composition, dependency behavior, product state, renderer behavior, and gaps;
 6. complete public Vue API and state precedence/restoration;
-7. selected public token contract;
-8. renderer mappings, fallbacks, and coverage;
-9. one owner for every renderer gap;
-10. deterministic implementation passes;
-11. implementation and migration `TEST IMPACT`;
-12. consumer inventory and migration order;
-13. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
-14. implementation readiness.
+7. for every controlled renderer-backed state, the exact transition timeline required by `docs/component-adapter.md`: public source of truth, mapped renderer property, pre/post mutation events, cancelability, next-value owner, accepted intent, rejected intent, and suppressed-state behavior;
+8. selected public token contract;
+9. renderer mappings, fallbacks, and coverage;
+10. one owner for every renderer gap;
+11. deterministic implementation passes;
+12. implementation and migration `TEST IMPACT`, using the current executable testing ownership rather than copied historical placement;
+13. consumer inventory and migration order;
+14. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
+15. implementation readiness.
 
 No coding decision may remain for implementation.
 
@@ -124,6 +127,7 @@ After dependencies become current, revalidate handoffs, clear or recompute the q
 - Select the minimum complete current surface.
 - Keep renderer details private.
 - Define precedence and restoration for every selected state combination.
+- For mutable renderer-backed state, inspect the exact installed renderer event lifecycle before calling the public mapping controlled. Prefer a documented cancelable pre-mutation intent seam when it exists; a post-mutation `change`/`input` emit alone is insufficient if rejected intent can leave renderer state divergent from the controlling prop.
 - Do not add adjacent surface for symmetry or future flexibility.
 
 For contextual tokens record:
@@ -142,6 +146,8 @@ DESIGN.md official path
 Implementation owns component, renderer-boundary, token, browser, visual, and component-risk proof.
 
 Migration owns consumers, product scenarios or explicit no-consumer proof, legacy removal, and impact metadata.
+
+For controlled state, implementation proof must include rejected intent; for decorative/presentation composition, browser proof must cover both child suppression and positive handoff to the actual action owner.
 
 Review independently evaluates the complete result. The outer orchestrator owns final verification.
 
@@ -240,6 +246,8 @@ Status: complete | blocked
 - Leaving coding decisions to implementation.
 - Using dependency gates or cyclic dependencies.
 - Inventing product demand or renderer-derived APIs.
+- Calling post-mutation renderer state controlled without proving rejected intent cannot drift from the public source of truth.
+- Copying obsolete test-placement or impact-registry patterns from older family artifacts instead of the current testing policy.
 - Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
 - Rewriting architecture for metadata-only design refresh.
 - Depending on Git or PR state.
