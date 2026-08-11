@@ -95,13 +95,13 @@ No branch synchronization blocker remains.
 
 ## Milestones
 
-| ID  | Milestone                           | Status                | Exit gate                                                                                 |
-| --- | ----------------------------------- | --------------------- | ----------------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`            | coherent staged workflow and corrected terminal/verifier ownership                        |
-| M1a | Loading Indicator dependency family | `complete`            | current artifacts, compliant review, no unresolved reported defect                        |
-| M1  | Button action family                | `complete`            | canonical m3e-backed action component migrated and merged                                 |
+| ID  | Milestone                           | Status                | Exit gate                                                                                |
+| --- | ----------------------------------- | --------------------- | ---------------------------------------------------------------------------------------- |
+| M0  | workflow architecture and rules     | `complete`            | coherent staged workflow and corrected terminal/verifier ownership                       |
+| M1a | Loading Indicator dependency family | `complete`            | current artifacts, compliant review, no unresolved reported defect                       |
+| M1  | Button action family                | `complete`            | canonical m3e-backed action component migrated and merged                                |
 | M2  | Switch stateful pilot               | `correction-required` | corrected controlled ownership, current proof ownership, fresh review, final verify pass |
-| M3  | sequential component migration      | `planned`             | dependency-first autonomous family migrations                                             |
+| M3  | sequential component migration      | `planned`             | dependency-first autonomous family migrations                                            |
 
 ## Next operator action
 
