@@ -53,7 +53,7 @@
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, and `DialogForm` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete.
-- Loading Indicator uses the owner-local visual convention (Stage S3, complete); all other visual specs/baselines still use the current central visual execution structure until Stage S4.
+- Loading Indicator and Chips use the owner-local visual convention (Stage S3 complete; Stage S4-A complete); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
 - Persistent mutation and release-impact migration remain separate work.
@@ -319,6 +319,8 @@ The next authorized Storybook migration stage is **S4 — remaining visual migra
 
 ### Stage S4 — remaining visual migration
 
+Status: **in progress**.
+
 Move remaining UI-owned visual specs and baselines after S3 is proven.
 
 Rules:
@@ -327,6 +329,20 @@ Rules:
 - non-local/cross-cutting impact uses explicit mapping or full fallback;
 - do not rename stories/titles merely as part of file movement;
 - preserve exact intended screenshot coverage before deleting old baseline paths.
+
+#### S4-A — Chips visual ownership (complete)
+
+Authorized and completed group: Chips shared UI module only.
+
+Final executable S4-A state:
+
+- `MDChip visual states match baseline` and `MDChip interaction states match baseline` moved from the legacy central `tests/e2e/visual/shared-ui.spec.ts` to `src/shared/ui/Chips/MDChip.visual.spec.ts`, unchanged in meaning, story IDs, and screenshot assertions;
+- both baselines (`md-chip-states-linux.png`, `md-chip-interaction-states-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/Chips/MDChip.visual.spec.ts-snapshots/`;
+- `src/shared/ui/Chips/MDChip.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
+- `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDCheckbox, MDSwitch, MDCard, MDStateLayer, MarkdownContent);
+- no new resolver mapping, registry, or Chips-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
+
+Later S4 groups remain pending. Stage S4 as a whole is not complete.
 
 Acceptance before removing legacy visual discovery:
 
