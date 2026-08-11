@@ -80,13 +80,17 @@ Application E2E remains centralized and therefore continues to use explicit stab
 
 ## Visual baselines
 
+Visual discovery and snapshot ownership are mixed: Loading Indicator (Stage S3, complete) uses the owner-local `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention from `docs/testing/storybook.md`; every other owner remains in the current central `tests/e2e/visual` location until its own Stage S4+ migration.
+
 For intentional visual changes:
 
 - inspect every baseline change;
 - run the owning visual proof through verifier-managed commands;
-- preserve the current executable snapshot convention until the visual colocation migration is merged;
-- after migration, use the owner-local snapshot convention from `docs/testing/storybook.md`;
+- use the owner-local snapshot convention for owners `docs/testing/migration-plan.md` has already migrated;
+- preserve the current central executable snapshot convention for every other owner until its migration is merged;
 - unresolved baseline ownership uses full visual fallback.
+
+Colocated `src/**/*.visual.spec.ts` files are Playwright visual proof inputs only. Automatic unit-test scope must not classify them as Vitest tests merely because their filenames end in `.spec.ts`; unit selection follows the Vitest-owned test patterns and keeps visual proof in the `visual` lane.
 
 A passing screenshot comparison does not prove Material correctness or browser behavior.
 

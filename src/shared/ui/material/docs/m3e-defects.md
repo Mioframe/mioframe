@@ -173,8 +173,8 @@ In installed `2.6.2`–`2.6.3`, the uncontained host width is assigned from `Loa
 - renderer source: `packages/web/src/loading-indicator/LoadingIndicatorElement.ts`;
 - installed `2.6.3`: `node_modules/@m3e/web/dist/loading-indicator.js`;
 - implementation proof: `../components/loadingIndicator/MDLoadingIndicator.test.ts`;
-- browser proof: `../../../../../tests/e2e/storybook/md-loading-indicator.spec.ts`;
-- visual proof: `../../../../../tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts`.
+- browser proof: `../components/loadingIndicator/MDLoadingIndicator.browser.spec.ts`;
+- visual proof: `../components/loadingIndicator/MDLoadingIndicator.visual.spec.ts`.
 
 ### Mioframe impact and mitigation
 

@@ -99,14 +99,14 @@ The durable target is being migrated incrementally. Do not place a test where cu
 | Storybook build gate            | the verifier-managed `storybook-build` label runs `pnpm storybook:build` for changed stories/configuration, selectable via `--only storybook-build` and included in full verification                                                                                                                    |
 | Vue component contract          | colocated `*.test.ts`                                                                                                                                                                                                                                                                                    |
 | Storybook browser behavior spec | mixed discovery is executable: ordinary component/family/module browser contracts (Stage S2, complete) use filesystem-derived owner-local `src/**/*.browser.spec.ts` ownership; genuine cross-owner/infrastructure contracts remain under `tests/e2e/storybook` with explicit or infrastructure mappings |
-| Visual spec and baseline        | keep the current executable visual location until the visual-discovery pilot is implemented                                                                                                                                                                                                              |
+| Visual spec and baseline        | mixed discovery is executable: Loading Indicator (Stage S3, complete) uses filesystem-derived owner-local `src/**/*.visual.spec.ts` ownership with colocated snapshots; all other visual specs/baselines remain under `tests/e2e/visual` with full-lane fallback until Stage S4                          |
 | Product E2E                     | centralized under `tests/e2e`                                                                                                                                                                                                                                                                            |
 
-Browser behavior discovery is mixed by design, not by incompleteness: the runner executes both owner-local `src/**/*.browser.spec.ts` and central `tests/e2e/storybook/**/*.spec.ts`. Owner-local selection is filesystem-derived and requires no duplicate registry relation. The remaining central specs (`colorOwnership.spec.ts`, `overlayLifecycle.spec.ts`, `focusIndicator.spec.ts`, `routerHarness.spec.ts`) are intentionally central — each proves a genuine cross-owner or Storybook-infrastructure contract, not unmigrated component proof — and keep their explicit transitional mappings. `docs/testing/migration-plan.md` determines which owners are authorized to migrate at each stage.
+Browser behavior discovery is mixed by design, not by incompleteness: the runner executes both owner-local `src/**/*.browser.spec.ts` and central `tests/e2e/storybook/**/*.spec.ts`. Owner-local selection is filesystem-derived and requires no duplicate registry relation. The remaining central specs (`colorOwnership.spec.ts`, `overlayLifecycle.spec.ts`, `focusIndicator.spec.ts`, `routerHarness.spec.ts`) are intentionally central — each proves a genuine cross-owner or Storybook-infrastructure contract, not unmigrated component proof — and keep their explicit, intentional cross-owner/infrastructure mappings, not transitional ones. `docs/testing/migration-plan.md` determines which owners are authorized to migrate at each stage.
 
-Conceptual ownership and physical execution location still differ for all visual specs, which remain centrally executed. The owner still determines the contract and impact relation.
+Visual discovery is mixed by design, following the same pattern as browser behavior discovery: the runner executes both owner-local `src/**/*.visual.spec.ts` and central `tests/e2e/visual/**/*.spec.ts`. Loading Indicator is the only owner authorized and migrated to the owner-local convention (Stage S3, complete); conceptual ownership and physical execution location still differ for every other visual spec, which remains centrally executed with full-lane fallback. The owner still determines the contract and impact relation.
 
-Never describe a later migration capability as implemented before the current repository state supports it. In particular, owner-local browser discovery is implemented for ordinary component/family/module contracts (Stage S2, complete), while visual colocation remains a later stage (S3+) and is not yet implemented.
+Never describe a later migration capability as implemented before the current repository state supports it. In particular, owner-local browser discovery is implemented for ordinary component/family/module contracts (Stage S2, complete), and owner-local visual discovery is implemented for the Loading Indicator pilot (Stage S3, complete), while remaining visual-spec/baseline migration is a later stage (S4+) and is not yet implemented.
 
 ## Developer workbench contract
 
@@ -365,18 +365,18 @@ Do not use spec paths as source prefixes merely to group tests.
 
 ## Snapshot convention
 
-The target colocated visual convention is:
+The colocated visual convention is:
 
 ```text
 <Owner>.visual.spec.ts
 <Owner>.visual.spec.ts-snapshots/
 ```
 
-The visual resolver must handle added, modified, deleted, and renamed specs/baselines. If ownership cannot be determined exactly, select the full visual lane.
+Loading Indicator (Stage S3, complete) is executable through this convention. The visual resolver must handle added, modified, deleted, and renamed specs/baselines. If ownership cannot be determined exactly, select the full visual lane.
 
 Story titles and export names are part of the visual-test address. Rename them only together with the owning visual spec and affected baselines.
 
-Until the visual-discovery migration is complete, preserve the repository's current executable baseline convention.
+Every other visual owner remains on the current central executable baseline convention until its Stage S4+ migration.
 
 ## Storybook catalogue
 
@@ -408,6 +408,8 @@ Catalogue normalization is a separate migration because title changes can change
 Production application type-checking must not treat Storybook stories or Playwright specs as application runtime source.
 
 Owner-local Storybook browser discovery is executable through the dedicated Storybook behavior Playwright configuration. Production application and Storybook source type-checking exclude `src/**/*.browser.spec.ts`; the Node/tooling type-check includes those specs. Legacy centralized behavior specs continue to execute through the same lane during migration.
+
+Owner-local visual discovery is executable through the dedicated visual Playwright configuration for the Loading Indicator pilot (Stage S3, complete). Production application and Storybook source type-checking exclude `src/**/*.visual.spec.ts`; the Node/tooling type-check includes those specs, and Vitest's automatic unit-test scope excludes them. Legacy centralized visual specs continue to execute through the same lane until their Stage S4+ migration.
 
 Do not create a mirrored central component-spec tree as permanent ownership metadata.
 
