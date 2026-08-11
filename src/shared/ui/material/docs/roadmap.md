@@ -20,9 +20,11 @@ MIGRATION.md       complete
 REVIEW.md          compliant
 ```
 
-The branch is synchronized with current `develop` and `package.json` is `0.3.5`, above current `develop` `0.3.4`. The previous branch-sync and release-version blockers are resolved.
+The Switch family itself has no remaining design, implementation, migration, or review finding. `REVIEW.md` remains compliant.
 
-The family remains compliant. The current outer invocation is blocked only by shared Playwright discovery infrastructure.
+The previously reproduced root-scanning Playwright workspace-isolation defect is corrected on the branch: both Storybook behavior and visual configs enable Git-ignore-aware discovery, and `playwright.lanes.test.ts` guards that contract. The durable verifier rule now also requires repository-root Playwright scanning to respect repository ignore policy rather than maintaining a second hard-coded local-workspace exclusion list.
+
+The PR is not yet merge-ready because `develop` advanced again after that correction.
 
 ## Calibration result
 
@@ -34,47 +36,39 @@ Switch established the stateful Material adapter invariants now recorded in the 
 4. Renderer-specific non-browser test shims stay at the narrowest truthful owner.
 5. Decorative `presentation` composition proves both child suppression and positive input handoff to the real action owner.
 6. Independent review rechecks current renderer lifecycle, proof ownership, test-environment blast radius, and composition ownership rather than trusting family prose.
+7. Root-scanning Playwright lanes respect repository ignore policy so ignored nested/local workspaces cannot contribute tests.
 
-No generic m3e adapter framework, duplicate state manager, compatibility layer, or new registry abstraction was introduced.
+No generic m3e adapter framework, duplicate state manager, compatibility layer, new registry abstraction, or duplicated local-workspace exclusion registry was introduced.
 
-## Current external blocker
+## Current PR integration blocker
 
-The synchronized final command
+Current `develop` is `a05306852d7574e5bcfe7e4855a4a12f4cf2e84a`, which completed Chips visual ownership migration and advanced the executable Storybook visual-migration state.
 
-```text
-pnpm verify --base origin/develop --profile local
-```
+PR #186 is currently one commit behind that base. Its merge base remains `ca0bcd6194cf8cb7465b3006345f085a1238fbac`.
 
-reached the Playwright lanes and failed in `visual`. The failure executed a stale MDSwitch drag test that exists only inside a sibling ignored checkout under `.claude/worktrees/...`, not in the active repository tree.
+The new `develop` commit does not introduce a Switch-family architecture defect, but it does change the shared visual-testing state and raises `package.json` to `0.3.5`. The Switch branch is also `0.3.5`, so after synchronization the PR version must be raised again according to the release-version policy.
 
-The underlying tooling defect is broader than one visual glob:
+Required integration work:
 
-- `playwright.visual.config.ts` uses `testDir: '.'` with mixed root-relative `testMatch` patterns and does not enable ignored-workspace filtering;
-- `playwright.storybook.config.ts` has the same root-scanning shape and the same latent isolation gap;
-- `.gitignore` already owns local/nested workspace exclusions, including `.claude/*`, `.brv/`, `.sisyphus/`, and `.opencode/`;
-- root-scanning Playwright lanes must not discover tests from ignored sibling/nested workspaces.
+1. synchronize `refactor/material-switch-m3e` with current `develop`;
+2. raise the PR version above current `develop` `0.3.5` according to `docs/release.md`;
+3. re-run the outer `material-component Switch` workflow so it mechanically revalidates the current family chain against the synchronized workspace;
+4. require the final read-only verifier on that merge candidate;
+5. require GitHub CI, including `release-version`, to be fully green.
 
-The preferred minimum correction is to make both root-scanning Playwright configurations respect the repository ignore boundary (for example `respectGitIgnore: true`) rather than hard-coding a second `.claude/worktrees/**` exclusion list. The lane-configuration regression proof must be updated accordingly.
-
-This correction belongs to shared verification/Playwright tooling, not to any Material family. `REVIEW.md` remains compliant and must not be rewritten merely because the outer verifier is blocked.
+Do not rewrite Switch family artifacts unless the synchronized workspace actually invalidates a family-owned contract. The current compliant review is not invalid merely because `develop` advanced.
 
 ## Verification state
 
-On the synchronized branch, the latest local outer invocation passed:
+The Playwright workspace-isolation correction itself is implemented as:
 
-- agent-environment;
-- format;
-- oxlint;
-- eslint;
-- type-check;
-- unit-tests;
-- e2e;
-- storybook-behavior;
-- storybook-build.
+- `playwright.storybook.config.ts`: `respectGitIgnore: true`;
+- `playwright.visual.config.ts`: `respectGitIgnore: true`;
+- `playwright.lanes.test.ts`: explicit regression proof for both root-scanning lanes.
 
-`visual` failed because of the ignored nested-workspace discovery defect; `mutation` was not reached after that failure.
+A GitHub verification run started on that corrected head, but the PR head moved again when the durable verifier rule was added. That earlier run is therefore not final merge evidence.
 
-GitHub `release-version` is green on the current versioned head. Full GitHub verification is still required after the shared Playwright correction.
+The final verifier and GitHub CI must run on the synchronized, correctly versioned final head.
 
 ## Milestones
 
@@ -88,12 +82,12 @@ GitHub `release-version` is green on the current versioned head. Full GitHub ver
 
 ## Next operator action
 
-Do not rebuild the Switch family and do not start M3 yet.
+Do not start M3 yet.
 
-Correct the shared root-scanning Playwright workspace-isolation contract for both Storybook behavior and visual lanes, with regression proof. Then rerun focused verifier-managed proof for every affected lane and rerun the original final command:
+Synchronize PR #186 with current `develop`, update the release version, then invoke:
 
 ```text
-pnpm verify --base origin/develop --profile local
+material-component Switch
 ```
 
-If the final verifier reveals no Switch-owned regression, the existing compliant family review remains valid. Merge PR #186 only after the final gate and GitHub CI are fully green.
+If the synchronized workflow finds no new family-owned defect, keep the existing architecture and implementation and proceed to its final verifier. Merge only after that final gate and GitHub CI are fully green.
