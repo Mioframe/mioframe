@@ -1,108 +1,152 @@
 # Switch review
 
-Artifact revision: 2026-08-11T06:00:00.000Z
+Artifact revision: 2026-08-11T06:12:00.000Z
 DESIGN.md contract revision: 2026-08-10T19:28:25.068Z
 ARCHITECTURE.md revision: 2026-08-11T02:00:00.000Z
 IMPLEMENTATION.md revision: 2026-08-11T05:00:00.000Z
 MIGRATION.md revision: 2026-08-11T05:15:00.000Z
-Verdict: compliant
-Required return family: none
-Required return stage: none
-Completion status: complete
-Final workflow verification readiness: ready
+Verdict: blocked
+Required return family: self
+Required return stage: architecture
+Completion status: blocked
+Final workflow verification readiness: blocked
 Operator visual status: no-reported-defect
-Blockers: none
-Major issues: none
+Blockers: controlled-state contract permits renderer drift; browser-proof ownership is stale against current develop
+Major issues: global ElementInternals Vitest shim is broader than the Switch owner; presentation proof does not yet prove owner-action pass-through
 Minor issues: none
 Accepted risks: none
 
 ## Goal and scenarios reviewed
 
-This is a fresh, independent full review of the complete Switch family with no memory of any prior review pass. It covers the current revision chain — `DESIGN.md` (design contract revision `2026-08-10T19:28:25.068Z`), `ARCHITECTURE.md` (`2026-08-11T02:00:00.000Z`), `IMPLEMENTATION.md` (`2026-08-11T05:00:00.000Z`), `MIGRATION.md` (`2026-08-11T05:15:00.000Z`) — which reflects the `self/implementation` correction routed by an earlier review (artifact revision `2026-08-11T04:00:00.000Z`, `blocked`) for two forbidden `as` type assertions and five formatting-only files, plus that correction's cascade through migration revalidation. This worker re-derived every finding below from current workspace evidence rather than assuming the routed correction was applied correctly.
+Reviewed the complete Switch family and migrated consumers against current repository rules and the latest `develop` testing architecture.
 
-Scenarios reviewed: the confirmed decorative list-item composition (`SettingsSwitchListItem.vue`, `AppUpdateSettings.vue`) rendering `MDSwitch presentation :selected :disabled` purely reflectively inside an `MDListItem`-owned `role="switch"`/`aria-checked`/click-toggle row; and the no-consumer default-scenario standalone interactive default (native click/keyboard toggle, controlled `selected`, `disabled`, no icon/drag/form-participation surface). Handle icons, drag-to-toggle, form participation, an internal label prop, and component-specific tokens remain correctly deferred; no current or contextual demand was found for any of them.
+The selected product direction remains correct: a thin Mioframe `MDSwitch` Vue adapter over private `m3e-switch`, plus the bounded `presentation` extension used by `SettingsSwitchListItem` and `AppUpdateSettings` where the containing `MDListItem` owns the actual `role="switch"`, accessible name, `aria-checked`, and action.
 
-Independently verified from current workspace state: the four artifacts' revision chain and cross-references; `MDSwitch.vue` (current source, including the `instanceof M3eSwitchElement` narrowing and the `getMergedAttrs()` extraction) against the accepted public API and host-attribute allow-list; `MDSwitch.test.ts` (13 tests); `MDSwitch.stories.ts`; `tests/e2e/storybook/md-switch-family.spec.ts` (6 tests, including its `Locator.evaluate<R, E>()` typed reads); `tests/e2e/visual/shared-ui/md-switch.spec.ts` and its baseline PNG; `config/vueCustomElements.ts` and its test; `eslint.config.test.ts`; `scripts/lib/storybookBehaviorRisk.mjs`; the `m3eSwitch.d.ts` typed mapping; the root `@shared/ui/material` barrel; both migrated consumer widgets' current source and tests; `MDStateLayer.test.ts`'s file listing; `docs/m3e-defects.md`'s `M3E-004` entry; `docs/testing/migration-plan.md`'s current S2 authorization list; a repository-wide search for any remaining `shared/ui/Switch` reference; a repository-wide search for `m3e-switch`/`M3eSwitchElement` usage outside `src/shared/ui/material`; and direct filesystem confirmation that `src/shared/ui/Switch` no longer exists. This worker also ran the exact focused command a prior review used to detect the now-fixed defect — `pnpm verify --only eslint --files src/shared/ui/material/components/switch/MDSwitch.vue tests/e2e/storybook/md-switch-family.spec.ts` — rather than trusting IMPLEMENTATION.md's own report of that same command.
-
-No concrete operator-reported visual or motion defect exists.
+The legacy custom Switch owner has been removed and the product consumers use the canonical Material boundary. The findings below require an architecture correction and a fresh downstream implementation/migration/review pass before merge.
 
 ## Official design compliance
 
-`DESIGN.md` (`Status: current`) has a non-`none` design contract revision (`2026-08-10T19:28:25.068Z`), valid source/refresh dates, and all eleven required headings. It records identity/purpose, the required Track/Handle anatomy and optional Icon, the three official icon configurations, complete geometry (32×52dp track, 16/24/28dp handle sizes, 40dp state layer, 48dp target), the five documented states, toggle/disabled behavior, usage guidance, accessibility (keyboard table, initial focus on the handle, label-sourced accessible-name guidance, no named ARIA role or numeric contrast published), the complete 78-token `md.comp.switch` catalogue with explicitly recorded raw-serialization corrections, and related contracts (Radio button, Checkbox, connected button group, Lists).
+`DESIGN.md` remains current for the selected Material Switch surface. No design-stage correction is required.
 
-The selected demand (decorative composition plus the standalone default) and every deferred surface (icons, drag, form participation, internal label prop, component tokens) are supported by this official contract. No missing or incorrect official fact was found.
+The findings are not changes to Material requirements. They concern controlled-state ownership, repository browser-proof ownership, and test-environment scope.
 
 ## Architecture compliance
 
-`ARCHITECTURE.md` (`Status: ready`, artifact revision `2026-08-11T02:00:00.000Z`) references the current design contract revision exactly and the installed `@m3e/web@2.6.3`. Dependency closure is empty and correctly reasoned: Material foundation and the renderer are not family dependencies, and `MDListItem` is a migration-stage consumer, not an architecture dependency. No dependency queue or cycle exists.
+### Blocker: the current controlled-state mapping is not actually controlled
 
-The "Adjacent external label / accessible name via `aria-label`, `aria-labelledby`, or a wrapping/associated native `<label>`" row (and its mirrored "Renderer mapping and gaps" row) correctly separates the two accessible-name mechanisms: `aria-label`/`aria-labelledby` are classified `direct` (confirmed by real-browser accessibility-tree proof), while native `<label>` wrapping/`for`/`id` association is classified `divergent` (`M3E-004`), citing `docs/m3e-defects.md` and the exact evidence basis. Direct inspection of the installed renderer's own type declarations corroborates this: `node_modules/@m3e/web/dist/src/switch/SwitchElement.d.ts` confirms `M3eSwitchElement` extends `LabelledMixin` and its class-level JSDoc's first `@example` is exactly `<label>Switch label&nbsp;<m3e-switch></m3e-switch></label>` — the renderer documents and structurally supports `<label>`-wrapped usage, which is precisely why treating the accessible-naming gap as a genuine renderer divergence (rather than a Mioframe wrapper defect) is the correct classification per `docs/m3e-defects.md`'s inclusion boundary.
+The current architecture says `selected` is the sole source of truth but maps user interaction by waiting for renderer `change`, reading the already-mutated `checked` value, and emitting `update:selected`.
 
-Beyond that row, the architecture resolves demand (two confirmed decorative consumers plus the no-consumer standalone default), ownership split with `MDListItem` and m3e, the exact three-prop public API (`selected`, `disabled`, `presentation`), the `presentation` Mioframe extension's justification and full-suppression contract, the exact positive host-attribute allow-list, zero-token selection with an explicit `docs/component-tokens.md` criterion trace, renderer mapping for every selected/deferred contract, state precedence, implementation passes, `TEST IMPACT`, migration plan, acceptance criteria, risks, and forbidden approaches, leaving no coding decision open. No architecture-owned inaccuracy was found.
+That allows hidden renderer drift. Example:
+
+1. public `selected` is `false`;
+2. user activates `m3e-switch`;
+3. renderer changes its internal `checked` to `true`;
+4. wrapper emits `update:selected(true)` from `change`;
+5. consumer rejects the intent and leaves public `selected=false`;
+6. because the Vue prop did not change, there is no guaranteed write that restores renderer `checked=false`.
+
+The installed `@m3e/web@2.6.3` renderer exposes the correct intent boundary. Its Switch click handler dispatches a bubbling, cancelable `beforeinput` **before** changing `checked`; it mutates `checked` and emits `input`/`change` only when that event is not cancelled.
+
+Required architecture correction:
+
+- keep `selected` bound to renderer `checked` as a typed Boolean property;
+- listen to renderer `beforeinput` as user-toggle intent;
+- for the normal interactive adapter path, call `preventDefault()` on that renderer event;
+- emit `update:selected(!currentRendererChecked)`;
+- do not derive the public state event from renderer `change`;
+- do not add wrapper-owned selection state;
+- after intent, renderer `checked` changes only when the consumer changes public `selected`.
+
+This is the minimum complete solution and uses a public renderer event specifically designed to precede the mutation. A post-change restoration watcher or duplicated internal state would be more complex and less reliable.
+
+### Blocker: browser-proof ownership is stale against current `develop`
+
+The branch was created before Storybook S2 completed. Current `develop` now uses owner-local `src/**/*.browser.spec.ts` for ordinary component/family-owned Storybook behavior and forbids duplicate central registry metadata where local ownership expresses the relation.
+
+Switch behavior is an ordinary Material-family-owned contract. The final owner must therefore be:
+
+```text
+src/shared/ui/material/components/switch/MDSwitch.browser.spec.ts
+```
+
+The branch-added `tests/e2e/storybook/md-switch-family.spec.ts` and the `switch family behavior` entry in `scripts/lib/storybookBehaviorRisk.mjs` must be removed after synchronization with current `develop`.
+
+The shared cross-owner central specs already present on `develop` remain untouched.
 
 ## Implementation compliance
 
-`IMPLEMENTATION.md` (`Status: complete`, artifact revision `2026-08-11T05:00:00.000Z`) references the current architecture revision exactly, records `Architecture deviations: none`, and documents the `self/implementation` routed correction (item 11) alongside the earlier revalidation entries (items 9-10).
+The wrapper is otherwise appropriately small: it uses one `m3e-switch` host, does not recreate renderer DOM/state layer/ripple/motion, keeps renderer-specific surface private, and implements an explicit host-attribute allow-list.
 
-Direct inspection of the current `MDSwitch.vue` confirms: one semantic `m3e-switch` host with `inheritAttrs: false` and no `v-bind="$attrs"` spread; a hand-built forwarded-attrs object (`getForwardedAttrs`) matching the accepted allow-list exactly (`id`, `title`, `aria-label`, `aria-labelledby`, `data-*`, plus separately merged `class`/`style`); typed Boolean property mapping for `selected`→`checked` and `disabled` (not dashed present/absent attributes); a native-`change`-derived `update:selected` emit suppressed while `presentation` is true; and a `presentation` computed-attrs object setting `tabindex="-1"`/`aria-hidden="true"` plus a `pointer-events: none` CSS class (`md-switch_presentation`), with `selected`/`disabled` visual reflection unaffected. Critically, `onChange` now reads `event.target` through a genuine `instanceof M3eSwitchElement` runtime guard — `M3eSwitchElement` is imported as a value (not `import type`) specifically so this check is valid at runtime — with **no `as` type assertion anywhere in the file**; the previously-flagged `MDSwitch.vue:55` cast is gone. The template's merged-attrs binding is now `v-bind="getMergedAttrs()"`, a function call rather than an inline object literal, which also resolves the earlier `vue/no-literals-in-template` warning. `m3eSwitch.d.ts` narrows `M3eSwitchElement` to exactly `checked`/`disabled` for typed template props. `components/switch/index.ts` and the root `@shared/ui/material` barrel export exactly `MDSwitch`. `m3e-switch` is registered in `config/vueCustomElements.ts`'s selected-element set (`selectedM3eCustomElements`, alongside `m3e-button`/`m3e-loading-indicator`) and asserted in its own test (`isM3eCustomElement('m3e-switch')`) and in `eslint.config.test.ts`'s parametrized acceptance case. No `components/switch/tokens.css` file exists, matching the zero-token architecture decision.
+Implementation must change the interaction mapping from `change` to cancelable `beforeinput` intent as specified above. Private custom-element typing must expose only the event/property surface required by that mapping.
 
-This worker independently ran `pnpm verify --only eslint --files src/shared/ui/material/components/switch/MDSwitch.vue tests/e2e/storybook/md-switch-family.spec.ts` rather than trusting IMPLEMENTATION.md's own claim; it passed with `checks run: 1 - eslint: passed`, one file group, zero errors and zero warnings reported. This directly confirms both previously-blocking `@typescript-eslint/consistent-type-assertions` errors and the non-blocking `vue/no-literals-in-template` warning are gone, and that the fix introduced no new lint defect in either file.
+### Major issue: global Vitest capability shim
 
-Direct inspection of `tests/e2e/storybook/md-switch-family.spec.ts` confirms the second corrected file: `readChecked`/`readRendererState` use Playwright's own generic `Locator.evaluate<R, E extends SVGElement | HTMLElement>()` element-type parameter (e.g. `decorative.evaluate<boolean, HTMLElement & { checked: boolean }>((el) => el.checked)`) with **no `as` assertion of any kind** — the previously-flagged double `as unknown as` cast at line 92 is gone, replaced with the same generic-parameter pattern already used elsewhere in the file and matching the equivalent pattern in `tests/e2e/storybook/md-button-family.spec.ts`.
+The branch adds `HTMLElement.prototype.attachInternals` in shared `src/setupVitest.ts` solely so the m3e Switch can be instantiated in happy-dom. This changes browser-capability detection for every Vitest test in the repository.
 
-`MDSwitch.test.ts` (13 tests) was independently re-read in full: defaults; explicit/false Boolean-property mapping; controlled re-assertion of `checked` on prop change; `update:selected` derivation from a simulated native `change`; complete `presentation` suppression and emit-blocking; and the full host-attribute allow-list/rejection matrix (forward, class/style merge without replacement, reactive add/remove/re-add, and rejection of `icons`/`name`/`value`/raw `checked`/unknown attributes/undeclared `click`/`beforeinput` listeners, with adapter-owned bindings winning). `tests/e2e/storybook/md-switch-family.spec.ts` (6 tests) was independently re-read: click/Space/Enter toggle with reported `update:selected` value; accessible name via `aria-labelledby` and `aria-label` plus disabled-activation blocking; Tab-order unreachability for both `disabled` and `presentation`; presentation pointer-unreachability with accessibility-tree hiding, read through the renderer's own `checked` property rather than private shadow DOM; 48×48dp expanded target-hit confirmation; and host-attribute-boundary rejection at the real rendered element. `MDSwitch.stories.ts` was independently re-read: it covers exactly the selected surface (`Default` args-driven Playground, `Selected`, `Disabled`, `Presentation`, four browser fixtures, and one `tags: ['visual']` `VisualStates` story) with no icon or drag story, and every accessible-name fixture uses only `aria-label`/`aria-labelledby` — no story wraps `MDSwitch` in a native `<label>` or pairs `id` with `for`, consistent with the `divergent` classification.
-
-No component-code, token, export, renderer-boundary, or component-owned proof defect was found.
+Unless another current owner demonstrably requires the same seam, the compatibility shim must be Switch-local (for example setup/restore in `MDSwitch.test.ts` or a narrowly owned Material test helper). It must remain minimal and must not pretend to prove real form association, validity, or accessibility behavior.
 
 ## Migration and legacy removal
 
-`MIGRATION.md` (`Status: complete`, artifact revision `2026-08-11T05:15:00.000Z`) references the current implementation revision exactly and records a revalidation pass against the `self/implementation` correction, correctly concluding neither consumer is affected because the `if (props.presentation) { return; }` early-return in `onChange` runs before the corrected `instanceof` narrowing is ever reached from either consumer's usage.
+The consumer migration direction is correct:
 
-Independently re-verified against current source: `SettingsSwitchListItem.vue` imports `MDSwitch` from `@shared/ui/material` and renders `MDSwitch presentation :selected="checked" :disabled="disabled"` inside its `MDListItem`-owned `mode="single-action" role="switch" :aria-checked :aria-disabled @action` row. `AppUpdateSettings.vue` imports `MDSwitch` from `@shared/ui/material` (merged into the existing `MDButton` import) and renders `MDSwitch presentation :selected="mode === 'automatic'" :disabled="isAutomaticToggleDisabled"` inside its equivalent "Automatic updates" `MDListItem` row. Neither consumer wraps `MDSwitch` in a native `<label>` element or pairs an `id` with a `for` attribute on it — both use `presentation` mode, which unconditionally sets `aria-hidden="true"`/`tabindex="-1"` on the rendered `m3e-switch`, and the accessible name, `role="switch"`, and `aria-checked`/`aria-disabled` belong entirely to the enclosing `MDListItem` row, not to the switch. `SettingsSwitchListItem.test.ts` was independently re-read: its `@shared/ui/material` `MDSwitch` stub matches the canonical public API exactly (`selected`/`disabled`/`presentation`), and its two behavior tests assert the row (not the switch) owns `role="switch"`/`aria-checked`/`aria-disabled` and the click-driven `change` emit, with the switch stub reflecting only `data-presentation`/`data-state`/`data-disabled` — consistent with `docs/testing/architecture.md`'s one-primary-proof-owner rule. `AppUpdateSettings.test.ts` was confirmed to mock `MDSwitch` from the same `@shared/ui/material` module (merged with the existing `MDButton` mock). Both preserve the row-level toggle as the actual user action, matching `src/AGENTS.md`'s user-action-preservation requirement (same entry point, same primary interaction tier, same verification path — no action moved, renamed, merged, or hidden).
+- `SettingsSwitchListItem` uses canonical `MDSwitch presentation`;
+- `AppUpdateSettings` uses canonical `MDSwitch presentation`;
+- legacy `src/shared/ui/Switch` is removed;
+- no compatibility alias is retained.
 
-`src/shared/ui/Switch` no longer exists (confirmed by direct filesystem lookup — the path does not resolve). A repository-wide search found no remaining reference to the legacy import path outside historical prose in the four Switch stage artifacts and `docs/roadmap.md`, which correctly describe the completed removal rather than pointing at a live path. `MDStateLayer.test.ts` was independently re-read: no `Switch` string appears anywhere in the file, confirming the stale `'src/shared/ui/Switch/MDSwitch.vue'` listing entry is gone. A repository-wide search for `m3e-switch`/`M3eSwitchElement` outside `src/shared/ui/material` found exactly one match, `src/setupVitest.ts`, which is a code comment (not an import or usage) documenting why a shared `ElementInternals` polyfill exists for happy-dom — no renderer boundary violation. No compatibility alias, duplicate wrapper, or replaced consumer test/style remains.
+### Major issue: incomplete proof of the confirmed presentation scenario
 
-The legacy shared multi-component visual spec's seven MDSwitch-only tests and four baseline PNGs are recorded as removed without disturbing its other component coverage (MDChip, MDCheckbox, MDCard, MDStateLayer, MarkdownContent); the new family's own `tests/e2e/visual/shared-ui/md-switch.spec.ts` and its baseline PNG (`md-switch-states-linux.png`) exist and are the current Switch visual proof (confirmed present on disk).
+Current browser proof verifies that `presentation` is hidden from the accessibility tree, skipped by Tab, and does not toggle the renderer when clicked.
+
+The confirmed product contract additionally requires that pointer input on the visible decorative Switch region remains part of the owning row action. Add proof that clicking that visual region reaches the composition owner action and that the resulting consumer-owned state is then reflected back through `selected` into renderer `checked`.
+
+This can be proved with a truthful Switch-owned composition fixture: the parent owns the action and state, while the `presentation` Switch only reflects state. Do not duplicate product business logic in Storybook.
 
 ## Proof and stage verification
 
-Implementation records passing focused `type-check`, a full-project `unit-tests` run (4442 tests, justified by shared `setupVitest.ts` polyfill infrastructure), two revalidation reruns, and the routed-correction rerun: focused `eslint` (independently re-confirmed by this review, see "Implementation compliance"), `format` on the five affected files, `type-check`, `unit-tests`, `storybook-behavior` (6/6, rerun because both the runtime `.vue` file and the spec changed), and `visual` (212/212, confirming no regression). Migration records passing focused `type-check`, `unit-tests` scoped to the seven then-touched consumer/state-layer files, `visual` (212/212), `e2e` (`appSmoke.spec.ts` plus verifier-auto-selected `appUpdatesNavigation.spec.ts`), `format`, `oxlint`, and `eslint`, plus two revalidation reruns of `type-check`/`unit-tests` scoped to both consumers (the second against the routed-correction revision, with fresh passing results). Each recorded command matches this project's `pnpm verify --only <label> --files ...` convention; none substitutes a raw underlying tool, and this review independently re-ran the one command most relevant to the prior blocking finding rather than trusting the recorded output alone.
+The previous focused checks are useful evidence for the initial implementation but do not close this revision because the architecture mapping and executable Storybook ownership have changed.
 
-Proof ownership matches `docs/testing/architecture.md`'s one-primary-owner rule: `MDSwitch.test.ts` owns component-contract/host-boundary proof; the Storybook behavior spec owns real-browser keyboard/pointer/accessibility-tree/target proof at the current executable central location — independently confirmed against `docs/testing/migration-plan.md`, whose S2-A through S2-C authorized-family list (Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder) does not include Switch, so the central `tests/e2e/storybook/md-switch-family.spec.ts` placement is currently correct rather than a deferred colocation gap; the bounded visual spec owns stable-appearance proof; and consumer tests were correctly trimmed to their own composition contract rather than re-asserting `MDSwitch`'s internally-proven mechanics. `scripts/lib/storybookBehaviorRisk.mjs` was independently confirmed to carry the "switch family behavior" mapping (`sourcePrefixes: ['src/shared/ui/material/components/switch/']`, `specs: ['tests/e2e/storybook/md-switch-family.spec.ts']`), so impact-registry proof is proportionate and current.
+Required risk-specific proof after correction:
 
-This review ran one project command itself (the focused `eslint` check on the two previously-flagged files) rather than relying solely on recorded output for that specific prior finding, and otherwise re-read the recorded verification output and independently re-inspected the underlying source, test, story, and installed-renderer-type files it references. Final workflow verification remains exclusively owned by the outer `material-component` orchestrator after a current successful review, which this review now grants.
+- unit: `beforeinput` is cancelled and emits exactly the intended next `selected` value;
+- unit/browser: rejected intent leaves renderer `checked` equal to the unchanged public prop;
+- browser: click, Space, and Enter continue to produce one public intent through the corrected controlled path;
+- browser: disabled and `presentation` paths do not emit intent;
+- browser: `presentation` visual click reaches the owning composition action;
+- browser: host-attribute boundary remains intact, including rejection of consumer `beforeinput`/`change` listeners;
+- existing visual proof remains stable;
+- consumer tests continue to prove row-level action ownership.
+
+The branch must also be synchronized with current `develop` before the final verification, because current `develop` completed Storybook S2 after this branch diverged.
 
 ## Blockers
 
-None.
+1. Correct controlled-state architecture to use cancelable renderer `beforeinput` intent and keep `selected` as the sole source of truth.
+2. Synchronize with current `develop` and move Switch browser proof to owner-local `MDSwitch.browser.spec.ts`, removing the obsolete central mapping.
 
 ## Major issues
 
-None. The two `as` type-assertion errors that blocked the prior review pass (`MDSwitch.vue:55`, `tests/e2e/storybook/md-switch-family.spec.ts:92`) are confirmed fixed by direct source inspection and by an independently-run `pnpm verify --only eslint` check against both exact files, which passed with zero errors and zero warnings.
+1. Localize the Switch-only `ElementInternals` Vitest compatibility shim instead of altering the shared test capability surface.
+2. Add proof that `presentation` pointer input reaches the owning composition action and state flows back into the renderer.
 
 ## Minor issues
 
-None. The `vue/no-literals-in-template` warning recorded against `MDSwitch.vue:101` in the prior review is confirmed resolved (the `getMergedAttrs()` extraction removed the inline object-literal template node), and the five previously-misformatted files (`ARCHITECTURE.md`, `DESIGN.md`, `docs/m3e-defects.md`, `docs/roadmap.md`, `tests/e2e/storybook/md-switch-family.spec.ts`) show no remaining content or structural irregularity on direct re-read.
+None.
 
 ## Accepted risks
 
-None. The two `partial`-to-`direct` renderer-mapping resolutions (disabled tab-reachability, Enter-key activation), the exact-installed-renderer-version scope, `M3E-004`'s bounded non-blocking impact (the decorative composition hides the node entirely; the standalone default's accessible-name criterion is already satisfied by the two confirmed-working mechanisms), and the `presentation` pointer-events suppression are bounded implementation constraints with explicit ownership, real-browser proof, and (for `M3E-004`) a registry entry with a removal trigger — not unresolved compliance gaps requiring listing here.
+None.
 
 ## Items not required
 
-- No component code, export, renderer registration, host-attribute mapping, token file, consumer template, or test-stub change is required by this review.
-- No further architecture, implementation, or migration correction is required; the routed `self/implementation` finding is confirmed fully resolved by independent re-inspection and an independently re-run focused `eslint` check, not merely by the artifacts' own claim of resolution.
-- No new browser or component proof is required; existing proof already demonstrates every accepted contract, including that no story or consumer relies on the `M3E-004` mechanism.
-- No expansion to deferred icon, drag-to-toggle, form-participation, internal-label, or component-token surface is required; no current or contextual demand was found for any of them.
-- No further legacy-removal, consumer-migration, or blast-radius work is required; `src/shared/ui/Switch` and all its references are fully removed.
-- No positive operator visual acknowledgement is required in the absence of a reported defect.
-- `docs/roadmap.md`'s Switch section still narrates the round-2 correction as "cascading... before a fresh review" and records superseded implementation/migration revision numbers (`2026-08-11T02:15:00.000Z` / `2026-08-11T02:30:00.000Z` rather than the current `2026-08-11T05:00:00.000Z` / `2026-08-11T05:15:00.000Z`); `docs/roadmap.md` alone owns mutable milestone status and next action per `docs/component-workflow.md`'s Authority section, so refreshing that narration is not a `REVIEW.md` field, a family-artifact defect, or a blocker to this verdict — it is expected to be refreshed as part of ordinary workflow progression now that this review is current.
-- The result of the outer final workflow command is not a Switch review field.
+- Do not change shared Playwright container infrastructure in this PR based only on the earlier agent-session wrong-worktree observation. Re-evaluate after running from the correct synchronized checkout; investigate separately only if independently reproducible from the correct cwd.
+- Do not reintroduce drag-to-toggle, icons, form participation, component-specific token surface, or legacy compatibility APIs.
+- Do not create a generic m3e adapter/state framework.
 
 ## Routing evidence
 
-Current revision chain confirmed exact: design contract `2026-08-10T19:28:25.068Z` → architecture `2026-08-11T02:00:00.000Z` (referencing that exact design contract revision) → implementation `2026-08-11T05:00:00.000Z` (referencing that exact architecture revision, `Architecture deviations: none`, recording the routed `self/implementation` correction from the prior review artifact revision `2026-08-11T04:00:00.000Z`) → migration `2026-08-11T05:15:00.000Z` (referencing that exact implementation revision, `Review readiness: ready`, recording its own revalidation against that same correction).
+Route: `self/architecture`.
 
-This fresh, independent full review re-derived every compliance judgment from current workspace evidence — official design content, architecture reasoning, component source, tests, stories, browser/visual specs, installed renderer type declarations, consumer source and tests, repository-wide legacy-reference and renderer-boundary search, and one independently re-run focused `eslint` command — rather than assuming the prior review's routed correction had been applied correctly. It confirms the correction is genuine and complete: `MDSwitch.vue` contains no `as` type assertion and narrows `event.target` with a real `instanceof M3eSwitchElement` runtime check; `tests/e2e/storybook/md-switch-family.spec.ts` contains no `as` assertion and uses Playwright's own generic `evaluate<R, E>()` typing; the `vue/no-literals-in-template` warning is gone; the five formatting-only files show no residual irregularity; and neither migrated consumer's runtime path touches the corrected code, confirmed by fresh passing focused proof. No design, demand, ownership, dependency, public-API, host-boundary, token, component-implementation, proof-ownership, consumer, scenario-preservation, or legacy-removal defect remains.
+Reason: the primary blocker is an incorrect public controlled-state mapping in the current `ARCHITECTURE.md`. The installed renderer already supplies a smaller and correct public mechanism (`beforeinput` before mutation), so architecture must select that mechanism before implementation changes.
 
-The correct family route is `none/none`, completion is `complete`, and the family is ready for outer final workflow verification.
+After architecture is corrected, normal revision invalidation requires fresh implementation, migration revalidation, and independent review. Final `pnpm verify` runs only after that chain is current.
