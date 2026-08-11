@@ -466,8 +466,8 @@ describe('buildCommands storybook-behavior lane', () => {
     expect(entry.kind).toBe('run');
   });
 
-  it('runs a focused lane for the changed smoke spec', () => {
-    const commands = buildCommands(['tests/e2e/storybook/storybook.smoke.spec.ts'], {
+  it('runs a focused lane for a changed existing central behavior spec', () => {
+    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
       fullMode: false,
     });
     const entry = commands.find((item) => item.label === 'storybook-behavior');
@@ -475,7 +475,7 @@ describe('buildCommands storybook-behavior lane', () => {
     expect(entry.kind).toBe('run');
     expect(entry.args).toEqual([
       'test:storybook-behavior',
-      'tests/e2e/storybook/storybook.smoke.spec.ts',
+      'tests/e2e/storybook/colorOwnership.spec.ts',
     ]);
   });
 
@@ -583,6 +583,52 @@ describe('buildCommands visual relevance for src/app/styles/base.css', () => {
     const entry = commands.find((item) => item.label === 'visual');
 
     expect(entry.kind).toBe('run');
+  });
+});
+
+describe('buildCommands visual lane (visualRisk integration)', () => {
+  it('produces a focused test:visual command with the exact spec for a resolvable colocated visual owner', () => {
+    const commands = buildCommands(
+      ['src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue'],
+      { fullMode: false },
+    );
+    const entry = commands.find((item) => item.label === 'visual');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.args).toEqual([
+      'test:visual',
+      'src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts',
+    ]);
+  });
+
+  it('produces the full test:visual command for a legacy central visual change', () => {
+    const commands = buildCommands(['tests/e2e/visual/shared-ui/md-button.spec.ts'], {
+      fullMode: false,
+    });
+    const entry = commands.find((item) => item.label === 'visual');
+
+    expect(entry.kind).toBe('run');
+    expect(entry.args).toEqual(['test:visual']);
+  });
+
+  it('skips visual for an unrelated change', () => {
+    const commands = buildCommands(['src/entities/document/model/document.ts'], {
+      fullMode: false,
+    });
+    const entry = commands.find((item) => item.label === 'visual');
+
+    expect(entry.kind).toBe('skipped');
+    expect(entry.reason).toBe('empty visual scope');
+  });
+
+  it('excludes a changed colocated *.visual.spec.ts file from the unit-tests vitest scope', () => {
+    const commands = buildCommands(
+      ['src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts'],
+      { fullMode: false },
+    );
+    const unitTestsEntry = commands.find((item) => item.label === 'unit-tests');
+
+    expect(unitTestsEntry.kind).toBe('skipped');
   });
 });
 

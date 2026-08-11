@@ -24,7 +24,7 @@ The truthful UI owner owns visual proof:
 
 The durable target is an explicit owner-local `*.visual.spec.ts` with deterministic owner-local snapshots. Physical placement must follow `docs/testing/migration-plan.md`.
 
-Until colocated visual discovery is merged, keep executable visual specs/baselines in the current central visual location and maintain the current resolver relation. Do not create an undiscoverable colocated visual spec merely because the target architecture describes one.
+Owners explicitly authorized/migrated by `docs/testing/migration-plan.md` (currently Loading Indicator, Stage S3) use owner-local `*.visual.spec.ts` and colocated snapshots. Every other visual owner remains in the current central visual location with the current resolver relation until its own migration stage authorizes it. Do not create a colocated visual spec for an owner the migration plan has not authorized, and do not migrate another owner opportunistically.
 
 ## Canonical references
 
@@ -88,14 +88,14 @@ Do not create forced visual states and present them as proof of inaccessible pri
 For `visual`:
 
 - a changed visual spec selects itself;
-- use deterministic owner-local relation when the current resolver supports it;
+- use deterministic owner-local relation when the current resolver supports it (currently implemented for Loading Indicator, Stage S3);
 - use explicit mapping only for truthful non-local family/module/cross-cutting visible impact;
-- during migration, preserve required mappings for specs still in the current central executable location;
+- for unmigrated owners, changes remain in the legacy central location and select the full visual lane rather than a false local relation;
 - do not put visual spec paths into source prefixes merely to group tests;
 - theme, fonts, icons, Storybook renderer/config, and broad shared visual helpers default to full visual unless all consumers are explicit, small, stable, and validated;
 - unresolved added/modified/removed/moved baseline ownership selects full visual rather than silently skipping.
 
-The target colocated snapshot convention is documented in `docs/testing/storybook.md`. Until the visual migration is implemented, preserve the current executable repository convention.
+The colocated snapshot convention is documented in `docs/testing/storybook.md`. Use it for owners `docs/testing/migration-plan.md` has already authorized/migrated; preserve the current central executable convention for every other owner.
 
 ## Operator Material review
 
@@ -120,7 +120,7 @@ Preserve applicable `--profile` and `--files` scope when rerunning visual verifi
 ## Forbidden
 
 - behavior assertions in visual specs;
-- colocated visual specs before current discovery supports them;
+- a colocated visual spec for an owner `docs/testing/migration-plan.md` has not authorized/migrated;
 - screenshots broader than the named visible contract;
 - uncontrolled product, time, network, storage, or animation state;
 - unexplained baseline changes;

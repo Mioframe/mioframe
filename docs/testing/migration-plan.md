@@ -38,6 +38,12 @@
 - The Storybook behavior Playwright lane supports mixed discovery through one configuration: legacy `tests/e2e/storybook/**/*.spec.ts` plus owner-local `src/**/*.browser.spec.ts`.
 - Owner-local browser selection is filesystem-derived from existing colocated specs, selects every applicable spec for an owner path, is independent of discovery order, and fails closed to the full behavior lane for removed/renamed colocated specs.
 - Application and Storybook source TypeScript exclude `src/**/*.browser.spec.ts`; Node/tooling TypeScript and Playwright own those test files.
+- The visual Playwright lane supports mixed discovery through one configuration: legacy `tests/e2e/visual/**/*.spec.ts` plus owner-local `src/**/*.visual.spec.ts`.
+- Loading Indicator is the authorized and completed owner-local visual pilot: `MDLoadingIndicator.visual.spec.ts` and its three PNG baselines are colocated under `src/shared/ui/material/components/loadingIndicator/`, using the documented `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention. Its legacy-surface screenshot now opens the Loading Indicator-owned `LegacySurfaceIsolation` story (tagged `visual`) instead of the Button-owned story.
+- Owner-local visual selection is filesystem-derived: source/story changes under an owner directory select every colocated visual spec in that directory; baseline changes resolve to their exact owning spec through the `<spec>.visual.spec.ts-snapshots/` marker; add/modify/delete/rename of colocated specs or baselines fails closed to the full visual lane when ownership cannot be resolved.
+- Application and Storybook source TypeScript exclude `src/**/*.visual.spec.ts`; Node/tooling TypeScript and Playwright own those test files.
+- All other visual specs/baselines remain in the legacy central location (`tests/e2e/visual/**`) with full-lane fallback; S3 does not migrate, split, or reclassify them.
+- Unmigrated visual-relevant shared UI/story changes with no resolvable colocated visual owner preserve safe full visual fallback rather than silently losing visual coverage.
 
 ### Still transitional
 
@@ -47,7 +53,7 @@
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, and `DialogForm` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete.
-- Visual specs/baselines still use the current central visual execution structure.
+- Loading Indicator uses the owner-local visual convention (Stage S3, complete); all other visual specs/baselines still use the current central visual execution structure until Stage S4.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
 - Persistent mutation and release-impact migration remain separate work.
@@ -284,19 +290,32 @@ The next authorized Storybook migration stage is **S3 — visual discovery and s
 
 ### Stage S3 — visual discovery and snapshot pilot
 
-Introduce one colocated `*.visual.spec.ts` owner and its deterministic snapshot directory while preserving all legacy visual execution.
+Status: **complete**.
 
-Required behavior:
+Authorized and completed pilot: Loading Indicator Material family only.
 
-- Playwright discovers the colocated pilot visual spec;
-- production TypeScript excludes it;
-- snapshot ownership is deterministic for add/modify/delete/rename;
-- changed component/story/spec/baseline selects the owner where resolvable;
-- unresolved baseline ownership selects full visual;
-- theme/fonts/icons/Storybook renderer/config remain broad fallback unless a complete stable consumer set is explicit;
-- visual spec contains preparation plus bounded screenshot assertions only.
+Final executable S3 state:
 
-Do not combine this with browser discovery work.
+- one visual Playwright configuration discovers both legacy central specs (`tests/e2e/visual/**/*.spec.ts`) and owner-local `src/**/*.visual.spec.ts`, so discovery is mixed legacy plus colocated;
+- `MDLoadingIndicator.visual.spec.ts` and its three PNG baselines are colocated beside the Loading Indicator owner under `src/shared/ui/material/components/loadingIndicator/`, using the `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention; the baseline bytes are unchanged from their prior central location;
+- the legacy-surface screenshot opens the Loading Indicator-owned `LegacySurfaceIsolation` story (tagged `visual`) instead of the Button-owned `LegacySurfaceColorOwnership` story, so no Button-owned visual fixture dependency remains;
+- production/Storybook TypeScript excludes colocated visual specs while tooling type-check includes them; Vitest automatic scope also excludes them;
+- resolver ownership (`scripts/lib/visualRisk.mjs`) is derived from the filesystem rather than a registry: an owner path selects every applicable colocated visual spec, a baseline resolves to its exact owning spec through the `<spec>.visual.spec.ts-snapshots/` marker, and add/modify/delete/rename of colocated specs or baselines fails closed to the full visual lane when ownership cannot be resolved;
+- the old central Loading Indicator visual spec and snapshot directory are removed; legacy centralized specs/baselines for all other owners remain intact and unaffected, with full-lane fallback;
+- unmigrated visual-relevant shared UI/story changes with no resolvable colocated visual owner preserve full visual fallback so S3 does not cause visual checks to disappear;
+- global theme/font/Storybook/visual infrastructure (`playwright.visual.config.ts`, `.storybook/**`, base/font styling, the shared Playwright container runner, `scripts/lib/visualRisk.mjs` itself) remains full-lane fallback.
+
+Forbidden during S3:
+
+- migrating another visual owner;
+- Stage S4 work;
+- changing accepted screenshot bytes merely because paths moved;
+- renaming stories/titles;
+- changing Loading Indicator production behavior/API/tokens;
+- changing Button behavior or Button visual proof;
+- removing legacy central visual discovery.
+
+The next authorized Storybook migration stage is **S4 — remaining visual migration**.
 
 ### Stage S4 — remaining visual migration
 
