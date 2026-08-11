@@ -10,9 +10,9 @@ Current milestone: `M2 — Switch stateful pilot correction`
 
 Status: `correction-required`
 
-The m3e-backed Material library architecture is established and already proven by Loading Indicator and Button. Switch has been migrated to the new library boundary and the legacy `src/shared/ui/Switch` owner has been removed, but the current Switch artifact chain is not merge-ready after architecture review against the latest `develop` state.
+The m3e-backed Material library architecture is established and already proven by Loading Indicator and Button. Switch has been migrated to the new library boundary and the legacy `src/shared/ui/Switch` owner has been removed, but the current Switch artifact chain is not merge-ready after architecture review against the current `develop` state.
 
-The branch must first synchronize with current `develop`; it is currently based before the completed Storybook S2 owner-local browser migration.
+The branch is synchronized with current `develop`, including the completed Storybook S2 owner-local browser migration. The remaining work is Switch-owned correction, not branch synchronization.
 
 ## Current family state
 
@@ -39,7 +39,7 @@ DESIGN.md          current
 ARCHITECTURE.md    correction required
 IMPLEMENTATION.md  stale after architecture correction
 MIGRATION.md       stale after implementation correction
-REVIEW.md          invalidated; fresh review required
+REVIEW.md          blocked → self/architecture
 ```
 
 The current runtime direction remains valid: one thin `MDSwitch` Vue adapter over `m3e-switch`, a curated Mioframe API, no renderer leakage, no recreated ripple/state-layer/geometry/motion, and the `presentation` extension for the two confirmed decorative list-item consumers.
@@ -65,7 +65,7 @@ Required proof includes the rejected-intent case: when `selected=false`, user ac
 
 ### 2. Switch browser proof must follow current owner-local Storybook ownership
 
-Current `develop` has completed Storybook S2 migration. Ordinary component/family-owned browser behavior now belongs in colocated `src/**/*.browser.spec.ts` files with filesystem-derived ownership.
+Current `develop` has completed Storybook S2 migration. Ordinary component/family-owned browser behavior belongs in colocated `src/**/*.browser.spec.ts` files with filesystem-derived ownership.
 
 Switch-owned browser proof must therefore live at:
 
@@ -85,34 +85,35 @@ Real form participation and accessibility behavior remain browser-proof responsi
 
 ### 4. Prove the real `presentation` composition action path
 
-The confirmed product scenario is not merely that the decorative renderer fails to toggle itself. A real pointer click on the visible Switch region must still activate the owning `MDListItem` row action, because the row is the interactive `role="switch"` owner.
+The confirmed product scenario is not merely that the decorative renderer fails to toggle itself. A real pointer click on the visible Switch region must still activate the owning composition action, because the surrounding owner is the interactive `role="switch"` surface.
 
-Add browser or faithful consumer-level proof that a click on the visible `MDSwitch presentation` region reaches the owning row action and that the subsequently updated consumer state is reflected back into the decorative renderer.
+Add browser proof that a click on the visible `MDSwitch presentation` region reaches the composition owner's action and that the subsequently updated owner state is reflected back into the decorative renderer through `selected`.
+
+The Material fixture may model only the reusable composition contract: the parent owns action and state; Switch only reflects state. Existing consumer tests continue to prove that the actual product owner is `MDListItem`.
 
 ## Verification note
 
 The previously reported cross-worktree Playwright mount failure is not currently accepted as a repository blocker. `scripts/playwrightContainer.mjs` intentionally mounts `process.cwd()`; evidence that an agent process had the wrong ambient working directory is insufficient to justify changing shared verification infrastructure in this PR.
 
-After synchronization and the Switch corrections above, rerun the verifier from the correct checkout. If a wrong-worktree mount reproduces independently from the correct repository cwd, investigate it as a separate verification-infrastructure defect with its own reproduction and scope.
+After the Switch corrections above, rerun the verifier from the correct checkout. If a wrong-worktree mount reproduces independently from the correct repository cwd, investigate it as a separate verification-infrastructure defect with its own reproduction and scope.
 
 ## Milestones
 
-| ID  | Milestone                      | Status                | Exit gate                                                                                                                                                                                              |
-| --- | ------------------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M0  | Material workflow architecture | `complete`            | staged family workflow and m3e-backed public boundary established                                                                                                                                      |
-| M1a | Loading Indicator              | `complete`            | canonical adapter, migration and compliant review                                                                                                                                                      |
-| M1  | Button                         | `complete-runtime`    | m3e-backed Button runtime and consumer migration merged                                                                                                                                                |
-| M2  | Switch stateful pilot          | `correction-required` | current `develop` synchronized; controlled intent/state contract corrected; owner-local browser proof; scoped test shim; composition action proof; fresh downstream review; final `pnpm verify` passes |
-| M3  | Sequential component migration | `planned`             | migrate one family at a time after M2 closes                                                                                                                                                           |
+| ID  | Milestone                           | Status                | Exit gate |
+| --- | ----------------------------------- | --------------------- | --------- |
+| M0  | Material workflow architecture      | `complete`            | staged family workflow and m3e-backed public boundary established |
+| M1a | Loading Indicator                   | `complete`            | canonical adapter, migration and compliant review |
+| M1  | Button                              | `complete-runtime`    | m3e-backed Button runtime and consumer migration merged |
+| M2  | Switch stateful pilot               | `correction-required` | controlled intent/state contract corrected; owner-local browser proof; scoped test shim; composition action proof; fresh downstream review; final `pnpm verify` passes |
+| M3  | Sequential component migration      | `planned`             | migrate one family at a time after M2 closes |
 
 ## Next operator action
 
-1. Synchronize `refactor/material-switch-m3e` with current `develop`.
-2. Correct Switch architecture and implementation using cancelable renderer `beforeinput` so `selected` remains the sole source of truth.
-3. Align browser proof with completed S2 owner-local placement and remove the obsolete central Switch mapping.
-4. Scope the `ElementInternals` test shim to the smallest truthful owner.
-5. Add proof for the actual decorative-list-row click path.
-6. Re-run implementation, migration and independent review stages against the corrected architecture.
-7. Run one final `pnpm verify` from the correct checkout.
+1. Correct Switch architecture and implementation using cancelable renderer `beforeinput` so `selected` remains the sole source of truth.
+2. Move Switch browser proof to owner-local placement and remove the obsolete central Switch mapping.
+3. Scope the `ElementInternals` test shim to the smallest truthful owner.
+4. Add proof for the actual decorative composition action path.
+5. Re-run implementation, migration and independent review stages against the corrected architecture.
+6. Run one final `pnpm verify` from the correct checkout.
 
 Do not change shared Playwright container infrastructure in this PR without a separate, independently reproduced repository-level defect.
