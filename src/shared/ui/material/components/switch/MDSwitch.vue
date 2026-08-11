@@ -12,9 +12,12 @@ defineOptions({ inheritAttrs: false });
 const props = withDefaults(
   defineProps<{
     /**
-     * Official binary selection state (unselected/off vs. selected/on). Controlled: maps to the
-     * renderer's `checked` property; a native toggle re-emits the renderer's resulting value
-     * through `update:selected` rather than being owned internally by the renderer.
+     * Official binary selection state (unselected/off vs. selected/on). Controlled
+     * one-directionally: this prop is the sole source of truth and is always written into the
+     * renderer's `checked` property. A real user activation never mutates `checked` as a side
+     * effect of the interaction itself; the renderer's cancelable `beforeinput` intent is
+     * intercepted and cancelled before any renderer mutation, and `update:selected` carries the
+     * intended next value for the owning consumer to write back.
      */
     selected?: boolean | undefined;
     /**
@@ -40,21 +43,37 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   /**
-   * Fired when the renderer's own click/keyboard toggle changes its internal `checked` value;
-   * carries that resulting value for a `v-model:selected`-style controlled binding. Never fires
-   * while `presentation` is true, since no interaction can reach the renderer in that mode.
+   * Fired from the renderer's own cancelable `beforeinput` intent, before any renderer mutation:
+   * carries the *intended* next value (`!event.target.checked`, computed pre-mutation), not a
+   * value read back after the fact, for a `v-model:selected`-style controlled binding. Never
+   * fires while `presentation` is true, since the handler no-ops before computing or emitting
+   * anything in that mode, and is never reachable while `disabled` is true, since the renderer's
+   * own guard blocks `beforeinput` dispatch before it can occur.
    */
   'update:selected': [value: boolean];
 }>();
 
-const onChange = (event: Event) => {
-  if (props.presentation) {
-    return;
-  }
+/**
+ * Intercepts the renderer's cancelable `beforeinput` intent before any renderer mutation can
+ * occur (ARCHITECTURE.md "State precedence and restoration"). `presentation` no-ops first — no
+ * `preventDefault()`, no emit — as defense-in-depth alongside the host suppression attributes.
+ * Otherwise `preventDefault()` is called before computing the intended next value, which stops
+ * the renderer's own pending `checked` mutation from ever executing; `selected` remains the sole
+ * source of truth via the one-way `:checked="props.selected"` binding below. Deliberately does
+ * not check `props.disabled` itself: the renderer's own click handler already blocks `beforeinput`
+ * dispatch before `disabled` before this listener could run, so a redundant wrapper-level check
+ * would only mask a real renderer regression instead of catching one.
+ * @param event - The renderer's cancelable `beforeinput` event.
+ */
+const onBeforeinput = (event: Event) => {
   if (!(event.target instanceof M3eSwitchElement)) {
     return;
   }
-  emit('update:selected', event.target.checked);
+  if (props.presentation) {
+    return;
+  }
+  event.preventDefault();
+  emit('update:selected', !event.target.checked);
 };
 
 const attrs = useAttrs();
@@ -116,7 +135,7 @@ const getMergedAttrs = (): Record<string, unknown> => ({
     :style="attrs.style"
     :checked="props.selected"
     :disabled="props.disabled"
-    @change="onChange"
+    @beforeinput="onBeforeinput"
   />
 </template>
 

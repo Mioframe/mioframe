@@ -7,7 +7,10 @@ type M3eSwitchProps = HTMLAttributes &
   PublicProps & {
     [Property in keyof RendererSwitchProps]?: RendererSwitchProps[Property] | undefined;
   } & {
-    onChange?: (event: Event) => void;
+    // The installed `@m3e/web@2.6.3` renderer dispatches `beforeinput` as a plain `Event`
+    // (`new Event('beforeinput', { bubbles: true, cancelable: true })`), not the ambient DOM
+    // lib's `InputEvent`; see ARCHITECTURE.md "Renderer mapping and gaps" private typing seam.
+    onBeforeinput?: (event: Event) => void;
   };
 
 type M3eSwitchVueElement = new () => M3eSwitchElement & {

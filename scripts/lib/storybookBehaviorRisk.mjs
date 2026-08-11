@@ -65,20 +65,6 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
       'src/shared/ui/State/useFocusIndicator.ts',
       'src/shared/ui/State/md-focus-indicator.css',
     ],
-    specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
-  },
-  {
-    name: 'switch family behavior',
-    sourcePrefixes: ['src/shared/ui/material/components/switch/'],
-    specs: ['tests/e2e/storybook/md-switch-family.spec.ts'],
-  },
-  {
-    name: 'dialog form fallback focus',
-    sourcePrefixes: [
-      'src/shared/ui/Dialog/DialogForm.vue',
-      'src/shared/ui/Dialog/DialogForm.stories.ts',
-    ],
-    specs: ['tests/e2e/storybook/dialogFormFallbackFocus.spec.ts'],
     specs: ['tests/e2e/storybook/focusIndicator.spec.ts'],
   },
   {

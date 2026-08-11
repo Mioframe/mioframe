@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from './storybook.testUtils';
+import { openStory } from '../../../../../../tests/e2e/storybook/storybook.testUtils';
 
-test('MDSwitch click, Space, and Enter toggle the standalone default and report the resulting value', async ({
+test('MDSwitch click, Space, and Enter activation each produce exactly one public intent through the real renderer beforeinput/preventDefault lifecycle', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-switch-mdswitch--behavior-contracts');
@@ -23,9 +23,9 @@ test('MDSwitch click, Space, and Enter toggle the standalone default and report 
   await expect(changeCount).toHaveText('2');
 
   // Official Accessibility guidance documents both Space and Enter toggling the switch
-  // (DESIGN.md "Accessibility"); ARCHITECTURE.md flagged Enter-key activation as only
-  // partially confirmed from static compiled-source inspection. This proves it toggles in a
-  // real browser, resolving that gap to `direct` with no wrapper keydown handler needed.
+  // (DESIGN.md "Accessibility"); every activation path reaches the identical compiled renderer
+  // click handler and its single cancelable `beforeinput` dispatch, which the adapter
+  // intercepts uniformly regardless of input modality.
   await page.keyboard.press('Enter');
   await expect(labelled).toHaveAttribute('aria-checked', 'true');
   await expect(changeCount).toHaveText('3');
@@ -52,6 +52,32 @@ test('MDSwitch resolves an accessible name from aria-labelledby and aria-label, 
   await expect(disabled).not.toBeFocused();
 });
 
+test('MDSwitch rejected intent leaves the rendered checked unchanged when the owning consumer does not write the emitted value back', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-switch-mdswitch--rejected-intent');
+
+  const toggle = page.getByRole('switch', { name: 'Rejected intent' });
+  const count = page.locator('#md-switch-rejected-intent-count');
+  const value = page.locator('#md-switch-rejected-intent-value');
+
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+  await toggle.click();
+
+  // Exactly one intent was reported with the intended next value...
+  await expect(count).toHaveText('1');
+  await expect(value).toHaveText('true');
+  // ...but since the fixture never writes it back to `selected`, the rendered switch stays at
+  // its prior value: `selected` remains the sole, one-directional source of truth, with no
+  // window in which the renderer's own `checked` could have diverged.
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+  await toggle.click();
+  await expect(count).toHaveText('2');
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+});
+
 test('MDSwitch disabled and presentation are both unreachable by Tab, resolving the renderer disabled-focus-order gap', async ({
   page,
 }) => {
@@ -64,10 +90,9 @@ test('MDSwitch disabled and presentation are both unreachable by Tab, resolving 
   await expect(before).toBeFocused();
 
   // Only one Tab press from `before` reaches `after`: both the disabled switch and the
-  // presentation switch sitting between them in the DOM are skipped. This confirms the
-  // ARCHITECTURE.md "disabled tab-reachability" gap resolves to `direct` (the renderer's own
-  // Focusable/Disabled mixins already remove it from the tab order; no wrapper tabindex="-1"
-  // correction is required) and that `presentation` stays fully out of the tab order too.
+  // presentation switch sitting between them in the DOM are skipped. This confirms the renderer's
+  // own Focusable/Disabled mixins already remove it from the tab order (no wrapper tabindex="-1"
+  // correction is needed for `disabled`) and that `presentation` stays fully out of the tab order.
   await page.keyboard.press('Tab');
   await expect(after).toBeFocused();
 });
@@ -101,6 +126,38 @@ test('MDSwitch presentation is unreachable by real pointer input and stays hidde
   // A real pointer click at the decorative switch's own rendered location must not reach the
   // renderer's internal click-toggle handler: `pointer-events: none` blocks it, so the
   // renderer's own `checked` value stays exactly as authored.
+  expect(await readChecked()).toBe(true);
+});
+
+test('MDSwitch presentation composition: pointer input on the decorative region reaches the owning fixture action, and its state flows back into the rendered checked', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-switch-mdswitch--presentation-composition');
+
+  const owner = page.getByTestId('md-switch-presentation-composition');
+  const decorative = owner.locator('m3e-switch');
+  const count = page.locator('#md-switch-presentation-composition-count');
+
+  const readChecked = () =>
+    decorative.evaluate<boolean, HTMLElement & { checked: boolean }>((el) => el.checked);
+
+  await expect(owner).toHaveAttribute('aria-checked', 'false');
+  expect(await readChecked()).toBe(false);
+
+  const box = await decorative.boundingBox();
+  if (box == null) {
+    throw new Error('Missing MDSwitch presentation-composition bounding box.');
+  }
+
+  // A real pointer click at the decorative switch's own visible location: `pointer-events: none`
+  // makes the renderer itself unreachable, so the click must land on the owning fixture element
+  // instead, which owns the accessible role and the actual toggle action.
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  await expect(count).toHaveText('1');
+  await expect(owner).toHaveAttribute('aria-checked', 'true');
+  // The owner's state update flows back into `selected`, the only thing that ever writes the
+  // renderer's `checked`; the decorative renderer never independently toggled itself.
   expect(await readChecked()).toBe(true);
 });
 

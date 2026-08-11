@@ -75,6 +75,69 @@ export const Presentation: Story = {
   }),
 };
 
+// Controlled-state rejected-intent fixture (ARCHITECTURE.md "Acceptance criteria"): the switch
+// stays at `selected: false` and the fixture's own handler only records the emitted intent
+// instead of writing it back, so a real activation must leave the rendered `checked` unchanged.
+export const RejectedIntent: Story = {
+  render: () => ({
+    components: { MDSwitch },
+    setup() {
+      const intentCount = ref(0);
+      const lastIntent = ref<boolean | undefined>(undefined);
+      const onUpdateSelected = (value: boolean) => {
+        intentCount.value += 1;
+        lastIntent.value = value;
+      };
+      return { intentCount, lastIntent, onUpdateSelected };
+    },
+    template: `
+      <div data-testid="md-switch-rejected-intent">
+        <MDSwitch aria-label="Rejected intent" :selected="false" @update:selected="onUpdateSelected" />
+        <output id="md-switch-rejected-intent-count">{{ intentCount }}</output>
+        <output id="md-switch-rejected-intent-value">{{ lastIntent }}</output>
+      </div>
+    `,
+  }),
+};
+
+// `presentation` composition pass-through fixture (ARCHITECTURE.md "Implementation passes" #7):
+// the fixture itself, not MDSwitch, owns the action handler and local `selected` state, matching
+// the confirmed decorative list-item composition scenario. Pointer input on the visible decorative
+// region must reach this owner's own action (the wrapping element, since `presentation`'s
+// `pointer-events: none` makes the renderer host itself unreachable by pointer), and the owner's
+// resulting state must flow back into `selected`/rendered `checked`.
+export const PresentationComposition: Story = {
+  render: () => ({
+    components: { MDSwitch },
+    setup() {
+      const selected = ref(false);
+      const disabled = ref(false);
+      const toggleCount = ref(0);
+      const onAction = () => {
+        selected.value = !selected.value;
+        toggleCount.value += 1;
+      };
+      return { disabled, onAction, selected, toggleCount };
+    },
+    template: `
+      <div
+        data-testid="md-switch-presentation-composition"
+        role="switch"
+        :aria-checked="selected ? 'true' : 'false'"
+        :aria-disabled="disabled ? 'true' : 'false'"
+        aria-label="Automatic updates"
+        tabindex="0"
+        style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;"
+        @click="onAction"
+      >
+        Automatic updates
+        <MDSwitch presentation :selected="selected" :disabled="disabled" />
+        <output id="md-switch-presentation-composition-count">{{ toggleCount }}</output>
+      </div>
+    `,
+  }),
+};
+
 export const BehaviorContracts: Story = {
   render: () => ({
     components: { MDSwitch },
@@ -129,15 +192,21 @@ export const TargetHitArea: Story = {
   render: () => ({
     components: { MDSwitch },
     setup() {
+      const selected = ref(false);
       const toggleCount = ref(0);
-      const onUpdateSelected = () => {
+      // Completes the controlled `v-model:selected`-style round trip: the corrected
+      // `beforeinput`-derived contract calls `preventDefault()` before any renderer mutation, so
+      // the rendered `checked` only ever changes when the owning consumer writes the emitted
+      // value back into `selected` (ARCHITECTURE.md "State precedence and restoration").
+      const onUpdateSelected = (value: boolean) => {
+        selected.value = value;
         toggleCount.value += 1;
       };
-      return { onUpdateSelected, toggleCount };
+      return { onUpdateSelected, selected, toggleCount };
     },
     template: `
       <div data-testid="visual-md-switch-target-hit">
-        <MDSwitch aria-label="Target hit" @update:selected="onUpdateSelected" />
+        <MDSwitch aria-label="Target hit" :selected="selected" @update:selected="onUpdateSelected" />
         <output id="visual-md-switch-target-hit-count">{{ toggleCount }}</output>
       </div>
     `,

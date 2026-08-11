@@ -1,15 +1,34 @@
 import { mount } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import MDSwitch from './MDSwitch.vue';
+import { installSwitchElementInternalsShim } from './MDSwitch.testUtils';
+
+let restoreElementInternalsShim: () => void;
+
+beforeAll(() => {
+  restoreElementInternalsShim = installSwitchElementInternalsShim();
+});
+
+afterAll(() => {
+  restoreElementInternalsShim();
+});
 
 const mountSwitch = (props: Record<string, unknown> = {}) => mount(MDSwitch, { props });
 
 const getElementProperty = (element: Element, property: string): unknown =>
   Reflect.get(element, property);
 
-const setElementProperty = (element: Element, property: string, value: unknown): void => {
-  Reflect.set(element, property, value);
+/**
+ * Dispatches a simulated cancelable `beforeinput` intent, matching the installed renderer's own
+ * dispatch (`new Event('beforeinput', { bubbles: true, cancelable: true })`).
+ * @param element - The `m3e-switch` host element to dispatch the event on.
+ * @returns The dispatched event, for inspecting `defaultPrevented` after dispatch.
+ */
+const dispatchBeforeinput = (element: Element): Event => {
+  const event = new Event('beforeinput', { bubbles: true, cancelable: true });
+  element.dispatchEvent(event);
+  return event;
 };
 
 /** Shared reactive-attrs test harness: mounts MDSwitch behind a parent whose `v-bind` object can change. */
@@ -46,17 +65,6 @@ describe('MDSwitch adapter', () => {
     expect(getElementProperty(el.element, 'disabled')).toBe(false);
   });
 
-  it('emits update:selected with the renderer resulting value on a native change', async () => {
-    const wrapper = mountSwitch({ selected: false });
-    const el = wrapper.get('m3e-switch');
-
-    setElementProperty(el.element, 'checked', true);
-    el.element.dispatchEvent(new Event('change'));
-    await wrapper.vm.$nextTick();
-
-    expect(wrapper.emitted('update:selected')).toEqual([[true]]);
-  });
-
   it('re-controls the renderer checked property when the selected prop changes', async () => {
     const wrapper = mountSwitch({ selected: false });
     const el = wrapper.get('m3e-switch');
@@ -64,6 +72,51 @@ describe('MDSwitch adapter', () => {
     await wrapper.setProps({ selected: true });
 
     expect(getElementProperty(el.element, 'checked')).toBe(true);
+  });
+
+  describe('controlled selection intent', () => {
+    it('emits update:selected once, derived from a cancelable beforeinput intent computed before any renderer mutation', async () => {
+      const wrapper = mountSwitch({ selected: false });
+      const el = wrapper.get('m3e-switch');
+
+      const event = dispatchBeforeinput(el.element);
+      await wrapper.vm.$nextTick();
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(wrapper.emitted('update:selected')).toEqual([[true]]);
+    });
+
+    it('computes the intended value as the negation of the current checked value', async () => {
+      const wrapper = mountSwitch({ selected: true });
+      const el = wrapper.get('m3e-switch');
+
+      dispatchBeforeinput(el.element);
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.emitted('update:selected')).toEqual([[false]]);
+    });
+
+    it('rejected intent: leaves the rendered checked unchanged when the emitted value is not written back to selected', async () => {
+      const wrapper = mountSwitch({ selected: false });
+      const el = wrapper.get('m3e-switch');
+
+      dispatchBeforeinput(el.element);
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.emitted('update:selected')).toEqual([[true]]);
+      // The controlling `selected` prop was intentionally never updated with the emitted value.
+      expect(getElementProperty(el.element, 'checked')).toBe(false);
+    });
+
+    it("does not emit while disabled, relying on the renderer's own click guard blocking beforeinput dispatch before the adapter's listener could run", async () => {
+      const wrapper = mountSwitch({ disabled: true, selected: false });
+      const el = wrapper.get('m3e-switch');
+
+      el.element.dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.emitted('update:selected')).toBeUndefined();
+    });
   });
 
   describe('presentation', () => {
@@ -77,14 +130,14 @@ describe('MDSwitch adapter', () => {
       expect(getElementProperty(el.element, 'checked')).toBe(true);
     });
 
-    it('does not emit update:selected from a native change while presentation is true', async () => {
-      const wrapper = mountSwitch({ presentation: true });
+    it('does not call preventDefault or emit update:selected from a cancelable beforeinput while presentation is true', async () => {
+      const wrapper = mountSwitch({ presentation: true, selected: false });
       const el = wrapper.get('m3e-switch');
 
-      setElementProperty(el.element, 'checked', true);
-      el.element.dispatchEvent(new Event('change'));
+      const event = dispatchBeforeinput(el.element);
       await wrapper.vm.$nextTick();
 
+      expect(event.defaultPrevented).toBe(false);
       expect(wrapper.emitted('update:selected')).toBeUndefined();
     });
   });
@@ -154,18 +207,21 @@ describe('MDSwitch adapter', () => {
       expect(el.attributes('bogus-consumer-flag')).toBeUndefined();
     });
 
-    it('does not attach an undeclared click or beforeinput listener to the host', async () => {
+    it('rejects duplicate consumer beforeinput/change/click listeners at the host-attribute boundary', async () => {
       const onClick = vi.fn();
       const onBeforeinput = vi.fn();
-      const wrapper = mount(MDSwitch, { attrs: { onBeforeinput, onClick } });
+      const onChange = vi.fn();
+      const wrapper = mount(MDSwitch, { attrs: { onBeforeinput, onChange, onClick } });
       const el = wrapper.get('m3e-switch');
 
       el.element.dispatchEvent(new Event('click'));
-      el.element.dispatchEvent(new Event('beforeinput'));
+      dispatchBeforeinput(el.element);
+      el.element.dispatchEvent(new Event('change'));
       await wrapper.vm.$nextTick();
 
       expect(onClick).not.toHaveBeenCalled();
       expect(onBeforeinput).not.toHaveBeenCalled();
+      expect(onChange).not.toHaveBeenCalled();
     });
 
     it('projects an allow-listed attribute from render-time attrs across add/remove/re-add, and keeps rejecting a dynamically added forbidden attribute/listener', async () => {
