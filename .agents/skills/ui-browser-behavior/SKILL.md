@@ -39,9 +39,11 @@ Before writing a Storybook behavior spec:
 4. use a family/module-level spec only when one shared observable browser contract belongs to that owner;
 5. otherwise split proof by owner.
 
-The durable target is an owner-local `*.browser.spec.ts`. Physical placement must follow the current executable state in `docs/testing/migration-plan.md`.
+The durable and current executable default for ordinary reusable UI is an owner-local `*.browser.spec.ts` under `src/`. Filesystem-derived owner-local discovery owns the impact relation.
 
-The `storybook-behavior` lane currently supports mixed discovery during migration: migrated owners may execute colocated `src/**/*.browser.spec.ts` through filesystem-derived owner-local ownership, while unmigrated specs remain under `tests/e2e/storybook` with their required transitional mappings. Use owner-local placement only for owners the current migration state marks as migrated; do not move unrelated specs opportunistically.
+Central `tests/e2e/storybook/**/*.spec.ts` remains only for truthful cross-owner or Storybook-infrastructure contracts that cannot belong to one source owner. Do not add a new central registry mapping for an ordinary component/family merely because older examples used that migration-era structure.
+
+Always re-read `docs/testing/migration-plan.md` before choosing placement; it is the executable-state owner and may advance independently of older family artifacts or examples.
 
 ## Workflow
 
@@ -52,7 +54,7 @@ The `storybook-behavior` lane currently supports mixed discovery during migratio
 5. Drive public controls through real user input.
 6. Wait for observable readiness/outcomes.
 7. Assert the exact public result, not a proxy that merely correlates with it.
-8. Maintain the current durable impact relation: owner-local convention when implemented, otherwise the smallest truthful explicit/transitional mapping.
+8. Use owner-local discovery for ordinary reusable UI; use central proof only for a demonstrated cross-owner/infrastructure contract.
 9. Preserve the current browser project matrix unless a dedicated audited project-applicability migration changes it.
 10. Run focused verifier-managed proof and return to the top-level task. This skill does not run a separate final gate.
 
@@ -65,8 +67,14 @@ Separate paths when they have different owners or failure risks, for example:
 - Enter and Space when the adapter/current scenario could treat them differently;
 - submit and reset when both are used or changed;
 - pointer and keyboard controlled-state intent when wrapper normalization differs;
+- accepted versus rejected controlled intent when renderer-local mutation could drift from the controlling prop;
 - attempted disabled activation when the adapter owns disabled forwarding;
-- programmatic state updates when hidden renderer drift is a real risk.
+- programmatic state updates when hidden renderer drift is a real risk;
+- composition pass-through when a decorative child suppresses its own actionability so an enclosing owner must receive input on the same visible region.
+
+For controlled custom-element adapters, real-browser proof must validate the observable renderer event lifecycle selected by architecture. When the renderer exposes a cancelable pre-mutation intent, prove one real action produces one public intent and that rejecting the intent leaves the rendered state controlled by the unchanged prop.
+
+For decorative/presentation composition, do not stop at proving the child is inert. Also prove real input on the child’s visible region reaches the intended owner action and owner-controlled state is reflected back into the child.
 
 Do not duplicate native or renderer behavior merely because the underlying component supports it. Use current scenarios and changed risk to choose proof.
 
@@ -122,10 +130,10 @@ Browser proof owns real focus order, keyboard operation, focus restoration, poin
 
 For `storybook-behavior`:
 
-- a changed spec selects itself;
-- use deterministic owner-local relation when the current resolver supports it;
-- use one explicit mapping only for a truthful family/module/cross-file relation that local naming cannot express;
-- during migration, preserve the current required central mapping for specs still in the legacy executable location;
+- a changed owner-local spec selects itself;
+- ordinary reusable UI uses deterministic owner-local relation when the current resolver supports it;
+- use one explicit central mapping only for a truthful cross-owner or infrastructure relation that local ownership cannot express;
+- never create duplicate registry metadata for a relation already expressed by supported local ownership;
 - never use spec paths as `sourcePrefixes` merely to group tests;
 - shared config/helpers use full-lane fallback unless every consumer is explicit, small, stable, and validated;
 - removed/moved/unresolved relevant ownership uses full owning-lane fallback or blocking validation, never silent skip.
@@ -156,7 +164,7 @@ Use readable existing paths accepted by the current verifier. Preserve applicabl
 - broad application E2E when Storybook owns reusable behavior;
 - complete product flows in Storybook fixtures;
 - screenshots in browser specs;
-- colocated browser specs before current discovery supports them;
+- central registry metadata for an ordinary owner-local component/family proof;
 - architectural boundary violations to simplify setup;
 - duplicate registry metadata for a relation already expressed by supported local ownership;
 - source mappings overloaded with spec grouping;
@@ -164,4 +172,5 @@ Use readable existing paths accepted by the current verifier. Preserve applicabl
 - declaration-only CSS assertions presented as rendered proof;
 - private renderer DOM or animation parameters;
 - proxy assertions presented as proof of a different contract;
+- proving only decorative-child non-action when the contract requires pass-through to an enclosing owner;
 - exhaustive testing of third-party behavior unchanged by Mioframe.
