@@ -79,6 +79,35 @@ Button records the exact current Loading Indicator review revision. Navigation P
 
 The migration artifact was corrected on 2026-08-02 to record intentional pending-presentation changes: generic dialogs retain form-level busy and disabled guards without an action-button spinner, while browser/provider permission waits use consumer-owned live status text. Runtime code, architecture, implementation, and focused proof did not change. Because every migration artifact revision invalidates review by project rule, Button now requires one fresh independent review.
 
+### Switch
+
+```text
+DESIGN.md          current
+ARCHITECTURE.md    ready
+IMPLEMENTATION.md  complete
+MIGRATION.md       complete
+REVIEW.md          compliant
+```
+
+- Design contract revision: `2026-08-10T19:28:25.068Z`.
+- Current architecture revision: `2026-08-11T02:00:00.000Z`. Selected: controlled `selected`/`update:selected`, `disabled`, and one Mioframe `presentation` extension for the two confirmed decorative consumers (`SettingsSwitchListItem`, `AppUpdateSettings`); zero public `--md-comp-switch-*` tokens; icons/drag/form-participation deferred. Corrected once by review routing: the renderer-mapping table's native-`<label>` accessible-naming row was reclassified `direct` → `divergent` (`M3E-004`, recorded in `docs/m3e-defects.md`); `aria-label`/`aria-labelledby` remain `direct` and are what the component actually uses.
+- Current implementation revision: `2026-08-11T05:00:00.000Z`. Round 1 was a revalidation-only refresh against the corrected architecture (no code change). Round 2 fixed two real lint defects a first final-`pnpm verify` run found: forbidden `as` type assertions in `MDSwitch.vue:55` (now an `instanceof M3eSwitchElement` runtime guard) and `md-switch-family.spec.ts:92` (now Playwright's generic `Locator.evaluate<R,E>()` typing), plus formatting on 5 files. `type-check`, unit tests, `storybook-behavior` (6/6), and `visual` (212/212) all re-passed.
+- Current migration revision: `2026-08-11T05:15:00.000Z` (revalidation-only refresh after each implementation round; consumers confirmed unaffected both times — `SettingsSwitchListItem`/`AppUpdateSettings` use `MDSwitch presentation`, whose short-circuit guard makes the corrected event-handler code path unreachable from either consumer). `SettingsSwitchListItem` and `AppUpdateSettings` migrated from the legacy `src/shared/ui/Switch` `MDSwitch` to the canonical `@shared/ui/material` `MDSwitch`; legacy `src/shared/ui/Switch` fully removed with no compatibility alias.
+- Current review revision: `2026-08-11T06:00:00.000Z`. Verdict `compliant`, no major/minor issues, no accepted risks, completion `complete`, final workflow verification readiness `ready`. Independently reran the eslint check itself (0 errors/0 warnings) and confirmed the `instanceof`/generic-typing fixes, the M3E-004 defect record, legacy removal, and consumer action preservation are all still accurate.
+- Renderer revision: `@m3e/web@2.6.3`.
+- Dependency families: none.
+- Operator visual status: `no-reported-defect`.
+
+History: an earlier review pass in this invocation found a genuine documentation-accuracy defect in ARCHITECTURE.md's renderer-mapping table (native `<label>` association claimed `direct` but is actually `divergent`) and routed back to architecture; that correction cascaded through revalidation-only refreshes of implementation and migration (no code changed at either), then a fresh independent review confirmed the correction and returned `compliant`. Separately, an earlier pass also misdiagnosed a `chmod /run/user/1000/libpod: read-only file system` error as sandbox-wide Podman infrastructure corruption — the real cause was invoking `node scripts/verify.mjs` directly instead of `pnpm verify` (this project's `.claude/settings.local.json` `sandbox.excludedCommands` runs `pnpm verify*` outside the Bash sandbox specifically; the raw node script doesn't match that exclusion and runs inside the sandbox, where that path is genuinely unwritable). Podman is fine in this environment when invoked via `pnpm verify`. See `[[verify-wrapper-sandbox]]` memory for the corrected record.
+
+Round 2: the first `pnpm verify` run found real Switch-owned lint defects (forbidden `as` type assertions in `MDSwitch.vue:55` and `md-switch-family.spec.ts:92`) plus pure formatting on 5 files. Final-verifier routing classified this material-owned and routed `self/implementation`; the fix replaced the assertions with an `instanceof` guard and Playwright's generic `evaluate<R, E>()` typing, and cascaded cleanly through migration revalidation and a fresh compliant review.
+
+Round 2's `pnpm verify` rerun passed `format`/`eslint`/`type-check`/`unit-tests`/`e2e`/`storybook-build` cleanly, confirming the lint fix. `storybook-behavior` then failed — but final-verifier routing classified this an **external-workspace blocker**, not a Switch (or any Material family) defect: the Playwright container mounted and ran a _different sibling git worktree's_ files (`.claude/worktrees/dnd-kit-reorder-fix/tests/e2e/storybook/reorder.spec.ts`, a live-reorder-geometry test unrelated to Switch and not even present in this checkout), then was killed by the fixed 17-minute container timeout before ever reaching Switch's own spec. Root cause: `scripts/playwrightContainer.mjs` mounts the container via ambient `process.cwd()` with no explicit repo-path scoping, which can collide with a concurrent `pnpm verify`/Playwright-container run in a sibling worktree on the same machine. See `[[verify-cross-worktree-container-mount]]` memory. Per the workflow's external-workspace-blocker contract, `switch/REVIEW.md` was left untouched (still `compliant`, revision `2026-08-11T06:00:00.000Z`) and no Material family artifact was edited for this.
+
+A back-to-back immediate retry of `pnpm verify --only storybook-behavior` (no other session running verification per `ListAgents`) reproduced the identical failure — same worktree prefix, same failure point (spec 31/85, `reorder.spec.ts:237`, killed at the 17-minute timeout). This rules out a simple concurrent-run race; the container mount appears stuck/cached within this session rather than re-resolved per invocation. Not retrying further per the project's "cap retries at one unmodified attempt" convention (here: two identical attempts).
+
+Next action for Switch: this blocker requires environment-level intervention outside the sandbox (clearing the stale Podman container/volume for the Storybook lane, or a fresh session) — not further Material-family rework. Once storybook-behavior runs against the correct checkout, rerun the ordinary final `pnpm verify` gate; Switch M2's design/architecture/implementation/migration/review are all current and compliant and are not expected to need rebuilding.
+
 ## Pilot result
 
 The original `material-component Button` invocation exercised the complete dependency, correction, independent-review, and ordinary final-verification path. A later documentation correction changed only the Button migration artifact revision, so the historical pilot evidence remains valid while the current artifact chain awaits a fresh independent review.
@@ -120,14 +149,14 @@ Synthetic malformed-result and cycle scenarios are not required for closure. Do 
 
 ## Milestones
 
-| ID  | Milestone                           | Status                    | Exit gate                                                                              |
-| --- | ----------------------------------- | ------------------------- | -------------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`                | coherent staged workflow and corrected terminal/verifier ownership                     |
-| M1a | Loading Indicator dependency family | `complete`                | five current artifacts, compliant review, no unresolved reported defect                |
-| M1  | Button action family                | `review-refresh-required` | fresh review must reference the corrected current migration artifact                   |
-| M1b | outer pilot verification            | `final-rerun-required`    | ordinary verifier reruns after current independent review; release proof remains valid |
-| M2  | Switch stateful pilot               | `planned`                 | controlled state/event contract and no-consumer/default-scenario behavior              |
-| M3  | sequential component migration      | `planned`                 | dependency-first autonomous family migrations                                          |
+| ID  | Milestone                           | Status                     | Exit gate                                                                              |
+| --- | ----------------------------------- | -------------------------- | -------------------------------------------------------------------------------------- |
+| M0  | workflow architecture and rules     | `complete`                 | coherent staged workflow and corrected terminal/verifier ownership                     |
+| M1a | Loading Indicator dependency family | `complete`                 | five current artifacts, compliant review, no unresolved reported defect                |
+| M1  | Button action family                | `review-refresh-required`  | fresh review must reference the corrected current migration artifact                   |
+| M1b | outer pilot verification            | `final-rerun-required`     | ordinary verifier reruns after current independent review; release proof remains valid |
+| M2  | Switch stateful pilot               | `blocked-external-tooling` | family compliant; blocked only by cross-worktree Playwright container mount defect     |
+| M3  | sequential component migration      | `planned`                  | dependency-first autonomous family migrations                                          |
 
 ## Next operator action
 

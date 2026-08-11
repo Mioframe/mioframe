@@ -81,6 +81,11 @@ export const STORYBOOK_BEHAVIOR_SCENARIO_SCOPES = [
     specs: ['tests/e2e/storybook/md-button-family.spec.ts'],
   },
   {
+    name: 'switch family behavior',
+    sourcePrefixes: ['src/shared/ui/material/components/switch/'],
+    specs: ['tests/e2e/storybook/md-switch-family.spec.ts'],
+  },
+  {
     name: 'dialog form fallback focus',
     sourcePrefixes: [
       'src/shared/ui/Dialog/DialogForm.vue',

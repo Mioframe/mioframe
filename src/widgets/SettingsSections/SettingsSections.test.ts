@@ -191,7 +191,7 @@ vi.mock('@shared/ui/Checkbox', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Switch', () => ({
+vi.mock('@shared/ui/material', () => ({
   MDSwitch: defineComponent({
     name: 'MDSwitchStub',
     props: {
@@ -206,10 +206,6 @@ vi.mock('@shared/ui/Switch', () => ({
       presentation: {
         type: Boolean,
         default: false,
-      },
-      ariaLabel: {
-        type: String,
-        default: undefined,
       },
     },
     setup(props) {

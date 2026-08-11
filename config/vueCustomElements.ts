@@ -1,5 +1,5 @@
 /** Renderer elements deliberately selected by the canonical Material adapters. */
-const selectedM3eCustomElements = new Set(['m3e-button', 'm3e-loading-indicator']);
+const selectedM3eCustomElements = new Set(['m3e-button', 'm3e-loading-indicator', 'm3e-switch']);
 
 /**
  * Test whether Vue should compile a tag as a selected m3e custom element.

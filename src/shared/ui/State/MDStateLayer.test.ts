@@ -7,7 +7,6 @@ const mdStateLayerSource = readFileSync('src/shared/ui/State/MDStateLayer.vue', 
 const productionSharedUiFiles = [
   'src/shared/ui/Card/MDCard.vue',
   'src/shared/ui/Lists/listItemAnatomy.css',
-  'src/shared/ui/Switch/MDSwitch.vue',
   'src/shared/ui/State/ripple.css',
 ];
 const oldOpacityAliases = [
