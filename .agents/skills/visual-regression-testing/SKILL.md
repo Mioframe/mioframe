@@ -24,7 +24,7 @@ The truthful UI owner owns visual proof:
 
 The durable target is an explicit owner-local `*.visual.spec.ts` with deterministic owner-local snapshots. Physical placement must follow `docs/testing/migration-plan.md`.
 
-Owners explicitly authorized/migrated by `docs/testing/migration-plan.md` (currently Loading Indicator, Stage S3) use owner-local `*.visual.spec.ts` and colocated snapshots. Every other visual owner remains in the current central visual location with the current resolver relation until its own migration stage authorizes it. Do not create a colocated visual spec for an owner the migration plan has not authorized, and do not migrate another owner opportunistically.
+Owners explicitly authorized/migrated by `docs/testing/migration-plan.md` use owner-local `*.visual.spec.ts` and colocated snapshots. Every other visual owner remains in the current central visual location with the current resolver relation until its own migration stage authorizes it. Do not create a colocated visual spec for an owner the migration plan has not authorized, and do not migrate another owner opportunistically.
 
 ## Canonical references
 
@@ -88,7 +88,7 @@ Do not create forced visual states and present them as proof of inaccessible pri
 For `visual`:
 
 - a changed visual spec selects itself;
-- use deterministic owner-local relation when the current resolver supports it (currently implemented for Loading Indicator, Stage S3);
+- use deterministic owner-local relation when the current resolver supports it, for owners `docs/testing/migration-plan.md` records as authorized/migrated;
 - use explicit mapping only for truthful non-local family/module/cross-cutting visible impact;
 - for unmigrated owners, changes remain in the legacy central location and select the full visual lane rather than a false local relation;
 - do not put visual spec paths into source prefixes merely to group tests;

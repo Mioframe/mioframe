@@ -80,7 +80,7 @@ Application E2E remains centralized and therefore continues to use explicit stab
 
 ## Visual baselines
 
-Visual discovery and snapshot ownership are mixed: Loading Indicator (Stage S3, complete) uses the owner-local `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention from `docs/testing/storybook.md`; every other owner remains in the current central `tests/e2e/visual` location until its own Stage S4+ migration.
+Visual discovery and snapshot ownership are mixed: owners `docs/testing/migration-plan.md` records as authorized/migrated use the owner-local `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention from `docs/testing/storybook.md`; every other owner remains in the current central `tests/e2e/visual` location until its own migration stage.
 
 For intentional visual changes:
 
