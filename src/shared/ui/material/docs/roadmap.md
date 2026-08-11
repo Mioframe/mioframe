@@ -99,13 +99,13 @@ After the Switch corrections above, rerun the verifier from the correct checkout
 
 ## Milestones
 
-| ID  | Milestone                           | Status                | Exit gate |
-| --- | ----------------------------------- | --------------------- | --------- |
-| M0  | Material workflow architecture      | `complete`            | staged family workflow and m3e-backed public boundary established |
-| M1a | Loading Indicator                   | `complete`            | canonical adapter, migration and compliant review |
-| M1  | Button                              | `complete-runtime`    | m3e-backed Button runtime and consumer migration merged |
-| M2  | Switch stateful pilot               | `correction-required` | controlled intent/state contract corrected; owner-local browser proof; scoped test shim; composition action proof; fresh downstream review; final `pnpm verify` passes |
-| M3  | Sequential component migration      | `planned`             | migrate one family at a time after M2 closes |
+| ID  | Milestone                      | Status                | Exit gate                                                                                                                                                              |
+| --- | ------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0  | Material workflow architecture | `complete`            | staged family workflow and m3e-backed public boundary established                                                                                                      |
+| M1a | Loading Indicator              | `complete`            | canonical adapter, migration and compliant review                                                                                                                      |
+| M1  | Button                         | `complete-runtime`    | m3e-backed Button runtime and consumer migration merged                                                                                                                |
+| M2  | Switch stateful pilot          | `correction-required` | controlled intent/state contract corrected; owner-local browser proof; scoped test shim; composition action proof; fresh downstream review; final `pnpm verify` passes |
+| M3  | Sequential component migration | `planned`             | migrate one family at a time after M2 closes                                                                                                                           |
 
 ## Next operator action
 
