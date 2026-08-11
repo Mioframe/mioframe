@@ -58,9 +58,11 @@ Its final workflow verification passed all required checks:
 - storybook-build;
 - mutation.
 
-GitHub verification on the synchronized `0.3.6` merge candidate also passed all merge gates, including `release-version`, full `verification`, and aggregate `verify`.
+GitHub verification on the synchronized `0.3.6` merge candidate passed all merge gates, including `release-version`, full `verification`, and aggregate `verify`.
 
 The first PR-preview deployment attempt hit a concurrent non-fast-forward push race in the Pages repository after both application and Storybook builds had succeeded. Retrying that deployment job succeeded without source changes, confirming an external publication race rather than a product or Material regression.
+
+This roadmap finalization is documentation-only. The ordinary GitHub gates must still be green on the final PR head before merge.
 
 ## Milestones
 
@@ -76,6 +78,6 @@ The first PR-preview deployment attempt hit a concurrent non-fast-forward push r
 
 PR #186 is functionally complete. Do not rebuild the Switch family unless a later source change invalidates its current artifact chain.
 
-Require the ordinary GitHub merge gates to remain green on the final head, then integrate PR #186 into `develop`.
+Require the ordinary GitHub merge gates to be green on the final head, then integrate PR #186 into `develop`.
 
 After integration, M3 may begin with the next explicitly selected Material component family.
