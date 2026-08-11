@@ -4,7 +4,7 @@ This file is the only owner of current Material milestone status, family-stage s
 
 ## Current state
 
-Last updated: 2026-08-11
+Last updated: 2026-08-12
 
 Current milestone: `M2 — Switch stateful pilot`
 
@@ -20,11 +20,11 @@ MIGRATION.md       complete
 REVIEW.md          compliant
 ```
 
-The Switch family itself has no remaining design, implementation, migration, or review finding. `REVIEW.md` remains compliant.
+The Switch family has no remaining design, architecture, implementation, migration, review, or verification finding. `REVIEW.md` remains compliant.
 
-The previously reproduced root-scanning Playwright workspace-isolation defect is corrected on the branch: both Storybook behavior and visual configs enable Git-ignore-aware discovery, and `playwright.lanes.test.ts` guards that contract. The durable verifier rule now also requires repository-root Playwright scanning to respect repository ignore policy rather than maintaining a second hard-coded local-workspace exclusion list.
+The branch is synchronized with current `develop` (`behind_by: 0`) and `package.json` is `0.3.6`, above the current `develop` version `0.3.5`.
 
-The PR is not yet merge-ready because `develop` advanced again after that correction.
+The previously reproduced root-scanning Playwright workspace-isolation defect is corrected: both Storybook behavior and visual configs enable Git-ignore-aware discovery, `playwright.lanes.test.ts` guards that contract, and the durable verifier rule requires repository-root Playwright scanning to respect repository ignore policy rather than maintaining a second local-workspace exclusion registry.
 
 ## Calibration result
 
@@ -40,35 +40,27 @@ Switch established the stateful Material adapter invariants now recorded in the 
 
 No generic m3e adapter framework, duplicate state manager, compatibility layer, new registry abstraction, or duplicated local-workspace exclusion registry was introduced.
 
-## Current PR integration blocker
-
-Current `develop` is `a05306852d7574e5bcfe7e4855a4a12f4cf2e84a`, which completed Chips visual ownership migration and advanced the executable Storybook visual-migration state.
-
-PR #186 is currently one commit behind that base. Its merge base remains `ca0bcd6194cf8cb7465b3006345f085a1238fbac`.
-
-The new `develop` commit does not introduce a Switch-family architecture defect, but it does change the shared visual-testing state and raises `package.json` to `0.3.5`. The Switch branch is also `0.3.5`, so after synchronization the PR version must be raised again according to the release-version policy.
-
-Required integration work:
-
-1. synchronize `refactor/material-switch-m3e` with current `develop`;
-2. raise the PR version above current `develop` `0.3.5` according to `docs/release.md`;
-3. re-run the outer `material-component Switch` workflow so it mechanically revalidates the current family chain against the synchronized workspace;
-4. require the final read-only verifier on that merge candidate;
-5. require GitHub CI, including `release-version`, to be fully green.
-
-Do not rewrite Switch family artifacts unless the synchronized workspace actually invalidates a family-owned contract. The current compliant review is not invalid merely because `develop` advanced.
-
 ## Verification state
 
-The Playwright workspace-isolation correction itself is implemented as:
+The synchronized outer `material-component Switch` invocation mechanically revalidated the existing artifact chain and required no family-stage changes.
 
-- `playwright.storybook.config.ts`: `respectGitIgnore: true`;
-- `playwright.visual.config.ts`: `respectGitIgnore: true`;
-- `playwright.lanes.test.ts`: explicit regression proof for both root-scanning lanes.
+Its final workflow verification passed all required checks:
 
-A GitHub verification run started on that corrected head, but the PR head moved again when the durable verifier rule was added. That earlier run is therefore not final merge evidence.
+- agent-environment;
+- format;
+- oxlint;
+- eslint;
+- type-check;
+- unit-tests;
+- e2e;
+- storybook-behavior;
+- visual;
+- storybook-build;
+- mutation.
 
-The final verifier and GitHub CI must run on the synchronized, correctly versioned final head.
+GitHub verification on the synchronized `0.3.6` merge candidate also passed all merge gates, including `release-version`, full `verification`, and aggregate `verify`.
+
+The first PR-preview deployment attempt hit a concurrent non-fast-forward push race in the Pages repository after both application and Storybook builds had succeeded. Retrying that deployment job succeeded without source changes, confirming an external publication race rather than a product or Material regression.
 
 ## Milestones
 
@@ -82,12 +74,8 @@ The final verifier and GitHub CI must run on the synchronized, correctly version
 
 ## Next operator action
 
-Do not start M3 yet.
+PR #186 is functionally complete. Do not rebuild the Switch family unless a later source change invalidates its current artifact chain.
 
-Synchronize PR #186 with current `develop`, update the release version, then invoke:
+Require the ordinary GitHub merge gates to remain green on the final head, then integrate PR #186 into `develop`.
 
-```text
-material-component Switch
-```
-
-If the synchronized workflow finds no new family-owned defect, keep the existing architecture and implementation and proceed to its final verifier. Merge only after that final gate and GitHub CI are fully green.
+After integration, M3 may begin with the next explicitly selected Material component family.
