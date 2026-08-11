@@ -62,8 +62,6 @@ GitHub verification on the synchronized `0.3.6` merge candidate passed all merge
 
 The first PR-preview deployment attempt hit a concurrent non-fast-forward push race in the Pages repository after both application and Storybook builds had succeeded. Retrying that deployment job succeeded without source changes, confirming an external publication race rather than a product or Material regression.
 
-This roadmap finalization is documentation-only. The ordinary GitHub gates must still be green on the final PR head before merge.
-
 ## Milestones
 
 | ID  | Milestone                           | Status     | Exit gate                                                     |
