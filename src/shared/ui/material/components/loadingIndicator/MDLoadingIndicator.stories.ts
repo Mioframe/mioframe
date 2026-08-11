@@ -93,6 +93,7 @@ export const ColorContract: Story = {
 };
 
 export const LegacySurfaceIsolation: Story = {
+  tags: ['visual'],
   render: () => ({
     components: { MDLoadingIndicator },
     template: `

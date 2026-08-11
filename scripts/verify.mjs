@@ -11,7 +11,7 @@ import { createChildSignalForwarder } from './lib/signalForward.mjs';
 import { resolveAppE2EPlan } from './lib/e2eRisk.mjs';
 import { resolveStorybookBehaviorPlan } from './lib/storybookBehaviorRisk.mjs';
 import { resolveStorybookBuildPlan } from './lib/storybookBuildRisk.mjs';
-import { isVisualRelevantPackageJsonChange } from './lib/packageJsonImpact.mjs';
+import { resolveVisualPlan } from './lib/visualRisk.mjs';
 import { getChangedFileProjection, resolveChangedPathsScope } from './lib/changedPaths.mjs';
 import {
   FIX_ONLY_LABELS,
@@ -261,6 +261,11 @@ function getVitestScope(changedFiles) {
       continue;
     }
 
+    if (filePath.endsWith('.visual.spec.ts')) {
+      // Colocated visual specs belong to the visual Playwright lane; vitest.config.ts does not include them.
+      continue;
+    }
+
     if (
       (filePath.endsWith('.test.ts') ||
         filePath.endsWith('.spec.ts') ||
@@ -284,27 +289,6 @@ function getVitestScope(changedFiles) {
 
 function isSharedUiFile(filePath) {
   return filePath.startsWith('src/shared/ui/');
-}
-
-// `package.json` is deliberately excluded here: its visual relevance
-// depends on which fields changed, so it is classified separately by
-// isVisualRelevantPackageJsonChange (see buildCommands).
-function isVisualRelevantFile(filePath) {
-  return (
-    filePath === 'config/tooling.json' ||
-    filePath === 'playwright.visual.config.ts' ||
-    filePath === 'vite.config.ts' ||
-    filePath === 'tsconfig.storybook.json' ||
-    filePath === 'scripts/storybook.mjs' ||
-    filePath === 'src/app/styles/styles.css' ||
-    filePath === 'src/app/styles/fonts.css' ||
-    filePath === 'src/app/styles/base.css' ||
-    filePath.startsWith('.storybook/') ||
-    filePath.startsWith('tests/e2e/visual/') ||
-    filePath.startsWith('src/shared/ui/') ||
-    filePath.startsWith('src/shared/lib/md/') ||
-    /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/.test(filePath)
-  );
 }
 
 function getMutationSourceCandidate(testFilePath) {
@@ -1096,6 +1080,7 @@ export function buildCommands(
     appE2EPlan: appE2EPlanOverride = null,
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
     storybookBuildPlan: storybookBuildPlanOverride = null,
+    visualPlan: visualPlanOverride = null,
   } = {},
 ) {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1109,22 +1094,17 @@ export function buildCommands(
     LINTABLE_EXTENSIONS.has(path.posix.extname(filePath)),
   );
   const vitestScope = getVitestScope(changedFiles);
-  const changedVisualSpecs = changedFiles.filter(
-    (filePath) =>
-      filePath.startsWith('tests/e2e/visual/') && filePath.endsWith('.ts') && fileExists(filePath),
-  );
-  const isPackageJsonVisualRelevant =
-    !fullMode &&
-    changedFiles.includes('package.json') &&
-    isVisualRelevantPackageJsonChange({ oldRef: packageJsonOldRef });
-  const hasVisualRelevantChanges =
-    changedFiles.some(isVisualRelevantFile) || isPackageJsonVisualRelevant;
   const appE2EPlan = appE2EPlanOverride ?? resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
   const storybookBehaviorPlan =
     storybookBehaviorPlanOverride ??
     resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
   const storybookBuildPlan =
     storybookBuildPlanOverride ?? resolveStorybookBuildPlan(changedFiles, { packageJsonOldRef });
+  // Skip resolution in full mode: the full-mode branch below always runs the
+  // complete visual lane unconditionally and does not consult the plan.
+  const visualPlan =
+    visualPlanOverride ??
+    (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
   const mutationScope = getMutationScope(existingChangedFiles);
   const commands = [];
   const eslintConcurrency = resolveEslintConcurrency();
@@ -1315,19 +1295,39 @@ export function buildCommands(
     });
   }
 
-  if (fullMode || hasVisualRelevantChanges || changedVisualSpecs.length > 0) {
-    const triggerReason = fullMode
-      ? 'full-project release verification'
-      : changedVisualSpecs.length > 0
-        ? `changed visual specs: ${changedVisualSpecs.join(', ')}`
-        : 'visual-relevant files changed';
+  if (fullMode) {
     commands.push({
       kind: 'run',
       label: 'visual',
       command: 'pnpm',
       args: ['test:visual'],
       weight: classifyCommandWeight({ label: 'visual' }),
-      triggerReason,
+      triggerReason: 'full-project release verification',
+    });
+  } else if (visualPlan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'visual',
+      command: 'pnpm test:visual',
+      reason: `invalid visual impact plan: ${visualPlan.reasons.join('; ')}`,
+    });
+  } else if (visualPlan.mode === 'full') {
+    commands.push({
+      kind: 'run',
+      label: 'visual',
+      command: 'pnpm',
+      args: ['test:visual'],
+      weight: classifyCommandWeight({ label: 'visual' }),
+      triggerReason: visualPlan.reasons.join('; '),
+    });
+  } else if (visualPlan.mode === 'focused') {
+    commands.push({
+      kind: 'run',
+      label: 'visual',
+      command: 'pnpm',
+      args: ['test:visual', ...visualPlan.specs],
+      weight: classifyCommandWeight({ label: 'visual' }),
+      triggerReason: visualPlan.reasons.join('; '),
     });
   } else {
     commands.push({

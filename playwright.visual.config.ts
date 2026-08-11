@@ -8,7 +8,8 @@ const storybookURL = `http://${host}:${port}`;
 const viteBin = './node_modules/.bin/vite';
 
 export default defineConfig({
-  testDir: './tests/e2e/visual',
+  testDir: '.',
+  testMatch: ['tests/e2e/visual/**/*.spec.ts', 'src/**/*.visual.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

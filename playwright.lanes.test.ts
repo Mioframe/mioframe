@@ -6,9 +6,8 @@ import storybookBehaviorConfig from './playwright.storybook.config';
 import visualConfig from './playwright.visual.config';
 
 describe('Playwright lane discovery stays disjoint', () => {
-  it('gives application e2e, visual, and release lanes their own physical testDir', () => {
+  it('gives application e2e and release lanes their own physical testDir', () => {
     expect(appConfig.testDir).toBe('./tests/e2e');
-    expect(visualConfig.testDir).toBe('./tests/e2e/visual');
     expect(releaseConfig.testDir).toBe('./tests/e2e/release');
   });
 
@@ -17,6 +16,14 @@ describe('Playwright lane discovery stays disjoint', () => {
     expect(storybookBehaviorConfig.testMatch).toEqual([
       'tests/e2e/storybook/**/*.spec.ts',
       'src/**/*.browser.spec.ts',
+    ]);
+  });
+
+  it('discovers visual specs from repo root via mixed legacy and colocated testMatch', () => {
+    expect(visualConfig.testDir).toBe('.');
+    expect(visualConfig.testMatch).toEqual([
+      'tests/e2e/visual/**/*.spec.ts',
+      'src/**/*.visual.spec.ts',
     ]);
   });
 
@@ -36,18 +43,23 @@ describe('Playwright lane discovery stays disjoint', () => {
     const applicationSpecs = listFiles('tests/e2e', '.spec.ts', { recursive: false });
     const storybookLegacySpecs = listFiles('tests/e2e/storybook', '.spec.ts');
     const storybookColocatedSpecs = listFiles('src', '.browser.spec.ts');
-    const visualSpecs = listFiles('tests/e2e/visual', '.spec.ts');
+    const visualLegacySpecs = listFiles('tests/e2e/visual', '.spec.ts');
+    const visualColocatedSpecs = listFiles('src', '.visual.spec.ts');
     const releaseSpecs = listFiles('tests/e2e/release', '.spec.ts');
 
     expect(applicationSpecs.length).toBeGreaterThan(0);
     expect(storybookLegacySpecs.length).toBeGreaterThan(0);
     expect(storybookColocatedSpecs.length).toBeGreaterThan(0);
-    expect(visualSpecs.length).toBeGreaterThan(0);
+    expect(visualLegacySpecs.length).toBeGreaterThan(0);
+    expect(visualColocatedSpecs.length).toBeGreaterThan(0);
     expect(releaseSpecs.length).toBeGreaterThan(0);
 
     // Both storybook groups are the same logical lane: legacy-central specs
     // under tests/e2e/storybook and owner-local specs colocated under src.
     const storybookSpecs = [...storybookLegacySpecs, ...storybookColocatedSpecs];
+    // Both visual groups are the same logical lane: legacy-central specs
+    // under tests/e2e/visual and owner-local specs colocated under src.
+    const visualSpecs = [...visualLegacySpecs, ...visualColocatedSpecs];
 
     expect(intersection(applicationSpecs, storybookSpecs)).toEqual([]);
     expect(intersection(applicationSpecs, visualSpecs)).toEqual([]);
