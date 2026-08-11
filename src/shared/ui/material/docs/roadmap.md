@@ -6,15 +6,15 @@ This file is the only owner of current Material milestone status, family-stage s
 
 Last updated: 2026-08-11
 
-Current milestone: `M2 — Switch stateful pilot correction`
+Current milestone: `M2 — Switch stateful pilot final proof correction`
 
 Status: `correction-required`
 
-The m3e-backed Material library architecture is established and already proven by Loading Indicator and Button. Switch has been migrated to the new library boundary and the legacy `src/shared/ui/Switch` owner has been removed, but the current Switch artifact chain is not merge-ready after architecture review against the current `develop` state.
+The m3e-backed Material library architecture is established and already proven by Loading Indicator and Button. Switch is migrated to the canonical Material boundary, legacy `src/shared/ui/Switch` is removed, both product consumers are migrated, and the controlled-state calibration correction is implemented.
 
-The branch is synchronized with current `develop`, including the completed Storybook S2 owner-local browser migration. The remaining work is Switch-owned correction, not branch synchronization.
+The branch is synchronized with current `develop`. The remaining blocker is a Switch-owned browser-proof implementation defect, not architecture, consumer migration, branch synchronization, or shared Playwright infrastructure.
 
-Switch is a calibration family. Findings that expose missing durable Material/testing rules are corrected in the canonical docs/skills in this same PR rather than treated only as one-family patches.
+Switch remains the calibration family: durable gaps found during this migration have been corrected in their canonical docs/skills rather than hidden in one-family workarounds.
 
 ## Current family state
 
@@ -32,79 +32,85 @@ No current blocker.
 
 ### Button
 
-Runtime migration to the canonical m3e-backed Material library is complete and merged. Historical artifact-revision cleanup remains separate from the Switch pilot and is not a Switch blocker.
+Runtime migration to the canonical m3e-backed Material library is complete and merged. Historical Button artifact cleanup is not a Switch blocker.
 
 ### Switch
 
 ```text
 DESIGN.md          current
-ARCHITECTURE.md    correction required
-IMPLEMENTATION.md  stale after architecture correction
-MIGRATION.md       stale after implementation correction
-REVIEW.md          blocked → self/architecture
+ARCHITECTURE.md    ready
+IMPLEMENTATION.md  complete, one proof correction required
+MIGRATION.md       complete
+REVIEW.md          blocked → self/implementation
 ```
 
-The current runtime direction remains valid: one thin `MDSwitch` Vue adapter over `m3e-switch`, a curated Mioframe API, no renderer leakage, no recreated ripple/state-layer/geometry/motion, and the `presentation` extension for the two confirmed decorative list-item consumers.
+Current revisions:
 
-Current correction findings:
+- DESIGN contract: `2026-08-10T19:28:25.068Z`;
+- ARCHITECTURE: `2026-08-11T06:25:34.000Z`;
+- IMPLEMENTATION: `2026-08-11T07:30:01.000Z`;
+- MIGRATION: `2026-08-11T08:00:00.000Z`;
+- REVIEW: `2026-08-11T10:42:00.000Z` — blocked, `self/implementation`.
 
-1. **Controlled-state ownership.** The current wrapper derives `update:selected` from renderer `change`, after `m3e-switch` mutates `checked`. If the consumer rejects the emitted update and leaves `selected` unchanged, renderer state can diverge from the public source of truth. The exact installed `@m3e/web@2.6.3` exposes the correct public seam: bubbling cancelable `beforeinput` is dispatched before the renderer changes `checked`. Architecture must use intent-before-mutation semantics so `selected` remains the only state owner.
-2. **Browser-proof ownership.** The Switch branch originally added central `tests/e2e/storybook/md-switch-family.spec.ts` plus a scenario-registry mapping. Current `develop` has completed Storybook S2; ordinary family-owned proof belongs in colocated `src/**/*.browser.spec.ts` and must use filesystem-derived ownership without duplicate central mapping.
-3. **Test-environment blast radius.** Switch currently adds an `ElementInternals` compatibility polyfill to shared `src/setupVitest.ts`, changing `HTMLElement.prototype` for every unit test even though the need is renderer/family-specific. The shim must move to the narrowest truthful Switch test owner unless independent consumers justify shared ownership.
-4. **Decorative composition proof.** Current browser proof confirms `presentation` prevents the renderer's own toggle, but does not prove the complete handoff: real input on the visible decorative Switch region must reach the enclosing action owner and the resulting owner state must flow back into renderer `checked`.
+## Calibration result so far
 
-The earlier M3E-004 accessible-name finding remains valid: native `<label>` association is divergent in the installed renderer, while `aria-label` and `aria-labelledby` are confirmed working and satisfy the selected standalone scenario.
+The earlier systemic findings are corrected:
 
-## Calibration rule corrections
+1. **Controlled-state ownership.** `selected` is the sole source of truth. The adapter intercepts the exact installed renderer's cancelable pre-mutation `beforeinput`, calls `preventDefault()`, emits the requested next `selected`, and never permits a rejected intent to leave renderer `checked` divergent.
+2. **Browser-proof ownership.** Switch-owned Storybook behavior is colocated as `src/shared/ui/material/components/switch/MDSwitch.browser.spec.ts`; the obsolete central Switch registry relation is removed.
+3. **Test-environment blast radius.** The Switch-only `ElementInternals` shim is local to `MDSwitch.testUtils.ts`, installed only around the owning unit suite and restored afterward. `src/setupVitest.ts` is unchanged by Switch.
+4. **Decorative composition ownership.** Browser proof now verifies both that `presentation` is not independently interactive and that real pointer input on its visible region reaches the enclosing action owner, whose state then flows back into renderer `checked`.
+5. **Testing workflow rules.** Canonical adapter, architecture, component-contract, browser-behavior, and independent-review rules were strengthened so these stateful-adapter failures cannot be accepted as compliant in later families.
+6. **Storybook S2 registry debt.** While exercising fail-closed Storybook impact resolution, stale Button/Dialog registry entries already contradicted by completed S2 ownership were corrected without weakening the resolver.
 
-The Switch findings exposed four durable workflow gaps. They are corrected in this PR before the family is allowed to return to compliant:
+No generic m3e adapter framework, state manager, workflow database, new registry layer, or compatibility API was introduced.
 
-- `docs/component-adapter.md` now requires an explicit controlled renderer transition timeline, rejected-intent proof, no surviving optimistic renderer mutation, narrow test-environment seams, and complete decorative composition handoff proof.
-- `material-component-architecture` now requires exact renderer event timing/cancelability and accepted/rejected intent ownership before calling state controlled, and requires proof placement from the current testing migration state rather than historical family examples.
-- `component-contract-testing` now requires accepted and rejected controlled-intent proof and forbids one-family global test polyfills.
-- `ui-browser-behavior` now reflects completed Storybook S2: ordinary reusable UI uses owner-local `*.browser.spec.ts`; central Storybook specs/registry remain only for truthful cross-owner or infrastructure contracts. It also requires positive composition pass-through proof.
-- `material-component-review` now independently rechecks controlled-state rejection, current test placement, test-environment blast radius, composition handoff, and evidence before attributing an external verifier failure to a shared runner/worktree defect.
+## Current blocker
 
-No new generic adapter framework, workflow database, registry, or orchestration layer was introduced. These are narrow invariants added at the existing owners that failed to catch the calibration defects.
+Fresh independent review found one remaining proof defect:
+
+`src/shared/ui/material/components/switch/MDSwitch.browser.spec.ts` tests disabled pointer activation with Playwright `click({ force: true })`.
+
+The current `ui-browser-behavior` contract explicitly forbids `force`. A forced click bypasses Playwright actionability and therefore cannot serve as the required faithful disabled pointer proof.
+
+Required correction:
+
+- replace the forced locator click with ordinary real pointer input that does not bypass actionability, such as `page.mouse.click` at the rendered disabled Switch coordinates;
+- prove no selection intent/state change occurs;
+- refresh `IMPLEMENTATION.md` after the proof change;
+- revalidate `MIGRATION.md` if required by the revision chain;
+- run a fresh independent review.
+
+No architecture redesign is required.
 
 ## Verification status
 
-The initial implementation had passing focused format/lint/type/unit/E2E/Storybook build checks and earlier focused browser/visual runs. Those results do not close the current findings because the architecture and proof ownership have changed.
+The implementation correction has strong supporting evidence: focused type-check/lint/format, Switch unit proof, full unit-suite revalidation after shim localization, owner-local Storybook behavior, visual proof, and the agent's full `pnpm verify` all passed.
 
-The previously reported Storybook wrong-worktree execution is not accepted as a repository tooling defect without independent evidence from the intended checkout. `scripts/playwrightContainer.mjs` must not be modified as part of the Switch correction merely to accommodate that unverified diagnosis.
+However, the reported full `pnpm verify` ran **before** the required fresh independent review. The Material state machine already requires current successful reviews before final workflow verification, so that run cannot be reused as the final gate. This is an execution-order mistake, not a missing durable rule.
 
-Required final sequence after code correction:
+GitHub Actions `verify` for the implementation head was still running when the latest independent review began. CI success cannot override the browser-proof finding.
 
-1. refresh Switch `ARCHITECTURE.md` with the controlled `beforeinput` intent mapping and current proof ownership;
-2. implement the runtime/test corrections and refresh `IMPLEMENTATION.md`;
-3. revalidate both consumers and refresh `MIGRATION.md`;
-4. run a fresh independent full `material-component-review` using the strengthened rules;
-5. run the ordinary final `pnpm verify` from the intended checkout;
-6. only then consider PR #186 ready for merge.
+Required final sequence:
 
-## Current blockers
-
-Switch remains blocked on family-owned correction:
-
-- controlled state must prevent renderer drift on rejected intent;
-- browser proof must use current owner-local ownership;
-- the renderer-specific Vitest shim must be localized;
-- decorative composition must prove positive owner-action pass-through and state reflection.
-
-No branch synchronization blocker remains.
+1. correct the disabled pointer proof in implementation;
+2. refresh the implementation revision and downstream migration revision if invalidated;
+3. run a fresh independent Material review;
+4. only after `REVIEW.md` is compliant, run one ordinary final `pnpm verify`;
+5. update PR #186 to ready only when that post-review final gate passes.
 
 ## Milestones
 
-| ID  | Milestone                           | Status                | Exit gate                                                                                |
-| --- | ----------------------------------- | --------------------- | ---------------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`            | coherent staged workflow and corrected terminal/verifier ownership                       |
-| M1a | Loading Indicator dependency family | `complete`            | current artifacts, compliant review, no unresolved reported defect                       |
-| M1  | Button action family                | `complete`            | canonical m3e-backed action component migrated and merged                                |
-| M2  | Switch stateful pilot               | `correction-required` | corrected controlled ownership, current proof ownership, fresh review, final verify pass |
-| M3  | sequential component migration      | `planned`             | dependency-first autonomous family migrations                                            |
+| ID  | Milestone                           | Status                | Exit gate                                                        |
+| --- | ----------------------------------- | --------------------- | ---------------------------------------------------------------- |
+| M0  | workflow architecture and rules     | `complete`            | coherent staged workflow and corrected calibration invariants    |
+| M1a | Loading Indicator dependency family | `complete`            | current artifacts and compliant review                           |
+| M1  | Button action family                | `complete`            | canonical m3e-backed action component migrated and merged        |
+| M2  | Switch stateful pilot               | `correction-required` | faithful disabled pointer proof, compliant review, final verify  |
+| M3  | sequential component migration      | `planned`             | begin only after M2 closes without systemic state/ownership gaps |
 
 ## Next operator action
 
-Correct Switch from `self/architecture` using the exact installed renderer `beforeinput` contract and the current testing ownership. Then continue the normal durable chain through implementation, migration, fresh independent review, and one final `pnpm verify`.
+Correct only the Switch-owned disabled pointer browser proof under `self/implementation`, then continue the normal revision chain through fresh independent review and post-review final verification.
 
-Do not rerun design unless the correction discovers an actual official Material design-contract defect. Do not reintroduce legacy Switch ownership, raw renderer public surface, a generic adapter framework, central component-owned browser registry metadata, global one-family test polyfills, or an unverified Playwright infrastructure workaround.
+Do not reopen architecture unless new evidence invalidates the controlled-state decision. Do not rerun design, add speculative Switch surface, create generic adapter infrastructure, reintroduce legacy ownership, or modify shared Playwright container infrastructure for this correction.
