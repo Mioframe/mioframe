@@ -46,7 +46,21 @@ test('MDSwitch resolves an accessible name from aria-labelledby and aria-label, 
   const disabled = page.getByRole('switch', { name: 'Disabled switch' });
   await expect(disabled).toBeDisabled();
   await expect(disabled).toHaveAttribute('aria-checked', 'false');
-  await disabled.click({ force: true });
+
+  // `disabled` is not Playwright-actionable (its own guard blocks `beforeinput` dispatch before
+  // any mutation, per ARCHITECTURE.md's "Renderer mapping and gaps"), so locator `.click()` would
+  // require the forbidden `force` option. Prove the same pointer-activation-is-blocked contract
+  // with ordinary real pointer input at the rendered element's own coordinates instead, matching
+  // the `page.mouse.click` pattern already used for the `presentation` and target-hit fixtures
+  // below.
+  const disabledBox = await disabled.boundingBox();
+  if (disabledBox == null) {
+    throw new Error('Missing MDSwitch disabled bounding box.');
+  }
+  await page.mouse.click(
+    disabledBox.x + disabledBox.width / 2,
+    disabledBox.y + disabledBox.height / 2,
+  );
   await expect(disabled).toHaveAttribute('aria-checked', 'false');
   await page.keyboard.press('Tab');
   await expect(disabled).not.toBeFocused();

@@ -233,12 +233,12 @@ Installed `2.6.3`: real-browser (Chromium) accessibility-tree evidence shows nei
 
 - renderer type declaration: `node_modules/@m3e/web/dist/src/switch/SwitchElement.d.ts` (documented `<label>`-wrapped `@example`, `LabelledMixin` base);
 - renderer type declaration: `node_modules/@m3e/web/dist/src/core/shared/mixins/Labelled.d.ts`;
-- browser proof: `../../../../../tests/e2e/storybook/md-switch-family.spec.ts`;
-- implementation record: `../components/switch/IMPLEMENTATION.md` ("Implemented passes" item 9).
+- browser proof: `../components/switch/MDSwitch.browser.spec.ts` ("resolves an accessible name from aria-labelledby and aria-label, and blocks disabled activation");
+- implementation record: `../components/switch/IMPLEMENTATION.md` ("Component-owned proof").
 
 ### Mioframe impact and mitigation
 
-No confirmed current or default scenario is blocked: the decorative list-item composition (`presentation`) hides the Switch node from the accessibility tree entirely, and the standalone default's accessible-name acceptance criterion is an "or" list already satisfied by the two independently confirmed-working mechanisms (`aria-label`, `aria-labelledby`). The family does not rely on native `<label>` wrapping or `for`/`id` association as an accessible-name source; `MDSwitch.stories.ts` and `tests/e2e/storybook/md-switch-family.spec.ts` use `aria-label`/`aria-labelledby` fixtures instead. No wrapper-level accessible-name synthesis is added, per `docs/component-adapter.md`'s prohibition on recreating renderer-owned accessibility implementation.
+No confirmed current or default scenario is blocked: the decorative list-item composition (`presentation`) hides the Switch node from the accessibility tree entirely, and the standalone default's accessible-name acceptance criterion is an "or" list already satisfied by the two independently confirmed-working mechanisms (`aria-label`, `aria-labelledby`). The family does not rely on native `<label>` wrapping or `for`/`id` association as an accessible-name source; `MDSwitch.stories.ts` and `../components/switch/MDSwitch.browser.spec.ts` use `aria-label`/`aria-labelledby` fixtures instead. No wrapper-level accessible-name synthesis is added, per `docs/component-adapter.md`'s prohibition on recreating renderer-owned accessibility implementation.
 
 ### Correct upstream result
 
@@ -250,9 +250,9 @@ Consume a renderer version whose native `<label>` association produces a correct
 
 ### Revalidation history
 
-| m3e version | Date       | Result    | Evidence                                                                                                               |
-| ----------- | ---------- | --------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `2.6.3`     | 2026-08-11 | confirmed | real-browser accessibility-tree proof (`tests/e2e/storybook/md-switch-family.spec.ts`); renderer JSDoc/type inspection |
+| m3e version | Date       | Result    | Evidence                                                                                                                |
+| ----------- | ---------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `2.6.3`     | 2026-08-11 | confirmed | real-browser accessibility-tree proof (`../components/switch/MDSwitch.browser.spec.ts`); renderer JSDoc/type inspection |
 
 ## Removed records
 
