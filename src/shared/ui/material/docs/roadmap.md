@@ -78,13 +78,13 @@ GitHub `release-version` is green on the current versioned head. Full GitHub ver
 
 ## Milestones
 
-| ID  | Milestone                           | Status     | Exit gate                                                       |
-| --- | ----------------------------------- | ---------- | --------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete` | coherent staged workflow and corrected calibration invariants   |
-| M1a | Loading Indicator dependency family | `complete` | current artifacts and compliant review                          |
-| M1  | Button action family                | `complete` | canonical m3e-backed action component migrated and merged       |
-| M2  | Switch stateful pilot               | `complete` | family workflow completed without unresolved family findings    |
-| M3  | sequential component migration      | `planned`  | begin after PR #186 is integrated into current `develop`        |
+| ID  | Milestone                           | Status     | Exit gate                                                     |
+| --- | ----------------------------------- | ---------- | ------------------------------------------------------------- |
+| M0  | workflow architecture and rules     | `complete` | coherent staged workflow and corrected calibration invariants |
+| M1a | Loading Indicator dependency family | `complete` | current artifacts and compliant review                        |
+| M1  | Button action family                | `complete` | canonical m3e-backed action component migrated and merged     |
+| M2  | Switch stateful pilot               | `complete` | family workflow completed without unresolved family findings  |
+| M3  | sequential component migration      | `planned`  | begin after PR #186 is integrated into current `develop`      |
 
 ## Next operator action
 
