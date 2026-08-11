@@ -77,6 +77,30 @@ If public states coexist, architecture defines precedence and restoration.
 
 Visual loading/busy presentation and activation blocking are independent contracts unless architecture explicitly combines them.
 
+## Controlled state ownership
+
+When a public prop is declared controlled, `ARCHITECTURE.md` must define the complete renderer transition timeline, not only the prop and emitted event names.
+
+For every renderer-owned mutable state mapped to a controlled Mioframe prop, architecture records:
+
+1. the public source of truth;
+2. the renderer property that reflects it;
+3. the exact renderer event fired before and/or after an attempted mutation;
+4. whether the pre-mutation event is cancelable;
+5. which owner computes the requested next value;
+6. what happens when the consumer accepts the intent;
+7. what happens when the consumer rejects the intent and leaves the prop unchanged;
+8. how disabled, presentation-only, or otherwise suppressed states affect the intent path.
+
+A controlled adapter must never allow a renderer-owned optimistic mutation to become a second source of truth.
+
+- Prefer a documented cancelable pre-mutation renderer event when it exists: prevent the renderer mutation, emit Mioframe intent, and let the controlling prop be the only path that changes the renderer property.
+- A post-mutation `change`/`input` event is not by itself a valid controlled mapping when the renderer mutates internal state before the event and Vue may leave an unchanged prop unwritten.
+- Do not repair drift with wrapper-local duplicate state, a post-change watcher, delayed reassertion, or private renderer mutation unless architecture proves that no pre-mutation intent seam exists and explicitly owns the correction.
+- Do not call a mapping `controlled` merely because it exposes `update:*` or resembles native `v-model` syntax.
+
+Component proof must include rejected intent: perform an attempted user state change, intentionally keep the controlling prop unchanged, and prove the renderer property remains equal to the public prop.
+
 ## Host-attribute boundary
 
 Applies to any canonical adapter whose single root is a raw `m3e-*` custom element with no wrapping element.
@@ -177,6 +201,23 @@ Host pseudo-class overrides of renderer-owned timing or transient geometry do no
 - Browser proof resolves roles and accessible names from rendered semantics.
 - Parent and dependency semantic owners are proven separately.
 
+When a decorative/presentation child intentionally suppresses its own pointer or accessibility ownership so an enclosing owner handles the action, proof must cover both sides of the handoff:
+
+- negative: the child does not become an independent interactive or accessible owner;
+- positive: real pointer/keyboard input on the child’s visible region reaches the actual owning action, and owner-controlled state flows back into the child rendering.
+
+Proving only that the child did nothing is incomplete composition proof.
+
+## Test-environment seams
+
+A renderer-specific test compatibility shim belongs to the narrowest truthful test owner.
+
+- Do not add a global prototype, browser API, custom-element, `ElementInternals`, observer, or capability polyfill to shared test bootstrap solely because one Material family needs it.
+- Prefer family-local setup around the tests that instantiate the real renderer.
+- Preserve and restore pre-existing globals/prototype members where practical.
+- Promote a shim to shared test infrastructure only when multiple independent owners require the same faithful seam and the shared ownership is explicit.
+- A test shim enables construction or deterministic wiring only; it must not be presented as proof of real browser accessibility, focus, form participation, layout, or capability behavior.
+
 ## Implementation contract
 
 The implementation stage consumes a ready `ARCHITECTURE.md` and must not:
@@ -194,6 +235,7 @@ Architecture selects proof through `TEST IMPACT`. Implementation supplies compon
 
 - package-derived type-check;
 - colocated Vue contract tests;
+- controlled-state accepted and rejected intent paths when applicable;
 - browser native/accessibility behavior;
 - observable browser or visual proof for selected renderer-owned appearance;
 - independent dependency proof;
