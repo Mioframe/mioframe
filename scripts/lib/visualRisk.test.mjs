@@ -64,6 +64,8 @@ describe('isFullVisualLanePath', () => {
     expect(isFullVisualLanePath('tsconfig.storybook.json')).toBe(true);
     expect(isFullVisualLanePath('pnpm-lock.yaml')).toBe(true);
     expect(isFullVisualLanePath('vite.config.ts')).toBe(true);
+    expect(isFullVisualLanePath('scripts/visual.mjs')).toBe(true);
+    expect(isFullVisualLanePath('scripts/verify.mjs')).toBe(true);
   });
 
   it('flags any path under .storybook/', () => {
@@ -337,6 +339,14 @@ describe('resolveVisualPlan global infrastructure', () => {
   it('runs the full lane for global app fonts/base styling', () => {
     expect(resolveVisualPlan(['src/app/styles/base.css']).mode).toBe('full');
     expect(resolveVisualPlan(['src/app/styles/fonts.css']).mode).toBe('full');
+  });
+
+  it('runs the full lane for the visual lane execution entry point', () => {
+    expect(resolveVisualPlan(['scripts/visual.mjs']).mode).toBe('full');
+  });
+
+  it('runs the full lane for the verify planner entry point', () => {
+    expect(resolveVisualPlan(['scripts/verify.mjs']).mode).toBe('full');
   });
 });
 

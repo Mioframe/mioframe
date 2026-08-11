@@ -16,10 +16,11 @@ const COLOCATED_VISUAL_SPEC_SUFFIX = '.visual.spec.ts';
 const COLOCATED_VISUAL_SNAPSHOT_MARKER = `${COLOCATED_VISUAL_SPEC_SUFFIX}-snapshots/`;
 
 // Broad blast-radius paths: the visual Playwright config, the shared
-// container runner, this resolver's own module, and the production-owned
-// Storybook preview style dependency closure. A change here can affect every
-// visual spec (legacy or colocated), so it always triggers a full lane run
-// instead of relying on owner-local ownership.
+// container runner, this resolver's own module, the visual lane
+// execution/planning entry points, and the production-owned Storybook
+// preview style dependency closure. A change here can affect every visual
+// spec (legacy or colocated), so it always triggers a full lane run instead
+// of relying on owner-local ownership.
 const FULL_LANE_EXACT_FILES = new Set([
   'config/tooling.json',
   'playwright.visual.config.ts',
@@ -27,6 +28,8 @@ const FULL_LANE_EXACT_FILES = new Set([
   'scripts/lib/visualRisk.mjs',
   'scripts/playwrightContainer.mjs',
   'scripts/storybook.mjs',
+  'scripts/visual.mjs',
+  'scripts/verify.mjs',
   'tsconfig.storybook.json',
   'vite.config.ts',
   'src/app/styles/base.css',
