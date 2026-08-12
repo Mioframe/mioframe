@@ -46,7 +46,7 @@ Required return stage: none | design | architecture | implementation | migration
 Implementation readiness: ready | awaiting-dependencies | blocked
 Dependency families: none | <canonical-family>[; <canonical-family>...]
 Dependency queue: none | <canonical-family>[; <canonical-family>...]
-Dependency review revisions: none | <family>=<review revision>[; <family>=<review revision>...]
+Dependency review revisions: none | <canonical-family>=<REVIEW Artifact revision>[; <canonical-family>=<REVIEW Artifact revision>...]
 ```
 
 `stale` is an external pre-run marker. This worker may finish only with `ready` or `blocked`.
