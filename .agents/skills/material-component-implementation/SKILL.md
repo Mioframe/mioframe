@@ -105,6 +105,8 @@ When the only root is a raw `m3e-*` element:
 
 Complete implementation-owned `TEST IMPACT` through faithful contract, type, browser/accessibility, visual, renderer-boundary, token, dependency-composition, and risk-specific proof as applicable.
 
+When current Storybook/testing discovery can execute the architecture-selected canonical owner-local browser or visual proof, create that proof directly beside the Material family. Do not create a temporary central Storybook spec or baseline for migration to move later.
+
 Run verifier-managed focused implementation checks only. Do not run or defer final workflow verification.
 
 ## Terminal-state rules
@@ -172,6 +174,7 @@ Status: complete | blocked
 - Migrating product consumers.
 - Expanding API, tokens, abstractions, or renderer support beyond architecture.
 - Updating visual baselines without inspection.
+- Creating temporary central Storybook browser/visual proof when canonical owner-local proof is executable.
 - Running migration, review, or final workflow verification.
 - Recording the pending final command as a blocker or risk.
 - Depending on Git or PR state.
