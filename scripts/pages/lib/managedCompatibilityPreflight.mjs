@@ -181,14 +181,16 @@ export async function runManagedPublicationPreflight(
     return { decision: 'not-applicable' };
   }
 
-  // Every retained previous release remains a possible active pin/rollback
-  // target under the current append-only/no-pruning retained-tree
-  // architecture — never only the immediately preceding one — except a
-  // release statically classified as an unsupported compat target (see
-  // unsupportedRetainedReleases.mjs): it stays retained and was already
-  // fully integrity-validated above by resolvePublicationPlan, but is never
-  // a real pin/rollback target and so is excluded from what the new
-  // candidate's compatibility proof must cover.
+  // Retained previous releases normally remain supported data-compatibility
+  // targets under the current append-only/no-pruning architecture — never
+  // only the immediately preceding one. A release statically classified as
+  // an unsupported compat target is the narrow exception: it stays retained
+  // and is fully integrity-validated above by resolvePublicationPlan, and it
+  // may still exist in historical controller state as an active baseline,
+  // but its published application is not usable enough to serve as a
+  // meaningful backward data-compatibility proof target. The classification
+  // changes publisher proof scope only; it does not blacklist or rewrite
+  // updater runtime state.
   const previousReleaseNumbers = plan.descriptors
     .map((descriptor) => descriptor.releaseNumber)
     .filter((releaseNumber) => !isUnsupportedCompatTarget(channel, releaseNumber));
