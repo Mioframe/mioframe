@@ -90,17 +90,13 @@ Do not create a product consumer merely to make migration non-empty.
 - Do not move feature, entity, widget, or page responsibility into Material.
 - Follow architecture dependency and migration order.
 - Remove replaced legacy ownership only after every consumer has a valid destination.
-- When current Storybook/testing discovery supports canonical owner-local browser or visual proof, move every surviving family-owned legacy story/spec/baseline directly to the canonical Material family during this migration and remove the replaced central or legacy copy in the same change.
-- Delete legacy Storybook/browser/visual proof whose contract no longer exists after the canonical renderer-backed migration instead of relocating obsolete proof.
-- Do not leave a separate post-migration Storybook ownership cleanup or later S4 move for proof that this Material workflow can place correctly now.
+- Apply the architecture-recorded disposition of legacy Storybook/browser/visual proof using the executable ownership in `docs/testing/migration-plan.md`; surviving family proof must end at its canonical executable owner, while replaced or obsolete legacy proof is removed in this migration.
 - Do not keep compatibility aliases by default for an unshipped or fully migrated internal API.
 - Leave unrelated families and shared UI untouched.
 
 ## Consumer and blast-radius proof
 
 For each materially distinct consumer path record previous and canonical ownership/API, preserved behavior and failure paths, token or composition handoff, relevant loading/disabled/error/mobile/overlay/form/accessibility behavior, and faithful proof owner.
-
-For every migrated legacy Storybook/browser/visual artifact, record whether it was retained at the canonical owner, replaced by canonical proof, or removed as obsolete. Retained visual baselines must preserve accepted bytes unless the migration intentionally changes the visible contract and that change is separately justified and inspected.
 
 Run focused verifier-managed checks proving consumers compile, scenarios remain correct, no renderer leak remains, obsolete ownership is removed, contextual appearance is proven where required, and impact metadata maps changed source and proof.
 
@@ -176,7 +172,6 @@ Status: complete | blocked
 - Creating a product consumer when none is required.
 - Migrating unrelated families for cleanup.
 - Keeping replaced logic only to reduce work.
-- Leaving surviving family-owned Storybook/browser/visual proof in a temporary central or legacy location when canonical owner-local discovery is executable.
 - Running independent review or final workflow verification.
 - Recording the pending final command as a blocker or risk.
 - Depending on Git or PR state.
