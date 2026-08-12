@@ -44,11 +44,13 @@ No generic m3e adapter framework, duplicate state manager, compatibility layer, 
 
 ## Verification state
 
-Before the latest `develop` synchronization, the synchronized outer `material-component Switch` invocation mechanically revalidated the existing artifact chain and its final workflow verification passed all required checks. GitHub verification on that earlier merge candidate also passed all merge gates.
+Before the latest `develop` synchronization, the completed `material-component Switch` workflow mechanically revalidated the existing artifact chain and its final workflow verification passed all required checks. GitHub verification on that earlier merge candidate also passed all merge gates.
 
-Current merge-candidate verification is pending because the head changed to integrate `develop` S4-B, resolve the visual ownership conflict, remove stale central MDCheckbox baselines, and bump the release version to `0.3.7`.
+The latest `develop` synchronization changed only integration/testing ownership state and release metadata; it did not change or invalidate the Switch family contract or any durable family revision link. Therefore the Material family workflow does not need to be run again solely because the base advanced.
 
-No Switch family artifact is invalidated by those integration changes. The final read-only verifier and GitHub merge gates must pass on the current head before merge.
+Fresh final read-only verification (`pnpm verify`) and GitHub merge gates are required on the current head because the merge candidate changed to integrate `develop` S4-B, resolve the visual ownership conflict, remove stale central MDCheckbox baselines, and bump the release version to `0.3.7`.
+
+GitHub verification for the current head is currently in progress.
 
 ## Milestones
 
@@ -62,8 +64,8 @@ No Switch family artifact is invalidated by those integration changes. The final
 
 ## Next operator action
 
-Do not rebuild or rewrite Switch family artifacts unless the synchronized workspace actually invalidates a family-owned contract.
+Do not rebuild or rewrite Switch family artifacts unless a later workspace change actually invalidates a family-owned contract or durable revision link.
 
-Run the outer `material-component Switch` workflow on the current synchronized workspace so it can mechanically revalidate the existing chain and run the required final read-only verifier. Then require the ordinary GitHub merge gates to be green on that same final head before integrating PR #186 into `develop`.
+Run fresh final read-only verification with `pnpm verify` on the synchronized current workspace and require the ordinary GitHub merge gates to be green on that same final head before integrating PR #186 into `develop`.
 
 After integration, M3 may begin with the next explicitly selected Material component family.
