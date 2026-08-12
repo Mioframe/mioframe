@@ -116,24 +116,6 @@ vi.mock('@shared/ui/Lists', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Switch', () => ({
-  MDSwitch: defineComponent({
-    name: 'MDSwitchStub',
-    props: {
-      selected: { type: Boolean, required: true },
-      disabled: { type: Boolean, default: false },
-      presentation: { type: Boolean, default: false },
-    },
-    setup(props) {
-      return () =>
-        h('div', {
-          'data-state': props.selected ? 'checked' : 'unchecked',
-          'data-disabled': props.disabled ? 'true' : 'false',
-        });
-    },
-  }),
-}));
-
 vi.mock('@shared/ui/material', () => ({
   MDButton: defineComponent({
     name: 'MDButtonStub',
@@ -154,6 +136,21 @@ vi.mock('@shared/ui/material', () => ({
           },
           props.label,
         );
+    },
+  }),
+  MDSwitch: defineComponent({
+    name: 'MDSwitchStub',
+    props: {
+      selected: { type: Boolean, required: true },
+      disabled: { type: Boolean, default: false },
+      presentation: { type: Boolean, default: false },
+    },
+    setup(props) {
+      return () =>
+        h('div', {
+          'data-state': props.selected ? 'checked' : 'unchecked',
+          'data-disabled': props.disabled ? 'true' : 'false',
+        });
     },
   }),
 }));

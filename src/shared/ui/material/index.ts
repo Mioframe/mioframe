@@ -2,3 +2,5 @@
 export { MDButton } from './components/button/index';
 /** Canonical Mioframe Material Loading indicator adapter. */
 export { MDLoadingIndicator } from './components/loadingIndicator/index';
+/** Canonical Mioframe Material Switch adapter. */
+export { MDSwitch } from './components/switch/index';

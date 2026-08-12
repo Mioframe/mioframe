@@ -70,6 +70,7 @@ For Storybook behavior and visual proof:
 - family/module/cross-file/cross-cutting relations use the smallest truthful explicit mapping when local naming cannot express ownership;
 - Storybook infrastructure smoke may remain justified standalone;
 - shared Storybook/Playwright configuration and broad helpers normally select the full owning lane;
+- any Playwright config whose `testDir` scans from repository root must respect repository ignore policy so ignored nested/local workspaces cannot contribute specs; prefer Playwright's `respectGitIgnore` over a parallel hard-coded exclusion list;
 - removed/moved/unresolved relevant ownership must fall back safely or fail validation, never skip silently.
 
 During the browser migration, migrated `src/**/*.browser.spec.ts` specs use the implemented filesystem-derived owner-local convention and require no duplicate central registry entry. Specs still executed from `tests/e2e/storybook` remain legacy-central and must continue to satisfy the current resolver's mapping/validation requirements. Do not move an additional spec until the current migration stage authorizes that owner and the lane can discover it.

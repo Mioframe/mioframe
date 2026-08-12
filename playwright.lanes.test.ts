@@ -27,6 +27,11 @@ describe('Playwright lane discovery stays disjoint', () => {
     ]);
   });
 
+  it('keeps root-scanning lanes from collecting tests out of ignored nested/local workspaces', () => {
+    expect(storybookBehaviorConfig.respectGitIgnore).toBe(true);
+    expect(visualConfig.respectGitIgnore).toBe(true);
+  });
+
   it('makes application e2e ignore the storybook, visual, and release subtrees', () => {
     expect(appConfig.testIgnore).toEqual(
       expect.arrayContaining(['storybook/**', 'visual/**', 'release/**']),

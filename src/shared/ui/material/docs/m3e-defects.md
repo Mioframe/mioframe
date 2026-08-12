@@ -67,10 +67,11 @@ Mioframe status:
 
 ## Summary
 
-| ID        | Component         | Summary                                                                 | Affected version | Mioframe status     | Upstream status |
-| --------- | ----------------- | ----------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
-| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
-| `M3E-002` | Loading indicator | Uncontained host size is coupled to active-indicator size               | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
+| ID        | Component         | Summary                                                                                                 | Affected version | Mioframe status     | Upstream status |
+| --------- | ----------------- | ------------------------------------------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
+| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input                                 | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
+| `M3E-002` | Loading indicator | Uncontained host size is coupled to active-indicator size                                               | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
+| `M3E-004` | Switch            | Native `<label>` association (implicit wrap or explicit `for`/`id`) does not produce an accessible name | `2.6.3`          | `workaround-active` | `unreported`    |
 
 `M3E-003` was removed before merge as a Mioframe representation misclassification. Its ID is retired; see Removed records.
 
@@ -194,6 +195,64 @@ Consume a renderer version with independent correct sizing, remove host-size/rat
 | ----------- | ---------- | --------- | --------------------------------------------------------------- |
 | `2.6.2`     | 2026-07-27 | confirmed | source inspection, host-box tests, and visual evidence          |
 | `2.6.3`     | 2026-07-27 | confirmed | uncontained host width remains coupled to active-indicator size |
+
+## M3E-004 — Native `<label>` association does not produce an accessible name
+
+- Component: Switch
+- First confirmed version: `2.6.3`
+- Last revalidated version: `2.6.3`
+- Upstream status: `unreported`
+- Mioframe status: `workaround-active`
+- Family design: `../components/switch/DESIGN.md`
+- Family architecture: `../components/switch/ARCHITECTURE.md`
+- Family implementation: `../components/switch/IMPLEMENTATION.md`
+- Upstream issue: none
+- Upstream pull request: none
+
+### Official expectation
+
+Official Switch Accessibility guidance ("Labeling") states that the switch's accessibility label uses its adjacent visible label text when implemented correctly, and that assistive technology announces the adjacent UI text followed by the component's role — an adjacent/associated label is expected to supply the accessible name.
+
+Recorded official sources:
+
+- `/components/switch/accessibility` ("Labeling").
+
+### Documented renderer contract
+
+`M3eSwitchElement` implements `LabelledMixin`, exposing a read-only `labels: NodeListOf<HTMLLabelElement>` property, and the element's own class-level JSDoc lists the following as its first documented `@example`:
+
+```html
+<label>Switch label&nbsp;<m3e-switch></m3e-switch></label>
+```
+
+### Observed renderer behavior
+
+Installed `2.6.3`: real-browser (Chromium) accessibility-tree evidence shows neither implicit `<label>` wrapping (`<label>Labelled switch<m3e-switch></m3e-switch></label>`) nor explicit `for`/`id` association produces an accessible name for `m3e-switch` — the accessibility-tree node reports an unnamed `switch` role in both cases. `aria-label` and `aria-labelledby` are independently confirmed working on the same element.
+
+### Evidence
+
+- renderer type declaration: `node_modules/@m3e/web/dist/src/switch/SwitchElement.d.ts` (documented `<label>`-wrapped `@example`, `LabelledMixin` base);
+- renderer type declaration: `node_modules/@m3e/web/dist/src/core/shared/mixins/Labelled.d.ts`;
+- browser proof: `../components/switch/MDSwitch.browser.spec.ts` ("resolves an accessible name from aria-labelledby and aria-label, and blocks disabled activation");
+- implementation record: `../components/switch/IMPLEMENTATION.md` ("Component-owned proof").
+
+### Mioframe impact and mitigation
+
+No confirmed current or default scenario is blocked: the decorative list-item composition (`presentation`) hides the Switch node from the accessibility tree entirely, and the standalone default's accessible-name acceptance criterion is an "or" list already satisfied by the two independently confirmed-working mechanisms (`aria-label`, `aria-labelledby`). The family does not rely on native `<label>` wrapping or `for`/`id` association as an accessible-name source; `MDSwitch.stories.ts` and `../components/switch/MDSwitch.browser.spec.ts` use `aria-label`/`aria-labelledby` fixtures instead. No wrapper-level accessible-name synthesis is added, per `docs/component-adapter.md`'s prohibition on recreating renderer-owned accessibility implementation.
+
+### Correct upstream result
+
+m3e should compute an accessible name from an implicit or explicit `<label>` association for `m3e-switch`, consistent with its own documented `LabelledMixin`/`labels` support and its illustrated `<label>`-wrapped usage example.
+
+### Removal trigger
+
+Consume a renderer version whose native `<label>` association produces a correct accessible name, confirm with real-browser accessibility-tree proof, and update the affected family architecture/implementation rows from `divergent` to `direct`.
+
+### Revalidation history
+
+| m3e version | Date       | Result    | Evidence                                                                                                                |
+| ----------- | ---------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `2.6.3`     | 2026-08-11 | confirmed | real-browser accessibility-tree proof (`../components/switch/MDSwitch.browser.spec.ts`); renderer JSDoc/type inspection |
 
 ## Removed records
 

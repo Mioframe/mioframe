@@ -44,6 +44,8 @@ Run in a fresh isolated context independent from workers that authored or correc
 
 Use task-relevant workspace files, canonical artifacts, official design evidence, code, consumers, tests, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
+Always read the current `src/shared/ui/material/docs/component-adapter.md` and `docs/testing/migration-plan.md` during full review. Do not accept a family merely because its own artifacts consistently repeat an older controlled-state model, test-placement convention, or migration-era registry pattern.
+
 ## Full-review output
 
 Write exactly:
@@ -96,13 +98,17 @@ Required headings:
 ## Full review order
 
 1. Validate the complete official design contract and source lifecycle.
-2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, and the simplest viable alternative.
-3. Compare implementation with every architecture decision and forbidden approach.
-4. Review consumers, the no-consumer case, and legacy-removal claims.
-5. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
-6. Verify proof ownership, impact metadata, and stage-scoped checks.
-7. Check for an actual operator-reported visual or motion defect.
-8. Consolidate each underlying problem once and assign exact ownership.
+2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, the current adapter contract, and the simplest viable alternative.
+3. For every controlled renderer-backed state, independently trace the exact installed renderer event lifecycle and prove the architecture has one source of truth, explicit accepted intent, explicit rejected intent, and no optimistic renderer mutation that can survive a rejected update.
+4. Compare implementation with every architecture decision and forbidden approach.
+5. Review consumers, the no-consumer case, and legacy-removal claims.
+6. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
+7. For decorative/presentation composition, verify both sides of ownership: the child is not independently interactive/accessibility-owned, and real input on its visible region reaches the actual enclosing action owner with resulting owner state reflected back.
+8. Verify proof ownership and placement against the current `docs/testing/migration-plan.md`; ordinary owner-local browser proof must not be accepted in a stale central registry shape when the current runner supports local ownership.
+9. Inspect test-environment changes for blast radius. A renderer-specific prototype/API polyfill in shared test bootstrap is a finding unless multiple independent owners justify that shared seam.
+10. Verify impact metadata and stage-scoped checks.
+11. Check for an actual operator-reported visual or motion defect.
+12. Consolidate each underlying problem once and assign exact ownership.
 
 Automated checks prove only covered contracts. Absence of operator visual feedback is not a blocker and requires no positive acknowledgement.
 
@@ -111,8 +117,8 @@ Automated checks prove only covered contracts. Absence of operator visual feedba
 Route:
 
 - missing or incorrect official fact → owning family/design;
-- incorrect demand, API, ownership, dependency, renderer/token strategy, proof ownership, or migration plan → owning family/architecture;
-- component code, token, mapping, export, or component-owned proof defect → owning family/implementation;
+- incorrect demand, API, state ownership, dependency, renderer/token strategy, proof ownership, or migration plan → owning family/architecture;
+- component code, token, mapping, export, local test setup, or component-owned proof defect → owning family/implementation;
 - consumer, scenario, legacy-removal, or migration-proof defect → owning family/migration.
 
 A dependency defect routes to the dependency family, not automatically to the parent.
@@ -165,7 +171,9 @@ Given exact final verifier output:
 1. identify the failed contract and evidence;
 2. decide whether an exact Material family and earliest stage own it;
 3. do not infer ownership from the component that triggered the outer command;
-4. do not assign unrelated workspace failures to the requested parent family.
+4. do not assign unrelated workspace failures to the requested parent family;
+5. separate classification from root-cause diagnosis: an external-workspace blocker may be clear even when the exact tooling cause is not yet proven;
+6. before claiming a repository runner/mount/worktree defect, verify the command’s invocation cwd/repository identity or other direct evidence that the runner selected the wrong workspace. Do not infer a shared tooling bug merely from `process.cwd()`-based code plus a failed path.
 
 ### Material-owned failure
 
@@ -185,6 +193,7 @@ When no Material family stage owns the failure:
 
 - do not write or rewrite any family `REVIEW.md`;
 - preserve all compliant family review revisions and dependency gates;
+- report only evidence-supported external facts; keep an unverified root cause explicitly unverified;
 - return only this compact result:
 
 ```text
@@ -245,10 +254,14 @@ Status: complete | blocked
 - Fixing production code or rewriting earlier artifacts.
 - Reviewing only the latest change.
 - Depending on Git or PR state.
+- Marking compliant without independently checking controlled-state rejected intent when mutable renderer state is involved.
+- Marking compliant with obsolete browser-proof placement/registry ownership relative to the current testing migration state.
+- Accepting a one-family global test bootstrap polyfill without explicit shared ownership.
 - Marking compliant with invalidating revision mismatches or unresolved family work.
 - Treating metadata-only design refresh as invalidation.
 - Using listed risks for incomplete work.
 - Preserving a stale cross-family route after durable origin resume.
 - Blocking only because positive visual acknowledgement is absent.
 - Fabricating operator feedback.
+- Claiming a shared runner/worktree root cause without direct evidence.
 - Running or claiming final workflow verification.
