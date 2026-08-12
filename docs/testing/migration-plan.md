@@ -53,7 +53,7 @@
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, and `DialogForm` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete.
-- Loading Indicator, Chips, and MDCheckbox use the owner-local visual convention (Stage S3 complete; Stage S4-A complete; Stage S4-B complete); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
+- Loading Indicator, Chips, MDCheckbox, and MarkdownContent use the owner-local visual convention (Stage S3 complete; Stage S4-A complete; Stage S4-B complete; Stage S4-C complete); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
 - Persistent mutation and release-impact migration remain separate work.
@@ -354,6 +354,19 @@ Final executable S4-B state:
 - three orphan baselines with no current visual assertion (`md-checkbox-interaction-states-default-linux.png`, `md-checkbox-interaction-states-pressed-linux.png`, `md-checkbox-interaction-states-readonly-linux.png`) are deleted rather than migrated;
 - `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDSwitch, MDCard, MDStateLayer, MarkdownContent);
 - no new resolver mapping, registry, or Checkbox-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
+
+#### S4-C — MarkdownContent visual ownership (complete)
+
+Authorized and completed group: MarkdownContent shared UI module only.
+
+Final executable S4-C state:
+
+- `MarkdownContent wide table matches baseline` and `MarkdownContent variants overview matches baseline` moved from the legacy central `tests/e2e/visual/shared-ui.spec.ts` to `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts`, unchanged in meaning, story IDs, and screenshot assertions;
+- both active baselines (`markdown-content-wide-table-linux.png`, `markdown-content-variants-overview-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts-snapshots/`;
+- `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
+- `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDSwitch, MDCard, MDStateLayer);
+- the MDCard dependency present in some MarkdownContent stories remains covered by the existing broad visual fallback; no MDCard-specific mapping or resolver change was made;
+- no new resolver mapping, registry, or MarkdownContent-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
 
 Later S4 groups remain pending. Stage S4 as a whole is not complete.
 
