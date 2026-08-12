@@ -3,7 +3,7 @@
  * remain retained and fully integrity-validated (see
  * `retainedReleaseTree.mjs`'s `validateRetainedContent`), but are excluded
  * from the set of releases the managed release data-compatibility proof
- * requires a new candidate to support as a pin/rollback target (see
+ * requires a new candidate to support as a usable compatibility target (see
  * `managedCompatibilityPreflight.mjs`).
  *
  * A static, source-controlled fact about specific historical releases, never
@@ -18,9 +18,14 @@
  * retained releases") was published with a broken build — wrong
  * root-relative application/PWA URLs and a Service Worker built without
  * runtime Sentry configuration — before this preflight existed to prevent
- * it. It can never be a real active pin/rollback target, so continuing to
- * require every future develop candidate to prove backward data
- * compatibility with it would block real publication for no safety benefit.
+ * it. While it was `latest`, bootstrap could legitimately persist it as the
+ * controller state's active baseline. It is nevertheless not a usable
+ * application compatibility target: its published application/PWA URLs are
+ * broken, and existing clients on that baseline recover through the normal
+ * navigation reconciliation path to a corrected newer candidate. Requiring
+ * every future develop candidate to prove backward data compatibility with
+ * this unusable application build would block real publication for no safety
+ * benefit.
  */
 const UNSUPPORTED_COMPAT_TARGETS = new Set([
   // develop release 2: docs/managed-pinned-updates.md, "Unsupported retained releases"
