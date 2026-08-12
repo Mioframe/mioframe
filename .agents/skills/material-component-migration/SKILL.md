@@ -89,6 +89,10 @@ Do not create a product consumer merely to make migration non-empty.
 - Preserve product ownership of state, disabled guards, errors, persistence, routing, and business behavior.
 - Do not move feature, entity, widget, or page responsibility into Material.
 - Follow architecture dependency and migration order.
+- Before removing a legacy owner, inspect each migrated state/value/configuration input for its actual observable meaning. Do not infer equivalence from identical or similar prop names.
+- For every legacy-to-canonical state translation, record the old semantic meaning, the canonical meaning, and the exact translation formula or composition rule. Explicitly distinguish capability/configuration flags from current rendered state.
+- A legacy capability such as "this value may become indeterminate" must not be passed directly as a canonical current-state flag such as "this checkbox is indeterminate" unless architecture proves those semantics are identical for every current scenario.
+- When implementation evidence shows the architecture's consumer translation is semantically wrong or incomplete, stop consumer edits and return `blocked` with `Required return family: self` / `Required return stage: architecture`; do not repair an architecture error ad hoc in migration.
 - Remove replaced legacy ownership only after every consumer has a valid destination.
 - Do not keep compatibility aliases by default for an unshipped or fully migrated internal API.
 - Leave unrelated families and shared UI untouched.
@@ -96,6 +100,8 @@ Do not create a product consumer merely to make migration non-empty.
 ## Consumer and blast-radius proof
 
 For each materially distinct consumer path record previous and canonical ownership/API, preserved behavior and failure paths, token or composition handoff, relevant loading/disabled/error/mobile/overlay/form/accessibility behavior, and faithful proof owner.
+
+When a migration translates state or value semantics, proof must exercise the distinct boundary combinations that can distinguish the old meaning from the canonical one. Capability-enabled cases must include each actual supported state rather than proving only one representative value; default/fallback behavior must be included when it changes the effective value supplied to the component.
 
 Run focused verifier-managed checks proving consumers compile, scenarios remain correct, no renderer leak remains, obsolete ownership is removed, contextual appearance is proven where required, and impact metadata maps changed source and proof.
 
@@ -166,6 +172,8 @@ Status: complete | blocked
 - Returning `self/migration`.
 - Leaving a current-stage fixable defect unresolved.
 - Changing official design or architecture.
+- Mapping legacy and canonical state merely because prop names match.
+- Treating a capability/configuration flag as current rendered state without explicit architecture evidence.
 - Adding consumer-specific hacks inside the component.
 - Accessing raw renderer details from consumers.
 - Creating a product consumer when none is required.
