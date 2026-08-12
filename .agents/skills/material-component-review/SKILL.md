@@ -101,14 +101,15 @@ Required headings:
 2. Compare architecture with design, scenarios, ownership, dependencies, renderer revision, the current adapter contract, and the simplest viable alternative.
 3. For every controlled renderer-backed state, independently trace the exact installed renderer event lifecycle and prove the architecture has one source of truth, explicit accepted intent, explicit rejected intent, and no optimistic renderer mutation that can survive a rejected update.
 4. Compare implementation with every architecture decision and forbidden approach.
-5. Review consumers, the no-consumer case, and legacy-removal claims.
-6. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
-7. For decorative/presentation composition, verify both sides of ownership: the child is not independently interactive/accessibility-owned, and real input on its visible region reaches the actual enclosing action owner with resulting owner state reflected back.
-8. Verify proof ownership and placement against the current `docs/testing/migration-plan.md`; ordinary owner-local browser proof must not be accepted in a stale central registry shape when the current runner supports local ownership.
-9. Inspect test-environment changes for blast radius. A renderer-specific prototype/API polyfill in shared test bootstrap is a finding unless multiple independent owners justify that shared seam.
-10. Verify impact metadata and stage-scoped checks.
-11. Check for an actual operator-reported visual or motion defect.
-12. Consolidate each underlying problem once and assign exact ownership.
+5. Review consumers, the no-consumer case, legacy-removal claims, and every legacy-to-canonical state/value/configuration translation. Independently inspect the current domain/consumer semantics and surrounding owners; identical or similar prop names are not evidence of semantic equivalence. Explicitly distinguish capability/configuration flags from current rendered state, and verify default/fallback resolution before the value reaches the canonical component.
+6. For every translated state/value contract, verify proof exercises the combinations that could expose a semantic mismatch: capability-enabled true/false/empty states and default/fallback cases when applicable. A single representative happy path is insufficient when multiple meanings can map to the same canonical prop type.
+7. Inspect public API, state precedence, tokens, renderer boundaries, accessibility, browser/mobile behavior, errors, motion, and visual presentation.
+8. For decorative/presentation composition, verify both sides of ownership: the child is not independently interactive/accessibility-owned, and real input on its visible region reaches the actual enclosing action owner with resulting owner state reflected back.
+9. Verify proof ownership and placement against the current `docs/testing/migration-plan.md`; ordinary owner-local browser proof must not be accepted in a stale central registry shape when the current runner supports local ownership.
+10. Inspect test-environment changes for blast radius. A renderer-specific prototype/API polyfill in shared test bootstrap is a finding unless multiple independent owners justify that shared seam.
+11. Verify impact metadata and stage-scoped checks.
+12. Check for an actual operator-reported visual or motion defect.
+13. Consolidate each underlying problem once and assign exact ownership.
 
 Automated checks prove only covered contracts. Absence of operator visual feedback is not a blocker and requires no positive acknowledgement.
 
@@ -120,6 +121,8 @@ Route:
 - incorrect demand, API, state ownership, dependency, renderer/token strategy, proof ownership, or migration plan → owning family/architecture;
 - component code, token, mapping, export, local test setup, or component-owned proof defect → owning family/implementation;
 - consumer, scenario, legacy-removal, or migration-proof defect → owning family/migration.
+
+A consumer translation that is wrong because architecture defined the wrong legacy-to-canonical semantic mapping routes to architecture; a consumer that violates a correct architecture mapping routes to migration.
 
 A dependency defect routes to the dependency family, not automatically to the parent.
 
@@ -255,6 +258,8 @@ Status: complete | blocked
 - Reviewing only the latest change.
 - Depending on Git or PR state.
 - Marking compliant without independently checking controlled-state rejected intent when mutable renderer state is involved.
+- Accepting a legacy-to-canonical state mapping because names or boolean types match without independently checking semantic meaning and boundary combinations.
+- Treating a capability/configuration flag as current rendered state without explicit architecture evidence and scenario proof.
 - Marking compliant with obsolete browser-proof placement/registry ownership relative to the current testing migration state.
 - Accepting a one-family global test bootstrap polyfill without explicit shared ownership.
 - Marking compliant with invalidating revision mismatches or unresolved family work.
