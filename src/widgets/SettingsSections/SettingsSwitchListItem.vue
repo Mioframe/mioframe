@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { MDSwitch } from '@shared/ui/Switch';
 import { MDListItem } from '@shared/ui/Lists';
+import { MDSwitch } from '@shared/ui/material';
 
 const { headline, supportingText, checked, disabled, lines } = defineProps<{
   headline: string;

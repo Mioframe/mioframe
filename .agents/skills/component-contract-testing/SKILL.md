@@ -18,7 +18,7 @@ Use for applicable:
 - canonical defaults and supported public configuration;
 - public props, emits, slots, and conditional rendering not dependent on layout;
 - native element and explicit `href`, `type`, `disabled`, `readonly`, `tabindex`, `role`, and `aria-*` ownership;
-- controlled semantic-state ownership;
+- controlled semantic-state ownership, including accepted and rejected intent;
 - invalid public combinations and documented normalization;
 - simple child or foundation wiring;
 - explicit custom-element property, attribute, event, slot, and documented CSS-variable mapping owned by a public adapter;
@@ -30,13 +30,27 @@ Use for applicable:
 1. Name the stable public contract and truthful UI owner.
 2. Confirm real browser semantics or computed appearance are not required for each assertion.
 3. Test the smallest representative set of configurations, states, invalid combinations, explicit attributes, and adapter mappings.
-4. For third-party custom elements, use exact installed package types. Keep compile-time proof in type-check; unit tests exercise runtime mapping only.
-5. For CSS mapping, assert only adapter-owned public-to-documented-renderer wiring visible at the Vue boundary.
-6. Route geometry, rendered color, motion, focus, interaction, or other browser-owned effects to browser/visual proof.
-7. Stub only direct dependencies whose public wiring is the assertion.
-8. Assert public output or explicit child wiring.
-9. If a Storybook story is also needed, keep it assertion-free and deterministic; do not duplicate the component contract in `play` or story code.
-10. Run focused unit/type-check feedback and return to the top-level task.
+4. For controlled state, prove both acceptance and rejection: an emitted intent may update the controlling prop, but if the controller intentionally leaves the prop unchanged, the renderer-visible state must remain equal to that prop and must not retain an optimistic private mutation.
+5. For third-party custom elements, use exact installed package types. Keep compile-time proof in type-check; unit tests exercise runtime mapping only.
+6. For CSS mapping, assert only adapter-owned public-to-documented-renderer wiring visible at the Vue boundary.
+7. Route geometry, rendered color, motion, focus, interaction, or other browser-owned effects to browser/visual proof.
+8. Stub only direct dependencies whose public wiring is the assertion.
+9. Assert public output or explicit child wiring.
+10. If a Storybook story is also needed, keep it assertion-free and deterministic; do not duplicate the component contract in `play` or story code.
+11. Run focused unit/type-check feedback and return to the top-level task.
+
+## Controlled custom-element state
+
+When the child custom element can mutate the same state that a Vue prop controls:
+
+- inspect the exact installed renderer event lifecycle;
+- prefer the architecture-selected pre-mutation intent seam when available;
+- assert that the adapter does not rely on a post-mutation event to make an optimistic renderer mutation become authoritative;
+- assert exactly one public intent for one attempted action;
+- assert rejected intent leaves both the public prop and mapped renderer property unchanged;
+- assert later accepted prop updates are what change the renderer property.
+
+Do not treat `update:*` naming or an emitted post-change value as proof that ownership is controlled.
 
 ## Typed custom-element boundary
 
@@ -49,6 +63,16 @@ A framework declaration may add only integration glue that the dependency cannot
 - When the dependency exports no usable public type, document the exact gap and keep the local shim minimal with compile-time drift detection.
 
 Runtime unit tests do not prove type ownership. Type-check must fail when an incompatible dependency change breaks the adapter boundary.
+
+## Test-environment ownership
+
+Keep renderer-specific compatibility setup local to the smallest test owner.
+
+- A component test may install a minimal temporary shim required to construct its exact third-party element in the non-browser test environment.
+- Preserve an existing implementation and restore changed globals/prototype members after the owning tests where practical.
+- Do not add a global browser-capability or prototype polyfill to shared Vitest bootstrap for one component family.
+- Promote a shim to shared setup only when multiple independent test owners require the same seam and shared ownership is explicit.
+- Never present a test-environment shim as proof of real browser focus, accessibility, form association, layout, or capability behavior.
 
 ## Assertions
 
@@ -84,4 +108,5 @@ Until unit-impact migration is complete, prefer the exact owning component test 
 - forced visual-state assertions that claim appearance or behavior;
 - private renderer DOM or implementation details;
 - reading a custom property's value and presenting that alone as proof of rendered behavior;
-- avoidable handwritten mirrors of third-party element properties, exported unions, or defaults.
+- avoidable handwritten mirrors of third-party element properties, exported unions, or defaults;
+- global test-environment polyfills introduced solely for one component owner.

@@ -14,8 +14,7 @@ import { useAppUpdateModeChange } from '@feature/appUpdateModeChange';
 import { APP_BUILD_DATE, APP_BUILD_ID, APP_VERSION } from '@shared/config';
 import { dayjs } from '@shared/lib/dayjs';
 import { MDList, MDListItem } from '@shared/ui/Lists';
-import { MDSwitch } from '@shared/ui/Switch';
-import { MDButton } from '@shared/ui/material';
+import { MDButton, MDSwitch } from '@shared/ui/material';
 
 type LastAppUpdateAction = 'check' | 'install' | 'mode' | 'cancel';
 

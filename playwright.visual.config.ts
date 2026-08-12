@@ -10,6 +10,7 @@ const viteBin = './node_modules/.bin/vite';
 export default defineConfig({
   testDir: '.',
   testMatch: ['tests/e2e/visual/**/*.spec.ts', 'src/**/*.visual.spec.ts'],
+  respectGitIgnore: true,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

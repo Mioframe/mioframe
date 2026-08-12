@@ -4,40 +4,13 @@ This file is the only owner of current Material milestone status, family-stage s
 
 ## Current state
 
-Last updated: 2026-08-02
+Last updated: 2026-08-12
 
-Current milestone: `M0/M1 — runtime pilot complete; Button review refresh pending`
+Current milestone: `M2 — Switch stateful pilot`
 
-Status: `runtime-complete; independent-review-refresh-required`
+Status: `complete`
 
-Runtime implementation status: Loading Indicator and Button runtime, token, renderer-boundary, consumer migration, and focused proof are complete. No runtime redesign is identified.
-
-Workflow-rule status: implemented. The durable workflow defines:
-
-- one operator invocation;
-- fresh isolated workers for five reasoning stages;
-- one state-machine owner;
-- fixed control fields and required headings;
-- separate design artifact and design contract revisions;
-- metadata-only source refresh without downstream invalidation;
-- exact invalidating revision links;
-- exact dependency review revisions in parent architecture;
-- earlier-stage and cross-family correction routes;
-- terminal `blocked + none/none` semantics;
-- rejection of same-stage self-routes and terminal `partial` or `stale` worker results;
-- durable origin-family resume after cross-family correction;
-- full dependency pipelines through current independent review;
-- active dependency-path cycle detection;
-- deterministic no-consumer scenarios without speculative state APIs;
-- implementation preflight before code and consumer edits;
-- Git/PR-independent worker evidence;
-- one final post-review workflow verification;
-- external verifier blockers separated from family compliance;
-- visual and motion feedback as a defect-reporting channel.
-
-## Current family state
-
-### Loading Indicator
+The Switch family calibration workflow is complete:
 
 ```text
 DESIGN.md          current
@@ -47,92 +20,52 @@ MIGRATION.md       complete
 REVIEW.md          compliant
 ```
 
-- Design contract revision: `2026-08-01T09:59:39.918Z`.
-- Current review revision: `2026-08-01T11:50:04.390Z`.
-- Renderer revision: `@m3e/web@2.6.3`.
-- Dependency families: none.
-- Operator visual status: `no-reported-defect`.
+The Switch family has no remaining design, architecture, implementation, migration, or review finding. `REVIEW.md` remains compliant.
 
-A formatting-only design rewrite changed the design artifact revision while preserving the design contract revision. Architecture, implementation, and migration remained current, proving metadata-only refresh does not cascade.
+The branch is synchronized with current `develop` (`4cceda3ced310a613052df17a8044225eb89b433`, `behind_by: 0`) and `package.json` is `0.3.7`, above the current `develop` version `0.3.6`.
 
-### Button
+The S4-B MDCheckbox visual-ownership migration from `develop` is preserved. The `tests/e2e/visual/shared-ui.spec.ts` conflict was resolved semantically: neither already-migrated Switch nor MDCheckbox visual proof remains in the central file, while the remaining central MDCard, MDStateLayer, and MarkdownContent owners are preserved. MDCheckbox remains owner-local under `src/shared/ui/Checkbox/`; Switch keeps its PR-owned visual spec and baseline.
 
-```text
-DESIGN.md          current
-ARCHITECTURE.md    ready
-IMPLEMENTATION.md  complete
-MIGRATION.md       complete
-REVIEW.md          stale (migration revision mismatch)
-```
+The previously reproduced root-scanning Playwright workspace-isolation defect is corrected: both Storybook behavior and visual configs enable Git-ignore-aware discovery, `playwright.lanes.test.ts` guards that contract, and the durable verifier rule requires repository-root Playwright scanning to respect repository ignore policy rather than maintaining a second local-workspace exclusion registry.
 
-- Design contract revision: `2026-08-01T09:54:01.860Z`.
-- Current architecture revision: `2026-08-01T11:51:42.309Z`.
-- Current implementation revision: `2026-08-01T12:02:58.888Z`.
-- Current migration revision: `2026-08-02T15:08:21.455Z`.
-- Last compliant review revision: `2026-08-01T12:50:00.000Z`; it references migration revision `2026-08-01T12:15:27.037Z` and is not current.
-- Dependency families: `loadingIndicator`.
-- Recorded dependency review revision: `loadingIndicator=2026-08-01T11:50:04.390Z`.
-- Renderer revision: `@m3e/web@2.6.3`.
-- Operator visual status: `no-reported-defect`.
+## Calibration result
 
-Button records the exact current Loading Indicator review revision. Navigation Path's undefined Button padding declaration was removed without adding a replacement API, private renderer input, compatibility token, or descendant override. Focused browser proof covers canonical small geometry, overflow, scrolling, and activation.
+Switch established the stateful Material adapter invariants now recorded in the canonical rules:
 
-The migration artifact was corrected on 2026-08-02 to record intentional pending-presentation changes: generic dialogs retain form-level busy and disabled guards without an action-button spinner, while browser/provider permission waits use consumer-owned live status text. Runtime code, architecture, implementation, and focused proof did not change. Because every migration artifact revision invalidates review by project rule, Button now requires one fresh independent review.
+1. `selected` is the sole controlled-state source of truth; renderer mutation is prevented at the cancelable pre-mutation intent boundary.
+2. Rejected controlled intent cannot leave renderer state divergent from the public prop.
+3. Ordinary component-owned browser proof uses owner-local `*.browser.spec.ts` ownership.
+4. Renderer-specific non-browser test shims stay at the narrowest truthful owner.
+5. Decorative `presentation` composition proves both child suppression and positive input handoff to the real action owner.
+6. Independent review rechecks current renderer lifecycle, proof ownership, test-environment blast radius, and composition ownership rather than trusting family prose.
+7. Root-scanning Playwright lanes respect repository ignore policy so ignored nested/local workspaces cannot contribute tests.
 
-## Pilot result
+No generic m3e adapter framework, duplicate state manager, compatibility layer, new registry abstraction, or duplicated local-workspace exclusion registry was introduced.
 
-The original `material-component Button` invocation exercised the complete dependency, correction, independent-review, and ordinary final-verification path. A later documentation correction changed only the Button migration artifact revision, so the historical pilot evidence remains valid while the current artifact chain awaits a fresh independent review.
+## Verification state
 
-| Scenario                                      | Result           | Durable evidence                                                                                                   |
-| --------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Loading Indicator full dependency pipeline    | passed           | five current revision-linked artifacts; compliant review `2026-08-01T11:50:04.390Z`                                |
-| Button dependency queue and review linkage    | passed           | exact Loading Indicator review revision recorded; dependency queue cleared                                         |
-| Button implementation and migration           | passed           | complete implementation and migration artifacts with exact upstream revisions                                      |
-| Independent Button family review              | refresh required | review `2026-08-01T12:50:00.000Z` passed for the prior migration revision; current migration requires fresh review |
-| Metadata-only design refresh                  | passed           | Loading Indicator contract revision and downstream artifacts remained current                                      |
-| Earlier-stage correction and fresh review     | passed           | Loading Indicator correction propagated through a fresh compliant review                                           |
-| Dependency-review propagation                 | passed           | Button architecture recorded the refreshed Loading Indicator review revision                                       |
-| Navigation Path ownership correction          | passed           | obsolete padding declaration removed; focused browser proof added                                                  |
-| Focused unit, type, browser, and visual proof | passed           | family artifacts record successful focused proof without baseline drift                                            |
-| Ordinary final `pnpm verify`                  | passed           | GitHub verify run `3261` passed format, lint, type-check, unit, E2E, Storybook behavior, visual, and mutation      |
-| External final-verifier ownership             | passed           | the earlier unrelated shared-reorder timeout did not alter compliant family reviews and did not reproduce          |
+Before the latest `develop` synchronization, the completed `material-component Switch` workflow mechanically revalidated the existing artifact chain and its final workflow verification passed all required checks. GitHub verification on that earlier merge candidate also passed all merge gates.
 
-The required full release-sensitive gate also passed through isolated validation PR #171. Release workflow run `19` (`30705988050`) executed the real `pnpm verify:release` path against exact product head `89bdcd52b114263ac92001e368082155ad70a3f5`, including release configuration, full project proof, production build, artifact validation, and release smoke checks. The validation PR was closed without merge; its three validation-only changes are not part of this branch.
+The latest `develop` synchronization changed only integration/testing ownership state and release metadata; it did not change or invalidate the Switch family contract or any durable family revision link. Therefore the Material family workflow does not need to be run again solely because the base advanced.
 
-The documented self-route, terminal-state, cycle, interruption-recovery, and worker-isolation invariants remain part of the workflow contract. Separate synthetic executions are optional workflow hardening, not a pilot or merge gate. They should be added only when a real regression, repeated implementation failure, or a justified executable workflow harness makes them durable and proportionate.
+Fresh final read-only verification (`pnpm verify`) and GitHub merge gates are required on the current head because the merge candidate changed to integrate `develop` S4-B, resolve the visual ownership conflict, remove stale central MDCheckbox baselines, and bump the release version to `0.3.7`.
 
-## Current blockers
-
-Button `REVIEW.md` references the previous migration revision. Run a fresh isolated Button review against migration revision `2026-08-02T15:08:21.455Z`, then run the ordinary final `pnpm verify` gate on the resulting documentation head.
-
-No runtime correction is identified. The earlier shared-reorder Storybook timeout was confirmed transient by subsequent complete verifier runs and does not require a Material or shared-reorder change in this PR.
-
-## Pilot closure criteria
-
-Runtime and focused proof for M0/M1 are complete. Current merge closure additionally requires:
-
-- a fresh independent Button review referencing migration revision `2026-08-02T15:08:21.455Z`;
-- one ordinary final `pnpm verify` run after that review.
-
-The exact dependency review linkage remains valid; the full release-sensitive verification already passed against the unchanged product implementation head; focused component, browser, and visual proof passed; no operator-reported visual or motion defect remains unresolved; and the workflow preserved family compliance when an unrelated final-verifier failure occurred.
-
-Synthetic malformed-result and cycle scenarios are not required for closure. Do not introduce production defects, a workflow database, registry, parser framework, artifact hashes, or persistent invalid family artifacts to prove them.
+GitHub verification for the current head is currently in progress.
 
 ## Milestones
 
-| ID  | Milestone                           | Status                    | Exit gate                                                                              |
-| --- | ----------------------------------- | ------------------------- | -------------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`                | coherent staged workflow and corrected terminal/verifier ownership                     |
-| M1a | Loading Indicator dependency family | `complete`                | five current artifacts, compliant review, no unresolved reported defect                |
-| M1  | Button action family                | `review-refresh-required` | fresh review must reference the corrected current migration artifact                   |
-| M1b | outer pilot verification            | `final-rerun-required`    | ordinary verifier reruns after current independent review; release proof remains valid |
-| M2  | Switch stateful pilot               | `planned`                 | controlled state/event contract and no-consumer/default-scenario behavior              |
-| M3  | sequential component migration      | `planned`                 | dependency-first autonomous family migrations                                          |
+| ID  | Milestone                           | Status     | Exit gate                                                     |
+| --- | ----------------------------------- | ---------- | ------------------------------------------------------------- |
+| M0  | workflow architecture and rules     | `complete` | coherent staged workflow and corrected calibration invariants |
+| M1a | Loading Indicator dependency family | `complete` | current artifacts and compliant review                        |
+| M1  | Button action family                | `complete` | canonical m3e-backed action component migrated and merged     |
+| M2  | Switch stateful pilot               | `complete` | family workflow completed without unresolved family findings  |
+| M3  | sequential component migration      | `planned`  | begin after PR #186 is integrated into current `develop`      |
 
 ## Next operator action
 
-Run `material-component Button`. The orchestrator should detect the migration/review revision mismatch, execute only a fresh isolated Button review, and then run the ordinary final verification selected by project policy. Do not rerun design, architecture, implementation, migration, Loading Indicator, or release-sensitive verification unless the workflow finds a genuine additional mismatch or Material defect.
+Do not rebuild or rewrite Switch family artifacts unless a later workspace change actually invalidates a family-owned contract or durable revision link.
 
-After the refreshed review and final verifier pass, mark PR 162 ready and squash merge it into `develop`. Then start the next selected family through one new operator invocation; the current planned stateful pilot is Switch.
+Run fresh final read-only verification with `pnpm verify` on the synchronized current workspace and require the ordinary GitHub merge gates to be green on that same final head before integrating PR #186 into `develop`.
 
-No dependency pin, worker registry, artifact hash system, workflow database, generic adapter framework, positive visual acknowledgement, or synthetic pilot ledger is required.
+After integration, M3 may begin with the next explicitly selected Material component family.
