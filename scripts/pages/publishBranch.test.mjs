@@ -17,15 +17,11 @@ vi.mock('./lib/releasePublish.mjs', () => ({
 vi.mock('./lib/managedCompatibilityPreflight.mjs', () => ({
   runManagedPublicationPreflight: vi.fn(async () => ({ decision: 'not-applicable' })),
 }));
-vi.mock('./lib/managedArtifactSemantics.mjs', () => ({
-  validateManagedArtifact: vi.fn(),
-}));
 
 const { withGhPagesBranch } = await import('./lib/ghPagesBranch.mjs');
 const { applyBranchPublish } = await import('./lib/pagesFs.mjs');
 const { publishManagedRelease } = await import('./lib/releasePublish.mjs');
 const { runManagedPublicationPreflight } = await import('./lib/managedCompatibilityPreflight.mjs');
-const { validateManagedArtifact } = await import('./lib/managedArtifactSemantics.mjs');
 const { publishBranch } = await import('./publishBranch.mjs');
 
 let distDir = '';
@@ -38,7 +34,6 @@ beforeEach(() => {
   vi.mocked(runManagedPublicationPreflight)
     .mockReset()
     .mockResolvedValue({ decision: 'not-applicable' });
-  vi.mocked(validateManagedArtifact).mockReset();
 });
 
 afterEach(() => {
@@ -138,15 +133,6 @@ describe('publishBranch validation (ordinary, non-managed slug)', () => {
     });
 
     expect(runManagedPublicationPreflight).not.toHaveBeenCalled();
-  });
-
-  it('never runs artifact-semantic validation for an ordinary unmanaged branch slug', async () => {
-    await publishBranch(['--dist', distDir, '--slug', 'my-branch'], {
-      GITHUB_TOKEN: 'token',
-      PAGES_REPOSITORY: 'owner/pages-repo',
-    });
-
-    expect(validateManagedArtifact).not.toHaveBeenCalled();
   });
 });
 
@@ -266,11 +252,8 @@ describe('publishBranch validation (managed "develop" slug)', () => {
     );
   });
 
-  it('runs artifact-semantic validation and the data-compatibility preflight, with the same publication inputs, before the real publication write', async () => {
+  it('runs the data-compatibility preflight, with the same publication inputs, before the real publication write', async () => {
     const callOrder = [];
-    vi.mocked(validateManagedArtifact).mockImplementation(() => {
-      callOrder.push('artifact-semantics');
-    });
     vi.mocked(runManagedPublicationPreflight).mockImplementation(async () => {
       callOrder.push('preflight');
       return { decision: 'not-applicable' };
@@ -296,15 +279,6 @@ describe('publishBranch validation (managed "develop" slug)', () => {
       { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
     );
 
-    expect(validateManagedArtifact).toHaveBeenCalledWith(
-      expect.objectContaining({
-        distDir,
-        channel: 'develop',
-        appVersion: '1.2.3',
-        buildId: 'abc123',
-        buildDate: '2026-07-24T00:00:00.000Z',
-      }),
-    );
     expect(runManagedPublicationPreflight).toHaveBeenCalledWith(
       expect.objectContaining({
         distDir,
@@ -314,34 +288,7 @@ describe('publishBranch validation (managed "develop" slug)', () => {
         buildDate: '2026-07-24T00:00:00.000Z',
       }),
     );
-    expect(callOrder).toEqual(['artifact-semantics', 'preflight', 'publish']);
-  });
-
-  it('never reaches the preflight or the real publication write when artifact-semantic validation rejects', async () => {
-    vi.mocked(validateManagedArtifact).mockImplementation(() => {
-      throw new Error('Managed artifact validation failed: wrong base');
-    });
-
-    await expect(
-      publishBranch(
-        [
-          '--dist',
-          distDir,
-          '--slug',
-          'develop',
-          '--app-version',
-          '1.2.3',
-          '--build-id',
-          'abc123',
-          '--build-date',
-          '2026-07-24T00:00:00.000Z',
-        ],
-        { GITHUB_TOKEN: 'token', PAGES_REPOSITORY: 'owner/pages-repo' },
-      ),
-    ).rejects.toThrow('Managed artifact validation failed');
-
-    expect(runManagedPublicationPreflight).not.toHaveBeenCalled();
-    expect(publishManagedRelease).not.toHaveBeenCalled();
+    expect(callOrder).toEqual(['preflight', 'publish']);
   });
 
   it('never reaches the real publication write when the preflight rejects', async () => {

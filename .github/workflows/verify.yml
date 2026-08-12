@@ -408,6 +408,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Validate managed release config (Sentry DSN required)
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+        run: node scripts/release/validateReleaseConfig.mjs --managed
+
       - name: Build develop branch deployment
         env:
           BASE_URL: /branch/develop/

@@ -201,6 +201,53 @@ describe('validateManagedArtifact', () => {
     );
   });
 
+  // These values would all pass a merely-prefix-based base check (each one
+  // literally starts with the expected base), but none of them IS the
+  // expected base: each identifies a different, narrower PWA root than the
+  // managed channel's own. scope/start_url/id must equal the expected base
+  // exactly.
+  it('rejects a manifest.webmanifest "scope" that is a sub-path under the expected develop base, not the base itself', () => {
+    writeValidArtifact(DEVELOP_BASE, validDevelopDeployment());
+    writeJson('manifest.webmanifest', {
+      name: 'Mioframe',
+      scope: '/branch/develop/foo/',
+      start_url: DEVELOP_BASE,
+      id: DEVELOP_BASE,
+    });
+
+    expect(() => validateManagedArtifact({ distDir, channel: 'develop', ...REQUEST })).toThrow(
+      'manifest.webmanifest "scope" "/branch/develop/foo/" must exactly equal the expected base',
+    );
+  });
+
+  it('rejects a manifest.webmanifest "start_url" that is a sub-path under the expected develop base, not the base itself', () => {
+    writeValidArtifact(DEVELOP_BASE, validDevelopDeployment());
+    writeJson('manifest.webmanifest', {
+      name: 'Mioframe',
+      scope: DEVELOP_BASE,
+      start_url: '/branch/develop/app',
+      id: DEVELOP_BASE,
+    });
+
+    expect(() => validateManagedArtifact({ distDir, channel: 'develop', ...REQUEST })).toThrow(
+      'manifest.webmanifest "start_url" "/branch/develop/app" must exactly equal the expected base',
+    );
+  });
+
+  it('rejects a manifest.webmanifest "id" that is a sub-path under the expected stable base, not the base itself', () => {
+    writeValidArtifact(STABLE_BASE, validStableDeployment());
+    writeJson('manifest.webmanifest', {
+      name: 'Mioframe',
+      scope: STABLE_BASE,
+      start_url: STABLE_BASE,
+      id: '/foo/',
+    });
+
+    expect(() => validateManagedArtifact({ distDir, channel: 'stable', ...REQUEST })).toThrow(
+      'manifest.webmanifest "id" "/foo/" must exactly equal the expected base',
+    );
+  });
+
   it('rejects a missing manifest.webmanifest', () => {
     writeValidArtifact(DEVELOP_BASE, validDevelopDeployment());
     rmSync(join(distDir, 'manifest.webmanifest'));

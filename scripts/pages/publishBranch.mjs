@@ -34,7 +34,6 @@ import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
 import { applyBranchPublish } from './lib/pagesFs.mjs';
 import { publishManagedRelease } from './lib/releasePublish.mjs';
 import { runManagedPublicationPreflight } from './lib/managedCompatibilityPreflight.mjs';
-import { validateManagedArtifact } from './lib/managedArtifactSemantics.mjs';
 import { validateBranchSlug } from './lib/slug.mjs';
 import { resolveManagedChannel } from '../../src/shared/service/appUpdate/channelContract.ts';
 
@@ -94,20 +93,11 @@ export async function publishBranch(argv = process.argv.slice(2), env = process.
       if (isManaged) {
         // Fails closed, before any real publication write, unless the
         // candidate dist itself actually matches the requested managed
-        // deployment identity (see
-        // scripts/pages/lib/managedArtifactSemantics.mjs) and, for a
-        // genuinely new candidate, proves backward data compatibility (see
-        // the managed pinned application updates feature's "Data
-        // compatibility" invariant and
+        // deployment identity and, for a genuinely new candidate, proves
+        // backward data compatibility — both owned by this single
+        // publication preflight boundary (see
         // scripts/pages/lib/managedCompatibilityPreflight.mjs). Ordinary
         // unmanaged branch slugs never reach this branch at all.
-        validateManagedArtifact({
-          distDir,
-          channel: managedChannel,
-          appVersion,
-          buildId,
-          buildDate,
-        });
         await runManagedPublicationPreflight({
           workDir,
           distDir,

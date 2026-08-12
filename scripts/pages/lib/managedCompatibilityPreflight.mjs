@@ -10,12 +10,25 @@
  *   While a previous managed release A remains a supported pin/rollback
  *   target, data written by newer release B must remain readable by A.
  *
+ * This is the single pre-publication orchestration boundary for a managed
+ * candidate build: `publishBranch.mjs`/`publishStable.mjs` call only this
+ * function (then the real `publishManagedRelease()`), never
+ * `validateManagedArtifact()` directly, so the ordering below is enforced in
+ * one place.
+ *
  * Contract:
- * - no previous managed release for this channel -> `'not-applicable'`,
- *   real publication proceeds immediately;
+ * - resolve the retained publication plan for `buildId`;
  * - candidate `buildId` already equals the current retained latest ->
- *   `'idempotent'`, no new compatibility run, real publication proceeds
- *   immediately (and itself resolves the same zero-write no-op);
+ *   `'idempotent'` immediately, without ever inspecting `distDir`: no new
+ *   compatibility run, no artifact validation, real publication proceeds
+ *   immediately (and itself resolves the same zero-write no-op) — preserving
+ *   the idempotent publication contract even when `distDir` does not exist;
+ * - otherwise validate the candidate artifact (`validateManagedArtifact`)
+ *   against the exact requested deployment identity, before any staging or
+ *   real write;
+ * - no previous managed release for this channel (this is release 1) ->
+ *   `'not-applicable'` after validation, real publication proceeds
+ *   immediately;
  * - a genuinely new candidate with an existing previous release -> stage the
  *   candidate into a temporary copy of the real published tree via the real
  *   `publishManagedRelease()`, run the real browser compatibility proof
@@ -25,15 +38,17 @@
  *
  * Malformed or unavailable previous-release metadata already fails closed
  * via `resolvePublicationPlan`'s own retained-tree validation, before any
- * staging is attempted.
+ * artifact validation or staging is attempted.
  *
  * Read-only `dist` invariant: no verification step run by this module may
  * rebuild or otherwise modify the candidate `distDir`. The compatibility
  * proof runs in its own Playwright container (see
  * `playwright.release.config.ts`'s `MANAGED_COMPAT_WORK_DIR` gating), so this
- * module additionally fingerprints the complete candidate `distDir` tree
- * immediately before running that proof and verifies it is byte-for-byte
- * unchanged immediately after, failing publication closed on any mutation.
+ * module fingerprints the complete candidate `distDir` tree before staging
+ * begins — the earliest point real `distDir` reads/copies occur — and
+ * verifies it is byte-for-byte unchanged immediately after, failing
+ * publication closed on any mutation introduced by staging itself or by the
+ * proof.
  */
 
 import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
@@ -42,10 +57,14 @@ import { basename, join } from 'node:path';
 import { resolvePublicationPlan } from './retainedReleaseTree.mjs';
 import { publishManagedRelease, resolveChannelBase } from './releasePublish.mjs';
 import { computeDirectoryFingerprint } from './releaseArtifact.mjs';
+import { validateManagedArtifact } from './managedArtifactSemantics.mjs';
 import { isUnsupportedCompatTarget } from './unsupportedRetainedReleases.mjs';
 import { runManagedReleaseDataCompatibilityProof } from '../../release/runManagedReleaseDataCompatibilityProof.mjs';
 
-const defaultDeps = { runCompatibilityProof: runManagedReleaseDataCompatibilityProof };
+const defaultDeps = {
+  runCompatibilityProof: runManagedReleaseDataCompatibilityProof,
+  validateArtifact: validateManagedArtifact,
+};
 
 /** Repository-owned, gitignored scratch root also used for verifier locks and logs. */
 const VERIFY_SCRATCH_ROOT = join(process.cwd(), '.verify');
@@ -126,12 +145,14 @@ function assertDistFingerprintUnchanged(distDir, before) {
  * @param options.appVersion `package.json` version the candidate build was produced from.
  * @param options.buildId Exact source commit SHA the candidate build was produced from.
  * @param options.buildDate Canonical UTC ISO 8601 committer timestamp of `buildId`.
- * @param [deps] Test seam for the compatibility proof runner.
+ * @param [deps] Test seams for artifact validation and the compatibility proof runner.
  * @returns The resolved preflight decision.
  * @throws {Error} When the retained tree is malformed or its content is not
- * physically restorable (via {@link resolvePublicationPlan}), when staging
- * the candidate into a temporary copy fails, or when the compatibility
- * proof fails or reports non-pass.
+ * physically restorable (via {@link resolvePublicationPlan}), when the
+ * candidate artifact does not match the requested managed deployment
+ * identity (via {@link validateManagedArtifact}), when staging the candidate
+ * into a temporary copy fails, or when the compatibility proof fails or
+ * reports non-pass.
  */
 export async function runManagedPublicationPreflight(
   { workDir, distDir, channel, appVersion, buildId, buildDate },
@@ -149,6 +170,13 @@ export async function runManagedPublicationPreflight(
   if (plan.kind === 'no-op') {
     return { decision: 'idempotent', descriptor: plan.descriptor };
   }
+
+  // Only a genuinely new candidate reaches artifact-semantic validation:
+  // validating (and therefore reading) distDir before the idempotent no-op
+  // check above would require a well-formed dist even to republish an
+  // already-retained buildId, breaking the zero-write no-op contract.
+  deps.validateArtifact({ distDir, channel, appVersion, buildId, buildDate });
+
   if (plan.nextReleaseNumber === 1) {
     return { decision: 'not-applicable' };
   }
@@ -164,29 +192,35 @@ export async function runManagedPublicationPreflight(
   const previousReleaseNumbers = plan.descriptors
     .map((descriptor) => descriptor.releaseNumber)
     .filter((releaseNumber) => !isUnsupportedCompatTarget(channel, releaseNumber));
+
+  // Fingerprinted before staging begins: publishManagedRelease() below reads
+  // distDir/index.html and copies distDir/assets into the staged copy, so
+  // this is the earliest point any real read/copy of the candidate dist
+  // occurs — capturing the baseline any later, e.g. after staging, would
+  // miss a mutation introduced by staging itself.
+  const distFingerprintBeforeStaging = computeDirectoryFingerprint(distDir);
   const stagedWorkDir = stagePublishedTreeCopy(workDir);
 
   try {
     let stagedDescriptor;
-    try {
-      stagedDescriptor = publishManagedRelease({
-        workDir: stagedWorkDir,
-        distDir,
-        channel,
-        appVersion,
-        buildId,
-        buildDate,
-      });
-    } catch (error) {
-      throw new Error(
-        'Failed to stage the candidate managed release for the data-compatibility proof',
-        { cause: error },
-      );
-    }
-
-    const distFingerprintBeforeProof = computeDirectoryFingerprint(distDir);
     let proof;
     try {
+      try {
+        stagedDescriptor = publishManagedRelease({
+          workDir: stagedWorkDir,
+          distDir,
+          channel,
+          appVersion,
+          buildId,
+          buildDate,
+        });
+      } catch (error) {
+        throw new Error(
+          'Failed to stage the candidate managed release for the data-compatibility proof',
+          { cause: error },
+        );
+      }
+
       proof = await deps.runCompatibilityProof({
         stagedWorkDir,
         channel,
@@ -194,10 +228,12 @@ export async function runManagedPublicationPreflight(
         candidateReleaseNumber: stagedDescriptor.releaseNumber,
       });
     } finally {
-      // Runs on the proof-failure path too, where practical: a masked dist
-      // mutation is a worse outcome than losing the original proof-failure
-      // message, so a mutation detected here is reported instead of it.
-      assertDistFingerprintUnchanged(distDir, distFingerprintBeforeProof);
+      // Runs on every path below the fingerprint baseline above — staging
+      // failure and proof failure included, not only proof success: a
+      // masked dist mutation is a worse outcome than losing the original
+      // failure message, so a mutation detected here is reported instead of
+      // it.
+      assertDistFingerprintUnchanged(distDir, distFingerprintBeforeStaging);
     }
     if (!proof.passed) {
       throw new Error(

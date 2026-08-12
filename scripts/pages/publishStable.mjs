@@ -28,7 +28,6 @@ import { pathToFileURL } from 'node:url';
 import { withGhPagesBranch } from './lib/ghPagesBranch.mjs';
 import { publishManagedRelease } from './lib/releasePublish.mjs';
 import { runManagedPublicationPreflight } from './lib/managedCompatibilityPreflight.mjs';
-import { validateManagedArtifact } from './lib/managedArtifactSemantics.mjs';
 
 function readFlag(argv, flag) {
   const index = argv.indexOf(flag);
@@ -64,14 +63,13 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
     async fn(workDir) {
       // Fails closed, before any real publication write, unless the
       // candidate dist itself actually matches the requested managed
-      // deployment identity (see
-      // scripts/pages/lib/managedArtifactSemantics.mjs) and, for a genuinely
-      // new candidate, proves backward data compatibility (see the managed
-      // pinned application updates feature's "Data compatibility" invariant
-      // and scripts/pages/lib/managedCompatibilityPreflight.mjs). A first
-      // release or an idempotent republish of the current latest proceeds
-      // immediately without running the proof.
-      validateManagedArtifact({ distDir, channel: 'stable', appVersion, buildId, buildDate });
+      // deployment identity and, for a genuinely new candidate, proves
+      // backward data compatibility — both owned by this single publication
+      // preflight boundary (see
+      // scripts/pages/lib/managedCompatibilityPreflight.mjs). An idempotent
+      // republish of the current latest proceeds immediately without
+      // inspecting distDir at all; a first release proceeds immediately
+      // after artifact validation.
       await runManagedPublicationPreflight({
         workDir,
         distDir,

@@ -131,6 +131,16 @@ function assertIndexHtmlUsesExpectedBase(distDir, base) {
   }
 }
 
+/**
+ * `scope`, `start_url`, and `id` each identify the PWA's own root: a value
+ * that is merely a path *under* the expected base (e.g. `/branch/develop/foo/`
+ * when the expected base is `/branch/develop/`) is a different, narrower PWA
+ * identity, not the managed channel's own — so these three fields require
+ * exact equality with `base`, not the prefix check used for individual
+ * resource URLs below.
+ * @param distDir Built `dist` directory for the candidate build.
+ * @param base The expected channel base path.
+ */
 function assertManifestUsesExpectedBase(distDir, base) {
   const manifestPath = join(distDir, 'manifest.webmanifest');
   if (!existsSync(manifestPath)) {
@@ -153,7 +163,11 @@ function assertManifestUsesExpectedBase(distDir, base) {
         `Managed artifact validation failed: manifest.webmanifest is missing "${field}".`,
       );
     }
-    assertUsesExpectedBase(value, base, `manifest.webmanifest "${field}"`);
+    if (value !== base) {
+      throw new Error(
+        `Managed artifact validation failed: manifest.webmanifest "${field}" "${value}" must exactly equal the expected base "${base}", not merely be a path under it.`,
+      );
+    }
   }
 }
 
