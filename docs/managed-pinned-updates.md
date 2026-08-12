@@ -118,6 +118,15 @@ buildId exists on a non-latest descriptor or is duplicated
 
 Retained descriptors, archived indexes, and every referenced immutable asset must exist as canonical regular files and match exact size and SHA-256. Conflicts, malformed paths, missing files, reused numbers, duplicate identities, overflow, or hash mismatches reject before writes. Published release content remains append-only in this PR.
 
+## Unsupported retained releases
+
+A retained release can be statically classified as an unsupported compatibility target (see `scripts/pages/lib/unsupportedRetainedReleases.mjs`): it remains retained, immutable, and integrity-validated exactly like every other retained release, but is excluded from the set of releases the managed release data-compatibility proof requires a new candidate to support as a usable compatibility target.
+
+- develop release 2 is unsupported as a data-compatibility proof target: it was published with a broken build (wrong root-relative application/PWA URLs and a Service Worker built without runtime Sentry configuration) before the managed publication preflight and artifact-semantic validation existed to prevent it. While it was `latest`, an allowed bootstrap could legitimately persist it as `activeRelease`; therefore the classification must not be interpreted as a runtime blacklist or as proof that controller state can never reference release 2. Its published application is not usable enough to serve as a meaningful backward compatibility target, and clients that have it as an active baseline recover through the existing navigation reconciliation path by discovering and activating a corrected newer candidate.
+- the classification is a static, source-controlled publisher fact, never worker/runtime state, and never changes the release wire descriptor format or rewrites existing controller state;
+- it does not delete the release, does not allow its release number to be reused, and does not skip its retained-tree byte/hash validation;
+- every other retained release, including release 1, keeps participating in the data-compatibility proof.
+
 ## Persisted state
 
 ```ts

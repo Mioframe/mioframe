@@ -30,12 +30,14 @@ vi.stubGlobal('fetch', fetchMock);
 
 const captureDiagnosticExceptionMock = vi.fn();
 const reportDiagnosticEventMock = vi.fn();
+const addTechnicalBreadcrumbMock = vi.fn();
 vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
   return {
     ...actual,
     captureDiagnosticException: (...args: unknown[]) => captureDiagnosticExceptionMock(...args),
     reportDiagnosticEvent: (...args: unknown[]) => reportDiagnosticEventMock(...args),
+    addTechnicalBreadcrumb: (...args: unknown[]) => addTechnicalBreadcrumbMock(...args),
   };
 });
 
@@ -165,6 +167,7 @@ describe('workerFetch', () => {
     });
     captureDiagnosticExceptionMock.mockReset();
     reportDiagnosticEventMock.mockReset();
+    addTechnicalBreadcrumbMock.mockReset();
   });
 
   describe('handleNavigationFetch', () => {
@@ -418,6 +421,20 @@ describe('workerFetch', () => {
       );
       expect(await result.response.text()).toBe('<html>archived</html>');
       expect(result.runLifetimeWork).toBeTypeOf('function');
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'appUpdate.activation',
+          message: 'activation started',
+          data: { channel: CHANNEL, releaseNumber: candidateRelease.releaseNumber },
+        }),
+      );
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'appUpdate.activation',
+          message: 'candidate navigation served',
+          data: { channel: CHANNEL, releaseNumber: candidateRelease.releaseNumber },
+        }),
+      );
       vi.useRealTimers();
     });
 
@@ -610,7 +627,17 @@ describe('workerFetch', () => {
       expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'appUpdate.activationRolledBack',
-          safeTags: expect.objectContaining({ trigger: 'activationDeadlineExpired' }),
+          safeTags: expect.objectContaining({
+            trigger: 'activationDeadlineExpired',
+            previousActiveReleaseNumber: String(activeRelease.releaseNumber),
+          }),
+        }),
+      );
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'appUpdate.rollback',
+          message: 'rollback durably committed',
+          data: { channel: CHANNEL, trigger: 'activationDeadlineExpired' },
         }),
       );
       expect(await result.response.text()).toBe('<html>archived</html>');
@@ -1036,7 +1063,17 @@ describe('workerFetch', () => {
         expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
           expect.objectContaining({
             name: 'appUpdate.activationRolledBack',
-            safeTags: expect.objectContaining({ trigger: 'activationServeFailed' }),
+            safeTags: expect.objectContaining({
+              trigger: 'activationServeFailed',
+              previousActiveReleaseNumber: String(activeRelease.releaseNumber),
+            }),
+          }),
+        );
+        expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            category: 'appUpdate.rollback',
+            message: 'rollback durably committed',
+            data: { channel: CHANNEL, trigger: 'activationServeFailed' },
           }),
         );
         expect(await result.response.text()).toBe('<html>archived</html>');

@@ -27,10 +27,18 @@ function readJson(filePath, readFile) {
  * @param [options] Validation inputs.
  * @param [options.env] Process environment.
  * @param [options.deps] Test seams for file/process access and logging.
+ * @param [options.managed] `true` for a managed stable/develop deployment
+ * job, where `VITE_SENTRY_DSN` is mandatory (see
+ * `docs/managed-pinned-updates.md`): the managed Service Worker must remain
+ * capable of reporting activation/rollback diagnostics, which requires
+ * runtime Sentry configuration to actually be built in. `false` (the
+ * default) for every other release build — local development, PR previews,
+ * ordinary unmanaged branches, and hermetic compatibility-test builds — where
+ * `VITE_SENTRY_DSN` stays optional.
  * @returns `true` when validation passed, `false` otherwise. Also sets
  * `process.exitCode` on failure.
  */
-export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
+export function validateReleaseConfig({ env = process.env, deps = {}, managed = false } = {}) {
   const { readFile = readFileSync, log = console.log, logError = console.error } = deps;
 
   const errors = [];
@@ -94,7 +102,14 @@ export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
 
   const isGithubActions = env.GITHUB_ACTIONS === 'true';
 
-  for (const key of OPTIONAL_ENV_KEYS) {
+  // VITE_SENTRY_DSN is validated separately below: optional for every other
+  // build, but mandatory (and never silently treated as "not configured")
+  // for a managed deployment job.
+  const optionalEnvKeys = managed
+    ? OPTIONAL_ENV_KEYS.filter((key) => key !== 'VITE_SENTRY_DSN')
+    : OPTIONAL_ENV_KEYS;
+
+  for (const key of optionalEnvKeys) {
     if (!(key in env)) {
       notices.push(
         `${key}: not set (optional; the dependent feature is disabled at build/runtime)`,
@@ -130,6 +145,24 @@ export function validateReleaseConfig({ env = process.env, deps = {} } = {}) {
   const hasSentryAuthToken =
     typeof env.SENTRY_AUTH_TOKEN === 'string' && env.SENTRY_AUTH_TOKEN.trim() !== '';
 
+  if (managed) {
+    // Deliberately fails even when GITHUB_ACTIONS is set and VITE_SENTRY_DSN
+    // is merely empty (the unconfigured-secret expansion case the optional-key
+    // loop above tolerates): a managed artifact whose Service Worker cannot
+    // report activation/rollback diagnostics must never publish. Runtime
+    // reporting requires VITE_SENTRY_DSN specifically — SENTRY_AUTH_TOKEN
+    // (source-map upload) is not a substitute.
+    if (!hasSentryDsn) {
+      errors.push(
+        'VITE_SENTRY_DSN is required for managed stable/develop deployment jobs: the managed Service Worker ' +
+          'must remain capable of reporting activation/rollback diagnostics. SENTRY_AUTH_TOKEN is not a substitute ' +
+          '(it only enables source-map upload, not runtime error reporting).',
+      );
+    } else {
+      notices.push('VITE_SENTRY_DSN: set (required and present for managed deployment)');
+    }
+  }
+
   if (hasSentryDsn && !hasSentryAuthToken) {
     notices.push(
       'VITE_SENTRY_DSN is set without SENTRY_AUTH_TOKEN: runtime error reporting is enabled, but source maps will not be uploaded to Sentry.',
@@ -163,7 +196,7 @@ function finish({ errors, notices, log, logError }) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    validateReleaseConfig();
+    validateReleaseConfig({ managed: process.argv.includes('--managed') });
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

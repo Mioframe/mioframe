@@ -6,10 +6,46 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { validReleaseDescriptor } from '../../../src/shared/service/appUpdate/releaseWireContract.testUtils.ts';
 import {
   collectReleaseFiles,
+  computeDirectoryFingerprint,
   computeFileSha256,
   validateNoImmutableCollision,
   validateProjectedArtifactSize,
 } from './releaseArtifact.mjs';
+
+describe('computeDirectoryFingerprint', () => {
+  let dir = '';
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'fingerprint-dir-'));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('returns [] when the directory does not exist', () => {
+    expect(computeDirectoryFingerprint(join(dir, 'missing'))).toEqual([]);
+  });
+
+  it('fingerprints every file in the complete tree, not only assets/', () => {
+    writeFileSync(join(dir, 'index.html'), '<html></html>');
+    mkdirSync(join(dir, 'assets'), { recursive: true });
+    writeFileSync(join(dir, 'assets', 'app-abc.js'), 'content-a');
+
+    expect(computeDirectoryFingerprint(dir)).toEqual([
+      {
+        path: 'assets/app-abc.js',
+        sha256: computeFileSha256(join(dir, 'assets', 'app-abc.js')),
+        byteSize: Buffer.byteLength('content-a'),
+      },
+      {
+        path: 'index.html',
+        sha256: computeFileSha256(join(dir, 'index.html')),
+        byteSize: Buffer.byteLength('<html></html>'),
+      },
+    ]);
+  });
+});
 
 describe('collectReleaseFiles', () => {
   let distDir = '';

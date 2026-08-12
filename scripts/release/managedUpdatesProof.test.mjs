@@ -25,6 +25,7 @@ const EXPECTED_CORPUS = [
   'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
   'tests/e2e/release/managedUpdatesRecovery.spec.ts',
   'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
+  'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
   'tests/e2e/release/managedReleaseDataCompatibility.spec.ts',
 ];
 
@@ -33,7 +34,7 @@ function passingResult() {
 }
 
 describe('MANAGED_UPDATES_GROUPS composition', () => {
-  it('group 1 contains exactly its six expected specs', () => {
+  it('group 1 contains exactly its seven expected specs', () => {
     expect(MANAGED_UPDATES_LIFECYCLE_SPECS).toEqual([
       'tests/e2e/release/managedUpdatesLifecycle.spec.ts',
       'tests/e2e/release/managedUpdatesAutomaticCheck.spec.ts',
@@ -41,6 +42,7 @@ describe('MANAGED_UPDATES_GROUPS composition', () => {
       'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
       'tests/e2e/release/managedUpdatesRecovery.spec.ts',
       'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
+      'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
     ]);
   });
 
@@ -81,7 +83,7 @@ describe('MANAGED_UPDATES_GROUPS composition', () => {
     }
   });
 
-  it('the union is exactly the current twelve-spec managed-update corpus', () => {
+  it('the union is exactly the current thirteen-spec managed-update corpus', () => {
     const union = [
       ...MANAGED_UPDATES_LIFECYCLE_SPECS,
       ...MANAGED_UPDATES_MIGRATION_ISOLATION_SPECS,

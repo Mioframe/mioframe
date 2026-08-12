@@ -17,6 +17,7 @@ export const MANAGED_UPDATES_LIFECYCLE_SPECS = [
   'tests/e2e/release/managedUpdatesActivationUi.spec.ts',
   'tests/e2e/release/managedUpdatesRecovery.spec.ts',
   'tests/e2e/release/managedUpdatesVueBootFailure.spec.ts',
+  'tests/e2e/release/managedUpdatesRollbackDiagnostics.spec.ts',
 ];
 
 // Group 2: controller-upgrade, develop, and migration specs (Chromium).
