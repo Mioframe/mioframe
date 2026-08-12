@@ -87,7 +87,7 @@ Resolve:
 10. one owner for every renderer gap;
 11. deterministic implementation passes;
 12. implementation and migration `TEST IMPACT`, using the current executable testing ownership rather than copied historical placement;
-13. consumer inventory and migration order;
+13. consumer inventory and migration order, including classification of existing legacy Storybook/browser/visual proof as retained-and-rehomed, replaced by canonical proof, or obsolete-and-removed;
 14. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
 15. implementation readiness.
 
