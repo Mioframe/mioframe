@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { MDCheckbox } from '@shared/ui/Checkbox';
+import { MDCheckbox } from '@shared/ui/material';
+import { MDPlainTooltip } from '@shared/ui/Tooltips';
 import { isBoolean } from 'es-toolkit';
 import { computed, toRefs } from 'vue';
 import type { BooleanProperty } from './boolean';
@@ -24,19 +25,16 @@ const convertedValue = computed(() =>
 </script>
 
 <template>
-  <MDCheckbox
-    class="boolean-value-inline__checkbox"
-    :model-value="convertedValue"
-    :indeterminate="indeterminate"
-    readonly
-    :tab-index="-1"
-    :tooltip="name"
-    aria-hidden="true"
-  />
+  <span class="boolean-value-inline">
+    <MDCheckbox presentation :checked="convertedValue" :indeterminate="indeterminate" />
+
+    <MDPlainTooltip :text="name" />
+  </span>
 </template>
 
 <style scoped>
-.boolean-value-inline__checkbox {
+.boolean-value-inline {
+  display: inline-flex;
   margin-inline: auto;
 }
 </style>

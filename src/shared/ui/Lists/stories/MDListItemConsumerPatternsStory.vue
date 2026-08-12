@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import MDCheckbox from '../../Checkbox/MDCheckbox.vue';
+import { MDCheckbox } from '@shared/ui/material';
 import MDIconButton from '../../Button/MDIconButton.vue';
 import MDSymbol from '../../Icon/MDSymbol.vue';
 import { MDList, MDListItem } from '@shared/ui/Lists';
@@ -101,7 +101,7 @@ const onCheckboxChange = () => {
             @action="onCheckboxChange"
           >
             <template #trailing>
-              <MDCheckbox presentation :model-value="checkboxChecked" />
+              <MDCheckbox presentation :checked="checkboxChecked" />
             </template>
           </MDListItem>
           <MDListItem
@@ -114,7 +114,7 @@ const onCheckboxChange = () => {
             aria-disabled="true"
           >
             <template #trailing>
-              <MDCheckbox presentation :model-value="checkboxDisabledChecked" disabled />
+              <MDCheckbox presentation :checked="checkboxDisabledChecked" disabled />
             </template>
           </MDListItem>
         </MDList>

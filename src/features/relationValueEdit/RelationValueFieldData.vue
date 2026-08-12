@@ -7,7 +7,7 @@ import type {
   DatabasePropertyId,
   DatabaseViewId,
 } from '@shared/lib/databaseDocument';
-import { MDCheckbox } from '@shared/ui/Checkbox';
+import { MDCheckbox } from '@shared/ui/material';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import { computed, toRefs } from 'vue';
 
@@ -57,8 +57,8 @@ const onUpdateSelectedValue = (itemId: DatabaseItemId) => {
 
     <template #action="{ itemId }">
       <MDCheckbox
-        :model-value="selectedValue.includes(itemId)"
-        @update:model-value="onUpdateSelectedValue(itemId)"
+        :checked="selectedValue.includes(itemId)"
+        @update:checked="onUpdateSelectedValue(itemId)"
       />
     </template>
   </DatabaseDataTable>

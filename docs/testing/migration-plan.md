@@ -31,7 +31,7 @@
 - Material foundation owns an explicit `data-md-color-scheme="light"`/`"dark"` seam (`src/shared/ui/material/foundation/theme.css`); no attribute preserves the production `prefers-color-scheme` default. Storybook exposes this through a `System`/`Light`/`Dark` toolbar global that only sets/removes the attribute.
 - Storybook installs a per-story Vue Router memory-history instance (`.storybook/router/routerHarness.ts`) through a small typed `parameters.router` shape (routes, initial location); a fresh app/router is created on every story remount, so route/history state does not leak between stories. Existing shared overlay primitives continue to work through the deterministic default `/` route.
 - Storybook's native `storySort` gives the documented top-level namespaces (`Material 3`, `Shared`, `Entities`, `Features`, `Widgets`, `Pages`) deterministic ordering, case-insensitively matching already-colocated legacy titles, without renaming any existing story address.
-- `MDCheckbox` (`src/shared/ui/Checkbox/MDCheckbox.stories.ts`) is the representative args-driven controlled Playground: Controls and direct interaction stay synchronized through `useArgs`.
+- `MDCheckbox` is the representative args-driven controlled Playground: Controls and direct interaction stay synchronized through `useArgs`. This convention originated on the now-removed legacy `src/shared/ui/Checkbox/MDCheckbox.stories.ts`; the canonical Material `checkbox` family that replaced it (`src/shared/ui/material/components/checkbox/MDCheckbox.stories.ts`) preserves the same `useArgs` round-trip convention on its own `Default` story.
 - `MDButton` (`src/shared/ui/material/components/button/MDButton.stories.ts`) is the representative public Material component with selective Autodocs (`tags: ['autodocs']`) generated from the existing `vue-component-meta` docgen.
 - A dedicated verifier label `storybook-build` runs `pnpm storybook:build` for changed `*.stories.*`, `.storybook/**`, and other Storybook-relevant configuration; it is selectable through `pnpm verify --only storybook-build`, not full-only, and runs in full verification.
 - Vue component metadata is available to Storybook through the current docgen configuration.
@@ -52,8 +52,8 @@
 - Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming any existing story address.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, and `DialogForm` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete.
-- Loading Indicator, Chips, and MDCheckbox use the owner-local visual convention (Stage S3 complete; Stage S4-A complete; Stage S4-B complete); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
+- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, and `DialogForm` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete. The legacy `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` this S2-A entry originally migrated no longer exists: the `checkbox` Material family migration (`src/shared/ui/material/components/checkbox/MIGRATION.md`) removed the legacy component and its owner-local proof. The Material `checkbox` family's own owner-local browser spec (`src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts`) independently satisfies the general S2 owner-local convention for a new Material family; it was never itself an S2 migration target.
+- Loading Indicator, Chips, and (formerly) legacy MDCheckbox used the owner-local visual convention (Stage S3 complete; Stage S4-A complete; Stage S4-B complete, now historical — see S4-B below); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
 - Persistent mutation and release-impact migration remain separate work.
@@ -190,7 +190,7 @@ S2 migrates ordinary component/family/module-owned behavior to the owner-local c
 
 - `mdCheckboxControlledArgs.spec.ts`
   - Contract: real pointer interaction round-trips controlled `checked` state through the MDCheckbox Storybook args contract.
-  - Final owner: `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts`.
+  - Final owner: `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts` (historical — the legacy component and this owner-local spec were removed by the `checkbox` Material family migration; see the note after the S2 migration groups list below).
   - Current state: complete — migrated owner-local and the legacy registry mapping is removed.
 - `navigationPath.spec.ts`
   - Contract: small Button geometry inside Navigation Path, horizontal overflow/scrolling, and final segment selection.
@@ -254,6 +254,8 @@ Implement S2 as independently mergeable groups from current `develop`:
 5. **S2-E — DialogForm migration and final ownership audit (complete):** `dialogFormFallbackFocus.spec.ts` is now `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserving its real focus-trap browser contract and story address; the replaced explicit DialogForm mapping is removed. The remaining central behavior specs are exactly justified cross-owner/infrastructure proof (`colorOwnership`, `overlayLifecycle`, `focusIndicator`, `routerHarness`) plus the central helper (`storybook.testUtils.ts`). Central discovery remains because these are real consumers.
 
 S2-A through S2-E are complete. Stage S2 is complete. Each group started from the then-current `develop` and preserved the assertions and story addresses it migrated. A group may adjust an owner-local fixture only when required to eliminate a real cross-owner fixture dependency; it must not redesign product behavior or clean up unrelated proof.
+
+**Post-S2 note (legacy MDCheckbox removal):** the S2-A entry above migrated `mdCheckboxControlledArgs.spec.ts` to `src/shared/ui/Checkbox/MDCheckbox.browser.spec.ts`, colocated with the then-current legacy `MDCheckbox` (`src/shared/ui/Checkbox/MDCheckbox.vue`). The `checkbox` Material family migration (`src/shared/ui/material/components/checkbox/MIGRATION.md`) subsequently replaced every confirmed consumer of that legacy component with the canonical `MDCheckbox` (`src/shared/ui/material/components/checkbox/`) and removed the legacy component together with its owner-local proof, including this S2-A-migrated spec. This is legacy-ownership removal following an already-completed Material family implementation, not a Stage S2 regression: the canonical Material `checkbox` family's own owner-local browser spec (`src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts`) independently satisfies the general Stage S2 owner-local convention documented above for any new ordinary component/family, and required no Stage S2 migration step of its own.
 
 #### S2 architecture constraints
 
@@ -342,9 +344,9 @@ Final executable S4-A state:
 - `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDCheckbox, MDSwitch, MDCard, MDStateLayer, MarkdownContent);
 - no new resolver mapping, registry, or Chips-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
 
-#### S4-B — MDCheckbox visual ownership (complete)
+#### S4-B — MDCheckbox visual ownership (complete, historical — legacy component removed)
 
-Authorized and completed group: MDCheckbox shared UI module only.
+Authorized and completed group: MDCheckbox shared UI module only. **Historical note:** the legacy `src/shared/ui/Checkbox` module this group covered, including the owner-local visual spec and baselines below, was subsequently removed in full by the `checkbox` Material family migration (`src/shared/ui/material/components/checkbox/MIGRATION.md`), which replaced every confirmed consumer with the canonical `MDCheckbox` (`src/shared/ui/material/components/checkbox/`). The canonical Material `checkbox` family is not one of the Stage S3/S4 owner-local-authorized visual groups (only Loading Indicator, Chips, and this now-removed legacy MDCheckbox were authorized); its own visual proof therefore lives at the current central location, `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts`, pending its own future Stage S4 authorization. The S4-B record below remains as the historical account of the legacy component's now-removed owner-local visual proof; it does not describe current executable state for `checkbox`.
 
 Final executable S4-B state:
 

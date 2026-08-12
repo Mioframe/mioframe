@@ -1,9 +1,31 @@
+/* eslint-disable vue/one-component-per-file -- This test file intentionally defines several tiny inline stub components. */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, defineComponent, h, nextTick } from 'vue';
 import SettingsCheckboxListItem from './SettingsCheckboxListItem.vue';
 
 vi.mock('@shared/ui/State/useRipple', () => ({
   useRipple: () => undefined,
+}));
+
+vi.mock('@shared/ui/material', () => ({
+  MDCheckbox: defineComponent({
+    name: 'MDCheckboxStub',
+    props: {
+      checked: { type: Boolean, default: false },
+      disabled: { type: Boolean, default: false },
+      presentation: { type: Boolean, default: false },
+    },
+    setup(props) {
+      return () =>
+        h('div', {
+          class: 'md-checkbox',
+          'aria-hidden': 'true',
+          'data-checked': props.checked ? 'true' : 'false',
+          'data-disabled': props.disabled ? 'true' : 'false',
+          'data-presentation': props.presentation ? 'true' : 'false',
+        });
+    },
+  }),
 }));
 
 vi.mock('@shared/ui/ProgressIndicators', () => ({
@@ -114,11 +136,15 @@ describe('SettingsCheckboxListItem', () => {
     expect(row?.querySelector('label')).toBeNull();
     expect(row?.querySelectorAll('button')).toHaveLength(0);
 
+    // MDCheckbox's own renderer-mapping/tabindex mechanics are the family's own
+    // proof (MDCheckbox.test.ts / MDCheckbox.browser.spec.ts); this widget test
+    // covers only its own composition contract: presentation is always forwarded
+    // true, and checked/disabled reflect the given props.
     const visualCheckbox = row?.querySelector<HTMLElement>('.md-checkbox');
     expect(visualCheckbox).not.toBeNull();
-    expect(visualCheckbox?.querySelector('input')).toBeNull();
-    expect(visualCheckbox?.querySelector('label')).toBeNull();
-    expect(visualCheckbox?.hasAttribute('tabindex')).toBe(false);
+    expect(visualCheckbox?.getAttribute('data-presentation')).toBe('true');
+    expect(visualCheckbox?.getAttribute('data-checked')).toBe('false');
+    expect(visualCheckbox?.getAttribute('data-disabled')).toBe('false');
 
     row?.click();
     await nextTick();
@@ -140,7 +166,11 @@ describe('SettingsCheckboxListItem', () => {
     expect(row?.tagName).toBe('BUTTON');
     expect(row?.getAttribute('aria-checked')).toBe('true');
     expect(row?.getAttribute('aria-disabled')).toBe('true');
-    expect(row?.hasAttribute('tabindex')).toBe(false);
+
+    const visualCheckbox = row?.querySelector<HTMLElement>('.md-checkbox');
+    expect(visualCheckbox?.getAttribute('data-presentation')).toBe('true');
+    expect(visualCheckbox?.getAttribute('data-checked')).toBe('true');
+    expect(visualCheckbox?.getAttribute('data-disabled')).toBe('true');
 
     row?.click();
     await nextTick();
@@ -184,3 +214,4 @@ describe('SettingsCheckboxListItem', () => {
     unmount();
   });
 });
+/* eslint-enable vue/one-component-per-file -- Re-enable the rule after the inline component stubs used in this file. */

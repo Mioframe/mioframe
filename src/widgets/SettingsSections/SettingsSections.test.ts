@@ -131,66 +131,6 @@ vi.mock('@shared/ui/ProgressIndicators', () => ({
   }),
 }));
 
-vi.mock('@shared/ui/Checkbox', () => ({
-  MDCheckbox: defineComponent({
-    name: 'MDCheckboxStub',
-    props: {
-      modelValue: {
-        type: Boolean,
-        required: true,
-      },
-      disabled: {
-        type: Boolean,
-        default: false,
-      },
-      presentation: {
-        type: Boolean,
-        default: false,
-      },
-      ariaLabel: {
-        type: String,
-        default: undefined,
-      },
-    },
-    emits: ['update:modelValue'],
-    setup(props, { emit }) {
-      const onChange = () => {
-        if (props.disabled) {
-          return;
-        }
-
-        emit('update:modelValue', !props.modelValue);
-      };
-
-      return () =>
-        props.presentation
-          ? h('div', {
-              'aria-hidden': 'true',
-              'data-state': props.modelValue ? 'checked' : 'unchecked',
-              'data-disabled': props.disabled ? 'true' : 'false',
-            })
-          : h('input', {
-              type: 'checkbox',
-              checked: props.modelValue,
-              disabled: props.disabled,
-              'aria-label': props.ariaLabel,
-              onClick: (event: MouseEvent) => {
-                event.stopPropagation();
-                onChange();
-              },
-              onKeydown: (event: KeyboardEvent) => {
-                if (!['Enter', ' '].includes(event.key)) {
-                  return;
-                }
-
-                event.preventDefault();
-                onChange();
-              },
-            });
-    },
-  }),
-}));
-
 vi.mock('@shared/ui/material', () => ({
   MDSwitch: defineComponent({
     name: 'MDSwitchStub',
@@ -213,6 +153,31 @@ vi.mock('@shared/ui/material', () => ({
         h('div', {
           'aria-hidden': 'true',
           'data-state': props.selected ? 'checked' : 'unchecked',
+          'data-disabled': props.disabled ? 'true' : 'false',
+        });
+    },
+  }),
+  MDCheckbox: defineComponent({
+    name: 'MDCheckboxStub',
+    props: {
+      checked: {
+        type: Boolean,
+        default: false,
+      },
+      disabled: {
+        type: Boolean,
+        default: false,
+      },
+      presentation: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    setup(props) {
+      return () =>
+        h('div', {
+          'aria-hidden': 'true',
+          'data-state': props.checked ? 'checked' : 'unchecked',
           'data-disabled': props.disabled ? 'true' : 'false',
         });
     },
