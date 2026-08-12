@@ -46,7 +46,7 @@ Required return stage: none | design | architecture | implementation | migration
 Implementation readiness: ready | awaiting-dependencies | blocked
 Dependency families: none | <canonical-family>[; <canonical-family>...]
 Dependency queue: none | <canonical-family>[; <canonical-family>...]
-Dependency review revisions: none | <canonical-family>=<REVIEW Artifact revision>[; <canonical-family>=<REVIEW Artifact revision>...]
+Dependency review revisions: none | <family>=<review revision>[; <family>=<review revision>...]
 ```
 
 `stale` is an external pre-run marker. This worker may finish only with `ready` or `blocked`.
@@ -87,7 +87,7 @@ Resolve:
 10. one owner for every renderer gap;
 11. deterministic implementation passes;
 12. implementation and migration `TEST IMPACT`, using the current executable testing ownership rather than copied historical placement;
-13. consumer inventory and migration order;
+13. consumer inventory and migration order, including classification of existing legacy Storybook/browser/visual proof as retained-and-rehomed, replaced by canonical proof, or obsolete-and-removed;
 14. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
 15. implementation readiness.
 
@@ -146,6 +146,8 @@ DESIGN.md official path
 Implementation owns component, renderer-boundary, token, browser, visual, and component-risk proof.
 
 Migration owns consumers, product scenarios or explicit no-consumer proof, legacy removal, and impact metadata.
+
+When the current testing architecture can execute owner-local Storybook browser or visual proof for the canonical family, that owner-local location is the final target. Do not design a temporary central or legacy proof location that requires a later Storybook ownership migration. Existing legacy proof that survives the component migration must move to the canonical family in the same Material workflow; proof for contracts removed by the canonical renderer-backed implementation must be deleted rather than relocated.
 
 For controlled state, implementation proof must include rejected intent; for decorative/presentation composition, browser proof must cover both child suppression and positive handoff to the actual action owner.
 
@@ -248,6 +250,7 @@ Status: complete | blocked
 - Inventing product demand or renderer-derived APIs.
 - Calling post-mutation renderer state controlled without proving rejected intent cannot drift from the public source of truth.
 - Copying obsolete test-placement or impact-registry patterns from older family artifacts instead of the current testing policy.
+- Planning a temporary central/legacy Storybook proof destination when the canonical family can own executable proof directly.
 - Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
 - Rewriting architecture for metadata-only design refresh.
 - Depending on Git or PR state.
