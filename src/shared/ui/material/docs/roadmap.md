@@ -21,7 +21,7 @@ indeterminate = property.indeterminate === true && effectiveValue === undefined
 
 where `effectiveValue` is the existing resolved value after the property's default fallback. `true` and `false` must therefore remain normal checked/unchecked states even when the property supports indeterminate values.
 
-The same review also found that several Checkbox family artifact revisions were recorded as future UTC timestamps relative to the actual execution time. Those revisions cannot be treated as factual durable workflow identities. The family artifact chain must be regenerated through the normal owning stages after the timestamp-integrity workflow rule is corrected; stage-owned artifacts must not be manually patched around that rule.
+The same review also found that several Checkbox family artifact revisions were recorded as future UTC timestamps relative to the actual execution time. Those revisions cannot be treated as factual durable workflow identities. `docs/component-workflow.md` now requires artifact/contract revisions to use the runtime UTC clock at the actual write and makes future factual execution/source-check timestamps mechanically invalid. The Checkbox family artifact chain must therefore be regenerated through the normal owning stages; stage-owned artifacts must not be manually patched around the workflow.
 
 Previous focused checks and the previous outer `pnpm verify` run passed for the then-current workspace, but they no longer prove family completion because the behavior regression and invalid workflow metadata were discovered afterward.
 
@@ -54,21 +54,25 @@ No generic m3e adapter framework, duplicate state manager, compatibility layer, 
 
 ## Milestones
 
-| ID  | Milestone                           | Status        | Exit gate                                                                 |
-| --- | ----------------------------------- | ------------- | ------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`    | coherent staged workflow and corrected calibration invariants             |
-| M1a | Loading Indicator dependency family | `complete`    | current artifacts and compliant review                                    |
-| M1  | Button action family                | `complete`    | canonical m3e-backed action component migrated and merged                  |
-| M2  | Switch stateful pilot               | `complete`    | family workflow completed without unresolved family findings              |
+| ID  | Milestone                           | Status        | Exit gate                                                                     |
+| --- | ----------------------------------- | ------------- | ----------------------------------------------------------------------------- |
+| M0  | workflow architecture and rules     | `complete`    | coherent staged workflow and corrected calibration invariants                 |
+| M1a | Loading Indicator dependency family | `complete`    | current artifacts and compliant review                                        |
+| M1  | Button action family                | `complete`    | canonical m3e-backed action component migrated and merged                      |
+| M2  | Switch stateful pilot               | `complete`    | family workflow completed without unresolved family findings                  |
 | M3  | sequential component migration      | `in-progress` | individual family completion does not complete the sequential migration program |
 
 M3 is an ongoing migration phase. Completing Checkbox will complete the Checkbox family only; M3 continues until the Material migration program is explicitly closed or the remaining legacy families are explicitly classified outside migration scope.
 
+## Known non-blocking follow-up
+
+`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox. The Checkbox migration must not pretend this was fixed. It is not a blocker for behavior-preserving migration, but it remains an explicit product accessibility follow-up until a correct contextual label is selected and proven.
+
 ## Next operator action
 
 1. Synchronize the Checkbox branch with current `develop` and preserve the current testing-migration ownership state and release metadata.
-2. Correct the durable Material workflow timestamp contract so artifact revisions are factual current UTC timestamps and future execution timestamps are mechanically invalid.
-3. Route Checkbox back through architecture for the `BooleanValueInline` tri-state mapping correction, then execute the invalidated implementation, migration, and independent review stages normally.
+2. Route Checkbox back through architecture for the `BooleanValueInline` tri-state mapping correction; the workflow must also regenerate any mechanically invalid future-timestamp artifacts using real current UTC revisions.
+3. Execute the invalidated implementation, migration, and independent review stages normally.
 4. Add consumer-level proof covering `true`, `false`, `undefined`, and default-fallback behavior when indeterminate values are enabled or disabled.
 5. Run the ordinary final `pnpm verify` gate on the final synchronized head, then require ordinary GitHub merge gates before integration into `develop`.
 
