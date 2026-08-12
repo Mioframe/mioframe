@@ -87,7 +87,7 @@ Architecture selects proof owners before implementation. Use the lowest faithful
 - The Material family is the Storybook owner for its component stories and family-owned browser/visual proof.
 - Follow `docs/testing/storybook.md` for Storybook workbench behavior, Playground/Controls, preview isolation, theme modes, story authoring, catalogue naming, routing sandbox, generated docs, proof boundaries, target placement, and ownership conventions.
 - A configurable public Material component should expose a useful args-driven Playground through its family stories when the public surface has meaningful options; Controls represent only the curated Mioframe Vue API, never raw m3e/private inputs.
-- Follow `docs/testing/migration-plan.md` for the current executable Playwright spec location and workbench capabilities. Do not place colocated Material `*.browser.spec.ts` or `*.visual.spec.ts` until the owning lane can discover them.
+- Follow `docs/testing/migration-plan.md` for the current executable Playwright spec location and workbench capabilities. Once canonical owner-local browser/visual ownership is executable, a Material migration must finish family proof there and remove replaced legacy proof in the same workflow rather than scheduling a second ownership-only cleanup.
 - Keep stories deterministic and family-local; do not introduce product stores, services, workers, persistence, production routing, network, or business behavior into family stories.
 - Routing-aware reusable Material composition may use the project-wide Storybook router harness only when routing is part of the reusable contract; product navigation remains outside Material.
 - Family browser proof contains no screenshots. Family visual proof contains no browser-behavior success criteria.

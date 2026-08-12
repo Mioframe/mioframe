@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from '../storybook';
+import { openStory } from '../../../../../../tests/e2e/visual/storybook';
 
 test('MDSwitch selected, disabled, and presentation states match the canonical baseline', async ({
   page,

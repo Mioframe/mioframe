@@ -90,6 +90,7 @@ Do not create a product consumer merely to make migration non-empty.
 - Do not move feature, entity, widget, or page responsibility into Material.
 - Follow architecture dependency and migration order.
 - Remove replaced legacy ownership only after every consumer has a valid destination.
+- Apply the architecture-recorded disposition of legacy Storybook/browser/visual proof using the executable ownership in `docs/testing/migration-plan.md`; surviving family proof must end at its canonical executable owner, while replaced or obsolete legacy proof is removed in this migration.
 - Do not keep compatibility aliases by default for an unshipped or fully migrated internal API.
 - Leave unrelated families and shared UI untouched.
 
@@ -105,7 +106,7 @@ Run migration-scoped checks only. The orchestrator runs final verification after
 
 ### Success
 
-Return `Status: complete` only when every consumer is migrated or the no-consumer case is proven, legacy ownership is removed or not applicable, focused checks pass, blockers and route are `none`, and review readiness is `ready`.
+Return `Status: complete` only when every consumer is migrated or the no-consumer case is proven, legacy ownership is removed or not applicable, surviving family-owned Storybook/browser/visual proof is already at its canonical executable owner, focused checks pass, blockers and route are `none`, and review readiness is `ready`.
 
 ### Earlier-stage or cross-family correction
 
