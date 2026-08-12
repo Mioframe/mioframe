@@ -364,7 +364,8 @@ Final executable S4-C state:
 - `MarkdownContent wide table matches baseline` and `MarkdownContent variants overview matches baseline` moved from the legacy central `tests/e2e/visual/shared-ui.spec.ts` to `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts`, unchanged in meaning, story IDs, and screenshot assertions;
 - both active baselines (`markdown-content-wide-table-linux.png`, `markdown-content-variants-overview-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts-snapshots/`;
 - `src/shared/ui/MarkdownContent/MarkdownContent.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
-- `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDSwitch, MDCard, MDStateLayer);
+- `tests/e2e/visual/shared-ui.spec.ts` remains central and unchanged for its other, unmigrated owners (MDCard, MDStateLayer);
+- MDSwitch remains centrally executed in `tests/e2e/visual/shared-ui/md-switch.spec.ts` after its Material migration; S4-C does not migrate or reclassify that proof;
 - the MDCard dependency present in some MarkdownContent stories remains covered by the existing broad visual fallback; no MDCard-specific mapping or resolver change was made;
 - no new resolver mapping, registry, or MarkdownContent-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
 
