@@ -66,6 +66,10 @@ Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
 
 The owning worker writes a new UTC artifact revision whenever the file is rewritten or refreshed. It must not reuse a revision after content changes.
 
+Artifact and contract revisions are factual execution timestamps, not ordering counters. When a worker creates a new `Artifact revision` or a changed `Design contract revision`, it must obtain the current UTC time from the runtime/environment clock immediately before the write. It must not invent, round forward, preallocate, or increment a future timestamp to make stages appear ordered. Ordering comes from actual writes and the explicit revision links between artifacts.
+
+A factual timestamp that claims an already-completed action must not be later than the current runtime clock when the orchestrator validates it. This applies to `Artifact revision`, any newly-created `Design contract revision`, and factual source-check dates. A preserved older `Design contract revision` is valid when the normalized design contract did not change. `Refresh check after` is intentionally a future planning date and is exempt from this rule.
+
 Routing fields use exactly one pair:
 
 ```text
@@ -120,6 +124,7 @@ An artifact is mechanically invalid when:
 
 - a required field or heading is missing;
 - a value or date is malformed;
+- a factual execution/source-check timestamp is later than the current runtime clock/date;
 - revision or dependency invariants fail;
 - route fields are inconsistent;
 - a same-family route does not target a strictly earlier stage;
