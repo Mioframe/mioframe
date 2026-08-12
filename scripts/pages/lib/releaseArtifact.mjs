@@ -45,25 +45,37 @@ function walkFiles(dir) {
 }
 
 /**
+ * Collects a deterministic fingerprint of every file under `dir`: relative
+ * path (POSIX-separated), exact byte size, and SHA-256 content hash.
+ * @param dir Directory to fingerprint.
+ * @returns Fingerprint entries, sorted by path for deterministic comparison.
+ */
+export function computeDirectoryFingerprint(dir) {
+  if (!existsSync(dir)) return [];
+
+  return walkFiles(dir)
+    .map((absolutePath) => {
+      const relPath = relative(dir, absolutePath).split(sep).join('/');
+      return {
+        path: relPath,
+        sha256: computeFileSha256(absolutePath),
+        byteSize: statSync(absolutePath).size,
+      };
+    })
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
+
+/**
  * Collects every content-hashed asset under `<distDir>/assets` as
  * `ReleaseFile` records with a canonical `assets/<relPath>` path.
  * @param distDir Built `dist` directory for this build.
  * @returns The release's file list, sorted by path for deterministic output.
  */
 export function collectReleaseFiles(distDir) {
-  const assetsDir = join(distDir, 'assets');
-  if (!existsSync(assetsDir)) return [];
-
-  return walkFiles(assetsDir)
-    .map((absolutePath) => {
-      const relPath = relative(assetsDir, absolutePath).split(sep).join('/');
-      return {
-        path: `assets/${relPath}`,
-        sha256: computeFileSha256(absolutePath),
-        byteSize: statSync(absolutePath).size,
-      };
-    })
-    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  return computeDirectoryFingerprint(join(distDir, 'assets')).map((entry) => {
+    entry.path = `assets/${entry.path}`;
+    return entry;
+  });
 }
 
 /**

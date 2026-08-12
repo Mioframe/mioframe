@@ -61,13 +61,15 @@ export async function publishStable(argv = process.argv.slice(2), env = process.
     commitMessage: 'chore(pages): deploy stable build',
     outputDir,
     async fn(workDir) {
-      // Fails closed, before any real publication write, unless a candidate
-      // build with an existing previous release proves backward data
-      // compatibility (see the managed pinned application updates feature's
-      // "Data compatibility" invariant and
-      // scripts/pages/lib/managedCompatibilityPreflight.mjs). A first
-      // release or an idempotent republish of the current latest proceeds
-      // immediately without running the proof.
+      // Fails closed, before any real publication write, unless the
+      // candidate dist itself actually matches the requested managed
+      // deployment identity and, for a genuinely new candidate, proves
+      // backward data compatibility — both owned by this single publication
+      // preflight boundary (see
+      // scripts/pages/lib/managedCompatibilityPreflight.mjs). An idempotent
+      // republish of the current latest proceeds immediately without
+      // inspecting distDir at all; a first release proceeds immediately
+      // after artifact validation.
       await runManagedPublicationPreflight({
         workDir,
         distDir,

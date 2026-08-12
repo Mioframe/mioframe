@@ -1,3 +1,4 @@
+import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import { reportActivationRolledBack } from './appUpdateDiagnosticEvents';
 import type { ManagedChannel } from './contracts';
 import { writeControllerState } from './controllerState';
@@ -245,7 +246,17 @@ export async function handleWorkerMessage(
           // The write above already succeeded (an earlier failure returned
           // `ack: 'error'` before reaching here) — a late `BOOT_OK` past the
           // activation deadline is itself a durably committed rollback.
-          reportActivationRolledBack(channel, 'bootOkExpired', request.releaseNumber);
+          addTechnicalBreadcrumb({
+            category: 'appUpdate.rollback',
+            message: 'rollback durably committed',
+            data: { channel, trigger: 'bootOkExpired' },
+          });
+          reportActivationRolledBack(
+            channel,
+            'bootOkExpired',
+            request.releaseNumber,
+            outcome.state.activeRelease.releaseNumber,
+          );
           return {
             response: withProtocolVersion({
               snapshot: buildAppUpdateSnapshot(outcome.state),
@@ -275,6 +286,11 @@ export async function handleWorkerMessage(
       });
 
     case 'BOOT_FAILED':
+      addTechnicalBreadcrumb({
+        category: 'appUpdate.rollback',
+        message: 'watchdog reported boot failure',
+        data: { channel, releaseNumber: request.releaseNumber },
+      });
       return withState(channel, enqueue, async (state) => {
         const outcome = classifyBootFailed(state, request.releaseNumber);
         if (outcome.kind === 'ignored') {
@@ -312,7 +328,17 @@ export async function handleWorkerMessage(
         // The write above already succeeded (an earlier failure returned
         // `ack: 'error'` before reaching here) — this explicit BOOT_FAILED
         // report is itself a durably committed rollback.
-        reportActivationRolledBack(channel, 'bootFailed', request.releaseNumber);
+        addTechnicalBreadcrumb({
+          category: 'appUpdate.rollback',
+          message: 'rollback durably committed',
+          data: { channel, trigger: 'bootFailed' },
+        });
+        reportActivationRolledBack(
+          channel,
+          'bootFailed',
+          request.releaseNumber,
+          outcome.state.activeRelease.releaseNumber,
+        );
         return {
           response: withProtocolVersion({
             snapshot: buildAppUpdateSnapshot(outcome.state),

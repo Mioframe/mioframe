@@ -103,6 +103,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Validate managed release config (Sentry DSN required)
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+        run: pnpm release:validate-config:managed
+
       - name: Build release artifact
         env:
           BASE_URL: /
