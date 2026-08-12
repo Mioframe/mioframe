@@ -87,7 +87,7 @@ Resolve:
 10. one owner for every renderer gap;
 11. deterministic implementation passes;
 12. implementation and migration `TEST IMPACT`, using the current executable testing ownership rather than copied historical placement;
-13. consumer inventory and migration order;
+13. consumer inventory, migration order, and every legacy-to-canonical state/value/configuration translation needed by those consumers: old semantic meaning, canonical meaning, exact translation formula or composition rule, capability/configuration versus current-state distinction, and default/fallback behavior where applicable;
 14. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
 15. implementation readiness.
 
@@ -128,6 +128,8 @@ After dependencies become current, revalidate handoffs, clear or recompute the q
 - Keep renderer details private.
 - Define precedence and restoration for every selected state combination.
 - For mutable renderer-backed state, inspect the exact installed renderer event lifecycle before calling the public mapping controlled. Prefer a documented cancelable pre-mutation intent seam when it exists; a post-mutation `change`/`input` emit alone is insufficient if rejected intent can leave renderer state divergent from the controlling prop.
+- Do not infer consumer migration semantics from prop-name similarity. A legacy capability/configuration flag and a canonical current-state prop are different contracts unless their behavior is proven equivalent for every selected scenario and state combination.
+- When effective consumer state includes default/fallback resolution, architecture defines the translation from that effective value, not merely from the raw stored value or a renderer property.
 - Do not add adjacent surface for symmetry or future flexibility.
 
 For contextual tokens record:
@@ -148,6 +150,8 @@ Implementation owns component, renderer-boundary, token, browser, visual, and co
 Migration owns consumers, product scenarios or explicit no-consumer proof, legacy removal, and impact metadata.
 
 For controlled state, implementation proof must include rejected intent; for decorative/presentation composition, browser proof must cover both child suppression and positive handoff to the actual action owner.
+
+When consumer migration translates legacy state/value semantics, migration proof must cover the combinations that distinguish the old and canonical contracts, including capability-enabled true/false/empty states and default/fallback behavior when applicable.
 
 Review independently evaluates the complete result. The outer orchestrator owns final verification.
 
@@ -247,6 +251,8 @@ Status: complete | blocked
 - Using dependency gates or cyclic dependencies.
 - Inventing product demand or renderer-derived APIs.
 - Calling post-mutation renderer state controlled without proving rejected intent cannot drift from the public source of truth.
+- Mapping legacy consumer state to canonical state by prop-name similarity instead of explicit semantic translation.
+- Treating a capability/configuration flag as current rendered state without proof that the contracts are identical.
 - Copying obsolete test-placement or impact-registry patterns from older family artifacts instead of the current testing policy.
 - Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
 - Rewriting architecture for metadata-only design refresh.
