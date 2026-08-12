@@ -52,8 +52,8 @@
 - Storybook catalogue title normalization (matching the target hierarchy exactly, e.g. `shared/ui/...` -> `Shared/...`) remains Stage S6; S0.5 only added deterministic ordering without renaming any existing story address.
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
-- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, and `DialogForm` now use owner-local browser specs. S2-A through S2-E are complete; Stage S2 is complete.
-- Loading Indicator, Chips, MDCheckbox, and MarkdownContent use the owner-local visual convention (Stage S3 complete; Stage S4-A complete; Stage S4-B complete; Stage S4-C complete); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
+- Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, `DialogForm`, and Material `MDSwitch` now use owner-local browser specs. S2-A through S2-E are complete; later Material migrations may establish local browser ownership independently of the original S2 groups.
+- Loading Indicator, Chips, MDCheckbox, MarkdownContent, and MDSwitch use the owner-local visual convention (Stage S3 complete; Stage S4-A through S4-D complete); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
 - Persistent mutation and release-impact migration remain separate work.
@@ -227,7 +227,7 @@ S2 migrates ordinary component/family/module-owned behavior to the owner-local c
 - `dialogFormFallbackFocus.spec.ts`
   - Contract: real focus-trap activation with zero tabbable action controls uses the form fallback target and keeps Tab/Shift+Tab focus inside the dialog.
   - Final owner: `src/shared/ui/Dialog/DialogForm.browser.spec.ts`.
-  - Current state: complete — migrated owner-local as `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserving the story ID and focus-trap assertion; the replaced `dialog form fallback focus` registry mapping is removed. `tests/e2e/storybook/dialogFormFallbackFocus.spec.ts` no longer exists.
+  - Current state: complete — migrated owner-local as `src/shared/ui/Dialog/DialogForm.browser.spec.ts`, preserving the story ID and focus-trap assertion; the replaced explicit DialogForm mapping is removed. `tests/e2e/storybook/dialogFormFallbackFocus.spec.ts` no longer exists.
 - `colorOwnership.spec.ts`
   - Contract: Snackbar inverse surface/message/action/close color behavior across Snackbar-owned contextual values and Material Button public contextual tokens.
   - Final owner: keep `tests/e2e/storybook/colorOwnership.spec.ts`.
@@ -368,6 +368,19 @@ Final executable S4-C state:
 - MDSwitch remains centrally executed in `tests/e2e/visual/shared-ui/md-switch.spec.ts` after its Material migration; S4-C does not migrate or reclassify that proof;
 - the MDCard dependency present in some MarkdownContent stories remains covered by the existing broad visual fallback; no MDCard-specific mapping or resolver change was made;
 - no new resolver mapping, registry, or MarkdownContent-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
+
+#### S4-D — MDSwitch visual ownership (complete)
+
+Authorized and completed group: Material Switch family only.
+
+Final executable S4-D state:
+
+- `MDSwitch selected, disabled, and presentation states match the canonical baseline` moved from `tests/e2e/visual/shared-ui/md-switch.spec.ts` to `src/shared/ui/material/components/switch/MDSwitch.visual.spec.ts`, unchanged in test title, story ID, selector, screenshot name, and visual meaning;
+- the active baseline `md-switch-states-linux.png` moved byte-for-byte unchanged to `src/shared/ui/material/components/switch/MDSwitch.visual.spec.ts-snapshots/`;
+- `MDSwitch.visual.spec.ts` imports the existing central visual `openStory` helper directly rather than duplicating it;
+- the replaced central MDSwitch visual spec and its snapshot directory are removed;
+- the existing `MDSwitch.browser.spec.ts` remains the owner of interaction, accessibility, presentation, and hit-area browser behavior and is unchanged by S4-D;
+- no production Switch file, story, resolver, registry, or explicit mapping changed; owner-local selection resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
 
 Later S4 groups remain pending. Stage S4 as a whole is not complete.
 
