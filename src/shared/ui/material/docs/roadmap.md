@@ -20,9 +20,11 @@ MIGRATION.md       complete
 REVIEW.md          compliant
 ```
 
-The Switch family has no remaining design, architecture, implementation, migration, review, or verification finding. `REVIEW.md` remains compliant.
+The Switch family has no remaining design, architecture, implementation, migration, or review finding. `REVIEW.md` remains compliant.
 
-The branch is synchronized with current `develop` (`behind_by: 0`) and `package.json` is `0.3.6`, above the current `develop` version `0.3.5`.
+The branch is synchronized with current `develop` (`4cceda3ced310a613052df17a8044225eb89b433`, `behind_by: 0`) and `package.json` is `0.3.7`, above the current `develop` version `0.3.6`.
+
+The S4-B MDCheckbox visual-ownership migration from `develop` is preserved. The `tests/e2e/visual/shared-ui.spec.ts` conflict was resolved semantically: neither already-migrated Switch nor MDCheckbox visual proof remains in the central file, while the remaining central MDCard, MDStateLayer, and MarkdownContent owners are preserved. MDCheckbox remains owner-local under `src/shared/ui/Checkbox/`; Switch keeps its PR-owned visual spec and baseline.
 
 The previously reproduced root-scanning Playwright workspace-isolation defect is corrected: both Storybook behavior and visual configs enable Git-ignore-aware discovery, `playwright.lanes.test.ts` guards that contract, and the durable verifier rule requires repository-root Playwright scanning to respect repository ignore policy rather than maintaining a second local-workspace exclusion registry.
 
@@ -42,25 +44,11 @@ No generic m3e adapter framework, duplicate state manager, compatibility layer, 
 
 ## Verification state
 
-The synchronized outer `material-component Switch` invocation mechanically revalidated the existing artifact chain and required no family-stage changes.
+Before the latest `develop` synchronization, the synchronized outer `material-component Switch` invocation mechanically revalidated the existing artifact chain and its final workflow verification passed all required checks. GitHub verification on that earlier merge candidate also passed all merge gates.
 
-Its final workflow verification passed all required checks:
+Current merge-candidate verification is pending because the head changed to integrate `develop` S4-B, resolve the visual ownership conflict, remove stale central MDCheckbox baselines, and bump the release version to `0.3.7`.
 
-- agent-environment;
-- format;
-- oxlint;
-- eslint;
-- type-check;
-- unit-tests;
-- e2e;
-- storybook-behavior;
-- visual;
-- storybook-build;
-- mutation.
-
-GitHub verification on the synchronized `0.3.6` merge candidate passed all merge gates, including `release-version`, full `verification`, and aggregate `verify`.
-
-The first PR-preview deployment attempt hit a concurrent non-fast-forward push race in the Pages repository after both application and Storybook builds had succeeded. Retrying that deployment job succeeded without source changes, confirming an external publication race rather than a product or Material regression.
+No Switch family artifact is invalidated by those integration changes. The final read-only verifier and GitHub merge gates must pass on the current head before merge.
 
 ## Milestones
 
@@ -74,8 +62,8 @@ The first PR-preview deployment attempt hit a concurrent non-fast-forward push r
 
 ## Next operator action
 
-PR #186 is functionally complete. Do not rebuild the Switch family unless a later source change invalidates its current artifact chain.
+Do not rebuild or rewrite Switch family artifacts unless the synchronized workspace actually invalidates a family-owned contract.
 
-Require the ordinary GitHub merge gates to be green on the final head, then integrate PR #186 into `develop`.
+Run the outer `material-component Switch` workflow on the current synchronized workspace so it can mechanically revalidate the existing chain and run the required final read-only verifier. Then require the ordinary GitHub merge gates to be green on that same final head before integrating PR #186 into `develop`.
 
 After integration, M3 may begin with the next explicitly selected Material component family.
