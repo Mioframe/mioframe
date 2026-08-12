@@ -11,6 +11,7 @@
 - Do not make `verify` depend on `TEST IMPACT` or any uncommitted agent report.
 - Do not redesign proof ownership inside resolver implementation; architecture must already be resolved.
 - Do not move a spec before the owning runner/configuration can discover it.
+- A canonical Material family migration may establish final owner-local Storybook browser/visual ownership in the same family workflow once mixed discovery can execute that convention; do not require a separate later S4 move.
 - Do not remove old discovery, mappings, or baselines until replacement ownership is proven on the same repository state.
 - Add/move/remove/rename behavior must remain deterministic and must never silently skip relevant proof.
 - Do not satisfy Storybook usability by importing product bootstrap, product routing, stores, persistence, services, or business behavior into stories.
@@ -42,7 +43,7 @@
 - Loading Indicator is the authorized and completed owner-local visual pilot: `MDLoadingIndicator.visual.spec.ts` and its three PNG baselines are colocated under `src/shared/ui/material/components/loadingIndicator/`, using the documented `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention. Its legacy-surface screenshot now opens the Loading Indicator-owned `LegacySurfaceIsolation` story (tagged `visual`) instead of the Button-owned story.
 - Owner-local visual selection is filesystem-derived: source/story changes under an owner directory select every colocated visual spec in that directory; baseline changes resolve to their exact owning spec through the `<spec>.visual.spec.ts-snapshots/` marker; add/modify/delete/rename of colocated specs or baselines fails closed to the full visual lane when ownership cannot be resolved.
 - Application and Storybook source TypeScript exclude `src/**/*.visual.spec.ts`; Node/tooling TypeScript and Playwright own those test files.
-- All other visual specs/baselines remain in the legacy central location (`tests/e2e/visual/**`) with full-lane fallback; S3 does not migrate, split, or reclassify them.
+- All other visual specs/baselines remain in the legacy central location (`tests/e2e/visual/**`) with full-lane fallback until a later S4 group or the owning canonical Material migration moves or removes them directly.
 - Unmigrated visual-relevant shared UI/story changes with no resolvable colocated visual owner preserve safe full visual fallback rather than silently losing visual coverage.
 
 ### Still transitional
@@ -53,12 +54,12 @@
 - Some resolvers still use resolver-specific result shapes rather than one shared `skip | focused | full | invalid` contract.
 - Unit selection does not yet fully use the durable related-test/snapshot target.
 - Loading Indicator, MDCheckbox, MDNavigationPath, MDBottomSheetContainer2, Reorder, Material `MDButton`, the legacy `src/shared/ui/Button` module, `DialogForm`, and Material `MDSwitch` now use owner-local browser specs. S2-A through S2-E are complete; later Material migrations may establish local browser ownership independently of the original S2 groups.
-- Loading Indicator, Chips, MDCheckbox, MarkdownContent, and MDSwitch use the owner-local visual convention (Stage S3 complete; Stage S4-A through S4-D complete); all other visual specs/baselines still use the current central visual execution structure until later Stage S4 groups.
+- Loading Indicator, Chips, MDCheckbox, MarkdownContent, and MDSwitch use the owner-local visual convention (Stage S3 complete; Stage S4-A through S4-D complete); all other visual specs/baselines still use the current central visual execution structure until later S4 groups or their canonical Material migration establishes final ownership directly.
 - App E2E uses centralized scenario mappings and remains centralized by design.
 - Some visual specs still contain behavior/computed-style/geometry proof that belongs elsewhere.
 - Persistent mutation and release-impact migration remain separate work.
 
-The current mixed browser location is executable: migrated owners use colocated `src/**/*.browser.spec.ts`, while unmigrated owners retain the legacy central location. Agents must follow the stage authorization below rather than migrating additional specs merely because the generic discovery mechanism can execute them.
+The current mixed browser location is executable: migrated owners use colocated `src/**/*.browser.spec.ts`, while unmigrated owners retain the legacy central location. Agents must follow the stage authorization below rather than migrating additional specs merely because the generic discovery mechanism can execute them. A canonical Material family migration is an explicit authorization path for that family once owner-local discovery is executable and must not defer surviving family proof to a separate later S4 ownership-only move.
 
 ## Storybook ownership and workbench migration
 
@@ -328,7 +329,9 @@ Rules:
 - ordinary owner-local visual relations use colocation convention;
 - non-local/cross-cutting impact uses explicit mapping or full fallback;
 - do not rename stories/titles merely as part of file movement;
-- preserve exact intended screenshot coverage before deleting old baseline paths.
+- preserve exact intended screenshot coverage before deleting old baseline paths;
+- do not create an S4 ownership-only move into a legacy Material owner that is expected to be replaced by its canonical Material family migration;
+- canonical Material migration must rehome surviving family proof directly to the final owner and remove obsolete legacy proof in the same workflow; S4 handles durable owners or already-migrated families with leftover central proof.
 
 #### S4-A — Chips visual ownership (complete)
 
