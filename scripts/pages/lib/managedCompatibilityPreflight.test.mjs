@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -260,6 +268,194 @@ describe('runManagedPublicationPreflight', () => {
     ).rejects.toThrow('byte size mismatch');
 
     expect(runCompatibilityProof).not.toHaveBeenCalled();
+  });
+
+  it('excludes develop release 2 (unsupported compat target) from previousReleaseNumbers, but keeps releases 1 and 3', async () => {
+    writeDist('<develop-release-1/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'develop',
+      appVersion: '1.0.0',
+      buildId: 'sha-1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+    writeDist('<develop-release-2/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'develop',
+      appVersion: '1.1.0',
+      buildId: 'sha-2',
+      buildDate: '2026-07-25T00:00:00.000Z',
+    });
+
+    writeDist('<develop-release-3/>');
+    const runCompatibilityProof = vi.fn().mockImplementation(async (args) => {
+      expect(args.previousReleaseNumbers).toStrictEqual([1]);
+      expect(args.candidateReleaseNumber).toBe(3);
+      return { passed: true };
+    });
+
+    const result = await runManagedPublicationPreflight(
+      {
+        workDir,
+        distDir,
+        channel: 'develop',
+        appVersion: '1.2.0',
+        buildId: 'sha-3',
+        buildDate: '2026-07-26T00:00:00.000Z',
+      },
+      { runCompatibilityProof },
+    );
+
+    expect(result.decision).toBe('proved');
+    expect(result.previousReleaseNumbers).toStrictEqual([1]);
+    expect(runCompatibilityProof).toHaveBeenCalledTimes(1);
+  });
+
+  it('still integrity-validates develop release 2 even though it is excluded from compat-proof targets', async () => {
+    writeDist('<develop-release-1/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'develop',
+      appVersion: '1.0.0',
+      buildId: 'sha-1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+    writeDist('<develop-release-2/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'develop',
+      appVersion: '1.1.0',
+      buildId: 'sha-2',
+      buildDate: '2026-07-25T00:00:00.000Z',
+    });
+    // Corrupt release 2's archived bytes without updating its descriptor.
+    writeFileSync(
+      join(workDir, 'branch', 'develop', 'updates', 'releases', '2', 'index.html'),
+      'corrupted',
+    );
+
+    writeDist('<develop-release-3/>');
+    const runCompatibilityProof = passingProof();
+
+    await expect(
+      runManagedPublicationPreflight(
+        {
+          workDir,
+          distDir,
+          channel: 'develop',
+          appVersion: '1.2.0',
+          buildId: 'sha-3',
+          buildDate: '2026-07-26T00:00:00.000Z',
+        },
+        { runCompatibilityProof },
+      ),
+    ).rejects.toThrow('byte size mismatch');
+
+    expect(runCompatibilityProof).not.toHaveBeenCalled();
+  });
+
+  it('leaves the candidate distDir byte-for-byte unchanged after a successful compatibility proof', async () => {
+    writeDist('<release-1/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      appVersion: '1.0.0',
+      buildId: 'sha-1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+
+    writeDist('<release-2/>');
+    const distEntriesBefore = readdirSync(distDir).sort();
+    const indexHtmlBefore = readFileSync(join(distDir, 'index.html'), 'utf8');
+    const runCompatibilityProof = passingProof();
+
+    const result = await runManagedPublicationPreflight(
+      {
+        workDir,
+        distDir,
+        channel: 'stable',
+        appVersion: '1.1.0',
+        buildId: 'sha-2',
+        buildDate: '2026-07-25T00:00:00.000Z',
+      },
+      { runCompatibilityProof },
+    );
+
+    expect(result.decision).toBe('proved');
+    expect(readdirSync(distDir).sort()).toStrictEqual(distEntriesBefore);
+    expect(readFileSync(join(distDir, 'index.html'), 'utf8')).toBe(indexHtmlBefore);
+  });
+
+  it('fails closed and blocks publication when the compatibility proof mutates the candidate distDir', async () => {
+    writeDist('<release-1/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      appVersion: '1.0.0',
+      buildId: 'sha-1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+
+    writeDist('<release-2/>');
+    // Simulates the exact bug this preflight guards against: the compatibility
+    // proof's own webServer rebuilding the candidate dist as a side effect.
+    const runCompatibilityProof = vi.fn().mockImplementation(async () => {
+      writeFileSync(join(distDir, 'index.html'), '<html>rebuilt with the wrong base</html>');
+      return { passed: true };
+    });
+
+    await expect(
+      runManagedPublicationPreflight(
+        {
+          workDir,
+          distDir,
+          channel: 'stable',
+          appVersion: '1.1.0',
+          buildId: 'sha-2',
+          buildDate: '2026-07-25T00:00:00.000Z',
+        },
+        { runCompatibilityProof },
+      ),
+    ).rejects.toThrow('was mutated during the managed release data-compatibility proof');
+  });
+
+  it('reports a dist mutation even when the compatibility proof itself also failed', async () => {
+    writeDist('<release-1/>');
+    publishManagedRelease({
+      workDir,
+      distDir,
+      channel: 'stable',
+      appVersion: '1.0.0',
+      buildId: 'sha-1',
+      buildDate: '2026-07-24T00:00:00.000Z',
+    });
+
+    writeDist('<release-2/>');
+    const runCompatibilityProof = vi.fn().mockImplementation(async () => {
+      writeFileSync(join(distDir, 'index.html'), '<html>rebuilt with the wrong base</html>');
+      return { passed: false };
+    });
+
+    await expect(
+      runManagedPublicationPreflight(
+        {
+          workDir,
+          distDir,
+          channel: 'stable',
+          appVersion: '1.1.0',
+          buildId: 'sha-2',
+          buildDate: '2026-07-25T00:00:00.000Z',
+        },
+        { runCompatibilityProof },
+      ),
+    ).rejects.toThrow('was mutated during the managed release data-compatibility proof');
   });
 
   it('fails closed and cleans up staging when the candidate itself fails to stage', async () => {

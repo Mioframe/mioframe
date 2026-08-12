@@ -13,6 +13,18 @@ const releaseBaseURL = `http://${host}:${port}${basePath}`;
 // this config starts below.
 process.env.PLAYWRIGHT_EXTERNAL_BASE_URL = releaseBaseURL;
 
+// Set by scripts/release/runManagedReleaseDataCompatibilityProof.mjs for the
+// managed-release publication preflight's staged compatibility run (see
+// scripts/pages/lib/managedCompatibilityPreflight.mjs). That run serves its
+// own staged Pages tree directly (managedReleaseDataCompatibility.spec.ts's
+// startManagedArtifactServer) and must never trigger this config's own
+// webServer, which runs a real `vite build` into the repository's real
+// `dist/` — the candidate artifact this preflight exists to leave
+// byte-for-byte unchanged. Every other release Playwright run (no
+// MANAGED_COMPAT_WORK_DIR set) keeps building and serving its own artifact
+// exactly as before.
+const isManagedCompatibilityRun = process.env.MANAGED_COMPAT_WORK_DIR !== undefined;
+
 export default defineConfig({
   testDir: './tests/e2e/release',
   // Release specs build a fresh production artifact and share its origin-bound
@@ -31,20 +43,22 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  webServer: {
-    command: [
-      `node scripts/release/buildArtifact.mjs --base ${basePath}`,
-      `node scripts/release/artifactServer.mjs --base ${basePath} --host ${host} --port ${port}`,
-    ].join(' && '),
-    url: releaseBaseURL,
-    env: {
-      ...process.env,
-      FORCE_COLOR: '0',
-      NO_COLOR: '1',
-    },
-    stdout: 'pipe',
-    timeout: toolingConfig.playwright.webServerTimeoutMs,
-  },
+  webServer: isManagedCompatibilityRun
+    ? undefined
+    : {
+        command: [
+          `node scripts/release/buildArtifact.mjs --base ${basePath}`,
+          `node scripts/release/artifactServer.mjs --base ${basePath} --host ${host} --port ${port}`,
+        ].join(' && '),
+        url: releaseBaseURL,
+        env: {
+          ...process.env,
+          FORCE_COLOR: '0',
+          NO_COLOR: '1',
+        },
+        stdout: 'pipe',
+        timeout: toolingConfig.playwright.webServerTimeoutMs,
+      },
   workers: process.env.CI ? 1 : undefined,
   projects: [
     {

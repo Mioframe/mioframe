@@ -92,6 +92,15 @@ jobs:
         working-directory: app-source
         run: pnpm install --frozen-lockfile
 
+      # Only the managed 'develop' slug requires VITE_SENTRY_DSN: every other
+      # branch slug is an ordinary unmanaged deployment and stays unaffected.
+      - name: Validate managed release config (Sentry DSN required)
+        if: steps.slug.outputs.slug == 'develop'
+        working-directory: tooling
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+        run: node scripts/release/validateReleaseConfig.mjs --managed
+
       - name: Build branch deployment
         working-directory: app-source
         env:

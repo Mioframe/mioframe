@@ -45,6 +45,7 @@
     "release:build-artifact": "node scripts/release/buildArtifact.mjs",
     "release:validate-version": "node scripts/release/validateVersion.mjs",
     "release:validate-config": "node scripts/release/validateReleaseConfig.mjs",
+    "release:validate-config:managed": "node scripts/release/validateReleaseConfig.mjs --managed",
     "deps:update-browsers": "pnpm dlx update-browserslist-db@latest"
   },
   "dependencies": {

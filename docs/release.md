@@ -606,6 +606,26 @@ as a safety net for any other invocation (e.g. `deploy-stable`'s build step,
 which does pass these secrets since the build uses them) so an unconfigured
 optional secret never fails release-config validation there either.
 
+### Managed deployment jobs: `VITE_SENTRY_DSN` is mandatory
+
+`pnpm release:validate-config:managed` (`validateReleaseConfig({ managed: true })`)
+is a separate invocation of the same check, run as its own step in
+`.github/workflows/release.yml`'s `deploy-stable` job and
+`.github/workflows/deploy-branch.yml`'s managed `develop` publish path only
+(guarded by `steps.slug.outputs.slug == 'develop'`), before that job's build
+step. In managed mode, `VITE_SENTRY_DSN` is no longer optional: a missing
+value, or a value that is empty even inside GitHub Actions (the "unconfigured
+secret" case the default mode tolerates), fails the job before it can
+produce a managed artifact. `SENTRY_AUTH_TOKEN` is not a substitute — it only
+enables source-map upload, not runtime error reporting. This exists because
+the managed Service Worker must remain capable of reporting
+activation/rollback diagnostics (see `docs/managed-pinned-updates.md`), which
+requires runtime Sentry configuration to actually be built in. Every other
+invocation of this check (`pnpm verify:release`'s `release-config` check,
+local development, PR previews, unmanaged branch deploys, and hermetic
+compatibility-test builds) keeps the default, fully-optional behavior
+described above.
+
 ## Release smoke coverage
 
 Owned by `tests/e2e/release/*.spec.ts`, using existing Playwright helpers

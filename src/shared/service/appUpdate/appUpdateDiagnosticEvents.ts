@@ -32,22 +32,33 @@ export type ActivationRollbackTrigger = (typeof ACTIVATION_ROLLBACK_TRIGGERS)[nu
  *
  * Call only after the write succeeds — never merely because rollback
  * evaluation started, and never for an idempotent no-write outcome (a stale
- * window re-reporting a rollback that already happened).
+ * window re-reporting a rollback that already happened). Carries enough safe
+ * context to diagnose the failure on its own, even when earlier in-memory
+ * breadcrumbs (see `activation.*`/`rollback.*` breadcrumbs in
+ * `workerFetch.ts`/`workerMessages.ts`) were never delivered.
  * @param channel - Managed channel.
  * @param trigger - Which existing activation outcome triggered this rollback.
  * @param managedReleaseNumber - The release number that failed to activate.
+ * @param previousActiveReleaseNumber - The release number that remains (or
+ * becomes again) `activeRelease` after this rollback.
  */
 export function reportActivationRolledBack(
   channel: ManagedChannel,
   trigger: ActivationRollbackTrigger,
   managedReleaseNumber: number,
+  previousActiveReleaseNumber: number,
 ): void {
   reportDiagnosticEvent({
     name: 'appUpdate.activationRolledBack',
     severity: DiagnosticSeverity.Warning,
     result: DiagnosticResult.Failed,
     classification: DiagnosticClassification.Consistency,
-    safeTags: { channel, trigger, managedReleaseNumber: String(managedReleaseNumber) },
+    safeTags: {
+      channel,
+      trigger,
+      managedReleaseNumber: String(managedReleaseNumber),
+      previousActiveReleaseNumber: String(previousActiveReleaseNumber),
+    },
   });
 }
 

@@ -13,12 +13,17 @@ describe('reportActivationRolledBack', () => {
   it('reports appUpdate.activationRolledBack with only safe project-controlled tags', async () => {
     const { reportActivationRolledBack } = await import('./appUpdateDiagnosticEvents');
 
-    reportActivationRolledBack('stable', 'bootFailed', 7);
+    reportActivationRolledBack('stable', 'bootFailed', 7, 6);
 
     expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'appUpdate.activationRolledBack',
-        safeTags: { channel: 'stable', trigger: 'bootFailed', managedReleaseNumber: '7' },
+        safeTags: {
+          channel: 'stable',
+          trigger: 'bootFailed',
+          managedReleaseNumber: '7',
+          previousActiveReleaseNumber: '6',
+        },
       }),
     );
   });
@@ -32,7 +37,7 @@ describe('reportActivationRolledBack', () => {
     const { reportActivationRolledBack } = await import('./appUpdateDiagnosticEvents');
 
     expect(() => {
-      reportActivationRolledBack('develop', trigger, 3);
+      reportActivationRolledBack('develop', trigger, 3, 2);
     }).not.toThrow();
   });
 });

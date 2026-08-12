@@ -1,4 +1,4 @@
-import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { addTechnicalBreadcrumb, captureDiagnosticException } from '@shared/lib/diagnostics';
 import { releaseSummariesMatch, type ManagedChannel, type ReleaseSummary } from './contracts';
 import { reportActivationRolledBack, reportRecoveryRequired } from './appUpdateDiagnosticEvents';
 import {
@@ -478,7 +478,17 @@ async function tryRollbackActivatingFailure(
     }
     const rolledBack = rollbackActivation(state, failedRelease.releaseNumber);
     await writeControllerState(channel, rolledBack);
-    reportActivationRolledBack(channel, 'activationServeFailed', failedRelease.releaseNumber);
+    addTechnicalBreadcrumb({
+      category: 'appUpdate.rollback',
+      message: 'rollback durably committed',
+      data: { channel, trigger: 'activationServeFailed' },
+    });
+    reportActivationRolledBack(
+      channel,
+      'activationServeFailed',
+      failedRelease.releaseNumber,
+      rolledBack.activeRelease.releaseNumber,
+    );
     return rolledBack.activeRelease;
   }).catch(() => undefined);
 
@@ -581,7 +591,17 @@ export async function handleNavigationFetch(
           const failedReleaseNumber = state.candidate.release.releaseNumber;
           const rolledBack = rollbackActivation(state, failedReleaseNumber);
           await writeControllerState(channel, rolledBack);
-          reportActivationRolledBack(channel, 'activationDeadlineExpired', failedReleaseNumber);
+          addTechnicalBreadcrumb({
+            category: 'appUpdate.rollback',
+            message: 'rollback durably committed',
+            data: { channel, trigger: 'activationDeadlineExpired' },
+          });
+          reportActivationRolledBack(
+            channel,
+            'activationDeadlineExpired',
+            failedReleaseNumber,
+            rolledBack.activeRelease.releaseNumber,
+          );
           const excludedClientIds = new Set(
             [context.clientId, context.resultingClientId].filter((id) => id.length > 0),
           );
@@ -608,6 +628,11 @@ export async function handleNavigationFetch(
           if (activating.candidate?.phase !== 'activating') {
             return { kind: 'serve', release: state.activeRelease };
           }
+          addTechnicalBreadcrumb({
+            category: 'appUpdate.activation',
+            message: 'activation started',
+            data: { channel, releaseNumber: activating.candidate.release.releaseNumber },
+          });
           return {
             kind: 'serve',
             release: activating.candidate.release,
@@ -667,6 +692,11 @@ export async function handleNavigationFetch(
         return { response: response ?? UNAVAILABLE_RESPONSE() };
       }
 
+      addTechnicalBreadcrumb({
+        category: 'appUpdate.activation',
+        message: 'candidate navigation served',
+        data: { channel, releaseNumber: selection.release.releaseNumber },
+      });
       return { response, runLifetimeWork: selection.runLifetimeWork };
     }
 

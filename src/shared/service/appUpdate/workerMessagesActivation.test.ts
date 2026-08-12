@@ -15,11 +15,13 @@ vi.mock('./controllerState', () => ({
 vi.stubGlobal('self', { clients: { matchAll: matchAllMock } });
 
 const reportDiagnosticEventMock = vi.fn();
+const addTechnicalBreadcrumbMock = vi.fn();
 vi.mock('@shared/lib/diagnostics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shared/lib/diagnostics')>();
   return {
     ...actual,
     reportDiagnosticEvent: (...args: unknown[]) => reportDiagnosticEventMock(...args),
+    addTechnicalBreadcrumb: (...args: unknown[]) => addTechnicalBreadcrumbMock(...args),
   };
 });
 
@@ -81,6 +83,7 @@ beforeEach(() => {
   matchAllMock.mockResolvedValue([]);
   readControllerStateMock.mockResolvedValue({ status: 'valid', state: baseState });
   reportDiagnosticEventMock.mockReset();
+  addTechnicalBreadcrumbMock.mockReset();
 });
 
 afterEach(() => {
@@ -280,7 +283,17 @@ describe('handleWorkerMessage', () => {
       expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'appUpdate.activationRolledBack',
-          safeTags: expect.objectContaining({ trigger: 'bootOkExpired' }),
+          safeTags: expect.objectContaining({
+            trigger: 'bootOkExpired',
+            previousActiveReleaseNumber: String(releaseA.releaseNumber),
+          }),
+        }),
+      );
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'appUpdate.rollback',
+          message: 'rollback durably committed',
+          data: { channel: 'stable', trigger: 'bootOkExpired' },
         }),
       );
 
@@ -501,7 +514,24 @@ describe('handleWorkerMessage', () => {
       expect(reportDiagnosticEventMock).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'appUpdate.activationRolledBack',
-          safeTags: expect.objectContaining({ trigger: 'bootFailed' }),
+          safeTags: expect.objectContaining({
+            trigger: 'bootFailed',
+            previousActiveReleaseNumber: String(releaseA.releaseNumber),
+          }),
+        }),
+      );
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'appUpdate.rollback',
+          message: 'watchdog reported boot failure',
+          data: { channel: 'stable', releaseNumber: releaseB.releaseNumber },
+        }),
+      );
+      expect(addTechnicalBreadcrumbMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'appUpdate.rollback',
+          message: 'rollback durably committed',
+          data: { channel: 'stable', trigger: 'bootFailed' },
         }),
       );
       await result.runLifetimeWork?.();

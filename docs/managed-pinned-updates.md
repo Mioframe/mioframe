@@ -118,6 +118,15 @@ buildId exists on a non-latest descriptor or is duplicated
 
 Retained descriptors, archived indexes, and every referenced immutable asset must exist as canonical regular files and match exact size and SHA-256. Conflicts, malformed paths, missing files, reused numbers, duplicate identities, overflow, or hash mismatches reject before writes. Published release content remains append-only in this PR.
 
+## Unsupported retained releases
+
+A retained release can be statically classified as an unsupported compatibility target (see `scripts/pages/lib/unsupportedRetainedReleases.mjs`): it remains retained, immutable, and integrity-validated exactly like every other retained release, but is excluded from the set of releases the managed release data-compatibility proof requires a new candidate to support as a pin/rollback target.
+
+- develop release 2 is unsupported: it was published with a broken build (wrong root-relative application/PWA URLs and a Service Worker built without runtime Sentry configuration) before the managed publication preflight and artifact-semantic validation existed to prevent it. It can never be a real active pin/rollback target.
+- the classification is a static, source-controlled fact, never worker/runtime state, and never changes the release wire descriptor format;
+- it does not delete the release, does not allow its release number to be reused, and does not skip its retained-tree byte/hash validation;
+- every other retained release, including release 1, keeps participating in the data-compatibility proof.
+
 ## Persisted state
 
 ```ts

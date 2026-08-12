@@ -127,4 +127,59 @@ describe('validateReleaseConfig', () => {
       ),
     );
   });
+
+  describe('managed stable/develop deployment jobs', () => {
+    it('fails when VITE_SENTRY_DSN is absent', () => {
+      const deps = baseDeps();
+      const result = validateReleaseConfig({ env: {}, deps, managed: true });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('VITE_SENTRY_DSN is required for managed stable/develop'),
+      );
+    });
+
+    it('fails when VITE_SENTRY_DSN is empty, even inside GitHub Actions', () => {
+      const deps = baseDeps();
+      const result = validateReleaseConfig({
+        env: { GITHUB_ACTIONS: 'true', VITE_SENTRY_DSN: '' },
+        deps,
+        managed: true,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('VITE_SENTRY_DSN is required for managed stable/develop'),
+      );
+    });
+
+    it('does not accept SENTRY_AUTH_TOKEN as a substitute for VITE_SENTRY_DSN', () => {
+      const deps = baseDeps();
+      const result = validateReleaseConfig({
+        env: { SENTRY_AUTH_TOKEN: 'token' },
+        deps,
+        managed: true,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('VITE_SENTRY_DSN is required for managed stable/develop'),
+      );
+    });
+
+    it('passes when VITE_SENTRY_DSN is set', () => {
+      const deps = baseDeps();
+      const result = validateReleaseConfig({
+        env: { VITE_SENTRY_DSN: 'https://dsn' },
+        deps,
+        managed: true,
+      });
+      expect(result).toBe(true);
+      expect(deps.logError).not.toHaveBeenCalled();
+    });
+  });
+
+  it('keeps VITE_SENTRY_DSN optional for unmanaged builds (default managed: false)', () => {
+    const deps = baseDeps();
+    const result = validateReleaseConfig({ env: {}, deps });
+    expect(result).toBe(true);
+    expect(deps.logError).not.toHaveBeenCalled();
+  });
 });

@@ -26,6 +26,14 @@
  * Malformed or unavailable previous-release metadata already fails closed
  * via `resolvePublicationPlan`'s own retained-tree validation, before any
  * staging is attempted.
+ *
+ * Read-only `dist` invariant: no verification step run by this module may
+ * rebuild or otherwise modify the candidate `distDir`. The compatibility
+ * proof runs in its own Playwright container (see
+ * `playwright.release.config.ts`'s `MANAGED_COMPAT_WORK_DIR` gating), so this
+ * module additionally fingerprints the complete candidate `distDir` tree
+ * immediately before running that proof and verifies it is byte-for-byte
+ * unchanged immediately after, failing publication closed on any mutation.
  */
 
 import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
@@ -33,6 +41,8 @@ import { basename, join } from 'node:path';
 
 import { resolvePublicationPlan } from './retainedReleaseTree.mjs';
 import { publishManagedRelease, resolveChannelBase } from './releasePublish.mjs';
+import { computeDirectoryFingerprint } from './releaseArtifact.mjs';
+import { isUnsupportedCompatTarget } from './unsupportedRetainedReleases.mjs';
 import { runManagedReleaseDataCompatibilityProof } from '../../release/runManagedReleaseDataCompatibilityProof.mjs';
 
 const defaultDeps = { runCompatibilityProof: runManagedReleaseDataCompatibilityProof };
@@ -62,6 +72,45 @@ function stagePublishedTreeCopy(workDir) {
     filter: (src) => basename(src) !== '.git',
   });
   return stagedRoot;
+}
+
+/**
+ * Fails closed when `distDir`'s current fingerprint differs from `before` —
+ * a path added, removed, or changed. Enforces this module's read-only
+ * `dist` invariant (see its own doc comment): no verification step may
+ * rebuild or otherwise modify the candidate build.
+ * @param distDir Built `dist` directory for the candidate build.
+ * @param before The fingerprint captured before running the compatibility proof.
+ * @throws {Error} When `distDir`'s current fingerprint differs from `before`.
+ */
+function assertDistFingerprintUnchanged(distDir, before) {
+  const after = computeDirectoryFingerprint(distDir);
+  const beforeByPath = new Map(before.map((entry) => [entry.path, entry]));
+  const afterByPath = new Map(after.map((entry) => [entry.path, entry]));
+
+  const changedPaths = new Set();
+  for (const [path, beforeEntry] of beforeByPath) {
+    const afterEntry = afterByPath.get(path);
+    if (
+      afterEntry === undefined ||
+      afterEntry.sha256 !== beforeEntry.sha256 ||
+      afterEntry.byteSize !== beforeEntry.byteSize
+    ) {
+      changedPaths.add(path);
+    }
+  }
+  for (const path of afterByPath.keys()) {
+    if (!beforeByPath.has(path)) {
+      changedPaths.add(path);
+    }
+  }
+
+  if (changedPaths.size > 0) {
+    throw new Error(
+      `Candidate dist "${distDir}" was mutated during the managed release data-compatibility proof: ` +
+        `${[...changedPaths].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join(', ')}. No verification step may rebuild or modify the candidate build. Publication blocked.`,
+    );
+  }
 }
 
 /**
@@ -106,8 +155,15 @@ export async function runManagedPublicationPreflight(
 
   // Every retained previous release remains a possible active pin/rollback
   // target under the current append-only/no-pruning retained-tree
-  // architecture — never only the immediately preceding one.
-  const previousReleaseNumbers = plan.descriptors.map((descriptor) => descriptor.releaseNumber);
+  // architecture — never only the immediately preceding one — except a
+  // release statically classified as an unsupported compat target (see
+  // unsupportedRetainedReleases.mjs): it stays retained and was already
+  // fully integrity-validated above by resolvePublicationPlan, but is never
+  // a real pin/rollback target and so is excluded from what the new
+  // candidate's compatibility proof must cover.
+  const previousReleaseNumbers = plan.descriptors
+    .map((descriptor) => descriptor.releaseNumber)
+    .filter((releaseNumber) => !isUnsupportedCompatTarget(channel, releaseNumber));
   const stagedWorkDir = stagePublishedTreeCopy(workDir);
 
   try {
@@ -128,12 +184,21 @@ export async function runManagedPublicationPreflight(
       );
     }
 
-    const proof = await deps.runCompatibilityProof({
-      stagedWorkDir,
-      channel,
-      previousReleaseNumbers,
-      candidateReleaseNumber: stagedDescriptor.releaseNumber,
-    });
+    const distFingerprintBeforeProof = computeDirectoryFingerprint(distDir);
+    let proof;
+    try {
+      proof = await deps.runCompatibilityProof({
+        stagedWorkDir,
+        channel,
+        previousReleaseNumbers,
+        candidateReleaseNumber: stagedDescriptor.releaseNumber,
+      });
+    } finally {
+      // Runs on the proof-failure path too, where practical: a masked dist
+      // mutation is a worse outcome than losing the original proof-failure
+      // message, so a mutation detected here is reported instead of it.
+      assertDistFingerprintUnchanged(distDir, distFingerprintBeforeProof);
+    }
     if (!proof.passed) {
       throw new Error(
         `Managed release data-compatibility proof failed for channel "${channel}": ` +
