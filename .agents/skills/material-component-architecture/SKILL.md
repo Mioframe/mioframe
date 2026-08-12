@@ -147,8 +147,6 @@ Implementation owns component, renderer-boundary, token, browser, visual, and co
 
 Migration owns consumers, product scenarios or explicit no-consumer proof, legacy removal, and impact metadata.
 
-When the current testing architecture can execute owner-local Storybook browser or visual proof for the canonical family, that owner-local location is the final target. Do not design a temporary central or legacy proof location that requires a later Storybook ownership migration. Existing legacy proof that survives the component migration must move to the canonical family in the same Material workflow; proof for contracts removed by the canonical renderer-backed implementation must be deleted rather than relocated.
-
 For controlled state, implementation proof must include rejected intent; for decorative/presentation composition, browser proof must cover both child suppression and positive handoff to the actual action owner.
 
 Review independently evaluates the complete result. The outer orchestrator owns final verification.
@@ -250,7 +248,6 @@ Status: complete | blocked
 - Inventing product demand or renderer-derived APIs.
 - Calling post-mutation renderer state controlled without proving rejected intent cannot drift from the public source of truth.
 - Copying obsolete test-placement or impact-registry patterns from older family artifacts instead of the current testing policy.
-- Planning a temporary central/legacy Storybook proof destination when the canonical family can own executable proof directly.
 - Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
 - Rewriting architecture for metadata-only design refresh.
 - Depending on Git or PR state.
