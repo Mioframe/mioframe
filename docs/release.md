@@ -334,7 +334,8 @@ only their deployment slot plus that shared root fallback file.
 
 ### Develop branch deployment
 
-On push to `develop`, the `verify` workflow's `deploy-develop` job builds
+On push to `develop`, the `verify` workflow's `deploy-develop` job validates
+managed release configuration first, requiring `VITE_SENTRY_DSN`, then builds
 with `BASE_URL=/branch/develop/`, `VITE_RELEASE_CHANNEL=branch`,
 `VITE_RELEASE_CHANNEL_ID=develop`, PWA enabled, and publishes to
 `branch/develop/` as the managed develop channel. Its exact source commit SHA
@@ -609,21 +610,21 @@ optional secret never fails release-config validation there either.
 ### Managed deployment jobs: `VITE_SENTRY_DSN` is mandatory
 
 `pnpm release:validate-config:managed` (`validateReleaseConfig({ managed: true })`)
-is a separate invocation of the same check, run as its own step in
-`.github/workflows/release.yml`'s `deploy-stable` job and
-`.github/workflows/deploy-branch.yml`'s managed `develop` publish path only
-(guarded by `steps.slug.outputs.slug == 'develop'`), before that job's build
-step. In managed mode, `VITE_SENTRY_DSN` is no longer optional: a missing
-value, or a value that is empty even inside GitHub Actions (the "unconfigured
-secret" case the default mode tolerates), fails the job before it can
-produce a managed artifact. `SENTRY_AUTH_TOKEN` is not a substitute — it only
-enables source-map upload, not runtime error reporting. This exists because
-the managed Service Worker must remain capable of reporting
-activation/rollback diagnostics (see `docs/managed-pinned-updates.md`), which
-requires runtime Sentry configuration to actually be built in. Every other
-invocation of this check (`pnpm verify:release`'s `release-config` check,
-local development, PR previews, unmanaged branch deploys, and hermetic
-compatibility-test builds) keeps the default, fully-optional behavior
+is a separate invocation of the same check. It runs before the production build in
+all three managed deployment paths: `.github/workflows/release.yml`'s
+`deploy-stable` job, `.github/workflows/verify.yml`'s automatic
+`deploy-develop` job, and `.github/workflows/deploy-branch.yml`'s manual managed
+`develop` path (guarded by `steps.slug.outputs.slug == 'develop'`). In managed
+mode, `VITE_SENTRY_DSN` is no longer optional: a missing value, or a value that is
+empty even inside GitHub Actions (the "unconfigured secret" case the default mode
+tolerates), fails the job before it can produce a managed artifact.
+`SENTRY_AUTH_TOKEN` is not a substitute — it only enables source-map upload, not
+runtime error reporting. This exists because the managed Service Worker must remain
+capable of reporting activation/rollback diagnostics (see
+`docs/managed-pinned-updates.md`), which requires runtime Sentry configuration to
+actually be built in. Every other invocation of this check (`pnpm verify:release`'s
+`release-config` check, local development, PR previews, unmanaged branch deploys,
+and hermetic compatibility-test builds) keeps the default, fully-optional behavior
 described above.
 
 ## Release smoke coverage
