@@ -5,15 +5,15 @@ description: 'Use after current DESIGN.md and ready ARCHITECTURE.md exist to imp
 
 # Material component implementation
 
-Implement one Material family strictly from its current architecture and return control to the orchestrator.
+Implement one Material family strictly from current architecture and return control to the orchestrator.
 
 This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture, consumer migration, independent review, or final workflow verification.
 
 ## Input gate
 
-Require successful current design and architecture artifacts.
+Require current successful DESIGN and ready ARCHITECTURE with dependency queue `none` and implementation readiness `ready`.
 
-Architecture must reference the exact current design contract revision, match the lockfile-resolved renderer revision, have dependency queue `none`, current dependency review revisions, and readiness `ready`.
+Read current artifacts directly. Do not require or compare artifact revision identities.
 
 If an input is invalid, write implementation as blocked, set the exact earlier-stage or other-family route, and return without production edits.
 
@@ -42,10 +42,8 @@ src/shared/ui/material/components/<family>/IMPLEMENTATION.md
 Control fields:
 
 ```text
-Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-Status: complete | stale | blocked
+Status: complete | blocked
 ARCHITECTURE.md reference: <path>
-ARCHITECTURE.md revision: <exact Artifact revision>
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
 Required return family: none | self | <canonical-family>
@@ -54,9 +52,11 @@ Architecture deviations: none | <exact deviations>
 Migration readiness: ready | blocked
 ```
 
-`stale` is an external pre-run marker. This worker may finish only with `complete` or `blocked`.
+Do not create artifact timestamps, hashes, revision counters, or other persistent freshness identities.
 
-Use a new artifact revision whenever implementation content or its proof record changes.
+Legacy revision fields in an existing IMPLEMENTATION are ignored and removed when this stage rewrites the file.
+
+This stage always executes fresh for the current Material invocation. Existing compliant code may require no production edit, but the worker must still compare code and proof with current architecture and run the owned focused verification.
 
 Required headings:
 
@@ -78,7 +78,7 @@ Required headings:
 - Keep public terminology and types independent from the renderer.
 - Derive private glue from package-exported renderer types.
 - Keep renderer details inside the owning family.
-- Use only architecture-approved wrapper corrections and controlled workarounds.
+- Use only architecture-approved corrections and controlled workarounds.
 - Do not inspect private shadow DOM or recreate renderer-owned state, ripple, focus, geometry, accessibility, elevation, or motion.
 - Implement selected precedence and restoration paths.
 - Consume dependencies only through current canonical public APIs.
@@ -105,21 +105,17 @@ When the only root is a raw `m3e-*` element:
 
 Complete implementation-owned `TEST IMPACT` through faithful contract, type, browser/accessibility, visual, renderer-boundary, token, dependency-composition, and risk-specific proof as applicable.
 
-Run verifier-managed focused implementation checks only. Do not run or defer final workflow verification.
+Run verifier-managed focused implementation checks only. Do not run final workflow verification.
 
 ## Terminal-state rules
 
 ### Success
 
-Return `Status: complete` only when every implementation pass and focused check is complete, the architecture revision is current, deviations and blockers are `none`, route is `none/none`, and migration readiness is `ready`.
+Return `Status: complete` only when every implementation pass and focused check is complete, deviations and blockers are `none`, route is `none/none`, and migration readiness is `ready`.
 
 ### Earlier-stage or cross-family correction
 
-Return `Status: blocked` with an exact route only when correction belongs to:
-
-- `self/design`;
-- `self/architecture`; or
-- another family’s design, architecture, implementation, or migration stage.
+Return `Status: blocked` with an exact route only when correction belongs to `self/design`, `self/architecture`, or another family/stage.
 
 ### Current-stage defect
 
@@ -145,9 +141,7 @@ Do not migrate product consumers in this stage.
 MATERIAL IMPLEMENTATION RESULT
 Input component:
 Canonical family:
-ARCHITECTURE.md revision:
 IMPLEMENTATION.md path:
-Artifact revision:
 Preflight result:
 Implemented passes:
 Public API implemented:
@@ -165,13 +159,14 @@ Status: complete | blocked
 
 ## Forbidden
 
-- Returning `partial` or terminal `stale`.
+- Returning `partial`.
 - Returning `self/implementation`.
 - Leaving a current-stage fixable defect unresolved.
 - Changing architecture while coding.
 - Migrating product consumers.
 - Expanding API, tokens, abstractions, or renderer support beyond architecture.
 - Updating visual baselines without inspection.
+- Adding timestamp/hash/revision bookkeeping as workflow state.
 - Running migration, review, or final workflow verification.
 - Recording the pending final command as a blocker or risk.
 - Depending on Git or PR state.
