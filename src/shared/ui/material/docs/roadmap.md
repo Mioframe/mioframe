@@ -10,38 +10,45 @@ Current milestone: `M3 — sequential component migration (checkbox correction)`
 
 Status: `blocked`
 
-The Checkbox family's `BooleanValueInline.vue` tri-state mapping regression is corrected. The boolean property's `indeterminate` capability flag is no longer passed directly to canonical `MDCheckbox.indeterminate`; `BooleanValueInline.vue` now derives `checked`/`indeterminate` locally from the existing resolved effective value:
+The Checkbox runtime and migration corrections are complete:
+
+- `BooleanValueInline.vue` translates the boolean property's indeterminate capability into canonical rendered state explicitly:
+
+  ```text
+  checked = effectiveValue === true
+  indeterminate = property.indeterminate === true && effectiveValue === undefined
+  ```
+
+- consumer-level proof covers `true`, `false`, unresolved `undefined`, `true`/`false` property-default fallback, capability enabled/disabled, and `presentation` forwarding;
+- canonical Checkbox visual proof is owner-local at `src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts` with colocated snapshots;
+- the former central `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts` ownership is removed;
+- `docs/testing/migration-plan.md` records the canonical Checkbox family's owner-local visual ownership;
+- the branch is synchronized with current `develop` (`behind_by: 0`);
+- `package.json` is `0.3.12`, strictly above current `develop` `0.3.11`.
+
+The family is still blocked by workflow metadata integrity. The latest independent `REVIEW.md` records:
 
 ```text
-checked = effectiveValue === true
-indeterminate = property.indeterminate === true && effectiveValue === undefined
+Artifact revision: 2026-08-13T11:00:00.000Z
 ```
 
-Consumer-level proof (`BooleanValueInline.test.ts`) covers `true`, `false`, unresolved `undefined`, `true`/`false` property-default fallback, indeterminate capability enabled/disabled, and `presentation` forwarding.
-
-The previously-invalid future execution timestamps were regenerated through the owning Checkbox stages using factual UTC revisions.
-
-However, the family is not currently complete: `REVIEW.md` has not yet run fresh against the corrected artifacts below.
-
-The Checkbox visual-ownership gap identified after synchronizing with `develop`'s PR #193 Storybook ownership contract is now corrected. A fresh architecture-stage worker (`ARCHITECTURE.md`, `Artifact revision: 2026-08-13T06:41:40.600Z`, `Status: ready`) selected owner-local visual-proof ownership for the canonical Checkbox family, mirroring the Stage S4-D (MDSwitch) precedent. A fresh implementation-stage worker (`IMPLEMENTATION.md`, `Artifact revision: 2026-08-13T06:47:59.000Z`, `Status: complete`, `Migration readiness: ready`) relocated the visual spec and its four baselines to the owner-local `src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts` (colocated `MDCheckbox.visual.spec.ts-snapshots/`) and deleted the legacy central `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts` and its snapshot directory. A fresh migration-stage worker (`MIGRATION.md`, `Artifact revision: 2026-08-13T06:51:14.000Z`) independently re-confirmed all six consumers unchanged and correct, and corrected `docs/testing/migration-plan.md`'s stale Stage S4-B trailing sentence and "Still transitional" visual-pilot list to record this owner-local ownership. Only a fresh independent review of these corrected artifacts remains.
+but the branch head containing that review was created at approximately `2026-08-13T07:55Z`. The review revision therefore claims a completed action in the future and is mechanically invalid under `docs/component-workflow.md`'s factual-UTC timestamp contract. A passing `pnpm verify` does not override an invalid family artifact.
 
 Current family state for merge-readiness purposes:
 
 ```text
 DESIGN.md          current
-ARCHITECTURE.md    current (owner-local visual ownership correction applied)
-IMPLEMENTATION.md  current (visual proof relocated to owner-local location)
-MIGRATION.md       current (confirms consumers unchanged; migration-plan.md corrected)
-REVIEW.md          must run fresh after corrected upstream artifacts
+ARCHITECTURE.md    ready
+IMPLEMENTATION.md  complete
+MIGRATION.md       complete
+REVIEW.md          mechanically invalid; fresh independent review required
 ```
 
-Branch synchronization is complete against current `develop` (`behind_by: 0`). The branch still requires a PR-level `package.json` version bump strictly above current `develop` before a PR into `develop` can pass the repository `release-version` gate.
-
-The earlier local `pnpm verify` result remains useful implementation evidence but is not merge approval: the architecture/proof-ownership correction and the final-owner visual-proof relocation are now complete, but a fresh independent review and a fresh `pnpm verify` on the corrected head are still required before merge.
+The reported final `pnpm verify` pass is useful verification evidence for the current code and proof relocation, but family completion requires a mechanically valid current review first. After that review is regenerated, the final `pnpm verify` must be run again on the exact resulting head because the review artifact itself changes the merge candidate.
 
 ## Calibration result
 
-Switch established the stateful Material adapter invariants now recorded in the canonical rules:
+Switch and Checkbox established the durable stateful Material adapter invariants now recorded in the canonical rules:
 
 1. a public controlled prop is the sole state source of truth;
 2. renderer mutation is prevented at the cancelable pre-mutation intent boundary when such a boundary exists;
@@ -49,7 +56,7 @@ Switch established the stateful Material adapter invariants now recorded in the 
 4. component-owned browser/visual proof ends at the canonical executable owner selected by the current testing architecture;
 5. renderer-specific non-browser test shims stay at the narrowest truthful owner;
 6. decorative `presentation` composition proves both child suppression and positive input handoff to the real action owner;
-7. independent review rechecks current renderer lifecycle, proof ownership, test-environment blast radius, composition ownership, consumer behavior, and legacy-to-canonical semantic translations rather than trusting family prose;
+7. independent review rechecks renderer lifecycle, proof ownership, test-environment blast radius, composition ownership, consumer behavior, and legacy-to-canonical semantic translations rather than trusting family prose;
 8. repository-root Playwright lanes respect repository ignore policy.
 
 No generic m3e adapter framework, duplicate state manager, compatibility layer, or renderer registry abstraction is justified by the completed pilots.
@@ -72,9 +79,9 @@ M3 is an ongoing migration phase. Completing Checkbox will complete the Checkbox
 
 ## Next operator action
 
-1. Run a fresh independent review of the corrected Checkbox architecture, implementation, and migration artifacts (owner-local visual-proof relocation is complete; `docs/testing/migration-plan.md` is corrected).
-2. Run the ordinary final `pnpm verify` on the corrected current head.
-3. Bump `package.json` to a version strictly above current `develop` before opening/refreshing the PR into `develop`.
-4. Require ordinary GitHub merge gates before integration.
+1. Run the Checkbox independent review fresh. The review worker must obtain the actual current UTC timestamp from the runtime/environment clock immediately before writing `REVIEW.md`; it must not derive UTC by relabeling local time or preallocate a later timestamp.
+2. Mechanically validate the resulting `REVIEW.md` timestamp against the current runtime UTC clock before accepting the worker result.
+3. Run the ordinary final `pnpm verify` on that exact resulting head.
+4. Open or refresh the PR into `develop` and require the ordinary GitHub merge gates on the same head.
 
-Do not select the next M3 family until the Checkbox family is current, independently reviewed, and verified on the final merge candidate.
+Do not select the next M3 family until Checkbox has a mechanically valid current independent review and final verification on the merge candidate.
