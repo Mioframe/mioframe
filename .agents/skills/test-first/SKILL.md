@@ -20,7 +20,7 @@ Use only when all conditions are true:
 
 Skip for behavior-preserving refactors, type-only edits, formatting, comments, renames, documentation, and appearance-only changes without a meaningful pre-implementation failure.
 
-Skipping test-first does not skip required proof from `TEST IMPACT`, durable ownership maintenance, or the top-level task's final task-scope verification.
+Skipping test-first does not skip required proof from `TEST IMPACT`, durable ownership maintenance, or required exact-head PR CI when applicable.
 
 ## Workflow
 
