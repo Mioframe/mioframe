@@ -1,96 +1,82 @@
 # Mioframe Material migration roadmap
 
-This file is the only owner of current Material milestone status, family-stage status, technical blockers, latest pilot result, and next operator action. Durable workflow rules live in the other canonical documents.
+This file owns current Material milestone status, family-stage status, technical blockers, latest calibration result, and next operator action. Durable workflow rules live in the canonical Material docs and skills.
 
 ## Current state
 
 Last updated: 2026-08-13
 
-Current milestone: `M3 — sequential component migration (checkbox correction)`
+Current milestone: `M3 — sequential component migration (Checkbox)`
 
 Status: `blocked`
 
-The Checkbox runtime and migration corrections are complete:
+Checkbox runtime, consumer migration, and proof are materially complete. The remaining work is workflow simplification and fresh final review after that simplification.
 
-- `BooleanValueInline.vue` translates the boolean property's indeterminate capability into canonical rendered state explicitly:
+The repeated invalid review timestamp exposed architectural drift in the Material agent workflow. The problem was not Checkbox runtime behavior; the workflow had made timestamp/revision metadata a correctness mechanism and then needed extra validator infrastructure to defend that mechanism.
 
-  ```text
-  checked = effectiveValue === true
-  indeterminate = property.indeterminate === true && effectiveValue === undefined
-  ```
+The selected correction is simpler:
 
-- consumer-level proof covers `true`, `false`, unresolved `undefined`, `true`/`false` property-default fallback, capability enabled/disabled, and `presentation` forwarding;
-- canonical Checkbox visual proof is owner-local at `src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts` with colocated snapshots;
-- the former central `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts` ownership is removed;
-- `docs/testing/migration-plan.md` records the canonical Checkbox family's owner-local visual ownership;
-- the branch is synchronized with current `develop` (`behind_by: 0`);
-- `package.json` is `0.3.12`, strictly above current `develop` `0.3.11`.
+- keep the five isolated stages;
+- reuse current DESIGN until its normal source refresh is due;
+- run ARCHITECTURE, IMPLEMENTATION, MIGRATION, and independent REVIEW fresh on every `material-component <name>` invocation;
+- after any correction, rerun affected downstream reasoning fresh;
+- do not use timestamps, hashes, counters, Git identities, or persistent artifact revision graphs for workflow freshness;
+- treat legacy revision fields in existing artifacts as ignored metadata and remove them when each owning stage next rewrites its artifact;
+- remove the Material timestamp validation code added to `scripts/agentEnvironment.mjs` and its tests because it no longer protects a required repository invariant.
 
-The family is still blocked by workflow metadata integrity. The latest independent `REVIEW.md` records:
+This deliberately accepts some repeated agent work on a repeated family invocation. Material family migration is normally a one-time operation, so simpler orchestration is preferred over persistent invalidation infrastructure.
 
-```text
-Artifact revision: 2026-08-13T11:00:00.000Z
-```
+## Checkbox state
 
-but the branch head containing that review was created at approximately `2026-08-13T07:55Z`. The review revision therefore claims a completed action in the future and is mechanically invalid under `docs/component-workflow.md`'s factual-UTC timestamp contract. A passing `pnpm verify` does not override an invalid family artifact.
+Confirmed completed behavior/proof includes:
 
-This timestamp failure repeated after a prose-only future-time rule already existed, so the workflow is being hardened at two levels before Checkbox completion is accepted:
+- canonical m3e-backed `MDCheckbox` ownership under `src/shared/ui/material/components/checkbox`;
+- controlled checked/indeterminate behavior and presentation composition;
+- explicit BooleanValueInline semantic translation from effective value;
+- consumer-level proof for true/false/unresolved/default/capability combinations;
+- owner-local canonical Checkbox visual proof and removal of replaced central canonical proof;
+- current testing migration documentation aligned with owner-local proof;
+- package version `0.3.12` over current `develop` `0.3.11` at the last synchronization check.
 
-1. `material-component-review` now requires a newly-written review revision to come directly from runtime `new Date().toISOString()` output, with no local-time conversion or manual `Z` suffixing;
-2. `material-component` now requires an executed post-write timestamp validation against a fresh runtime clock before any stage artifact can be accepted.
+The previous `REVIEW.md` is not accepted as final review evidence because it was produced under the superseded timestamp/revision workflow and was already known to contain invalid execution-time metadata when written.
 
-Because an LLM instruction can still be skipped, this repeated failure also requires a repository-level fail-closed validation guard in the existing unconditional `agent-environment` verification path. The guard must validate canonical Material stage artifact timestamps and must be reusable by the Material orchestrator for single-artifact post-write validation. This is workflow-integrity hardening, not a Checkbox runtime redesign.
-
-Current family state for merge-readiness purposes:
-
-```text
-DESIGN.md          current
-ARCHITECTURE.md    ready
-IMPLEMENTATION.md  complete
-MIGRATION.md       complete
-REVIEW.md          mechanically invalid; fresh independent review required after timestamp guard hardening
-```
-
-The reported final `pnpm verify` pass is useful verification evidence for the current code and proof relocation, but family completion requires the workflow guard and a mechanically valid current review first. After that review is regenerated, the final `pnpm verify` must be run again on the exact resulting head because both verifier code and the review artifact change the merge candidate.
+After the workflow simplification lands, Checkbox must pass one fresh current-invocation architecture → implementation → migration → independent review sequence. Those stages may be no-op with respect to production code when current implementation remains compliant.
 
 ## Calibration result
 
-Switch and Checkbox established the durable stateful Material adapter invariants now recorded in the canonical rules:
+Switch and Checkbox established the durable Material implementation invariants:
 
-1. a public controlled prop is the sole state source of truth;
-2. renderer mutation is prevented at the cancelable pre-mutation intent boundary when such a boundary exists;
-3. rejected controlled intent cannot leave renderer state divergent from the public prop;
-4. component-owned browser/visual proof ends at the canonical executable owner selected by the current testing architecture;
-5. renderer-specific non-browser test shims stay at the narrowest truthful owner;
-6. decorative `presentation` composition proves both child suppression and positive input handoff to the real action owner;
-7. independent review rechecks renderer lifecycle, proof ownership, test-environment blast radius, composition ownership, consumer behavior, and legacy-to-canonical semantic translations rather than trusting family prose;
-8. repository-root Playwright lanes respect repository ignore policy;
-9. Material workflow artifact timestamps are executable contracts, not trusted worker prose.
+1. a controlled public prop is the sole public state source of truth;
+2. renderer mutation is prevented at a faithful pre-mutation intent boundary when available;
+3. rejected intent cannot leave renderer state divergent from the public prop;
+4. component-owned browser/visual proof ends at the canonical executable owner;
+5. renderer-specific test shims stay at the narrowest truthful owner;
+6. presentation composition proves both child suppression and positive input handoff to the real action owner;
+7. independent review rechecks renderer lifecycle, proof ownership, test-environment blast radius, composition ownership, consumer behavior, and semantic translations;
+8. workflow metadata remains subordinate to component correctness and must not become a second product.
 
-No generic m3e adapter framework, duplicate state manager, compatibility layer, or renderer registry abstraction is justified by the completed pilots.
+No generic m3e adapter framework, duplicate state manager, compatibility layer, renderer registry, workflow database, timestamp validator, or artifact revision graph is justified.
 
 ## Milestones
 
 | ID  | Milestone                           | Status        | Exit gate                                                                       |
 | --- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`    | coherent staged workflow and corrected calibration invariants                   |
-| M1a | Loading Indicator dependency family | `complete`    | current artifacts and compliant review                                          |
-| M1  | Button action family                | `complete`    | canonical m3e-backed action component migrated and merged                       |
-| M2  | Switch stateful pilot               | `complete`    | family workflow completed without unresolved family findings                    |
-| M3  | sequential component migration      | `in-progress` | individual family completion does not complete the sequential migration program |
-
-M3 is an ongoing migration phase. Completing Checkbox will complete the Checkbox family only; M3 continues until the Material migration program is explicitly closed or the remaining legacy families are explicitly classified outside migration scope.
+| M0  | workflow architecture and rules     | `in-progress` | simplified staged workflow is internally consistent and executable              |
+| M1a | Loading Indicator dependency family | `complete`    | family implemented and reviewed                                                  |
+| M1  | Button action family                | `complete`    | canonical m3e-backed action family migrated                                      |
+| M2  | Switch stateful pilot               | `complete`    | controlled-state calibration complete                                            |
+| M3  | sequential component migration      | `in-progress` | individual family completion does not complete the migration program             |
 
 ## Known non-blocking follow-up
 
-`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox. The Checkbox migration must not pretend this was fixed. It is not a blocker for behavior-preserving migration, but it remains an explicit product accessibility follow-up until a correct contextual label is selected and proven.
+`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox. Checkbox migration must not pretend this is fixed. It remains a separate product accessibility follow-up until the correct contextual label is selected and proven.
 
 ## Next operator action
 
-1. Add the repository-level fail-closed Material artifact timestamp validation to the existing unconditional `agent-environment` verification path, with focused deterministic tests and a single-artifact mode reusable by the Material orchestrator. Do not create a new verify lane or registry.
-2. Update the orchestrator command to use that repository-owned validator as the single executable timestamp-validation implementation.
-3. Run the Checkbox independent review fresh; the review worker must obtain its revision from the runtime UTC command and the orchestrator must validate the stored artifact immediately after the write.
-4. Run the ordinary final `pnpm verify` on that exact resulting head.
-5. Open the PR into `develop` and require the ordinary GitHub merge gates on the same head.
+1. Complete documentation/skill simplification so all active Material workflow instructions use the fresh-stage model and no correctness-critical revision graph remains.
+2. Remove the now-obsolete Material artifact timestamp validator from `scripts/agentEnvironment.mjs` and its tests without changing unrelated agent-environment checks.
+3. Run `material-component Checkbox` through fresh architecture, implementation, migration, and independent review under the simplified workflow.
+4. Run ordinary final `pnpm verify` on the resulting exact head.
+5. Open the PR into `develop`, run GitHub gates, and perform full PR review.
 
-Do not select the next M3 family until Checkbox has the repository timestamp guard, a mechanically valid current independent review, and final verification on the merge candidate.
+Do not select the next M3 family until Checkbox and the simplified workflow complete these gates.
