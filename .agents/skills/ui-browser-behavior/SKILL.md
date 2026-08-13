@@ -155,7 +155,7 @@ pnpm verify --only storybook-behavior --files <paths...>
 pnpm verify --only e2e --files <paths...>
 ```
 
-Use readable existing paths accepted by the current verifier. Preserve applicable `--profile` and `--files` scope when rerunning a failed browser lane. The top-level task later runs one final read-only project verification.
+Use readable existing paths accepted by the current verifier. Preserve applicable `--profile` and `--files` scope when rerunning a failed browser lane. For PR work, required GitHub CI on the exact published head owns the broad repository gate; this skill adds no separate broad local completion run.
 
 ## Forbidden
 
