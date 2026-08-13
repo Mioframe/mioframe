@@ -1,12 +1,12 @@
 # Checkbox — official Material design
 
-Artifact revision: 2026-08-13T01:00:00.000Z
+Artifact revision: 2026-08-12T20:03:37.994Z
 Design contract revision: 2026-08-12T14:38:31.628Z
 Status: current
 Source revision: m3-docs cache 2026-07-20T16:16:49.323Z; DSDB 2026-07-01_06-10-02
 Source checked at: 2026-08-12
 Refresh check after: 2026-09-11
-Revision summary: Metadata-only refresh: reformatted via the project formatter (`pnpm verify --fix-only`, `oxfmt`) after review found a `format`-check failure in this file's table alignment; no normalized official Checkbox content changed, so the design contract revision is preserved.
+Revision summary: Metadata-only refresh: the prior artifact revision's factual execution timestamp (2026-08-13T01:00:00.000Z) was later than the runtime clock, making the file mechanically invalid. Independently re-verified against the official source service (`material_docs_cache_status`, `get_component_tokens`, `search_material_docs` for "checkbox expressive"): cache `capturedAt` is unchanged at 2026-07-20T16:16:49.323Z with identical route-coverage counts, and the full resolved 81-token `md.comp.checkbox` catalogue (including the "focusd" typo and the unpublished high-contrast values on `selected.disabled.icon.color`) is byte-identical to the previously recorded catalogue. No normalized official Checkbox content changed, so the design contract revision is preserved; only the artifact revision and this summary were corrected to a valid current-clock timestamp.
 Remaining blockers: none
 Required return family: none
 Required return stage: none

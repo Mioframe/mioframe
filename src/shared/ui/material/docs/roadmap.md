@@ -8,34 +8,30 @@ Last updated: 2026-08-12
 
 Current milestone: `M3 — sequential component migration (checkbox correction)`
 
-Status: `blocked`
+Status: `complete`
 
-The Checkbox family has a complete initial implementation and consumer migration, but it is **not currently complete or merge-ready**. Independent architecture review after the first family workflow found a product-behavior regression in `BooleanValueInline.vue`: the boolean property's `indeterminate` capability flag is passed directly to canonical `MDCheckbox.indeterminate`, which represents the current rendered mixed state. Legacy behavior rendered mixed only when the effective boolean value was actually `undefined` and indeterminate values were enabled.
-
-The required mapping is:
+The Checkbox family's `BooleanValueInline.vue` tri-state mapping regression is corrected. The boolean property's `indeterminate` capability flag is no longer passed directly to canonical `MDCheckbox.indeterminate`; `BooleanValueInline.vue` now derives `checked`/`indeterminate` locally from the existing resolved effective value:
 
 ```text
 checked = effectiveValue === true
 indeterminate = property.indeterminate === true && effectiveValue === undefined
 ```
 
-where `effectiveValue` is the existing resolved value after the property's default fallback. `true` and `false` must therefore remain normal checked/unchecked states even when the property supports indeterminate values.
+`true` and `false` render as normal checked/unchecked states even when the property supports indeterminate values, matching legacy observable behavior. Consumer-level proof (`BooleanValueInline.test.ts`) covers `true`, `false`, `undefined` (with and without a resolved default), and both indeterminate-capability states.
 
-The same review also found that several Checkbox family artifact revisions were recorded as future UTC timestamps relative to the actual execution time. Those revisions cannot be treated as factual durable workflow identities. `docs/component-workflow.md` now requires artifact/contract revisions to use the runtime UTC clock at the actual write and makes future factual execution/source-check timestamps mechanically invalid. The Checkbox family artifact chain must therefore be regenerated through the normal owning stages; stage-owned artifacts must not be manually patched around the workflow.
-
-Previous focused checks and the previous outer `pnpm verify` run passed for the then-current workspace, but they no longer prove family completion because the behavior regression and invalid workflow metadata were discovered afterward.
+All five Checkbox family artifacts (`DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, `REVIEW.md`) were regenerated through their normal owning stages with real current-UTC artifact revisions, resolving the previously-recorded future-timestamp mechanical-invalidity defect. `REVIEW.md` verdict is `compliant-with-listed-risks` (the only accepted risk is the separately-tracked, pre-existing `RelationValueFieldData.vue` accessible-name gap below — unrelated to this correction).
 
 Current family state for merge-readiness purposes:
 
 ```text
-DESIGN.md          requires workflow timestamp revalidation
-ARCHITECTURE.md    correction required for BooleanValueInline mapping
-IMPLEMENTATION.md  invalidated by architecture correction
-MIGRATION.md       invalidated by architecture/implementation correction
-REVIEW.md          must run fresh after corrected upstream artifacts
+DESIGN.md          current
+ARCHITECTURE.md    ready
+IMPLEMENTATION.md  complete
+MIGRATION.md       complete
+REVIEW.md          compliant-with-listed-risks
 ```
 
-Branch synchronization with the latest `develop` is an external workspace prerequisite and must be rechecked before final verification. Do not claim synchronization, current release metadata, or current testing-migration ownership until that check has actually completed on the final branch head.
+The ordinary final `pnpm verify` gate passed (11/11 checks, including the targeted mutation audit over `BooleanValueInline.vue`/`SettingsCheckboxListItem.vue`/`SettingsSections.vue`) on the current workspace head. Branch synchronization with `develop` and GitHub merge gates remain external, human/CI-owned steps outside this workflow's scope.
 
 ## Calibration result
 
@@ -70,10 +66,6 @@ M3 is an ongoing migration phase. Completing Checkbox will complete the Checkbox
 
 ## Next operator action
 
-1. Synchronize the Checkbox branch with current `develop` and preserve the current testing-migration ownership state and release metadata.
-2. Route Checkbox back through architecture for the `BooleanValueInline` tri-state mapping correction; the workflow must also regenerate any mechanically invalid future-timestamp artifacts using real current UTC revisions.
-3. Execute the invalidated implementation, migration, and independent review stages normally.
-4. Add consumer-level proof covering `true`, `false`, `undefined`, and default-fallback behavior when indeterminate values are enabled or disabled.
-5. Run the ordinary final `pnpm verify` gate on the final synchronized head, then require ordinary GitHub merge gates before integration into `develop`.
-
-Do not select the next M3 family until the Checkbox family is current, independently reviewed, and verified on the final merge candidate.
+1. Synchronize the Checkbox branch with current `develop` (external prerequisite, not performed by this workflow) and confirm the same `pnpm verify` result on the synchronized head.
+2. Require ordinary GitHub merge gates before integration into `develop` (not performed by this workflow).
+3. Select the next M3 family only after the above two steps are confirmed on the final merge candidate.
