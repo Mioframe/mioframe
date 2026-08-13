@@ -61,13 +61,13 @@ No generic m3e adapter framework, duplicate state manager, compatibility layer, 
 
 ## Milestones
 
-| ID  | Milestone                           | Status        | Exit gate                                                                       |
-| --- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `complete`    | simplified staged workflow is internally consistent and obsolete guard removed  |
-| M1a | Loading Indicator dependency family | `complete`    | family implemented and reviewed                                                  |
-| M1  | Button action family                | `complete`    | canonical m3e-backed action family migrated                                      |
-| M2  | Switch stateful pilot               | `complete`    | controlled-state calibration complete                                            |
-| M3  | sequential component migration      | `in-progress` | individual family completion does not complete the migration program             |
+| ID  | Milestone                           | Status        | Exit gate                                                                      |
+| --- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------ |
+| M0  | workflow architecture and rules     | `complete`    | simplified staged workflow is internally consistent and obsolete guard removed |
+| M1a | Loading Indicator dependency family | `complete`    | family implemented and reviewed                                                |
+| M1  | Button action family                | `complete`    | canonical m3e-backed action family migrated                                    |
+| M2  | Switch stateful pilot               | `complete`    | controlled-state calibration complete                                          |
+| M3  | sequential component migration      | `in-progress` | individual family completion does not complete the migration program           |
 
 ## Known non-blocking follow-up
 
