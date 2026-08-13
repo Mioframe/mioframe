@@ -30,7 +30,7 @@
 - Focused and mode-specific local proof:
 - Exact-head GitHub CI checks:
 - CI result:
-- Any intentionally omitted local broad checks and why:
+- Any intentionally omitted broad local checks and why:
 
 ## PR Readiness
 
