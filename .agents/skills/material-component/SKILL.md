@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use with one Material component name to orchestrate isolated design, architecture, implementation, migration, and independent review stages, then run one final project verification.'
+description: 'Use with one Material component name to orchestrate isolated design, architecture, implementation, migration, and independent review stages, then hand the completed family to the architect for PR CI.'
 ---
 
 # Material component
@@ -17,7 +17,7 @@ Read applicable `AGENTS.md`, `src/shared/ui/material/docs/component-workflow.md`
 
 ## Goal
 
-The orchestrator exists to help isolated agents implement one correct Mioframe Material family from official Material guidance and repository rules. It must not grow its own workflow database, revision graph, timestamp protocol, hash registry, or semantic review logic.
+The orchestrator exists to help isolated agents implement one correct Mioframe Material family from official Material guidance and repository rules. It must not grow its own workflow database, revision graph, timestamp protocol, hash registry, semantic review logic, or duplicate CI gate.
 
 ## Orchestrator boundary
 
@@ -30,11 +30,10 @@ The orchestrator may only:
 - process explicit dependency queues and correction routes;
 - maintain an invocation-local dependency path and route stack;
 - retain a compact execution ledger;
-- run final read-only verification;
-- pass exact failed verifier output to a fresh review-routing worker;
-- stop on a genuine family blocker, external workspace blocker, or malformed worker result.
+- stop on a genuine family blocker or malformed worker result;
+- hand a successfully reviewed family back to the architect as ready for PR/CI.
 
-It must not evaluate official design, invent architecture, inspect code for semantic drift, discover consumers, infer dependencies, review proof, or classify verifier ownership itself.
+It must not evaluate official design, invent architecture, inspect code for semantic drift, discover consumers, infer dependencies, review proof, classify CI ownership, or run a broad local verification merely to duplicate PR CI.
 
 ## Fresh-stage model
 
@@ -56,7 +55,7 @@ Legacy revision/timestamp fields in existing artifacts are ignored and removed b
 
 Each stage runs in a fresh isolated context.
 
-A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths, active dependency path, and exact dependency/route/verifier facts.
+A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths, active dependency path, and exact dependency/route facts.
 
 Do not pass hidden reasoning, copied worker reports, Git/PR state, or conversational conclusions.
 
@@ -100,13 +99,19 @@ If architecture emits a dependency queue, process each dependency through its Ma
 
 Run implementation fresh after architecture is ready and dependency queue is empty.
 
+Use focused verifier-managed checks required by the implementation contract. Do not run a broad local final gate solely for completion.
+
 ### MIGRATION
 
 Run migration fresh after implementation is complete.
 
+Use focused verifier-managed checks required by migration scope. Do not run a broad local final gate solely for completion.
+
 ### REVIEW
 
 Run full independent review fresh after migration is complete.
+
+A successful review means the family is ready to hand to the architect for PR creation and exact-head CI. It does not mean CI has already run.
 
 ## Result validation
 
@@ -169,25 +174,13 @@ Nested cross-family routes unwind most-recent origin first.
 2. Reuse or refresh DESIGN.
 3. Run ARCHITECTURE fresh.
 4. Process dependencies and rerun parent ARCHITECTURE as needed.
-5. Run IMPLEMENTATION fresh.
-6. Run MIGRATION fresh.
+5. Run IMPLEMENTATION fresh with focused local proof.
+6. Run MIGRATION fresh with focused local proof.
 7. Run independent REVIEW fresh.
 8. Follow exact correction routes until review succeeds or a genuine blocker is reached.
-9. Run final verification.
-10. On verifier failure, pass exact command/output to a fresh `material-component-review` worker in final-verifier-routing mode.
-11. Follow a Material-owned route or stop on an external workspace blocker.
+9. When review succeeds, return the family to the architect as ready for PR/CI.
 
-## Final workflow verification
-
-Ordinary Material work uses:
-
-```text
-pnpm verify
-```
-
-A Material-owned verifier failure routes to the exact family and earliest owning stage; affected stages then run fresh and the same final command is retried.
-
-An external workspace blocker must not rewrite a compliant family review.
+GitHub CI is outside this coding-agent orchestration. If exact-head PR CI later fails, the architect owns the failure evidence and routes a correction back to the appropriate Material stage. A fresh `material-component-review` worker may classify supplied CI output in its routing mode; the coding agent itself does not fetch or own GitHub checks.
 
 ## Compact execution ledger
 
@@ -200,7 +193,6 @@ result: complete | blocked | stage-contract-blocked
 origin: none | <canonical-family>/<stage>
 target: none | <canonical-family>/<stage>
 dependency path: none | <family>[ → <family>...]
-verification: not-applicable | passed | failed | blocked
 ```
 
 Do not retain full worker reports or artifact prose.
@@ -220,13 +212,12 @@ ARCHITECTURE.md status:
 IMPLEMENTATION.md status:
 MIGRATION.md status:
 REVIEW.md verdict:
-Final workflow verification command:
-Final workflow verification result:
-Final verifier classification: none | material-owned | external-workspace-blocker
+Local focused verification:
 Operator visual status: no-reported-defect | defect-reported | not-applicable
 Remaining blocker: none | <exact blocker>
 Overall family status: complete | blocked
-Next operator action: none | <single required action>
+PR/CI readiness: ready | blocked
+Next operator action: hand to architect for PR/CI | <single required action>
 ```
 
 ## Forbidden
@@ -239,4 +230,5 @@ Next operator action: none | <single required action>
 - Selecting routes from prose.
 - Retrying a genuine blocker without new evidence.
 - Depending on Git, PR, commit, branch, or external checks for stage correctness.
-- Marking completion before final verification passes.
+- Running broad local `pnpm verify` or `pnpm verify:release` solely to duplicate the PR CI gate.
+- Claiming merge readiness; merge readiness belongs to the architect after exact-head CI and full PR review.
