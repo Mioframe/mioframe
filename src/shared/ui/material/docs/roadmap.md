@@ -4,11 +4,11 @@ This file is the only owner of current Material milestone status, family-stage s
 
 ## Current state
 
-Last updated: 2026-08-12
+Last updated: 2026-08-13
 
 Current milestone: `M3 — sequential component migration (checkbox correction)`
 
-Status: `complete`
+Status: `blocked`
 
 The Checkbox family's `BooleanValueInline.vue` tri-state mapping regression is corrected. The boolean property's `indeterminate` capability flag is no longer passed directly to canonical `MDCheckbox.indeterminate`; `BooleanValueInline.vue` now derives `checked`/`indeterminate` locally from the existing resolved effective value:
 
@@ -17,21 +17,27 @@ checked = effectiveValue === true
 indeterminate = property.indeterminate === true && effectiveValue === undefined
 ```
 
-`true` and `false` render as normal checked/unchecked states even when the property supports indeterminate values, matching legacy observable behavior. Consumer-level proof (`BooleanValueInline.test.ts`) covers `true`, `false`, `undefined` (with and without a resolved default), and both indeterminate-capability states.
+Consumer-level proof (`BooleanValueInline.test.ts`) covers `true`, `false`, unresolved `undefined`, `true`/`false` property-default fallback, indeterminate capability enabled/disabled, and `presentation` forwarding.
 
-All five Checkbox family artifacts (`DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, `REVIEW.md`) were regenerated through their normal owning stages with real current-UTC artifact revisions, resolving the previously-recorded future-timestamp mechanical-invalidity defect. `REVIEW.md` verdict is `compliant-with-listed-risks` (the only accepted risk is the separately-tracked, pre-existing `RelationValueFieldData.vue` accessible-name gap below — unrelated to this correction).
+The previously-invalid future execution timestamps were regenerated through the owning Checkbox stages using factual UTC revisions.
+
+However, the family is not currently complete. After synchronization, current `develop` includes the Material Storybook ownership contract from PR #193: once owner-local visual discovery is executable, a canonical Material migration must finish surviving family-owned browser/visual proof at the canonical owner in the same family workflow rather than leaving it in a central path for a later S4 cleanup.
+
+The current Checkbox architecture, implementation, migration, and review still describe and accept `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts` as the final visual owner. That is stale relative to the current `docs/testing/migration-plan.md` and current Material architecture/migration skills. The family must return to architecture, classify the legacy visual proof disposition under the current policy, and move surviving Checkbox visual proof and baselines to the canonical `src/shared/ui/material/components/checkbox/` owner if the current executable lane supports that convention. Downstream implementation/migration/review artifacts are invalidated by that architecture correction.
 
 Current family state for merge-readiness purposes:
 
 ```text
 DESIGN.md          current
-ARCHITECTURE.md    ready
-IMPLEMENTATION.md  complete
-MIGRATION.md       complete
-REVIEW.md          compliant-with-listed-risks
+ARCHITECTURE.md    correction required for current visual ownership policy
+IMPLEMENTATION.md  invalidated by architecture correction
+MIGRATION.md       invalidated by architecture/implementation correction
+REVIEW.md          must run fresh after corrected upstream artifacts
 ```
 
-The ordinary final `pnpm verify` gate passed (11/11 checks, including the targeted mutation audit over `BooleanValueInline.vue`/`SettingsCheckboxListItem.vue`/`SettingsSections.vue`) on the current workspace head. Branch synchronization with `develop` and GitHub merge gates remain external, human/CI-owned steps outside this workflow's scope.
+Branch synchronization is complete against current `develop` (`behind_by: 0`). The branch still requires a PR-level `package.json` version bump strictly above current `develop` before a PR into `develop` can pass the repository `release-version` gate.
+
+The earlier local `pnpm verify` result remains useful implementation evidence but is not merge approval after this newly identified architecture/proof-ownership defect and the required final-owner relocation.
 
 ## Calibration result
 
@@ -40,10 +46,10 @@ Switch established the stateful Material adapter invariants now recorded in the 
 1. a public controlled prop is the sole state source of truth;
 2. renderer mutation is prevented at the cancelable pre-mutation intent boundary when such a boundary exists;
 3. rejected controlled intent cannot leave renderer state divergent from the public prop;
-4. ordinary component-owned browser proof uses owner-local ownership when the current testing migration state supports it;
+4. component-owned browser/visual proof ends at the canonical executable owner selected by the current testing architecture;
 5. renderer-specific non-browser test shims stay at the narrowest truthful owner;
 6. decorative `presentation` composition proves both child suppression and positive input handoff to the real action owner;
-7. independent review rechecks current renderer lifecycle, proof ownership, test-environment blast radius, composition ownership, and consumer behavior rather than trusting family prose;
+7. independent review rechecks current renderer lifecycle, proof ownership, test-environment blast radius, composition ownership, consumer behavior, and legacy-to-canonical semantic translations rather than trusting family prose;
 8. repository-root Playwright lanes respect repository ignore policy.
 
 No generic m3e adapter framework, duplicate state manager, compatibility layer, or renderer registry abstraction is justified by the completed pilots.
@@ -66,6 +72,10 @@ M3 is an ongoing migration phase. Completing Checkbox will complete the Checkbox
 
 ## Next operator action
 
-1. Synchronize the Checkbox branch with current `develop` (external prerequisite, not performed by this workflow) and confirm the same `pnpm verify` result on the synchronized head.
-2. Require ordinary GitHub merge gates before integration into `develop` (not performed by this workflow).
-3. Select the next M3 family only after the above two steps are confirmed on the final merge candidate.
+1. Route Checkbox back through architecture using the current `docs/testing/migration-plan.md` and Material skills. Correct the stale central visual-proof decision and explicitly classify legacy/canonical visual proof ownership.
+2. Apply the resulting implementation/migration changes, including final owner-local visual proof/baselines when selected by the current architecture, then run a fresh independent review.
+3. Run the ordinary final `pnpm verify` on the corrected current head.
+4. Bump `package.json` to a version strictly above current `develop` before opening/refreshing the PR into `develop`.
+5. Require ordinary GitHub merge gates before integration.
+
+Do not select the next M3 family until the Checkbox family is current, independently reviewed, and verified on the final merge candidate.
