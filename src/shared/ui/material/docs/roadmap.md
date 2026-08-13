@@ -10,19 +10,20 @@ Current milestone: `M3 — sequential component migration (Checkbox)`
 
 Status: `in-progress`
 
-PR #194 is open. The canonical Checkbox migration is structurally complete, but final merge review found one Material-contract correction still required before the family can be considered complete:
+PR #194 is open. Full merge review corrected the Checkbox architecture and left one implementation blocker:
 
 - official Checkbox accessibility guidance publishes `Space` **or** `Enter` activation;
 - installed private renderer `@m3e/web@2.6.3` covers Space but has no Enter activation;
-- Mioframe follows official Material as the public semantic authority, so the canonical adapter must supply the missing behavior instead of narrowing the public contract to renderer capability;
+- Mioframe follows official Material as the public semantic authority, so canonical `MDCheckbox` must supply the missing Enter behavior instead of narrowing the public contract to renderer capability;
 - this is **missing renderer coverage**, not a new `M3E-*` registry defect under `docs/m3e-defects.md` inclusion rules;
-- the existing `Enter → no-op` browser proof is obsolete and must be corrected;
-- exact-head GitHub CI was green before this correction, but a new exact-head CI run is required after the code/proof correction.
+- current `ARCHITECTURE.md` now selects pointer + Space + Enter and is `ready`;
+- current `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` are blocked on the Enter code/proof correction;
+- the previous exact-head CI result applied to the old Space-only target state and must be rerun after correction.
 
 The general workflow simplification remains valid:
 
 - Material workflow uses no timestamp/revision graph;
-- architecture, implementation, migration, and independent review run fresh per invocation;
+- architecture, implementation, migration, and independent review run fresh per invocation/correction path;
 - coding agents use focused local verification for implementation feedback;
 - GitHub CI owns authoritative repository verification on the exact PR head;
 - merge readiness belongs to the architect after current CI and full PR review.
@@ -59,10 +60,9 @@ No generic m3e adapter framework, workflow database, timestamp validator, artifa
 
 ## Next operator action
 
-1. Correct canonical Checkbox Enter activation and its focused unit/browser proof without adding a generic keyboard abstraction.
-2. Run fresh Checkbox implementation → migration → independent review against the corrected architecture; rerun architecture first only if implementation discovers a genuine unresolved mapping issue.
-3. Update PR #194 description to the corrected contract.
-4. Require all exact-head GitHub CI checks to pass on the corrected PR head.
-5. Perform one final full PR review and issue the merge recommendation.
+1. Coding agent implements the architecture-selected Enter activation and focused unit/browser proof without adding a generic keyboard abstraction.
+2. Rerun fresh migration and independent review after the code correction.
+3. Update PR #194 description to the corrected contract and require all exact-head GitHub CI checks to pass.
+4. Perform one final full PR review and issue the merge recommendation.
 
 Do not select the next M3 family until Checkbox completes this correction, exact-head CI, and merge review.
