@@ -27,10 +27,10 @@
 
 ## Verification
 
-- Focused and mode-specific proof:
-- Final completion gate: `pnpm verify --base <parent-ref>` | `pnpm verify:release`
-- Final completion result:
-- Why this single gate is applicable:
+- Focused and mode-specific local proof:
+- Exact-head GitHub CI checks:
+- CI result:
+- Any intentionally omitted local broad checks and why:
 
 ## PR Readiness
 
