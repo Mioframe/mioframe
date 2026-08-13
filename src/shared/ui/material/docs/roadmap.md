@@ -6,43 +6,24 @@ This file owns current Material milestone status, family-stage status, technical
 
 Last updated: 2026-08-13
 
-Current milestone: `M3 — sequential component migration (Checkbox)`
+Current milestone: `M3 — sequential component migration`
 
 Status: `in-progress`
 
-PR #194 is open. Full merge review corrected the Checkbox architecture and left one implementation blocker:
+Checkbox family status: `complete`.
 
-- official Checkbox accessibility guidance publishes `Space` **or** `Enter` activation;
-- installed private renderer `@m3e/web@2.6.3` covers Space but has no Enter activation;
-- Mioframe follows official Material as the public semantic authority, so canonical `MDCheckbox` must supply the missing Enter behavior instead of narrowing the public contract to renderer capability;
-- this is **missing renderer coverage**, not a new `M3E-*` registry defect under `docs/m3e-defects.md` inclusion rules;
-- current `ARCHITECTURE.md` now selects pointer + Space + Enter and is `ready`;
-- current `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` are blocked on the Enter code/proof correction;
-- the previous exact-head CI result applied to the old Space-only target state and must be rerun after correction.
+PR #194 is open. The Checkbox architecture, implementation, migration, and independent review are complete. No production correction is required.
 
-The general workflow simplification remains valid:
+The official Material Checkbox cache contains a keyboard table copied from Chips terminology. `DESIGN.md` records it as a source conflict, so the `Space or Enter` row is not treated as reliable Checkbox-specific evidence and no Enter workaround is added.
 
-- Material workflow uses no timestamp/revision graph;
-- architecture, implementation, migration, and independent review run fresh per invocation/correction path;
-- coding agents use focused local verification for implementation feedback;
-- GitHub CI owns authoritative repository verification on the exact PR head;
-- merge readiness belongs to the architect after current CI and full PR review.
+## Durable invariants
 
-## Calibration result
-
-Switch and Checkbox establish these durable invariants:
-
-1. official Material semantics define the public component contract; m3e is a private renderer and missing/divergent coverage is adapted or recorded, not promoted to Mioframe API semantics;
-2. public controlled props remain the source of truth;
-3. renderer mutation is prevented at the faithful pre-mutation intent boundary when available;
-4. rejected intent cannot leave renderer state divergent from public props;
-5. browser/visual proof ends at the canonical owner;
-6. presentation composition proves child suppression and positive handoff to the actual action owner;
-7. independent review checks the complete current family and consumer semantics;
-8. workflow metadata stays subordinate to component correctness;
-9. coding agents run focused local checks; exact-head PR CI is the merge verification gate.
-
-No generic m3e adapter framework, workflow database, timestamp validator, artifact revision graph, or duplicate local CI gate is justified.
+1. Official Material documentation and the project MCP/cache define Material semantics.
+2. m3e remains a private renderer and is not a semantic authority.
+3. Source conflicts are recorded instead of guessed.
+4. Public controlled props remain the source of truth.
+5. Coding agents use focused local verification; exact-head PR CI is the repository gate.
+6. Merge readiness belongs to the architect after CI and full PR review.
 
 ## Milestones
 
@@ -56,13 +37,11 @@ No generic m3e adapter framework, workflow database, timestamp validator, artifa
 
 ## Known non-blocking follow-up
 
-`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox. Checkbox migration does not claim to fix it.
+`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox.
 
 ## Next operator action
 
-1. Coding agent implements the architecture-selected Enter activation and focused unit/browser proof without adding a generic keyboard abstraction.
-2. Rerun fresh migration and independent review after the code correction.
-3. Update PR #194 description to the corrected contract and require all exact-head GitHub CI checks to pass.
-4. Perform one final full PR review and issue the merge recommendation.
-
-Do not select the next M3 family until Checkbox completes this correction, exact-head CI, and merge review.
+1. Let GitHub CI verify the current exact PR #194 head.
+2. Perform the final full PR review.
+3. Merge Checkbox if no blocker remains.
+4. Select the next M3 family after merge.
