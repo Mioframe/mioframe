@@ -2,10 +2,10 @@
 
 Status: blocked
 IMPLEMENTATION.md reference: `src/shared/ui/material/components/checkbox/IMPLEMENTATION.md`
-Revision summary: Current consumer migration remains structurally correct, but full PR review found an upstream Checkbox keyboard-contract defect. Official Material publishes Space or Enter activation while current architecture/implementation accept m3e's Space-only behavior. Migration must run fresh again after the upstream architecture/implementation correction.
-Remaining blockers: Upstream architecture/implementation correction for Enter activation has not completed.
+Revision summary: Current consumer migration remains structurally correct, but corrected Checkbox architecture now requires Enter activation that current implementation does not yet provide. Migration must run fresh again after the implementation/proof correction.
+Remaining blockers: Upstream implementation correction for Enter activation has not completed.
 Required return family: self
-Required return stage: architecture
+Required return stage: implementation
 Review readiness: blocked
 
 ## Consumer inventory
@@ -27,7 +27,7 @@ No consumer-specific migration defect is currently known. Current source already
 
 The Enter correction belongs to the canonical Checkbox family. No consumer edit is expected solely because the canonical control gains the missing official keyboard activation.
 
-After upstream correction, rerun migration fresh and confirm existing product/shared scenarios remain preserved.
+After implementation correction, rerun migration fresh and confirm existing product/shared scenarios remain preserved.
 
 ## Legacy ownership removed
 
@@ -52,12 +52,12 @@ indeterminate = property.indeterminate === true && effectiveValue === undefined
 
 ## Stage verification
 
-Previous migration proof applied to the old upstream Space-only contract. After the Enter implementation correction, run the smallest verifier-managed consumer scopes selected by current architecture.
+Previous migration proof applied to the old Space-only implementation. After the Enter correction, run the smallest verifier-managed consumer scopes selected by current architecture.
 
 ## Remaining blockers
 
-Upstream Checkbox architecture/implementation correction and focused proof.
+Upstream Checkbox implementation/proof correction.
 
 ## Review readiness
 
-Blocked. Route to `self/architecture`; after architecture and implementation are corrected, this migration stage must execute fresh before independent review.
+Blocked. Route to `self/implementation`; after implementation is corrected, this migration stage must execute fresh before independent review.
