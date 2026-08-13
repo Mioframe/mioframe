@@ -46,8 +46,8 @@ Fresh post-correction migration must recheck:
 The domain translation remains:
 
 ```ts
-checked = effectiveValue === true
-indeterminate = property.indeterminate === true && effectiveValue === undefined
+checked = effectiveValue === true;
+indeterminate = property.indeterminate === true && effectiveValue === undefined;
 ```
 
 ## Stage verification
