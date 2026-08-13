@@ -1,100 +1,85 @@
 # Checkbox review
 
-Verdict: blocked
-Required return family: self
-Required return stage: implementation
-Completion status: blocked
-Final workflow verification readiness: blocked
+Verdict: compliant
+Required return family: none
+Required return stage: none
+Completion status: complete
 Operator visual status: no-reported-defect
-Blockers: Corrected architecture now selects official Material Space/Enter activation, but current `MDCheckbox.vue` and browser proof still implement/assert Enter as a no-op. Implementation and focused proof must be corrected before migration/review can complete.
+Blockers: none
 Major issues: none
 Minor issues: none
 Accepted risks: none
 
 ## Goal and scenarios reviewed
 
-The complete canonical Checkbox family and all confirmed consumers were reviewed. Existing ownership remains sound: `MDCheckbox` is the Material adapter; `MDCheckboxField` retains shared field composition and tri-state edit behavior; product/entity/widget consumers retain business state and actions; decorative consumers use `presentation`.
+The complete canonical Checkbox family and all confirmed consumers were reviewed. Ownership remains explicit:
 
-The remaining finding is limited to the canonical editable Checkbox keyboard contract.
+- `MDCheckbox` owns the Material Vue adapter and controlled intent boundary;
+- `MDCheckboxField` owns shared field composition and tri-state edit behavior;
+- product/entity/widget consumers retain business state and actions;
+- decorative consumers use `presentation`;
+- m3e remains a private renderer detail.
 
-## Official design compliance
+## Official source compliance
 
-`DESIGN.md` records the published Checkbox accessibility keyboard table with `Space` or `Enter` activation. The same table contains copied chip terminology and is correctly recorded as a source-quality conflict, but there is no official correction that removes Enter.
+The authoritative Checkbox design evidence comes from the official Material sources represented by the MCP/cache snapshot and normalized in `DESIGN.md`.
 
-Official Material is the public semantic authority. Current `ARCHITECTURE.md` now correctly selects Enter activation and classifies current m3e behavior as missing renderer coverage rather than public Mioframe semantics.
+The Checkbox accessibility cache contains a keyboard table whose every row refers to Chips: enabled chip or chip group, focused chip, input-chip deletion, and chip arrow navigation. The same table is present in the Chips accessibility source, where those terms and behaviors are coherent and are reinforced by additional Chips-specific guidance.
+
+`DESIGN.md` correctly records this as a source conflict. The `Space or Enter` row is therefore not reliable Checkbox-specific evidence. No inspected official Checkbox source supplies a corrected keyboard table.
+
+Architecture correctly refuses to invent an Enter toggle from that corrupted source. No renderer or deprecated implementation library is used as semantic authority.
 
 ## Architecture compliance
 
-Current `ARCHITECTURE.md` is now compliant with the selected official contract:
+Compliant:
 
-- pointer, Space, and Enter are selected activation paths;
-- m3e remains a private renderer;
-- Enter is missing renderer coverage in `@m3e/web@2.6.3` and requires the minimum family-local correction;
-- public API, controlled state, ownership, tokens, and consumers remain unchanged;
-- no generic keyboard/adapter abstraction is justified.
-
-No architecture blocker remains.
+- public API is limited to confirmed Mioframe demand;
+- controlled state remains one-directional from `checked` / `indeterminate` props;
+- current pointer/Space interaction uses the renderer's pre-mutation intent boundary;
+- Enter is not promoted to wrapper-owned behavior without trustworthy official evidence;
+- no generic adapter or keyboard framework is introduced;
+- renderer types/events/state do not leak through the public boundary.
 
 ## Implementation compliance
 
-Blocked.
+Compliant. `MDCheckbox.vue` already satisfies the corrected architecture; no production correction is required.
 
-Current `MDCheckbox.vue` correctly implements controlled pointer/Space intent through cancelable pre-mutation `beforeinput`, but it has no family-owned Enter correction. Current `MDCheckbox.browser.spec.ts` explicitly asserts that Enter produces no effect.
-
-Implementation must add the minimum Enter path required by current architecture while preserving one source of truth, rejected-intent behavior, disabled/presentation suppression, host boundary, and renderer privacy.
+The adapter prevents renderer mutation at the cancelable `beforeinput` boundary and emits intended next controlled values. Rejected intent cannot leave renderer state divergent from public props. Presentation and disabled behavior retain their existing ownership.
 
 ## Migration and legacy removal
 
-No consumer/legacy-removal defect is currently known. All confirmed consumers already use canonical `MDCheckbox` directly or through `MDCheckboxField`; the replaced legacy owner remains removed; `BooleanValueInline` retains the correct capability-flag-to-rendered-state translation.
+Compliant. All confirmed consumers use canonical `MDCheckbox` directly or through `MDCheckboxField`; the replaced legacy owner and replaced proof remain removed.
 
-Migration is marked blocked only because it must execute fresh after implementation changes.
+`BooleanValueInline` retains the correct effective-value translation:
 
-## Proof and stage verification
+```ts
+checked = effectiveValue === true;
+indeterminate = property.indeterminate === true && effectiveValue === undefined;
+```
 
-Required corrected proof:
+The pre-existing accessible-name gap in `RelationValueFieldData.vue` remains a separate product follow-up and is not a regression introduced by this migration.
 
-- pointer activation still produces one controlled intent;
-- Space still produces one controlled intent;
-- Enter produces one controlled intent and accepted state round-trips;
-- rejected Enter intent leaves rendered state unchanged;
-- disabled/presentation suppress independent Enter activation.
+## Proof
 
-Existing accessibility, label, tab-order, presentation handoff, target-area, host-boundary, and visual proof should remain unless actual behavior changes.
+Existing proof remains correctly partitioned:
 
-Previous exact-head CI predates the corrected target state. A new exact-head CI run is required after code/proof correction.
+- unit/component contract for public controlled semantics;
+- real-browser proof for pointer/Space, focus, label, suppression, rejected intent, and owner handoff;
+- visual proof for appearance only;
+- consumer-owned tests for tri-state/domain translation.
 
-## Blockers
-
-1. Implement the architecture-selected Enter activation correction.
-2. Replace obsolete Enter-no-op proof with faithful real-browser accepted/rejected/suppressed Enter proof.
-3. Run fresh migration and independent review, then exact-head GitHub CI.
-
-## Major issues
-
-none
-
-## Minor issues
-
-none
-
-## Accepted risks
-
-none
+No proof change is required solely because the corrupted official keyboard table was rejected as Checkbox-specific evidence.
 
 ## Items not required
 
-- Do not restore legacy `error`, `readonly`, tooltip, form-participation, or icon-configuration surface.
-- Do not add a generic keyboard manager or generic m3e adapter framework.
-- Do not create a new `M3E-*` record for merely missing Enter capability; current registry policy keeps missing capability in family architecture.
-- Do not change `RelationValueFieldData.vue` accessible naming in this correction.
-- Do not update visual baselines without an actual inspected appearance change.
+- Enter workaround;
+- generic keyboard manager or generic m3e adapter framework;
+- legacy `error`, `readonly`, tooltip, form-participation, or icon-configuration surface;
+- compatibility alias for the removed legacy Checkbox;
+- `RelationValueFieldData.vue` accessible-name product decision;
+- visual-baseline updates without a visible change.
 
-## Routing evidence
+## Merge handoff
 
-```text
-official Material contract: Space or Enter
-corrected architecture: pointer + Space + Enter
-current implementation: pointer + Space; Enter no-op
-```
-
-The earliest unresolved owner is now `self/implementation`. After implementation correction, migration and independent review must execute fresh.
+Family review is complete. Exact-head GitHub CI and full resulting-PR review remain the architect-owned merge gate.
