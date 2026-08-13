@@ -33,7 +33,7 @@ Register a target only when durable regression protection justifies automatic co
 
 Do not use broad prefixes initially. Do not infer semantic applicability from neighboring files or agent prose.
 
-Until the persistent registry is implemented and validated, final project verification may still run legacy location-derived mutation scope. Treat that as a migration constraint, not target policy.
+Until the persistent registry is implemented and validated, repository verification may still include legacy location-derived mutation scope when selected by the verifier. Treat that as a migration constraint, not target policy.
 
 ## Workflow
 
@@ -76,4 +76,4 @@ For equivalent or irrelevant mutants, record why no distinct accepted behavior i
 - automatic applicability inferred only from location or neighboring tests;
 - automatic applicability dependent on `TEST IMPACT` text;
 - production changes or brittle assertions made only to improve mutation score;
-- replacing focused tests, type-checking, linting, browser proof, or final project verification.
+- replacing focused tests, type-checking, linting, browser proof, or the authoritative PR CI/repository verification gate.
