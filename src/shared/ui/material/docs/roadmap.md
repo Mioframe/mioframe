@@ -34,6 +34,13 @@ Artifact revision: 2026-08-13T11:00:00.000Z
 
 but the branch head containing that review was created at approximately `2026-08-13T07:55Z`. The review revision therefore claims a completed action in the future and is mechanically invalid under `docs/component-workflow.md`'s factual-UTC timestamp contract. A passing `pnpm verify` does not override an invalid family artifact.
 
+This timestamp failure repeated after a prose-only future-time rule already existed, so the workflow is being hardened at two levels before Checkbox completion is accepted:
+
+1. `material-component-review` now requires a newly-written review revision to come directly from runtime `new Date().toISOString()` output, with no local-time conversion or manual `Z` suffixing;
+2. `material-component` now requires an executed post-write timestamp validation against a fresh runtime clock before any stage artifact can be accepted.
+
+Because an LLM instruction can still be skipped, this repeated failure also requires a repository-level fail-closed validation guard in the existing unconditional `agent-environment` verification path. The guard must validate canonical Material stage artifact timestamps and must be reusable by the Material orchestrator for single-artifact post-write validation. This is workflow-integrity hardening, not a Checkbox runtime redesign.
+
 Current family state for merge-readiness purposes:
 
 ```text
@@ -41,10 +48,10 @@ DESIGN.md          current
 ARCHITECTURE.md    ready
 IMPLEMENTATION.md  complete
 MIGRATION.md       complete
-REVIEW.md          mechanically invalid; fresh independent review required
+REVIEW.md          mechanically invalid; fresh independent review required after timestamp guard hardening
 ```
 
-The reported final `pnpm verify` pass is useful verification evidence for the current code and proof relocation, but family completion requires a mechanically valid current review first. After that review is regenerated, the final `pnpm verify` must be run again on the exact resulting head because the review artifact itself changes the merge candidate.
+The reported final `pnpm verify` pass is useful verification evidence for the current code and proof relocation, but family completion requires the workflow guard and a mechanically valid current review first. After that review is regenerated, the final `pnpm verify` must be run again on the exact resulting head because both verifier code and the review artifact change the merge candidate.
 
 ## Calibration result
 
@@ -57,7 +64,8 @@ Switch and Checkbox established the durable stateful Material adapter invariants
 5. renderer-specific non-browser test shims stay at the narrowest truthful owner;
 6. decorative `presentation` composition proves both child suppression and positive input handoff to the real action owner;
 7. independent review rechecks renderer lifecycle, proof ownership, test-environment blast radius, composition ownership, consumer behavior, and legacy-to-canonical semantic translations rather than trusting family prose;
-8. repository-root Playwright lanes respect repository ignore policy.
+8. repository-root Playwright lanes respect repository ignore policy;
+9. Material workflow artifact timestamps are executable contracts, not trusted worker prose.
 
 No generic m3e adapter framework, duplicate state manager, compatibility layer, or renderer registry abstraction is justified by the completed pilots.
 
@@ -79,9 +87,10 @@ M3 is an ongoing migration phase. Completing Checkbox will complete the Checkbox
 
 ## Next operator action
 
-1. Run the Checkbox independent review fresh. The review worker must obtain the actual current UTC timestamp from the runtime/environment clock immediately before writing `REVIEW.md`; it must not derive UTC by relabeling local time or preallocate a later timestamp.
-2. Mechanically validate the resulting `REVIEW.md` timestamp against the current runtime UTC clock before accepting the worker result.
-3. Run the ordinary final `pnpm verify` on that exact resulting head.
-4. Open or refresh the PR into `develop` and require the ordinary GitHub merge gates on the same head.
+1. Add the repository-level fail-closed Material artifact timestamp validation to the existing unconditional `agent-environment` verification path, with focused deterministic tests and a single-artifact mode reusable by the Material orchestrator. Do not create a new verify lane or registry.
+2. Update the orchestrator command to use that repository-owned validator as the single executable timestamp-validation implementation.
+3. Run the Checkbox independent review fresh; the review worker must obtain its revision from the runtime UTC command and the orchestrator must validate the stored artifact immediately after the write.
+4. Run the ordinary final `pnpm verify` on that exact resulting head.
+5. Open the PR into `develop` and require the ordinary GitHub merge gates on the same head.
 
-Do not select the next M3 family until Checkbox has a mechanically valid current independent review and final verification on the merge candidate.
+Do not select the next M3 family until Checkbox has the repository timestamp guard, a mechanically valid current independent review, and final verification on the merge candidate.
