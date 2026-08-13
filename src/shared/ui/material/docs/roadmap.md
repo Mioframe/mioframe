@@ -8,13 +8,11 @@ Last updated: 2026-08-13
 
 Current milestone: `M3 — sequential component migration (Checkbox)`
 
-Status: `blocked`
+Status: `in-progress`
 
-Checkbox runtime, consumer migration, and proof are materially complete. The remaining work is one fresh Checkbox execution under the simplified workflow, followed by final verification and PR review.
+The Checkbox family workflow is complete under the simplified Material process. Current `DESIGN.md` was reused, fresh architecture/implementation/migration/review stages completed, the independent review verdict is `compliant`, and the workflow's final `pnpm verify` passed before this status-only roadmap update.
 
-The repeated invalid review timestamp exposed architectural drift in the Material agent workflow. The problem was not Checkbox runtime behavior; the workflow had made timestamp/revision metadata a correctness mechanism and then needed extra validator infrastructure to defend that mechanism.
-
-The correction is now implemented:
+The repeated invalid review timestamp exposed architectural drift in the Material agent workflow. The correction is now implemented:
 
 - keep the five isolated stages;
 - reuse current DESIGN until its normal source refresh is due;
@@ -30,19 +28,23 @@ This deliberately accepts some repeated agent work on a repeated family invocati
 
 ## Checkbox state
 
-Confirmed completed behavior/proof includes:
+Completed behavior and proof:
 
 - canonical m3e-backed `MDCheckbox` ownership under `src/shared/ui/material/components/checkbox`;
 - controlled checked/indeterminate behavior and presentation composition;
-- explicit BooleanValueInline semantic translation from effective value;
+- explicit `BooleanValueInline` translation from effective value to rendered checked/indeterminate state;
 - consumer-level proof for true/false/unresolved/default/capability combinations;
-- owner-local canonical Checkbox visual proof and removal of replaced central canonical proof;
-- current testing migration documentation aligned with owner-local proof;
-- package version `0.3.12` over current `develop` `0.3.11` at the last synchronization check.
+- owner-local canonical Checkbox browser/visual proof and removal of replaced legacy proof;
+- all six current direct/fixture consumers migrated to the canonical Material API;
+- fresh `ARCHITECTURE.md`: `Status: ready`;
+- fresh `IMPLEMENTATION.md`: `Status: complete`, no production edit required;
+- fresh `MIGRATION.md`: `Status: complete`, no consumer edit required;
+- fresh independent `REVIEW.md`: `Verdict: compliant`, no blockers/major/minor issues/accepted risks;
+- workflow final `pnpm verify`: passed before this roadmap status update;
+- branch synchronization check: `behind 0` against `develop`;
+- package version `0.3.12` over current `develop` `0.3.11`.
 
-The previous `REVIEW.md` is not accepted as final review evidence because it was produced under the superseded timestamp/revision workflow and was already known to contain invalid execution-time metadata when written.
-
-Checkbox must now pass one fresh current-invocation architecture → implementation → migration → independent review sequence. Those stages may be no-op with respect to production code when current implementation remains compliant. Their rewritten artifacts remove legacy revision/timestamp fields under the simplified workflow.
+Because this roadmap edit happened after the successful workflow final gate, one exact-head `pnpm verify` rerun is still required before opening the PR.
 
 ## Calibration result
 
@@ -61,23 +63,23 @@ No generic m3e adapter framework, duplicate state manager, compatibility layer, 
 
 ## Milestones
 
-| ID  | Milestone                           | Status        | Exit gate                                                                      |
-| --- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------ |
+| ID  | Milestone                           | Status        | Exit gate                                                                       |
+| --- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------- |
 | M0  | workflow architecture and rules     | `complete`    | simplified staged workflow is internally consistent and obsolete guard removed |
-| M1a | Loading Indicator dependency family | `complete`    | family implemented and reviewed                                                |
-| M1  | Button action family                | `complete`    | canonical m3e-backed action family migrated                                    |
-| M2  | Switch stateful pilot               | `complete`    | controlled-state calibration complete                                          |
-| M3  | sequential component migration      | `in-progress` | individual family completion does not complete the migration program           |
+| M1a | Loading Indicator dependency family | `complete`    | family implemented and reviewed                                                 |
+| M1  | Button action family                | `complete`    | canonical m3e-backed action family migrated                                     |
+| M2  | Switch stateful pilot               | `complete`    | controlled-state calibration complete                                           |
+| M3  | sequential component migration      | `in-progress` | individual family completion does not complete the migration program            |
 
 ## Known non-blocking follow-up
 
-`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox. Checkbox migration must not pretend this is fixed. It remains a separate product accessibility follow-up until the correct contextual label is selected and proven.
+`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox. Checkbox migration does not claim to fix it. It remains a separate product accessibility follow-up until the correct contextual label is selected and proven.
 
 ## Next operator action
 
-1. Run `material-component Checkbox` through fresh architecture, implementation, migration, and independent review under the simplified workflow.
-2. Run ordinary final `pnpm verify` on the resulting exact head.
-3. Recheck branch synchronization and package version against `develop`.
-4. Open the PR into `develop`, run GitHub gates, and perform full PR review.
+1. Rerun ordinary exact-head `pnpm verify` after this roadmap-only status update.
+2. Open the Checkbox PR into `develop`.
+3. Run GitHub gates and perform full PR review on the exact PR head.
+4. Merge only after the PR review and required checks are complete.
 
-Do not select the next M3 family until Checkbox completes these gates.
+Do not select the next M3 family until the Checkbox PR is merged.
