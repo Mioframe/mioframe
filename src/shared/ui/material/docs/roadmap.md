@@ -10,11 +10,11 @@ Current milestone: `M3 — sequential component migration (Checkbox)`
 
 Status: `blocked`
 
-Checkbox runtime, consumer migration, and proof are materially complete. The remaining work is workflow simplification and fresh final review after that simplification.
+Checkbox runtime, consumer migration, and proof are materially complete. The remaining work is one fresh Checkbox execution under the simplified workflow, followed by final verification and PR review.
 
 The repeated invalid review timestamp exposed architectural drift in the Material agent workflow. The problem was not Checkbox runtime behavior; the workflow had made timestamp/revision metadata a correctness mechanism and then needed extra validator infrastructure to defend that mechanism.
 
-The selected correction is simpler:
+The correction is now implemented:
 
 - keep the five isolated stages;
 - reuse current DESIGN until its normal source refresh is due;
@@ -22,7 +22,9 @@ The selected correction is simpler:
 - after any correction, rerun affected downstream reasoning fresh;
 - do not use timestamps, hashes, counters, Git identities, or persistent artifact revision graphs for workflow freshness;
 - treat legacy revision fields in existing artifacts as ignored metadata and remove them when each owning stage next rewrites its artifact;
-- remove the Material timestamp validation code added to `scripts/agentEnvironment.mjs` and its tests because it no longer protects a required repository invariant.
+- keep `scripts/agentEnvironment.mjs` limited to agent-environment compatibility checks rather than Material workflow artifact validation.
+
+The obsolete Material timestamp validator and its tests have been removed. Focused unit and `agent-environment` verification passed after that deletion.
 
 This deliberately accepts some repeated agent work on a repeated family invocation. Material family migration is normally a one-time operation, so simpler orchestration is preferred over persistent invalidation infrastructure.
 
@@ -40,7 +42,7 @@ Confirmed completed behavior/proof includes:
 
 The previous `REVIEW.md` is not accepted as final review evidence because it was produced under the superseded timestamp/revision workflow and was already known to contain invalid execution-time metadata when written.
 
-After the workflow simplification lands, Checkbox must pass one fresh current-invocation architecture → implementation → migration → independent review sequence. Those stages may be no-op with respect to production code when current implementation remains compliant.
+Checkbox must now pass one fresh current-invocation architecture → implementation → migration → independent review sequence. Those stages may be no-op with respect to production code when current implementation remains compliant. Their rewritten artifacts remove legacy revision/timestamp fields under the simplified workflow.
 
 ## Calibration result
 
@@ -61,7 +63,7 @@ No generic m3e adapter framework, duplicate state manager, compatibility layer, 
 
 | ID  | Milestone                           | Status        | Exit gate                                                                       |
 | --- | ----------------------------------- | ------------- | ------------------------------------------------------------------------------- |
-| M0  | workflow architecture and rules     | `in-progress` | simplified staged workflow is internally consistent and executable              |
+| M0  | workflow architecture and rules     | `complete`    | simplified staged workflow is internally consistent and obsolete guard removed  |
 | M1a | Loading Indicator dependency family | `complete`    | family implemented and reviewed                                                  |
 | M1  | Button action family                | `complete`    | canonical m3e-backed action family migrated                                      |
 | M2  | Switch stateful pilot               | `complete`    | controlled-state calibration complete                                            |
@@ -73,10 +75,9 @@ No generic m3e adapter framework, duplicate state manager, compatibility layer, 
 
 ## Next operator action
 
-1. Complete documentation/skill simplification so all active Material workflow instructions use the fresh-stage model and no correctness-critical revision graph remains.
-2. Remove the now-obsolete Material artifact timestamp validator from `scripts/agentEnvironment.mjs` and its tests without changing unrelated agent-environment checks.
-3. Run `material-component Checkbox` through fresh architecture, implementation, migration, and independent review under the simplified workflow.
-4. Run ordinary final `pnpm verify` on the resulting exact head.
-5. Open the PR into `develop`, run GitHub gates, and perform full PR review.
+1. Run `material-component Checkbox` through fresh architecture, implementation, migration, and independent review under the simplified workflow.
+2. Run ordinary final `pnpm verify` on the resulting exact head.
+3. Recheck branch synchronization and package version against `develop`.
+4. Open the PR into `develop`, run GitHub gates, and perform full PR review.
 
-Do not select the next M3 family until Checkbox and the simplified workflow complete these gates.
+Do not select the next M3 family until Checkbox completes these gates.
