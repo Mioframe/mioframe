@@ -1,16 +1,16 @@
 # Checkbox migration
 
-Status: blocked
+Status: complete
 IMPLEMENTATION.md reference: `src/shared/ui/material/components/checkbox/IMPLEMENTATION.md`
-Revision summary: Current consumer migration remains structurally correct, but corrected Checkbox architecture now requires Enter activation that current implementation does not yet provide. Migration must run fresh again after the implementation/proof correction.
-Remaining blockers: Upstream implementation correction for Enter activation has not completed.
-Required return family: self
-Required return stage: implementation
-Review readiness: blocked
+Revision summary: The corrected architecture requires no production change. Current consumer migration remains complete and the legacy Checkbox owner remains removed.
+Remaining blockers: none
+Required return family: none
+Required return stage: none
+Review readiness: ready
 
 ## Consumer inventory
 
-Current canonical consumers remain:
+Current canonical consumers:
 
 1. `SettingsCheckboxListItem.vue` — decorative `presentation` composition.
 2. `DatabaseViewsSheet.vue` — decorative `presentation` composition.
@@ -21,27 +21,14 @@ Current canonical consumers remain:
 
 ## Migrated consumers
 
-No consumer-specific migration defect is currently known. Current source already uses canonical `MDCheckbox` and the replaced legacy owner remains removed.
+All confirmed consumers already use canonical `MDCheckbox` directly or through `MDCheckboxField`. No consumer edit is required by the keyboard source-conflict correction.
 
 ## Preserved scenarios and failure paths
 
-The Enter correction belongs to the canonical Checkbox family. No consumer edit is expected solely because the canonical control gains the missing official keyboard activation.
-
-After implementation correction, rerun migration fresh and confirm existing product/shared scenarios remain preserved.
-
-## Legacy ownership removed
-
-The replaced legacy `src/shared/ui/Checkbox/MDCheckbox.vue` owner, playground, stories, and replaced proof remain removed. No compatibility alias should be restored.
-
-## Consumer and blast-radius proof
-
-Fresh post-correction migration must recheck:
-
-- `MDCheckboxField` tri-state cycle, disabled behavior, label click, accessible-name backstop, and autofocus composition;
-- `BooleanValueInline` effective-value translation including default and indeterminate-capability boundaries;
-- decorative presentation ownership in settings and database-view rows;
-- standalone relation-selection behavior;
-- absence of legacy direct consumers.
+- `MDCheckboxField` retains shared field ownership, tri-state cycle, disabled behavior, label composition, accessible-name backstop, and autofocus composition.
+- `BooleanValueInline` retains effective-value translation and does not confuse the domain indeterminate capability with actual rendered mixed state.
+- settings and database-view rows retain decorative `presentation` ownership.
+- relation selection retains its existing standalone checked-only behavior.
 
 The domain translation remains:
 
@@ -50,14 +37,22 @@ checked = effectiveValue === true;
 indeterminate = property.indeterminate === true && effectiveValue === undefined;
 ```
 
+## Legacy ownership removed
+
+The replaced `src/shared/ui/Checkbox/MDCheckbox.vue` owner, playground, stories, and replaced proof remain removed. No compatibility alias is restored.
+
+## Source-conflict impact
+
+The official Material cache's `Space or Enter` row is part of a keyboard table copied from Chips and is not accepted as Checkbox-specific behavior. This changes no consumer contract and requires no migration code.
+
 ## Stage verification
 
-Previous migration proof applied to the old Space-only implementation. After the Enter correction, run the smallest verifier-managed consumer scopes selected by current architecture.
+Existing consumer and family proof remains applicable. Exact-head GitHub CI is the PR repository gate.
 
 ## Remaining blockers
 
-Upstream Checkbox implementation/proof correction.
+none
 
 ## Review readiness
 
-Blocked. Route to `self/implementation`; after implementation is corrected, this migration stage must execute fresh before independent review.
+ready
