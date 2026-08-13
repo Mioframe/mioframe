@@ -1,13 +1,13 @@
 ---
 name: material-component-review
-description: 'Use after design, architecture, implementation, and migration are complete to independently review one Material family, or to classify final-verifier output.'
+description: 'Use after design, architecture, implementation, and migration are complete to independently review one Material family, or to classify exact PR CI failure output supplied by the architect.'
 ---
 
 # Material component review
 
 Perform independent semantic review of one complete Material family and return control to the orchestrator.
 
-This stage owns family-compliance judgment and exact Material correction routing. It does not implement production fixes or own the outer final verification result.
+This stage owns family-compliance judgment and exact Material correction routing. It does not implement production fixes, fetch GitHub checks, own PR CI, or decide merge readiness.
 
 ## Modes
 
@@ -17,9 +17,9 @@ Run fresh after current-invocation migration completes or after a correction rou
 
 Review the complete current family and all consumers, not only the latest change.
 
-### Final-verifier routing
+### PR CI failure routing
 
-Given exact failed final command/output, classify it as:
+When the architect supplies exact failed PR CI command/check output, classify it as:
 
 - `material-owned` — an exact Material family and earliest stage can correct it;
 - `external-workspace-blocker` — no Material family stage owns it.
@@ -38,7 +38,7 @@ If an upstream artifact is invalid, record the exact earlier-stage or other-fami
 
 Run in a fresh isolated context independent from workers that authored or corrected architecture, implementation, or migration.
 
-Do not depend on Git, PR, commit, branch, diff, or external-check state.
+Do not depend on Git, PR, commit, branch, diff, or external-check state during full review. In CI-routing mode, use only the exact CI evidence supplied by the architect; do not fetch GitHub state yourself.
 
 Always read current `src/shared/ui/material/docs/component-adapter.md` and `docs/testing/migration-plan.md`.
 
@@ -64,6 +64,8 @@ Major issues: none | <exact issues>
 Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
+
+`Final workflow verification readiness` means ready for architect-owned PR creation and exact-head GitHub CI. It does not mean a local broad verifier command has run.
 
 Legacy revision/timestamp fields in an existing REVIEW are ignored and removed when this stage rewrites it.
 
@@ -98,11 +100,11 @@ Required headings:
 8. For presentation composition, verify child suppression and positive input handoff to the actual action owner.
 9. Verify proof ownership/placement against current testing migration state.
 10. Inspect test-environment changes for blast radius.
-11. Verify impact metadata and stage-scoped checks.
+11. Verify impact metadata and stage-scoped focused checks.
 12. Check actual operator-reported visual/motion defects.
 13. Consolidate each underlying problem once and assign exact ownership.
 
-Automated checks prove only covered contracts. Absence of operator visual feedback is not a blocker.
+Automated checks prove only covered contracts. Absence of operator visual feedback is not a blocker. PR CI does not replace missing contract proof or architecture review.
 
 ## Finding ownership
 
@@ -129,16 +131,24 @@ A genuine unresolvable family blocker uses route `none/none` and readiness/compl
 
 Review-owned formatting, synthesis, classification, or routing defects are fixed in the current worker.
 
-## Final-verifier routing
+## PR CI failure routing
 
-A Material-owned failure updates only the owning family REVIEW to blocked with the exact correction route and concise evidence.
+Given exact CI evidence supplied by the architect:
+
+1. identify the failed contract;
+2. determine whether an exact Material family and earliest stage own it;
+3. do not infer ownership from the family that happened to trigger the PR;
+4. route Material-owned failures to that exact stage;
+5. leave unrelated compliant family reviews unchanged.
+
+A Material-owned CI failure may update only the owning family REVIEW to `blocked` with the exact correction route and concise CI evidence when that review must represent the now-known family defect.
 
 For an external workspace blocker, do not edit any family REVIEW and return:
 
 ```text
-MATERIAL FINAL VERIFICATION ROUTING RESULT
+MATERIAL PR CI ROUTING RESULT
 Classification: external-workspace-blocker
-Final command: <exact command>
+Failed CI check/command: <exact check or command>
 Failed contract: <exact external contract>
 Evidence: <concise exact output>
 Required return family: none
@@ -147,11 +157,13 @@ Family reviews changed: none
 Status: blocked
 ```
 
+After a Material-owned correction, run the smallest relevant focused local verification, hand back to the architect, and let GitHub CI rerun the authoritative exact-head gate. Do not require a broad local CI duplicate.
+
 ## Completion
 
 Full review succeeds only when the current family is complete, required headings exist, the verdict represents current repository behavior, and no unresolved family route/finding remains.
 
-A successful review means ready for outer final verification. It does not claim that command passed.
+A successful review means ready for PR/CI handoff. It does not claim that CI passed and does not claim merge readiness.
 
 ## Report
 
@@ -171,21 +183,23 @@ Required return stage: none | design | architecture | implementation | migration
 Review verdict: compliant | compliant-with-listed-risks | blocked
 Final workflow verification readiness: ready | blocked
 Completion status: complete | blocked
+PR/CI readiness: ready | blocked
 Status: complete | blocked
 ```
 
 ## Forbidden
 
-- Writing unrelated verifier failure into a family REVIEW.
+- Writing unrelated CI/verifier failure into a family REVIEW.
 - Routing to review or leaving a review-owned defect unresolved.
 - Fixing production code or rewriting earlier artifacts.
 - Reviewing only the latest change.
-- Depending on Git or PR state.
+- Depending on Git or PR state during full review.
+- Fetching GitHub CI directly from the coding-agent review worker.
 - Accepting controlled state without independently checking rejected intent.
 - Accepting legacy-to-canonical mapping because names/types match.
 - Accepting obsolete proof ownership relative to current testing architecture.
 - Using listed risks for incomplete work.
 - Blocking only because positive visual acknowledgement is absent.
 - Fabricating operator feedback.
-- Running or claiming final workflow verification.
+- Running or claiming the authoritative PR CI gate.
 - Adding timestamp/hash/revision bookkeeping as workflow correctness state.
