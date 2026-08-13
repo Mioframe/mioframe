@@ -13,9 +13,10 @@ Status: `in-progress`
 PR #194 is open. The canonical Checkbox migration is structurally complete, but final merge review found one Material-contract correction still required before the family can be considered complete:
 
 - official Checkbox accessibility guidance publishes `Space` **or** `Enter` activation;
-- the installed private renderer `@m3e/web@2.6.3` activates Checkbox with Space but not Enter;
-- Mioframe follows official Material as the public semantic authority, so the canonical adapter must compensate for the renderer gap rather than adopting renderer behavior as public behavior;
-- the existing `Enter → no-op` browser proof and matching architecture/review claims are therefore obsolete and must be corrected;
+- installed private renderer `@m3e/web@2.6.3` covers Space but has no Enter activation;
+- Mioframe follows official Material as the public semantic authority, so the canonical adapter must supply the missing behavior instead of narrowing the public contract to renderer capability;
+- this is **missing renderer coverage**, not a new `M3E-*` registry defect under `docs/m3e-defects.md` inclusion rules;
+- the existing `Enter → no-op` browser proof is obsolete and must be corrected;
 - exact-head GitHub CI was green before this correction, but a new exact-head CI run is required after the code/proof correction.
 
 The general workflow simplification remains valid:
@@ -30,7 +31,7 @@ The general workflow simplification remains valid:
 
 Switch and Checkbox establish these durable invariants:
 
-1. official Material semantics define the public component contract; m3e is a private renderer and divergences are adapted or recorded, not promoted to Mioframe API semantics;
+1. official Material semantics define the public component contract; m3e is a private renderer and missing/divergent coverage is adapted or recorded, not promoted to Mioframe API semantics;
 2. public controlled props remain the source of truth;
 3. renderer mutation is prevented at the faithful pre-mutation intent boundary when available;
 4. rejected intent cannot leave renderer state divergent from public props;
@@ -59,8 +60,8 @@ No generic m3e adapter framework, workflow database, timestamp validator, artifa
 ## Next operator action
 
 1. Correct canonical Checkbox Enter activation and its focused unit/browser proof without adding a generic keyboard abstraction.
-2. Re-run fresh Checkbox architecture → implementation → migration → independent review so stage artifacts describe the corrected official contract and current repository state.
-3. Update PR #194 description if the final contract changes materially.
+2. Run fresh Checkbox implementation → migration → independent review against the corrected architecture; rerun architecture first only if implementation discovers a genuine unresolved mapping issue.
+3. Update PR #194 description to the corrected contract.
 4. Require all exact-head GitHub CI checks to pass on the corrected PR head.
 5. Perform one final full PR review and issue the merge recommendation.
 
