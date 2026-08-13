@@ -107,7 +107,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  verification:
+  verification-static:
     needs:
       - autofix
     if: >-
@@ -155,29 +155,102 @@ jobs:
       - name: Verify unit tests
         run: pnpm verify --verbose --only unit-tests
 
-      - name: Verify e2e
-        run: pnpm verify --verbose --only e2e
-
-      - name: Verify storybook behavior
-        run: pnpm verify --verbose --only storybook-behavior
-
-      - name: Verify visual
-        run: pnpm verify --verbose --only visual
-
       - name: Verify storybook build
         run: pnpm verify --verbose --only storybook-build
 
       - name: Verify mutation
         run: pnpm verify --verbose --only mutation
 
-      - name: Upload verify logs
+      - name: Upload static verify logs
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: verify-logs
+          name: verify-static-logs
           path: .verify/logs/
           if-no-files-found: ignore
           retention-days: 7
+
+  verification-browser:
+    needs:
+      - autofix
+    if: >-
+      !cancelled() &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        lane:
+          - e2e
+          - storybook-behavior
+          - visual
+    name: verification-browser (${{ matrix.lane }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify ${{ matrix.lane }}
+        run: pnpm verify --verbose --only ${{ matrix.lane }}
+
+      - name: Upload browser verify logs
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-${{ matrix.lane }}-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  verification:
+    needs:
+      - verification-static
+      - verification-browser
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+
+    steps:
+      - name: Require implementation verification lanes
+        env:
+          STATIC_RESULT: ${{ needs.verification-static.result }}
+          BROWSER_RESULT: ${{ needs.verification-browser.result }}
+        run: |
+          failed=0
+
+          if [ "$STATIC_RESULT" != "success" ]; then
+            echo "Static/unit verification result: $STATIC_RESULT"
+            failed=1
+          fi
+
+          if [ "$BROWSER_RESULT" != "success" ]; then
+            echo "Browser verification result: $BROWSER_RESULT"
+            failed=1
+          fi
+
+          exit "$failed"
 
   release-version:
     needs:

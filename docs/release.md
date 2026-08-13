@@ -160,9 +160,15 @@ focused and the full gate, and tag pushes never rerun the full gate:
 - **`verify` workflow** (`.github/workflows/verify.yml`): PRs into any
   branch except `main`, and pushes to `develop`. Its `pull_request` trigger uses
   `branches-ignore: [main]`, so it never fires for a PR into `main`. The workflow
-  separates three responsibilities:
-  - `verification` runs focused development verification (`pnpm verify`,
-    changed-file scope) and owns whether deployable PR source is valid;
+  keeps implementation verification parallel while preserving one deployable-source
+  gate and one required merge check:
+  - `verification-static` runs format, oxlint, eslint, type-check, unit tests,
+    Storybook build, and mutation through verifier-managed focused lanes;
+  - `verification-browser` expands application E2E, Storybook behavior, and visual
+    verification into independent matrix jobs, each retaining `pnpm verify` risk
+    selection and changed-file scope;
+  - aggregate `verification` succeeds only when the static job and the complete
+    browser matrix succeed, and owns whether deployable PR source is valid;
   - PR-only `release-version` enforces the version-bump policy independently;
   - aggregate `verify` preserves the required merge check and succeeds only when
     `verification` and, for PRs, `release-version` both succeed.
@@ -679,9 +685,11 @@ same build script and base-path contract the release gate validates.
 
 - Locally: `.verify/logs/<label>.log`, one file per check
   (see `pnpm verify:status`).
-- In GitHub Actions: the failing step's inline log, plus the `verify-logs`
-  / `release-logs` artifact uploaded on failure or cancellation for the run
-  (Actions run page -> Summary -> Artifacts).
+- In GitHub Actions: the failing step's inline log. For the ordinary `verify`
+  workflow, failed/cancelled static verification uploads `verify-static-logs`
+  and each failed/cancelled browser matrix lane uploads
+  `verify-<lane>-logs`; the `release` workflow uploads `release-logs` on
+  failure or cancellation (Actions run page -> Summary -> Artifacts).
 
 See `docs/release-checklist.md` for the step-by-step promotion/hotfix
 checklist.
