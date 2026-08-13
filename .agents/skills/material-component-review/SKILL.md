@@ -74,6 +74,18 @@ Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
 
+### Artifact revision acquisition
+
+Immediately before writing or rewriting `REVIEW.md`, obtain the UTC timestamp by executing exactly:
+
+```text
+node -e "process.stdout.write(new Date().toISOString())"
+```
+
+Copy that command's stdout unchanged into `Artifact revision`. Do not derive the value from conversational/system local time, manually convert a timezone, append `Z` to local wall-clock time, round, preallocate, or increment a timestamp for ordering. The runtime command is the only accepted source for a newly-written review artifact revision.
+
+After the write, the orchestrator independently validates the stored value against a fresh runtime clock. A review worker must not claim completion based on its own timestamp assertion.
+
 `Final workflow verification readiness` means the family is ready for the outer command. It is not the result of that command.
 
 Use a new artifact revision whenever family review content or Material routing changes. Record exact invalidating upstream revisions.
@@ -270,3 +282,4 @@ Status: complete | blocked
 - Fabricating operator feedback.
 - Claiming a shared runner/worktree root cause without direct evidence.
 - Running or claiming final workflow verification.
+- Creating a review `Artifact revision` from local wall-clock time, manual timezone conversion, or any source other than the required runtime UTC command.
