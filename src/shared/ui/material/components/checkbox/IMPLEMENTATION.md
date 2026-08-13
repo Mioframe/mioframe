@@ -1,61 +1,61 @@
 # Checkbox implementation
 
-Status: blocked
+Status: complete
 ARCHITECTURE.md reference: `src/shared/ui/material/components/checkbox/ARCHITECTURE.md`
-Revision summary: Corrected architecture now selects official Material pointer, Space, and Enter activation. Current code still omits Enter because `@m3e/web@2.6.3` does not implement it, so implementation and focused proof require a family-local correction.
-Remaining blockers: Implement and prove the architecture-selected Enter activation.
+Revision summary: Current production code already satisfies the corrected Checkbox architecture. No Enter workaround is required because the only official `Space or Enter` evidence in the Material cache is the corrupted Chips keyboard table recorded as a source conflict in `DESIGN.md`.
+Remaining blockers: none
 Required return family: none
 Required return stage: none
-Architecture deviations: missing Enter activation relative to current architecture
-Migration readiness: blocked
+Architecture deviations: none
+Migration readiness: ready
 
 ## Implemented passes
 
-The existing canonical implementation remains valid outside the missing Enter path:
+The canonical implementation remains intentionally small:
 
 - one semantic `m3e-checkbox` host;
-- controlled `checked` / `indeterminate` props as the only state source;
-- cancelable pre-mutation `beforeinput` handling for pointer/Space activation;
+- controlled `checked` / `indeterminate` props as the only public state sources;
+- cancelable pre-mutation `beforeinput` handling for renderer activation intent;
 - rejected-intent control;
 - `disabled` and `presentation` mapping;
 - explicit host-attribute allow-list;
 - private renderer typing and renderer boundary;
 - canonical export and owner-local proof.
 
-The current-stage correction is the architecture-selected family-local Enter activation.
+No production edit is required for the corrected architecture.
 
 ## Public API implemented
 
-The public API remains unchanged: `checked`, `indeterminate`, `disabled`, `presentation`; emits `update:checked` and `update:indeterminate`; no slots or renderer exposure.
+Props: `checked`, `indeterminate`, `disabled`, `presentation`.
 
-## Tokens and renderer mappings
+Emits: `update:checked(value: boolean)` and `update:indeterminate(value: boolean)`.
 
-No Checkbox-specific public token surface is selected. Existing renderer property mappings remain correct.
+No renderer-specific API, form surface, slots, or compatibility layer is exposed.
 
-Current m3e directly covers pointer/Space but has missing Enter coverage. The adapter must supply the missing official behavior without making renderer-local state authoritative.
+## Keyboard evidence
 
-## Dependencies
+The current official Material Checkbox cache contains one keyboard table, but every row is written for Chips (`chip`, `chip group`, `input chip`, chip arrow navigation). The same table appears in the Chips accessibility source where those semantics are valid. `DESIGN.md` therefore records it as a source conflict rather than reliable Checkbox-specific keyboard evidence.
 
-Dependency queue: none.
+The implementation keeps the existing renderer-supported keyboard interaction and does not invent a family-local Enter toggle from that corrupted source.
 
 ## Component-owned proof
 
-Existing proof remains useful except for the obsolete assertion that Enter produces no effect.
+Existing proof remains valid:
 
-The implementation worker must update focused proof so real-browser Enter activation is exactly once, rejected Enter intent remains controlled, and disabled/presentation suppress independent Enter activation. Existing pointer/Space and unaffected proof must remain green.
+- pointer/Space activation follows the controlled intent path;
+- rejected intent leaves public props authoritative;
+- disabled and presentation suppress independent interaction;
+- Enter does not gain a custom wrapper-owned toggle;
+- host forwarding, focus/label composition, target geometry, accessibility backstops, and visual states remain covered by their existing owners.
 
 ## Stage verification
 
-Previous verification applied to the old Space-only contract. After correction, run the focused verifier-managed unit/browser/type/static scopes selected by current architecture. Broad local CI duplication is not required solely for stage completion.
-
-## Architecture deviations
-
-Current deviation: Enter activation required by current architecture is not implemented.
+No production or test correction is required by this architecture change. Existing focused proof remains the implementation evidence; exact-head GitHub CI is the repository gate for the PR.
 
 ## Remaining blockers
 
-The implementation worker must resolve the current-stage Enter defect before returning; it must not add a new abstraction or expand public API.
+none
 
 ## Migration readiness
 
-Blocked until the Enter correction and focused component proof are complete.
+ready
