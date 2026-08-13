@@ -68,17 +68,19 @@ Same-stage self-routes and routes to review are forbidden. A route to another fa
 
 Artifact timestamp validation is an executed gate, not a prose judgment.
 
-After every ordinary stage worker writes its artifact and before the orchestrator accepts that worker result, run the following command with the artifact path as the final argument:
+After every ordinary stage worker writes its artifact and before the orchestrator accepts that worker result, run the repository-owned validator against that exact artifact:
 
 ```text
-node --input-type=module -e "import fs from 'node:fs'; const p=process.argv[1]; const text=fs.readFileSync(p,'utf8'); const match=text.match(/^Artifact revision: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)$/m); if (!match) { console.error('Invalid or missing Artifact revision in ' + p); process.exit(2); } const revisionMs=Date.parse(match[1]); const nowMs=Date.now(); if (!Number.isFinite(revisionMs) || revisionMs > nowMs) { console.error('Future or invalid Artifact revision in ' + p + ': ' + match[1] + ' > ' + new Date(nowMs).toISOString()); process.exit(1); }" <artifact-path>
+node scripts/agentEnvironment.mjs --check-material-artifact <artifact-path>
 ```
+
+This is the same canonical implementation that the unconditional `agent-environment` check runs repository-wide during `pnpm verify`. The orchestrator must not duplicate or reinterpret the timestamp algorithm.
 
 The validator reads the stored artifact and a fresh runtime clock independently from the worker. Do not replace it with mental comparison, conversation timestamps, local wall-clock time, Git/commit time, or a worker-reported assertion.
 
 If this command exits non-zero for a worker-produced artifact, treat the returned worker result as malformed and stop with `stage-contract-blocked`. Do not accept the artifact, continue downstream, or run final workflow verification. If an already-stored artifact fails this check before its owning stage runs, it is mechanically invalid and the normal one-stage regeneration rule applies.
 
-The `Z` suffix means UTC. A timestamp produced by taking local time and merely appending `Z` is invalid even when its shape matches the regex; the post-write comparison catches the resulting future value when the local zone is ahead of UTC.
+The `Z` suffix means UTC. A timestamp produced by taking local time and merely appending `Z` is invalid; the immediate post-write validator compares it against the actual runtime UTC instant before the workflow can continue.
 
 ## Mechanical orchestration
 
@@ -295,6 +297,7 @@ A family may remain `compliant` and ready while the outer result is blocked by a
 - Retrying terminal `blocked` with route `none/none`.
 - Accepting `partial`, terminal `stale`, a timestamp-invalid artifact, or a same-stage self-route from a worker.
 - Replacing executable artifact-time validation with mental/prose comparison or worker self-attestation.
+- Duplicating the timestamp-validation algorithm outside `scripts/agentEnvironment.mjs`.
 - Writing an external verifier failure into a family `REVIEW.md`.
 - Invalidating dependency gates because an unrelated workspace test failed.
 - Using dependency gates.
