@@ -7,7 +7,7 @@ description: 'Use after a current complete family DESIGN.md exists to create or 
 
 Resolve one deterministic implementation architecture from the current official design contract and return control to the orchestrator.
 
-This stage owns demand selection, public contract, ownership, dependencies, renderer strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or final workflow verification.
+This stage owns demand selection, public contract, ownership, dependencies, renderer strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or PR CI.
 
 ## Input gate
 
@@ -148,7 +148,7 @@ For controlled state, implementation proof must include rejected intent. For pre
 
 For semantic consumer translations, migration proof must cover boundary combinations that distinguish old and canonical meaning, including defaults/fallbacks where applicable.
 
-Review independently evaluates the complete result. The outer orchestrator owns final verification.
+Review independently evaluates the complete result. After successful review, the orchestrator hands the family to the architect; GitHub CI owns the authoritative exact-head repository gate.
 
 ## Required sections
 
