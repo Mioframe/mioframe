@@ -8,7 +8,7 @@ Every official Material family is handled by one operator command:
 material-component <name>
 ```
 
-The command runs five isolated stages and one outer verification:
+The command runs five isolated stages:
 
 ```text
 DESIGN.md
@@ -16,10 +16,10 @@ DESIGN.md
   → implementation + IMPLEMENTATION.md
   → migration + MIGRATION.md
   → independent REVIEW.md
-  → pnpm verify
+  → handoff to architect for PR/CI
 ```
 
-The goal of the workflow is to help an agent implement a correct Mioframe Material component from official Material guidance and repository rules. Workflow metadata must stay subordinate to that goal.
+The goal of the workflow is to help an agent implement a correct Mioframe Material component from official Material guidance and repository rules. Workflow metadata and verification orchestration must stay subordinate to that goal.
 
 This document is the single owner of the Material state machine.
 
@@ -35,7 +35,7 @@ current DESIGN
   → fresh IMPLEMENTATION pass
   → fresh MIGRATION pass
   → fresh independent REVIEW
-  → final verification
+  → PR/CI handoff
 ```
 
 A fresh implementation or migration pass may conclude that existing code already satisfies the current contract and therefore make no production edit. It must still inspect and verify its owned scope before completing.
@@ -57,11 +57,12 @@ The orchestrator may only:
 - process explicit dependency queues and correction routes;
 - maintain an invocation-local dependency path and route stack;
 - retain a compact execution ledger;
-- run final verification;
-- pass exact verifier failure output to a fresh review-routing worker;
-- stop on a genuine blocker or malformed worker result.
+- stop on a genuine blocker or malformed worker result;
+- hand a successfully reviewed family back to the architect for PR/CI.
 
-It does not decide Material design, architecture, implementation, migration semantics, review findings, or verifier ownership.
+It does not decide Material design, architecture, implementation, migration semantics, review findings, CI ownership, or merge readiness.
+
+It does not run a broad local `pnpm verify` merely to duplicate the exact-head PR CI gate.
 
 ### Stage workers
 
@@ -238,6 +239,8 @@ Required headings:
 
 The worker compares current code and proof directly with current ARCHITECTURE. Existing compliant code may require no production edit. Any current-stage defect must be fixed before success.
 
+Use focused verifier-managed local checks needed for implementation feedback and contract proof. A broad local repository gate is not required merely for stage completion.
+
 ## MIGRATION.md
 
 Migration always runs fresh after complete implementation.
@@ -271,6 +274,8 @@ When no consumer or legacy owner exists, record `none` / `not applicable`; do no
 
 The worker compares current consumers directly with current architecture and implementation. Existing compliant migration may require no production edit.
 
+Use focused verifier-managed local checks needed for migration feedback and preserved-scenario proof. A broad local repository gate is not required merely for stage completion.
+
 ## REVIEW.md
 
 Review always runs fresh after migration and must be independent.
@@ -289,6 +294,8 @@ Major issues: none | <exact issues>
 Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
+
+`Final workflow verification readiness` means the family is ready for exact-head PR CI. It does not require the review worker or orchestrator to execute that CI gate locally.
 
 Required headings:
 
@@ -366,27 +373,27 @@ No durable revision graph is needed because the current invocation never reuses 
 3. Stop if DESIGN is genuinely blocked.
 4. Run ARCHITECTURE fresh.
 5. Process dependency queue; rerun parent ARCHITECTURE after dependencies.
-6. Run IMPLEMENTATION fresh.
-7. Run MIGRATION fresh.
+6. Run IMPLEMENTATION fresh with focused local proof.
+7. Run MIGRATION fresh with focused local proof.
 8. Run independent REVIEW fresh.
 9. Follow any exact correction route using the routing rules above.
-10. When review is successful, run final verification.
-11. On final-verifier failure, pass exact output to a fresh review-routing worker.
-12. Stop only on a genuine family blocker, external workspace blocker, malformed stage result, or successful final verification.
+10. When review is successful, stop agent orchestration and hand the family to the architect for PR creation and exact-head CI.
 
 Mechanical validation checks only fields, headings, dates, routes, and terminal-state combinations. It does not validate timestamps or revision identities.
 
-## Final workflow verification
+## CI failure routing
 
-Ordinary Material work uses:
+GitHub CI is outside the coding-agent Material invocation and is owned by the architect/PR workflow.
 
-```text
-pnpm verify
-```
+If exact-head PR CI later fails:
 
-A Material-owned failure is routed to the exact family and earliest owning stage, then affected stages run fresh and the same final command is retried.
+1. the architect captures the exact failed check/output;
+2. classify whether an exact Material family/stage owns the failure;
+3. route a correction to that stage when Material-owned;
+4. run focused local proof for the correction;
+5. push the correction and let CI rerun the authoritative exact-head gate.
 
-An external workspace blocker does not rewrite a compliant family review. Record it in the outer result and roadmap, then stop.
+A fresh `material-component-review` worker may classify supplied CI output in its routing mode. An external workspace failure must not rewrite a compliant family `REVIEW.md`.
 
 ## Visual channel
 
@@ -394,12 +401,14 @@ Operator visual/motion inspection is an external defect-reporting channel. Absen
 
 ## Completion
 
-The invocation is complete only when:
+The coding-agent invocation is complete when:
 
 - DESIGN is current;
 - current-invocation architecture, implementation, migration, and independent review succeed;
 - all dependencies processed in the invocation are complete;
 - no reported defect remains unresolved;
-- final verification passes.
+- review declares `Final workflow verification readiness: ready`.
 
-The outer report records the current invocation result. Stage artifacts remain human-readable handoffs, not a workflow database.
+The resulting family is then ready for architect-owned PR creation and exact-head GitHub CI. Merge readiness is decided only after CI and full PR review.
+
+Stage artifacts remain human-readable handoffs, not a workflow database.
