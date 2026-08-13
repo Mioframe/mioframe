@@ -2,11 +2,14 @@
  * Agent environment compatibility check/fix script.
  *
  * Ensures Claude Code can load project rules and skills that are canonically
- * defined in AGENTS.md files and .agents/skills.
+ * defined in AGENTS.md files and .agents/skills. Also enforces fail-closed
+ * UTC timestamp validity for canonical Material workflow stage artifacts
+ * (DESIGN.md, ARCHITECTURE.md, IMPLEMENTATION.md, MIGRATION.md, REVIEW.md).
  *
  * Usage:
  *   node scripts/agentEnvironment.mjs --check
  *   node scripts/agentEnvironment.mjs --fix
+ *   node scripts/agentEnvironment.mjs --check-material-artifact <artifact-path>
  */
 
 import fs from 'node:fs';
@@ -15,6 +18,20 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const MANAGED_MARKER = '<!-- managed:agent-compat -->';
+
+const MATERIAL_COMPONENTS_ROOT = path.posix.join('src', 'shared', 'ui', 'material', 'components');
+const MATERIAL_ARTIFACT_STAGES = [
+  'DESIGN',
+  'ARCHITECTURE',
+  'IMPLEMENTATION',
+  'MIGRATION',
+  'REVIEW',
+];
+const MATERIAL_ARTIFACT_PATH_PATTERN = new RegExp(
+  `^${MATERIAL_COMPONENTS_ROOT}/([^/]+)/(${MATERIAL_ARTIFACT_STAGES.join('|')})\\.md$`,
+);
+const UTC_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const UTC_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const REQUIRED_PROJECT_SKILL_FRONTMATTER_KEYS = new Set(['name', 'description']);
 const SUPPORTED_SKILL_FRONTMATTER_KEYS = new Set([
   'name',
@@ -441,6 +458,223 @@ export function checkGitignoreCompatibility(root) {
 }
 
 /**
+ * Extract all values of a single-line "Field: value" header, in file order.
+ * @param content Artifact file content.
+ * @param fieldName Exact field label preceding the colon.
+ * @returns Trimmed field values in the order they appear.
+ */
+function extractFieldValues(content, fieldName) {
+  const pattern = new RegExp(`^${fieldName}: (.*)$`, 'gm');
+  const values = [];
+  let match;
+
+  while ((match = pattern.exec(content)) !== null) {
+    values.push(match[1].trim());
+  }
+
+  return values;
+}
+
+/**
+ * Validate a required exact-UTC-ISO timestamp field against an injected clock.
+ * @param values Extracted field values for the field.
+ * @param fieldName Field label for error messages.
+ * @param displayPath Artifact path for error messages.
+ * @param nowMs Injected current instant in epoch milliseconds.
+ * @returns Error messages, empty when the field is valid.
+ */
+function validateTimestampField(values, fieldName, displayPath, nowMs) {
+  if (values.length === 0) {
+    return [`${displayPath} is missing required '${fieldName}' field.`];
+  }
+
+  if (values.length > 1) {
+    return [`${displayPath} has duplicate '${fieldName}' fields; exactly one is required.`];
+  }
+
+  const [value] = values;
+
+  if (!UTC_TIMESTAMP_PATTERN.test(value)) {
+    return [
+      `${displayPath} '${fieldName}' value '${value}' is not exact UTC ISO format (YYYY-MM-DDTHH:mm:ss.sssZ).`,
+    ];
+  }
+
+  const ms = Date.parse(value);
+
+  if (!Number.isFinite(ms)) {
+    return [`${displayPath} '${fieldName}' value '${value}' does not parse to a finite instant.`];
+  }
+
+  if (ms > nowMs) {
+    return [
+      `${displayPath} '${fieldName}' value '${value}' is in the future relative to the current UTC instant.`,
+    ];
+  }
+
+  return [];
+}
+
+/**
+ * Validate the optional "Source checked at" factual date against the current
+ * UTC calendar date. "Refresh check after" is a deliberate future planning
+ * date and is intentionally never validated here.
+ * @param content Artifact file content.
+ * @param displayPath Artifact path for error messages.
+ * @param nowMs Injected current instant in epoch milliseconds.
+ * @returns Error messages, empty when the field is absent or valid.
+ */
+function validateSourceCheckedAt(content, displayPath, nowMs) {
+  const values = extractFieldValues(content, 'Source checked at');
+
+  if (values.length === 0) {
+    return [];
+  }
+
+  if (values.length > 1) {
+    return [`${displayPath} has duplicate 'Source checked at' fields; exactly one is required.`];
+  }
+
+  const [value] = values;
+
+  if (!UTC_DATE_PATTERN.test(value)) {
+    return [
+      `${displayPath} 'Source checked at' value '${value}' is not exact UTC date format (YYYY-MM-DD).`,
+    ];
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const checkedMs = Date.UTC(year, month - 1, day);
+  const nowDate = new Date(nowMs);
+  const todayMs = Date.UTC(nowDate.getUTCFullYear(), nowDate.getUTCMonth(), nowDate.getUTCDate());
+
+  if (checkedMs > todayMs) {
+    return [
+      `${displayPath} 'Source checked at' value '${value}' is later than the current UTC calendar date.`,
+    ];
+  }
+
+  return [];
+}
+
+/**
+ * Validate the canonical timestamp fields of one Material workflow artifact.
+ * @param relPath Artifact path relative to the repository root, POSIX-separated.
+ * @param content Artifact file content.
+ * @param nowMs Injected current instant in epoch milliseconds.
+ * @returns Error messages, empty when the artifact is valid.
+ */
+export function validateMaterialArtifactContent(relPath, content, nowMs) {
+  const stageMatch = MATERIAL_ARTIFACT_PATH_PATTERN.exec(relPath);
+  const errors = [
+    ...validateTimestampField(
+      extractFieldValues(content, 'Artifact revision'),
+      'Artifact revision',
+      relPath,
+      nowMs,
+    ),
+  ];
+
+  if (stageMatch?.[2] === 'DESIGN') {
+    errors.push(
+      ...validateTimestampField(
+        extractFieldValues(content, 'Design contract revision'),
+        'Design contract revision',
+        relPath,
+        nowMs,
+      ),
+    );
+  }
+
+  errors.push(...validateSourceCheckedAt(content, relPath, nowMs));
+
+  return errors;
+}
+
+/**
+ * List canonical Material workflow stage artifact paths that currently exist.
+ * @param root Repository root.
+ * @returns Repository-relative POSIX paths, sorted.
+ */
+function findMaterialArtifactPaths(root) {
+  const componentsAbs = path.join(root, ...MATERIAL_COMPONENTS_ROOT.split('/'));
+  const results = [];
+  let familyEntries;
+
+  try {
+    familyEntries = fs.readdirSync(componentsAbs, { withFileTypes: true });
+  } catch {
+    return results;
+  }
+
+  for (const familyEntry of familyEntries) {
+    if (!familyEntry.isDirectory()) {
+      continue;
+    }
+
+    for (const stage of MATERIAL_ARTIFACT_STAGES) {
+      const relPath = path.posix.join(MATERIAL_COMPONENTS_ROOT, familyEntry.name, `${stage}.md`);
+      const absPath = path.join(root, ...relPath.split('/'));
+
+      if (fs.existsSync(absPath)) {
+        results.push(relPath);
+      }
+    }
+  }
+
+  return results.sort((left, right) => left.localeCompare(right));
+}
+
+/**
+ * Validate canonical Material workflow artifact timestamps repository-wide.
+ * Never writes: an invalid timestamp requires regeneration by its owning
+ * Material stage, not automatic repair.
+ * @param root Repository root.
+ * @param nowMs Injected current instant in epoch milliseconds.
+ * @returns Validation result with no fixes.
+ */
+export function checkMaterialArtifactTimestamps(root, nowMs = Date.now()) {
+  const errors = [];
+
+  for (const relPath of findMaterialArtifactPaths(root)) {
+    const absPath = path.join(root, ...relPath.split('/'));
+    const content = fs.readFileSync(absPath, 'utf8');
+    errors.push(...validateMaterialArtifactContent(relPath, content, nowMs));
+  }
+
+  return { errors, fixes: [] };
+}
+
+/**
+ * Validate one explicit Material workflow artifact path, for use immediately
+ * after a Material orchestrator worker writes an artifact.
+ * @param root Repository root.
+ * @param artifactPath Absolute or repository-relative artifact path.
+ * @param nowMs Injected current instant in epoch milliseconds.
+ * @returns Validation result for the single artifact.
+ */
+export function checkSingleMaterialArtifact(root, artifactPath, nowMs = Date.now()) {
+  const absPath = path.isAbsolute(artifactPath) ? artifactPath : path.join(root, artifactPath);
+  const relPath = path.relative(root, absPath).split(path.sep).join('/');
+
+  if (!MATERIAL_ARTIFACT_PATH_PATTERN.test(relPath)) {
+    return {
+      errors: [
+        `${relPath} is not a canonical Material workflow artifact path (expected ` +
+          `${MATERIAL_COMPONENTS_ROOT}/<family>/(${MATERIAL_ARTIFACT_STAGES.join('|')}).md).`,
+      ],
+    };
+  }
+
+  if (!fs.existsSync(absPath)) {
+    return { errors: [`${relPath} does not exist.`] };
+  }
+
+  const content = fs.readFileSync(absPath, 'utf8');
+  return { errors: validateMaterialArtifactContent(relPath, content, nowMs) };
+}
+
+/**
  * Run all agent environment checks and optional safe repairs.
  * @param root Repository root.
  * @param fix Whether to apply safe repairs.
@@ -451,6 +685,7 @@ export function checkAgentEnvironment(root, fix) {
   const skillsResult = checkSkillsSymlink(root, fix);
   const skillFrontmatterResult = checkSkillFrontmatter(root);
   const gitignoreResult = checkGitignoreCompatibility(root);
+  const materialArtifactResult = checkMaterialArtifactTimestamps(root);
 
   return {
     errors: [
@@ -458,6 +693,7 @@ export function checkAgentEnvironment(root, fix) {
       ...skillsResult.errors,
       ...skillFrontmatterResult.errors,
       ...gitignoreResult.errors,
+      ...materialArtifactResult.errors,
     ],
     fixes: [
       ...claudeResult.fixes,
@@ -472,13 +708,40 @@ function main() {
   const args = process.argv.slice(2);
   const fix = args.includes('--fix');
   const check = args.includes('--check');
+  const materialArtifactFlagIndex = args.indexOf('--check-material-artifact');
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+  if (materialArtifactFlagIndex !== -1) {
+    const artifactPath = args[materialArtifactFlagIndex + 1];
+
+    if (!artifactPath) {
+      console.error(
+        'Usage: node scripts/agentEnvironment.mjs --check-material-artifact <artifact-path>',
+      );
+      process.exit(1);
+    }
+
+    const { errors } = checkSingleMaterialArtifact(root, artifactPath);
+
+    for (const message of errors) {
+      console.error(`[agent-environment] error: ${message}`);
+    }
+
+    if (errors.length > 0) {
+      process.exit(1);
+    }
+
+    console.log('[agent-environment] ok');
+    return;
+  }
 
   if (!fix && !check) {
-    console.error('Usage: node scripts/agentEnvironment.mjs --check | --fix');
+    console.error(
+      'Usage: node scripts/agentEnvironment.mjs --check | --fix | --check-material-artifact <artifact-path>',
+    );
     process.exit(1);
   }
 
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const { errors, fixes } = checkAgentEnvironment(root, fix);
 
   for (const message of fixes) {
