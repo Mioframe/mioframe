@@ -10,34 +10,35 @@ Current milestone: `M3 — sequential component migration (Checkbox)`
 
 Status: `in-progress`
 
-Checkbox is complete at the coding-agent workflow boundary under the simplified Material process:
+PR #194 is open. The canonical Checkbox migration is structurally complete, but final merge review found one Material-contract correction still required before the family can be considered complete:
 
-- current `DESIGN.md` reused;
-- fresh `ARCHITECTURE.md`: `Status: ready`;
-- fresh `IMPLEMENTATION.md`: `Status: complete`;
-- fresh `MIGRATION.md`: `Status: complete`;
-- fresh independent `REVIEW.md`: `Verdict: compliant`;
-- no review blockers, major issues, minor issues, or accepted risks;
-- focused implementation/migration/review verification passed;
-- obsolete Material timestamp/revision guard removed;
-- Material workflow no longer uses timestamp/revision graphs;
-- coding agents use focused local verification for development feedback;
-- GitHub CI owns authoritative verification on the exact PR head.
+- official Checkbox accessibility guidance publishes `Space` **or** `Enter` activation;
+- the installed private renderer `@m3e/web@2.6.3` activates Checkbox with Space but not Enter;
+- Mioframe follows official Material as the public semantic authority, so the canonical adapter must compensate for the renderer gap rather than adopting renderer behavior as public behavior;
+- the existing `Enter → no-op` browser proof and matching architecture/review claims are therefore obsolete and must be corrected;
+- exact-head GitHub CI was green before this correction, but a new exact-head CI run is required after the code/proof correction.
 
-Checkbox does not require another broad local `pnpm verify` before PR creation.
+The general workflow simplification remains valid:
+
+- Material workflow uses no timestamp/revision graph;
+- architecture, implementation, migration, and independent review run fresh per invocation;
+- coding agents use focused local verification for implementation feedback;
+- GitHub CI owns authoritative repository verification on the exact PR head;
+- merge readiness belongs to the architect after current CI and full PR review.
 
 ## Calibration result
 
-Switch and Checkbox established these durable invariants:
+Switch and Checkbox establish these durable invariants:
 
-1. public controlled props remain the source of truth;
-2. renderer mutation is prevented at the faithful pre-mutation intent boundary when available;
-3. rejected intent cannot leave renderer state divergent from public props;
-4. browser/visual proof ends at the canonical owner;
-5. presentation composition proves child suppression and positive handoff to the actual action owner;
-6. independent review checks the complete current family and consumer semantics;
-7. workflow metadata stays subordinate to component correctness;
-8. coding agents run focused local checks; exact-head PR CI is the merge verification gate.
+1. official Material semantics define the public component contract; m3e is a private renderer and divergences are adapted or recorded, not promoted to Mioframe API semantics;
+2. public controlled props remain the source of truth;
+3. renderer mutation is prevented at the faithful pre-mutation intent boundary when available;
+4. rejected intent cannot leave renderer state divergent from public props;
+5. browser/visual proof ends at the canonical owner;
+6. presentation composition proves child suppression and positive handoff to the actual action owner;
+7. independent review checks the complete current family and consumer semantics;
+8. workflow metadata stays subordinate to component correctness;
+9. coding agents run focused local checks; exact-head PR CI is the merge verification gate.
 
 No generic m3e adapter framework, workflow database, timestamp validator, artifact revision graph, or duplicate local CI gate is justified.
 
@@ -57,9 +58,10 @@ No generic m3e adapter framework, workflow database, timestamp validator, artifa
 
 ## Next operator action
 
-1. Recheck branch synchronization and package version against current `develop`.
-2. Open the Checkbox PR into `develop`.
-3. Use GitHub CI on the exact PR head as the authoritative verification gate.
-4. Perform full PR review and issue the merge recommendation.
+1. Correct canonical Checkbox Enter activation and its focused unit/browser proof without adding a generic keyboard abstraction.
+2. Re-run fresh Checkbox architecture → implementation → migration → independent review so stage artifacts describe the corrected official contract and current repository state.
+3. Update PR #194 description if the final contract changes materially.
+4. Require all exact-head GitHub CI checks to pass on the corrected PR head.
+5. Perform one final full PR review and issue the merge recommendation.
 
-Do not select the next M3 family until Checkbox completes PR CI and merge review.
+Do not select the next M3 family until Checkbox completes this correction, exact-head CI, and merge review.
