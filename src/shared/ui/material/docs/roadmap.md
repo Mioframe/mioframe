@@ -21,23 +21,23 @@ Consumer-level proof (`BooleanValueInline.test.ts`) covers `true`, `false`, unre
 
 The previously-invalid future execution timestamps were regenerated through the owning Checkbox stages using factual UTC revisions.
 
-However, the family is not currently complete. After synchronization, current `develop` includes the Material Storybook ownership contract from PR #193: once owner-local visual discovery is executable, a canonical Material migration must finish surviving family-owned browser/visual proof at the canonical owner in the same family workflow rather than leaving it in a central path for a later S4 cleanup.
+However, the family is not currently complete: `REVIEW.md` has not yet run fresh against the corrected artifacts below.
 
-The current Checkbox architecture, implementation, migration, and review still describe and accept `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts` as the final visual owner. That is stale relative to the current `docs/testing/migration-plan.md` and current Material architecture/migration skills. The family must return to architecture, classify the legacy visual proof disposition under the current policy, and move surviving Checkbox visual proof and baselines to the canonical `src/shared/ui/material/components/checkbox/` owner if the current executable lane supports that convention. Downstream implementation/migration/review artifacts are invalidated by that architecture correction.
+The Checkbox visual-ownership gap identified after synchronizing with `develop`'s PR #193 Storybook ownership contract is now corrected. A fresh architecture-stage worker (`ARCHITECTURE.md`, `Artifact revision: 2026-08-13T06:41:40.600Z`, `Status: ready`) selected owner-local visual-proof ownership for the canonical Checkbox family, mirroring the Stage S4-D (MDSwitch) precedent. A fresh implementation-stage worker (`IMPLEMENTATION.md`, `Artifact revision: 2026-08-13T06:47:59.000Z`, `Status: complete`, `Migration readiness: ready`) relocated the visual spec and its four baselines to the owner-local `src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts` (colocated `MDCheckbox.visual.spec.ts-snapshots/`) and deleted the legacy central `tests/e2e/visual/shared-ui/md-checkbox-family.spec.ts` and its snapshot directory. A fresh migration-stage worker (`MIGRATION.md`, `Artifact revision: 2026-08-13T06:51:14.000Z`) independently re-confirmed all six consumers unchanged and correct, and corrected `docs/testing/migration-plan.md`'s stale Stage S4-B trailing sentence and "Still transitional" visual-pilot list to record this owner-local ownership. Only a fresh independent review of these corrected artifacts remains.
 
 Current family state for merge-readiness purposes:
 
 ```text
 DESIGN.md          current
-ARCHITECTURE.md    correction required for current visual ownership policy
-IMPLEMENTATION.md  invalidated by architecture correction
-MIGRATION.md       invalidated by architecture/implementation correction
+ARCHITECTURE.md    current (owner-local visual ownership correction applied)
+IMPLEMENTATION.md  current (visual proof relocated to owner-local location)
+MIGRATION.md       current (confirms consumers unchanged; migration-plan.md corrected)
 REVIEW.md          must run fresh after corrected upstream artifacts
 ```
 
 Branch synchronization is complete against current `develop` (`behind_by: 0`). The branch still requires a PR-level `package.json` version bump strictly above current `develop` before a PR into `develop` can pass the repository `release-version` gate.
 
-The earlier local `pnpm verify` result remains useful implementation evidence but is not merge approval after this newly identified architecture/proof-ownership defect and the required final-owner relocation.
+The earlier local `pnpm verify` result remains useful implementation evidence but is not merge approval: the architecture/proof-ownership correction and the final-owner visual-proof relocation are now complete, but a fresh independent review and a fresh `pnpm verify` on the corrected head are still required before merge.
 
 ## Calibration result
 
@@ -72,10 +72,9 @@ M3 is an ongoing migration phase. Completing Checkbox will complete the Checkbox
 
 ## Next operator action
 
-1. Route Checkbox back through architecture using the current `docs/testing/migration-plan.md` and Material skills. Correct the stale central visual-proof decision and explicitly classify legacy/canonical visual proof ownership.
-2. Apply the resulting implementation/migration changes, including final owner-local visual proof/baselines when selected by the current architecture, then run a fresh independent review.
-3. Run the ordinary final `pnpm verify` on the corrected current head.
-4. Bump `package.json` to a version strictly above current `develop` before opening/refreshing the PR into `develop`.
-5. Require ordinary GitHub merge gates before integration.
+1. Run a fresh independent review of the corrected Checkbox architecture, implementation, and migration artifacts (owner-local visual-proof relocation is complete; `docs/testing/migration-plan.md` is corrected).
+2. Run the ordinary final `pnpm verify` on the corrected current head.
+3. Bump `package.json` to a version strictly above current `develop` before opening/refreshing the PR into `develop`.
+4. Require ordinary GitHub merge gates before integration.
 
 Do not select the next M3 family until the Checkbox family is current, independently reviewed, and verified on the final merge candidate.
