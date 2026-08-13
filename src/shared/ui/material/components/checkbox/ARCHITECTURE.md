@@ -3,7 +3,7 @@
 Status: ready
 DESIGN.md reference: `src/shared/ui/material/components/checkbox/DESIGN.md`
 Renderer revision: @m3e/web@2.6.3
-Revision summary: Official Material is the public semantic authority. Checkbox guidance publishes Space or Enter activation. Current m3e handles Space but not Enter, so Enter is a renderer gap to adapt rather than a public behavior to remove.
+Revision summary: Official Material is the public semantic authority. Checkbox guidance publishes Space or Enter activation. Current m3e handles Space but not Enter, so Enter is missing renderer coverage to adapt rather than a public behavior to remove.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -43,7 +43,7 @@ Dependency families: none.
 
 ## Ownership
 
-Checkbox family owns public Vue semantics, controlled intent, host boundary, presentation behavior, renderer-gap corrections, exports, and family proof. Consumers retain business/domain state and actions. m3e remains a private renderer.
+Checkbox family owns public Vue semantics, controlled intent, host boundary, presentation behavior, missing-renderer corrections, exports, and family proof. Consumers retain business/domain state and actions. m3e remains a private renderer.
 
 ## Public Vue API
 
@@ -63,9 +63,9 @@ No Checkbox-specific public component token is selected.
 
 Current m3e directly covers renderer properties, pointer activation, Space activation, role, geometry, and Material visual states.
 
-`M3E-005` remains the adjacent-label accessible-name gap; explicit ARIA naming is the current backstop.
+`M3E-005` remains the adjacent-label accessible-name divergence; explicit ARIA naming is the current backstop.
 
-Enter is a second renderer gap for the selected contract: installed `@m3e/web@2.6.3` does not activate Checkbox on Enter. Mioframe must add the minimum family-local correction so Enter produces the same controlled public intent as other activation paths. Revalidate and remove that correction if a future renderer version implements Enter natively.
+Enter is classified as **missing renderer coverage**, not a new `M3E-*` defect: installed `@m3e/web@2.6.3` simply does not implement Enter activation. Per `docs/m3e-defects.md`, absent official capability is recorded in family architecture only. Mioframe must add the minimum family-local correction so Enter produces the same controlled public intent as other activation paths. Revalidate and remove that correction if a future renderer version implements Enter natively.
 
 ## State precedence and restoration
 
@@ -77,7 +77,8 @@ Enter is a second renderer gap for the selected contract: installed `@m3e/web@2.
 2. Add only the family-local Enter correction required by official Material, with disabled/presentation suppression and no second state owner.
 3. Replace the real-browser Enter-no-op proof with exactly-once Enter activation proof and rejected-intent coverage.
 4. Keep existing proof unchanged where behavior is unaffected.
-5. Record the version-scoped renderer gap and run focused verification.
+5. Record the missing renderer coverage in this family architecture/implementation evidence only; do not create an `M3E-*` registry entry unless separate evidence shows a documented/implemented m3e contract is broken.
+6. Run focused verifier-managed verification, then rerun migration and independent review fresh.
 
 ## TEST IMPACT
 
@@ -102,8 +103,8 @@ A future renderer may add native Enter handling, requiring removal of the workar
 
 ## Forbidden
 
-Do not treat renderer behavior as public authority when it conflicts with selected official Material; do not add duplicate state, generic keyboard infrastructure, unrelated API, consumer changes, or visual-baseline updates without an actual visible change.
+Do not treat renderer behavior as public authority when it conflicts with selected official Material; do not add duplicate state, generic keyboard infrastructure, unrelated API, consumer changes, `M3E-*` defect records for merely missing renderer capability, or visual-baseline updates without an actual visible change.
 
 ## Implementation readiness
 
-`ready`. The required correction is limited to family-local Enter activation and its focused proof/documented renderer gap.
+`ready`. The required correction is limited to family-local Enter activation and its focused proof.
