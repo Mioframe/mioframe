@@ -19,9 +19,11 @@ Public props: `checked`, `indeterminate`, `disabled`, `presentation`.
 
 Public emits: `update:checked(value: boolean)` and `update:indeterminate(value: boolean)`.
 
-Selected interaction: pointer and Space activation. `checked` and `indeterminate` remain the only state sources of truth; rejected intent must not mutate renderer state.
+`checked` and `indeterminate` remain the only state sources of truth; rejected intent must not mutate renderer state.
 
-Enter is intentionally not selected. The `DESIGN.md` source table that says `Space or Enter` is internally corrupted: the same table describes chips, chip groups, input-chip deletion, and chip navigation. It is not reliable Checkbox-specific keyboard evidence. Checkbox semantics use Space activation, consistent with the standard Checkbox interaction model and Google's Material Web Checkbox using a native checkbox input without a custom Enter toggle.
+The current official Material Checkbox snapshot does not provide a reliable Checkbox-specific key mapping. Its only keyboard table is explicitly recorded in `DESIGN.md` as a source conflict because every row uses Chips terminology, including chip groups, input-chip deletion, and chip navigation. No corrected Checkbox keyboard table is published in the inspected official sources.
+
+Therefore Enter is not selected as a required public Checkbox behavior. The adapter must not invent an Enter workaround from the corrupted table. Existing keyboard operability through the renderer's Space path remains supported and proved, but architecture does not claim that the corrupted table establishes a broader Space-or-Enter contract.
 
 ## Ownership
 
@@ -29,7 +31,7 @@ The Material family owns the Vue adapter, controlled intent, host boundary, pres
 
 ## Renderer mapping
 
-Current m3e covers the selected pointer/Space interaction and renderer state. No Enter workaround is required.
+Current m3e covers the selected public state surface and current pointer/Space interaction. No Enter correction is required from current official-source evidence.
 
 `M3E-005` remains the adjacent-label accessible-name divergence; explicit ARIA naming is the current backstop.
 
@@ -40,14 +42,14 @@ Forward only merged class/style plus `id`, `title`, `data-*`, `aria-label`, and 
 ## TEST IMPACT
 
 - `MDCheckbox.test.ts`: controlled adapter contract.
-- `MDCheckbox.browser.spec.ts`: real pointer/Space interaction, rejected intent, disabled/presentation behavior, focus/label behavior, and no custom Enter toggle.
+- `MDCheckbox.browser.spec.ts`: real pointer/Space interaction, rejected intent, disabled/presentation behavior, focus/label behavior, and absence of an invented Enter toggle.
 - visual spec: appearance only.
 - consumer tests: consumer-owned state translation and composition.
 
 ## Acceptance criteria
 
-- pointer and Space activate exactly once;
-- Enter does not add a non-native Checkbox toggle;
+- current pointer/Space interaction remains exactly-once and controlled;
+- Enter is not promoted to a custom toggle without corrected official Checkbox evidence;
 - rejected intent leaves rendered state controlled by props;
 - disabled/presentation suppress independent interaction;
 - no new abstraction or public API is introduced;
@@ -56,4 +58,4 @@ Forward only merged class/style plus `id`, `title`, `data-*`, `aria-label`, and 
 
 ## Forbidden
 
-Do not add an Enter workaround without corrected Checkbox-specific Material evidence. Do not add duplicate state, generic keyboard infrastructure, unrelated public API, consumer ownership changes, or visual-baseline changes without a visible change.
+Do not derive public Material semantics from renderer behavior, deprecated implementation libraries, or unrelated accessibility patterns. Do not add an Enter workaround from the corrupted Chips table. Do not add duplicate state, generic keyboard infrastructure, unrelated public API, consumer ownership changes, or visual-baseline changes without a visible change.
