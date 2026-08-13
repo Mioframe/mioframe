@@ -2,16 +2,16 @@
 
 Status: blocked
 ARCHITECTURE.md reference: `src/shared/ui/material/components/checkbox/ARCHITECTURE.md`
-Revision summary: Full PR review found that the current implementation intentionally treats Enter as a no-op because installed `@m3e/web@2.6.3` does not activate Checkbox on Enter. Official Material Checkbox accessibility guidance publishes Space or Enter activation, so official Material remains authoritative and the implementation requires a family-local Enter correction after architecture is updated.
-Remaining blockers: Correct architecture and then implement/prove official Enter activation.
-Required return family: self
-Required return stage: architecture
-Architecture deviations: current code follows the checked-in Space-only architecture, but that architecture is the upstream defect
+Revision summary: Corrected architecture now selects official Material pointer, Space, and Enter activation. Current code still omits Enter because `@m3e/web@2.6.3` does not implement it, so implementation and focused proof require a family-local correction.
+Remaining blockers: Implement and prove the architecture-selected Enter activation.
+Required return family: none
+Required return stage: none
+Architecture deviations: missing Enter activation relative to current architecture
 Migration readiness: blocked
 
 ## Implemented passes
 
-The existing canonical implementation remains valid in the reviewed areas unrelated to Enter:
+The existing canonical implementation remains valid outside the missing Enter path:
 
 - one semantic `m3e-checkbox` host;
 - controlled `checked` / `indeterminate` props as the only state source;
@@ -22,24 +22,17 @@ The existing canonical implementation remains valid in the reviewed areas unrela
 - private renderer typing and renderer boundary;
 - canonical export and owner-local proof.
 
-The missing required pass is official Enter activation for the current renderer gap.
+The current-stage correction is the architecture-selected family-local Enter activation.
 
 ## Public API implemented
 
-The public API remains unchanged:
-
-- props: `checked`, `indeterminate`, `disabled`, `presentation`;
-- emits: `update:checked`, `update:indeterminate`;
-- no slots;
-- no public renderer types/events.
-
-No public API expansion is required for the correction.
+The public API remains unchanged: `checked`, `indeterminate`, `disabled`, `presentation`; emits `update:checked` and `update:indeterminate`; no slots or renderer exposure.
 
 ## Tokens and renderer mappings
 
 No Checkbox-specific public token surface is selected. Existing renderer property mappings remain correct.
 
-The unresolved renderer mapping is behavioral: current `@m3e/web@2.6.3` handles pointer/Space activation but not Enter while official Material publishes Space or Enter activation.
+Current m3e directly covers pointer/Space but has missing Enter coverage. The adapter must supply the missing official behavior without making renderer-local state authoritative.
 
 ## Dependencies
 
@@ -47,32 +40,22 @@ Dependency queue: none.
 
 ## Component-owned proof
 
-Existing proof remains useful except for the browser assertion that Enter produces no effect. That assertion is now proof of the defect and must be replaced.
+Existing proof remains useful except for the obsolete assertion that Enter produces no effect.
 
-Required post-architecture proof:
-
-- Enter produces one controlled intent and accepted state round-trips;
-- rejected Enter intent leaves rendered state unchanged;
-- disabled/presentation suppress independent Enter activation;
-- pointer and Space remain exactly-once activation paths;
-- visual baselines remain unchanged unless an actual visible change occurs.
+The implementation worker must update focused proof so real-browser Enter activation is exactly once, rejected Enter intent remains controlled, and disabled/presentation suppress independent Enter activation. Existing pointer/Space and unaffected proof must remain green.
 
 ## Stage verification
 
-Previous focused checks and exact-head CI applied to the old Space-only target state. They do not prove the corrected official contract.
-
-After code correction, run focused verifier-managed checks selected by the corrected architecture. Required exact-head GitHub CI belongs to the architect after the corrected head is published.
+Previous verification applied to the old Space-only contract. After correction, run the focused verifier-managed unit/browser/type/static scopes selected by current architecture. Broad local CI duplication is not required solely for stage completion.
 
 ## Architecture deviations
 
-The current code is not a deviation from the current checked-in architecture; the architecture itself incorrectly promoted renderer behavior into the public keyboard contract. The earliest correction owner is architecture, as recorded in `REVIEW.md`.
+Current deviation: Enter activation required by current architecture is not implemented.
 
 ## Remaining blockers
 
-1. Correct Checkbox architecture to select official Space/Enter activation.
-2. Implement the minimum family-local Enter correction without a generic keyboard abstraction or duplicate state owner.
-3. Update focused unit/browser proof.
+The implementation worker must resolve the current-stage Enter defect before returning; it must not add a new abstraction or expand public API.
 
 ## Migration readiness
 
-Blocked until architecture and implementation are corrected and focused component proof passes.
+Blocked until the Enter correction and focused component proof are complete.
