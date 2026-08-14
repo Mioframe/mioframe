@@ -13,7 +13,7 @@
 
 import { relative } from 'node:path';
 
-import { runLocalCommand } from '../lib/runLocalCommand.mjs';
+import { runLocalCommand } from '../lib/runLocalCommand.ts';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';
 
