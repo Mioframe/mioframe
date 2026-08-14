@@ -1,10 +1,10 @@
 # Loading indicator implementation
 
-Artifact revision: 2026-08-01T10:40:52.428Z
+Artifact revision: 2026-08-14T11:46:35.000Z
 Status: complete
 ARCHITECTURE.md reference: `src/shared/ui/material/components/loadingIndicator/ARCHITECTURE.md`
-ARCHITECTURE.md revision: 2026-08-01T10:28:43.915Z
-Revision summary: Revalidated the complete canonical implementation and focused proof against the corrected architecture contract.
+ARCHITECTURE.md revision: 2026-08-14T11:46:35.000Z
+Revision summary: Revalidated the installed 2.7.4 renderer baseline. M3E-001 and M3E-002 remain active, so the existing private host/active-size mapping is retained without public API change.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -15,7 +15,7 @@ Migration readiness: ready
 
 1. Audited `MDLoadingIndicator.vue`, package-derived renderer declaration, selected custom-element registration, family/root exports, and the selected public token; the runtime implementation already matched the accepted architecture.
 2. Revalidated the explicit host boundary: `inheritAttrs: false`; render-time projection of only `class`, `style`, `id`, `title`, `data-*`, `aria-hidden`, and `aria-describedby`; merged family/consumer class and style; and adapter-owned geometry precedence.
-3. Revalidated M3E-001 and M3E-002 against the installed `@m3e/web@2.6.3` exported type and built artifact. The documented active-size input remains unread, the effective private input remains `--m3e-loading-indicator-size`, and the uncontained host remains coupled to active size.
+3. Revalidated M3E-001 and M3E-002 against the installed `@m3e/web@2.7.4` exported type and built artifact. The documented active-size input remains unread, the effective private input remains `--m3e-loading-indicator-size`, and the uncontained host remains coupled to active size.
 4. Audited component-contract, Storybook behavior/accessibility, token, visual, renderer-boundary, and persistent impact proof. Added focused coverage for valid-size restoration after non-finite input, protected private-size precedence, and rejected `tabindex`; changed the browser listener check to ordinary pointer input.
 5. Audited `MDButton` read-only. It continues to supply the required label, size 24, `aria-hidden="true"`, and `currentColor` through the public family token without changing Button interaction or disabled ownership.
 6. Recorded the current architecture revision and focused implementation-stage verification in this artifact.
@@ -32,7 +32,7 @@ Migration readiness: ready
 - `--md-comp-loading-indicator-active-indicator-color` is family-owned, defaults to `var(--md-sys-color-primary)`, and maps privately to `--m3e-loading-indicator-active-indicator-color`.
 - Public overall size owns explicit host width and height. The private effective active-size input receives the normalized size at the official 38/48 ratio.
 - Consumer style may override the public color token, but cannot override adapter-owned width, height, or `--m3e-loading-indicator-size`.
-- M3E-001 and M3E-002 remain exact-version-gated, family-local, removable workarounds for 2.6.3; no private renderer DOM or animation ownership is acquired.
+- M3E-001 and M3E-002 remain exact-version-gated, family-local, removable workarounds for 2.7.4; no private renderer DOM or animation ownership is acquired.
 
 ## Dependencies
 
@@ -49,6 +49,10 @@ Migration readiness: ready
 - Package-derived type-check, token catalogue tests, renderer-boundary ownership, and exact installed artifact inspection cover renderer integration and M3E-001/M3E-002.
 - The visual lane passed all 219 current baselines, including the three Loading indicator references and Button composition. The expected Loading indicator size, color, and legacy-surface images were inspected; a passing run emitted no actual/diff artifacts and no baseline was updated.
 - Canonical visual stories: `material-3-components-loading-indicator-mdloadingindicator--size-matrix`, `material-3-components-loading-indicator-mdloadingindicator--color-contract`, and the Button-owned legacy/loading composition stories. Current scenarios covered: standalone sizes, primary/contextual colors, legacy isolation, and Button composition. Automated visual baseline: passed. Material/renderer differences requiring review: M3E-001/M3E-002 remain active. Operator visual status: no-reported-defect.
+
+## @m3e/web 2.7.4 compatibility revalidation
+
+The installed loading-indicator artifact still reads `--m3e-loading-indicator-size` rather than its documented active-indicator input and still derives the uncontained host width from active-indicator size. The existing host geometry plus 38/48 active-size mapping remains the only required workaround. The public `label` and `size` contract, renderer ownership of animation, and Button composition boundary are unchanged.
 
 ## Stage verification
 
@@ -71,4 +75,4 @@ None.
 
 ## Migration readiness
 
-Ready. The canonical family implementation and component-owned proof match architecture revision `2026-08-01T10:28:43.915Z`; Button composition crosses only the accepted public boundary, and no implementation-stage blocker or concrete visual/motion defect remains.
+Ready. The canonical family implementation and component-owned proof match architecture revision `2026-08-14T11:46:35.000Z`; Button composition crosses only the accepted public boundary, and no implementation-stage blocker or concrete visual/motion defect remains.

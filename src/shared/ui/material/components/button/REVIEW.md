@@ -34,7 +34,7 @@ The selected action-Button subset and explicit deferrals are supported by the of
 
 ## Architecture compliance
 
-`ARCHITECTURE.md` revision `2026-08-01T11:51:42.309Z` references the current design contract, installed `@m3e/web@2.6.3`, and current compliant Loading Indicator review revision `2026-08-01T11:50:04.390Z`. The dependency queue is empty and the recorded dependency review revision is exact.
+This independent review was recorded against `@m3e/web@2.6.3` and the then-current Loading Indicator review. The current `2.7.4` compatibility revalidation is recorded in the family architecture/implementation artifacts and `docs/m3e-defects.md`; it adds the M3E-006 private mapping for the selected small 16dp geometry and does not represent a new independent family review. The dependency queue remains empty.
 
 The architecture resolves the minimum current demand, one-host renderer boundary, public Vue API, exact host-attribute allow-list, state precedence, loading composition, seven contextual text-Button tokens, private mappings, consumer ownership, implementation passes, proof owners, migration inventory, risks, and forbidden approaches without leaving a coding decision open.
 
@@ -44,7 +44,7 @@ Navigation Path correctly uses canonical small Button geometry rather than an un
 
 ## Implementation compliance
 
-`IMPLEMENTATION.md` revision `2026-08-01T12:02:58.888Z` references the current architecture and records no deviations.
+`IMPLEMENTATION.md` revision `2026-08-14T12:28:07.000Z` records the 2.7.4 M3E-006 correction: two documented renderer CSS inputs stay private in the Button family to restore the selected small 16dp geometry. It adds no public Vue API, consumer token, compatibility branch, renderer DOM access, or interaction implementation.
 
 The implementation uses one semantic `m3e-button` host, package-derived renderer typing, explicit Boolean and native-type mappings, required label, optional leading icon, decorative public `MDLoadingIndicator` composition, Button-owned `aria-busy`, and an exact positive host-attribute allow-list.
 
@@ -66,7 +66,7 @@ Repository-wide inspection found no raw renderer Button import or tag outside Ma
 
 ## Proof and stage verification
 
-Implementation records passing focused component-contract, type-check, Storybook behavior, and the 219-reference visual lane without baseline updates.
+The historical implementation record predates the renderer update. The current compatibility record adds focused component-contract and real-browser small-geometry proof; its verifier-selected 214-reference visual run passed with no baseline update.
 
 Migration records passing focused format, representative consumer and impact-registry unit tests, Navigation Path browser behavior, Snackbar rendered-color behavior, and the 219-reference visual lane without baseline updates.
 
@@ -92,7 +92,7 @@ None. Renderer-owned motion and accessibility, exact-version Loading Indicator w
 
 ## Items not required
 
-- No production edit, upstream artifact rewrite, baseline update, padding token or prop, compatibility alias, generic adapter, private renderer access, or descendant override is required.
+- No public padding token or prop, upstream artifact rewrite, compatibility alias, generic adapter, private renderer DOM access, or descendant override is required. M3E-006 uses only documented size-specific renderer inputs privately in the Button family until the consumed baseline supplies the selected direct default.
 - No expansion to deferred Button variants, sizes, shapes, toggle behavior, links, form-data surface, Button groups, Icon Buttons, or FABs is required.
 - No positive operator visual acknowledgement is required in the absence of a reported defect.
 - No unrelated shared-reorder correction belongs to the Button family.
@@ -100,8 +100,8 @@ None. Renderer-owned motion and accessibility, exact-version Loading Indicator w
 
 ## Routing evidence
 
-The current revision chain is exact: design contract `2026-08-01T09:54:01.860Z`, architecture `2026-08-01T11:51:42.309Z` recording Loading Indicator review `2026-08-01T11:50:04.390Z`, implementation `2026-08-01T12:02:58.888Z`, and migration `2026-08-01T12:15:27.037Z`.
+The independent review's historical revision chain is exact: design contract `2026-08-01T09:54:01.860Z`, architecture `2026-08-01T11:51:42.309Z` recording Loading Indicator review `2026-08-01T11:50:04.390Z`, implementation `2026-08-01T12:02:58.888Z`, and migration `2026-08-01T12:15:27.037Z`. The later renderer compatibility record is `ARCHITECTURE.md`/`IMPLEMENTATION.md` revision `2026-08-14T12:28:07.000Z` and `M3E-006` in `docs/m3e-defects.md`.
 
-Fresh complete-family review found no official-fact, demand, ownership, dependency, API, token, renderer, implementation, proof, consumer, scenario, or legacy-removal defect. The correct family route is `none/none`, completion is complete, and the family is ready for outer final workflow verification.
+The historical complete-family review found no official-fact, demand, ownership, dependency, API, token, renderer, implementation, proof, consumer, scenario, or legacy-removal defect. The `2.7.4` revalidation subsequently found the narrowly scoped M3E-006 renderer-default divergence, corrected it at the family boundary, and did not reopen the independent review stage.
 
 The unrelated shared-reorder timeout is classified as an external workspace blocker. It changes no family review and creates no Material correction route.

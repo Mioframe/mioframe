@@ -7,7 +7,7 @@ type M3eCheckboxProps = HTMLAttributes &
   PublicProps & {
     [Property in keyof RendererCheckboxProps]?: RendererCheckboxProps[Property] | undefined;
   } & {
-    // The installed `@m3e/web@2.6.3` renderer dispatches `beforeinput` as a plain `Event`
+    // The installed `@m3e/web@2.7.4` renderer dispatches `beforeinput` as a plain `Event`
     // (`new Event('beforeinput', { bubbles: true, cancelable: true })`), not the ambient DOM
     // lib's `InputEvent`; see ARCHITECTURE.md "Renderer mapping and gaps" private typing seam.
     onBeforeinput?: (event: Event) => void;

@@ -34,7 +34,7 @@ The prior formatter route is cleared. `pnpm verify --only format --files src/sha
 
 ## Architecture compliance
 
-`ARCHITECTURE.md` revision `2026-08-01T10:28:43.915Z` references the current Design contract revision and the installed renderer `@m3e/web@2.6.3`. Dependency closure is empty: Material foundation supplies the system-color fallback, m3e is a private renderer integration, and Button is a parent consumer rather than a dependency.
+This independent review was recorded against `@m3e/web@2.6.3`. The current `2.7.4` compatibility revalidation is recorded in `ARCHITECTURE.md`, `IMPLEMENTATION.md`, and `docs/m3e-defects.md`; it does not represent a new independent family review. Dependency closure remains empty: Material foundation supplies the system-color fallback, m3e is a private renderer integration, and Button is a parent consumer rather than a dependency.
 
 Ownership is narrow and directional. Loading indicator owns its Vue API, standalone semantics, geometry, public token, private renderer mapping, exact-version workarounds, attribute boundary, exports, and family proof. m3e owns private anatomy and the seven-shape animation lifecycle. Button owns composition, redundant child-semantic suppression, `aria-busy`, icon replacement, contextual `currentColor`, activation, and disabled behavior. Product features retain applicability, pending/error copy, cancellation, disabled conflicts, and re-entry guards.
 
