@@ -106,18 +106,18 @@ This is the central safety invariant of V2A.
 
 Representative expected results after V2A:
 
-| Changed path | Current | V2A target |
-| --- | --- | --- |
-| `src/app/playgroundPages.ts` | full | focused `appSmoke.spec.ts` |
-| `src/widgets/DocumentView/Database/DatabaseViewsSheet.vue` | full | focused `databaseViewsAndQueryFlows.spec.ts` |
-| `src/shared/lib/sortable/useReorderSurface.ts` | full | focused existing database views/query + reorder scenario specs |
-| `src/shared/ui/Query/QueryRoot.vue` | full | focused `databaseViewsAndQueryFlows.spec.ts` |
-| mapped feature/entity paths | focused | unchanged |
-| `src/entities/googleSession/index.ts` (unmapped relevant) | full | full |
-| unmapped `src/shared/ui/**` runtime source | full | full |
-| unmapped `src/shared/lib/**` runtime source | full | full |
-| true E2E infrastructure/config | full | full |
-| Storybook/visual/release-only paths | independent/skip for app E2E | unchanged |
+| Changed path                                               | Current                      | V2A target                                                     |
+| ---------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------- |
+| `src/app/playgroundPages.ts`                               | full                         | focused `appSmoke.spec.ts`                                     |
+| `src/widgets/DocumentView/Database/DatabaseViewsSheet.vue` | full                         | focused `databaseViewsAndQueryFlows.spec.ts`                   |
+| `src/shared/lib/sortable/useReorderSurface.ts`             | full                         | focused existing database views/query + reorder scenario specs |
+| `src/shared/ui/Query/QueryRoot.vue`                        | full                         | focused `databaseViewsAndQueryFlows.spec.ts`                   |
+| mapped feature/entity paths                                | focused                      | unchanged                                                      |
+| `src/entities/googleSession/index.ts` (unmapped relevant)  | full                         | full                                                           |
+| unmapped `src/shared/ui/**` runtime source                 | full                         | full                                                           |
+| unmapped `src/shared/lib/**` runtime source                | full                         | full                                                           |
+| true E2E infrastructure/config                             | full                         | full                                                           |
+| Storybook/visual/release-only paths                        | independent/skip for app E2E | unchanged                                                      |
 
 When several changed paths map to different scenarios, focused specs continue to union and deduplicate. Any simultaneous true-full or unknown-relevant hit still upgrades the plan to full.
 
