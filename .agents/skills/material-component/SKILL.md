@@ -1,48 +1,67 @@
 ---
 name: material-component
-description: 'Use with one Material component name to mechanically orchestrate isolated design, architecture, implementation, migration, and review stages, then run one final workflow verification until completion or a genuine blocker.'
+description: 'Use with one Material component name to orchestrate isolated design, architecture, implementation, migration, and independent review stages, then hand the completed family to the architect for PR CI.'
 ---
 
 # Material component
 
 Accept exactly one operator input: the Material component name.
 
-Do not require an implementation brief, mode, files, dependency list, verification command, or repeated invocation.
+Do not require an implementation brief, mode, files, dependency list, verification command, or repeated operator invocation.
 
 ## Authority
 
 Read applicable `AGENTS.md`, `src/shared/ui/material/docs/component-workflow.md`, `verification`, and the selected stage skill.
 
-`component-workflow.md` is the single complete state-machine contract. Do not reconstruct it from README, roadmap, code, tests, or conversation context.
+`component-workflow.md` is the single complete state-machine contract.
+
+## Goal
+
+The orchestrator exists to help isolated agents implement one correct Mioframe Material family from official Material guidance and repository rules. It must not grow its own workflow database, revision graph, timestamp protocol, hash registry, semantic review logic, or duplicate CI gate.
 
 ## Orchestrator boundary
 
 The orchestrator may only:
 
-- resolve canonical family names;
-- validate fixed fields, headings, dates, invalidating revisions, routes, and terminal-state invariants;
-- compare renderer and dependency-review revisions with current workspace facts;
-- process explicit dependency queues and routes;
+- resolve the canonical family;
+- validate fixed fields, required headings, dates, routes, and terminal-state combinations;
+- decide whether DESIGN needs refresh;
+- launch fresh isolated stage workers;
+- process explicit dependency queues and correction routes;
 - maintain an invocation-local dependency path and route stack;
-- launch fresh isolated workers;
 - retain a compact execution ledger;
-- run final read-only verification;
-- pass exact verifier output to a fresh review-routing worker;
-- stop on a genuine family blocker, external workspace blocker, or malformed worker result.
+- stop on a genuine family blocker or malformed worker result;
+- hand a successfully reviewed family back to the architect as ready for PR/CI.
 
-It must not evaluate design or architecture, inspect code for drift, discover consumers, infer dependencies or correction targets, review proof or visuals, classify verifier output, or edit stage-owned files.
+It must not evaluate official design, invent architecture, inspect code for semantic drift, discover consumers, infer dependencies, review proof, classify CI ownership, or run a broad local verification merely to duplicate PR CI.
+
+## Fresh-stage model
+
+The workflow does not use artifact revisions as freshness identities.
+
+Reuse `DESIGN.md` only while it is `current`, its refresh date is not due, and no canonical evidence requires refresh.
+
+For every operator invocation after DESIGN is current, always execute fresh:
+
+```text
+architecture → implementation → migration → independent review
+```
+
+A fresh implementation or migration worker may make no production edit when current code already satisfies the current contract. It must still inspect and verify its owned scope.
+
+Legacy revision/timestamp fields in existing artifacts are ignored and removed by the owning stage when that artifact is next rewritten.
 
 ## Worker boundary
 
 Each stage runs in a fresh isolated context.
 
-A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths and revisions, active dependency path, and exact dependency, route, blocker, or verifier facts.
+A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths, active dependency path, and exact dependency/route facts.
 
-Do not pass hidden reasoning, copied worker reports, or conversational conclusions.
+Do not pass hidden reasoning, copied worker reports, Git/PR state, or conversational conclusions.
 
 Review must be independent from workers that authored or corrected architecture, implementation, or migration.
 
-If fresh isolation is unavailable, stop with a genuine blocker. Workers and orchestrator do not depend on Git, PR, commit, branch, diff, or external-check state.
+If fresh isolation is unavailable, stop with a genuine blocker.
 
 ## Family resolution
 
@@ -50,37 +69,7 @@ Normalize the supplied name against official Material names, existing `MD*` expo
 
 Ask only when readable workspace and official evidence leave multiple materially different official components unresolved.
 
-Canonical family values are exact `components/` path segments, such as `button` or `loadingIndicator`.
-
-## Stage order and route restrictions
-
-Stage order is:
-
-```text
-design < architecture < implementation < migration < review
-```
-
-A same-family route must target a strictly earlier stage than the artifact that emits it.
-
-Same-stage self-routes and routes to review are forbidden. A route to another family may target design, architecture, implementation, or migration.
-
-## Mechanical orchestration
-
-For each artifact in stage order:
-
-1. Validate fields, headings, dates, revisions, dependency invariants, route restrictions, and status invariants.
-2. If the stored artifact is mechanically invalid or externally `stale`, run the owning stage once.
-3. Validate the worker result. If malformed, `stale`, `partial`, or routed to the same family and same stage, stop with a stage-contract blocker. Do not rerun the worker automatically.
-4. If status/verdict is blocked and route is non-`none`, execute the exact correction route.
-5. If status/verdict is blocked and route is `none/none`, stop with the exact genuine blocker.
-6. If the success gate passes, continue.
-7. Any other combination is a stage-contract blocker; do not infer a retry.
-
-A worker must fix defects owned by its current stage before returning. If the stage remains impossible after available mechanisms are exhausted, it returns terminal `blocked` with route `none/none`.
-
-Old `partial` artifacts are mechanically invalid and cause one owning-stage execution. A worker must never return `partial`.
-
-A metadata-only design refresh that preserves `Design contract revision` does not invalidate downstream stages.
+Canonical family values are exact `components/` path segments.
 
 ## Stage execution
 
@@ -92,154 +81,118 @@ Launch only:
 - `material-component-migration`;
 - `material-component-review`.
 
-After each ordinary stage worker returns, validate only its owned artifact, fixed fields, headings, revisions, route, and terminal result. Semantic compliance belongs to the worker and later independent review.
+### DESIGN
 
-Final-verifier routing is a mode of `material-component-review`. For an external workspace blocker it returns a compact routing result without editing a family artifact.
+Run design when DESIGN is missing, refresh date is due, newer official evidence exists, or an exact correction route targets design.
 
-## Design refresh
+Otherwise reuse current DESIGN.
 
-The common refresh interval is 30 calendar days.
+A genuinely blocked DESIGN stops the invocation.
 
-Run design when its refresh date is due, status is externally `stale`, or canonical workflow evidence records a newer official source revision.
+### ARCHITECTURE
 
-After design returns, use `Artifact revision` only as file identity and `Design contract revision` as downstream invalidation identity.
+Run architecture fresh on every invocation after DESIGN is current.
 
-Design terminal states are `current` and `blocked`. A design worker must not return `stale` or `self/design`.
+If architecture emits a dependency queue, process each dependency through its Material pipeline and independent review, then rerun parent architecture fresh.
+
+### IMPLEMENTATION
+
+Run implementation fresh after architecture is ready and dependency queue is empty.
+
+Use focused verifier-managed checks required by the implementation contract. Do not run a broad local final gate solely for completion.
+
+### MIGRATION
+
+Run migration fresh after implementation is complete.
+
+Use focused verifier-managed checks required by migration scope. Do not run a broad local final gate solely for completion.
+
+### REVIEW
+
+Run full independent review fresh after migration is complete.
+
+A successful review means the family is ready to hand to the architect for PR creation and exact-head CI. It does not mean CI has already run.
+
+## Result validation
+
+After each worker returns, validate only its owned artifact structure, required headings, routes, and terminal result.
+
+A worker must fix defects owned by its current stage before returning.
+
+Reject:
+
+- `partial`;
+- a same-stage self-route;
+- route to review;
+- successful status with blockers or a route;
+- blocked status without an exact blocker;
+- malformed required fields/headings/dates.
+
+Do not validate timestamps, hashes, Git identities, or revision chains.
 
 ## Dependency lifecycle
 
-Read only:
+Start an invocation-local active dependency path with the requested family.
 
-```text
-Dependency families: none | <family>[; <family>...]
-Dependency queue: none | <family>[; <family>...]
-Dependency review revisions: none | <family>=<review revision>[; <family>=<review revision>...]
-```
-
-Queue and review-revision families must be disjoint and their union must equal dependency families.
-
-Start the active dependency path with the requested parent family.
-
-Before entering a queued family, detect whether it equals the current family or already exists in the active path.
+Before entering a queued dependency, detect self-dependency or a family already present in the active path.
 
 On a cycle:
 
 1. stop descending;
-2. construct the exact cycle path;
-3. run architecture once for the family that emitted the cyclic dependency;
-4. require architecture to remove the cycle or return terminal `blocked` with route `none/none`;
-5. validate that worker result under the normal rules.
+2. give the exact cycle path to the architecture worker that emitted it;
+3. require architecture to remove the cycle or return a genuine blocker.
 
-For a valid dependency, append it to the path, process it through current independent review, remove it when returning, then continue. Rerun parent architecture after its queue is complete.
+For a valid dependency:
 
-Before parent implementation or review, compare every recorded dependency review revision with current dependency review. A mismatch runs parent architecture.
+1. append it to the active path;
+2. process it through current independent review;
+3. remove it when returning;
+4. rerun parent architecture fresh.
 
-Do not infer dependencies from imports or names. Do not run separate final verification for dependencies.
+Do not persist dependency review revision identities.
 
 ## Correction routing
 
-### Same-family route
+A same-family route must target an earlier stage.
 
-A valid same-family route targets an earlier stage. Run that stage and normal downstream stages; the emitting stage is naturally executed again.
+Run the target, then every downstream reasoning stage fresh through review.
 
-### Cross-family route
-
-Retain:
+For a cross-family route retain invocation-local:
 
 ```text
 origin: <origin-family>/<origin-stage>
 target: <target-family>/<target-stage>
 ```
 
-Run the target from its requested stage through current review. Then resume the origin through durable validation from design forward, execute any earlier invalid stages, and always execute the stored origin stage fresh.
+Run the target from its requested stage through review. Then resume the origin with fresh downstream reasoning. If the correction can affect origin architecture or dependency closure, restart origin at architecture.
 
-The fresh origin result must clear the route, replace it with a different valid route, or return terminal `blocked`. Do not execute the old target again before that result exists.
+Nested cross-family routes unwind most-recent origin first.
 
-Nested routes unwind the most recent origin first.
+## Mechanical algorithm
 
-## Durable continuation
+1. Resolve canonical family.
+2. Reuse or refresh DESIGN.
+3. Run ARCHITECTURE fresh.
+4. Process dependencies and rerun parent ARCHITECTURE as needed.
+5. Run IMPLEMENTATION fresh with focused local proof.
+6. Run MIGRATION fresh with focused local proof.
+7. Run independent REVIEW fresh.
+8. Follow exact correction routes until review succeeds or a genuine blocker is reached.
+9. When review succeeds, return the family to the architect as ready for PR/CI.
 
-Invalidating links are:
-
-```text
-DESIGN contract revision → ARCHITECTURE
-Dependency REVIEW revisions → parent ARCHITECTURE
-ARCHITECTURE artifact revision → IMPLEMENTATION
-IMPLEMENTATION artifact revision → MIGRATION
-DESIGN contract + ARCHITECTURE + IMPLEMENTATION + MIGRATION revisions → REVIEW
-```
-
-Invocation-local changed-stage memory is not required for correctness.
-
-## Final workflow verification
-
-After current successful reviews, run one read-only final command through `verification`.
-
-Ordinary Material work uses:
-
-```text
-pnpm verify
-```
-
-On failure, send the exact command, visible output, parent/dependency context, and current family review revisions to a fresh `material-component-review` worker in final-verifier-routing mode.
-
-### Material-owned result
-
-When the routing worker identifies an exact Material family and earliest stage:
-
-1. validate that only the owning family review was changed;
-2. follow the exact correction route;
-3. resume affected families through durable validation;
-4. rerun affected independent reviews;
-5. rerun the same final command.
-
-### External workspace blocker
-
-When the routing worker returns:
-
-```text
-Classification: external-workspace-blocker
-Required return family: none
-Required return stage: none
-Family reviews changed: none
-Status: blocked
-```
-
-then:
-
-1. verify that no family `REVIEW.md` changed;
-2. preserve all compliant family review revisions and dependency gates;
-3. stop the invocation with overall status `blocked`;
-4. record the exact command, failed external contract, and evidence in the outer final report;
-5. update the mutable roadmap/status owner when the invocation is being durably recorded;
-6. set the next action to the verifier-prescribed focused command followed by the original final command;
-7. do not rebuild current Material artifacts after the external owner fixes the failure unless a durable revision mismatch independently requires it.
-
-A non-failing external warning does not change a family review. Whether it blocks completion follows the root verification contract.
-
-The outer final-command result never changes a compliant family review merely because the command failed elsewhere.
+GitHub CI is outside this coding-agent orchestration. If exact-head PR CI later fails, the architect owns the failure evidence and routes a correction back to the appropriate Material stage. A fresh `material-component-review` worker may classify supplied CI output in its routing mode; the coding agent itself does not fetch or own GitHub checks.
 
 ## Compact execution ledger
 
-Retain one record per worker execution:
+Retain one compact record per worker execution:
 
 ```text
 family: <canonical-family>
 stage: design | architecture | implementation | migration | review
 result: complete | blocked | stage-contract-blocked
-artifact: <path>
-artifact revision: <exact Artifact revision>
 origin: none | <canonical-family>/<stage>
 target: none | <canonical-family>/<stage>
 dependency path: none | <family>[ → <family>...]
-verification: not-applicable | passed | failed | blocked
-```
-
-For final-verifier routing also retain:
-
-```text
-classification: material-owned | external-workspace-blocker
-family reviews changed: none | <canonical-family>
 ```
 
 Do not retain full worker reports or artifact prose.
@@ -252,7 +205,6 @@ Input component:
 Resolved official component:
 Canonical family:
 Execution ledger:
-- <compact record per worker execution>
 Dependencies processed:
 Correction routes:
 DESIGN.md status:
@@ -260,30 +212,23 @@ ARCHITECTURE.md status:
 IMPLEMENTATION.md status:
 MIGRATION.md status:
 REVIEW.md verdict:
-Final workflow verification command:
-Final workflow verification result:
-Final verifier classification: none | material-owned | external-workspace-blocker
+Local focused verification:
 Operator visual status: no-reported-defect | defect-reported | not-applicable
 Remaining blocker: none | <exact blocker>
 Overall family status: complete | blocked
-Next operator action: none | <single required action>
+PR/CI readiness: ready | blocked
+Next operator action: hand to architect for PR/CI | <single required action>
 ```
-
-A family may remain `compliant` and ready while the outer result is blocked by an external workspace contract.
 
 ## Forbidden
 
 - Requiring one operator command per stage.
+- Reusing one worker context for multiple stages.
+- Reusing downstream reasoning from an earlier invocation instead of fresh stages.
+- Adding artifact timestamps, hashes, counters, or revision graphs as workflow correctness identities.
 - Performing stage-owned reasoning or edits in the orchestrator.
 - Selecting routes from prose.
-- Retrying terminal `blocked` with route `none/none`.
-- Accepting `partial`, terminal `stale`, or a same-stage self-route from a worker.
-- Writing an external verifier failure into a family `REVIEW.md`.
-- Invalidating dependency gates because an unrelated workspace test failed.
-- Using dependency gates.
-- Ignoring dependency cycles or revision mismatches.
-- Returning directly to an origin stage without durable validation.
-- Interpreting verifier output without fresh review routing.
-- Reusing one worker context for multiple stages.
-- Depending on Git, PR, or external checks.
-- Marking completion before final verification passes.
+- Retrying a genuine blocker without new evidence.
+- Depending on Git, PR, commit, branch, or external checks for stage correctness.
+- Running broad local `pnpm verify` or `pnpm verify:release` solely to duplicate the PR CI gate.
+- Claiming merge readiness; merge readiness belongs to the architect after exact-head CI and full PR review.

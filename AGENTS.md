@@ -104,26 +104,29 @@ For the Material workflow, the thin orchestrator selects, launches, validates, a
 
 ## Verification
 
-- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` and `verification` to run project checks.
-- Use focused verifier commands during implementation and one final read-only completion gate after all edits and focused proof are complete.
+- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` and the focused verification needed for implementation feedback.
+- Coding agents use verifier-managed focused checks while implementing or correcting code. Choose the smallest faithful scope for the changed contract.
+- A coding agent does not need to run a broad local `pnpm verify` or `pnpm verify:release` merely to hand work back to the architect when GitHub CI will run the authoritative exact-head gate.
 - Use `pnpm verify --fix-only` only for safe automatic formatting, lint fixes, or instruction compatibility generation. Inspect resulting file changes before continuing.
 - Use `pnpm verify --only <label> --files ...` for focused development feedback when supported.
 - Do not substitute raw underlying test, lint, visual, mutation, or browser commands for verifier-managed checks except for narrow diagnosis explicitly allowed by the verification skill.
-- Use `pnpm verify` as the ordinary final gate. Use `pnpm verify:release` only when the verification skill classifies the task as requiring full release-sensitive proof.
-- Preserve the exact verifier command and scope when retrying a failed check.
-- Do not start duplicate expensive checks. Use the verifier status and resume commands when another run is active.
-- When a required project command cannot complete, report the exact visible failure and remaining verification.
-- Do not claim completion while required proof is missing or failing.
+- Required contract proof must exist before handoff; CI does not replace missing tests, architecture review, browser/visual evidence, or risk-specific verification.
+- After the architect opens or updates a PR, GitHub CI is the authoritative final repository verification on the exact PR head. The architect owns CI review and merge readiness.
+- If CI fails because of the PR, route the failure to the correct owner, fix it, run the smallest useful local verifier-managed check, push the correction, and let CI rerun. Do not require a full local rerun unless it is materially useful for diagnosis.
+- Do not claim merge readiness while required exact-head CI is missing or failing.
 
-Final response after edits must include:
+Final response after coding-agent edits must include:
 
 ```text
 TASK RESULT
 status: complete | partial | blocked
-remaining: none | <remaining required work, verification, or blocker>
+remaining: none | <remaining implementation/proof/blocker>
 
-VERIFY RESULT
-command: <exact final completion-gate command>
-status: passed | failed | not run | blocked by active local verification
-reason if not run:
+LOCAL VERIFY RESULT
+commands: <focused verifier-managed commands actually run, or none>
+status: passed | failed | partial | not run
+reason if partial/not run: <reason>
+
+CI GATE
+status: not owned by coding agent
 ```

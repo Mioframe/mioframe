@@ -36,9 +36,7 @@ Follow `src/shared/ui/material/docs/design-document.md`.
 Control fields:
 
 ```text
-Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-Design contract revision: none | YYYY-MM-DDTHH:mm:ss.sssZ
-Status: current | stale | blocked
+Status: current | blocked
 Source revision: <exact source/cache revision>
 Source checked at: YYYY-MM-DD
 Refresh check after: YYYY-MM-DD
@@ -48,13 +46,9 @@ Required return family: none
 Required return stage: none
 ```
 
-`stale` is an external pre-run invalidation marker. This worker may finish only with `current` or `blocked`.
+Do not create artifact timestamps, design-contract revision counters, hashes, or other workflow identities.
 
-Use a new artifact revision whenever the file is written or refreshed.
-
-Use a new design contract revision only when normalized official Material content changes. Preserve it when refresh changes only source metadata, source ledger details, source identifiers with equivalent normalized content, or dates.
-
-For a successful initial design, create both revisions. For a blocked initial design with no complete normalized contract, use contract revision `none`.
+Legacy revision fields in an existing DESIGN are ignored and removed when this stage rewrites the file.
 
 ## Required headings
 
@@ -92,13 +86,9 @@ The refresh interval is fixed:
 Refresh check after = Source checked at + 30 calendar days
 ```
 
-Run an immediate refresh only when canonical workflow evidence records newer or changed official content.
+When refresh finds no normalized contract change, update source metadata/evidence, preserve the normalized contract, and say so in `Revision summary`.
 
-## Contract-change classification
-
-Change `Design contract revision` only when normalized official content changes, including an added, removed, corrected, or previously omitted official fact; token path/value/alias/completeness change; or change to state, behavior, geometry, motion, accessibility, or related official contracts.
-
-When no contract change is found, say so in `Revision summary` and preserve the exact contract revision.
+When normalized official content changes, update the design contract content and summarize the exact change. No downstream version identity is required because later stages execute fresh in the current invocation.
 
 ## Required content
 
@@ -142,7 +132,7 @@ Required return family: none
 Required return stage: none
 ```
 
-This is terminal for the invocation. Do not return `self/design`; rerunning the same design worker would add no new information.
+This is terminal for the invocation. Do not return `self/design`.
 
 A fixable design-document omission, formatting defect, or source-normalization defect owned by this stage must be corrected before this worker returns.
 
@@ -160,8 +150,6 @@ Input component:
 Resolved official component:
 Canonical family:
 DESIGN.md path:
-Artifact revision:
-Design contract revision:
 Official routes inspected:
 Source revision:
 Source checked at:
@@ -177,13 +165,12 @@ Status: complete | blocked
 
 ## Forbidden
 
-- Returning terminal `stale`.
 - Returning `self/design`.
 - Leaving a current-stage fixable omission unresolved.
 - Producing a demand-scoped summary.
 - Deriving official facts from code, renderer artifacts, stories, tests, or consumers.
 - Mixing later-stage decisions into `DESIGN.md`.
 - Omitting unused official capability.
-- Changing contract revision for metadata-only refresh.
+- Adding timestamp/hash/revision bookkeeping as a workflow identity.
 - Choosing another refresh interval.
 - Asking the operator to rerun the same component command.

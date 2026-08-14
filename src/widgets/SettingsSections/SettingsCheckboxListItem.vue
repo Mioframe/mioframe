@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MDCheckbox } from '@shared/ui/Checkbox';
+import { MDCheckbox } from '@shared/ui/material';
 import { MDListItem } from '@shared/ui/Lists';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 
@@ -40,7 +40,7 @@ const onChange = () => {
   >
     <template #trailing>
       <MDCircularProgressIndicator v-if="loading" :size="24" />
-      <MDCheckbox v-else presentation :model-value="checked" :disabled="disabled" />
+      <MDCheckbox v-else presentation :checked="checked" :disabled="disabled" />
     </template>
   </MDListItem>
 </template>

@@ -7,8 +7,7 @@ import type { AMDocumentId } from '@shared/lib/automerge';
 import type { DatabaseViewId } from '@shared/lib/databaseDocument';
 import { MD_TYPESCALE } from '@shared/lib/md';
 import { MDIconButton } from '@shared/ui/Button';
-import { MDButton } from '@shared/ui/material';
-import { MDCheckbox } from '@shared/ui/Checkbox';
+import { MDButton, MDCheckbox } from '@shared/ui/material';
 import { useDialog } from '@shared/ui/Dialog';
 import { MDSymbol } from '@shared/ui/Icon';
 import { defineMenuButtonList, MDContextMenuButton } from '@shared/ui/Menu';
@@ -155,7 +154,7 @@ const onRenameViewCompleted = () => {
           @click-view="onSelectViewPreset"
         >
           <template #leading="{ viewId }">
-            <MDCheckbox presentation :model-value="viewId === effectiveViewId" />
+            <MDCheckbox presentation :checked="viewId === effectiveViewId" />
           </template>
 
           <template #trailingAction="{ viewId }">

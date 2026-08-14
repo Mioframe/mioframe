@@ -2,218 +2,61 @@
 
 ## Decision
 
-Mioframe exposes one canonical Vue Material library under:
+Mioframe exposes one canonical Vue Material library under `src/shared/ui/material`.
 
-```text
-src/shared/ui/material
-```
+Official Material 3 Expressive defines the public component and token model. `@m3e/web` is a private renderer and never defines Mioframe public API.
 
-Official Material 3 Expressive defines the public component and token model. `@m3e/web` is the preferred private renderer and does not define the public API.
-
-The complete execution state machine belongs to [`component-workflow.md`](./component-workflow.md). This document owns durable library architecture and responsibility boundaries only.
-
-## Goals
-
-- preserve the complete official component model independently of current demand;
-- resolve component architecture before coding;
-- expose a stable Material-first Vue API;
-- use m3e without leaking renderer vocabulary or ownership;
-- implement the minimum complete surface required by confirmed scenarios;
-- keep component implementation separate from product-consumer migration;
-- independently review every complete family;
-- avoid speculative abstractions and duplicate owners.
+Workflow mechanics belong only to [`component-workflow.md`](./component-workflow.md). This document owns durable library boundaries.
 
 ## Sources of truth
 
-1. Official Material documentation defines complete component and token contracts.
-2. `components/<family>/DESIGN.md` is the normalized official snapshot.
-3. Product scenarios or the approved standalone library scenario select required behavior.
-4. `components/<family>/ARCHITECTURE.md` is the demand-scoped implementation contract.
-5. Runtime code plus `IMPLEMENTATION.md` records component implementation and proof.
-6. `MIGRATION.md` records adoption, preserved scenarios, and legacy removal.
-7. `REVIEW.md` records independent compliance and final-verification readiness.
-8. Canonical CSS plus `docs/token-api.md` defines the supported public token surface.
-9. `docs/m3e-defects.md` owns renderer-defect lifecycle.
-10. `docs/roadmap.md` alone owns mutable milestone status and next action.
+1. official Material documentation — complete component/token contract;
+2. family `DESIGN.md` — normalized official snapshot;
+3. confirmed scenarios — current demand;
+4. family `ARCHITECTURE.md` — implementation contract;
+5. runtime code plus `IMPLEMENTATION.md` — component implementation/proof;
+6. `MIGRATION.md` — consumers, preserved scenarios, legacy removal;
+7. independent `REVIEW.md` — family compliance and PR/CI readiness;
+8. canonical CSS plus `docs/token-api.md` — supported public token surface;
+9. `docs/m3e-defects.md` — renderer defects/workarounds;
+10. `docs/roadmap.md` — mutable milestone status and next action.
 
-Existing code, tests, stories, screenshots, renderer demos, and legacy APIs are evidence, not public-contract authority.
+## Workflow freshness
 
-## Design refresh lifecycle
+`DESIGN.md` may be reused until its source refresh is due. Architecture, implementation, migration, and independent review run fresh for each `material-component <name>` invocation.
 
-Every design file owns two revisions:
+No artifact timestamps, hashes, counters, Git identities, dependency-review revisions, or persistent revision graph are used for freshness.
 
-- `Artifact revision` changes whenever the file or source-check metadata changes;
-- `Design contract revision` changes only when normalized official Material content changes.
+## Ownership
 
-Architecture and review depend on design contract revision only.
-
-The refresh interval is fixed at 30 calendar days. A metadata-only refresh updates source-check facts and artifact revision while preserving design contract revision, so it does not reopen architecture, code, migration, review, or parent dependencies.
-
-Known official source change evidence triggers an immediate design refresh.
-
-## Durable family handoffs
-
-Every later stage artifact owns an `Artifact revision`.
-
-```text
-DESIGN contract revision
-  → ARCHITECTURE
-Dependency REVIEW revisions
-  → parent ARCHITECTURE
-ARCHITECTURE artifact revision
-  → IMPLEMENTATION
-IMPLEMENTATION artifact revision
-  → MIGRATION
-DESIGN contract + ARCHITECTURE + IMPLEMENTATION + MIGRATION revisions
-  → REVIEW
-```
-
-Revision linkage is the durable continuation mechanism after interruption or a new invocation. It is not a hash system or workflow database.
-
-A parent architecture records the exact current review revision of each direct dependency. Updating a dependency invalidates parent architecture mechanically before parent code or review is reused.
-
-## Family ownership
-
-Every official family owns:
-
-- its five staged artifacts;
-- canonical Vue adapter and root export;
-- selected official component tokens;
-- private renderer mappings and controlled workarounds;
-- component-specific tests, stories, browser/visual proof, and defect records.
-
-Family `README.md` files are navigation only.
-
-A parent adapter owns composition meaning, placement, controlled parent state, slots/events, and public handoff to dependencies. A dependency remains independently owned and is consumed through its canonical public API.
+Each official family owns its canonical Vue adapter, selected component tokens, private renderer mappings/workarounds, staged artifacts, and component-specific proof.
 
 Product layers retain product state, persistence, routing, errors, operation lifecycle, disabled guards, and business behavior.
 
-## Demand-scoped public surface
-
-Architecture starts from complete design and classifies capability as:
-
-- `implement-now` — required by a confirmed product scenario, approved standalone library scenario, or minimum coherent API;
-- `defer` — official capability not required now;
-- `not-material` — project behavior absent from official Material;
-- `source-conflict` — official evidence cannot support a reliable decision.
-
-Deferred capability remains in design but is not copied into runtime API for symmetry or hypothetical reuse.
-
-## New family without consumers
-
-When no current consumer exists, the explicit `material-component <name>` invocation establishes one approved library scenario:
-
-- render the unambiguous official standalone default;
-- expose only the API required to render and accessibly operate that default;
-- expose only mandatory official controllable state belonging to the selected default;
-- do not add `v-model`, selection, toggle, value, or open-state contracts unless that state is part of the selected official default;
-- include disabled behavior only when official Material defines it for that default;
-- include required semantics, accessibility, states, and faithful proof;
-- defer optional variants, sizes, shapes, configurations, and state models;
-- do not copy m3e capabilities or invent product scenarios;
-- do not create a product consumer merely to justify the family.
-
-Operator input is required only when official documentation provides no standalone default or multiple materially different public models that cannot be resolved mechanically.
+Dependencies remain separate Material families consumed through canonical public APIs.
 
 ## Public Vue boundary
 
-```text
-official Material concept
-  → accepted Vue API in ARCHITECTURE.md
-  → private renderer mapping
-```
+Public APIs use official Material terminology and idiomatic Vue semantics. They keep types renderer-independent and expose no raw m3e tags, attributes, events, types, classes, or CSS variables.
 
-The public boundary:
-
-- uses official Material terminology and semantics;
-- expresses selected behavior idiomatically in Vue;
-- keeps public types independent from m3e;
-- exposes no raw renderer attributes, events, tags, classes, types, or CSS variables;
-- defines precedence and restoration for coexisting public states;
-- adds no native, renderer, or token surface without confirmed demand.
-
-A requirement absent from official Material belongs to consumer composition, another shared component without an `MD` prefix, or an exceptional documented extension approved in family architecture.
+Architecture selects only the minimum complete surface needed by confirmed scenarios. Deferred official capability remains documented in DESIGN and is not copied into runtime API for symmetry or hypothetical reuse.
 
 ## Renderer boundary
 
-Outside `src/shared/ui/material`, consumers do not import `@m3e/web`, render `m3e-*`, use renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
+Outside `src/shared/ui/material`, consumers must not import `@m3e/web`, render `m3e-*`, use renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
 
-Inside an owning family:
+Inside a family, prefer documented renderer inputs, derive glue from exported types, keep mappings local, avoid private-shadow-DOM coupling, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
 
-- prefer documented renderer inputs;
-- derive custom-element glue from exported renderer types;
-- keep mappings family-local;
-- do not inspect private shadow DOM or copy renderer internals;
-- do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion;
-- do not create a generic adapter framework without demonstrated repeated need.
-
-A temporary renderer workaround is exact-version, host-level, owner-local, removable, recorded in family architecture and `m3e-defects.md`, and revalidated whenever the lockfile-resolved renderer revision changes.
+Do not introduce a generic adapter framework without demonstrated repeated need and a separate architecture decision.
 
 ## Token boundary
 
-Runtime owners are:
+Foundation owns selected `--md-ref-*` and `--md-sys-*`; each family owns selected `--md-comp-<family>-*`; application code owns `--app-*`; renderer/private internals own `--m3e-*` and `--md-private-*`.
 
-- foundation for selected `--md-ref-*` and `--md-sys-*` tokens;
-- each family for selected `--md-comp-<family>-*` tokens;
-- application code outside Material for `--app-*`;
-- renderer internals for `--m3e-*` and `--md-private-*`.
+## Proof and completion
 
-Every contextual component token traces:
+Architecture selects proof owners before implementation. Implementation proves family-owned contracts; migration proves consumers/no-consumer scenarios and legacy removal; review independently checks the complete current result.
 
-```text
-official DESIGN.md path
-  → public Mioframe token
-  → renderer input
-  → renderer fallback
-  → expected consumer result
-  → proof owner
-```
+After successful review, the coding-agent workflow hands the family to the architect. GitHub CI on the exact PR head is the authoritative repository verification gate. Merge readiness belongs to the architect after CI and full PR review.
 
-Do not create mixed-owner token files, duplicate public owners, compatibility aliases, token registries, token DSLs, or exhaustive runtime copies.
-
-## Dependency closure
-
-An official Material dependency is a first-class family with its own complete design, architecture, implementation, migration, proof, and independent review.
-
-Parent architecture records:
-
-- `Dependency families` — complete direct dependency set;
-- `Dependency queue` — dependencies that do not yet have current review;
-- `Dependency review revisions` — exact review revision for every dependency not in the queue.
-
-Queue and review-revision entries are disjoint and their union equals dependency families.
-
-A queued dependency always runs its complete pipeline through current review. Stage-specific dependency gates are unsupported.
-
-Self-dependency and ancestor dependency are forbidden. The orchestrator detects repeated family names in its active dependency path and returns the exact cycle to the architecture worker that emitted it.
-
-Architecture must correct dependency ownership or record a genuine unresolved architecture blocker. Mutual imports, related-component documentation, or shared implementation details do not justify cyclic family ownership.
-
-Parent architecture may be resolved while dependencies remain pending. It then uses status `ready`, a non-empty queue, and readiness `awaiting-dependencies`. Parent implementation cannot start.
-
-After dependencies reach current review, parent architecture runs again, validates public handoffs, clears or recomputes the queue, and records exact dependency review revisions.
-
-A later dependency review revision change invalidates parent architecture and parent downstream artifacts through normal revision linkage.
-
-Parent composition proof does not replace standalone dependency proof.
-
-## Correction and resume principle
-
-Cross-family correction retains origin and target, but target completion does not bypass durable invalidation in the origin family.
-
-After target reaches current review, the origin family resumes through its ordinary state machine from design forward. Any earlier invalid stage runs first, and the stored origin stage must then execute fresh to clear or replace its route.
-
-## Proof and completion principles
-
-Architecture selects faithful proof owners before implementation:
-
-- implementation proves component-owned contracts;
-- migration proves product scenarios or the explicit no-consumer case and legacy removal;
-- review independently checks the complete result;
-- the outer workflow runs one final read-only project verification after current reviews.
-
-Renderer-owned appearance requires browser or visual proof. Source inspection, host state, token presence, or a story alone is insufficient.
-
-Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete defect routes to its owning family and stage.
-
-A passing verification command proves only its covered checks and does not replace architecture or independent review.
+Renderer-owned appearance requires faithful browser or visual evidence. Green automated checks do not replace architecture or independent review.

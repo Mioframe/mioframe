@@ -34,10 +34,6 @@ export const playgroundPages: PlaygroundPage[] = [
     component: () => import('@shared/lib/sortable/ReorderSurfacePlayground.vue'),
   },
   {
-    name: 'Checkbox',
-    component: () => import('@shared/ui/Checkbox/MDCheckboxPlayground.vue'),
-  },
-  {
     name: 'Toolbar',
     component: () => import('@shared/ui/Toolbar/MDToolbarPlayground.vue'),
   },

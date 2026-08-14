@@ -1,480 +1,147 @@
 # Development
 
 > **Status**: `CURRENT`  
-> **Last Updated**: 2026-07-27  
-> **Technical Debt**: See `docs/testing/migration-plan.md`
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Requirements](#requirements)
-- [Installation](#installation)
-- [Development Workflow](#development-workflow)
-- [Testing](#testing)
-- [Linting & Formatting](#linting--formatting)
-- [Production Build](#production-build)
-- [Appendix](#appendix)
-
----
+> **Last Updated**: 2026-08-13  
+> **Testing policy**: [`docs/testing/architecture.md`](./docs/testing/architecture.md)  
+> **Testing migration state**: [`docs/testing/migration-plan.md`](./docs/testing/migration-plan.md)
 
 ## Overview
 
-**MioFrame** is a modern, component-first Vue 3 application built with Vite and TypeScript. The project emphasizes:
-
-- **CRDT-backed state management** using Automerge for conflict-free collaboration
-- **Mobile-first design** following Material 3 guidelines
-- **Type-safe development** with strict TypeScript configuration
-- **Focused testing** with unit, component contract, visual regression, mutation, and E2E coverage
-- **Performance optimization** for low-end devices and large datasets
-
-### Tech Stack
-
-| Layer      | Technology                           | Purpose                               |
-| ---------- | ------------------------------------ | ------------------------------------- |
-| Framework  | Vue 3.5+                             | Reactive UI rendering                 |
-| Build Tool | Vite 7+                              | Fast HMR and production builds        |
-| Language   | TypeScript 5.9+                      | Static type checking                  |
-| State      | Automerge 2.5+                       | CRDT-based collaborative editing      |
-| Router     | Vue Router 5                         | Application routing                   |
-| HTTP       | ky 1.x                               | Lightweight fetch wrapper             |
-| Testing    | Vitest + Vue Test Utils + Playwright | Unit, component contract, E2E, visual |
-| Mutation   | StrykerJS                            | Test quality checks                   |
-| Linting    | oxlint + ESLint 10+                  | Code quality enforcement              |
-| Formatting | oxfmt                                | Consistent code formatting            |
-
----
+Mioframe is a Vue 3 + TypeScript local-first application. Repository rules live in `AGENTS.md` and applicable nested `AGENTS.md` files. Detailed testing ownership belongs to the testing documentation and skills; this guide only summarizes common developer commands.
 
 ## Requirements
 
-### System Requirements
+- Node.js 24.x
+- pnpm 10.x
+- Git 2.x
 
-| Component | Minimum Version | Notes                    |
-| --------- | --------------- | ------------------------ |
-| Node.js   | 24.x            | CI and tooling baseline  |
-| pnpm      | 10.x            | Project lockfile format  |
-| Git       | 2.x             | Required for hooks setup |
-| Browser   | Chrome 120+     | E2E testing baseline     |
-
----
-
-## Installation
-
-### 1. Clone and Install
+Install dependencies with:
 
 ```bash
-git clone https://github.com/Mioframe/mioframe.git
-cd mioframe
 pnpm install
 ```
 
-> **Note**: Git hooks are installed via the `prepare` script. If this fails, run `pnpm run setup:git-hooks` manually.
-
-### 2. Verify Installation
+Git hooks are installed by the `prepare` script. If needed:
 
 ```bash
-pnpm type-check
-pnpm lint
-pnpm exec oxfmt --check .
+pnpm run setup:git-hooks
 ```
 
----
-
-## Development Workflow
-
-### Development Server
+## Development server
 
 ```bash
 pnpm dev
 ```
 
-**Behavior**:
+The default development server uses HTTPS and Vite HMR.
 
-- HTTPS via `@vitejs/plugin-basic-ssl`
-- Default URL: `https://127.0.0.1:5173`
-- HMR enabled for all files
-- Source maps generated
+## Verification workflow
 
-### Code Quality Gates
+### Coding-agent feedback
 
-Use verify-managed focused checks while iterating:
+Use verifier-managed focused checks that faithfully prove the changed contract:
 
 ```bash
-pnpm verify --only <label> --files <exact-paths...>
+pnpm verify --only <label> --files <exact-readable-paths...>
 ```
 
-When only automatic formatting, lint fixes, or instruction compatibility generation is needed, use fix-only mode with the same task scope:
+Examples include `unit-tests`, `storybook-behavior`, `e2e`, `visual`, `type-check`, `eslint`, `format`, and other labels documented by the verification skill.
+
+Use automatic fixes only when appropriate:
 
 ```bash
-pnpm verify --fix-only --base origin/develop
+pnpm verify --fix-only --base <parent-ref>
 ```
 
-Inspect generated changes. `pnpm verify --fix` remains a combined convenience mode, but it is not the default agent workflow and never replaces the final read-only gate.
+Inspect resulting changes. Raw Vitest, Playwright, lint, format, mutation, or other child commands are diagnostic interfaces only unless an applicable skill explicitly allows them; accepted proof returns through `pnpm verify`.
 
-Before reporting completion, run exactly one applicable read-only completion gate.
+A coding agent does **not** need to run a broad local `pnpm verify --base ...` or `pnpm verify:release` merely to declare its implementation task complete. Required task-specific proof must still exist and focused checks must cover the changed contracts and risks.
 
-For ordinary branch or PR work:
+### Pull-request gate
+
+For PR work, required GitHub CI on the **exact published PR head** is the authoritative repository verification gate. The architect owns:
+
+- PR creation/update;
+- exact-head CI review;
+- full resulting-PR architecture/implementation review;
+- merge readiness.
+
+A green CI run does not replace missing tests, architecture review, ownership checks, browser/visual proof, or risk-specific evidence.
+
+If CI fails because of the PR:
+
+1. identify the exact failed check/contract;
+2. route it to the correct owner;
+3. run the smallest useful verifier-managed local check while correcting it;
+4. publish the correction;
+5. let GitHub CI rerun on the new exact head.
+
+Do not require a second broad local run solely to duplicate CI.
+
+### Broad local verification
+
+Broad commands remain available when they materially help diagnosis or confidence:
 
 ```bash
 pnpm verify --base origin/develop
-```
-
-For stacked branches, use the actual parent feature branch:
-
-```bash
-pnpm verify --base origin/<parent-feature-branch>
-```
-
-When the task changes build/release configuration, routing/base paths, manifest/PWA/service-worker/channel isolation, release scripts, artifact assembly, or production-output dependencies, use the full release command instead:
-
-```bash
 pnpm verify:release
 ```
 
-The full release command replaces the ordinary branch-diff completion gate for that task. Do not run both as final gates. Complete proof not owned by release mode, such as a required mutation audit, through focused verify-managed commands before the final release run.
+Use the actual parent branch for stacked work. `pnpm verify:release` is the full release-verification command for build/release, routing/base-path, manifest/PWA/service-worker/channel, release-script, artifact-assembly, and other release-sensitive work. These commands are not unconditional coding-agent completion gates.
 
-Plain `pnpm verify` checks local changes against `HEAD`, or falls back to the last commit when the working tree is clean. It is sufficient only when that scope is the complete task; it must not be reported as proof of a multi-commit feature branch.
-
-By default, `pnpm verify` is summary-first:
-
-- each successful check prints a concise pass line;
-- failed checks print the label, exact child command, exit code, and a relevant output tail;
-- checks with warnings print a warning summary;
-- full stdout/stderr for each executed check is written to `.verify/logs/<check>.log`.
-
-The printed child command is diagnostic output, not the supported rerun boundary. Rerun through `pnpm verify --only <label>` and preserve applicable `--base`, `--full`, `--profile`, and `--files` arguments.
-
-Use verbose mode when you need full live command output in the terminal:
-
-```bash
-pnpm verify --verbose --base origin/develop
-```
-
-Agent workflow:
-
-- Use focused verify-managed lanes for red/green and development feedback.
-- Use `pnpm verify --fix-only --base <parent-ref>` when only supported automatic fixes are needed.
-- Do not treat `--fix`, `--fix-only`, or a focused lane as the final gate.
-- The top-level task runs one final read-only completion gate after all focused and mode-specific proof is complete: branch-diff verify for ordinary work, or `pnpm verify:release` when full/release proof is required.
-- Preserve the original base, full, profile, file, and label scope when retrying; remove fix flags for the final rerun.
-- If verification fails, fix failures caused by the change, or report the exact failed label and output. Do not bypass `verify` with its raw child command.
-- Same-repository CI autofix commits require the `BEAVER_CI_AUTOFIX_TOKEN` repository secret; without it, CI may still run read-only verification but must not push autofix commits.
-- If CI pushes an autofix commit, pull or rebase before continuing local work so your branch matches the new head.
-- CI autofix never updates visual snapshots; use `pnpm test:visual:update` in the canonical visual flow for that.
-
-### Commit Messages
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```text
-<type>(<scope>): <description>
-
-Types: feat, fix, docs, refactor, test, chore
-```
-
----
+`pnpm verify` is summary-first. Failed checks print the verifier label and relevant output; rerun through the verifier boundary rather than copying a raw child command.
 
 ## Testing
 
-Commands shown in the testing subsections below are interactive/manual diagnostic interfaces. Coding agents must use verify-managed commands for focused proof, failure reruns, and the final completion gate. A raw child command never becomes PR completion evidence. Snapshot-update commands remain intentional write operations and must be followed by verify-managed visual proof.
+Use the lowest faithful proof owner defined by [`docs/testing/architecture.md`](./docs/testing/architecture.md):
 
-### Test Strategy
+- deterministic logic and component contracts → Vitest / `unit-tests`;
+- reusable browser behavior → Storybook Playwright / `storybook-behavior`;
+- complete product scenarios → application Playwright / `e2e`;
+- stable appearance → Storybook screenshot proof / `visual`;
+- release behavior → release verification;
+- mutation audits → only for applicable high-risk deterministic logic.
 
-```mermaid
-graph TB
-    A[Pure logic and services: Vitest] --> B[Component contracts: Vue Test Utils]
-    B --> C[Component playground and docs: Storybook]
-    C --> D[Visual appearance: Playwright screenshots]
-    D --> E[Browser behavior and user scenarios: Playwright E2E]
-    A --> F[High-risk logic quality: Stryker]
-```
+For Storybook ownership and placement, read [`docs/testing/storybook.md`](./docs/testing/storybook.md). Current owner-local/central migration state is defined only by [`docs/testing/migration-plan.md`](./docs/testing/migration-plan.md).
 
-### Unit & Integration Tests (Vitest)
+## Common manual commands
 
-**Scope**: pure helpers, composables, schemas, migrations, services, storage helpers, CRDT helpers, state transitions, validation, normalization, filtering, sorting, matching, and pure transformations.
+These commands are useful for interactive development and diagnosis; coding-agent accepted proof follows the verifier-managed workflow above.
 
 ```bash
-# Watch mode
 pnpm test
-
-# Manual diagnostic single run
-pnpm test:run
-
-# With coverage diagnostics
-pnpm test:coverage
-```
-
-**Configuration**: [`vitest.config.ts`](./vitest.config.ts)
-
-Coverage reports are diagnostic. Do not add brittle tests only to increase line coverage.
-
-### Component Contract Tests (Vue Test Utils)
-
-**Scope**: small Vue component contracts that do not require real browser semantics.
-
-Use component contract tests for:
-
-- conditional rendering;
-- props, emits, and slots;
-- simple child-component wiring;
-- connecting extracted composable/helper state to template output.
-
-Do not use component contract tests for:
-
-- focus, keyboard, pointer, touch, or drag behavior;
-- layout, scrolling, viewport, sticky/fixed, or responsive behavior;
-- teleport, overlays, dialogs, sheets, menus, tooltips, or popovers;
-- browser APIs, OPFS, storage permissions, persistence, or service workers;
-- Material visual states.
-
-Use Playwright/e2e or a reproducible browser smoke check for those cases.
-
-### Storybook
-
-**Scope**: isolated component playground, deterministic variants, and the standard visual state harness for shared UI work.
-
-Use Storybook for:
-
-- colocated CSF stories named `<Component>.stories.ts`;
-- manual component review and variant exploration;
-- deterministic visual surfaces used by Playwright screenshot tests;
-- documenting the supported states of stable shared UI primitives.
-
-Story rules:
-
-- Keep stories deterministic and fixture-driven.
-- Do not import `MainApp.vue` or call `setupApp`.
-- Do not connect product stores, diagnostics, storage prompts, Google Drive integration, unload guards, snackbars, overlays, or router lifecycle behavior.
-- Do not move business logic into stories or change component public APIs just to satisfy Storybook.
-- Tag screenshot-ready stories with `visual`.
-- Do not add stories for every component by default.
-
-### Visual Regression Tests (Playwright screenshots)
-
-**Scope**: visual appearance, rendered layout, and Material state regressions.
-
-Use Playwright screenshot assertions for visual appearance. Do not use Vitest, happy-dom, or Vue Test Utils for appearance checks.
-
-Use Storybook as the preferred visual harness:
-
-- render screenshots through Storybook stories, not through `MainApp.vue` or the product `/playground`;
-- keep stories deterministic and fixture-driven;
-- reuse app styles and only the shared UI infrastructure required for rendering;
-- isolate product runtime effects such as storage permission requests, diagnostics consent/reporting, optional integrations, unload guards, snackbars, overlays, live performance overlays, network initialization, and router lifecycle behavior;
-- avoid business logic, storage orchestration, stores, and network behavior in stories;
-- use locator screenshots instead of full-page screenshots whenever possible;
-- do not use Storybook as an e2e runner.
-- accept or update baselines only from stable Linux/Chromium container flow such as CI or a pinned Playwright image through Podman, and treat local non-CI diffs as advisory/debugging only;
-- do not update baselines from headed mode, do not hide ordinary text, and do not raise screenshot thresholds just to suppress text anti-aliasing noise;
-- keep typography/text-rendering assertions explicit and separate when a test intentionally needs them.
-
-Place visual specs under:
-
-```text
-tests/e2e/visual/<surface>.spec.ts
-```
-
-Use visual tests for:
-
-- shared UI primitives;
-- important states such as enabled, disabled, selected, checked, unchecked, error, loading, focus-visible, hover, or pressed;
-- mobile and desktop layout regressions;
-- previously broken visual states;
-- CSS-heavy components where visual regressions are likely and costly.
-
-Do not add visual snapshots for every component by default.
-
-Prefer screenshots of one stable surface, component gallery, dialog, sheet, menu, or responsive layout region. Avoid full-page screenshots unless the whole page layout is the invariant.
-
-Legacy playground status:
-
-- The existing product/dev playground is legacy and manual-only.
-- New component playground work should go to Storybook.
-- Do not add new visual regression surfaces to the product playground.
-- Migrate useful legacy playground examples to Storybook gradually.
-
-Focused visual run in the canonical Podman environment:
-
-```bash
-pnpm test:visual -- tests/e2e/visual/<surface>.spec.ts
-```
-
-Update snapshots only after confirming the visual change is intentional. Baselines must be generated only through the canonical Podman environment:
-
-```bash
-pnpm test:visual:update -- tests/e2e/visual/<surface>.spec.ts
-```
-
-### Mutation Testing (StrykerJS)
-
-**Purpose**: verify focused test quality by introducing mutations.
-
-The direct Stryker commands below are manual diagnostics, not agent rerun or completion gates. Agents use `pnpm verify --only mutation --files ...`.
-
-Use mutation testing narrowly for high-risk pure logic, schemas, migrations, storage helpers, CRDT helpers, validation, normalization, filtering, sorting, matching, service logic, or data transformations.
-
-```bash
-# Full mutation test, only when explicitly needed
-pnpm test:mutate
-
-# Dry run
-pnpm exec stryker run --dryRunOnly
-
-# Narrow scope
-pnpm exec stryker run -m "src/shared/lib/**/*.ts"
-```
-
-**Thresholds**: High 80%, Low 60%
-
-### E2E Tests (Playwright)
-
-**Scope**: browser smoke and end-to-end flows through the UI.
-
-```bash
-# Manual host-only browser install
-pnpm e2e:host:install
-
-# Container-backed verification path
+pnpm storybook
 pnpm e2e
-
-# With UI runner
 pnpm e2e:ui
-
-# Headed mode
 pnpm e2e:headed
+pnpm test:visual
+pnpm test:visual:update
 ```
 
-**Configuration**: [`playwright.config.ts`](./playwright.config.ts)
+Visual baselines must be generated only through the canonical Linux/Chromium container flow and inspected before acceptance.
 
-`pnpm e2e` runs through the container harness used for verification. `pnpm e2e:host:install` is only for manual host-side Playwright development when using `pnpm e2e:host`, `pnpm e2e:ui`, or `pnpm e2e:headed`.
-
-**Test Configuration**:
-
-- Base URL: dynamic local preview URL, or `PLAYWRIGHT_EXTERNAL_BASE_URL` when provided
-- Browsers: Desktop Chrome + Mobile Chrome (Pixel 5)
-- Retries: 0 locally, 2 on CI
-
----
-
-## Linting & Formatting
-
-### Tools
-
-| Tool     | Purpose                        | Config              |
-| -------- | ------------------------------ | ------------------- |
-| `oxlint` | Fast linting, TypeScript-aware | `.oxlintrc.json`    |
-| `eslint` | Rule enforcement               | `eslint.config.mjs` |
-| `oxfmt`  | Consistent code formatting     | Built-in defaults   |
-
-### Commands
+## Linting and formatting
 
 ```bash
-# Full lint pipeline
 pnpm lint
-
-# Individual tools
-pnpm lint:oxlint
-pnpm lint:eslint
-
-# Formatting
 pnpm format
-
-# Format validation
-pnpm exec oxfmt --check .
 ```
 
-### Best Practices
+Prefer focused verifier labels for coding-agent proof and `pnpm verify --fix-only` for supported automatic fixes.
 
-1. Use focused verify-managed commands while iterating.
-2. Run one final read-only completion gate: branch-diff verify for ordinary work, or `pnpm verify:release` when full/release proof is required.
-3. Keep warnings actionable; do not ignore warning output from verification.
-
----
-
-## Production Build
-
-### Build Commands
+## Production build
 
 ```bash
-# Production build
 pnpm build
-
-# Preview production build
 pnpm preview
 ```
 
-### Build Output
+## Commit messages
 
-**Location**: `dist/`
+Use Conventional Commits:
 
-**Contents**:
+```text
+<type>(<scope>): <description>
+```
 
-- Optimized JavaScript bundles
-- Minified CSS
-- Pre-rendered HTML (PWA support)
-- Source maps when configured by the build mode
-
-### Deployment Notes
-
-1. **HTTPS required**: All features expect secure context
-2. **CORS**: Configure for production API endpoints
-3. **Service Workers**: Pre-cache strategy configured in PWA plugin
-
----
-
-## Appendix
-
-### Command Reference
-
-| Command                                  | Description                                                         |
-| ---------------------------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`                               | Start development server                                            |
-| `pnpm build`                             | Production build                                                    |
-| `pnpm preview`                           | Preview production build                                            |
-| `pnpm verify --base <parent-ref>`        | Ordinary final completion gate for the complete branch diff         |
-| `pnpm verify --only <label> --files ...` | Focused verify-managed development feedback                         |
-| `pnpm verify --fix-only --base <parent>` | Apply supported automatic fixes without running proof lanes         |
-| `pnpm verify:release`                    | Full/release final completion gate; replaces branch-diff final gate |
-| `pnpm verify:status`                     | Inspect active local verification                                   |
-| `pnpm verify:resume`                     | Release a confirmed inactive verification state before retry        |
-| `pnpm test`                              | Vitest watch mode                                                   |
-| `pnpm test:run`                          | Single-run Vitest tests                                             |
-| `pnpm test:coverage`                     | Coverage diagnostics                                                |
-| `pnpm test:mutate`                       | Mutation testing                                                    |
-| `pnpm storybook`                         | Storybook dev server                                                |
-| `pnpm storybook:build`                   | Build Storybook                                                     |
-| `pnpm test:visual`                       | Visual regression tests in the canonical Podman environment         |
-| `pnpm test:visual:update`                | Update visual snapshots in the canonical Podman environment         |
-| `pnpm e2e`                               | E2E tests                                                           |
-| `pnpm e2e:ui`                            | E2E with UI runner                                                  |
-| `pnpm lint`                              | Full lint pipeline                                                  |
-| `pnpm format`                            | Format all files                                                    |
-| `pnpm type-check`                        | TypeScript type checking                                            |
-
-### Configuration Files
-
-| File                          | Purpose                        |
-| ----------------------------- | ------------------------------ |
-| `vite.config.ts`              | Build configuration            |
-| `vitest.config.ts`            | Test configuration             |
-| `playwright.config.ts`        | E2E test config                |
-| `playwright.visual.config.ts` | Visual regression config       |
-| `stryker.config.mjs`          | Mutation testing configuration |
-| `eslint.config.mjs`           | ESLint configuration           |
-| `tsconfig.json`               | TypeScript project references  |
-
----
-
-## References
-
-- [Vue 3 Documentation](https://vuejs.org/)
-- [Vite Documentation](https://vite.dev/)
-- [Automerge Documentation](https://automerge.org/)
-- [Playwright Documentation](https://playwright.dev/)
-- [StrykerJS Documentation](https://stryker-mutator.io/)
-- [Conventional Commits](https://www.conventionalcommits.org/)
-
----
-
-_Document maintained as part of project infrastructure. Updates should be reviewed alongside architectural changes._
+Typical types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.

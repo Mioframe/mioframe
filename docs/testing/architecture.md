@@ -2,10 +2,11 @@
 
 This document is the canonical project-wide testing policy for Mioframe.
 
-Its purpose is to keep two decisions reliable and separate:
+Its purpose is to keep three decisions reliable and separate:
 
 1. coding work chooses proof that matches the changed contract and risk;
-2. `verify` resolves workspace changes to the smallest confirmed set of checks, with safe full-lane fallback for unknown relevant impact.
+2. `verify` resolves workspace changes to the smallest confirmed set of checks, with safe full-lane fallback for unknown relevant impact;
+3. GitHub CI verifies the exact pull-request head before merge.
 
 `verify` executes workspace-backed facts. It never parses or depends on agent prose.
 
@@ -16,6 +17,8 @@ Its purpose is to keep two decisions reliable and separate:
 Use the smallest reliable set of tests and measurements that completely protects changed observable contracts without duplicating framework, browser, foundation, component, or product behavior.
 
 Automatic selection must be deterministic, inspectable, and fail closed. An empty or skipped lane is never evidence that a proof type is unnecessary.
+
+Local verification exists for implementation feedback and contract proof. For pull requests, required GitHub CI on the exact PR head is the authoritative repository gate; coding agents do not need to duplicate that broad gate locally merely to report implementation completion.
 
 ## Responsibilities
 
@@ -32,6 +35,8 @@ Before non-trivial implementation, identify:
 - task-specific measurements that cannot be automated yet.
 
 Implementation preflight records this as `TEST IMPACT`. It is a reviewable decision record, not input to `verify`.
+
+Coding work runs the focused verifier-managed checks needed to implement and correct the selected contracts. Broader local runs are allowed when materially useful for diagnosis or risk, but they are not a second mandatory copy of PR CI.
 
 ### Workspace: durable facts
 
@@ -60,6 +65,14 @@ Do not create metadata when the repository structure already expresses the relat
 - prints why each lane is skipped, focused, full, or invalid;
 - executes the resulting plan;
 - never infers test sufficiency from a skipped lane or a focused command with no matching tests.
+
+### Architect and PR CI
+
+The architect owns PR creation, exact-head CI review, full resulting-PR review, and merge readiness.
+
+Required GitHub CI must run against the exact published PR head. A green CI run does not replace architecture review, correct ownership, faithful proof, or required scenario coverage; it is the authoritative repository execution gate after those contracts are ready.
+
+If CI fails, route the exact failed contract to the correct owner, run the smallest useful local verifier-managed proof while correcting it, publish the correction, and let CI rerun on the new exact head.
 
 ## Core rules
 
@@ -306,9 +319,9 @@ Focused development verification must select release checks when a changed contr
 
 Release impact covers build/release configuration, routing/base paths, manifest/PWA/service worker/channel isolation, release scripts/artifact assembly, and runtime dependency changes affecting production output.
 
-Known local impact may select exact checks. Shared release infrastructure or unknown relevant release impact selects the full release lane.
+Known local impact may select exact checks. Shared release infrastructure or unknown relevant release impact selects the full release lane when a broad local diagnostic run is materially useful.
 
-`pnpm verify:release` remains the unconditional release-sensitive final gate when the verification skill requires it.
+`pnpm verify:release` remains the repository's full release-verification command and may be used locally for diagnosis or deliberate pre-PR confidence. It is not an unconditional coding-agent completion gate. For pull-request work, the required exact-head GitHub release/merge checks are authoritative before merge.
 
 ## Browser project applicability
 

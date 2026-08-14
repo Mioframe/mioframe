@@ -1,19 +1,30 @@
 ---
 name: verification
-description: 'Use to run verifier-managed project checks, apply focused overrides and safe fix mode, interpret failures, avoid duplicate expensive runs, and report TASK RESULT and VERIFY RESULT.'
+description: 'Use to run verifier-managed focused project checks for local development feedback, apply safe fix mode, interpret failures, and hand final exact-head verification to GitHub CI.'
 ---
 
 # Verification workflow
 
 Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md`; `docs/testing/migration-plan.md` is the source of truth for which target discovery/ownership mechanisms are currently implemented.
 
-The agent designs appropriate proof and maintains required workspace ownership facts. The verifier independently selects checks from readable workspace files, supported local ownership conventions, snapshots, and persistent project mappings. It never reads `TEST IMPACT` prose.
+The coding agent owns implementation feedback and task-specific proof. GitHub CI owns the final repository verification for a pull request on its exact head. Do not duplicate the CI gate locally merely to declare the coding task complete.
 
-A skipped or empty lane is not evidence that the proof type is unnecessary. When ownership is incomplete or unresolved, fix the durable relation or use the owning lane's documented full fallback.
+A skipped or empty local lane is not evidence that the proof type is unnecessary. Required contract proof must still exist and be owned correctly; CI is not a substitute for missing tests, stale ownership metadata, architecture review, required measurements, or visual evidence.
 
-## Command scope
+## Local verification purpose
 
-Use documented project commands and readable outputs. When a command fails before reaching its relevant project check, record the exact command and visible failure. Do not infer a cause that is not shown by command output.
+Local verification exists to give the coding agent fast, relevant feedback while implementing or correcting code.
+
+Use the smallest verifier-managed scope that faithfully proves the changed contract. Run broader local checks only when the changed risk or a failure diagnosis requires them.
+
+A coding task may be complete without a local full-project `pnpm verify` when:
+
+- the requested implementation is complete;
+- required task-specific proof exists;
+- relevant focused checks have passed, or any omitted local check is intentionally delegated to CI;
+- no known in-scope failure remains.
+
+The architect owns PR creation, exact-head CI review, and merge readiness.
 
 ## Focused execution
 
@@ -33,7 +44,7 @@ pnpm verify --only mutation --files <paths...>
 
 `--files` names readable existing paths. Removed, moved, or uncertain ownership must be handled by automatic status-aware planning or a full owning-lane fallback, not by passing nonexistent paths.
 
-Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or mutation commands are narrow diagnostic exceptions only. Return to a verifier-managed command for accepted proof.
+Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or mutation commands are narrow diagnostic exceptions only. Return to a verifier-managed command for accepted local proof.
 
 ## Mode constraints
 
@@ -73,9 +84,9 @@ For Storybook behavior and visual proof:
 - any Playwright config whose `testDir` scans from repository root must respect repository ignore policy so ignored nested/local workspaces cannot contribute specs; prefer Playwright's `respectGitIgnore` over a parallel hard-coded exclusion list;
 - removed/moved/unresolved relevant ownership must fall back safely or fail validation, never skip silently.
 
-During the browser migration, migrated `src/**/*.browser.spec.ts` specs use the implemented filesystem-derived owner-local convention and require no duplicate central registry entry. Specs still executed from `tests/e2e/storybook` remain legacy-central and must continue to satisfy the current resolver's mapping/validation requirements. Do not move an additional spec until the current migration stage authorizes that owner and the lane can discover it.
+During the browser migration, migrated `src/**/*.browser.spec.ts` specs use the implemented filesystem-derived owner-local convention and require no duplicate central registry entry. Specs still executed from `tests/e2e/storybook` remain legacy-central and must continue to satisfy the current resolver's mapping/validation requirements.
 
-Colocated `src/**/*.browser.spec.ts` files are Playwright proof inputs only. Automatic unit-test scope must not classify them as Vitest tests merely because their filenames end in `.spec.ts`; unit selection follows the Vitest-owned test patterns and keeps browser proof in the `storybook-behavior` lane.
+Colocated `src/**/*.browser.spec.ts` and `src/**/*.visual.spec.ts` are Playwright proof inputs only. Automatic unit-test scope must not classify them as Vitest tests merely because their filenames end in `.spec.ts`.
 
 Application E2E remains centralized and therefore continues to use explicit stable source-to-product-scenario impact rather than component colocation.
 
@@ -87,11 +98,9 @@ For intentional visual changes:
 
 - inspect every baseline change;
 - run the owning visual proof through verifier-managed commands;
-- use the owner-local snapshot convention for owners `docs/testing/migration-plan.md` has already migrated;
-- preserve the current central executable snapshot convention for every other owner until its migration is merged;
+- use the owner-local snapshot convention for owners already migrated;
+- preserve the current central executable snapshot convention for every other owner;
 - unresolved baseline ownership uses full visual fallback.
-
-Colocated `src/**/*.visual.spec.ts` files are Playwright visual proof inputs only. Automatic unit-test scope must not classify them as Vitest tests merely because their filenames end in `.spec.ts`; unit selection follows the Vitest-owned test patterns and keeps visual proof in the `visual` lane.
 
 A passing screenshot comparison does not prove Material correctness or browser behavior.
 
@@ -105,13 +114,11 @@ pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 
 Use persistent registered high-risk ownership when implemented. Do not infer semantic applicability merely from neighboring files or agent prose.
 
-When `pnpm verify:release` is the final gate, complete required mutation proof beforehand because mutation is intentionally outside release mode.
+## Release-sensitive work
 
-## Release-sensitive proof
+Build/release configuration, routing/base paths, manifest/PWA/service-worker/channel isolation, release scripts, artifact assembly, or production-output dependency changes may require release-sensitive proof.
 
-A task changing build/release configuration, routing/base paths, manifest/PWA/service-worker/channel isolation, release scripts, artifact assembly, or production-output dependencies requires the release-sensitive final gate selected by repository policy.
-
-Do not run both ordinary and release final gates as competing completion evidence.
+The coding agent runs focused local release-sensitive checks when useful for implementation feedback. The authoritative final release/merge gate is the required GitHub CI workflow for the exact PR head. Do not run a second broad local gate solely to duplicate CI.
 
 ## Performance evidence
 
@@ -120,8 +127,7 @@ For a one-off performance, memory, startup, main-thread, or bundle-size claim:
 1. run the reproducible measurement named in preflight;
 2. use the recorded representative scenario/setup;
 3. report baseline/budget and measured result;
-4. rerun after implementation when comparison is required;
-5. run the one applicable final completion gate.
+4. rerun after implementation when comparison is required.
 
 A durable product budget belongs in an automated check with stable impact ownership. Do not create permanent benchmark infrastructure for one task.
 
@@ -133,27 +139,25 @@ When only automatic formatting, lint fixes, or instruction compatibility generat
 pnpm verify --fix-only
 ```
 
-Inspect resulting file changes. Fix mode never replaces the final read-only gate.
+Inspect resulting file changes. Fix mode is development tooling; it does not replace CI and does not itself prove correctness.
 
-## Final completion gate
+## CI merge gate
 
-The top-level task owns exactly one final read-only completion gate after all edits and focused proof are complete.
+For pull-request work, GitHub CI is the authoritative final repository verification because it runs against the exact published PR head in the controlled CI environment.
 
-Ordinary task:
+The coding agent does not own this gate and must not delay handoff merely because a full local `pnpm verify` has not been run.
 
-```bash
-pnpm verify
-```
+The architect must not recommend merge until all required exact-head CI checks are green and the implementation has passed architecture/review requirements.
 
-Release-sensitive task:
+If CI fails:
 
-```bash
-pnpm verify:release
-```
+1. identify the failed CI contract and exact output;
+2. route the failure to the correct owner;
+3. fix in-scope failures;
+4. run the smallest relevant verifier-managed local check for feedback;
+5. push the correction and let CI rerun the authoritative exact-head gate.
 
-When branch-diff scope is required by repository/workflow rules, preserve that exact base in the final command.
-
-A broad passing run does not replace missing proof, stale ownership metadata, architecture review, required measurements, or a concrete reported visual/motion defect.
+Do not require a full local rerun after every correction unless it is materially useful for diagnosis.
 
 ## Mode-specific changes
 
@@ -165,21 +169,17 @@ Examples:
 - resolver: table-driven resolver tests plus representative command planning;
 - Playwright discovery: every affected lane and both legacy/new paths during migration;
 - Storybook harness: affected build, behavior, and visual modes;
-- release resolver: focused planning and unconditional full release mode.
-
-Mode-specific focused proof is not another final gate.
+- release resolver: focused planning for the affected mode.
 
 ## Failure handling
 
-When a required check, ownership validation, or measurement fails:
+When a local required check, ownership validation, or measurement fails:
 
 1. identify the failed label/plan/command/metric;
 2. determine whether current changes caused it;
 3. fix in-scope failures or stale ownership facts;
 4. rerun the narrow failed proof through `pnpm verify --only <label>` while preserving applicable scope;
-5. after fixes, rerun the original final completion-gate command without fix mode;
-6. report unrelated/unresolved failures exactly;
-7. never claim completion while required verification/evidence is missing or failing.
+5. report unrelated/unresolved failures exactly.
 
 Do not substitute a raw child command printed by a failed step for the verifier-managed rerun.
 
@@ -194,12 +194,15 @@ Fix warnings caused by the current change. Classify remaining warnings as pre-ex
 ```text
 TASK RESULT
 status: complete | partial | blocked
-remaining: none | <remaining required work, verification, or blocker>
+remaining: none | <remaining implementation/proof/blocker>
 
-VERIFY RESULT
-command: <exact final completion-gate command>
-status: passed | failed | not run | blocked by active local verification
-reason if not run:
+LOCAL VERIFY RESULT
+commands: <focused verifier-managed commands actually run, or none>
+status: passed | failed | partial | not run
+reason if partial/not run: <reason>
+
+CI GATE
+status: not owned by coding agent
 ```
 
-`complete` requires assigned scope, acceptance criteria, required proof/measurements, consistent durable ownership facts, and the one applicable final completion gate to pass.
+`complete` requires assigned implementation scope, acceptance criteria, required task-specific proof, and no known in-scope failure. It does not require the coding agent to duplicate the PR CI gate locally.

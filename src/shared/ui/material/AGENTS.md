@@ -33,7 +33,7 @@ If isolated workers are unavailable, report the workflow as blocked. Do not cont
 - Family `ARCHITECTURE.md` selects current Mioframe demand and resolves ownership, Vue API, tokens, renderer mapping, proof, and migration.
 - Runtime code plus `IMPLEMENTATION.md` records component-owned implementation and proof.
 - `MIGRATION.md` records consumer adoption, preserved scenarios, and legacy removal.
-- `REVIEW.md` records independent compliance and final-workflow-verification readiness.
+- `REVIEW.md` records independent compliance and readiness for architect-owned PR/CI.
 - Canonical CSS plus `docs/token-api.md` defines the supported public token surface.
 - `docs/m3e-defects.md` owns renderer-defect records.
 - `docs/roadmap.md` alone owns mutable milestone status and next action.
@@ -97,4 +97,4 @@ Renderer-owned appearance requires browser or visual evidence. Host state, token
 
 Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete reported defect routes to the owning stage.
 
-Final workflow verification belongs to the outer `material-component` orchestrator after current independent review. Stage workers run only their focused proof.
+Stage workers run only focused proof needed for their owned contracts. After independent review succeeds, the agent workflow hands the family to the architect. GitHub CI owns the authoritative exact-head repository gate after PR creation; merge readiness belongs to the architect after CI and full PR review.

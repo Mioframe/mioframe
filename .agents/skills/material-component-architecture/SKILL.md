@@ -7,13 +7,15 @@ description: 'Use after a current complete family DESIGN.md exists to create or 
 
 Resolve one deterministic implementation architecture from the current official design contract and return control to the orchestrator.
 
-This stage owns demand selection, public contract, ownership, dependencies, renderer strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or final workflow verification.
+This stage owns demand selection, public contract, ownership, dependencies, renderer strategy, proof ownership, and migration plan. It does not own production edits, migration execution, review, or PR CI.
 
 ## Input gate
 
-Require current successful `DESIGN.md` with a non-`none` design contract revision.
+Require current successful `DESIGN.md`.
 
-If the design artifact is mechanically invalid or its contract must be corrected, write architecture as blocked when possible and route to `self/design`. Do not repair design in this worker.
+Read the current design directly. Do not require or compare a design-contract revision identity.
+
+If DESIGN is incomplete or mechanically invalid, write architecture as blocked when possible and route to `self/design`. Do not repair design in this worker.
 
 ## Worker boundary
 
@@ -21,7 +23,7 @@ Run in a fresh isolated context. Use task-relevant workspace files, applicable r
 
 Treat code, tests, stories, and README files as implementation evidence, not architecture authority.
 
-Before selecting proof placement or impact ownership, read the current `docs/testing/migration-plan.md`; do not copy an older family’s transitional test location or registry pattern when the executable testing architecture has advanced.
+Before selecting proof placement or impact ownership, read current `docs/testing/migration-plan.md`.
 
 ## Output
 
@@ -34,10 +36,8 @@ src/shared/ui/material/components/<family>/ARCHITECTURE.md
 Control fields:
 
 ```text
-Artifact revision: YYYY-MM-DDTHH:mm:ss.sssZ
-Status: ready | stale | blocked
+Status: ready | blocked
 DESIGN.md reference: <path>
-DESIGN.md contract revision: <exact Design contract revision>
 Renderer revision: @m3e/web@<lockfile-resolved-version>
 Revision summary: <one concise line>
 Remaining blockers: none | <exact blockers>
@@ -46,48 +46,48 @@ Required return stage: none | design | architecture | implementation | migration
 Implementation readiness: ready | awaiting-dependencies | blocked
 Dependency families: none | <canonical-family>[; <canonical-family>...]
 Dependency queue: none | <canonical-family>[; <canonical-family>...]
-Dependency review revisions: none | <canonical-family>=<REVIEW Artifact revision>[; <canonical-family>=<REVIEW Artifact revision>...]
 ```
 
-`stale` is an external pre-run marker. This worker may finish only with `ready` or `blocked`.
+Do not create artifact timestamps, hashes, dependency-review revision identities, or other persistent freshness bookkeeping.
 
-Use a new artifact revision whenever architecture changes or is revalidated after a design-contract, dependency-review, or renderer change. A metadata-only design refresh does not require architecture rewrite.
+Legacy revision fields in an existing ARCHITECTURE are ignored and removed when this stage rewrites the file.
+
+This architecture stage always executes fresh for the current Material invocation.
 
 ## Scenario selection
 
 Use confirmed product scenarios when consumers exist.
 
-When no consumer exists, the invocation establishes one approved library scenario:
+When no consumer exists, establish one approved library scenario:
 
 - implement the unambiguous official standalone default;
-- expose only the API required to render and accessibly operate that default;
-- expose only mandatory controllable state belonging to the selected default;
-- do not add `v-model`, selection, toggle, value, or open-state contracts unless required by that default;
+- expose only API required to render and accessibly operate it;
+- expose only mandatory controllable state belonging to that default;
+- do not add selection/value/open-state contracts unless required by the selected default;
 - include disabled behavior only when official Material supports it for that default;
-- include mandatory semantics, accessibility, states, and proof;
 - defer optional variants, sizes, shapes, configurations, and state models;
-- do not expose m3e capability merely because it exists;
+- do not expose renderer capability merely because it exists;
 - do not invent product scenarios or create a product consumer.
 
 Ask the operator only when official sources define no standalone default or multiple materially different public models.
 
 ## Required decisions
 
-Resolve:
+Resolve completely:
 
 1. goal and non-goals;
 2. product or approved no-consumer scenarios and failure paths;
 3. selected and deferred official surface;
-4. complete direct dependency set, queue, and dependency review revisions;
-5. ownership of composition, dependency behavior, product state, renderer behavior, and gaps;
+4. direct dependency set and current-invocation dependency queue;
+5. ownership of composition, product state, renderer behavior, and gaps;
 6. complete public Vue API and state precedence/restoration;
-7. for every controlled renderer-backed state, the exact transition timeline required by `docs/component-adapter.md`: public source of truth, mapped renderer property, pre/post mutation events, cancelability, next-value owner, accepted intent, rejected intent, and suppressed-state behavior;
+7. for every controlled renderer-backed state, exact transition timeline from `docs/component-adapter.md` including accepted and rejected intent;
 8. selected public token contract;
 9. renderer mappings, fallbacks, and coverage;
 10. one owner for every renderer gap;
 11. deterministic implementation passes;
-12. implementation and migration `TEST IMPACT`, using the current executable testing ownership rather than copied historical placement;
-13. consumer inventory and migration order, including classification of existing legacy Storybook/browser/visual proof as retained-and-rehomed, replaced by canonical proof, or obsolete-and-removed;
+12. implementation and migration `TEST IMPACT` using current executable testing ownership;
+13. consumer inventory, migration order, legacy proof disposition, and every legacy-to-canonical semantic translation including capability/configuration versus current-state meaning and defaults/fallbacks;
 14. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
 15. implementation readiness.
 
@@ -97,16 +97,11 @@ No coding decision may remain for implementation.
 
 Record every direct dependency in `Dependency families`.
 
-For each dependency:
+Put a dependency in `Dependency queue` when it must be processed through the Material pipeline before parent implementation can proceed in the current invocation.
 
-- if it lacks current successful independent review, put it in `Dependency queue`;
-- otherwise record its exact current review artifact revision.
+Do not persist dependency review revision identities. After queued dependencies complete through independent review, the orchestrator reruns parent architecture fresh and the worker validates current dependency public contracts directly.
 
-Queue and review-revision entries must be disjoint and their union must equal dependency families.
-
-Self-dependency, dependency gates, and dependencies already present in the active path are forbidden.
-
-When the orchestrator provides a detected cycle, correct ownership or dependency closure in this worker. Do not route to `self/architecture`.
+Self-dependency and dependencies already present in the active path are forbidden.
 
 When queue is non-empty, use:
 
@@ -118,7 +113,7 @@ Required return family: none
 Required return stage: none
 ```
 
-After dependencies become current, revalidate handoffs, clear or recompute the queue, and record exact review revisions.
+When queue is empty and architecture is complete, use readiness `ready`.
 
 ## Public and renderer boundary
 
@@ -127,7 +122,9 @@ After dependencies become current, revalidate handoffs, clear or recompute the q
 - Select the minimum complete current surface.
 - Keep renderer details private.
 - Define precedence and restoration for every selected state combination.
-- For mutable renderer-backed state, inspect the exact installed renderer event lifecycle before calling the public mapping controlled. Prefer a documented cancelable pre-mutation intent seam when it exists; a post-mutation `change`/`input` emit alone is insufficient if rejected intent can leave renderer state divergent from the controlling prop.
+- Inspect exact installed renderer lifecycle for mutable state; post-mutation emit alone is insufficient when rejected intent can drift.
+- Do not infer legacy/canonical equivalence from prop-name similarity.
+- When effective consumer state includes defaults/fallbacks, define translation from effective value.
 - Do not add adjacent surface for symmetry or future flexibility.
 
 For contextual tokens record:
@@ -147,9 +144,11 @@ Implementation owns component, renderer-boundary, token, browser, visual, and co
 
 Migration owns consumers, product scenarios or explicit no-consumer proof, legacy removal, and impact metadata.
 
-For controlled state, implementation proof must include rejected intent; for decorative/presentation composition, browser proof must cover both child suppression and positive handoff to the actual action owner.
+For controlled state, implementation proof must include rejected intent. For presentation composition, browser proof must cover child suppression and positive handoff to the actual action owner.
 
-Review independently evaluates the complete result. The outer orchestrator owns final verification.
+For semantic consumer translations, migration proof must cover boundary combinations that distinguish old and canonical meaning, including defaults/fallbacks where applicable.
+
+Review independently evaluates the complete result. After successful review, the orchestrator hands the family to the architect; GitHub CI owns the authoritative exact-head repository gate.
 
 ## Required sections
 
@@ -179,20 +178,17 @@ Review independently evaluates the complete result. The outer orchestrator owns 
 
 Return `Status: ready` only when architecture is fully resolved.
 
-- Use readiness `awaiting-dependencies` only for a valid non-empty dependency queue.
-- Use readiness `ready` only when queue is `none` and all dependency review revisions are current.
-- Keep blockers and route `none`.
+- readiness `awaiting-dependencies` requires a non-empty queue;
+- readiness `ready` requires queue `none`;
+- blockers and route are `none`.
 
 ### Earlier-stage or cross-family correction
 
-Use `Status: blocked` with an exact route only when correction belongs to:
-
-- `self/design`; or
-- another family’s design, architecture, implementation, or migration stage.
+Use `Status: blocked` with an exact route only when correction belongs to `self/design` or another family/stage.
 
 ### Genuine blocker
 
-If an architecture decision owned by this stage remains unresolved after all available evidence and mechanisms are exhausted, return:
+If an architecture decision owned by this stage remains unresolved after available evidence is exhausted, return:
 
 ```text
 Status: blocked
@@ -202,7 +198,7 @@ Required return family: none
 Required return stage: none
 ```
 
-This includes an unresolvable dependency cycle. Do not return `self/architecture`.
+Do not return `self/architecture`.
 
 A fixable architecture omission, dependency error, route error, or document-format defect must be corrected before returning.
 
@@ -214,16 +210,13 @@ Return after writing the artifact. Do not implement in this context.
 MATERIAL ARCHITECTURE RESULT
 Input component:
 Canonical family:
-DESIGN.md contract revision:
 ARCHITECTURE.md path:
-Artifact revision:
 Renderer revision:
 Active dependency path: none | <path>
 Detected dependency cycle: none | <path>
 Selected and deferred surface:
 Dependency families:
 Dependency queue:
-Dependency review revisions:
 Public Vue API:
 Selected public tokens:
 Renderer coverage and gaps:
@@ -239,15 +232,15 @@ Status: complete | blocked
 
 ## Forbidden
 
-- Returning terminal `stale`.
 - Returning `self/architecture`.
 - Leaving a current-stage fixable architecture defect unresolved.
 - Editing official design, production code, proof, exports, or consumers.
 - Leaving coding decisions to implementation.
 - Using dependency gates or cyclic dependencies.
+- Persisting dependency-review revision identities.
 - Inventing product demand or renderer-derived APIs.
-- Calling post-mutation renderer state controlled without proving rejected intent cannot drift from the public source of truth.
-- Copying obsolete test-placement or impact-registry patterns from older family artifacts instead of the current testing policy.
-- Adding speculative APIs, abstractions, compatibility paths, or renderer exposure.
-- Rewriting architecture for metadata-only design refresh.
+- Calling post-mutation renderer state controlled without proving rejected intent cannot drift.
+- Mapping legacy consumer state by prop-name similarity.
+- Copying obsolete test-placement patterns.
+- Adding speculative APIs, abstractions, compatibility paths, workflow hashes, timestamps, or renderer exposure.
 - Depending on Git or PR state.

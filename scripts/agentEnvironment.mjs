@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const MANAGED_MARKER = '<!-- managed:agent-compat -->';
+
 const REQUIRED_PROJECT_SKILL_FRONTMATTER_KEYS = new Set(['name', 'description']);
 const SUPPORTED_SKILL_FRONTMATTER_KEYS = new Set([
   'name',
@@ -472,13 +473,13 @@ function main() {
   const args = process.argv.slice(2);
   const fix = args.includes('--fix');
   const check = args.includes('--check');
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
   if (!fix && !check) {
     console.error('Usage: node scripts/agentEnvironment.mjs --check | --fix');
     process.exit(1);
   }
 
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const { errors, fixes } = checkAgentEnvironment(root, fix);
 
   for (const message of fixes) {

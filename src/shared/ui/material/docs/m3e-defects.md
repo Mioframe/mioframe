@@ -72,6 +72,7 @@ Mioframe status:
 | `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input                                 | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
 | `M3E-002` | Loading indicator | Uncontained host size is coupled to active-indicator size                                               | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
 | `M3E-004` | Switch            | Native `<label>` association (implicit wrap or explicit `for`/`id`) does not produce an accessible name | `2.6.3`          | `workaround-active` | `unreported`    |
+| `M3E-005` | Checkbox          | Native `<label>` association (explicit `for`/`id`) does not produce an accessible name                  | `2.6.3`          | `workaround-active` | `unreported`    |
 
 `M3E-003` was removed before merge as a Mioframe representation misclassification. Its ID is retired; see Removed records.
 
@@ -253,6 +254,71 @@ Consume a renderer version whose native `<label>` association produces a correct
 | m3e version | Date       | Result    | Evidence                                                                                                                |
 | ----------- | ---------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `2.6.3`     | 2026-08-11 | confirmed | real-browser accessibility-tree proof (`../components/switch/MDSwitch.browser.spec.ts`); renderer JSDoc/type inspection |
+
+## M3E-005 — Native `<label>` association does not produce an accessible name (Checkbox)
+
+- Component: Checkbox
+- First confirmed version: `2.6.3`
+- Last revalidated version: `2.6.3`
+- Upstream status: `unreported`
+- Mioframe status: `workaround-active`
+- Family design: `../components/checkbox/DESIGN.md`
+- Family architecture: `../components/checkbox/ARCHITECTURE.md`
+- Family implementation: `../components/checkbox/IMPLEMENTATION.md`
+- Upstream issue: none
+- Upstream pull request: none
+
+### Official expectation
+
+Official Checkbox Accessibility guidance ("Labeling") states that if the UI text is correctly linked to the checkbox, assistive technology reads the UI text followed by the component's role, and that the accessibility label for an individual checkbox is typically the same as its adjacent text label — an adjacent/associated label is expected to supply the accessible name.
+
+Recorded official sources:
+
+- `/components/checkbox/accessibility` ("Labeling").
+
+### Documented renderer contract
+
+`M3eCheckboxElement` implements the same `Labelled` mixin as `M3eSwitchElement` (`LabelledMixin`, read-only `labels: NodeListOf<HTMLLabelElement>` property), and the element's own class-level JSDoc documents both an implicit-wrap `<label>` example and an explicit `for`/`id` example:
+
+```html
+<label>
+  <m3e-checkbox></m3e-checkbox>
+  Checkbox label
+</label>
+```
+
+```html
+<m3e-checkbox id="chk"></m3e-checkbox> <label for="chk">Checkbox label</label>
+```
+
+### Observed renderer behavior
+
+Installed `2.6.3`: real-browser (Chromium) accessibility-tree evidence shows explicit `for`/`id` association does not produce an accessible name for `m3e-checkbox` — `expect(locator).toHaveAccessibleName('Adjacent label')` fails with `Received: ""`. `aria-label` and `aria-labelledby` are independently confirmed working on the same element (see the accessible-name test in the same spec file).
+
+### Evidence
+
+- renderer type declaration: `node_modules/@m3e/web/dist/src/checkbox/CheckboxElement.d.ts` (documented implicit-wrap and `for`/`id` `@example`s, `LabelledMixin`-derived base);
+- renderer type declaration: `node_modules/@m3e/web/dist/src/core/shared/mixins/Labelled.d.ts` (same mixin `M3E-004` already confirmed non-functional for accessible naming on `m3e-switch`);
+- browser proof: `../components/checkbox/MDCheckbox.browser.spec.ts` ("MDCheckbox native <label for> association does not produce an accessible name (M3E-005, matching Switch M3E-004)");
+- implementation record: `../components/checkbox/IMPLEMENTATION.md` ("Component-owned proof").
+
+### Mioframe impact and mitigation
+
+No confirmed current or default scenario is blocked: ARCHITECTURE.md's "Selected and deferred Material surface" already classified the adjacent-label accessible-name row as `defer` (not relied upon), with `aria-label`/`aria-labelledby` selected as the confirmed-working backstop mechanism for every scenario — including `MDCheckboxField`'s migration-stage requirement to forward one of them explicitly. The family does not rely on native `<label>` association as an accessible-name source; `MDCheckbox.stories.ts`'s `BehaviorContracts` fixture and `MDCheckbox.browser.spec.ts` use `aria-labelledby`/`aria-label` fixtures for the accessible-name contract, and a separate `AdjacentLabel` fixture proves only the click-to-toggle activation effect of the same association, which remains confirmed `direct`. No wrapper-level accessible-name synthesis is added, per `docs/component-adapter.md`'s prohibition on recreating renderer-owned accessibility implementation.
+
+### Correct upstream result
+
+m3e should compute an accessible name from an implicit or explicit `<label>` association for `m3e-checkbox`, consistent with its own documented `LabelledMixin`/`labels` support and its illustrated `<label>`-wrapped and `for`/`id` usage examples.
+
+### Removal trigger
+
+Consume a renderer version whose native `<label>` association produces a correct accessible name, confirm with real-browser accessibility-tree proof, and update the affected family architecture/implementation rows from `divergent` to `direct`.
+
+### Revalidation history
+
+| m3e version | Date       | Result    | Evidence                                                                                                                    |
+| ----------- | ---------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `2.6.3`     | 2026-08-12 | confirmed | real-browser accessibility-tree proof (`../components/checkbox/MDCheckbox.browser.spec.ts`); renderer JSDoc/type inspection |
 
 ## Removed records
 

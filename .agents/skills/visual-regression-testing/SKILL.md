@@ -64,16 +64,7 @@ A new baseline does not approve a changed result by itself. Current Mioframe com
 
 Visual specs may open a story, prepare deterministic stable appearance, and capture screenshots.
 
-They contain no success criteria for:
-
-- click or navigation;
-- focus movement or keyboard operation;
-- pointer/touch behavior;
-- motion lifecycle;
-- persistence/product flow;
-- semantic/ARIA behavior;
-- computed token tables;
-- geometry matrices used as behavioral assertions.
+They contain no success criteria for click/navigation, focus/keyboard operation, pointer/touch behavior, motion lifecycle, persistence/product flow, semantic/ARIA behavior, computed token tables, or geometry matrices used as behavioral assertions.
 
 Route those contracts to component, browser, or product proof according to `docs/testing/architecture.md`.
 
@@ -115,14 +106,13 @@ pnpm verify --only visual --files <readable-source-story-or-spec-paths...>
 
 Intentional baseline update remains an explicit write operation through the repository visual update command and must be followed by verifier-managed visual proof.
 
-Preserve applicable `--profile` and `--files` scope when rerunning visual verification. The top-level task later runs one final read-only project verification.
+Preserve applicable `--profile` and `--files` scope when rerunning visual verification. For PR work, required GitHub CI on the exact published head owns the broad repository gate; this skill adds no separate broad local completion run.
 
 ## Forbidden
 
 - behavior assertions in visual specs;
 - a colocated visual spec for an owner `docs/testing/migration-plan.md` has not authorized/migrated;
 - screenshots broader than the named visible contract;
-- uncontrolled product, time, network, storage, or animation state;
 - unexplained baseline changes;
 - token-table or implementation-detail matrices;
 - equivalent combinations that create snapshot bloat;
