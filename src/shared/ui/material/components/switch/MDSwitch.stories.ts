@@ -174,6 +174,27 @@ export const BehaviorContracts: Story = {
   }),
 };
 
+// Native-label fixture for the renderer compatibility record: m3e documents both associations,
+// but the adapter must not synthesize an accessible name when the renderer itself does not.
+// The browser proof owns the observable accessibility-tree result (M3E-004).
+export const NativeLabelAssociation: Story = {
+  render: () => ({
+    components: { MDSwitch },
+    template: `
+      <div data-testid="md-switch-native-label-association">
+        <label>
+          Implicit native label
+          <MDSwitch id="native-label-implicit-switch" />
+        </label>
+        <div>
+          <MDSwitch id="native-label-explicit-switch" />
+          <label for="native-label-explicit-switch">Explicit native label</label>
+        </div>
+      </div>
+    `,
+  }),
+};
+
 export const TabOrderFixture: Story = {
   render: () => ({
     components: { MDSwitch },

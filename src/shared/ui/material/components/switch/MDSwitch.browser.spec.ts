@@ -66,6 +66,18 @@ test('MDSwitch resolves an accessible name from aria-labelledby and aria-label, 
   await expect(disabled).not.toBeFocused();
 });
 
+test('MDSwitch native implicit and explicit label associations do not produce accessible names (M3E-004)', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-switch-mdswitch--native-label-association');
+
+  // The installed renderer documents both associations through its public LabelledMixin surface,
+  // but neither produces an accessibility-tree name. Mioframe deliberately relies on the
+  // separately proven aria-label/aria-labelledby contract instead of synthesizing one.
+  await expect(page.locator('#native-label-implicit-switch')).toHaveAccessibleName('');
+  await expect(page.locator('#native-label-explicit-switch')).toHaveAccessibleName('');
+});
+
 test('MDSwitch rejected intent leaves the rendered checked unchanged when the owning consumer does not write the emitted value back', async ({
   page,
 }) => {

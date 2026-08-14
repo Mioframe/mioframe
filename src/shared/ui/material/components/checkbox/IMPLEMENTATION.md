@@ -1,8 +1,10 @@
 # Checkbox implementation
 
+Artifact revision: 2026-08-14T11:46:35.000Z
 Status: complete
 ARCHITECTURE.md reference: `src/shared/ui/material/components/checkbox/ARCHITECTURE.md`
-Revision summary: Current production code already satisfies the corrected Checkbox architecture. No Enter workaround is required because the only official `Space or Enter` evidence in the Material cache is the corrupted Chips keyboard table recorded as a source conflict in `DESIGN.md`.
+ARCHITECTURE.md revision: 2026-08-14T11:46:35.000Z
+Revision summary: Revalidated the installed 2.7.4 Checkbox boundary. M3E-005 remains active after real-browser external-label proof; no public API, controlled-state mapping, or Enter behavior changed.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -47,6 +49,10 @@ Existing proof remains valid:
 - disabled and presentation suppress independent interaction;
 - Enter does not gain a custom wrapper-owned toggle;
 - host forwarding, focus/label composition, target geometry, accessibility backstops, and visual states remain covered by their existing owners.
+
+## @m3e/web 2.7.4 compatibility revalidation
+
+The installed Checkbox public type and cancelable plain-`Event` `beforeinput` contract remain compatible with the existing private typing seam. Its documented native-label association still yields an empty accessible name in Chromium, so the explicit ARIA naming backstop remains and no wrapper-level accessible-name synthesis is added.
 
 ## Stage verification
 

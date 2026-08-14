@@ -1,11 +1,11 @@
 # Button architecture
 
-Artifact revision: 2026-08-01T11:51:42.309Z
+Artifact revision: 2026-08-14T12:28:07.000Z
 Status: ready
 DESIGN.md reference: `src/shared/ui/material/components/button/DESIGN.md`
 DESIGN.md contract revision: 2026-08-01T09:54:01.860Z
-Renderer revision: @m3e/web@2.6.3
-Revision summary: Revalidated the complete architecture against the current Loading indicator review while preserving outer final-verification and Navigation Path ownership.
+Renderer revision: @m3e/web@2.7.4
+Revision summary: Revalidated the installed 2.7.4 Button renderer boundary and Loading Indicator composition. The public Vue API and renderer-owned interaction behavior remain unchanged; M3E-006 corrects only the installed small Button spacing through documented renderer CSS inputs kept private at this boundary.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -73,7 +73,7 @@ All classifications derive from [Variants and configurations](./DESIGN.md#varian
 | --------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Material foundation               | implemented system colors, typography, shape, elevation, state opacity, and motion roles | complete for selected Button inputs                              | Button family maps only selected public contextual tokens; foundation keeps all `--md-sys-*` ownership.                                                                                                  |
 | Loading indicator official family | current successful independent review and explicit Button composition boundary           | compliant review at artifact revision `2026-08-01T11:50:04.390Z` | Button imports only public `MDLoadingIndicator`; dependency owns geometry, progressbar semantics, animation, public active-color token, renderer mapping, defects M3E-001/M3E-002, and standalone proof. |
-| `@m3e/web/button`                 | exact installed private renderer contract                                                | `@m3e/web@2.6.3`                                                 | Not a Material family dependency; private renderer only.                                                                                                                                                 |
+| `@m3e/web/button`                 | exact installed private renderer contract                                                | `@m3e/web@2.7.4`                                                 | Not a Material family dependency; private renderer only.                                                                                                                                                 |
 
 Dependency queue: none. `loadingIndicator` completed current successful independent review at artifact revision `2026-08-01T11:50:04.390Z`; its `none/none` route clears the dependency gate without changing Button ownership or composition.
 
@@ -202,12 +202,13 @@ The official paths are in [Complete official component-token catalogue — Butto
 
 ## Renderer mapping and gaps
 
-Installed renderer: `@m3e/web@2.6.3`, package entry point `@m3e/web/button`, exported `M3eButtonElement`, `ButtonVariant`, `ButtonSize`, and `ButtonShape`.
+Installed renderer: `@m3e/web@2.7.4`, package entry point `@m3e/web/button`, exported `M3eButtonElement`, `ButtonVariant`, `ButtonSize`, and `ButtonShape`.
 
 | Selected contract                                                | Coverage         | Mapping or gap owner                                                                                                                                                                                                                                                      |
 | ---------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Filled, outlined, text configurations                            | `direct`         | Map public `color` to documented renderer `variant`, constrained by exported renderer type.                                                                                                                                                                               |
-| Extra-small and small geometry/typography                        | `direct`         | Map public `size` to documented renderer `size`; installed defaults match official selected geometry.                                                                                                                                                                     |
+| Extra-small geometry/typography                                  | `direct`         | Map public `size` to documented renderer `size`; installed defaults match the selected geometry.                                                                                                                                                                          |
+| Small geometry/typography                                        | `divergent`      | `M3E-006`: installed 2.7.4 defaults leading/trailing space to 20dp, not the selected 16dp. Keep the documented `--m3e-button-small-leading-space` and `--m3e-button-small-trailing-space` correction private in the Button boundary; do not add a public token or prop.   |
 | Round shape and pressed restoration/motion                       | `direct`         | Private constant `shape="rounded"`; renderer owns state and motion. No host pseudo-class override.                                                                                                                                                                        |
 | Required label and optional leading icon                         | `direct`         | Light-DOM label and documented `icon` slot; wrapper owns Vue slot adaptation only.                                                                                                                                                                                        |
 | Native button/submit, click, disabled, keyboard/pointer behavior | `direct`         | Renderer public type/disabled/click contract and native internal control. Bind Boolean properties, not false-present dashed attributes.                                                                                                                                   |
@@ -218,7 +219,7 @@ Installed renderer: `@m3e/web@2.6.3`, package entry point `@m3e/web/button`, exp
 | Rapid repeated activation resonance guidance                     | `partial`        | Official guidance recommends modified web motion but supplies no normative parameters. Keep renderer motion; operator motion acceptance owns subjective quality. No timing hack.                                                                                          |
 | Toggle, other colors/sizes/shapes, links, trailing icons         | `not-applicable` | Deferred public surface even though renderer exposes much of it.                                                                                                                                                                                                          |
 
-No confirmed Button renderer defect requires a new `M3E-*` record. The former M3E-003 hypothesis is retired because percentage state-opacity grammar is a Mioframe foundation representation issue, already corrected. Loading Indicator defects M3E-001/M3E-002 remain dependency-owned and do not move into Button.
+M3E-006 records the installed small-Button default divergence and its controlled family-local correction. The former M3E-003 hypothesis is retired because percentage state-opacity grammar is a Mioframe foundation representation issue, already corrected. Loading Indicator defects M3E-001/M3E-002 remain dependency-owned and do not move into Button.
 
 ## State precedence and restoration
 
@@ -232,10 +233,10 @@ No confirmed Button renderer defect requires a new `M3E-*` record. The former M3
 
 ## Implementation passes
 
-1. Audit `MDButton.vue`, `m3eButton.d.ts`, `config/vueCustomElements.ts`, family/root exports, and renderer-boundary checks against the exact `2.6.3` public contract. Keep one semantic renderer host and package-derived types.
-2. Correct `components/button/tokens.css` to the seven selected official names and private mappings; remove the old `hover`/`focus` names and unused icon token without aliases. Update `docs/token-api.md` atomically and retain foundation opacity ownership.
+1. Audit `MDButton.vue`, `m3eButton.d.ts`, `config/vueCustomElements.ts`, family/root exports, and renderer-boundary checks against the exact `2.7.4` public contract. Keep one semantic renderer host and package-derived types.
+2. Correct `components/button/tokens.css` to the seven selected official names and private mappings; retain the fixed M3E-006 small leading/trailing 16dp correction through documented renderer inputs only. Remove the old `hover`/`focus` names and unused icon token without aliases. Update `docs/token-api.md` atomically and retain foundation opacity ownership.
 3. Audit component-contract proof for props/defaults, Boolean property mapping, click payload, native submit behavior, slot/loading restoration, busy/decorative semantics, disabled/loading independence, refs/fallthrough, and forbidden renderer surface.
-4. Audit real-browser behavior for keyboard/pointer activation, disabled suppression, visible container and 48 dp target geometry, immediate pressed-shape restoration, focus, reduced motion, and loading composition. Correct only public/light-DOM integration gaps; do not recreate renderer internals.
+4. Audit real-browser behavior for keyboard/pointer activation, disabled suppression, visible container and 48 dp target geometry, exact 16dp small leading/trailing geometry, immediate pressed-shape restoration, focus, reduced motion, and loading composition. Correct only public/light-DOM integration gaps; do not recreate renderer internals.
 5. Add or correct contextual Snackbar proof at the rendered label and state-layer anatomy for resting, hover, keyboard focus, and press. Update bounded Button/Snackbar visual baselines only after inspecting expected, actual, and diff.
 6. Audit stories and persistent impact mappings so selected variants, sizes, icon/loading/disabled states, target geometry, themes, and contextual Snackbar states have the correct proof owners.
 7. Write `IMPLEMENTATION.md` with exact files, proof, focused verify results, dependency revalidation, and architecture deviations. Deviations must be `none` before migration.
@@ -255,7 +256,7 @@ Expected implementation-stage files are limited to Button runtime/types/tokens/e
   - Primary proof owner: Button Storybook behavior spec (`tests/e2e/storybook/md-button-family.spec.ts`).
   - Additional proof: app E2E only for complete product/form scenarios not faithfully owned in Storybook.
   - Existing proof: Button family Storybook behavior and target-hit stories; inspect current coverage.
-  - New/updated proof: only gaps found against the selected state matrix.
+  - New/updated proof: Browser geometry regression compares the visible small Button host with its light-DOM label and proves the selected 16dp padding on each side (M3E-006), without inspecting renderer shadow DOM.
   - Risk/platform matrix: Desktop Chromium and Mobile Chrome where impact mapping requires both; keyboard and pointer paths remain distinct.
   - Persistent impact metadata: Storybook behavior mapping includes Button production/story/token/type paths and owned support.
 - Contract/scenario: selected seven-token contextual trace and Snackbar inverse-primary label/state-layer result.
@@ -328,6 +329,7 @@ Implementation and migration run only verifier-managed focused checks for their 
 - Contextual state colors can appear correct at the host while rendered label/state-layer anatomy is wrong; proof must inspect the effective rendered owner.
 - Token replacement affects Snackbar screenshots and may expose unrelated baseline drift; inspect expected, actual, and diff and report flakes separately.
 - Loading Indicator uses dependency-owned exact-version workarounds; every m3e update must revalidate M3E-001/M3E-002 before accepting Button composition.
+- Small Button spacing is an installed-renderer default divergence (M3E-006); keep the correction fixed, private, and browser-proven, then remove it when a consumed renderer version supplies the selected 16dp default directly.
 
 ## Forbidden
 
@@ -336,7 +338,7 @@ Implementation and migration run only verifier-managed focused checks for their 
 - Add host pseudo-class timing/shape overrides, wrapper press state, ripple/state-layer clones, shadow-DOM access, descendant cascades, `!important`, or timing hacks.
 - Make `loading` disable the Button, swallow clicks, own operation state, or replace feature-owned browser/provider wait status.
 - Publish icon tokens without a confirmed contextual icon consumer, retain old `hover`/`focus` aliases, or derive public names from m3e.
-- Preserve or replace Navigation Path's inert `--md-button-horizontal-padding`, add a Button padding prop/token for that consumer, or reach a private renderer padding input; the selected small geometry is the complete required contract.
+- Preserve or replace Navigation Path's inert `--md-button-horizontal-padding`, or add a Button padding prop/token for that consumer. M3E-006 alone may use the documented size-specific renderer spacing inputs, fixed at the selected 16dp geometry, privately in the Button boundary; remove that correction when the consumed renderer supplies the selected default directly.
 - Treat unit tests, stories, host custom properties, snapshots, green verification, or implementation evidence as substitutes for rendered-anatomy proof or as proof of subjective visual/motion quality.
 - Migrate Icon Button, FAB, navigation, menu, or native HTML families as part of Button merely because they render a `<button>`.
 - Use unrestricted `v-bind="$attrs"` fallthrough, omit `inheritAttrs: false` on the single `m3e-button` root, or forward any attribute or listener outside the accepted [Host-attribute boundary](#host-attribute-boundary) allow-list.

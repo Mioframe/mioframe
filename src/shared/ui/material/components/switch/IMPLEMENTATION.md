@@ -1,10 +1,10 @@
 # Switch implementation
 
-Artifact revision: 2026-08-11T13:45:00.000Z
+Artifact revision: 2026-08-14T11:46:35.000Z
 Status: complete
 ARCHITECTURE.md reference: `src/shared/ui/material/components/switch/ARCHITECTURE.md`
-ARCHITECTURE.md revision: 2026-08-11T13:30:00.000Z
-Revision summary: Revalidation-only refresh routed by the workflow's durable-continuation rule (`ARCHITECTURE artifact revision → IMPLEMENTATION`) after `ARCHITECTURE.md` advanced to revision `2026-08-11T13:30:00.000Z`. That architecture revision is itself formatting-only: routed from the outer `material-component` orchestrator's final `pnpm verify` gate `format` (`oxfmt --check`) failure on `ARCHITECTURE.md` and `docs/m3e-defects.md`, because the prior citation-accuracy and Coverage-enum-conformance fixes (both already content-confirmed by `REVIEW.md`) were applied without re-running the format checker. `ARCHITECTURE.md`'s own revision summary records that only Markdown table column-width whitespace changed, confirmed there by a line-by-line comparison against the pre-fix content. Directly re-read the new `ARCHITECTURE.md` in full (all sections, all table rows) and confirmed no wording, citation, Coverage value, public API, token, ownership, dependency closure, renderer mapping decision, or `M3E-004` classification differs from the prior revision (`2026-08-11T12:30:00.000Z`) this file was already current against — no implementation-owned content (runtime, types, tests, stories, mappings, proof) requires any change. No production, test, or config file was touched by this revision. Every section below is otherwise retained unmodified from the prior revision (`2026-08-11T12:45:00.000Z`), which itself was fully current against the architecture decisions this new revision preserves.
+ARCHITECTURE.md revision: 2026-08-14T11:46:35.000Z
+Revision summary: Revalidated the installed 2.7.4 renderer boundary. The plain-`Event` `beforeinput` seam remains valid, and new real-browser implicit/explicit native-label proof confirms M3E-004 remains active without a public API or production mapping change.
 
 Remaining blockers: none
 Required return family: none
@@ -15,7 +15,7 @@ Migration readiness: ready
 ## Implemented passes
 
 1. **Controlled-state correction (`MDSwitch.vue`):** replaced the `@change`-derived `onChange` handler with `onBeforeinput`, bound directly on the `m3e-switch` template root (explicit template wiring, not `$attrs`). The handler runtime-narrows `event.target` with `instanceof M3eSwitchElement` (existing pattern, unchanged), no-ops (no `preventDefault()`, no emit) when `props.presentation` is true, otherwise calls `event.preventDefault()` before computing `!event.target.checked` and emitting `update:selected` with that intended-next value. Deliberately does not add a wrapper-level `disabled` check inside the handler — the renderer's own click handler already blocks `beforeinput` dispatch before `disabled`, per ARCHITECTURE.md's "Forbidden" list, so a redundant check would only mask a real renderer regression. No wrapper-local `ref` shadow of `selected` and no `watch`/`watchEffect` repair path were added; the existing one-way `:checked="props.selected"` binding remains the only writer of `checked`. Updated the `selected` prop and `update:selected` emit TSDoc to describe the one-directional, pre-mutation-intent contract.
-2. **Private renderer typing (`src/shared/ui/material/m3eSwitch.d.ts`):** replaced `onChange?: (event: Event) => void` with `onBeforeinput?: (event: Event) => void`, documenting that the installed `@m3e/web@2.6.3` renderer dispatches `beforeinput` as a plain `Event`, not the ambient DOM lib's `InputEvent`.
+2. **Private renderer typing (`src/shared/ui/material/m3eSwitch.d.ts`):** replaced `onChange?: (event: Event) => void` with `onBeforeinput?: (event: Event) => void`, documenting that the installed `@m3e/web@2.7.4` renderer dispatches `beforeinput` as a plain `Event`, not the ambient DOM lib's `InputEvent`.
 3. **Switch-owned Vitest `ElementInternals` shim:** removed the global `HTMLElement.prototype.attachInternals` polyfill and its `MockElementInternals` class from `src/setupVitest.ts`. Added `src/shared/ui/material/components/switch/MDSwitch.testUtils.ts`, exporting `installSwitchElementInternalsShim()`, which installs the same minimal `MockElementInternals` surface only when `attachInternals` is absent (preserving any pre-existing implementation) and returns a teardown function that removes the installed property. `MDSwitch.test.ts` calls it from `beforeAll`/restores it from `afterAll`. Before deleting the global shim, confirmed no other current Vitest suite depends on it: inspecting the installed `@m3e/web` renderer bundle shows only the Switch entry (`@m3e/web/dist/switch.js`) references `FormAssociated`/`internals` machinery among the three `m3e-*` elements Mioframe currently selects (`config/vueCustomElements.ts`: `m3e-button`, `m3e-loading-indicator`, `m3e-switch`); Button and Loading Indicator reference neither. A full unrestricted-scope `pnpm verify --full --only unit-tests` run (see "Stage verification") confirms no regression traceable to the shim removal.
 4. **Browser proof relocation:** created `src/shared/ui/material/components/switch/MDSwitch.browser.spec.ts`, migrating every still-valid assertion from the legacy `tests/e2e/storybook/md-switch-family.spec.ts` (click/Space/Enter activation, accessible name via `aria-labelledby`/`aria-label`, disabled activation/focus-order blocking, Tab-order unreachability for `disabled`/`presentation`, presentation pointer-unreachability and accessibility-tree hiding, 48×48dp target-hit, host-attribute-boundary rejection), rewritten for the corrected single-intent-per-activation contract, plus two new tests (rejected-intent non-mutation; presentation-composition pointer pass-through). Deleted `tests/e2e/storybook/md-switch-family.spec.ts` and removed the `switch family behavior` entry from `scripts/lib/storybookBehaviorRisk.mjs` (removed, not replaced, per current `develop` Storybook S2 policy).
 5. **Component-contract proof (`MDSwitch.test.ts`):** rewrote the controlled-selection tests around a `dispatchBeforeinput` helper that dispatches a simulated cancelable `beforeinput` Event and returns it for `defaultPrevented` inspection. New/updated tests: single emission with the correct pre-mutation-negated value (two cases, `selected: false`→`true` and `selected: true`→`false`); rejected-intent non-mutation (emitted value never written back to `selected`, rendered `checked` stays unchanged); disabled non-emission proven through a real `click` Event dispatch relying on the renderer's own internal click-guard (no wrapper-level `disabled` check added, matching ARCHITECTURE.md's "Forbidden" list); `presentation` non-emission with `defaultPrevented` asserted `false`; the host-attribute-boundary duplicate-listener test extended to cover `onChange` alongside `onBeforeinput`/`onClick`. Removed the prior `change`-derived assertions superseded by this revision. All 16 tests pass.
@@ -37,7 +37,7 @@ No `components/switch/tokens.css` file and no `docs/token-api.md` change, matchi
 
 Renderer mapping implemented exactly as ARCHITECTURE.md's "Renderer mapping and gaps" table selects:
 
-- `selected` → renderer `checked` Boolean property, one-directionally (prop → renderer only). `update:selected` is derived from the renderer's own cancelable `beforeinput` (confirmed in the installed `2.6.3` compiled source: `if (this.dispatchEvent(new Event('beforeinput', { bubbles: true, cancelable: true }))) { this.checked = !this.checked; ... }`), intercepted with `event.preventDefault()` before the renderer's mutation branch can execute, so `checked` only ever changes via the `:checked="props.selected"` binding.
+- `selected` → renderer `checked` Boolean property, one-directionally (prop → renderer only). `update:selected` is derived from the renderer's own cancelable `beforeinput` (confirmed in the installed `2.7.4` compiled source: `if (this.dispatchEvent(new Event('beforeinput', { bubbles: true, cancelable: true }))) { this.checked = !this.checked; ... }`), intercepted with `event.preventDefault()` before the renderer's mutation branch can execute, so `checked` only ever changes via the `:checked="props.selected"` binding.
 - `disabled` → renderer `disabled` Boolean property (unchanged). The renderer's own click handler blocks its internal click-to-toggle and the `beforeinput` dispatch itself before either can occur while disabled, confirmed at the component-contract level this revision by dispatching a real `click` Event and asserting no emission (previously only real-browser proof covered this).
 - `presentation` → wrapper-owned `tabindex="-1"`, `aria-hidden="true"`, host CSS `pointer-events: none` (unchanged), plus the `beforeinput` handler's no-op guard (new: previously the `change`-derived handler's `presentation` guard was the only defense; now it is explicit defense-in-depth alongside the unreachable-by-construction suppression attributes).
 - No `icons`, `name`, `value`, or drag-to-toggle surface is exposed or wired (unchanged).
@@ -46,7 +46,7 @@ Renderer mapping implemented exactly as ARCHITECTURE.md's "Renderer mapping and 
 ## Dependencies
 
 - Material foundation: supplies the `--md-sys-color-*`/`--md-sys-shape-*` roles the renderer consumes directly; not an official component-family dependency (unchanged).
-- `@m3e/web@2.6.3` (`@m3e/web/switch`): private renderer boundary; `M3eSwitchElement` provides package-derived glue for `checked`/`disabled` typing and the `instanceof` runtime-narrowing target for the `beforeinput` handler.
+- `@m3e/web@2.7.4` (`@m3e/web/switch`): private renderer boundary; `M3eSwitchElement` provides package-derived glue for `checked`/`disabled` typing and the `instanceof` runtime-narrowing target for the `beforeinput` handler.
 - Dependency queue: none. No other Material family is composed by or required by Switch at this stage (`MDListItem` composition remains migration-stage work).
 
 ## Component-owned proof
@@ -58,6 +58,10 @@ Renderer mapping implemented exactly as ARCHITECTURE.md's "Renderer mapping and 
 - `tests/e2e/visual/shared-ui/md-switch.spec.ts` (1 test, passing, unchanged): the existing baseline remains valid — this revision changes only the interaction-intent mapping, no rendered visual state.
 
 Operator visual status: no-reported-defect. Automated proof does not claim subjective Material or renderer-motion acceptance.
+
+## @m3e/web 2.7.4 compatibility revalidation
+
+The installed Switch type and plain-`Event` `beforeinput` contract preserve the existing private adapter seam. The `NativeLabelAssociation` Storybook fixture and owner-local browser proof show that both documented native-label forms still expose an empty accessible name in Chromium, so M3E-004 remains active and explicit ARIA naming remains the selected backstop. Pressed, ripple, and state-layer implementation changes stay renderer-private; no wrapper synthesis or public API change is introduced.
 
 ## Stage verification
 
@@ -87,6 +91,10 @@ This implementation stage did not run migration, independent review, or the oute
 
 ## Architecture deviations
 
+The current `2.7.4` compatibility revalidation has no architecture deviation: it preserves the controlled mapping, private renderer boundary, and public contract while adding the missing native-label observable proof.
+
+### Historical pre-2.7.4 record
+
 None. Every implemented pass matches ARCHITECTURE.md revision `2026-08-11T13:30:00.000Z` exactly: the `beforeinput`-intent mapping, the private `onBeforeinput` typing seam, the localized `ElementInternals` shim, the owner-local browser-proof relocation, the `presentation` composition pass-through fixture, and the rejected-intent proof. The `TargetHitArea` story fix and the `scripts/lib/storybookBehaviorRisk.mjs` registry correction (an earlier revision) are both outside ARCHITECTURE.md's selected surface; neither changes any architecture decision, public API, token, or renderer mapping. The `disabled.click({ force: true })` → `page.mouse.click` proof-mechanism fix (an earlier revision) remains required by the current `ui-browser-behavior` skill's prohibition on Playwright `force`; it asserts exactly the same `disabled` non-emission/non-mutation contract ARCHITECTURE.md's "Renderer mapping and gaps" already selects. The prior revision (`2026-08-11T12:30:00.000Z`) changed only the Coverage cell of its "Renderer mapping and gaps" table's `presentation` decorative-composition row, correcting the invalid `wrapper-correction` value to the correct `not-applicable` enum value. This revision (`2026-08-11T13:30:00.000Z`) makes no content change at all — it is a formatting-only Markdown table column-width correction routed from a `pnpm verify --only format` failure. No architecture decision, public API, token, ownership, dependency closure, or renderer mapping decision changed at either step.
 
 ## Remaining blockers
@@ -94,5 +102,9 @@ None. Every implemented pass matches ARCHITECTURE.md revision `2026-08-11T13:30:
 None.
 
 ## Migration readiness
+
+Ready for the unchanged migration scope. This compatibility pass changes no consumer, product, or migration-owned runtime behavior; it only revalidates the private 2.7.4 boundary and records the native-label defect result.
+
+### Historical pre-2.7.4 record
 
 Ready. Runtime, private typing, the Switch-owned test seam, owner-local browser/story proof — including the non-`force` disabled-pointer assertion — and every focused stage verification listed above pass and match ARCHITECTURE.md revision `2026-08-11T13:30:00.000Z`. This revision changed no implementation content and no architecture decision, so no re-verification of runtime, tests, or stories was required beyond the direct content-diff and formatting-only confirmation recorded above. Consumer inventory, migrating `SettingsSwitchListItem`/`AppUpdateSettings` from `@shared/ui/Switch` to the new canonical `MDSwitch`, legacy `src/shared/ui/Switch` removal, and product-scenario verification remain exclusively in the migration stage. Per ARCHITECTURE.md's "Migration plan" item 4, migration must directly re-verify (not assume) that both current consumers' `presentation`-only usage keeps them structurally unreachable by the corrected `beforeinput` interception path.

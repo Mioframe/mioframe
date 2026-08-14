@@ -84,7 +84,7 @@ test('MDCheckbox native <label for> association does not produce an accessible n
   // accessible-name mechanism (`aria-label`/`aria-labelledby` is selected and confirmed above).
   // Confirmed by this real-browser accessibility-tree check: the identical `Labelled` mixin
   // exhibits the same `M3E-004`-class gap already confirmed on `m3e-switch` in this installed
-  // `2.6.3` version — the checkbox reports no accessible name from `for`/`id` association alone,
+  // `2.7.4` version — the checkbox reports no accessible name from `for`/`id` association alone,
   // even though the same association does synthesize a `click` (see the adjacent-label
   // click-to-toggle test above). Recorded as `M3E-005` in `docs/m3e-defects.md`.
   await expect(page.locator('#adjacent-label-checkbox')).toHaveAccessibleName('');

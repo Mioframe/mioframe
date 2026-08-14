@@ -77,6 +77,17 @@ export const ExpandedTargetHitArea: Story = {
   }),
 };
 
+export const SmallGeometryContract: Story = {
+  render: () => ({
+    components: { MDButton },
+    template: `
+      <div data-testid="md-button-small-geometry-contract">
+        <MDButton id="small-geometry-button" label="Small geometry" size="small" />
+      </div>
+    `,
+  }),
+};
+
 export const FocusIndicatorTarget: Story = {
   render: () => ({
     components: { MDButton },
