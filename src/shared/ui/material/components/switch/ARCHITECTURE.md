@@ -1,11 +1,11 @@
 # Switch architecture
 
-Artifact revision: 2026-08-14T11:46:35.000Z
+Artifact revision: 2026-08-14T14:00:00.000Z
 Status: ready
 DESIGN.md reference: `src/shared/ui/material/components/switch/DESIGN.md`
 DESIGN.md contract revision: 2026-08-10T19:28:25.068Z
 Renderer revision: @m3e/web@2.7.4
-Revision summary: Revalidated the installed 2.7.4 Switch boundary. The controlled `beforeinput` seam is unchanged, and M3E-004 remains divergent after fresh real-browser implicit and explicit native-label proof.
+Revision summary: Closed the outstanding `presentation` touch-input risk against the installed 2.7.4 renderer: `MDSwitch.browser.spec.ts` now proves the existing `presentation` and `presentation-composition` scenarios under real Playwright touch input (`hasTouch: true`), in addition to the existing mouse proof. No public API, token, ownership, or renderer-mapping decision changed.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -282,7 +282,7 @@ Implementation runs only verifier-managed focused checks for its owned files and
 - The private `m3eSwitch.d.ts` typing seam relies on the installed `2.7.4` renderer dispatching `beforeinput` as a plain `Event` (not `InputEvent`) directly on the `m3e-switch` host, and on `event.target` therefore being the host itself. A future renderer version could change the event type or dispatch target; every consumed renderer update must revalidate this seam and the `instanceof M3eSwitchElement` narrowing, per `docs/component-adapter.md`'s renderer-drift-must-fail-type-check rule.
 - Removing the previously global `src/setupVitest.ts` `ElementInternals` shim and localizing it to Switch could regress an unrelated Vitest suite if one currently depends on the global polyfill without visibly requiring it; implementation must run a full unrestricted-scope unit-tests pass once to confirm no such dependency exists before finalizing the localized shim.
 - Relocating browser proof from `tests/e2e/storybook/md-switch-family.spec.ts` to owner-local `MDSwitch.browser.spec.ts` must preserve every still-valid assertion (accessible name, 48×48dp target, disabled/presentation unreachability) while rewriting only the interaction-mapping assertions; dropping coverage during the move would silently weaken proof rather than correct it.
-- `presentation`'s `pointer-events: none` suppression must be verified under both mouse and touch input; a renderer update could change internal event delegation in a way that requires revisiting the suppression mechanism.
+- `presentation`'s `pointer-events: none` suppression must be revalidated under both mouse and touch input after each renderer update, since renderer event delegation may change; the installed `2.7.4` renderer is confirmed under both input modalities in `MDSwitch.browser.spec.ts` (mouse: "MDSwitch presentation is unreachable by real pointer input..."/"...presentation-composition: pointer input..."; touch: "MDSwitch presentation is unreachable by real touch input..."/"...presentation-composition: real touch input...", both under `test.use({ hasTouch: true })`). A future renderer update must revisit this proof again.
 - Removing the legacy `src/shared/ui/Switch` component also removes its custom drag-to-toggle and icon-slot capabilities; migration must confirm neither current consumer or any undiscovered consumer relies on them before deletion (already confirmed in the current `MIGRATION.md`; migration must re-confirm this still holds against the corrected implementation, not assume it).
 
 ## Forbidden
