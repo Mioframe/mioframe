@@ -1,4 +1,4 @@
-import { parseVisualMode, runPlaywrightInContainer } from './playwrightContainer.mjs';
+import { parseVisualMode, runPlaywrightInContainer } from './playwrightContainer.ts';
 
 const { error, passthroughArgs, updateSnapshots } = parseVisualMode(process.argv.slice(2));
 

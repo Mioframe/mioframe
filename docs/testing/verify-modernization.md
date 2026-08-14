@@ -1,6 +1,13 @@
 # Verify modernization
 
-Status: architecture ready for Stage V1 implementation.
+Status: Stage V1 implemented. Verifier entrypoints and their direct shared
+dependencies now run as native Node TypeScript (`scripts/verify.ts`,
+`scripts/verifyStatus.ts`, `scripts/verifyResume.ts`, `scripts/ciAutofix.ts`,
+`scripts/playwrightContainer.ts`, `scripts/lib/*.ts`), type-checked via
+`tsconfig.scripts.json`, with per-check and total elapsed duration reporting.
+The "Confirmed current behavior and evidence" section below describes the
+pre-Stage-V1 `.mjs` state that motivated the migration and is kept as a
+historical record.
 
 `docs/testing/architecture.md` remains the canonical testing policy. This document is the architecture handoff for modernizing the verifier implementation without weakening that policy.
 
@@ -159,29 +166,29 @@ None. Product/shared UI behavior and tests must remain untouched except where a 
 
 ## Acceptance matrix
 
-| Contract | Stage V1 acceptance |
-| --- | --- |
-| CLI compatibility | Existing supported commands and invalid-argument rejection remain behaviorally equivalent. |
-| Planning | Representative added/modified/removed/moved path tests produce the same lane decisions and reasons. |
-| Fail closed | Unknown relevant impact and invalid metadata continue to select full/block exactly as before. |
-| Execution | Child command order, environment, locks, timeout/heartbeat handling, process results, and exit semantics remain equivalent. |
-| Fix mode | Existing safe fixer behavior and guards remain equivalent. |
-| Status/resume | Existing lock-status and resume behavior remains equivalent. |
-| Type safety | Migrated verifier modules are checked by repository type-check with no emitted tooling build. |
-| Runtime | `pnpm verify*` executes `.ts` entrypoints directly under the repository-supported Node runtime. |
-| Measurement | Executed checks and total verifier run expose elapsed durations without changing outcomes. |
-| Scope | No product behavior, proof ownership, lane applicability, Playwright project matrix, or CI topology changes. |
+| Contract          | Stage V1 acceptance                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| CLI compatibility | Existing supported commands and invalid-argument rejection remain behaviorally equivalent.                                  |
+| Planning          | Representative added/modified/removed/moved path tests produce the same lane decisions and reasons.                         |
+| Fail closed       | Unknown relevant impact and invalid metadata continue to select full/block exactly as before.                               |
+| Execution         | Child command order, environment, locks, timeout/heartbeat handling, process results, and exit semantics remain equivalent. |
+| Fix mode          | Existing safe fixer behavior and guards remain equivalent.                                                                  |
+| Status/resume     | Existing lock-status and resume behavior remains equivalent.                                                                |
+| Type safety       | Migrated verifier modules are checked by repository type-check with no emitted tooling build.                               |
+| Runtime           | `pnpm verify*` executes `.ts` entrypoints directly under the repository-supported Node runtime.                             |
+| Measurement       | Executed checks and total verifier run expose elapsed durations without changing outcomes.                                  |
+| Scope             | No product behavior, proof ownership, lane applicability, Playwright project matrix, or CI topology changes.                |
 
 ## Risk matrix
 
-| Risk | Required control |
-| --- | --- |
-| Native TS/runtime mismatch | Establish and verify one supported Node runtime floor before replacing command entrypoints. |
-| Import-resolution regression | Use one consistent explicit ESM import convention and test direct Node execution. |
-| Silent planner drift during typing | Preserve resolver tests and add parity/regression cases before opportunistic cleanup. |
-| Type abstractions hide lane ownership | Keep lane-specific contracts local; share only truly identical exchanged shapes. |
+| Risk                                       | Required control                                                                                           |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Native TS/runtime mismatch                 | Establish and verify one supported Node runtime floor before replacing command entrypoints.                |
+| Import-resolution regression               | Use one consistent explicit ESM import convention and test direct Node execution.                          |
+| Silent planner drift during typing         | Preserve resolver tests and add parity/regression cases before opportunistic cleanup.                      |
+| Type abstractions hide lane ownership      | Keep lane-specific contracts local; share only truly identical exchanged shapes.                           |
 | Timing changes timeout/heartbeat semantics | Instrument outside existing timeout/heartbeat ownership and use monotonic elapsed time only for reporting. |
-| Large mechanical rename obscures changes | Keep V1 behavior-preserving; do not combine resolver/CI optimization. |
+| Large mechanical rename obscures changes   | Keep V1 behavior-preserving; do not combine resolver/CI optimization.                                      |
 
 ## Required test proof
 

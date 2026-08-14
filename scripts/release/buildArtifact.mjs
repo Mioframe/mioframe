@@ -3,9 +3,9 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import toolingConfig from '../../config/tooling.json' with { type: 'json' };
-import { runGuardedExpensiveLocalCommand } from '../lib/localCommandGuard.mjs';
-import { applyProcessResult } from '../lib/processResult.mjs';
-import { runLocalCommand } from '../lib/runLocalCommand.mjs';
+import { runGuardedExpensiveLocalCommand } from '../lib/localCommandGuard.ts';
+import { applyProcessResult } from '../lib/processResult.ts';
+import { runLocalCommand } from '../lib/runLocalCommand.ts';
 
 const defaultDeps = {
   applyProcessResult,
@@ -54,7 +54,7 @@ export function resolveArtifactDistDir(argv = process.argv.slice(2)) {
  * `dist/index.html` -> `dist/404.html` copy the stable deploy job performs.
  *
  * When `RELEASE_ARTIFACT_SKIP_BUILD=1` is set, this reuses an existing
- * `dist/index.html` instead of rebuilding. `scripts/verify.mjs` sets this for
+ * `dist/index.html` instead of rebuilding. `scripts/verify.ts` sets this for
  * the `artifact`/`release-smoke` release-only checks only when the earlier
  * `build` check already produced a fresh artifact in the same run, so a
  * single `pnpm verify:release` run does not build the production artifact

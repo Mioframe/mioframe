@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { runPlaywrightInContainer } from './playwrightContainer.mjs';
+import { runPlaywrightInContainer } from './playwrightContainer.ts';
 
 /** The complete staged managed-release data-compatibility proof env set (see `scripts/release/runManagedReleaseDataCompatibilityProof.mjs`). */
 const MANAGED_COMPAT_ENV_KEYS = [

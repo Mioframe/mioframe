@@ -21,7 +21,7 @@
 
 ### Completed foundation
 
-- Git-backed changed-path planning preserves deletion and both sides of rename through `scripts/lib/changedPaths.mjs`.
+- Git-backed changed-path planning preserves deletion and both sides of rename through `scripts/lib/changedPaths.ts`.
 - Existing consumers receive a compatibility projection and must avoid passing removed files to child commands.
 - Storybook stories are already colocated with source owners.
 - Vue component-contract tests are already colocated as `*.test.ts`.
@@ -303,10 +303,10 @@ Final executable S3 state:
 - `MDLoadingIndicator.visual.spec.ts` and its three PNG baselines are colocated beside the Loading Indicator owner under `src/shared/ui/material/components/loadingIndicator/`, using the `<Owner>.visual.spec.ts` / `<Owner>.visual.spec.ts-snapshots/` convention; the `sizes` and `colors` baselines moved byte-for-byte unchanged from their prior central location; the `legacy-surface` baseline was intentionally reaccepted because the owner-local `LegacySurfaceIsolation` fixture removes the incidental Button-owned `visual-checker-backdrop` composition present in the old central fixture — the changed pixels are incidental background composition, not a Loading Indicator production-color change, and the Loading Indicator visual contract itself remains standalone primary-color isolation inside a legacy Material surface; no production Loading Indicator behavior, token, or API changed;
 - the legacy-surface screenshot opens the Loading Indicator-owned `LegacySurfaceIsolation` story (tagged `visual`) instead of the Button-owned `LegacySurfaceColorOwnership` story, so no Button-owned visual fixture dependency remains;
 - production/Storybook TypeScript excludes colocated visual specs while tooling type-check includes them; Vitest automatic scope also excludes them;
-- resolver ownership (`scripts/lib/visualRisk.mjs`) is derived from the filesystem rather than a registry: an owner path selects every applicable colocated visual spec, a baseline resolves to its exact owning spec through the `<spec>.visual.spec.ts-snapshots/` marker, and add/modify/delete/rename of colocated specs or baselines fails closed to the full visual lane when ownership cannot be resolved;
+- resolver ownership (`scripts/lib/visualRisk.ts`) is derived from the filesystem rather than a registry: an owner path selects every applicable colocated visual spec, a baseline resolves to its exact owning spec through the `<spec>.visual.spec.ts-snapshots/` marker, and add/modify/delete/rename of colocated specs or baselines fails closed to the full visual lane when ownership cannot be resolved;
 - the old central Loading Indicator visual spec and snapshot directory are removed; legacy centralized specs/baselines for all other owners remain intact and unaffected, with full-lane fallback;
 - unmigrated visual-relevant shared UI/story changes with no resolvable colocated visual owner preserve full visual fallback so S3 does not cause visual checks to disappear;
-- global theme/font/Storybook/visual infrastructure (`playwright.visual.config.ts`, `.storybook/**`, base/font styling, the shared Playwright container runner, `scripts/lib/visualRisk.mjs` itself) remains full-lane fallback.
+- global theme/font/Storybook/visual infrastructure (`playwright.visual.config.ts`, `.storybook/**`, base/font styling, the shared Playwright container runner, `scripts/lib/visualRisk.ts` itself) remains full-lane fallback.
 
 Forbidden during S3:
 
