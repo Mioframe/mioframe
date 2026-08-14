@@ -68,8 +68,6 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
       'src/features/diagnosticsReporting/',
       'src/widgets/StarterExamplesWidget/',
       'src/pages/Settings/',
-      'src/app/playgroundPages.ts',
-      'src/shared/lib/playground/',
     ],
     specs: ['tests/e2e/appSmoke.spec.ts'],
   },

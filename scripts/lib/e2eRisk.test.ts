@@ -163,11 +163,12 @@ describe('isUnmappedAppE2ERelevantPath', () => {
     expect(isUnmappedAppE2ERelevantPath('src/entities/googleSession/index.ts')).toBe(true);
   });
 
+  it('flags the legacy dev-only playground as unmapped relevant source, not a scenario mapping', () => {
+    expect(isUnmappedAppE2ERelevantPath('src/app/playgroundPages.ts')).toBe(true);
+    expect(isUnmappedAppE2ERelevantPath('src/shared/lib/playground/setupPlayground.ts')).toBe(true);
+  });
+
   it('does not flag mapped broad-domain paths', () => {
-    expect(isUnmappedAppE2ERelevantPath('src/app/playgroundPages.ts')).toBe(false);
-    expect(isUnmappedAppE2ERelevantPath('src/shared/lib/playground/setupPlayground.ts')).toBe(
-      false,
-    );
     expect(
       isUnmappedAppE2ERelevantPath('src/widgets/DocumentView/Database/DatabaseViewsSheet.vue'),
     ).toBe(false);
@@ -390,8 +391,6 @@ describe('resolveAppE2EPlan', () => {
 
 describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
   it.each([
-    ['src/app/playgroundPages.ts', ['tests/e2e/appSmoke.spec.ts']],
-    ['src/shared/lib/playground/setupPlayground.ts', ['tests/e2e/appSmoke.spec.ts']],
     ['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue', DATABASE_VIEWS_AND_QUERY_SPECS],
     [
       'src/shared/lib/sortable/useReorderSurface.ts',
@@ -476,11 +475,29 @@ describe('resolveAppE2EPlan fail-closed unknown relevant source (V2A)', () => {
     ['src/shared/service/serviceWorker.ts'],
     ['src/shared/serviceClient/diagnostics/applyDiagnosticsPolicy.ts'],
     ['src/entities/googleSession/index.ts'],
+    ['src/app/playgroundPages.ts'],
+    ['src/shared/lib/playground/setupPlayground.ts'],
   ])('keeps unmapped relevant path %s full', (filePath) => {
     const plan = resolveAppE2EPlan([filePath]);
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('unmapped application-E2E-relevant path');
+  });
+
+  it('resolves the legacy playground bootstrap to full through the ordinary unmapped-relevant fallback, not a playground-specific reason', () => {
+    const playgroundPagesPlan = resolveAppE2EPlan(['src/app/playgroundPages.ts']);
+
+    expect(playgroundPagesPlan.mode).toBe('full');
+    expect(playgroundPagesPlan.reasons).toEqual([
+      'unmapped application-E2E-relevant path src/app/playgroundPages.ts -> full app e2e (map it in scripts/lib/e2eRisk.ts or add e2e coverage)',
+    ]);
+
+    const setupPlaygroundPlan = resolveAppE2EPlan(['src/shared/lib/playground/setupPlayground.ts']);
+
+    expect(setupPlaygroundPlan.mode).toBe('full');
+    expect(setupPlaygroundPlan.reasons).toEqual([
+      'unmapped application-E2E-relevant path src/shared/lib/playground/setupPlayground.ts -> full app e2e (map it in scripts/lib/e2eRisk.ts or add e2e coverage)',
+    ]);
   });
 
   it('keeps an unmapped non-TypeScript/Vue path under a broad app/shared domain full', () => {
@@ -494,23 +511,36 @@ describe('resolveAppE2EPlan fail-closed unknown relevant source (V2A)', () => {
 });
 
 describe('resolveAppE2EPlan composition (V2A)', () => {
-  it('unions specs across two mapped V2A changes', () => {
+  it('unions and dedupes specs across two mapped sources with distinct spec sets', () => {
     const plan = resolveAppE2EPlan([
-      'src/app/playgroundPages.ts',
       'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
+      'src/entities/databaseData/index.ts',
     ]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual(
-      ['tests/e2e/appSmoke.spec.ts', ...DATABASE_VIEWS_AND_QUERY_SPECS].sort((left, right) =>
-        left.localeCompare(right),
+      [...DATABASE_VIEWS_AND_QUERY_SPECS, 'tests/e2e/databasePersistenceSmoke.spec.ts'].sort(
+        (left, right) => left.localeCompare(right),
       ),
+    );
+  });
+
+  it('resolves full when a mapped production path is combined with the unmapped-relevant playground path', () => {
+    const plan = resolveAppE2EPlan([
+      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
+      'src/app/playgroundPages.ts',
+    ]);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+    expect(plan.reasons[0]).toContain(
+      'unmapped application-E2E-relevant path src/app/playgroundPages.ts',
     );
   });
 
   it('resolves full when a mapped V2A change is combined with an unmapped relevant change', () => {
     const plan = resolveAppE2EPlan([
-      'src/app/playgroundPages.ts',
+      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
       'src/entities/googleSession/index.ts',
     ]);
 
@@ -519,7 +549,10 @@ describe('resolveAppE2EPlan composition (V2A)', () => {
   });
 
   it('resolves full when a mapped V2A change is combined with true infrastructure', () => {
-    const plan = resolveAppE2EPlan(['src/app/playgroundPages.ts', 'playwright.config.ts']);
+    const plan = resolveAppE2EPlan([
+      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
+      'playwright.config.ts',
+    ]);
 
     expect(plan.mode).toBe('full');
     expect(plan.reasons[0]).toContain('full-lane infrastructure path playwright.config.ts');
