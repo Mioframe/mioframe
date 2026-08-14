@@ -116,9 +116,9 @@ Exported verifier helper contracts used by tests remain compatibility surfaces w
 | Fail closed       | Unknown relevant impact and invalid metadata continue to select full/block exactly as before.                               |
 | Execution         | Child command order, environment, locks, timeout/heartbeat handling, process results, and exit semantics remain equivalent. |
 | Fix mode          | Existing safe fixer behavior and guards remain equivalent.                                                                  |
-| Status/resume     | Existing lock-status and resume behavior remain equivalent.                                                                |
+| Status/resume     | Existing lock-status and resume behavior remain equivalent.                                                                 |
 | Type safety       | Migrated verifier modules are checked by the repository type-check with no emitted tooling build.                           |
-| Runtime           | `pnpm verify*` executes `.ts` entrypoints directly under Node `>=24.12.0 <25`.                                               |
+| Runtime           | `pnpm verify*` executes `.ts` entrypoints directly under Node `>=24.12.0 <25`.                                              |
 | Measurement       | Executed checks and the total verifier run expose elapsed durations without changing outcomes.                              |
 | Scope             | No product behavior, proof ownership, lane applicability, Playwright project matrix, or CI topology changes.                |
 
