@@ -109,19 +109,19 @@ This is the central safety invariant of V2A.
 
 Representative expected results after V2A:
 
-| Changed path | Pre-V2A | V2A target |
-| --- | --- | --- |
-| `src/app/playgroundPages.ts` | full | focused `appSmoke.spec.ts` |
-| `src/widgets/DocumentView/Database/DatabaseViewsSheet.vue` | full | focused `databaseViewsAndQueryFlows.spec.ts` + five `reorderSurface*.spec.ts` |
-| `src/shared/lib/sortable/useReorderSurface.ts` | full | focused `databaseViewsAndQueryFlows.spec.ts` |
-| `src/shared/ui/Query/QueryRoot.vue` | full | focused `databaseViewsAndQueryFlows.spec.ts` |
-| mapped feature/entity paths | focused | unchanged |
-| mapped `*.test.ts` / `*.spec.ts` / story path | may currently over-select due prefix matching | skip app E2E unless independently relevant as a direct app-E2E spec |
-| `src/entities/googleSession/index.ts` (unmapped relevant) | full | full |
-| unmapped `src/shared/ui/**` runtime source | full | full |
-| unmapped `src/shared/lib/**` runtime source | full | full |
-| true E2E infrastructure/config | full | full |
-| Storybook/visual/release-only paths | independent/skip for app E2E | unchanged |
+| Changed path                                               | Pre-V2A                                       | V2A target                                                                    |
+| ---------------------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `src/app/playgroundPages.ts`                               | full                                          | focused `appSmoke.spec.ts`                                                    |
+| `src/widgets/DocumentView/Database/DatabaseViewsSheet.vue` | full                                          | focused `databaseViewsAndQueryFlows.spec.ts` + five `reorderSurface*.spec.ts` |
+| `src/shared/lib/sortable/useReorderSurface.ts`             | full                                          | focused `databaseViewsAndQueryFlows.spec.ts`                                  |
+| `src/shared/ui/Query/QueryRoot.vue`                        | full                                          | focused `databaseViewsAndQueryFlows.spec.ts`                                  |
+| mapped feature/entity paths                                | focused                                       | unchanged                                                                     |
+| mapped `*.test.ts` / `*.spec.ts` / story path              | may currently over-select due prefix matching | skip app E2E unless independently relevant as a direct app-E2E spec           |
+| `src/entities/googleSession/index.ts` (unmapped relevant)  | full                                          | full                                                                          |
+| unmapped `src/shared/ui/**` runtime source                 | full                                          | full                                                                          |
+| unmapped `src/shared/lib/**` runtime source                | full                                          | full                                                                          |
+| true E2E infrastructure/config                             | full                                          | full                                                                          |
+| Storybook/visual/release-only paths                        | independent/skip for app E2E                  | unchanged                                                                     |
 
 When several changed product/source paths map to different scenarios, focused specs continue to union and deduplicate. Any simultaneous true-full or unknown-relevant hit still upgrades the plan to full.
 
