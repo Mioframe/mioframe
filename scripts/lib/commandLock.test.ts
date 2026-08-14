@@ -431,6 +431,46 @@ describe('machine lock: verify blocks expensive command', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Machine lock: persisted metadata compatibility
+// ---------------------------------------------------------------------------
+describe('machine lock: persisted metadata compatibility', () => {
+  it('blocks an active legacy lock with generic diagnostics for missing display fields', async () => {
+    const { lockDir } = createTempLockDir();
+    writeTestMetadata(lockDir, {
+      kind: 'legacy-v0',
+      heartbeatAt: new Date().toISOString(),
+      hostname: os.hostname(),
+      ownerToken: 'legacy-owner',
+      pid: process.pid,
+    });
+    let callbackRan = false;
+
+    await expect(
+      withVerifyCommandLock(
+        { command: 'pnpm verify', label: 'verify', logPath: '.verify/logs' },
+        () => {
+          callbackRan = true;
+        },
+        {
+          forceLock: true,
+          machineLockDirectoryPath: lockDir,
+          staleAfterMs: 50_000,
+        },
+      ),
+    ).rejects.toThrow(
+      [
+        'Another heavy local verification command is already running.',
+        'active command: unknown',
+        'startedAt: unknown',
+        'logPath: .verify/logs',
+      ].join('\n'),
+    );
+
+    expect(callbackRan).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Machine lock: expensive blocks verify
 // ---------------------------------------------------------------------------
 describe('machine lock: expensive command blocks verify', () => {

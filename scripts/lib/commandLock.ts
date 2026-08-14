@@ -51,6 +51,12 @@ export interface LockMetadata {
   ownerToken: string;
 }
 
+/** Persisted metadata read without runtime schema validation. */
+type PersistedLockMetadata = Partial<Omit<LockMetadata, 'kind'>> & {
+  /** Current and legacy lock kinds read from existing metadata. */
+  kind?: unknown;
+};
+
 /** Structured machine lock status, discriminated by `state`. */
 export type LockStatus =
   | { state: 'missing'; lockPath: string; metadataPath: string; metadata: null; statusReason: null }
@@ -58,14 +64,14 @@ export type LockStatus =
       state: 'active';
       lockPath: string;
       metadataPath: string;
-      metadata: LockMetadata;
+      metadata: PersistedLockMetadata;
       statusReason: null;
     }
   | {
       state: 'stale';
       lockPath: string;
       metadataPath: string;
-      metadata: LockMetadata | null;
+      metadata: PersistedLockMetadata | null;
       statusReason: string | null;
     }
   | {
@@ -352,8 +358,8 @@ function acquireLock({
   throw new Error(formatLockBusyMessage(existingKind, existingMetadata, { requestKind }));
 }
 
-function isStaleLock(metadata: LockMetadata, staleAfterMs: number): boolean {
-  const heartbeatMs = Date.parse(metadata.heartbeatAt);
+function isStaleLock(metadata: PersistedLockMetadata, staleAfterMs: number): boolean {
+  const heartbeatMs = Date.parse(metadata.heartbeatAt ?? '');
 
   if (Number.isNaN(heartbeatMs)) {
     return true;
@@ -372,8 +378,8 @@ function isStaleLock(metadata: LockMetadata, staleAfterMs: number): boolean {
   return !isProcessAlive(metadata.pid);
 }
 
-function isProcessAlive(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) {
+function isProcessAlive(pid: unknown): boolean {
+  if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) {
     return false;
   }
 
@@ -451,7 +457,7 @@ function releaseStaleLockDirectory(lockDirectoryPath: string): boolean {
 export function releaseOwnedLock(
   lockDirectoryPath: string,
   metadataPath: string,
-  ownerToken: string,
+  ownerToken: unknown,
 ): boolean {
   const currentMetadata = readMetadata(metadataPath);
 
@@ -484,7 +490,7 @@ export function writeMetadata(metadataPath: string, metadata: LockMetadata): voi
   fs.renameSync(tempPath, metadataPath);
 }
 
-function readMetadata(metadataPath: string): LockMetadata | null {
+function readMetadata(metadataPath: string): PersistedLockMetadata | null {
   try {
     return JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
   } catch {
@@ -494,14 +500,14 @@ function readMetadata(metadataPath: string): LockMetadata | null {
 
 /**
  * Derive a human-readable busy message from the existing verification command kind.
- * @param existingKind Kind of the currently-held machine lock (`verify` or `expensive`).
+ * @param existingKind Persisted kind of the currently-held machine lock.
  * @param metadata Current machine lock metadata, if available.
  * @param [options] Formatting overrides.
  * @returns Human-readable lock-busy message.
  */
 export function formatLockBusyMessage(
-  existingKind: LockKind,
-  metadata: LockMetadata | null | undefined,
+  existingKind: unknown,
+  metadata: PersistedLockMetadata | null | undefined,
   { requestKind }: { requestKind?: LockKind } = {},
 ): string {
   const busyMessage = deriveBusyMessage(existingKind, requestKind);
@@ -516,15 +522,15 @@ export function formatLockBusyMessage(
 
   return [
     busyMessage,
-    `active command: ${metadata.activeCommand ?? metadata.command}`,
-    `startedAt: ${metadata.startedAt}`,
+    `active command: ${metadata.activeCommand ?? metadata.command ?? 'unknown'}`,
+    `startedAt: ${metadata.startedAt ?? 'unknown'}`,
     `logPath: ${metadata.logPath ?? '.verify/logs'}`,
     'Run `pnpm verify:status` for the current verification state.',
     'Do not start another heavy local verification command while the current run is still active.',
   ].join('\n');
 }
 
-function deriveBusyMessage(existingKind: LockKind, requestKind: LockKind | undefined): string {
+function deriveBusyMessage(existingKind: unknown, requestKind: LockKind | undefined): string {
   if (existingKind === 'verify' && requestKind === 'expensive') {
     return 'Cannot start expensive local verification command while pnpm verify is already running.';
   }
@@ -537,7 +543,11 @@ function deriveBusyMessage(existingKind: LockKind, requestKind: LockKind | undef
     return 'Another local pnpm verify is already running.';
   }
 
-  return 'Another expensive local verification command is already running.';
+  if (existingKind === 'expensive') {
+    return 'Another expensive local verification command is already running.';
+  }
+
+  return 'Another heavy local verification command is already running.';
 }
 
 /**
