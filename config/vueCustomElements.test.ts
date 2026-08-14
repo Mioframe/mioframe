@@ -6,6 +6,7 @@ describe('isM3eCustomElement', () => {
   it('matches only selected renderer elements', () => {
     expect(isM3eCustomElement('m3e-button')).toBe(true);
     expect(isM3eCustomElement('m3e-checkbox')).toBe(true);
+    expect(isM3eCustomElement('m3e-fab')).toBe(true);
     expect(isM3eCustomElement('m3e-loading-indicator')).toBe(true);
     expect(isM3eCustomElement('m3e-switch')).toBe(true);
   });
