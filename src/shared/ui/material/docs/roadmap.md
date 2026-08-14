@@ -20,7 +20,7 @@ Completed canonical families in the current repository tree:
 
 The official Material Checkbox cache contains a keyboard table copied from Chips terminology. `DESIGN.md` records it as a source conflict, so the `Space or Enter` row is not treated as reliable Checkbox-specific evidence and no Enter workaround is added.
 
-The Floating Action Button family selected the single unambiguous no-consumer default (medium size, primary container color, required icon and accessible label) because no product code currently consumes a plain FAB; `RepoExplorerPane.vue`'s existing Extended FAB usage is a separate, out-of-scope official family and is unaffected. Independent review accepted one bounded risk: the podman-backed `storybook-behavior`/`visual` Playwright lanes for two edited legacy-proof files (`tests/e2e/storybook/focusIndicator.spec.ts`, `tests/e2e/visual/shared-ui/md-fab-family.spec.ts`) were not re-run in-sandbox after migration's subtractive edits; exact-head CI covers this before merge.
+The Floating Action Button family selects the standalone icon-only FAB. The existing `RepoExplorerPane.vue` usage remains `MDExtendedFab`, which belongs to the separate Extended FAB family and remains legacy Material ownership under `src/shared/ui/Button`.
 
 No repository-local blocker prevents selecting the next M3 family.
 
@@ -40,4 +40,4 @@ No repository-local blocker prevents selecting the next M3 family.
 
 ## Next Material pipeline action
 
-Select and run `material-component <next-family>` for the next M3 family; hand the completed Floating Action Button family (review verdict `compliant-with-listed-risks`, PR/CI readiness `ready`) to the architect for PR creation and exact-head CI first.
+Run `material-component Extended FAB`.
