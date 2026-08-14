@@ -4,13 +4,13 @@ Status: architecture ready for final implementation correction.
 
 This document is the implementation handoff for Stage V2A of verify modernization. `docs/testing/architecture.md` remains the canonical testing policy, and `docs/testing/migration-plan.md` remains the source of truth for the currently executable repository state.
 
-Stage V1 was merged in PR #197. V2A changes only application-E2E impact planning. Visual planner precision and CI execution topology remain separate later stages.
+Stage V1 was merged in PR #197. V2A changes only application-E2E impact planning. Visual planner precision, CI execution topology, and removal of the superseded legacy playground remain separate later changes.
 
 ## Goal
 
 Reduce avoidable full application-E2E runs when the repository already has a stable source-to-product-scenario relation, without weakening product-scenario coverage or the fail-closed rule for unknown relevant impact.
 
-The desired result is not “run fewer tests whenever possible”. Known product impact selects the smallest complete scenario set; confirmed paths that are outside production app-E2E execution select no app-E2E work; unknown relevant impact still selects full application E2E.
+The desired result is not “run fewer tests whenever possible”. Known product impact selects the smallest complete scenario set; unknown relevant impact still selects full application E2E.
 
 ## Non-goals
 
@@ -20,6 +20,8 @@ The desired result is not “run fewer tests whenever possible”. Known product
 - Do not change release verification, unit selection, mutation selection, or proof ownership.
 - Do not introduce a dependency graph, import-graph resolver, generic impact DSL, production annotations, or a second scenario registry.
 - Do not create broad “safe to skip E2E” allowlists for shared code.
+- Do not remove the legacy playground in this PR; remove it in a separate cleanup PR because Storybook has superseded that developer surface.
+- Do not add temporary planner exceptions for playground code that is scheduled for removal.
 - Do not claim wall-clock improvement from this resolver PR itself; the PR changes `e2eRisk.ts`, which remains full-E2E infrastructure impact.
 
 ## Confirmed current state
@@ -39,7 +41,7 @@ Confirmed ownership evidence:
 - `src/shared/lib/sortable/` is the legacy SortableJS implementation. Its sole remaining production consumer is `DatabaseItemSortingListSection.vue`, exercised by `databaseViewsAndQueryFlows.spec.ts`; the five `reorderSurface*.spec.ts` scenarios exercise the separate canonical `@shared/lib/reorder` implementation.
 - `src/shared/ui/Query/` is used by the database-filter/query flow exercised by `databaseViewsAndQueryFlows.spec.ts`.
 - Directory-prefix scenario matching must not make colocated `*.test.ts`, `*.spec.ts`, `*.testUtils.ts`, or `*.stories.*` files select application E2E merely because they live under a mapped source directory.
-- `src/app/playgroundPages.ts` and `src/shared/lib/playground/**` are dev-only bootstrap/source. `setupApp()` loads them only inside `import.meta.env.DEV`, while the application-E2E Playwright configuration runs `vite build && vite preview`, so ordinary app E2E executes the production branch and cannot exercise these files. Repository code search shows `setupPlayground()` is called only from that dev-only branch.
+- `src/app/playgroundPages.ts` and `src/shared/lib/playground/**` are legacy dev-only code. `setupApp()` loads them only inside `import.meta.env.DEV`, ordinary app E2E runs the production `vite build && vite preview` path, and `setupPlayground()` has no other caller. Storybook has superseded this developer surface, so the correct repository action is removal in a separate cleanup PR rather than inventing V2A proof ownership or a temporary planner exclusion.
 
 ## Architecture decision
 
@@ -54,30 +56,30 @@ Do not add a second mapping table for shared code. Shared, widget, feature, enti
 Use two distinct classifications:
 
 - **full-lane infrastructure impact**: configuration/tooling/CI infrastructure whose consumer set is intentionally the complete application-E2E lane;
-- **application-E2E-relevant product/source**: production source that must never be silently skipped but may select focused scenarios when an explicit mapping exists.
+- **application-E2E-relevant product/source**: source that must never be silently skipped but may select focused scenarios when an explicit mapping exists.
 
 A mapped relevant path resolves to its mapped specs. An unmapped relevant path resolves to `full`.
 
 ### 3. Preserve fail-closed runtime relevance
 
-Unknown production/runtime source under the affected broad app/shared domains remains application-E2E relevant regardless of extension, except for explicitly proven non-product/proof-only paths.
+Unknown production/runtime source under the affected broad app/shared domains remains application-E2E relevant regardless of extension, except for existing proof-only exclusions such as stories and test files.
 
-Stories and test-only files remain outside application-E2E product-source relevance. Non-TypeScript/Vue runtime source under broad app/shared production domains remains protected and falls back to full when unmapped.
+Stories and test-only files remain outside application-E2E product-source relevance. Non-TypeScript/Vue runtime source under broad app/shared domains remains protected and falls back to full when unmapped.
 
-### 4. Treat confirmed dev-only playground source as outside app-E2E relevance
+### 4. Do not model superseded playground code in V2A
 
-The following paths are confirmed outside the production app-E2E execution graph:
+Do not map these legacy playground paths to `appSmoke.spec.ts`:
 
 - `src/app/playgroundPages.ts`;
 - `src/shared/lib/playground/` and descendants.
 
-They must not be mapped to `appSmoke.spec.ts`: that test runs a production build and cannot exercise the `import.meta.env.DEV` branch.
+`appSmoke.spec.ts` runs against a production build and cannot exercise their `import.meta.env.DEV` branch, so such a mapping would claim proof that does not execute the changed source.
 
-For the **application-E2E lane only**, these exact dev-only paths resolve to no selection (`skip`) when no other changed path requires app E2E.
+Also do not add a special V2A skip/exclusion for those paths. Since the playground is superseded by Storybook and will be deleted separately, adding planner state solely for its short remaining lifetime would create unnecessary temporary complexity.
 
-Implement this as a narrow, explicit dev-only relevance exclusion inside the existing app-E2E relevance owner. Do not generalize it into a reusable skip registry or a broad playground-name heuristic.
+Until the cleanup PR removes the playground, these paths retain the ordinary pre-V2A fail-closed behavior inherited from the broad `src/app/` / `src/shared/lib/` relevance domains: **full application E2E when changed**.
 
-Changes to `setupApp.ts` itself remain relevant/full when unmapped because it is production bootstrap code outside the guarded dev-only modules.
+The later playground-removal PR should remove the dev-only bootstrap and source themselves. Once they no longer exist, `e2eRisk.ts` needs no playground mapping or playground-specific exclusion.
 
 ### 5. Preserve canonical resolution order
 
@@ -88,8 +90,7 @@ Application E2E resolution remains:
 3. removed/renamed app-E2E spec → full lane;
 4. explicit product/source mapping → union of mapped specs;
 5. unmapped relevant product/source → full lane;
-6. confirmed non-product/proof-only/dev-only source → no selection;
-7. other path outside application-E2E relevance → no selection.
+6. path outside application-E2E relevance → no selection.
 
 Registry validation remains blocking/fail-closed.
 
@@ -103,16 +104,16 @@ The final explicit mappings are:
 - `src/shared/lib/sortable/` → `tests/e2e/databaseViewsAndQueryFlows.spec.ts` only;
 - `src/shared/ui/Query/` → `tests/e2e/databaseViewsAndQueryFlows.spec.ts` only.
 
-`src/app/playgroundPages.ts` and `src/shared/lib/playground/` are **not** scenario mappings; they are confirmed dev-only app-E2E exclusions.
+There is no playground scenario mapping and no playground-specific relevance exception in V2A.
 
-Do not broaden any mapping or exclusion to neighboring directories merely to reduce execution.
+Do not broaden any mapping to neighboring directories merely to reduce execution.
 
 ## Expected plan changes
 
 | Changed path                                               | Pre-V2A | V2A target                                                                    |
 | ---------------------------------------------------------- | ------- | ----------------------------------------------------------------------------- |
-| `src/app/playgroundPages.ts`                               | full    | skip app E2E                                                                  |
-| `src/shared/lib/playground/setupPlayground.ts`             | full    | skip app E2E                                                                  |
+| `src/app/playgroundPages.ts`                               | full    | full until separate playground removal                                        |
+| `src/shared/lib/playground/setupPlayground.ts`             | full    | full until separate playground removal                                        |
 | `src/widgets/DocumentView/Database/DatabaseViewsSheet.vue` | full    | focused `databaseViewsAndQueryFlows.spec.ts` + five `reorderSurface*.spec.ts` |
 | `src/shared/lib/sortable/useReorderSurface.ts`             | full    | focused `databaseViewsAndQueryFlows.spec.ts`                                  |
 | `src/shared/ui/Query/QueryRoot.vue`                        | full    | focused `databaseViewsAndQueryFlows.spec.ts`                                  |
@@ -123,7 +124,7 @@ Do not broaden any mapping or exclusion to neighboring directories merely to red
 | unmapped `src/shared/lib/**` production/runtime source     | full    | full                                                                          |
 | true E2E infrastructure/config                             | full    | full                                                                          |
 
-When several changed paths are present, any true-full or unknown-relevant hit still upgrades the plan to full. Confirmed dev-only/test/story paths do not dilute or override another path's focused/full selection.
+When several changed paths are present, any true-full or unknown-relevant hit upgrades the plan to full.
 
 ## State and ownership
 
@@ -132,7 +133,7 @@ No application state, persisted verifier state, or public product API changes.
 Ownership remains:
 
 - `docs/testing/architecture.md`: canonical testing and fail-closed policy;
-- `scripts/lib/e2eRisk.ts`: application-E2E relevance, dev-only exclusion, mapping validation, and plan resolution;
+- `scripts/lib/e2eRisk.ts`: application-E2E relevance, mapping validation, and plan resolution;
 - `E2E_SCENARIO_SCOPES`: explicit production source-to-product-scenario impact facts;
 - application E2E specs: existing product-scenario proof owners.
 
@@ -150,8 +151,8 @@ No ownership moves into product code.
 8. `DatabaseViewsSheet.vue` selects all six confirmed scenarios that operate through that surface.
 9. `src/shared/lib/sortable/` selects only `databaseViewsAndQueryFlows.spec.ts`, not canonical reorder-surface specs.
 10. Test/story-only files under mapped product directories do not select app E2E through prefix matching.
-11. `src/app/playgroundPages.ts` and representative `src/shared/lib/playground/**` paths resolve `skip` for app E2E because production Playwright execution cannot load them.
-12. `src/app/setupApp.ts` remains full when unmapped; the DEV-only exclusion must not broaden to production bootstrap.
+11. `src/app/playgroundPages.ts` and representative `src/shared/lib/playground/**` paths have no V2A scenario mapping and retain full fallback until their separate removal.
+12. No temporary playground-specific skip/relevance mechanism is introduced.
 13. Storybook behavior, visual, release, unit, mutation, Playwright project matrix, and CI topology are unchanged.
 14. No second mapping registry, dependency graph, broad skip allowlist, or generic planner abstraction is introduced.
 15. Package version remains the tooling PATCH version `0.3.15`.
@@ -160,11 +161,8 @@ No ownership moves into product code.
 
 Update `scripts/lib/e2eRisk.test.ts` with coverage for:
 
-- `src/app/playgroundPages.ts` → app-E2E `skip`;
-- representative production and non-TypeScript paths under `src/shared/lib/playground/` → app-E2E `skip`;
-- `src/app/setupApp.ts` → full, proving the dev-only exclusion is narrow;
-- dev-only path + mapped production path → mapped focused specs only;
-- dev-only path + unknown relevant production path → full;
+- `src/app/playgroundPages.ts` → full, proving the false `appSmoke` mapping is gone;
+- representative `src/shared/lib/playground/**` source → full, proving no temporary playground exclusion was introduced;
 - `DatabaseViewsSheet.vue` → exactly the six database-views/reorder specs;
 - representative `src/shared/lib/sortable/` source → exactly `databaseViewsAndQueryFlows.spec.ts`;
 - representative `src/shared/ui/Query/` source → exactly `databaseViewsAndQueryFlows.spec.ts`;
@@ -180,6 +178,12 @@ Update `scripts/lib/e2eRisk.test.ts` with coverage for:
 
 Keep proof at resolver/unit level unless a changed contract genuinely requires browser execution. Because `scripts/lib/e2eRisk.ts` itself is application-E2E infrastructure, exact-head PR CI still runs the full application-E2E lane as the final repository execution gate.
 
+## Follow-up: remove legacy playground
+
+After V2A merges, use a separate cleanup PR to remove the superseded developer playground rather than preserving it as another test/development surface beside Storybook.
+
+The cleanup should start from repository evidence and remove only confirmed playground-owned code, including the guarded bootstrap from `setupApp.ts`, `src/app/playgroundPages.ts`, `src/shared/lib/playground/**`, and any `*Playground.vue` components that have no non-playground consumer. Storybook remains the supported component-development/demo surface. Do not add replacement infrastructure merely to preserve the old playground shape.
+
 ## Deferred
 
 ### Stage V2B — visual planner precision
@@ -194,8 +198,8 @@ After planner precision is stable, measure CI wall-clock and separately evaluate
 
 - Do not turn unknown relevant production source into `skip`.
 - Do not use a broad “no E2E impact” allowlist for shared runtime code.
-- Do not use filename heuristics such as `*Playground*` to classify dev-only source.
 - Do not map dev-only playground source to a production app-E2E spec that cannot execute it.
+- Do not add temporary playground-specific planner infrastructure when the code is scheduled for removal.
 - Do not add speculative mappings based only on directory proximity.
 - Do not classify unit/browser/story proof files as product-source E2E impact merely because they live under a mapped source prefix.
 - Do not change or weaken application-E2E assertions.
