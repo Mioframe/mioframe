@@ -155,7 +155,7 @@ No ownership moves into product code.
 12. No temporary playground-specific skip/relevance mechanism is introduced.
 13. Storybook behavior, visual, release, unit, mutation, Playwright project matrix, and CI topology are unchanged.
 14. No second mapping registry, dependency graph, broad skip allowlist, or generic planner abstraction is introduced.
-15. Package version remains the tooling PATCH version `0.3.15`.
+15. Package version remains the tooling PATCH version `0.3.16`.
 
 ## Required proof
 
