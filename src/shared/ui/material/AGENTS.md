@@ -37,6 +37,7 @@ If isolated workers are unavailable, report the workflow as blocked. Do not cont
 - Canonical CSS plus `docs/token-api.md` defines the supported public token surface.
 - `docs/m3e-defects.md` owns renderer-defect records.
 - `docs/roadmap.md` alone owns mutable milestone status and next action.
+- `docs/roadmap.md` records only repository-local state derivable from current repository contents and the next Material pipeline action. It must not record branch, pull-request, CI/check, review-thread, merge, or other external publication state.
 
 Current code, renderer output, tests, stories, and README files are evidence to inspect, not substitutes for stage artifacts or official Material authority.
 
