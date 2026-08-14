@@ -131,7 +131,7 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
       'src/entities/databaseView/',
       'src/entities/databaseFilter/',
       'src/entities/databaseSorting/',
-      'src/shared/lib/sortable/',
+      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
     ],
     specs: [
       'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
@@ -143,11 +143,8 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
     ],
   },
   {
-    name: 'database views surface and query UI',
-    sourcePrefixes: [
-      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
-      'src/shared/ui/Query/',
-    ],
+    name: 'database sorting and query UI',
+    sourcePrefixes: ['src/shared/lib/sortable/', 'src/shared/ui/Query/'],
     specs: ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
   },
   {
@@ -316,6 +313,10 @@ export function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
 }
 
 function getScenariosForPath(filePath: string): E2EScenarioScope[] {
+  if (isStoriesFile(filePath) || isTestOnlyPath(filePath)) {
+    return [];
+  }
+
   return E2E_SCENARIO_SCOPES.filter((scenario) =>
     scenario.sourcePrefixes.some((prefix) => filePath.startsWith(prefix)),
   );

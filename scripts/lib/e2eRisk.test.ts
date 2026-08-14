@@ -392,17 +392,79 @@ describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
   it.each([
     ['src/app/playgroundPages.ts', ['tests/e2e/appSmoke.spec.ts']],
     ['src/shared/lib/playground/setupPlayground.ts', ['tests/e2e/appSmoke.spec.ts']],
+    ['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue', DATABASE_VIEWS_AND_QUERY_SPECS],
     [
-      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
+      'src/shared/lib/sortable/useReorderSurface.ts',
       ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
     ],
-    ['src/shared/lib/sortable/useReorderSurface.ts', DATABASE_VIEWS_AND_QUERY_SPECS],
     ['src/shared/ui/Query/QueryRoot.vue', ['tests/e2e/databaseViewsAndQueryFlows.spec.ts']],
   ])('resolves %s to focused specs %j', (filePath, expectedSpecs) => {
     const plan = resolveAppE2EPlan([filePath]);
 
     expect(plan.mode).toBe('focused');
     expect(plan.specs).toEqual(expectedSpecs);
+  });
+
+  it('resolves DatabaseViewsSheet.vue to exactly the six-spec database views/reorder set', () => {
+    const plan = resolveAppE2EPlan(['src/widgets/DocumentView/Database/DatabaseViewsSheet.vue']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(DATABASE_VIEWS_AND_QUERY_SPECS);
+  });
+
+  it('resolves legacy sortable source to exactly databaseViewsAndQueryFlows.spec.ts, not any reorderSurface spec', () => {
+    const plan = resolveAppE2EPlan(['src/shared/lib/sortable/useReorderSurface.ts']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/databaseViewsAndQueryFlows.spec.ts']);
+    expect(plan.specs).not.toContain('tests/e2e/reorderSurfaceBottomSheet.spec.ts');
+    expect(plan.specs).not.toContain('tests/e2e/reorderSurfaceCancellation.spec.ts');
+    expect(plan.specs).not.toContain('tests/e2e/reorderSurfaceMouse.spec.ts');
+    expect(plan.specs).not.toContain('tests/e2e/reorderSurfacePersistence.spec.ts');
+    expect(plan.specs).not.toContain('tests/e2e/reorderSurfaceTouch.spec.ts');
+  });
+
+  it('resolves Query UI source to exactly databaseViewsAndQueryFlows.spec.ts', () => {
+    const plan = resolveAppE2EPlan(['src/shared/ui/Query/QueryRoot.vue']);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/databaseViewsAndQueryFlows.spec.ts']);
+  });
+});
+
+describe('resolveAppE2EPlan test/story exclusion at the mapping seam (V2A)', () => {
+  it('does not select app e2e for a test-only file under the newly mapped legacy sortable directory', () => {
+    const plan = resolveAppE2EPlan(['src/shared/lib/sortable/useReorderSurface.test.ts']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('does not select app e2e for a story file under the newly mapped Query UI directory', () => {
+    const plan = resolveAppE2EPlan(['src/shared/ui/Query/QueryRoot.stories.ts']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('does not select app e2e for a spec file under the mapped Query UI directory', () => {
+    const plan = resolveAppE2EPlan(['src/shared/ui/Query/QueryRoot.spec.ts']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('does not select app e2e for a test-only file under a pre-existing mapped feature/entity prefix', () => {
+    const plan = resolveAppE2EPlan(['src/entities/databaseData/index.test.ts']);
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('returns only the mapped production source specs when combined with a mapped test-only file', () => {
+    const plan = resolveAppE2EPlan([
+      'src/shared/lib/sortable/useReorderSurface.ts',
+      'src/shared/lib/sortable/useReorderSurface.test.ts',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(['tests/e2e/databaseViewsAndQueryFlows.spec.ts']);
   });
 });
 
@@ -439,10 +501,11 @@ describe('resolveAppE2EPlan composition (V2A)', () => {
     ]);
 
     expect(plan.mode).toBe('focused');
-    expect(plan.specs).toEqual([
-      'tests/e2e/appSmoke.spec.ts',
-      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
-    ]);
+    expect(plan.specs).toEqual(
+      ['tests/e2e/appSmoke.spec.ts', ...DATABASE_VIEWS_AND_QUERY_SPECS].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+    );
   });
 
   it('resolves full when a mapped V2A change is combined with an unmapped relevant change', () => {
