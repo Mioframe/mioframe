@@ -7,7 +7,7 @@ import { runE2eHost } from './e2eHost.mjs';
 import {
   runGuardedExpensiveLocalCommand,
   runGuardedLocalCommand,
-} from './lib/localCommandGuard.mjs';
+} from './lib/localCommandGuard.ts';
 import { runLintEslint } from './lintEslint.mjs';
 import { runLintOxlint } from './lintOxlint.mjs';
 import { runMutation } from './mutate.mjs';

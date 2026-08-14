@@ -56,7 +56,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version-file: package.json
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -134,7 +134,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version-file: package.json
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -206,7 +206,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version-file: package.json
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
@@ -277,7 +277,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version-file: package.json
 
       # This is an independent merge gate. Its failure must not prevent the
       # implementation-verified application and Storybook preview from publishing.
@@ -347,7 +347,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version-file: app-source/package.json
           cache: pnpm
           cache-dependency-path: app-source/pnpm-lock.yaml
 
@@ -475,7 +475,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version-file: package.json
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 

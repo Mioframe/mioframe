@@ -1,4 +1,4 @@
-import { runPlaywrightInContainer } from './playwrightContainer.mjs';
+import { runPlaywrightInContainer } from './playwrightContainer.ts';
 
 try {
   await runPlaywrightInContainer({

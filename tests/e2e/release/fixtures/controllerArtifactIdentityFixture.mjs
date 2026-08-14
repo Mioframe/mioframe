@@ -12,7 +12,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { runLocalCommand } from '../../../../scripts/lib/runLocalCommand.mjs';
+import { runLocalCommand } from '../../../../scripts/lib/runLocalCommand.ts';
 
 const VITE_BIN = './node_modules/.bin/vite';
 const BASE_PATH = '/';

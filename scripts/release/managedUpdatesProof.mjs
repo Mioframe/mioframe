@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 
-import { applyProcessResult } from '../lib/processResult.mjs';
-import { runLocalCommand } from '../lib/runLocalCommand.mjs';
+import { applyProcessResult } from '../lib/processResult.ts';
+import { runLocalCommand } from '../lib/runLocalCommand.ts';
 import { MANAGED_RELEASE_DATA_COMPATIBILITY_LABEL } from './runManagedReleaseDataCompatibilityProof.mjs';
 
 const E2E_RELEASE_CONTAINER_SCRIPT = 'scripts/e2eReleaseContainer.mjs';

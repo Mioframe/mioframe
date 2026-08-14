@@ -1,0 +1,22 @@
+// TSConfig for the verifier-owned tooling under scripts/ that Node executes
+// directly as erasable TypeScript (no tsx/ts-node/bundler build step). Kept
+// separate from tsconfig.node.json, which owns bundler-consumed config
+// files (vite/vitest/playwright configs) with different module resolution.
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "include": ["scripts/**/*.ts"],
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.scripts.tsbuildinfo",
+    "types": ["node"],
+    "noEmit": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true
+  }
+}
