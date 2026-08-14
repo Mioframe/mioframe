@@ -112,7 +112,7 @@
     "@types/gapi.client.oauth2-v2": "^0.0.4",
     "@types/google.accounts": "^0.0.18",
     "@types/markdown-it": "^14.1.2",
-    "@types/node": "^25.9.5",
+    "@types/node": "^24.12.0",
     "@types/qs": "^6.15.1",
     "@types/sortablejs": "^1.15.9",
     "@types/wicg-file-system-access": "^2023.10.7",
@@ -159,7 +159,7 @@
     "vue-tsc": "^3.3.8"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24.12.0 <25"
   },
   "packageManager": "pnpm@11.0.9+sha512.34ce82e6780233cf9cad8685029a8f81d2e06196c5a9bad98879f7424940c6817c4e4524fb7d38b8553ceed48b9758b8ebaf1abd3600c232c4c8cf7366086f38",
   "pnpm": {

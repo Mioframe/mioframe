@@ -374,6 +374,20 @@ describe('buildCommands full mode', () => {
   });
 });
 
+describe('buildCommands type-check applicability', () => {
+  it.each([
+    'scripts/verify.ts',
+    'scripts/verifyStatus.ts',
+    'scripts/lib/e2eRisk.ts',
+    'scripts/verify.test.ts',
+    'scripts/lib/e2eRisk.test.ts',
+  ])('runs type-check for directly executed verifier TypeScript: %s', (filePath) => {
+    const commands = buildCommands([filePath], { fullMode: false });
+
+    requireRunEntry(commands, 'type-check');
+  });
+});
+
 describe('buildCommands mutation scope', () => {
   it('still adds a scoped mutation run outside full mode when mutation scope is non-empty', () => {
     const commands = buildCommands(['src/shared/lib/cache/index.ts'], { fullMode: false });

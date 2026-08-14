@@ -249,6 +249,7 @@ function isTypeCheckTarget(filePath: string): boolean {
     filePath === 'vite-env.d.ts' ||
     (filePath.startsWith('src/') && (filePath.endsWith('.ts') || filePath.endsWith('.vue'))) ||
     (filePath.startsWith('tests/') && filePath.endsWith('.ts')) ||
+    (filePath.startsWith('scripts/') && filePath.endsWith('.ts')) ||
     (baseName.startsWith('tsconfig') && baseName.endsWith('.json')) ||
     baseName.includes('.config.')
   );
@@ -2017,6 +2018,7 @@ async function main(
 
     if (entry.weight === 'expensive') {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
+      // eslint-disable-next-line no-await-in-loop -- Verify checks run sequentially for deterministic logs and fail-fast expensive gates.
       result = await withExpensiveCommandLock(
         {
           label: entry.label,
@@ -2044,6 +2046,7 @@ async function main(
       }
     } else {
       // oxlint-disable-next-line no-await-in-loop -- verify checks run sequentially for deterministic logs and fail-fast expensive gates.
+      // eslint-disable-next-line no-await-in-loop -- Verify checks run sequentially for deterministic logs and fail-fast expensive gates.
       result = await runCommand(
         entry.label,
         entry.command,
