@@ -13,7 +13,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { runLocalCommand } from '../../../../scripts/lib/runLocalCommand.mjs';
+import { runLocalCommand } from '../../../../scripts/lib/runLocalCommand.ts';
 import { createArtifactServer } from '../../../../scripts/release/artifactServer.mjs';
 
 const VITE_BIN = './node_modules/.bin/vite';

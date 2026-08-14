@@ -43,7 +43,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, extname, join } from 'node:path';
 
-import { runLocalCommand } from '../../../../scripts/lib/runLocalCommand.mjs';
+import { runLocalCommand } from '../../../../scripts/lib/runLocalCommand.ts';
 import { createArtifactServer } from '../../../../scripts/release/artifactServer.mjs';
 import { applyStablePublish } from '../../../../scripts/pages/lib/pagesFs.mjs';
 import { publishManagedRelease } from '../../../../scripts/pages/lib/releasePublish.mjs';

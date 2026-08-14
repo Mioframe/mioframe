@@ -1,8 +1,10 @@
 # Checkbox architecture
 
+Artifact revision: 2026-08-14T11:46:35.000Z
 Status: ready
 DESIGN.md reference: `src/shared/ui/material/components/checkbox/DESIGN.md`
-Renderer: `@m3e/web@2.6.3`
+Renderer: `@m3e/web@2.7.4`
+Revision summary: Revalidated the installed 2.7.4 Checkbox renderer boundary. M3E-005 remains an explicit native-label accessible-name divergence; no public API or renderer mapping changed.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -33,7 +35,7 @@ The Material family owns the Vue adapter, controlled intent, host boundary, pres
 
 Current m3e covers the selected public state surface and current pointer/Space interaction. No Enter correction is required from current official-source evidence.
 
-`M3E-005` remains the adjacent-label accessible-name divergence; explicit ARIA naming is the current backstop.
+`M3E-005` remains the adjacent-label accessible-name divergence in installed `2.7.4`; fresh real-browser external-label proof confirms an empty accessible name, so explicit ARIA naming remains the current backstop.
 
 ## Host boundary
 
@@ -42,7 +44,7 @@ Forward only merged class/style plus `id`, `title`, `data-*`, `aria-label`, and 
 ## TEST IMPACT
 
 - `MDCheckbox.test.ts`: controlled adapter contract.
-- `MDCheckbox.browser.spec.ts`: real pointer/Space interaction, rejected intent, disabled/presentation behavior, focus/label behavior, and absence of an invented Enter toggle.
+- `MDCheckbox.browser.spec.ts`: real pointer/Space interaction, rejected intent, disabled/presentation behavior, focus/label behavior including M3E-005, and absence of an invented Enter toggle.
 - visual spec: appearance only.
 - consumer tests: consumer-owned state translation and composition.
 

@@ -42,6 +42,26 @@ test('MDButton expanded target activates clicks outside the visible button box',
   await expect(count).toHaveText('1');
 });
 
+test('MDButton small geometry preserves the selected 16dp horizontal padding (M3E-006)', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--small-geometry-contract');
+
+  const button = page.locator('#small-geometry-button');
+  const label = button.locator('.md-button__label-text');
+
+  await expect(button).toBeVisible();
+  await expect(label).toBeVisible();
+
+  const buttonBox = await button.boundingBox();
+  const labelBox = await label.boundingBox();
+  if (!buttonBox || !labelBox) throw new Error('Missing MDButton geometry.');
+
+  const horizontalPadding = buttonBox.width - labelBox.width;
+
+  expect(horizontalPadding).toBe(32);
+});
+
 test('MDButton preserves form, loading accessibility, disabled, and public press contracts', async ({
   page,
 }) => {

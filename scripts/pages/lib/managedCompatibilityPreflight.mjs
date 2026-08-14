@@ -78,7 +78,7 @@ const VERIFY_SCRATCH_ROOT = join(process.cwd(), '.verify');
  * Staged under the repository root (not the OS temp directory) so the
  * staged tree is visible inside the Playwright container the compatibility
  * proof runs in: the container only ever mounts the repository root at
- * `/work` (see `scripts/playwrightContainer.mjs`), never the host OS temp
+ * `/work` (see `scripts/playwrightContainer.ts`), never the host OS temp
  * directory.
  * @param workDir The real Pages work directory to copy.
  * @returns The staged copy's root directory. Caller owns removing it.

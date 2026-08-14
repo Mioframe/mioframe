@@ -20,7 +20,7 @@ const DynamicAttrsWrapper = defineComponent({
 });
 
 describe('MDButton adapter', () => {
-  it('owns only the selected text Button color tokens and maps them privately', () => {
+  it('owns the selected text Button color tokens and private M3E-006 geometry correction', () => {
     const css = readFileSync('./src/shared/ui/material/components/button/tokens.css', 'utf8');
     const publicTokens = [
       '--md-comp-button-text-label-text-color',
@@ -40,6 +40,8 @@ describe('MDButton adapter', () => {
     expect(css).toContain('--m3e-text-button-hover-state-layer-color:');
     expect(css).toContain('--m3e-text-button-focus-state-layer-color:');
     expect(css).toContain('--m3e-text-button-pressed-state-layer-color:');
+    expect(css).toContain('--m3e-button-small-leading-space: 16px');
+    expect(css).toContain('--m3e-button-small-trailing-space: 16px');
     expect(css).not.toContain('--md-comp-button-text-icon-color');
     expect(css).not.toContain('--md-comp-button-text-hover-state-layer-color');
     expect(css).not.toContain('--md-comp-button-text-focus-state-layer-color');

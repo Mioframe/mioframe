@@ -219,7 +219,7 @@ focused and the full gate, and tag pushes never rerun the full gate:
 `pnpm verify` remains the normal development command: it scopes checks to
 changed files and is meant for fast PR feedback on `develop`.
 
-`pnpm verify:release` (= `node scripts/verify.mjs --full`) is the release
+`pnpm verify:release` (= `node scripts/verify.ts --full`) is the release
 gate. It ignores changed-file scope and always runs, for the whole project:
 
 - format check (`oxfmt`) across the full supported file set;
@@ -565,7 +565,7 @@ own Playwright webServer, which normally builds its own artifact too — so
 without deduplication, one `pnpm verify:release` run would build the same
 production artifact three times.
 
-`scripts/verify.mjs` avoids this: once `build` has passed in the same run,
+`scripts/verify.ts` avoids this: once `build` has passed in the same run,
 it sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact` and
 `release-smoke` checks (forwarded through `scripts/e2eReleaseContainer.mjs`
 into the Podman container), and `buildArtifact.mjs` reuses the existing

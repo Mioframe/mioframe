@@ -28,6 +28,18 @@ const useAttrsTemplate =
   '<script setup lang="ts">\nimport { useAttrs } from \'vue\';\nuseAttrs();\n</script>\n<template>\n  <div />\n</template>\n';
 const inlineArrowHandlerTemplate =
   '<script setup lang="ts"></script>\n<template>\n  <button type="button" @click="() => {}" />\n</template>\n';
+const legacyPrivateVerifierDocumentationSource = `
+/**
+ * @param [value] Internal verifier value.
+ */
+export function useVerifierValue(value?: string): void {
+  void value;
+}
+
+export interface InternalVerifierPlan {
+  label: string;
+}
+`;
 
 // Representative existing repository paths, one on each side of the
 // src/shared/ui/material boundary, so type-aware linting has a real
@@ -143,6 +155,36 @@ describe('eslint.config.mjs m3e renderer boundary', () => {
       const result = await lint(inlineArrowHandlerTemplate, outsideMaterialVueFile);
 
       expect(ruleIds(result)).toContain('vue/no-restricted-syntax');
+    },
+    typeAwareLintTimeout,
+  );
+});
+
+describe('eslint.config.mjs private verifier implementation documentation', () => {
+  it(
+    'keeps TypeScript-only documentation rules off private verifier implementation declarations',
+    async () => {
+      const result = await lint(
+        legacyPrivateVerifierDocumentationSource,
+        'scripts/lib/commandWeight.ts',
+      );
+
+      expect(ruleIds(result)).not.toContain('jsdoc/require-jsdoc');
+      expect(ruleIds(result)).not.toContain('tsdoc/syntax');
+    },
+    typeAwareLintTimeout,
+  );
+
+  it(
+    'keeps TypeScript-only documentation rules enabled outside private verifier implementation',
+    async () => {
+      const result = await lint(
+        legacyPrivateVerifierDocumentationSource,
+        outsideMaterialConfigFile,
+      );
+
+      expect(ruleIds(result)).toContain('jsdoc/require-jsdoc');
+      expect(ruleIds(result)).toContain('tsdoc/syntax');
     },
     typeAwareLintTimeout,
   );

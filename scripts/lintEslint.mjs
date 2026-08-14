@@ -1,12 +1,12 @@
 import { pathToFileURL } from 'node:url';
 
-import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.mjs';
+import { classifyCommandWeight, resolveEslintConcurrency } from './lib/commandWeight.ts';
 import {
   runGuardedExpensiveLocalCommand,
   runGuardedLocalCommand,
-} from './lib/localCommandGuard.mjs';
-import { applyProcessResult } from './lib/processResult.mjs';
-import { runLocalCommand } from './lib/runLocalCommand.mjs';
+} from './lib/localCommandGuard.ts';
+import { applyProcessResult } from './lib/processResult.ts';
+import { runLocalCommand } from './lib/runLocalCommand.ts';
 
 const defaultDeps = {
   applyProcessResult,

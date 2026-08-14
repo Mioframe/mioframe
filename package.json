@@ -1,6 +1,6 @@
 {
   "name": "mioframe",
-  "version": "0.3.14",
+  "version": "0.3.16",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": {
@@ -17,12 +17,12 @@
     "storybook:build": "node scripts/storybook.mjs build",
     "prepare": "node .husky/install.mjs",
     "setup:git-hooks": "node .husky/install.mjs",
-    "verify": "node scripts/verify.mjs",
-    "verify:release": "node scripts/verify.mjs --full",
-    "verify:status": "node scripts/verifyStatus.mjs",
-    "verify:resume": "node scripts/verifyResume.mjs",
-    "ci:autofix": "node scripts/ciAutofix.mjs",
-    "verify:fix": "node scripts/verify.mjs --fix",
+    "verify": "node scripts/verify.ts",
+    "verify:release": "node scripts/verify.ts --full",
+    "verify:status": "node scripts/verifyStatus.ts",
+    "verify:resume": "node scripts/verifyResume.ts",
+    "ci:autofix": "node scripts/ciAutofix.ts",
+    "verify:fix": "node scripts/verify.ts --fix",
     "type-check": "node scripts/typeCheck.mjs",
     "lint": "run-s lint:oxlint lint:eslint",
     "lint:eslint": "node scripts/lintEslint.mjs",
@@ -56,7 +56,7 @@
     "@dnd-kit/vue": "0.5.0",
     "@floating-ui/vue": "^2.0.1",
     "@fontsource/roboto": "5.2.10",
-    "@m3e/web": "^2.6.3",
+    "@m3e/web": "^2.7.4",
     "@sentry/browser": "^10.68.0",
     "@sentry/vue": "^10.68.0",
     "@unhead/vue": "^3.2.3",
@@ -112,7 +112,7 @@
     "@types/gapi.client.oauth2-v2": "^0.0.4",
     "@types/google.accounts": "^0.0.18",
     "@types/markdown-it": "^14.1.2",
-    "@types/node": "^25.9.5",
+    "@types/node": "^24.12.0",
     "@types/qs": "^6.15.1",
     "@types/sortablejs": "^1.15.9",
     "@types/wicg-file-system-access": "^2023.10.7",
@@ -157,6 +157,9 @@
     "vitest": "^4.1.10",
     "vue-component-type-helpers": "^3.3.8",
     "vue-tsc": "^3.3.8"
+  },
+  "engines": {
+    "node": ">=24.12.0 <25"
   },
   "packageManager": "pnpm@11.0.9+sha512.34ce82e6780233cf9cad8685029a8f81d2e06196c5a9bad98879f7424940c6817c4e4524fb7d38b8553ceed48b9758b8ebaf1abd3600c232c4c8cf7366086f38",
   "pnpm": {

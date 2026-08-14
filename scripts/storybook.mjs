@@ -2,9 +2,9 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import toolingConfig from '../config/tooling.json' with { type: 'json' };
-import { runGuardedExpensiveLocalCommand } from './lib/localCommandGuard.mjs';
-import { applyProcessResult } from './lib/processResult.mjs';
-import { runLocalCommand } from './lib/runLocalCommand.mjs';
+import { runGuardedExpensiveLocalCommand } from './lib/localCommandGuard.ts';
+import { applyProcessResult } from './lib/processResult.ts';
+import { runLocalCommand } from './lib/runLocalCommand.ts';
 
 const defaultDeps = {
   applyProcessResult,

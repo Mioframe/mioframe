@@ -323,5 +323,21 @@ export default defineConfigWithVueTs(
     },
   },
 
+  {
+    files: [
+      'scripts/ciAutofix.ts',
+      'scripts/playwrightContainer.ts',
+      'scripts/verify.ts',
+      'scripts/verifyResume.ts',
+      'scripts/verifyStatus.ts',
+      'scripts/lib/**/*.ts',
+    ],
+    name: 'app/private-verifier-implementation-documentation',
+    rules: {
+      'jsdoc/require-jsdoc': 'off',
+      'tsdoc/syntax': 'off',
+    },
+  },
+
   skipFormatting,
 );
