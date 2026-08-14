@@ -8,17 +8,27 @@ import { isPackageJsonRuntimeRelevantChange as isPackageJsonRuntimeRelevantChang
 import {
   APP_E2E_STANDALONE_SPECS,
   E2E_SCENARIO_SCOPES,
+  isAppE2ERelevantPath,
   isAppE2ESpecPath,
   isAppE2ESupportPath,
-  isLowLevelE2EPath,
+  isFullLaneE2EInfrastructurePath,
   isReleaseE2ESpecPath,
   isStorybookBehaviorPath,
-  isUnmappedSourcePath,
+  isUnmappedAppE2ERelevantPath,
   resolveAppE2EPlan,
   validateE2EScenarioRegistry,
 } from './e2eRisk.ts';
 
 const isPackageJsonRuntimeRelevantChange = vi.mocked(isPackageJsonRuntimeRelevantChangeImport);
+
+const DATABASE_VIEWS_AND_QUERY_SPECS = [
+  'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+  'tests/e2e/reorderSurfaceBottomSheet.spec.ts',
+  'tests/e2e/reorderSurfaceCancellation.spec.ts',
+  'tests/e2e/reorderSurfaceMouse.spec.ts',
+  'tests/e2e/reorderSurfacePersistence.spec.ts',
+  'tests/e2e/reorderSurfaceTouch.spec.ts',
+];
 
 describe('isReleaseE2ESpecPath', () => {
   it('flags specs under tests/e2e/release/', () => {
@@ -70,63 +80,116 @@ describe('isAppE2ESpecPath and isAppE2ESupportPath exclude Storybook behavior pa
   });
 });
 
-describe('isLowLevelE2EPath', () => {
+describe('isFullLaneE2EInfrastructurePath', () => {
   it('flags playwright config and verify tooling', () => {
-    expect(isLowLevelE2EPath('playwright.config.ts')).toBe(true);
-    expect(isLowLevelE2EPath('scripts/playwrightContainer.ts')).toBe(true);
-    expect(isLowLevelE2EPath('scripts/verify.ts')).toBe(true);
-    expect(isLowLevelE2EPath('scripts/lib/e2eRisk.ts')).toBe(true);
-    expect(isLowLevelE2EPath('pnpm-lock.yaml')).toBe(true);
-    expect(isLowLevelE2EPath('tsconfig.app.json')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('playwright.config.ts')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('scripts/playwrightContainer.ts')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('scripts/verify.ts')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('scripts/lib/e2eRisk.ts')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('pnpm-lock.yaml')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('tsconfig.app.json')).toBe(true);
+  });
+
+  it('flags GitHub Actions workflow changes', () => {
+    expect(isFullLaneE2EInfrastructurePath('.github/workflows/ci.yml')).toBe(true);
   });
 
   it('does not unconditionally flag package.json; its e2e impact is resolved separately', () => {
-    expect(isLowLevelE2EPath('package.json')).toBe(false);
+    expect(isFullLaneE2EInfrastructurePath('package.json')).toBe(false);
   });
 
-  it('flags app bootstrap, shared service, and shared UI prefixes', () => {
-    expect(isLowLevelE2EPath('src/app/setupApp.ts')).toBe(true);
-    expect(isLowLevelE2EPath('src/shared/service/serviceWorker.ts')).toBe(true);
-    expect(
-      isLowLevelE2EPath('src/shared/serviceClient/diagnostics/applyDiagnosticsPolicy.ts'),
-    ).toBe(true);
-    expect(isLowLevelE2EPath('src/shared/lib/automerge/index.ts')).toBe(true);
-    expect(isLowLevelE2EPath('src/shared/ui/MDButton/MDButton.vue')).toBe(true);
-  });
-
-  it('ignores stories and test-only files even under low-level prefixes', () => {
-    expect(isLowLevelE2EPath('src/shared/ui/MDButton/MDButton.stories.ts')).toBe(false);
-    expect(isLowLevelE2EPath('src/shared/lib/automerge/index.test.ts')).toBe(false);
-    expect(isLowLevelE2EPath('src/shared/lib/automerge/index.testUtils.ts')).toBe(false);
+  it('does not flag app/shared source, even under formerly broad prefixes', () => {
+    expect(isFullLaneE2EInfrastructurePath('src/app/setupApp.ts')).toBe(false);
+    expect(isFullLaneE2EInfrastructurePath('src/shared/service/serviceWorker.ts')).toBe(false);
+    expect(isFullLaneE2EInfrastructurePath('src/shared/ui/MDButton/MDButton.vue')).toBe(false);
   });
 
   it('does not flag unrelated feature/entity paths', () => {
-    expect(isLowLevelE2EPath('src/features/documentCreate/index.ts')).toBe(false);
+    expect(isFullLaneE2EInfrastructurePath('src/features/documentCreate/index.ts')).toBe(false);
   });
 });
 
-describe('isUnmappedSourcePath', () => {
-  it('flags src paths with no low-level or scenario classification', () => {
-    expect(isUnmappedSourcePath('src/entities/googleSession/index.ts')).toBe(true);
+describe('isAppE2ERelevantPath', () => {
+  it.each([
+    ['src/app/setupApp.ts'],
+    ['src/shared/service/serviceWorker.ts'],
+    ['src/shared/serviceClient/diagnostics/applyDiagnosticsPolicy.ts'],
+    ['src/shared/lib/automerge/index.ts'],
+    ['src/shared/ui/MDButton/MDButton.vue'],
+  ])('flags TypeScript/Vue source under the broad app/shared domains: %s', (filePath) => {
+    expect(isAppE2ERelevantPath(filePath)).toBe(true);
   });
 
-  it('does not flag low-level paths', () => {
-    expect(isUnmappedSourcePath('src/app/setupApp.ts')).toBe(false);
+  it.each([
+    ['src/app/styles/styles.css'],
+    ['src/shared/ui/MDButton/MDButton.css'],
+    ['src/shared/lib/automerge/worker.json'],
+  ])(
+    'flags non-TypeScript/Vue runtime source under the broad app/shared domains: %s',
+    (filePath) => {
+      expect(isAppE2ERelevantPath(filePath)).toBe(true);
+    },
+  );
+
+  it('flags TypeScript/Vue product source outside the broad domains', () => {
+    expect(isAppE2ERelevantPath('src/features/documentCreate/index.ts')).toBe(true);
+    expect(isAppE2ERelevantPath('src/entities/googleSession/index.ts')).toBe(true);
   });
 
-  it('does not flag scenario-mapped paths', () => {
-    expect(isUnmappedSourcePath('src/entities/databaseData/index.ts')).toBe(false);
+  it('does not flag non-TypeScript/Vue source outside the broad domains', () => {
+    expect(isAppE2ERelevantPath('src/features/documentCreate/styles.css')).toBe(false);
   });
 
-  it('does not flag non src paths or test-only files', () => {
-    expect(isUnmappedSourcePath('tests/e2e/helpers.ts')).toBe(false);
-    expect(isUnmappedSourcePath('src/entities/googleSession/index.test.ts')).toBe(false);
+  it('ignores stories and test-only files even under the broad domains', () => {
+    expect(isAppE2ERelevantPath('src/shared/ui/MDButton/MDButton.stories.ts')).toBe(false);
+    expect(isAppE2ERelevantPath('src/shared/lib/automerge/index.test.ts')).toBe(false);
+    expect(isAppE2ERelevantPath('src/shared/lib/automerge/index.testUtils.ts')).toBe(false);
+  });
+
+  it('does not flag non-src paths', () => {
+    expect(isAppE2ERelevantPath('tests/e2e/helpers.ts')).toBe(false);
+    expect(isAppE2ERelevantPath('playwright.config.ts')).toBe(false);
+  });
+});
+
+describe('isUnmappedAppE2ERelevantPath', () => {
+  it('flags relevant broad-domain paths with no scenario mapping', () => {
+    expect(isUnmappedAppE2ERelevantPath('src/shared/service/serviceWorker.ts')).toBe(true);
+    expect(isUnmappedAppE2ERelevantPath('src/shared/lib/automerge/index.ts')).toBe(true);
+    expect(isUnmappedAppE2ERelevantPath('src/shared/ui/MDButton/MDButton.vue')).toBe(true);
+  });
+
+  it('flags relevant product source with no low-level or scenario classification', () => {
+    expect(isUnmappedAppE2ERelevantPath('src/entities/googleSession/index.ts')).toBe(true);
+  });
+
+  it('does not flag mapped broad-domain paths', () => {
+    expect(isUnmappedAppE2ERelevantPath('src/app/playgroundPages.ts')).toBe(false);
+    expect(isUnmappedAppE2ERelevantPath('src/shared/lib/playground/setupPlayground.ts')).toBe(
+      false,
+    );
+    expect(
+      isUnmappedAppE2ERelevantPath('src/widgets/DocumentView/Database/DatabaseViewsSheet.vue'),
+    ).toBe(false);
+    expect(isUnmappedAppE2ERelevantPath('src/shared/lib/sortable/useReorderSurface.ts')).toBe(
+      false,
+    );
+    expect(isUnmappedAppE2ERelevantPath('src/shared/ui/Query/QueryRoot.vue')).toBe(false);
+  });
+
+  it('does not flag scenario-mapped product paths', () => {
+    expect(isUnmappedAppE2ERelevantPath('src/entities/databaseData/index.ts')).toBe(false);
+  });
+
+  it('does not flag non-relevant paths', () => {
+    expect(isUnmappedAppE2ERelevantPath('tests/e2e/helpers.ts')).toBe(false);
+    expect(isUnmappedAppE2ERelevantPath('src/entities/googleSession/index.test.ts')).toBe(false);
   });
 
   it('does not flag unmapped spec/test files under src/** as unmapped product source', () => {
-    expect(isUnmappedSourcePath('src/entities/googleSession/example.spec.ts')).toBe(false);
-    expect(isUnmappedSourcePath('src/entities/googleSession/example.test.mjs')).toBe(false);
-    expect(isUnmappedSourcePath('src/entities/googleSession/example.spec.mjs')).toBe(false);
+    expect(isUnmappedAppE2ERelevantPath('src/entities/googleSession/example.spec.ts')).toBe(false);
+    expect(isUnmappedAppE2ERelevantPath('src/entities/googleSession/example.test.mjs')).toBe(false);
+    expect(isUnmappedAppE2ERelevantPath('src/entities/googleSession/example.spec.mjs')).toBe(false);
   });
 });
 
@@ -212,41 +275,30 @@ describe('resolveAppE2EPlan', () => {
     const plan = resolveAppE2EPlan(['playwright.config.ts']);
 
     expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('low-level path playwright.config.ts');
+    expect(plan.reasons[0]).toContain('full-lane infrastructure path playwright.config.ts');
   });
 
   it('runs full app e2e when e2eRisk.ts itself changes', () => {
     const plan = resolveAppE2EPlan(['scripts/lib/e2eRisk.ts']);
 
     expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('low-level path scripts/lib/e2eRisk.ts');
+    expect(plan.reasons[0]).toContain('full-lane infrastructure path scripts/lib/e2eRisk.ts');
   });
 
   it('runs full app e2e when playwrightContainer.ts changes', () => {
     const plan = resolveAppE2EPlan(['scripts/playwrightContainer.ts']);
 
     expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('low-level path scripts/playwrightContainer.ts');
+    expect(plan.reasons[0]).toContain(
+      'full-lane infrastructure path scripts/playwrightContainer.ts',
+    );
   });
 
-  it('runs full app e2e for shared service changes', () => {
-    const plan = resolveAppE2EPlan(['src/shared/service/serviceWorker.ts']);
+  it('runs full app e2e for a GitHub Actions workflow change', () => {
+    const plan = resolveAppE2EPlan(['.github/workflows/ci.yml']);
 
     expect(plan.mode).toBe('full');
-  });
-
-  it('runs full app e2e for unclassified src paths', () => {
-    const plan = resolveAppE2EPlan(['src/entities/googleSession/index.ts']);
-
-    expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('unclassified src path');
-  });
-
-  it('runs full app e2e for shared/low-level changes regardless of test-only changes elsewhere', () => {
-    const plan = resolveAppE2EPlan(['src/shared/service/serviceWorker.ts']);
-
-    expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('low-level path src/shared/service/serviceWorker.ts');
+    expect(plan.reasons[0]).toContain('full-lane infrastructure path .github/workflows/ci.yml');
   });
 
   it('does not run full app e2e for unmapped src spec/test files', () => {
@@ -336,6 +388,81 @@ describe('resolveAppE2EPlan', () => {
   });
 });
 
+describe('resolveAppE2EPlan full -> focused transitions (V2A)', () => {
+  it.each([
+    ['src/app/playgroundPages.ts', ['tests/e2e/appSmoke.spec.ts']],
+    ['src/shared/lib/playground/setupPlayground.ts', ['tests/e2e/appSmoke.spec.ts']],
+    [
+      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
+      ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
+    ],
+    ['src/shared/lib/sortable/useReorderSurface.ts', DATABASE_VIEWS_AND_QUERY_SPECS],
+    ['src/shared/ui/Query/QueryRoot.vue', ['tests/e2e/databaseViewsAndQueryFlows.spec.ts']],
+  ])('resolves %s to focused specs %j', (filePath, expectedSpecs) => {
+    const plan = resolveAppE2EPlan([filePath]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual(expectedSpecs);
+  });
+});
+
+describe('resolveAppE2EPlan fail-closed unknown relevant source (V2A)', () => {
+  it.each([
+    ['src/app/setupApp.ts'],
+    ['src/shared/ui/MDButton/MDButton.vue'],
+    ['src/shared/lib/automerge/index.ts'],
+    ['src/shared/service/serviceWorker.ts'],
+    ['src/shared/serviceClient/diagnostics/applyDiagnosticsPolicy.ts'],
+    ['src/entities/googleSession/index.ts'],
+  ])('keeps unmapped relevant path %s full', (filePath) => {
+    const plan = resolveAppE2EPlan([filePath]);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('unmapped application-E2E-relevant path');
+  });
+
+  it('keeps an unmapped non-TypeScript/Vue path under a broad app/shared domain full', () => {
+    const plan = resolveAppE2EPlan(['src/app/styles/styles.css']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain(
+      'unmapped application-E2E-relevant path src/app/styles/styles.css',
+    );
+  });
+});
+
+describe('resolveAppE2EPlan composition (V2A)', () => {
+  it('unions specs across two mapped V2A changes', () => {
+    const plan = resolveAppE2EPlan([
+      'src/app/playgroundPages.ts',
+      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
+    ]);
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([
+      'tests/e2e/appSmoke.spec.ts',
+      'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
+    ]);
+  });
+
+  it('resolves full when a mapped V2A change is combined with an unmapped relevant change', () => {
+    const plan = resolveAppE2EPlan([
+      'src/app/playgroundPages.ts',
+      'src/entities/googleSession/index.ts',
+    ]);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.specs).toEqual([]);
+  });
+
+  it('resolves full when a mapped V2A change is combined with true infrastructure', () => {
+    const plan = resolveAppE2EPlan(['src/app/playgroundPages.ts', 'playwright.config.ts']);
+
+    expect(plan.mode).toBe('full');
+    expect(plan.reasons[0]).toContain('full-lane infrastructure path playwright.config.ts');
+  });
+});
+
 describe('resolveAppE2EPlan removed/renamed spec safety', () => {
   it('runs full app e2e for a nonexistent directly changed app e2e spec', () => {
     const plan = resolveAppE2EPlan(['tests/e2e/removedFlow.spec.ts'], {
@@ -421,7 +548,7 @@ describe('resolveAppE2EPlan package.json impact', () => {
     });
 
     expect(plan.mode).toBe('full');
-    expect(plan.reasons[0]).toContain('low-level path playwright.config.ts');
+    expect(plan.reasons[0]).toContain('full-lane infrastructure path playwright.config.ts');
   });
 
   it('does not consult the package.json impact check when package.json did not change', () => {
