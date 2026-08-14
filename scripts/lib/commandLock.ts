@@ -538,8 +538,6 @@ function deriveBusyMessage(existingKind: LockKind, requestKind: LockKind | undef
   }
 
   return 'Another expensive local verification command is already running.';
-
-  return 'Another heavy local verification command is already running.';
 }
 
 /**

@@ -1231,6 +1231,8 @@ function addReleaseOnlyCommands(commands: CommandEntry[]): void {
   });
 }
 
+type BuildCommandsVisualPlan = VisualPlan | { mode: 'invalid'; specs: string[]; reasons: string[] };
+
 /** Options for {@link buildCommands}. */
 export interface BuildCommandsOptions {
   /** Full-project release mode; defaults to the `--full` CLI flag. */
@@ -1245,7 +1247,7 @@ export interface BuildCommandsOptions {
   appE2EPlan?: AppE2EPlan | null;
   storybookBehaviorPlan?: StorybookBehaviorPlan | null;
   storybookBuildPlan?: StorybookBuildPlan | null;
-  visualPlan?: VisualPlan | null;
+  visualPlan?: BuildCommandsVisualPlan | null;
 }
 
 /**
@@ -1285,7 +1287,7 @@ export function buildCommands(
     storybookBuildPlanOverride ?? resolveStorybookBuildPlan(changedFiles, { packageJsonOldRef });
   // Skip resolution in full mode: the full-mode branch below always runs the
   // complete visual lane unconditionally and does not consult the plan.
-  const visualPlan: VisualPlan | null =
+  const visualPlan: BuildCommandsVisualPlan | null =
     visualPlanOverride ??
     (fullMode ? null : resolveVisualPlan(changedFiles, { packageJsonOldRef }));
   const mutationScope = getMutationScope(existingChangedFiles);
@@ -1493,6 +1495,13 @@ export function buildCommands(
       label: 'visual',
       command: 'pnpm test:visual',
       reason: 'empty visual scope',
+    });
+  } else if (visualPlan.mode === 'invalid') {
+    commands.push({
+      kind: 'failed',
+      label: 'visual',
+      command: 'pnpm test:visual',
+      reason: `invalid visual impact plan: ${visualPlan.reasons.join('; ')}`,
     });
   } else if (visualPlan.mode === 'full') {
     commands.push({

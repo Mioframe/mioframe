@@ -374,6 +374,26 @@ describe('buildCommands full mode', () => {
   });
 });
 
+describe('buildCommands visual compatibility', () => {
+  it('fails closed for a legacy invalid visual plan', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      visualPlan: {
+        mode: 'invalid',
+        specs: [],
+        reasons: ['broken visual impact metadata'],
+      },
+    });
+
+    expect(commands.find((entry) => entry.label === 'visual')).toEqual({
+      kind: 'failed',
+      label: 'visual',
+      command: 'pnpm test:visual',
+      reason: 'invalid visual impact plan: broken visual impact metadata',
+    });
+  });
+});
+
 describe('buildCommands type-check applicability', () => {
   it.each([
     'scripts/verify.ts',

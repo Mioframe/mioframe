@@ -347,7 +347,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version-file: package.json
+          node-version-file: app-source/package.json
           cache: pnpm
           cache-dependency-path: app-source/pnpm-lock.yaml
 
