@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import '@m3e/web/fab';
-import type { FabSize as RendererFabSize, FabVariant as RendererFabVariant } from '@m3e/web/fab';
+import type {
+  FabSize as RendererFabSize,
+  FabVariant as RendererFabVariant,
+  M3eFabElement,
+} from '@m3e/web/fab';
 // Documented transparent host/adaptor contract (ARCHITECTURE.md "Host-attribute
 // boundary"): `useAttrs` is read-only here and feeds the explicit, family-scoped
 // host-attribute allow-list below. It is never spread wholesale and is not a
 // default forwarding escape hatch.
 // eslint-disable-next-line no-restricted-imports -- see comment above.
-import { onMounted, useAttrs, useSlots, warn } from 'vue';
+import { onMounted, useAttrs, useTemplateRef, warn } from 'vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -25,15 +29,17 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
-  /** Required icon content rendered as the FAB's only content. */
+  /**
+   * Required FAB icon. It must render exactly one direct inline `<svg>` root with a `viewBox`,
+   * no `slot` attribute, `aria-hidden="true"`, no focusable or interactive descendant, and paint
+   * based on `currentColor`. Text, wrappers, images, renderer elements, and visible labels are
+   * unsupported. The SVG may come from inline markup or a Vue helper whose rendered root is that
+   * SVG.
+   */
   icon(): unknown;
 }>();
 
-// `useSlots()`, not the `defineSlots()` return value, for the DEV-mode emptiness check below:
-// `useSlots()` types every slot as possibly `undefined` at runtime, matching the legacy
-// `MDFab`'s existing warning convention, while `defineSlots()`'s typed return models the public
-// slot contract (always present once provided) for template/type-checking purposes.
-const slots = useSlots();
+const hostElement = useTemplateRef<M3eFabElement>('hostElement');
 
 /**
  * Adapter-owned private renderer constants (ARCHITECTURE.md "Selected and deferred Material
@@ -78,8 +84,16 @@ const getForwardedAttrs = (): Record<string, unknown> => {
 
 if (import.meta.env.DEV) {
   onMounted(() => {
-    if (!slots.icon) {
-      warn('MDFab: provide an icon via the `icon` slot. A FAB requires an icon.');
+    const children = [...(hostElement.value?.childNodes ?? [])].filter(
+      (node) => node.nodeType !== Node.TEXT_NODE || node.textContent?.trim(),
+    );
+    const [icon] = children;
+    if (
+      children.length !== 1 ||
+      !(icon instanceof SVGSVGElement) ||
+      icon.namespaceURI !== 'http://www.w3.org/2000/svg'
+    ) {
+      warn('MDFab: the `icon` slot must render exactly one direct decorative inline SVG root.');
     }
   });
 }
@@ -88,6 +102,7 @@ if (import.meta.env.DEV) {
 <template>
   <!-- eslint-disable-next-line vue/no-undef-components -- m3e-fab is selected by config/vueCustomElements.ts. -->
   <m3e-fab
+    ref="hostElement"
     v-bind="getForwardedAttrs()"
     :class="['md-fab', attrs.class]"
     :style="attrs.style"

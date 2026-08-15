@@ -1,86 +1,55 @@
 # Floating action button review
 
-Verdict: blocked
-Required return family: self
-Required return stage: architecture
-Completion status: blocked
-Final workflow verification readiness: blocked
-Operator visual status: defect-reported
-Blockers: canonical icon composition is not resolved consistently across the selected FAB proof; the dedicated geometry fixture uses renderer-compatible SVG content while canonical visual fixtures still use bare text content and exhibit the operator-reported wrong FAB size
+Verdict: compliant
+Required return family: none
+Required return stage: none
+Completion status: complete
+Final workflow verification readiness: ready
+Operator visual status: no-reported-defect
+Blockers: none
 Major issues: none
 Minor issues: none
 Accepted risks: none
 
 ## Goal and scenarios reviewed
 
-Review the complete canonical plain Floating Action Button family for the selected no-consumer default: medium size, primary-container color, one icon, required accessible label, and native activation.
-
-Operator evidence for this review:
-
-- ripple behavior was visually checked and is correct;
-- FAB size remains visually incorrect because the m3e library is being used with incorrect icon composition.
-
-The size defect is unresolved and is part of the review input, not an optional positive-acceptance gate.
+Reviewed the complete selected canonical `MDFab` family: a no-consumer, icon-only medium FAB in the primary-container style, with a required accessible action label and ordinary native activation. The separately owned `MDExtendedFab`/`FabContainer` product scenario was reviewed only to confirm it is not a canonical FAB consumer.
 
 ## Official design compliance
 
-`DESIGN.md` remains the authority for the selected Medium FAB geometry: 80dp container and 28dp icon. No design-stage correction is required by this finding.
+`DESIGN.md` is current and complete for the selected scope. The implementation retains the official medium geometry (80dp square with a 28dp icon), icon-only anatomy, primary-container default, named action, and enabled-only availability policy. Deferred sizes, colors, lowered elevation, Extended FAB, FAB menu, placement, and transform behavior remain outside the confirmed scenario.
 
 ## Architecture compliance
 
-The current architecture is incomplete for the selected icon role.
-
-It classifies the public `icon` slot → m3e default slot mapping as `direct`, but does not fully define the production-valid child/content contract required for that classification. Exact-version `@m3e/web@2.7.4` evidence shows that FAB geometry depends on the slotted icon composition: the renderer applies its 28px icon sizing to the slot and has explicit sizing rules for supported icon-shaped content such as slotted SVG. A slot description alone does not prove that arbitrary text content is equivalent.
-
-Architecture must define the supported canonical icon composition for `MDFab` and its proof fixtures, using the exact-version renderer documentation/examples and installed public styling contract. The public Vue API should remain renderer-independent; the correction must not leak `m3e-*` vocabulary to consumers.
-
-This is an architecture finding because the current `direct` renderer-composition classification is underspecified. Route: `self → architecture`.
+The minimum library-only API remains `label`, the named `icon` slot, and `click`, with a narrow generic host-attribute allow-list and no public FAB token surface. Exact lockfile-resolved `@m3e/web@2.7.4` evidence confirms the `m3e-fab` default icon slot, `click`, `medium`/`primary-container` defaults, and the available deferred renderer inputs. Its installed public artifact styles a direct default-slot SVG at `1em`; the family browser proof independently confirms the selected 80px host and 28px SVG result. This makes the direct decorative SVG mapping compliant for the selected observable contract without a renderer-icon dependency or private DOM access.
 
 ## Implementation compliance
 
-The new `GeometryContract` story and browser test are individually useful: they use a slotted SVG and assert the selected 80×80 FAB / 28×28 icon geometry.
-
-They do not close the actual defect because the canonical visual paths still use a different composition:
-
-- `Default` uses bare `+` text for the icon role;
-- `VisualStates` uses bare `+` text;
-- `BehaviorContracts` uses bare `+` text;
-- `HostAttributeBoundary` uses bare `+` text;
-- `RealInteractionFeedback` uses bare `+` text.
-
-`VisualStates` and `RealInteractionFeedback` therefore do not exercise the same production-valid icon composition as the geometry proof. A special proof-only fixture cannot establish correctness while the canonical visual fixtures continue to use content that bypasses the selected renderer composition contract.
-
-After architecture resolves the icon composition, implementation must update the affected canonical stories/proof to use that same composition and keep the geometry assertion on the real selected path rather than a one-off alternative.
+`MDFab.vue` is one typed `m3e-fab` host with explicit medium/primary-container values, `inheritAttrs: false`, label-owned `aria-label`, native click forwarding, direct icon projection, and local allow-list filtering. Renderer imports, element typing, custom-element registration, and private terminology remain inside the Material boundary. The implementation introduces no wrapper, workaround, public renderer input, controlled state, or duplicated renderer interaction behavior.
 
 ## Migration and legacy removal
 
-No migration correction is currently required. The canonical plain FAB still has no product consumer; the legacy plain `MDFab` remains removed; `MDExtendedFab` is a separate family.
-
-Per the scoped correction workflow, preserve the current `MIGRATION.md` unless the corrected architecture/implementation changes consumer-facing semantics or legacy disposition. The next independent review must verify that it remains valid.
+Current source inventory finds no canonical `MDFab`, raw `m3e-fab`, or FAB renderer-token use in product layers. The root Material export is the only external family reference. The former plain `src/shared/ui/Button/MDFab.*` owner is absent. `RepoExplorerPane` continues to use the separate legacy `MDExtendedFab` through `FabContainer`; it is not a migration target for this family.
 
 ## Proof and stage verification
 
-Existing type/unit/build results do not resolve this finding. The issue is semantic consistency between renderer composition and the fixtures used as canonical visual proof.
+The colocated component contract, owner-local Storybook behavior, and owner-local visual proof match the current executable migration policy. Independent focused verification passed:
 
-Required correction proof:
+- `pnpm verify --only unit-tests --files src/shared/ui/material/components/floatingActionButton/MDFab.test.ts`
+- `pnpm verify --only type-check`
+- `pnpm verify --files src/shared/ui/material/components/floatingActionButton/MDFab.stories.ts --profile local --only storybook-build`
+- `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/floatingActionButton/MDFab.browser.spec.ts`
+- `pnpm verify --files src/shared/ui/material/components/floatingActionButton/MDFab.visual.spec.ts --profile local --only visual`
 
-- exact-version m3e documentation/artifact evidence for the selected icon child/content contract;
-- production-valid canonical Storybook fixtures using that contract;
-- browser numeric geometry proof for the same composition path: 80×80 host and 28×28 icon;
-- visual proof for the corrected canonical FAB appearance;
-- no private shadow-DOM inspection or renderer vocabulary leakage.
-
-Exact-head CI remains architect-owned after the family returns from a successful independent review.
+The browser lane covers visible-SVG pointer pass-through, Enter/Space activation, numeric geometry, and dynamic rejected renderer inputs. The visual baselines are bounded to the selected resting, hover, focus, and pressed appearances; they were inspected as appearance evidence only. No operator visual or motion defect was reported.
 
 ## Blockers
 
-1. **Canonical icon composition is unresolved and visual proof uses an invalid/inconsistent path.**
-
-   The dedicated geometry fixture proves correct geometry only with slotted SVG, while canonical visual stories continue to use bare `+` text. This contradicts the renderer-composition rules and matches the operator-reported wrong-size defect. Architecture must first define the valid icon composition; implementation must then make canonical proof use it consistently.
+None.
 
 ## Major issues
 
-None beyond the blocker above.
+None.
 
 ## Minor issues
 
@@ -88,34 +57,12 @@ None.
 
 ## Accepted risks
 
-None. Missing resolution of a reported visual/geometry defect is not an accepted risk.
+None.
 
 ## Items not required
 
-- No ripple correction: operator visual inspection confirms current ripple behavior is correct.
-- No expansion of the public FAB size/color API without demand.
-- No `MDExtendedFab` migration in this family.
-- No generic icon/adapter framework solely for this correction.
+No product consumer, compatibility alias, public token, alternate size/color, disabled path, Extended FAB/FAB menu surface, form/link behavior, or renderer workaround is required for the accepted no-consumer scenario.
 
 ## Routing evidence
 
-Earliest owning stage: `architecture`.
-
-Correction capsule:
-
-```text
-family: floatingActionButton
-origin stage: architect review / operator observation
-target stage: architecture
-finding: canonical FAB visual fixtures use an icon composition that produces the wrong visible size; a dedicated SVG geometry fixture passes but does not represent the canonical visual path
-affected contract/proof: icon slot renderer composition; Medium FAB 80dp/28dp geometry; Storybook visual fixtures and browser geometry proof
-operator observations: ripple behavior is visually correct; FAB size remains visually incorrect because the library is used incorrectly
-```
-
-Expected scoped path under the current workflow:
-
-```text
-architecture → implementation → independent review
-```
-
-Do not rerun migration unless the correction makes the preserved migration contract stale.
+The exact installed renderer public documentation, manifest, declarations, and artifact behavior agree with the selected adapter mapping and its real-browser proof. No Material family defect or stale migration fact remains; no correction route is required.

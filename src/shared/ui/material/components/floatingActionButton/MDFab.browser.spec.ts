@@ -1,18 +1,19 @@
 import { expect, test } from '@playwright/test';
 import { openStory } from '../../../../../../tests/e2e/storybook/storybook.testUtils';
 
-test('MDFab resolves an accessible name from label and responds to native click', async ({
+test('MDFab resolves an accessible name from label and forwards pointer activation from its visible SVG icon', async ({
   page,
 }) => {
   await openStory(page, 'material-3-components-floating-action-button-mdfab--behavior-contracts');
 
   const fab = page.getByRole('button', { name: 'Compose a new message' });
   const clickCount = page.locator('#md-fab-click-count');
+  const icon = page.getByTestId('behavior-fab-icon');
 
   await expect(fab).toBeVisible();
   await expect(fab).toBeEnabled();
 
-  await fab.click();
+  await icon.click();
   await expect(clickCount).toHaveText('1');
 });
 
@@ -42,13 +43,12 @@ test('MDFab renders the official medium FAB fixed geometry (80dp container, 28dp
   // The single-host `m3e-fab` composition can affect this rendered geometry, so
   // `src/shared/ui/material/AGENTS.md`'s "Renderer boundary" section requires browser-level
   // numeric proof; the existing visual baseline (`MDFab.visual.spec.ts`) supplements but does
-  // not substitute for it. The dedicated `geometry-contract` story supplies a real `<svg>` icon
-  // (rather than the other stories' bare "+" placeholder text) so the icon has its own
-  // independently measurable public light-DOM box, distinct from the host container — the
-  // installed `@m3e/web@2.7.4` renderer's shadow stylesheet sizes any slotted `<svg>` without a
-  // `slot` attribute to `width: 1em; height: 1em` inheriting the medium size's 28px icon
-  // font-size (`node_modules/@m3e/web/dist/fab.js`), so this measures the actual rendered public
-  // result, not a private shadow-DOM internal.
+  // not substitute for it. The geometry story uses the same direct inline SVG composition as
+  // every canonical FAB fixture, so the icon has its own independently measurable public
+  // light-DOM box, distinct from the host container. The installed `@m3e/web@2.7.4` renderer's
+  // shadow stylesheet sizes a slotted `<svg>` without a `slot` attribute to `width: 1em; height:
+  // 1em`, inheriting the medium size's 28px icon font-size. This measures the actual rendered
+  // public result, not a private shadow-DOM internal.
   //
   // This project's Playwright config pins `deviceScaleFactor: 1` with no browser zoom
   // (`playwright.storybook.config.ts`), so 1dp = 1 rendered CSS px here; the expected pixel

@@ -3,10 +3,16 @@ import { defineComponent } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import MDFab from './MDFab.vue';
 
+const directSvgIcon = `
+  <svg data-icon viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor">
+    <path d="M12 4v16m8-8H4" fill="none" stroke="currentColor" stroke-width="2" />
+  </svg>
+`;
+
 const mountFab = (props: Record<string, unknown> = {}) =>
   mount(MDFab, {
     props: { label: 'Compose', ...props },
-    slots: { icon: '<span data-icon>+</span>' },
+    slots: { icon: directSvgIcon },
   });
 
 const getElementProperty = (element: Element, property: string): unknown =>
@@ -18,7 +24,15 @@ const DynamicAttrsWrapper = defineComponent({
   props: {
     attrs: { default: () => ({}), type: Object },
   },
-  template: '<MDFab label="Compose" v-bind="attrs"><template #icon>+</template></MDFab>',
+  template: `
+    <MDFab label="Compose" v-bind="attrs">
+      <template #icon>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor">
+          <path d="M12 4v16m8-8H4" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </template>
+    </MDFab>
+  `,
 });
 
 describe('MDFab adapter', () => {
@@ -39,8 +53,11 @@ describe('MDFab adapter', () => {
     const wrapper = mountFab();
     const fab = wrapper.get('m3e-fab');
 
-    expect(fab.find('[data-icon]').exists()).toBe(true);
-    expect(fab.find('[data-icon]').attributes('slot')).toBeUndefined();
+    const icon = fab.get('[data-icon]');
+    expect(icon.element.tagName).toBe('svg');
+    expect(icon.attributes('slot')).toBeUndefined();
+    expect(icon.attributes('aria-hidden')).toBe('true');
+    expect(icon.attributes('viewBox')).toBe('0 0 24 24');
   });
 
   it('warns in DEV when the icon slot is empty', () => {
@@ -48,7 +65,9 @@ describe('MDFab adapter', () => {
 
     mount(MDFab, { props: { label: 'Compose' } });
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('provide an icon via the'));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('must render exactly one direct decorative inline SVG root'),
+    );
 
     warnSpy.mockRestore();
   });
@@ -59,6 +78,22 @@ describe('MDFab adapter', () => {
     mountFab();
 
     expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it('warns in DEV when the icon slot is bare text and leaves the supplied content unchanged', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const wrapper = mount(MDFab, {
+      props: { label: 'Compose' },
+      slots: { icon: '+' },
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('must render exactly one direct decorative inline SVG root'),
+    );
+    expect(wrapper.get('m3e-fab').text()).toBe('+');
 
     warnSpy.mockRestore();
   });
@@ -84,7 +119,7 @@ describe('MDFab adapter', () => {
           title: 'Add item',
         },
         props: { label: 'Add' },
-        slots: { icon: '<span>+</span>' },
+        slots: { icon: directSvgIcon },
       });
       const fab = wrapper.get('m3e-fab');
 
@@ -97,7 +132,7 @@ describe('MDFab adapter', () => {
       const wrapper = mount(MDFab, {
         attrs: { class: 'consumer-class', style: { color: 'red' } },
         props: { label: 'Add' },
-        slots: { icon: '<span>+</span>' },
+        slots: { icon: directSvgIcon },
       });
       const fab = wrapper.get('m3e-fab');
 
@@ -119,6 +154,7 @@ describe('MDFab adapter', () => {
       const wrapper = mount(MDFab, {
         attrs: {
           'bogus-consumer-flag': 'leak-attempt',
+          'aria-label': 'Ignored consumer label',
           disabled: true,
           'disabled-interactive': true,
           download: 'file.txt',
@@ -134,7 +170,7 @@ describe('MDFab adapter', () => {
           variant: 'primary',
         },
         props: { label: 'Add' },
-        slots: { icon: '<span>+</span>' },
+        slots: { icon: directSvgIcon },
       });
       const fab = wrapper.get('m3e-fab');
 
@@ -143,6 +179,7 @@ describe('MDFab adapter', () => {
       expect(getElementProperty(fab.element, 'disabled')).toBe(false);
       expect(getElementProperty(fab.element, 'lowered')).toBe(false);
       expect(getElementProperty(fab.element, 'extended')).toBe(false);
+      expect(fab.attributes('aria-label')).toBe('Add');
       expect(fab.attributes('bogus-consumer-flag')).toBeUndefined();
       expect(fab.attributes('href')).toBeUndefined();
       expect(fab.attributes('name')).toBeUndefined();
@@ -153,7 +190,7 @@ describe('MDFab adapter', () => {
       const wrapper = mount(MDFab, {
         attrs: { onBeforeinput },
         props: { label: 'Add' },
-        slots: { icon: '<span>+</span>' },
+        slots: { icon: directSvgIcon },
       });
       const fab = wrapper.get('m3e-fab');
 
