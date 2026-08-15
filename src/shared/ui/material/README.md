@@ -73,20 +73,13 @@ Migration consumes the finished canonical Mioframe Material API plus family `REA
 
 ```text
 API contract       ┐
-Token contract     │
-Behavior contract  ├─→ definition ready
-Usage guidance     ┘
-                        ↓
-                 implementation
-                        ↓
-                    migration
-                        ↓
-               independent review
-                        ↓
-             architect / PR / CI
+Token contract     ├─→ technical contract ready → implementation ┐
+Behavior contract  ┘                                              │
+                                                                 ├─→ migration → independent review
+Usage guidance ──────────────────────────────────────────────────┘
 ```
 
-Definition workers are deliberately narrow and isolated. Standalone implementation remains focused on the three technical contracts plus exact m3e mapping; only the later migration worker reads application consumers and applies the README guidance.
+Definition workers are deliberately narrow and isolated. Standalone implementation is gated only by the three technical contracts and stays focused on exact m3e mapping; usage guidance is independent and must be complete before the later migration worker reads application consumers.
 
 A non-deterministic architecture/ownership problem is escalated through `architect-handoff` only when it actually appears rather than being a mandatory stage for every component.
 
