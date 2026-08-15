@@ -104,6 +104,7 @@ For the Material workflow, the thin orchestrator selects, launches, validates, a
 
 ## Verification
 
+- Keep the agent runtime's sandbox and permission system enabled. Mioframe's canonical verifier entry points (`pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`) are repository-approved to run outside the generic agent sandbox only through the runtime's narrowly scoped command allow/exclusion or per-command approval/escalation mechanism. `verify` itself owns verification scope, locking, timeouts, resource limits, and containerized browser execution. Never enable unrestricted/full-access execution for the session, broaden approval to generic `pnpm`, `node`, or shell execution, or replace a blocked verifier invocation with a raw child command.
 - Use `implementation-preflight` to resolve task-specific `TEST IMPACT` and the focused verification needed for implementation feedback.
 - Coding agents use verifier-managed focused checks while implementing or correcting code. Choose the smallest faithful scope for the changed contract.
 - A coding agent does not need to run a broad local `pnpm verify` or `pnpm verify:release` merely to hand work back to the architect when GitHub CI will run the authoritative exact-head gate.
