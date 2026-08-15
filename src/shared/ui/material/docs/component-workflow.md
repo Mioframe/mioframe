@@ -8,228 +8,261 @@ One operator command handles one official Material family:
 material-component <name>
 ```
 
-The normal workflow uses three fresh worker contexts:
+The workflow is intentionally split by responsibility:
 
 ```text
-CONTRACT
-  → IMPLEMENT + MIGRATE
-  → INDEPENDENT REVIEW
-  → architect / PR / exact-head CI
+API CONTRACT       ┐
+TOKEN CONTRACT     ├─→ CONTRACT READY
+BEHAVIOR CONTRACT  ┘
+                        ↓
+                 IMPLEMENTATION
+                        ↓
+                    MIGRATION
+                        ↓
+              INDEPENDENT REVIEW
+                        ↓
+              architect / PR / CI
 ```
 
-The workflow intentionally prefers the minimum reliable orchestration. Add another stage only when a demonstrated ownership boundary cannot be handled safely inside these three roles.
+The goal is not to minimize worker count. The goal is to keep every worker focused on one unambiguous responsibility and prevent m3e, legacy code, or application demand from diluting Material documentation during contract definition and component implementation.
 
-The durable family source of truth is the narrow contract defined by [`component-contract.md`](./component-contract.md), plus runtime code and executable proof. Worker reports are handoff data, not persistent parallel documentation.
+## Contract phase
 
-## Why this shape
-
-- Contract extraction is separated from renderer and legacy influence.
-- Implementation and consumer migration stay in one coding context because they are one repository transformation and share the same canonical API.
-- Independent review remains a fresh context so the author does not approve its own work.
-- Non-deterministic architecture is exceptional and escalates to `architect-handoff`; it is not a mandatory stage for every wrapper.
-- GitHub CI and merge readiness remain architect-owned outside the coding-agent workflow.
-
-## Canonical family contract
-
-Before implementation, the family owns:
+Before any component implementation, three fresh isolated workers create exactly three canonical artifacts:
 
 ```text
-contract.ts   — props, slots, emits, public types/defaults/combinations
+material-component-api-contract
+  → components/<family>/contract.ts
 
-tokens.css    — executable public official Material component-token contract
+material-component-token-contract
+  → components/<family>/tokens.css
 
-BEHAVIOR.md   — anatomy, states, interaction, accessibility, geometry, motion
-
-GUIDANCE.md   — correct consumer usage and composition guidance
-
-SOURCES.md    — official-source provenance and conflicts
+material-component-behavior-contract
+  → components/<family>/BEHAVIOR.md
 ```
 
-See [`component-contract.md`](./component-contract.md) for exact ownership.
+The sole official documentation source for Material facts in these workers is the repository-configured `material3` MCP server from `.mcp.json`.
 
-The public contract is derived from official Material, not from current Mioframe demand, legacy API, or m3e capability. The application adapts to the canonical component after the standalone component is proven.
+The three workers have no dependency on each other and may run in parallel when isolated worker execution supports it. Do not pass one contract worker's narrative reasoning to another.
 
-## Worker boundaries
+They must not inspect m3e, legacy component implementation, product consumers, or current call-site demand.
 
-### Contract worker
+### Contract-ready gate
 
-Runs in a fresh isolated context.
+The orchestrator performs only a mechanical gate. Implementation may start when:
 
-Owns only official Material → canonical family contract.
+- API contract result is `complete`;
+- token contract result is `complete`;
+- behavior contract result is `complete`;
+- none reports unresolved Material ambiguity or a blocker;
+- `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist at the canonical family owner.
 
-It may read applicable rules, Material foundation/token conventions, current family contract files when refreshing, and official Material sources. It must not use m3e, legacy component implementation, or product consumers to choose the public API, behavior, or token surface.
+There is no additional design, architecture, synthesis, guidance, source-ledger, or contract-review stage by default.
 
-It returns one of:
+If a contract worker is blocked by contradictory or unavailable Material 3 MCP content, stop the family rather than guessing. Use `architect-handoff` only when the unresolved issue is an actual Mioframe ownership/public-contract decision rather than missing Material documentation.
+
+## Implementation
+
+`material-component-implementation` runs in a fresh isolated context after the contract-ready gate.
+
+Its responsibility is only:
 
 ```text
-complete
-blocked — exact official-source/contract ambiguity
-needs-architect — exact non-deterministic public-contract decision
+three canonical contracts
+        +
+exact lockfile-resolved @m3e/web docs/public artifacts
+        ↓
+canonical standalone Vue Material component
+        +
+component-owned proof
 ```
 
-### Implementation worker
+Implementation must remain focused on Material and renderer integration. It must not inspect application consumers or legacy call sites to shape the component API or implementation contract.
 
-Runs in a fresh isolated context after the contract is complete.
+The worker:
 
-Owns the complete repository transformation:
+1. runs an implementation preflight for standalone component work and proof;
+2. reads `contract.ts`, `tokens.css`, and `BEHAVIOR.md` as fixed inputs;
+3. inspects exact-version m3e documentation/examples/public artifacts for affected renderer mappings;
+4. implements the Vue `MD*` component and private renderer glue;
+5. consumes `contract.ts` types directly through typed Vue APIs instead of re-declaring the public API;
+6. maps public tokens privately to renderer inputs without leaking m3e vocabulary into `tokens.css`;
+7. proves the standalone API, behavior, accessibility, geometry, motion and token results at the lowest faithful levels;
+8. stops when the standalone component is complete.
 
-1. read the canonical contract;
-2. run one implementation preflight covering component implementation, proof, consumer migration, and legacy removal;
-3. inspect documentation and public artifacts shipped with the exact lockfile-resolved `@m3e/web` version;
-4. implement the canonical Vue component and private renderer mapping;
-5. prove the standalone component before adapting application consumers;
-6. inventory every legacy/current consumer;
-7. migrate consumers to the canonical API without changing the contract for convenience;
-8. remove replaced legacy ownership and obsolete staged family artifacts;
-9. run the smallest faithful verifier-managed checks for the changed contracts.
-
-Implementation may not redesign the Material contract to match m3e or legacy code.
-
-It returns one of:
+If implementation proves that a contract is wrong or incomplete, it returns the exact artifact owner:
 
 ```text
-complete
-blocked — exact implementation/migration blocker
-return-to-contract — exact contract defect proved during implementation
-needs-architect — exact renderer/ownership/composition decision that is not deterministic from repository rules
+return-to-api-contract
+return-to-token-contract
+return-to-behavior-contract
 ```
 
-### Independent review worker
+It must not edit that contract opportunistically while coding.
 
-Always runs in a fresh context independent from the contract/implementation authors.
+If m3e cannot faithfully implement a correct contract through documented direct support or a small family-local correction, use a documented exact-version workaround only when repository rules allow it; otherwise return `needs-architect` rather than weaken the public Material contract or recreate renderer internals.
 
-It reviews the complete resulting family and consumers, not only the latest patch. It independently checks:
+## Migration
 
-- official Material sources ↔ `contract.ts`, `tokens.css`, `BEHAVIOR.md`, `GUIDANCE.md`;
-- source provenance/conflicts in `SOURCES.md`;
-- canonical contract ↔ Vue implementation;
-- exact-version m3e documentation/public artifacts ↔ private renderer mapping;
-- CSS tokens ↔ actual rendered results;
-- behavior, accessibility, geometry and motion ↔ faithful proof;
-- canonical standalone component ↔ migrated consumers;
-- removal of replaced legacy ownership and stale staged artifacts;
-- repository rules, testing ownership, and blast radius.
+`material-component-migration` runs in a new isolated context only after standalone implementation is complete.
 
-Review does not fix production code and does not write a persistent `REVIEW.md`.
-
-It returns:
+Its responsibility is only:
 
 ```text
-compliant
-compliant-with-listed-risks
-blocked → contract
-blocked → implementation
-blocked → architect
+finished canonical component
+        +
+current product/legacy consumers
+        ↓
+application adoption of canonical API
+        +
+legacy owner removal
 ```
 
-A successful review is readiness for architect-owned PR/CI, not merge approval.
+Migration may inspect consumers and legacy implementation. It does not inspect m3e internals and does not redesign the canonical contracts or component API.
 
-## Renderer boundary during implementation
+The worker:
 
-`@m3e/web` is a private implementation dependency. The implementation worker uses it only after the Material contract is fixed.
+1. runs a focused migration preflight;
+2. inventories every applicable current/legacy consumer and replaced owner;
+3. maps each existing product scenario to the finished canonical component;
+4. preserves product-owned state, routing, persistence, errors, lifecycle and business behavior outside Material;
+5. moves non-Material legacy responsibility to its truthful product/shared composition owner rather than expanding Material;
+6. removes replaced legacy implementation, exports and obsolete proof after every consumer has a correct destination;
+7. removes old family DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW artifacts when this family has fully converted to the new contract model;
+8. runs focused consumer/migration proof.
 
-For every selected mapping, inspect exact-version renderer documentation/examples and public artifacts. Classify gaps by observable contract, not by naming similarity.
+A migration problem caused by a correct canonical component is owned by migration. If migration exposes an actual implementation defect, return to implementation. Do not create compatibility aliases merely to preserve old call-site syntax.
 
-Preferred order:
+## Independent review
 
-1. direct documented renderer support;
-2. small family-local adapter mapping/correction that preserves the canonical contract;
-3. documented, removable exact-version workaround for a confirmed renderer defect;
-4. `architect-handoff` or upstream m3e fix when faithful implementation would require new shared infrastructure, private DOM coupling, duplicated renderer behavior, or a public-contract compromise.
+`material-component-review` always runs in a fresh context independent from every contract, implementation and migration worker.
 
-Never shrink or rename the canonical Material API merely because m3e exposes a smaller or differently named API.
+Review checks the complete resulting family, not only the latest patch:
 
-## Standalone-first migration rule
+1. independently query Material 3 MCP for public API facts and compare with `contract.ts`;
+2. independently query Material 3 MCP for component tokens and compare with `tokens.css`;
+3. independently query Material 3 MCP for behavior/accessibility/geometry/motion and compare with `BEHAVIOR.md`;
+4. verify runtime consumes the canonical API contract directly;
+5. inspect exact-version m3e documentation/public artifacts for renderer mappings and mutable state;
+6. verify public token mappings reach actual rendered parts/states;
+7. verify behavior/accessibility/geometry/motion proof is faithful;
+8. verify migrated consumers use the canonical API correctly;
+9. verify replaced legacy ownership and old staged family artifacts are removed;
+10. review shared-UI/test blast radius and repository rules.
 
-Consumer migration begins only after the canonical standalone component and its required proof are complete enough to establish the component contract independently of the application.
+Review does not fix files and does not create a persistent `REVIEW.md`.
 
-Migration then asks:
+Findings route to one exact owner:
 
 ```text
-How should this product scenario use the canonical Material component?
+api-contract
+ token-contract
+behavior-contract
+implementation
+migration
+architect
 ```
 
-It must not ask:
+A successful review means ready for architect-owned PR/CI, not merge approval.
 
-```text
-How should the canonical component change to make this legacy call site easy to preserve?
-```
+## Renderer boundary
 
-If a legacy scenario is not actually Material component behavior, keep that responsibility in the correct product/shared composition owner rather than expanding the Material API.
+`@m3e/web` is a private implementation dependency and is consulted only in implementation/review, never to define Material contracts.
+
+Preferred implementation order:
+
+1. documented direct renderer support;
+2. small family-local adapter mapping/correction preserving the canonical contracts;
+3. documented removable exact-version workaround for a confirmed renderer defect;
+4. architecture/upstream escalation when faithful support requires private DOM coupling, duplicated renderer systems, new shared infrastructure, or public-contract compromise.
+
+Never shrink or rename a canonical Material contract merely because m3e exposes a smaller or differently named API.
 
 ## Proof model
 
-Use the lowest faithful proof for each contract:
+Use the lowest faithful proof for each changed contract:
 
-- TypeScript/component contract tests for props, slots, emits, defaults and boundary filtering;
-- real browser proof for keyboard, pointer, focus, accessibility and rendered geometry;
-- visual regression for stable renderer-owned appearance and motion states where appropriate;
-- computed/rendered browser results for public CSS token mappings;
-- product/E2E proof only for product scenarios that cross Material ownership.
+- component/type proof for Vue public API and adapter boundaries;
+- real browser proof for keyboard, pointer, focus, accessibility and fixed geometry;
+- browser rendered-result proof for public CSS token mappings;
+- visual proof for stable renderer-owned appearance/motion where appropriate;
+- product E2E only for scenarios that cross Material ownership.
 
-A declaration, source mapping, host attribute, story, or screenshot alone does not prove a rendered Material token or fixed geometry contract.
-
-Focused checks are implementation feedback. GitHub CI on the exact PR head is the final repository gate.
+A declaration, source mapping, host attribute, story, or screenshot alone does not prove a different observable contract.
 
 ## Correction routing
 
-Keep correction routing small and explicit.
+Keep corrections at the owner that introduced the defect.
 
 ```text
-contract defect
-  → fresh contract worker
-  → fresh implementation worker when runtime/consumers can be affected
-  → fresh independent review
+API contract defect
+  → fresh API contract worker
+  → implementation
+  → migration when consumer-facing shape changed
+  → review
 
-implementation or migration defect
-  → fresh implementation worker with the exact finding
-  → fresh independent review
+Token contract defect
+  → fresh token contract worker
+  → implementation
+  → review
 
-non-deterministic architecture/ownership decision
+Behavior contract defect
+  → fresh behavior contract worker
+  → implementation
+  → review
+
+Implementation defect
+  → fresh implementation worker
+  → review
+
+Migration defect
+  → fresh migration worker
+  → review
+
+non-deterministic ownership/architecture defect
   → architect-handoff
-  → resume at the earliest invalidated worker
-  → fresh independent review
+  → resume at earliest invalidated worker
+  → review
 ```
 
-Do not rerun contract extraction for a purely local implementation correction. Do not split migration into another worker merely because the correction touches consumers.
-
-If two correction rounds for the same underlying problem still show ownership drift, mixed responsibilities, contract instability, or growing workaround logic, stop patching and escalate to architecture.
+Do not rerun unaffected contract workers. After two unsuccessful correction rounds for the same underlying problem, stop patching and escalate to architecture.
 
 ## Existing-family transition
 
-Untouched families may temporarily retain old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files. They are legacy evidence only.
+Untouched families may temporarily retain old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files as historical evidence.
 
 When a family next completes this workflow:
 
-- establish the five canonical contract files;
-- make runtime code/tests/consumer migration match them;
-- remove the old staged artifacts for that family;
-- do not bulk-convert unrelated families in the same PR.
+- establish `contract.ts`, `tokens.css`, and `BEHAVIOR.md`;
+- make runtime and proof satisfy them;
+- migrate consumers separately;
+- remove that family's obsolete staged artifacts;
+- do not bulk-convert unrelated families.
 
 ## Orchestrator boundary
 
-The `material-component` orchestrator is intentionally thin. It may:
+The `material-component` orchestrator is mechanical. It may:
 
 - resolve the canonical family;
-- launch the three worker roles;
-- carry exact operator observations and exact correction findings;
-- validate structured terminal results;
-- route contract/implementation corrections or architecture escalation;
+- launch the three contract workers, implementation, migration and review;
+- preserve exact operator observations and correction findings;
+- validate structured terminal results and the contract-ready gate;
+- route an exact finding to its owner;
 - stop on a genuine blocker;
 - hand a successfully reviewed family to the architect.
 
-It must not design APIs, inspect m3e semantics, implement code, migrate consumers, perform review, invent causes from operator observations, or run broad verification to duplicate PR CI.
+It must not design Material API/tokens/behavior, inspect m3e semantics, implement code, migrate consumers, perform semantic review, or invent causes from operator observations.
 
 ## Completion
 
-The coding-agent Material workflow is complete when:
+The coding-agent workflow is complete when:
 
-- the canonical family contract is complete and internally consistent;
-- the component faithfully implements that contract through private renderer integration;
+- all three Material contracts are complete;
+- standalone implementation faithfully satisfies them;
 - required standalone proof passes;
-- all applicable consumers use the canonical API correctly;
-- replaced legacy ownership and obsolete staged artifacts are removed;
-- independent review reports no unresolved finding;
-- focused implementation verification is complete or an exact external blocker is reported.
+- all applicable consumers are migrated;
+- replaced legacy ownership is removed;
+- independent review has no unresolved finding;
+- focused verification required by implementation/migration is complete or an exact external blocker is reported.
 
-Then hand the result to the architect for PR creation/update, exact-head CI, full PR review, and merge readiness.
+Then hand the result to the architect for PR update, exact-head CI, full PR review and merge readiness.
