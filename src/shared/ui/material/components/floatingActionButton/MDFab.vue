@@ -99,7 +99,7 @@ if (import.meta.env.DEV) {
       !(icon instanceof SVGSVGElement) ||
       icon.namespaceURI !== 'http://www.w3.org/2000/svg'
     ) {
-      warn('MDFab: the `icon` slot must render exactly one direct decorative inline SVG root.');
+      warn('MDFab: the `icon` slot must render exactly one direct inline SVG root.');
     }
   });
 }

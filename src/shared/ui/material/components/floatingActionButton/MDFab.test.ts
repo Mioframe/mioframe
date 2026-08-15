@@ -68,7 +68,7 @@ describe('MDFab adapter', () => {
     mount(MDFab, { props: { label: 'Compose' } });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('must render exactly one direct decorative inline SVG root'),
+      expect.stringContaining('must render exactly one direct inline SVG root'),
     );
 
     warnSpy.mockRestore();
@@ -93,7 +93,7 @@ describe('MDFab adapter', () => {
     });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('must render exactly one direct decorative inline SVG root'),
+      expect.stringContaining('must render exactly one direct inline SVG root'),
     );
     expect(wrapper.get('m3e-fab').text()).toBe('+');
 
