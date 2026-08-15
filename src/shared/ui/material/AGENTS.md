@@ -47,6 +47,8 @@ Runtime code/tests are implementation truth. Family/foundation CSS owners are th
 
 Old family DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW files are legacy evidence only and are removed when that family completes the current workflow.
 
+Some project-wide testing migration documentation still refers to a family `ARCHITECTURE.md` when describing already-migrated legacy Material proof. For a converted/new family, that wording means the canonical family contract and current scoped Material rules; do not create or retain an `ARCHITECTURE.md` merely to satisfy historical testing terminology.
+
 ## Public boundary
 
 - Expose official Material semantics through canonical Vue `MD*` APIs.
