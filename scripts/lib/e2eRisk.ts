@@ -11,7 +11,11 @@ const APP_E2E_SPEC_DIR = 'tests/e2e';
 const STORIES_PATTERN = /\.stories\.(ts|tsx|js|jsx|mjs|vue)$/;
 const PACKAGE_JSON_PATH = 'package.json';
 
-const LOW_LEVEL_E2E_EXACT_FILES = new Set([
+const WORKFLOWS_PREFIX = '.github/workflows/';
+
+// Full-lane E2E infrastructure/config/tooling: consumer set is intentionally
+// the complete application-E2E lane, regardless of scenario mapping.
+const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'playwright.config.ts',
   'scripts/e2eContainer.mjs',
   'scripts/e2eHost.mjs',
@@ -37,10 +41,11 @@ export interface E2EScenarioScope {
  */
 export const APP_E2E_STANDALONE_SPECS: string[] = [];
 
-// Broad blast-radius areas: app bootstrap, background services, proxy clients,
-// shared infra, and shared UI interaction primitives reused across scenarios.
-const LOW_LEVEL_E2E_PREFIXES = [
-  '.github/workflows/',
+// Broad application-E2E-relevant domains: app bootstrap, background services,
+// proxy clients, shared infra, and shared UI interaction primitives reused
+// across scenarios. Paths here are never silently skipped, but a path with an
+// explicit E2E_SCENARIO_SCOPES mapping may resolve focused instead of full.
+const APP_E2E_RELEVANT_BROAD_DOMAINS = [
   'src/app/',
   'src/shared/service/',
   'src/shared/serviceClient/',
@@ -51,8 +56,8 @@ const LOW_LEVEL_E2E_PREFIXES = [
 /**
  * Explicit registry mapping product scenario source paths to the app e2e
  * specs that exercise them. Keep small and readable; unmapped `src/**`
- * paths fall back to full app e2e via {@link isUnmappedSourcePath} so risk
- * is never silently skipped.
+ * paths fall back to full app e2e via {@link isUnmappedAppE2ERelevantPath}
+ * so risk is never silently skipped.
  */
 export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
   {
@@ -124,6 +129,7 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
       'src/entities/databaseView/',
       'src/entities/databaseFilter/',
       'src/entities/databaseSorting/',
+      'src/widgets/DocumentView/Database/DatabaseViewsSheet.vue',
     ],
     specs: [
       'tests/e2e/databaseViewsAndQueryFlows.spec.ts',
@@ -133,6 +139,11 @@ export const E2E_SCENARIO_SCOPES: E2EScenarioScope[] = [
       'tests/e2e/reorderSurfacePersistence.spec.ts',
       'tests/e2e/reorderSurfaceTouch.spec.ts',
     ],
+  },
+  {
+    name: 'database sorting and query UI',
+    sourcePrefixes: ['src/shared/lib/sortable/', 'src/shared/ui/Query/'],
+    specs: ['tests/e2e/databaseViewsAndQueryFlows.spec.ts'],
   },
   {
     name: 'repository explorer screen',
@@ -279,17 +290,14 @@ export function isAppE2ESupportPath(filePath: string): boolean {
 }
 
 /**
- * Check whether a changed file is a broad blast-radius path that must
- * trigger full app e2e regardless of scenario mapping.
+ * Check whether a changed file is full-lane E2E infrastructure/config/tooling
+ * whose consumer set is intentionally the complete application-E2E lane,
+ * regardless of any scenario mapping.
  * @param filePath Repository-relative changed file path.
- * @returns True when the path is low-level/shared/platform/tooling risk.
+ * @returns True when the path is E2E infrastructure/tooling/CI configuration.
  */
-export function isLowLevelE2EPath(filePath: string): boolean {
-  if (isStoriesFile(filePath) || isTestOnlyPath(filePath)) {
-    return false;
-  }
-
-  if (LOW_LEVEL_E2E_EXACT_FILES.has(filePath)) {
+export function isFullLaneE2EInfrastructurePath(filePath: string): boolean {
+  if (FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES.has(filePath)) {
     return true;
   }
 
@@ -299,10 +307,14 @@ export function isLowLevelE2EPath(filePath: string): boolean {
     return true;
   }
 
-  return LOW_LEVEL_E2E_PREFIXES.some((prefix) => filePath.startsWith(prefix));
+  return filePath.startsWith(WORKFLOWS_PREFIX);
 }
 
 function getScenariosForPath(filePath: string): E2EScenarioScope[] {
+  if (isStoriesFile(filePath) || isTestOnlyPath(filePath)) {
+    return [];
+  }
+
   return E2E_SCENARIO_SCOPES.filter((scenario) =>
     scenario.sourcePrefixes.some((prefix) => filePath.startsWith(prefix)),
   );
@@ -413,12 +425,16 @@ export function validateE2EScenarioRegistry(
 }
 
 /**
- * Check whether a changed `src/**` path has no low-level or scenario
- * classification. Unmapped paths must not silently skip e2e.
+ * Check whether a changed file is application-E2E-relevant product/shared
+ * source: a path that must never be silently skipped, but may resolve to
+ * focused specs when {@link E2E_SCENARIO_SCOPES} has an explicit mapping.
+ * Every file under the broad app/shared runtime domains counts (so
+ * non-TypeScript/Vue runtime files, e.g. CSS, stay protected); elsewhere
+ * under `src/` only TypeScript/Vue source counts.
  * @param filePath Repository-relative changed file path.
- * @returns True when the path is an unclassified product source change.
+ * @returns True when the path is relevant to application-E2E impact.
  */
-export function isUnmappedSourcePath(filePath: string): boolean {
+export function isAppE2ERelevantPath(filePath: string): boolean {
   if (!filePath.startsWith('src/')) {
     return false;
   }
@@ -427,17 +443,24 @@ export function isUnmappedSourcePath(filePath: string): boolean {
     return false;
   }
 
-  if (isLowLevelE2EPath(filePath)) {
-    return false;
+  if (APP_E2E_RELEVANT_BROAD_DOMAINS.some((prefix) => filePath.startsWith(prefix))) {
+    return true;
   }
 
   const extension = path.posix.extname(filePath);
 
-  if (extension !== '.ts' && extension !== '.vue') {
-    return false;
-  }
+  return extension === '.ts' || extension === '.vue';
+}
 
-  return getScenariosForPath(filePath).length === 0;
+/**
+ * Check whether an application-E2E-relevant path has no explicit scenario
+ * mapping in {@link E2E_SCENARIO_SCOPES}. Unmapped relevant paths must not
+ * silently skip e2e; {@link resolveAppE2EPlan} fails them closed to full.
+ * @param filePath Repository-relative changed file path.
+ * @returns True when the path is relevant and unmapped.
+ */
+export function isUnmappedAppE2ERelevantPath(filePath: string): boolean {
+  return isAppE2ERelevantPath(filePath) && getScenariosForPath(filePath).length === 0;
 }
 
 /** Resolved app e2e lane plan, discriminated by `mode`. */
@@ -467,11 +490,11 @@ export interface ResolveAppE2EPlanOptions {
 /**
  * Resolve the app e2e mode for the given changed files, in priority order:
  * invalid (scenario registry failed self-validation; fail closed instead of
- * silently skipping), full (low-level/unmapped/e2e-support/package.json risk
- * or a removed/renamed directly changed app spec), focused (scenario registry
- * matches and/or changed existing app e2e specs), or skip (no app e2e relevant
- * changes). Visual specs and visual-relevant paths never feed this resolver;
- * visual selection stays independent.
+ * silently skipping), full (full-lane infrastructure/unmapped-relevant/e2e-support/
+ * package.json risk or a removed/renamed directly changed app spec), focused
+ * (scenario registry matches and/or changed existing app e2e specs), or skip
+ * (no app e2e relevant changes). Visual specs and visual-relevant paths never
+ * feed this resolver; visual selection stays independent.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Resolution options.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
@@ -486,8 +509,8 @@ export function resolveAppE2EPlan(
     return { mode: 'invalid', specs: [], reasons: registryValidation.errors };
   }
 
-  const lowLevelHit = changedFiles.find(isLowLevelE2EPath);
-  const unmappedHit = changedFiles.find(isUnmappedSourcePath);
+  const infrastructureHit = changedFiles.find(isFullLaneE2EInfrastructurePath);
+  const unmappedRelevantHit = changedFiles.find(isUnmappedAppE2ERelevantPath);
   const supportHit = changedFiles.find(isAppE2ESupportPath);
   const missingSpecHit = changedFiles.find(
     (filePath) => isAppE2ESpecPath(filePath) && !fileExists(filePath),
@@ -497,17 +520,17 @@ export function resolveAppE2EPlan(
     isPackageJsonRuntimeRelevantChange({ oldRef: packageJsonOldRef });
   const fullReasons: string[] = [];
 
-  if (lowLevelHit) {
-    fullReasons.push(`low-level path ${lowLevelHit} -> full app e2e`);
+  if (infrastructureHit) {
+    fullReasons.push(`full-lane infrastructure path ${infrastructureHit} -> full app e2e`);
   }
 
   if (isPackageJsonRuntimeRelevant) {
     fullReasons.push(`runtime-relevant package.json change -> full app e2e`);
   }
 
-  if (unmappedHit) {
+  if (unmappedRelevantHit) {
     fullReasons.push(
-      `unclassified src path ${unmappedHit} -> full app e2e (map it in scripts/lib/e2eRisk.ts or add e2e coverage)`,
+      `unmapped application-E2E-relevant path ${unmappedRelevantHit} -> full app e2e (map it in scripts/lib/e2eRisk.ts or add e2e coverage)`,
     );
   }
 
