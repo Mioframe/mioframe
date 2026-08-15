@@ -1,26 +1,23 @@
 ---
 name: material-component-implementation
-description: 'Use after API, token, behavior, and guidance definition workers complete to implement and prove one standalone canonical Vue Material component through the exact installed m3e renderer, without inspecting or migrating application consumers.'
+description: 'Use after the API, token, and behavior contracts complete to implement and prove one standalone canonical Vue Material component through the exact installed m3e renderer, without inspecting application consumers.'
 ---
 
 # Material component implementation
 
-Implement one standalone canonical Material family from three fixed technical contracts after the complete Material family definition is ready.
+Implement one standalone canonical Material family from three fixed technical contracts.
 
 ## Input gate
 
-Require successful definition artifacts:
+Require successful technical contracts:
 
 ```text
 components/<family>/contract.ts
 components/<family>/tokens.css
 components/<family>/BEHAVIOR.md
-components/<family>/README.md
 ```
 
-Do not start if any definition worker reported unresolved Material ambiguity.
-
-`README.md` is a prerequisite proving the family definition is complete, but it is developer guidance rather than a runtime contract. Do not use usage prose to invent runtime behavior absent from the three technical contracts.
+Do not start if any technical contract worker reported unresolved Material ambiguity.
 
 Before inspecting m3e or editing production code, check the three technical contracts for direct internal contradictions only. Public states/content roles required by `BEHAVIOR.md` must be representable by `contract.ts`, and token variant/state/part terminology must not contradict the structural or behavior contracts. If they conflict, route the exact finding to the owning definition worker; do not synthesize a new contract in implementation.
 
@@ -34,7 +31,7 @@ The technical contracts define what the component must expose and observably do.
 
 Run in a fresh isolated context.
 
-Do not inspect application consumers, legacy call sites, or migration code before standalone implementation is complete. Do not use current demand to reinterpret or shrink the contracts.
+Do not inspect application consumers, legacy call sites, migration code, or usage guidance to shape runtime implementation. Do not use current demand to reinterpret or shrink the contracts.
 
 You may inspect existing Material foundation/shared infrastructure and the owning family runtime files needed to implement the canonical component. Do not copy legacy public API merely because it exists.
 
@@ -76,9 +73,7 @@ return-to-behavior-contract
 
 with the exact observable/material fact that invalidates the current artifact.
 
-A pure correct-use/documentation issue belongs to `material-component-guidance`, not implementation.
-
-Do not route a renderer limitation back to a Material contract. A correct contract remains correct even when m3e cannot implement it directly.
+A correct Material contract remains correct even when m3e cannot implement it directly.
 
 ## Renderer gaps
 
@@ -123,10 +118,9 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 
 ## Forbidden
 
-- Inspecting consumers or legacy call sites to shape implementation.
+- Inspecting consumers, legacy call sites, or usage guidance to shape runtime implementation.
 - Migrating consumers or removing a legacy owner still used by the application.
 - Changing canonical contracts to fit m3e or current demand.
-- Treating README usage guidance as permission to invent runtime behavior missing from the technical contracts.
 - Re-declaring public Props/Slots/Emits/value unions inside the SFC instead of consuming `contract.ts`.
 - Exposing raw m3e details outside the Material family.
 - Adding speculative adapters, compatibility layers, generic frameworks or token registries.
