@@ -29,7 +29,7 @@ Do not depend on Git history, PR metadata, branch/diff state, or external checks
 4. Compare the contract with the Vue implementation.
 5. Independently inspect exact lockfile-resolved m3e docs/examples/public artifacts for every material renderer mapping, composition, mutable state and token bridge.
 6. Verify controlled state has one source of truth and rejected intent cannot drift.
-7. Verify public token mappings reach the correct rendered parts/states and `docs/token-api.md` matches proven runtime support.
+7. Verify public token mappings reach the correct rendered parts/states and family `tokens.css` remains the sole public component-token catalogue.
 8. Verify accessibility, keyboard/pointer/focus/native behavior, fixed geometry and motion/visual requirements at faithful observable boundaries.
 9. Verify canonical stories/browser/visual fixtures use production-valid semantic content.
 10. Verify all applicable consumers use the canonical API correctly and product behavior remains with product owners.
