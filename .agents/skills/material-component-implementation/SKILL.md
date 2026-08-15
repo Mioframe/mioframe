@@ -1,176 +1,134 @@
 ---
 name: material-component-implementation
-description: 'Use after current DESIGN.md and ready ARCHITECTURE.md exist to implement the canonical family component, tokens, proof, stories, exports, and renderer integration without migrating consumers or changing architecture.'
+description: 'Use after a canonical Material family contract exists to implement the Vue/m3e adapter, prove it standalone, migrate all applicable consumers, remove legacy ownership, and run focused verification.'
 ---
 
 # Material component implementation
 
-Implement one Material family strictly from current architecture and return control to the orchestrator.
+Implement one canonical Material family from its fixed contract, then migrate the repository to that canonical API in the same worker context.
 
-This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture, consumer migration, independent review, or final workflow verification.
+## Authority
+
+Read applicable `AGENTS.md`, `src/shared/ui/material/docs/component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the family contract files.
+
+The contract files define what the component is. Exact-version `@m3e/web` documentation/public artifacts define only how the private renderer can implement it.
 
 ## Input gate
 
-Require current successful DESIGN and ready ARCHITECTURE with dependency queue `none` and implementation readiness `ready`.
+Require:
 
-Read current artifacts directly. Do not require or compare artifact revision identities.
+```text
+contract.ts
+tokens.css
+BEHAVIOR.md
+GUIDANCE.md
+SOURCES.md
+```
 
-If an input is invalid, write implementation as blocked, set the exact earlier-stage or other-family route, and return without production edits.
+If the contract is missing, contradictory, or proves incorrect, return `return-to-contract` with the exact defect. Do not redesign it while coding.
 
 ## Worker boundary
 
 Run in a fresh isolated context.
 
-Use task-relevant workspace files, applicable rules, canonical artifacts, exact renderer package artifacts, and documented commands. Do not depend on Git, PR, commit, or external-check state.
+This worker owns both canonical component implementation and subsequent consumer migration because they form one repository transformation. Do not split migration into a second worker.
 
-Do not redesign API, ownership, dependencies, token selection, renderer strategy, gap strategy, or proof ownership while coding.
+## Preflight
 
-## Mandatory preflight
+Before production/component/consumer edits, run one `implementation-preflight` covering:
 
-Before production edits, run `implementation-preflight` using current design and architecture.
+- canonical component implementation;
+- component-owned proof;
+- consumer inventory/migration;
+- legacy-owner/proof removal;
+- task-specific `TEST IMPACT`;
+- focused verifier-managed commands.
 
-Preflight resolves exact files, ordered passes, implementation-owned `TEST IMPACT`, focused verifier scopes, preserved contracts, and upstream blockers. It does not reopen architecture.
+Do not run a second migration preflight merely because standalone implementation is completed first.
 
-## Output
+## Implementation order
 
-Write exactly:
+1. Read the canonical contract without using current consumers to reinterpret it.
+2. Inspect exact lockfile-resolved `@m3e/web` docs/examples and public artifacts for every affected mapping.
+3. Implement the Vue `MD*` component and private renderer glue.
+4. Implement private token bridges without leaking m3e vocabulary.
+5. Add/update contract, browser, accessibility, geometry, token and visual proof as required.
+6. Establish standalone component correctness.
+7. Only then inventory all current/legacy consumers and obsolete owners/proof.
+8. Adapt consumers to the canonical API while preserving product-owned behavior and failure paths.
+9. Remove replaced legacy implementation, exports, proof and old staged family artifacts.
+10. Update `docs/token-api.md` for public tokens that are now implemented and proven.
+11. Run focused verifier-managed checks from preflight.
 
-```text
-src/shared/ui/material/components/<family>/IMPLEMENTATION.md
-```
+## Canonical contract rule
 
-Control fields:
+Never shrink, rename, alias, or otherwise distort the public Material contract because:
 
-```text
-Status: complete | blocked
-ARCHITECTURE.md reference: <path>
-Revision summary: <one concise line>
-Remaining blockers: none | <exact blockers>
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Architecture deviations: none | <exact deviations>
-Migration readiness: ready | blocked
-```
+- m3e uses different names;
+- a renderer feature is missing;
+- a legacy consumer used a different API;
+- preserving an old call site would be easier;
+- current Mioframe does not yet use an official option.
 
-Do not create artifact timestamps, hashes, revision counters, or other persistent freshness identities.
+When m3e cannot faithfully implement the contract, prefer documented direct support, then a small family-local correction, then a documented exact-version workaround that satisfies repository gates. If faithful support requires private DOM coupling, duplicated renderer systems, new shared infrastructure, or a public-contract compromise, return `needs-architect` instead of accumulating workaround logic.
 
-Legacy revision fields in an existing IMPLEMENTATION are ignored and removed when this stage rewrites the file.
+## Consumer migration
 
-This stage always executes fresh for the current Material invocation. Existing compliant code may require no production edit, but the worker must still compare code and proof with current architecture and run the owned focused verification.
+Migration asks how each product scenario should use the canonical component.
 
-Required headings:
+- Use only root-exported canonical Material APIs and supported public tokens.
+- Keep product state, persistence, routing, errors, operation lifecycle and business behavior with product owners.
+- Do not preserve legacy Material props as compatibility aliases by default.
+- If a legacy responsibility is not actually Material component behavior, keep/move it to the correct product/shared composition owner.
+- Remove replaced legacy ownership only after every applicable consumer has a correct destination.
+- Do not migrate unrelated Material families for cleanup.
 
-```text
-## Implemented passes
-## Public API implemented
-## Tokens and renderer mappings
-## Dependencies
-## Component-owned proof
-## Stage verification
-## Architecture deviations
-## Remaining blockers
-## Migration readiness
-```
+## Proof
 
-## Implementation rules
+Use the lowest faithful proof selected by preflight and repository testing rules.
 
-- Implement only the selected architecture surface.
-- Keep public terminology and types independent from the renderer.
-- Derive private glue from package-exported renderer types.
-- Keep renderer details inside the owning family.
-- Use only architecture-approved corrections and controlled workarounds.
-- Do not inspect private shadow DOM or recreate renderer-owned state, ripple, focus, geometry, accessibility, elevation, or motion.
-- Implement selected precedence and restoration paths.
-- Consume dependencies only through current canonical public APIs.
-- Add no compatibility alias unless architecture requires it.
-- Storybook, browser, and visual fixtures that claim a selected semantic role must use production-valid content for that role according to the architecture's exact-version renderer composition contract. A convenience placeholder is allowed only when it cannot affect the contract being proved. Placeholder text is not valid icon content for geometry or visual proof when renderer sizing/styling depends on the icon child contract.
+As applicable prove:
 
-When the only root is a raw `m3e-*` element:
+- public props/slots/emits/defaults/types and attribute boundary;
+- accepted/rejected controlled intent;
+- pointer/keyboard/focus/native event behavior;
+- accessible role/name/state and ownership;
+- fixed Material geometry with browser-level numeric assertions;
+- public CSS token overrides through actual rendered results;
+- stable renderer-owned appearance/motion through visual/browser evidence;
+- dependency composition through canonical public APIs;
+- migrated consumer scenarios and legacy removal.
 
-- set `inheritAttrs: false`;
-- forward only the approved positive allow-list;
-- do not mutate Vue `$attrs`;
-- do not forward undeclared `on*` listeners;
-- ensure adapter-owned bindings win over consumer conflicts.
+Do not treat host attributes, CSS variable presence, source inspection, a story, or a screenshot alone as proof of a different observable contract.
 
-## Token rules
+## Existing staged artifacts
 
-- Implement only tokens selected by architecture.
-- Keep one family owner and update `docs/token-api.md` atomically with declarations.
-- Preserve exact official state/part naming.
-- Implement required renderer inputs and fallbacks.
-- Do not publish unconsumed parts or mirror renderer defaults for completeness.
-- Prove computed rendered results where contextual appearance is selected.
-
-## Focused proof
-
-Complete implementation-owned `TEST IMPACT` through faithful contract, type, browser/accessibility, visual, renderer-boundary, token, dependency-composition, and risk-specific proof as applicable.
-
-Before declaring proof complete, inspect every story/browser/visual fixture used by a selected contract and confirm that its semantic content exercises the same renderer composition path a real consumer is expected to use. Do not close a geometry or appearance defect with a special fixture while canonical visual fixtures still use content that bypasses or violates the selected composition contract.
-
-Run verifier-managed focused implementation checks only. Do not run final workflow verification.
-
-## Terminal-state rules
-
-### Success
-
-Return `Status: complete` only when every implementation pass and focused check is complete, deviations and blockers are `none`, route is `none/none`, and migration readiness is `ready`.
-
-### Earlier-stage or cross-family correction
-
-Return `Status: blocked` with an exact route only when correction belongs to `self/design`, `self/architecture`, or another family/stage.
-
-### Current-stage defect
-
-A component-owned implementation, token, mapping, export, story, test, or focused-proof defect must be corrected in this worker.
-
-If it remains impossible after available implementation mechanisms are exhausted, return:
-
-```text
-Status: blocked
-Remaining blockers: <exact blocker>
-Required return family: none
-Required return stage: none
-Migration readiness: blocked
-```
-
-Do not return `self/implementation` and do not return `partial`.
-
-Do not migrate product consumers in this stage.
+When this family completes the new workflow, remove its obsolete `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files. Do not remove staged artifacts from unrelated families.
 
 ## Report
 
 ```text
 MATERIAL IMPLEMENTATION RESULT
-Input component:
-Canonical family:
-IMPLEMENTATION.md path:
-Preflight result:
-Implemented passes:
-Public API implemented:
-Tokens and mappings implemented:
-Dependencies consumed:
-Focused proof completed:
-Implementation-stage verification:
-Architecture deviations: none | <details>
-Remaining blockers: none | <details>
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Migration readiness: ready | blocked
-Status: complete | blocked
+family: <canonical-family>
+standalone component: complete | blocked
+consumers inventoried: <summary>
+consumers migrated: <summary>
+legacy ownership removed: yes | no | not-applicable
+focused verification: <commands/results>
+contract defect: none | <exact defect>
+architecture escalation: none | <exact decision>
+remaining blocker: none | <exact blocker>
+result: complete | blocked | return-to-contract | needs-architect
 ```
 
 ## Forbidden
 
-- Returning `partial`.
-- Returning `self/implementation`.
-- Leaving a current-stage fixable defect unresolved.
-- Changing architecture while coding.
-- Migrating product consumers.
-- Expanding API, tokens, abstractions, or renderer support beyond architecture.
-- Using a special proof-only composition to claim a selected contract while canonical production-facing stories or fixtures still violate that composition contract.
-- Updating visual baselines without inspection.
-- Adding timestamp/hash/revision bookkeeping as workflow state.
-- Running migration, review, or final workflow verification.
-- Recording the pending final command as a blocker or risk.
-- Depending on Git or PR state.
+- Changing the canonical contract to fit m3e or legacy consumers.
+- Starting consumer migration before standalone contract/behavior is established.
+- Exposing m3e tags, events, types, attributes, classes, CSS variables, or private DOM.
+- Recreating renderer-owned interaction/accessibility/geometry/motion systems without an explicit architecture decision.
+- Adding speculative abstractions, compatibility layers, generic adapter frameworks, or token registries.
+- Leaving replaced legacy logic merely to reduce migration work.
+- Creating IMPLEMENTATION.md or MIGRATION.md workflow logs.
+- Running broad local verification solely to duplicate exact-head PR CI.
+- Depending on Git/PR/check state for implementation correctness.
