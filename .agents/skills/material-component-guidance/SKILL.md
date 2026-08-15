@@ -27,6 +27,8 @@ Read only applicable `AGENTS.md`, `src/shared/ui/material/docs/component-contrac
 
 Do not inspect m3e implementation/docs, legacy component implementation, product consumers, migration code, or another Material worker's reasoning.
 
+An existing family `README.md` may be a legacy staged-workflow index. It is not Material authority. When processing that family, replace the legacy index content with the canonical Material guidance rather than preserving stage links/status prose.
+
 ## Output
 
 Write concise developer-facing Material guidance with this shape when applicable:
@@ -58,7 +60,7 @@ Do not duplicate:
 - normative interaction, keyboard, geometry or motion rules from `BEHAVIOR.md`;
 - m3e integration details;
 - product-specific migration instructions;
-- repository workflow history.
+- repository workflow history or legacy stage indexes.
 
 When usage guidance references a variant, configuration, content role or related Material component, preserve official Material terminology. Do not invent Mioframe convenience concepts.
 
@@ -69,6 +71,7 @@ MATERIAL GUIDANCE RESULT
 family: <family>
 artifact: <README.md path>
 Material 3 MCP coverage: complete | blocked
+legacy README index replaced: yes | no | not-applicable
 unresolved ambiguity: none | <exact ambiguity>
 result: complete | blocked
 ```
@@ -77,6 +80,7 @@ result: complete | blocked
 
 - Reading m3e or consumers to decide correct Material usage.
 - Turning current product usage into canonical guidance.
+- Treating an existing legacy README as Material source evidence.
 - Editing `contract.ts`, `tokens.css`, `BEHAVIOR.md`, runtime code, tests, consumers, or migration.
 - Adding Vue/m3e implementation examples that are not owned by this guidance artifact.
 - Guessing missing Material guidance.
