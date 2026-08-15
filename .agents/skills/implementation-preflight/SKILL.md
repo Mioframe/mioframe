@@ -19,7 +19,7 @@ Do not begin implementation when:
 - the applicable handoff is missing or `not ready`;
 - a deterministic workflow is unresolved or `blocked`;
 - required behavior, ownership, source of truth, target state, public contract, dependency, agent-access boundary, or test ownership is unresolved;
-- an official Material component lacks a current complete family `DESIGN.md` or ready family `ARCHITECTURE.md`;
+- an official Material family lacks a complete canonical contract required by `src/shared/ui/material/docs/component-contract.md`;
 - proposed passes expand scope beyond the accepted contract;
 - task-specific `TEST IMPACT` is incomplete;
 - the simplest viable implementation has not been compared with the proposed design.
@@ -46,13 +46,16 @@ Record compactly:
 For Material component implementation, the authoring source must name:
 
 ```text
-components/<family>/DESIGN.md
-components/<family>/ARCHITECTURE.md
+components/<family>/contract.ts
+components/<family>/tokens.css
+components/<family>/BEHAVIOR.md
+components/<family>/GUIDANCE.md
+components/<family>/SOURCES.md
 ```
 
-`DESIGN.md` proves the complete official contract. `ARCHITECTURE.md` proves the accepted demand-scoped Mioframe/Vue/renderer implementation plan. Neither substitutes for the other.
+These files define the canonical renderer-independent Material contract. The preflight then resolves implementation/m3e mapping, standalone proof, consumer migration, legacy removal, and focused verification without redesigning that contract.
 
-The implementation preflight must not include consumer migration passes. Those belong to the later migration worker after `IMPLEMENTATION.md` is complete.
+Material component implementation uses one preflight for both standalone component work and the subsequent consumer migration. Do not create a second migration preflight solely because migration happens after standalone proof inside the same worker.
 
 Do not repeat workspace-wide policy or the complete upstream contract.
 
@@ -90,7 +93,7 @@ Do not list proof merely because a lane exists. Every selected proof maps to a c
 
 ## Consumer migration
 
-When a public or shared owner changes, migration preflight records:
+When a public or shared owner changes, the same preflight records:
 
 - affected consumer inventory;
 - current and canonical owner;
@@ -100,15 +103,16 @@ When a public or shared owner changes, migration preflight records:
 - obsolete target-owned implementation and exports to remove;
 - unrelated legacy components or shared modules that must remain unchanged.
 
-This record is created in the migration stage, not component implementation.
+For the Material workflow, consumer edits still begin only after the canonical standalone component is proven sufficiently to establish the component contract independently from application demand.
 
 ## Workflow routing
 
 Use the domain workflow as the execution contract:
 
-- official Material component: `material-component` autonomously orchestrates design, architecture, implementation, migration, and review through fresh workers;
-- Material implementation worker: `material-component-implementation`, requiring current `DESIGN.md` and ready `ARCHITECTURE.md`;
-- Material migration worker: `material-component-migration`, requiring complete `IMPLEMENTATION.md`;
+- official Material component: `material-component` orchestrates canonical contract, implementation plus migration, and independent review through fresh workers;
+- Material contract worker: `material-component-contract`;
+- Material implementation/migration worker: `material-component-implementation`;
+- Material independent review: `material-component-review`;
 - project-specific or generic shared UI outside official Material targets: `shared-ui-implementation`;
 - storage, service, worker, or provider: applicable scoped rules and `crdt-storage`;
 - diagnostics: `diagnostic-events`;
@@ -124,7 +128,7 @@ The preflight records only task-specific owners, risks, pass order, proof, and o
 - Keep behavior-preserving cleanup separate from functional change when practical.
 - Do not start the next risky pass before the previous one has focused verification.
 - Split the task when one independently valid prerequisite has materially wider blast radius than the selected target.
-- Do not recombine Material research, architecture, implementation, migration, and review into one preflight or worker task.
+- Do not recombine Material contract extraction, implementation/migration, and independent review into one worker context.
 
 ## Output
 
