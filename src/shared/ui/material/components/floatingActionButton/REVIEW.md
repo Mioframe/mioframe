@@ -19,7 +19,7 @@ This review distinguishes full Material guidance from the demand-scoped library 
 
 ## Official design compliance
 
-`DESIGN.md` is current under the repository workflow and records the verified Material snapshot used by this family. It establishes:
+`DESIGN.md` is current under the repository workflow and records the official Material contract normalized by the design stage from its Material3 MCP source. It establishes:
 
 - Medium: 80dp × 80dp with a 28dp icon and large-increased/20dp shape;
 - Medium is the most recommended size for general use, not an explicitly documented default size;
@@ -30,7 +30,7 @@ This review distinguishes full Material guidance from the demand-scoped library 
 
 The geometry, color, label, enabled-only availability, and icon-only anatomy are represented correctly. The filled-icon guidance is not: the canonical `AddIcon` is stroke-only.
 
-The live Material FAB routes currently require JavaScript and could not be independently text-extracted during this architect audit. Therefore this verdict is grounded in the repository's recorded official snapshot, whose last successful content is 2026-07-20 and whose 2026-08-14 refresh attempt is explicitly recorded as failed; no claim is made that we independently re-read newer live FAB prose.
+For this architect audit, the independently accessible `Vyachean/m3-docs-cache` snapshot was used only as corroborating evidence, not as the coding agent's source. Its FAB overview/guidelines/specs/accessibility pages were captured on 2026-08-14 and agree with the relevant normalized contract above: Medium is the most recommended size, the FAB uses icon-only anatomy, the icon guidance prefers filled over outlined artwork, unavailable FAB actions should be omitted rather than disabled, and Enter/Space activation plus an action-describing accessibility label are required. Differences in source capture dates are not findings by themselves; only a material normalized-contract difference would require a design correction.
 
 ## Architecture compliance
 
