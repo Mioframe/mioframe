@@ -1,16 +1,16 @@
 # Mioframe Material migration roadmap
 
-This file owns current repository-local Material milestone status, family-stage status, repository-visible technical blockers, and the next Material pipeline action. Every recorded state must be derivable from current repository contents. Durable workflow rules live in the canonical Material docs and skills.
+This file owns current repository-local Material milestone status, repository-visible technical blockers, and the next Material pipeline action. Every recorded state must be derivable from current repository contents. Durable workflow rules live in the canonical Material docs and skills.
 
 ## Current state
 
-Last updated: 2026-08-14
+Last updated: 2026-08-15
 
 Current milestone: `M3 — sequential component migration`
 
 Status: `in-progress`
 
-Completed canonical families in the current repository tree:
+Implemented canonical runtime families in the current repository tree:
 
 - Loading Indicator;
 - Button;
@@ -18,9 +18,11 @@ Completed canonical families in the current repository tree:
 - Checkbox;
 - Floating Action Button.
 
-The official Material Checkbox cache contains a keyboard table copied from Chips terminology. `DESIGN.md` records it as a source conflict, so the `Space or Enter` row is not treated as reliable Checkbox-specific evidence and no Enter workaround is added.
+These existing families were produced by the previous staged workflow and may still contain legacy DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW artifacts. The contract-first workflow does not bulk-rewrite them; each family is converted to `contract.ts`, `tokens.css`, `BEHAVIOR.md`, `GUIDANCE.md`, and `SOURCES.md` when that family is next materially processed.
 
-The Floating Action Button family selects the standalone icon-only FAB. The existing `RepoExplorerPane.vue` usage remains `MDExtendedFab`, which belongs to the separate Extended FAB family and remains legacy Material ownership under `src/shared/ui/Button`.
+The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is converted to the contract-first format, this conflict must be preserved in `SOURCES.md`/`BEHAVIOR.md` rather than silently reinterpreted.
+
+The Floating Action Button runtime family selects the standalone icon-only FAB. The existing `RepoExplorerPane.vue` usage remains `MDExtendedFab`, which belongs to Extended FAB and remains legacy Material ownership under `src/shared/ui/Button`.
 
 No repository-local blocker prevents selecting the next M3 family.
 
@@ -28,7 +30,7 @@ No repository-local blocker prevents selecting the next M3 family.
 
 | ID  | Milestone                           | Status        |
 | --- | ----------------------------------- | ------------- |
-| M0  | workflow architecture and rules     | `complete`    |
+| M0  | contract-first workflow and rules   | `complete`    |
 | M1a | Loading Indicator dependency family | `complete`    |
 | M1  | Button action family                | `complete`    |
 | M2  | Switch stateful pilot               | `complete`    |
@@ -40,4 +42,4 @@ No repository-local blocker prevents selecting the next M3 family.
 
 ## Next Material pipeline action
 
-Run `material-component Extended FAB`.
+Run `material-component Extended FAB` using the contract-first workflow.
