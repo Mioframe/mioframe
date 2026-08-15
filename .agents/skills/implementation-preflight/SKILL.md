@@ -19,7 +19,7 @@ Do not begin implementation when:
 - the applicable handoff is missing or `not ready`;
 - a deterministic workflow is unresolved or `blocked`;
 - required behavior, ownership, source of truth, target state, public contract, dependency, agent-access boundary, or test ownership is unresolved;
-- an official Material family lacks a complete canonical contract required by `src/shared/ui/material/docs/component-contract.md`;
+- an official Material family lacks all three complete canonical contracts required by `src/shared/ui/material/docs/component-contract.md`;
 - proposed passes expand scope beyond the accepted contract;
 - task-specific `TEST IMPACT` is incomplete;
 - the simplest viable implementation has not been compared with the proposed design.
@@ -43,19 +43,17 @@ Record compactly:
 - `TEST IMPACT`;
 - final verification.
 
-For Material component implementation, the authoring source must name:
+For standalone Material component implementation, the authoring source must name exactly:
 
 ```text
 components/<family>/contract.ts
 components/<family>/tokens.css
 components/<family>/BEHAVIOR.md
-components/<family>/GUIDANCE.md
-components/<family>/SOURCES.md
 ```
 
-These files define the canonical renderer-independent Material contract. The preflight then resolves implementation/m3e mapping, standalone proof, consumer migration, legacy removal, and focused verification without redesigning that contract.
+These are fixed renderer-independent inputs. The standalone implementation preflight resolves only Vue/m3e mapping, component-owned proof, exports, and focused verification. It must not include application consumer migration.
 
-Material component implementation uses one preflight for both standalone component work and the subsequent consumer migration. Do not create a second migration preflight solely because migration happens after standalone proof inside the same worker.
+For the later Material migration worker, run a separate focused preflight because it has a different owner/context. Its authoring source is the completed canonical component plus the three fixed contracts, and it resolves only consumer inventory, product-behavior preservation, legacy removal, migration proof, and focused verification.
 
 Do not repeat workspace-wide policy or the complete upstream contract.
 
@@ -93,7 +91,7 @@ Do not list proof merely because a lane exists. Every selected proof maps to a c
 
 ## Consumer migration
 
-When a public or shared owner changes, the same preflight records:
+When a public or shared owner changes, migration preflight records:
 
 - affected consumer inventory;
 - current and canonical owner;
@@ -103,15 +101,18 @@ When a public or shared owner changes, the same preflight records:
 - obsolete target-owned implementation and exports to remove;
 - unrelated legacy components or shared modules that must remain unchanged.
 
-For the Material workflow, consumer edits still begin only after the canonical standalone component is proven sufficiently to establish the component contract independently from application demand.
+For Material, this preflight belongs to `material-component-migration` and runs only after standalone component implementation/proof is complete. Consumer evidence must not feed back into canonical API/token/behavior selection.
 
 ## Workflow routing
 
 Use the domain workflow as the execution contract:
 
-- official Material component: `material-component` orchestrates canonical contract, implementation plus migration, and independent review through fresh workers;
-- Material contract worker: `material-component-contract`;
-- Material implementation/migration worker: `material-component-implementation`;
+- official Material component: `material-component` orchestrates three contracts, standalone implementation, separate migration, and independent review;
+- Material API contract: `material-component-api-contract`;
+- Material token contract: `material-component-token-contract`;
+- Material behavior contract: `material-component-behavior-contract`;
+- Material standalone implementation: `material-component-implementation`;
+- Material consumer migration: `material-component-migration`;
 - Material independent review: `material-component-review`;
 - project-specific or generic shared UI outside official Material targets: `shared-ui-implementation`;
 - storage, service, worker, or provider: applicable scoped rules and `crdt-storage`;
@@ -128,7 +129,7 @@ The preflight records only task-specific owners, risks, pass order, proof, and o
 - Keep behavior-preserving cleanup separate from functional change when practical.
 - Do not start the next risky pass before the previous one has focused verification.
 - Split the task when one independently valid prerequisite has materially wider blast radius than the selected target.
-- Do not recombine Material contract extraction, implementation/migration, and independent review into one worker context.
+- Do not recombine Material contract extraction, standalone implementation, migration, and independent review into one worker context.
 
 ## Output
 
