@@ -36,7 +36,7 @@ Before implementation, the family owns:
 ```text
 contract.ts   — props, slots, emits, public types/defaults/combinations
 
-tokens.css    — public official Material component-token contract
+tokens.css    — executable public official Material component-token contract
 
 BEHAVIOR.md   — anatomy, states, interaction, accessibility, geometry, motion
 
@@ -81,8 +81,7 @@ Owns the complete repository transformation:
 6. inventory every legacy/current consumer;
 7. migrate consumers to the canonical API without changing the contract for convenience;
 8. remove replaced legacy ownership and obsolete staged family artifacts;
-9. update the public token catalogue after runtime token proof;
-10. run the smallest faithful verifier-managed checks for the changed contracts.
+9. run the smallest faithful verifier-managed checks for the changed contracts.
 
 Implementation may not redesign the Material contract to match m3e or legacy code.
 
