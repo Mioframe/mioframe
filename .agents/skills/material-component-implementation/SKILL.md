@@ -1,29 +1,32 @@
 ---
 name: material-component-implementation
-description: 'Use after the API, token and behavior contracts are complete to implement and prove one standalone canonical Vue Material component through the exact installed m3e renderer, without inspecting or migrating application consumers.'
+description: 'Use after API, token, behavior, and guidance definition workers complete to implement and prove one standalone canonical Vue Material component through the exact installed m3e renderer, without inspecting or migrating application consumers.'
 ---
 
 # Material component implementation
 
-Implement one standalone canonical Material family from three fixed contracts.
+Implement one standalone canonical Material family from three fixed technical contracts after the complete Material family definition is ready.
 
 ## Input gate
 
-Require successful contract artifacts:
+Require successful definition artifacts:
 
 ```text
 components/<family>/contract.ts
 components/<family>/tokens.css
 components/<family>/BEHAVIOR.md
+components/<family>/README.md
 ```
 
-Do not start if any contract worker reported unresolved Material ambiguity.
+Do not start if any definition worker reported unresolved Material ambiguity.
+
+`README.md` is a prerequisite proving the family definition is complete, but it is developer guidance rather than a runtime contract. Do not use usage prose to invent runtime behavior absent from the three technical contracts.
 
 ## Authority
 
-Read applicable `AGENTS.md`, `component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the three family contract artifacts.
+Read applicable `AGENTS.md`, `component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the three technical family contract artifacts.
 
-The contracts define what the component must expose and observably do. Exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts define only how the private renderer can implement those contracts.
+The technical contracts define what the component must expose and observably do. Exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts define only how the private renderer can implement those contracts.
 
 ## Isolation
 
@@ -47,7 +50,7 @@ Do not include consumer migration or legacy-call-site adaptation in this preflig
 
 ## Implementation order
 
-1. Read `contract.ts`, `tokens.css`, and `BEHAVIOR.md` as fixed inputs.
+1. Read `contract.ts`, `tokens.css`, and `BEHAVIOR.md` as fixed runtime inputs.
 2. Inspect exact lockfile-resolved m3e docs/examples/public artifacts for each affected mapping.
 3. Implement the Vue `MD*` component using the exported Props/Slots/Emits/public value types from `contract.ts` directly through typed Vue APIs.
 4. Keep m3e tags, attributes, events, types, CSS variables and workarounds private to the Material family.
@@ -70,6 +73,8 @@ return-to-behavior-contract
 ```
 
 with the exact observable/material fact that invalidates the current artifact.
+
+A pure correct-use/documentation issue belongs to `material-component-guidance`, not implementation.
 
 Do not route a renderer limitation back to a Material contract. A correct contract remains correct even when m3e cannot implement it directly.
 
@@ -119,6 +124,7 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Inspecting consumers or legacy call sites to shape implementation.
 - Migrating consumers or removing a legacy owner still used by the application.
 - Changing canonical contracts to fit m3e or current demand.
+- Treating README usage guidance as permission to invent runtime behavior missing from the technical contracts.
 - Re-declaring public Props/Slots/Emits/value unions inside the SFC instead of consuming `contract.ts`.
 - Exposing raw m3e details outside the Material family.
 - Adding speculative adapters, compatibility layers, generic frameworks or token registries.
