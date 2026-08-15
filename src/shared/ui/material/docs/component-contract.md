@@ -1,8 +1,8 @@
-# Material family contract
+# Material family definition
 
 ## Decision
 
-A canonical Mioframe Material family is fixed by three independent contracts before implementation begins:
+A canonical Mioframe Material family is defined before implementation by three independent technical contracts plus one independent developer-guidance artifact:
 
 ```text
 contract.ts
@@ -13,15 +13,18 @@ tokens.css
 
 BEHAVIOR.md
   → normative observable Material behavior
+
+README.md
+  → component description and correct Material usage
 ```
 
-These are the only mandatory durable contract artifacts for a family.
+The three technical contracts define what the component must expose and observably do. `README.md` explains what the component is and how developers should apply it correctly; it is not a fourth runtime contract.
 
-Official Material facts for all three contracts come from the repository-configured `material3` MCP server in `.mcp.json`. Do not substitute m3e documentation, legacy Mioframe code, current consumers, web search, or remembered Material behavior for this source.
+Official Material facts for all four artifacts come from the repository-configured `material3` MCP server in `.mcp.json`. Do not substitute m3e documentation, legacy Mioframe code, current consumers, web search, or remembered Material behavior/guidance for this source.
 
-Each contract is produced by a separate fresh worker with one narrow responsibility. Workers do not share implementation context and do not inspect m3e or application consumers.
+Each artifact is produced by a separate fresh worker with one narrow responsibility. Workers do not share implementation context and do not inspect m3e or application consumers.
 
-Implementation may start only after all three workers complete successfully with no unresolved Material ambiguity.
+Implementation may start only after all four workers complete successfully with no unresolved Material ambiguity.
 
 ## `contract.ts` — public API contract
 
@@ -71,43 +74,70 @@ Keep the document focused on facts required to implement and verify the componen
 
 Record fixed geometry, spacing, touch targets, state transitions, accessible roles/states, content ownership and motion only when Material 3 MCP defines them for the component.
 
-Do not include Vue implementation strategy, m3e lifecycle details, renderer workarounds, tests, product behavior, migration instructions, or usage prose that is not part of normative component behavior.
+Do not include Vue implementation strategy, m3e lifecycle details, renderer workarounds, tests, product behavior, migration instructions, or general usage guidance.
+
+## `README.md` — developer usage guidance
+
+`README.md` is the canonical developer-facing description of the Material component and its correct application.
+
+It may contain, when Material 3 MCP provides them:
+
+```text
+# <Official Material component name>
+<short canonical description>
+
+## Purpose
+## When to use
+## When not to use
+## Choosing variants and configurations
+## Content guidance
+## Consumer accessibility responsibilities
+## Related components and choosing alternatives
+## Adaptive or platform guidance
+## Unresolved Material guidance
+```
+
+The README owns semantic application guidance, not implementation mechanics. It must not duplicate prop/event/slot tables, token catalogues, normative interaction/geometry/motion contracts, m3e details, product-specific migration instructions, or workflow history.
+
+Migration uses this README to decide how current product scenarios should apply the finished canonical component. Product demand does not feed back into the README.
 
 ## Isolation
 
-The three contract workers may run in parallel when isolated workers are available because they own separate artifacts.
+The four definition workers may run in parallel when isolated workers are available because they own separate artifacts.
 
 Each worker may read only:
 
-- applicable `AGENTS.md` and its own contract skill;
+- applicable `AGENTS.md` and its own skill;
 - this document;
 - the `material3` MCP documentation needed for its single artifact;
 - the minimum repository naming/foundation convention needed to serialize that artifact correctly.
 
-Contract workers must not inspect:
+Definition workers must not inspect:
 
 - `@m3e/web` documentation or implementation;
 - legacy Material component implementation;
 - application consumers or current call-site demand;
-- another contract worker's narrative reasoning.
+- another definition worker's narrative reasoning.
 
-Existing contract artifacts may be read only when refreshing the same owned artifact.
+Existing canonical artifacts may be read only when refreshing the same owned artifact.
 
-## Contract-ready gate
+## Definition-ready gate
 
-The orchestrator performs a mechanical gate only. The family is contract-ready when:
+The orchestrator performs a mechanical gate only. The family is definition-ready when:
 
-- `contract.ts` worker reports complete;
-- `tokens.css` worker reports complete;
-- `BEHAVIOR.md` worker reports complete;
+- API contract worker reports complete;
+- token contract worker reports complete;
+- behavior contract worker reports complete;
+- guidance worker reports complete;
+- `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and `README.md` exist at the canonical family owner;
 - none reports unresolved Material ambiguity or a blocker.
 
-The orchestrator does not synthesize or redesign the three contracts.
+The orchestrator does not synthesize or redesign these artifacts.
 
-If implementation later proves one contract fact wrong or incomplete, route the exact finding back to the worker that owns that artifact. Do not repair the contract opportunistically during implementation.
+If implementation or migration later proves one Material fact wrong or incomplete, route the exact finding back to the worker that owns that artifact. Do not repair it opportunistically in another stage.
 
 ## Legacy staged artifacts
 
-Existing family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files are legacy workflow evidence, not current contract authority.
+Existing family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files are legacy workflow evidence, not current authority.
 
-Do not bulk-convert untouched families. When a family completes the current workflow, the three canonical contract artifacts replace old staged contract records for that family.
+Do not bulk-convert untouched families. When a family completes the current workflow, `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and `README.md` replace old staged family documentation.
