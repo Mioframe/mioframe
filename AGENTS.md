@@ -22,7 +22,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 ## Architecture and implementation workflow
 
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, workflow, or architecture changes, use `architect-handoff` unless an applicable deterministic skill resolves every required decision from authoritative sources.
-- Use `implementation-preflight` before non-trivial code edits. For official Material families, `contract.ts`, `tokens.css`, and `BEHAVIOR.md` are created first by three separate deterministic contract workers from the `material3` MCP; run a standalone implementation preflight only after all three are complete, then run a separate focused migration preflight in the later migration worker.
+- Use `implementation-preflight` before non-trivial code edits. For official Material families, `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and developer-facing `README.md` are created first by four separate deterministic workers from the `material3` MCP. The README owns correct-use guidance, not runtime API. Run a standalone implementation preflight only after all four definition workers complete, then run a separate focused migration preflight in the later migration worker.
 - Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight is unresolved, or while task-specific `TEST IMPACT` is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every abstraction, state, layer, compatibility path, recovery mechanism, optimization, registry, mapping, or helper must map to a current requirement or verified invariant.
 - Compare the proposal with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
@@ -63,6 +63,7 @@ Use the applicable skill instead of duplicating its rules:
 - `material-component-api-contract`;
 - `material-component-token-contract`;
 - `material-component-behavior-contract`;
+- `material-component-guidance`;
 - `material-component-implementation`;
 - `material-component-migration`;
 - `material-component-review`;
@@ -76,7 +77,7 @@ Use the applicable skill instead of duplicating its rules:
 - `diagnostic-events`;
 - `verification`.
 
-For the Material workflow, the thin orchestrator only launches and routes focused workers. API contract, token contract, behavior contract, standalone implementation, migration, and independent review each run in fresh worker contexts. The three contract workers may run in parallel and use `material3` MCP as the sole official Material documentation source. Review must be independent from every authoring worker. If isolated workers are unavailable, report the Material workflow as blocked rather than simulating isolation.
+For the Material workflow, the thin orchestrator only launches and routes focused workers. API contract, token contract, behavior contract, usage guidance, standalone implementation, migration, and independent review each run in fresh worker contexts. The four definition workers may run in parallel and use `material3` MCP as the sole official Material documentation source. Review must be independent from every authoring worker. If isolated workers are unavailable, report the Material workflow as blocked rather than simulating isolation.
 
 ## Implementation quality
 
