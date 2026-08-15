@@ -10,7 +10,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Verify uncertain workspace behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy.
 - `docs/testing/storybook.md` is the canonical Storybook ownership, authoring, and target-placement policy; `docs/testing/migration-plan.md` records which target locations and verifier mechanisms are currently executable.
-- `src/shared/ui/material/docs/component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
+- `src/shared/ui/material/docs/component-workflow.md`, `component-contract.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
 ## Task scope
@@ -22,7 +22,8 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 ## Architecture and implementation workflow
 
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, workflow, or architecture changes, use `architect-handoff` unless an applicable deterministic skill resolves every required decision from authoritative sources.
-- Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight is unresolved, or while task-specific `TEST IMPACT` is unresolved.
+- Use `implementation-preflight` before non-trivial code edits. For `material-component-contract`, contract-only `contract.ts`/token/document extraction is the deterministic blueprint step; run one preflight in the following Material implementation worker before component, proof, consumer, or legacy-owner edits.
+- Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight is unresolved, or while task-specific `TEST IMPACT` is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every abstraction, state, layer, compatibility path, recovery mechanism, optimization, registry, mapping, or helper must map to a current requirement or verified invariant.
 - Compare the proposal with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
 - Treat the ready handoff or workspace-backed deterministic blueprint as the implementation contract. If new facts invalidate it, stop and update it explicitly.
@@ -59,10 +60,8 @@ Use the applicable skill instead of duplicating its rules:
 - `vue-component-implementation`;
 - `shared-ui-implementation`;
 - `material-component`;
-- `material-component-design`;
-- `material-component-architecture`;
+- `material-component-contract`;
 - `material-component-implementation`;
-- `material-component-migration`;
 - `material-component-review`;
 - `test-first`;
 - `unit-testing`;
@@ -74,7 +73,7 @@ Use the applicable skill instead of duplicating its rules:
 - `diagnostic-events`;
 - `verification`.
 
-For the Material workflow, the thin orchestrator selects, launches, validates, and routes. Each design, architecture, implementation, migration, and review stage runs in a fresh worker context and consumes only workspace files, applicable rules, the component name, and canonical upstream artifacts. The review worker must be independent from workers that authored architecture, implementation, or migration. If isolated workers are unavailable, report the Material workflow as blocked rather than simulating isolation.
+For the Material workflow, the thin orchestrator selects, launches, validates, and routes. Contract, implementation plus migration, and independent review run in fresh worker contexts. The review worker must be independent from workers that authored the contract or implementation. If isolated workers are unavailable, report the Material workflow as blocked rather than simulating isolation.
 
 ## Implementation quality
 
