@@ -43,7 +43,7 @@ GUIDANCE.md
 SOURCES.md
 ```
 
-Runtime code/tests are implementation truth. `docs/token-api.md` is the supported runtime token index. `docs/m3e-defects.md` owns stable renderer defect records. `docs/roadmap.md` alone owns mutable program status/next action.
+Runtime code/tests are implementation truth. Family/foundation CSS owners are the executable token catalogues. `docs/m3e-defects.md` owns stable renderer defect records. `docs/roadmap.md` alone owns mutable program status/next action.
 
 Old family DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW files are legacy evidence only and are removed when that family completes the current workflow.
 
@@ -70,10 +70,10 @@ Inside an owning family:
 ## Tokens
 
 - foundation owns supported `--md-ref-*` and `--md-sys-*` roles and theme assignments;
-- each family `tokens.css` owns its official public `--md-comp-*` contract;
+- each family `tokens.css` owns and catalogues its official public `--md-comp-*` contract;
 - renderer `--m3e-*` and `--md-private-*` stay private;
 - `--app-*` stays outside Material;
-- no token registry/DSL/TypeScript mirror/compatibility alias layer.
+- no second token catalogue, registry, DSL, TypeScript mirror, or compatibility alias layer.
 
 Public token mappings are accepted only when the required rendered result is proven.
 
