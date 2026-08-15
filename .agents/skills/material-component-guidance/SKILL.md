@@ -64,6 +64,16 @@ Do not duplicate:
 
 When usage guidance references a variant, configuration, content role or related Material component, preserve official Material terminology. Do not invent Mioframe convenience concepts.
 
+## Completion check
+
+Before returning `complete`:
+
+1. Query Material 3 MCP using the official family/component name and overview/guidelines/usage/accessibility-responsibility scope.
+2. Inspect every applicable MCP route/result surfaced for purpose, when-to-use/not-use guidance, variants/configurations, content guidance, consumer accessibility responsibilities, related-component distinctions, and adaptive/platform guidance when present.
+3. Re-read `README.md` against those sources and verify no documented guidance in this worker's scope was omitted, guessed, or replaced by Mioframe/legacy convenience.
+4. Verify the README does not duplicate the technical API, token, or normative behavior contracts.
+5. If complete source coverage cannot be established, report `blocked`; do not return `complete`.
+
 ## Report
 
 ```text
