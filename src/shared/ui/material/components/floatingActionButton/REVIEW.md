@@ -49,8 +49,8 @@ One implementation-owned diagnostic wording defect remains. The actual DEV check
 
 ```ts
 children.length !== 1 ||
-!(icon instanceof SVGSVGElement) ||
-icon.namespaceURI !== 'http://www.w3.org/2000/svg'
+  !(icon instanceof SVGSVGElement) ||
+  icon.namespaceURI !== 'http://www.w3.org/2000/svg';
 ```
 
 but its warning still says:
