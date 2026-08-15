@@ -46,9 +46,7 @@ When official guidance is ambiguous enough that one public API cannot be derived
 - Do not expose `--m3e-*`, `--md-private-*`, renderer defaults, or application `--app-*` tokens.
 - Do not create a parallel TypeScript token enum, token registry, DSL, JSON catalogue, or compatibility alias layer.
 
-`tokens.css` defines the public contract. Private m3e bridges belong to the component implementation or an owner-local private stylesheet, not to the public token catalogue.
-
-After implementation proves a public token works at the rendered boundary, update `docs/token-api.md` to match the executable supported API.
+`tokens.css` is both the executable public token contract and its canonical catalogue. Private m3e bridges belong to the component implementation or an owner-local private stylesheet, not to a second public token registry.
 
 ## `BEHAVIOR.md` — normative observable behavior
 
