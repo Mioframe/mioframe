@@ -21,7 +21,7 @@ The operator invokes:
 material-component <name>
 ```
 
-once. The orchestrator launches four narrow Material-definition workers: API contract, token contract, behavior contract, and developer usage guidance. It then launches a standalone implementation worker, a separate migration worker, and a fresh independent reviewer. Non-deterministic architecture is escalated only when required.
+once. The orchestrator launches narrow workers for API contract, token contract, behavior contract, and developer usage guidance. The three technical contracts gate standalone implementation; guidance is independent and must be complete before the later migration worker. Migration and fresh independent review remain separate contexts. Non-deterministic architecture is escalated only when required.
 
 The sole official Material documentation source for definition extraction and independent definition verification is the repository-configured `material3` MCP server in `.mcp.json`.
 
