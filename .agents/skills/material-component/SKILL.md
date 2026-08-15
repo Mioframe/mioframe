@@ -5,9 +5,9 @@ description: 'Use with one Material component name to orchestrate isolated desig
 
 # Material component
 
-Accept exactly one operator input: the Material component name.
+Accept one Material component name. The operator may additionally provide concrete visual, motion, accessibility, interaction, or geometry observations about that component in the current invocation.
 
-Do not require an implementation brief, mode, files, dependency list, verification command, or repeated operator invocation.
+Do not require an implementation brief, mode, files, dependency list, verification command, or repeated operator invocation. Treat exact operator observations as external evidence to preserve, not as architecture conclusions to reinterpret.
 
 ## Authority
 
@@ -30,10 +30,11 @@ The orchestrator may only:
 - process explicit dependency queues and correction routes;
 - maintain an invocation-local dependency path and route stack;
 - retain a compact execution ledger;
+- retain exact operator observations supplied for the current family until review explicitly resolves or routes them;
 - stop on a genuine family blocker or malformed worker result;
 - hand a successfully reviewed family back to the architect as ready for PR/CI.
 
-It must not evaluate official design, invent architecture, inspect code for semantic drift, discover consumers, infer dependencies, review proof, classify CI ownership, or run a broad local verification merely to duplicate PR CI.
+It must not evaluate official design, invent architecture, inspect code for semantic drift, discover consumers, infer dependencies, review proof, classify CI ownership, reinterpret operator observations into technical conclusions, or run a broad local verification merely to duplicate PR CI.
 
 ## Fresh-stage model
 
@@ -55,7 +56,9 @@ Legacy revision/timestamp fields in existing artifacts are ignored and removed b
 
 Each stage runs in a fresh isolated context.
 
-A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths, active dependency path, and exact dependency/route facts.
+A handoff contains only the resolved family, selected stage skill, applicable rules, task-relevant workspace files, canonical artifact paths, active dependency path, exact dependency/route facts, and exact operator observations supplied for that family in the current invocation.
+
+Pass operator observations verbatim or as a lossless factual normalization. Do not convert them into suspected causes, fixes, architecture decisions, or hidden reasoning. Architecture and review own their interpretation.
 
 Do not pass hidden reasoning, copied worker reports, Git/PR state, or conversational conclusions.
 
@@ -93,6 +96,8 @@ A genuinely blocked DESIGN stops the invocation.
 
 Run architecture fresh on every invocation after DESIGN is current.
 
+Supply any exact operator observations for this family as current scenario/defect evidence. Architecture must account for them in the selected mapping, proof plan, risk, or an exact correction/blocker route; it must not silently omit them.
+
 If architecture emits a dependency queue, process each dependency through its Material pipeline and independent review, then rerun parent architecture fresh.
 
 ### IMPLEMENTATION
@@ -111,11 +116,13 @@ Use focused verifier-managed checks required by migration scope. Do not run a br
 
 Run full independent review fresh after migration is complete.
 
+Supply the same exact operator observations independently of the authored stage artifacts. Review must explicitly inspect each observation against the current implementation and proof; it may report `no-reported-defect` only when no operator defect was supplied or every supplied defect is demonstrably resolved in the current result. An unresolved observation requires the owning correction route or a genuine blocker.
+
 A successful review means the family is ready to hand to the architect for PR creation and exact-head CI. It does not mean CI has already run.
 
 ## Result validation
 
-After each worker returns, validate only its owned artifact structure, required headings, routes, and terminal result.
+After each worker returns, validate only its owned artifact structure, required headings, routes, terminal result, and preservation of supplied operator-observation status.
 
 A worker must fix defects owned by its current stage before returning.
 
@@ -126,9 +133,10 @@ Reject:
 - route to review;
 - successful status with blockers or a route;
 - blocked status without an exact blocker;
-- malformed required fields/headings/dates.
+- malformed required fields/headings/dates;
+- a successful review that reports `Operator visual status: no-reported-defect` while an operator-supplied defect remains unaddressed in the review artifact.
 
-Do not validate timestamps, hashes, Git identities, or revision chains.
+Do not validate timestamps, hashes, Git identities, revision chains, or the semantic correctness of a worker's claimed defect resolution; that remains review-owned.
 
 ## Dependency lifecycle
 
@@ -168,17 +176,19 @@ Run the target from its requested stage through review. Then resume the origin w
 
 Nested cross-family routes unwind most-recent origin first.
 
+Exact operator observations remain attached to their owning family across correction routes until a successful independent review explicitly resolves them.
+
 ## Mechanical algorithm
 
-1. Resolve canonical family.
+1. Resolve canonical family and retain exact operator observations for it.
 2. Reuse or refresh DESIGN.
-3. Run ARCHITECTURE fresh.
+3. Run ARCHITECTURE fresh with the current operator observations.
 4. Process dependencies and rerun parent ARCHITECTURE as needed.
 5. Run IMPLEMENTATION fresh with focused local proof.
 6. Run MIGRATION fresh with focused local proof.
-7. Run independent REVIEW fresh.
+7. Run independent REVIEW fresh with the same operator observations.
 8. Follow exact correction routes until review succeeds or a genuine blocker is reached.
-9. When review succeeds, return the family to the architect as ready for PR/CI.
+9. When review succeeds with every supplied observation addressed, return the family to the architect as ready for PR/CI.
 
 GitHub CI is outside this coding-agent orchestration. If exact-head PR CI later fails, the architect owns the failure evidence and routes a correction back to the appropriate Material stage. A fresh `material-component-review` worker may classify supplied CI output in its routing mode; the coding agent itself does not fetch or own GitHub checks.
 
@@ -204,6 +214,7 @@ MATERIAL COMPONENT RESULT
 Input component:
 Resolved official component:
 Canonical family:
+Operator observations: none | <exact observations and disposition>
 Execution ledger:
 Dependencies processed:
 Correction routes:
@@ -225,6 +236,8 @@ Next operator action: hand to architect for PR/CI | <single required action>
 - Requiring one operator command per stage.
 - Reusing one worker context for multiple stages.
 - Reusing downstream reasoning from an earlier invocation instead of fresh stages.
+- Dropping, weakening, or silently rephrasing a concrete operator observation before architecture and independent review have addressed it.
+- Converting an operator observation into a guessed technical cause or prescribed implementation in the orchestrator.
 - Adding artifact timestamps, hashes, counters, or revision graphs as workflow correctness identities.
 - Performing stage-owned reasoning or edits in the orchestrator.
 - Selecting routes from prose.
