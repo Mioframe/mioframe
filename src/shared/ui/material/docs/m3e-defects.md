@@ -69,10 +69,11 @@ Mioframe status:
 
 | ID        | Component         | Summary                                                                                                 | Affected version | Mioframe status     | Upstream status |
 | --------- | ----------------- | ------------------------------------------------------------------------------------------------------- | ---------------- | ------------------- | --------------- |
-| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input                                 | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
-| `M3E-002` | Loading indicator | Uncontained host size is coupled to active-indicator size                                               | `2.6.2`–`2.6.3`  | `workaround-active` | `unreported`    |
-| `M3E-004` | Switch            | Native `<label>` association (implicit wrap or explicit `for`/`id`) does not produce an accessible name | `2.6.3`          | `workaround-active` | `unreported`    |
-| `M3E-005` | Checkbox          | Native `<label>` association (explicit `for`/`id`) does not produce an accessible name                  | `2.6.3`          | `workaround-active` | `unreported`    |
+| `M3E-001` | Loading indicator | Documented active-indicator size CSS input is not the implemented input                                 | `2.6.2`–`2.7.4`  | `workaround-active` | `unreported`    |
+| `M3E-002` | Loading indicator | Uncontained host size is coupled to active-indicator size                                               | `2.6.2`–`2.7.4`  | `workaround-active` | `unreported`    |
+| `M3E-004` | Switch            | Native `<label>` association (implicit wrap or explicit `for`/`id`) does not produce an accessible name | `2.6.3`–`2.7.4`  | `workaround-active` | `unreported`    |
+| `M3E-005` | Checkbox          | Native `<label>` association (explicit `for`/`id`) does not produce an accessible name                  | `2.6.3`–`2.7.4`  | `workaround-active` | `unreported`    |
+| `M3E-006` | Button            | Small Button defaults to 20dp leading/trailing spacing, not the selected 16dp Material geometry         | `2.7.4`          | `workaround-active` | `unreported`    |
 
 `M3E-003` was removed before merge as a Mioframe representation misclassification. Its ID is retired; see Removed records.
 
@@ -80,7 +81,7 @@ Mioframe status:
 
 - Component: Loading indicator
 - First confirmed version: `2.6.2`
-- Last revalidated version: `2.6.3`
+- Last revalidated version: `2.7.4`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
 - Family design: `../components/loadingIndicator/DESIGN.md`
@@ -110,7 +111,7 @@ as the active-indicator size input.
 
 ### Observed renderer behavior
 
-Installed `2.6.2` and `2.6.3` do not read that input. `LoadingIndicatorToken.activeIndicatorSize` reads:
+Installed `2.6.2` through `2.7.4` do not read that input. `LoadingIndicatorToken.activeIndicatorSize` reads:
 
 ```css
 --m3e-loading-indicator-size
@@ -122,8 +123,9 @@ A consumer following the documented renderer API cannot control the implemented 
 
 - renderer source: `packages/web/src/loading-indicator/LoadingIndicatorElement.ts`;
 - renderer source: `packages/web/src/loading-indicator/LoadingIndicatorToken.ts`;
-- installed `2.6.3`: `node_modules/@m3e/web/dist/loading-indicator.js`;
-- implementation proof: `../components/loadingIndicator/MDLoadingIndicator.test.ts`.
+- installed `2.7.4` built artifact: `node_modules/@m3e/web/dist/loading-indicator.js`;
+- implementation proof: `../components/loadingIndicator/MDLoadingIndicator.test.ts`;
+- browser geometry proof: `../components/loadingIndicator/MDLoadingIndicator.browser.spec.ts`.
 
 ### Mioframe impact and mitigation
 
@@ -139,16 +141,17 @@ Consume a renderer version whose documented input is effective, update the priva
 
 ### Revalidation history
 
-| m3e version | Date       | Result    | Evidence                                                      |
-| ----------- | ---------- | --------- | ------------------------------------------------------------- |
-| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection and focused mapping tests             |
-| `2.6.3`     | 2026-07-27 | confirmed | installed artifact still reads `--m3e-loading-indicator-size` |
+| m3e version | Date       | Result    | Evidence                                                                                    |
+| ----------- | ---------- | --------- | ------------------------------------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | exact source inspection and focused mapping tests                                           |
+| `2.6.3`     | 2026-07-27 | confirmed | installed artifact still reads `--m3e-loading-indicator-size`                               |
+| `2.7.4`     | 2026-08-14 | confirmed | installed artifact still reads `--m3e-loading-indicator-size`; browser host geometry passed |
 
 ## M3E-002 — Uncontained host size is coupled to active size
 
 - Component: Loading indicator
 - First confirmed version: `2.6.2`
-- Last revalidated version: `2.6.3`
+- Last revalidated version: `2.7.4`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
 - Family design: `../components/loadingIndicator/DESIGN.md`
@@ -168,12 +171,12 @@ Recorded official sources:
 
 ### Observed renderer behavior
 
-In installed `2.6.2`–`2.6.3`, the uncontained host width is assigned from `LoadingIndicatorToken.activeIndicatorSize`, while the active shape is sized again inside that host. This couples layout to active-indicator geometry.
+In installed `2.6.2`–`2.7.4`, the uncontained host width is assigned from `LoadingIndicatorToken.activeIndicatorSize`, while the active shape is sized again inside that host. This couples layout to active-indicator geometry.
 
 ### Evidence
 
 - renderer source: `packages/web/src/loading-indicator/LoadingIndicatorElement.ts`;
-- installed `2.6.3`: `node_modules/@m3e/web/dist/loading-indicator.js`;
+- installed `2.7.4` built artifact: `node_modules/@m3e/web/dist/loading-indicator.js`;
 - implementation proof: `../components/loadingIndicator/MDLoadingIndicator.test.ts`;
 - browser proof: `../components/loadingIndicator/MDLoadingIndicator.browser.spec.ts`;
 - visual proof: `../components/loadingIndicator/MDLoadingIndicator.visual.spec.ts`.
@@ -192,16 +195,17 @@ Consume a renderer version with independent correct sizing, remove host-size/rat
 
 ### Revalidation history
 
-| m3e version | Date       | Result    | Evidence                                                        |
-| ----------- | ---------- | --------- | --------------------------------------------------------------- |
-| `2.6.2`     | 2026-07-27 | confirmed | source inspection, host-box tests, and visual evidence          |
-| `2.6.3`     | 2026-07-27 | confirmed | uncontained host width remains coupled to active-indicator size |
+| m3e version | Date       | Result    | Evidence                                                                           |
+| ----------- | ---------- | --------- | ---------------------------------------------------------------------------------- |
+| `2.6.2`     | 2026-07-27 | confirmed | source inspection, host-box tests, and visual evidence                             |
+| `2.6.3`     | 2026-07-27 | confirmed | uncontained host width remains coupled to active-indicator size                    |
+| `2.7.4`     | 2026-08-14 | confirmed | installed host rule remains coupled; browser host geometry and visual proof passed |
 
 ## M3E-004 — Native `<label>` association does not produce an accessible name
 
 - Component: Switch
 - First confirmed version: `2.6.3`
-- Last revalidated version: `2.6.3`
+- Last revalidated version: `2.7.4`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
 - Family design: `../components/switch/DESIGN.md`
@@ -228,13 +232,13 @@ Recorded official sources:
 
 ### Observed renderer behavior
 
-Installed `2.6.3`: real-browser (Chromium) accessibility-tree evidence shows neither implicit `<label>` wrapping (`<label>Labelled switch<m3e-switch></m3e-switch></label>`) nor explicit `for`/`id` association produces an accessible name for `m3e-switch` — the accessibility-tree node reports an unnamed `switch` role in both cases. `aria-label` and `aria-labelledby` are independently confirmed working on the same element.
+Installed `2.7.4`: real-browser (Chromium) accessibility-tree evidence shows neither implicit `<label>` wrapping (`<label>Labelled switch<m3e-switch></m3e-switch></label>`) nor explicit `for`/`id` association produces an accessible name for `m3e-switch` — the accessibility-tree node reports an unnamed `switch` role in both cases. `aria-label` and `aria-labelledby` are independently confirmed working on the same element.
 
 ### Evidence
 
-- renderer type declaration: `node_modules/@m3e/web/dist/src/switch/SwitchElement.d.ts` (documented `<label>`-wrapped `@example`, `LabelledMixin` base);
-- renderer type declaration: `node_modules/@m3e/web/dist/src/core/shared/mixins/Labelled.d.ts`;
-- browser proof: `../components/switch/MDSwitch.browser.spec.ts` ("resolves an accessible name from aria-labelledby and aria-label, and blocks disabled activation");
+- installed `2.7.4` type declaration: `node_modules/@m3e/web/dist/src/switch/SwitchElement.d.ts` (documented `<label>`-wrapped `@example`, `LabelledMixin` base);
+- installed `2.7.4` type declaration: `node_modules/@m3e/web/dist/src/core/shared/mixins/Labelled.d.ts`;
+- browser proof: `../components/switch/MDSwitch.browser.spec.ts` ("MDSwitch native implicit and explicit label associations do not produce accessible names (M3E-004)");
 - implementation record: `../components/switch/IMPLEMENTATION.md` ("Component-owned proof").
 
 ### Mioframe impact and mitigation
@@ -254,12 +258,13 @@ Consume a renderer version whose native `<label>` association produces a correct
 | m3e version | Date       | Result    | Evidence                                                                                                                |
 | ----------- | ---------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `2.6.3`     | 2026-08-11 | confirmed | real-browser accessibility-tree proof (`../components/switch/MDSwitch.browser.spec.ts`); renderer JSDoc/type inspection |
+| `2.7.4`     | 2026-08-14 | confirmed | installed public label contract unchanged; real-browser implicit and explicit association proof passed                  |
 
 ## M3E-005 — Native `<label>` association does not produce an accessible name (Checkbox)
 
 - Component: Checkbox
 - First confirmed version: `2.6.3`
-- Last revalidated version: `2.6.3`
+- Last revalidated version: `2.7.4`
 - Upstream status: `unreported`
 - Mioframe status: `workaround-active`
 - Family design: `../components/checkbox/DESIGN.md`
@@ -293,12 +298,12 @@ Recorded official sources:
 
 ### Observed renderer behavior
 
-Installed `2.6.3`: real-browser (Chromium) accessibility-tree evidence shows explicit `for`/`id` association does not produce an accessible name for `m3e-checkbox` — `expect(locator).toHaveAccessibleName('Adjacent label')` fails with `Received: ""`. `aria-label` and `aria-labelledby` are independently confirmed working on the same element (see the accessible-name test in the same spec file).
+Installed `2.7.4`: real-browser (Chromium) accessibility-tree evidence shows explicit `for`/`id` association still does not produce an accessible name for `m3e-checkbox`; the observable accessible name is `""`. `aria-label` and `aria-labelledby` are independently confirmed working on the same element (see the accessible-name test in the same spec file).
 
 ### Evidence
 
-- renderer type declaration: `node_modules/@m3e/web/dist/src/checkbox/CheckboxElement.d.ts` (documented implicit-wrap and `for`/`id` `@example`s, `LabelledMixin`-derived base);
-- renderer type declaration: `node_modules/@m3e/web/dist/src/core/shared/mixins/Labelled.d.ts` (same mixin `M3E-004` already confirmed non-functional for accessible naming on `m3e-switch`);
+- installed `2.7.4` type declaration: `node_modules/@m3e/web/dist/src/checkbox/CheckboxElement.d.ts` (documented implicit-wrap and `for`/`id` `@example`s, `LabelledMixin`-derived base);
+- installed `2.7.4` type declaration: `node_modules/@m3e/web/dist/src/core/shared/mixins/Labelled.d.ts` (same mixin `M3E-004` already confirmed non-functional for accessible naming on `m3e-switch`);
 - browser proof: `../components/checkbox/MDCheckbox.browser.spec.ts` ("MDCheckbox native <label for> association does not produce an accessible name (M3E-005, matching Switch M3E-004)");
 - implementation record: `../components/checkbox/IMPLEMENTATION.md` ("Component-owned proof").
 
@@ -319,6 +324,69 @@ Consume a renderer version whose native `<label>` association produces a correct
 | m3e version | Date       | Result    | Evidence                                                                                                                    |
 | ----------- | ---------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `2.6.3`     | 2026-08-12 | confirmed | real-browser accessibility-tree proof (`../components/checkbox/MDCheckbox.browser.spec.ts`); renderer JSDoc/type inspection |
+| `2.7.4`     | 2026-08-14 | confirmed | installed public label contract unchanged; real-browser external-label proof passed                                         |
+
+## M3E-006 — Small Button default spacing differs from the selected Material geometry
+
+- Component: Button
+- First confirmed version: `2.7.4`
+- Last revalidated version: `2.7.4`
+- Upstream status: `unreported`
+- Mioframe status: `workaround-active`
+- Family design: `../components/button/DESIGN.md`
+- Family architecture: `../components/button/ARCHITECTURE.md`
+- Family implementation: `../components/button/IMPLEMENTATION.md`
+- Upstream issue: none
+- Upstream pull request: none
+
+### Official expectation
+
+The selected small Button geometry is a 40dp visible container with 16dp leading and trailing spacing. The selected contract does not expose spacing as a consumer token or prop.
+
+Recorded official source:
+
+- `../components/button/DESIGN.md`, Geometry and layout.
+
+### Documented renderer contract
+
+`M3eButtonElement` documents the size-specific CSS inputs:
+
+```css
+--m3e-button-small-leading-space
+--m3e-button-small-trailing-space
+```
+
+They are renderer terminology and remain private to the Material Button boundary.
+
+### Observed renderer behavior
+
+Installed `2.7.4` assigns the small `ButtonSizeToken.leadingSpace` and `trailingSpace` fallbacks to `DesignToken.measurement.space250`. The installed design-token bundle resolves that default to 20dp. Before the family correction, real-browser host-versus-light-DOM-label geometry measured 40px total horizontal padding rather than the selected 32px.
+
+### Evidence
+
+- installed `2.7.4` built artifact: `node_modules/@m3e/web/dist/button.js` (`ButtonSizeToken.small` and documented CSS inputs);
+- installed `2.7.4` design-token bundle: `node_modules/@m3e/web/dist/all.js` (`DesignToken.measurement.space250 = 20dp`);
+- component mapping proof: `../components/button/MDButton.test.ts`;
+- browser geometry proof: `../components/button/MDButton.browser.spec.ts` ("MDButton small geometry preserves the selected 16dp horizontal padding (M3E-006)");
+- visual proof: `tests/e2e/visual/shared-ui/md-button.spec.ts`.
+
+### Mioframe impact and mitigation
+
+No public API changes. `components/button/tokens.css` sets only the two documented size-specific renderer inputs to the selected 16px values. The mapping is fixed to the consumed `2.7.4` baseline, applies only to the selected small size, and does not recreate renderer geometry, ripple, state-layer, focus, elevation, or motion behavior.
+
+### Correct upstream result
+
+A consumed renderer baseline should supply the selected small Button 16dp leading/trailing default directly, so the private family mapping can be removed without changing Mioframe's public contract.
+
+### Removal trigger
+
+Consume a renderer version whose small Button default is 16dp on both sides, remove the two family-local mappings, and pass the component, real-browser geometry, and visual proof without a baseline update caused by the removal.
+
+### Revalidation history
+
+| m3e version | Date       | Result    | Evidence                                                                                                                                                            |
+| ----------- | ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `2.7.4`     | 2026-08-14 | confirmed | installed artifact defaults to 20dp; browser regression measured 40px before correction and 32px after; 214-reference visual suite passed without a baseline update |
 
 ## Removed records
 

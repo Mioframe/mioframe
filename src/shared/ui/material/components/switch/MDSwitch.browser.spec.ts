@@ -66,6 +66,18 @@ test('MDSwitch resolves an accessible name from aria-labelledby and aria-label, 
   await expect(disabled).not.toBeFocused();
 });
 
+test('MDSwitch native implicit and explicit label associations do not produce accessible names (M3E-004)', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-switch-mdswitch--native-label-association');
+
+  // The installed renderer documents both associations through its public LabelledMixin surface,
+  // but neither produces an accessibility-tree name. Mioframe deliberately relies on the
+  // separately proven aria-label/aria-labelledby contract instead of synthesizing one.
+  await expect(page.locator('#native-label-implicit-switch')).toHaveAccessibleName('');
+  await expect(page.locator('#native-label-explicit-switch')).toHaveAccessibleName('');
+});
+
 test('MDSwitch rejected intent leaves the rendered checked unchanged when the owning consumer does not write the emitted value back', async ({
   page,
 }) => {
@@ -201,6 +213,80 @@ test('MDSwitch expanded 48dp target activates a toggle outside the visible 32dp 
 
   await expect(count).toHaveText('1');
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
+});
+
+test.describe('touch input', () => {
+  test.use({ hasTouch: true });
+
+  test('MDSwitch presentation is unreachable by real touch input and its renderer-owned checked does not mutate', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-switch-mdswitch--presentation');
+
+    // The decorative composition scenario: the wrapping element owns the accessible switch role;
+    // MDSwitch itself must not become the interactive owner under touch either.
+    await expect(page.getByRole('switch', { name: 'Automatic updates' })).toHaveCount(1);
+
+    const decorative = page.locator('[data-testid="md-switch-presentation"] m3e-switch');
+    await expect(decorative).toBeVisible();
+    await expect(decorative).toHaveAttribute('aria-hidden', 'true');
+    await expect(decorative).toHaveAttribute('tabindex', '-1');
+
+    const readChecked = () =>
+      decorative.evaluate<boolean, HTMLElement & { checked: boolean }>((el) => el.checked);
+
+    expect(await readChecked()).toBe(true);
+
+    const box = await decorative.boundingBox();
+    if (box == null) {
+      throw new Error('Missing MDSwitch presentation bounding box.');
+    }
+
+    // Real touch input (Playwright's CDP-backed `touchscreen.tap`, which requires the context's
+    // `hasTouch: true` set above) at the decorative switch's own rendered location: `pointer-events:
+    // none` must block it exactly as it blocks mouse input in the sibling mouse-path test above, so
+    // the renderer's own `checked` value stays exactly as authored and its presentation semantics
+    // are unchanged.
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+
+    expect(await readChecked()).toBe(true);
+    await expect(decorative).toHaveAttribute('aria-hidden', 'true');
+    await expect(decorative).toHaveAttribute('tabindex', '-1');
+  });
+
+  test('MDSwitch presentation composition: real touch input on the decorative region reaches the owning fixture action exactly once, and its state flows back into the rendered checked', async ({
+    page,
+  }) => {
+    await openStory(page, 'material-3-components-switch-mdswitch--presentation-composition');
+
+    const owner = page.getByTestId('md-switch-presentation-composition');
+    const decorative = owner.locator('m3e-switch');
+    const count = page.locator('#md-switch-presentation-composition-count');
+
+    const readChecked = () =>
+      decorative.evaluate<boolean, HTMLElement & { checked: boolean }>((el) => el.checked);
+
+    await expect(owner).toHaveAttribute('aria-checked', 'false');
+    expect(await readChecked()).toBe(false);
+
+    const box = await decorative.boundingBox();
+    if (box == null) {
+      throw new Error('Missing MDSwitch presentation-composition bounding box.');
+    }
+
+    // Real touch input at the decorative switch's own visible location: `pointer-events: none`
+    // makes the renderer itself unreachable by touch too, so the touch must land on the owning
+    // fixture element instead, produce exactly one owner action, and that owner's resulting state
+    // must flow back into `selected`/the rendered `checked` through the existing controlled path —
+    // the decorative renderer itself never independently toggles.
+    await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+
+    await expect(count).toHaveText('1');
+    await expect(owner).toHaveAttribute('aria-checked', 'true');
+    expect(await readChecked()).toBe(true);
+    await expect(decorative).toHaveAttribute('aria-hidden', 'true');
+    await expect(decorative).toHaveAttribute('tabindex', '-1');
+  });
 });
 
 test('MDSwitch drops undeclared dynamic renderer inputs and never exposes their state or an undeclared click listener', async ({

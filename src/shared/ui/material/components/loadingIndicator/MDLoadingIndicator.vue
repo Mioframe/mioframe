@@ -71,8 +71,8 @@ if (import.meta.env.DEV) {
  * private active-size input, collapsing the overall/active distinction). The
  * private input keeps the confirmed effective (documented-name-divergent,
  * M3E-001) m3e CSS variable, scaled to the official active-indicator ratio.
- * Both defects remain confirmed in the consumed 2.6.3 artifact (affected
- * range 2.6.2-2.6.3); see docs/m3e-defects.md.
+ * Both defects remain confirmed in the consumed 2.7.4 artifact (affected
+ * range 2.6.2-2.7.4); see docs/m3e-defects.md.
  */
 const style = computed(() => ({
   width: `${normalizedSize.value}px`,
