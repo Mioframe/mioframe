@@ -51,14 +51,13 @@ Do not run a second migration preflight merely because standalone implementation
 1. Read the canonical contract without using current consumers to reinterpret it.
 2. Inspect exact lockfile-resolved `@m3e/web` docs/examples and public artifacts for every affected mapping.
 3. Implement the Vue `MD*` component and private renderer glue.
-4. Implement private token bridges without leaking m3e vocabulary.
+4. Implement private token bridges without leaking m3e vocabulary into public `tokens.css`.
 5. Add/update contract, browser, accessibility, geometry, token and visual proof as required.
 6. Establish standalone component correctness.
 7. Only then inventory all current/legacy consumers and obsolete owners/proof.
 8. Adapt consumers to the canonical API while preserving product-owned behavior and failure paths.
 9. Remove replaced legacy implementation, exports, proof and old staged family artifacts.
-10. Update `docs/token-api.md` for public tokens that are now implemented and proven.
-11. Run focused verifier-managed checks from preflight.
+10. Run focused verifier-managed checks from preflight.
 
 ## Canonical contract rule
 
