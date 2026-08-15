@@ -32,9 +32,13 @@ defineSlots<{
   /**
    * Required FAB icon. It must render exactly one direct inline `<svg>` root with a `viewBox`,
    * no `slot` attribute, `aria-hidden="true"`, no focusable or interactive descendant, and paint
-   * based on `currentColor`. Text, wrappers, images, renderer elements, and visible labels are
-   * unsupported. The SVG may come from inline markup or a Vue helper whose rendered root is that
-   * SVG.
+   * based on `currentColor`. Per official guidance ("the icon should be clear and understandable,
+   * and should use a filled icon rather than an outlined one"), the artwork itself must be
+   * filled, Material-compatible iconography — a solid shape, not outlined/stroke-only artwork.
+   * This filled-versus-outlined requirement is a caller contract enforced by fixture selection
+   * and review, not by runtime SVG-shape/semantic validation. Text, wrappers, images, renderer
+   * elements, and visible labels are unsupported. The SVG may come from inline markup or a Vue
+   * helper whose rendered root is that SVG.
    */
   icon(): unknown;
 }>();
@@ -43,9 +47,11 @@ const hostElement = useTemplateRef<M3eFabElement>('hostElement');
 
 /**
  * Adapter-owned private renderer constants (ARCHITECTURE.md "Selected and deferred Material
- * surface"): medium size and primary-container color are the only official standalone default
- * this family selects. Typed against the exported renderer unions so a future renderer rename
- * fails type-check instead of silently drifting. Never settable by a consumer.
+ * surface"): medium is Material's most-recommended size for general use (not a documented
+ * default size), and primary-container is the documented Material default color mapping;
+ * `medium` also happens to be the independent `@m3e/web@2.7.4` renderer default size input.
+ * Typed against the exported renderer unions so a future renderer rename fails type-check
+ * instead of silently drifting. Never settable by a consumer.
  */
 const rendererVariant: RendererFabVariant = 'primary-container';
 const rendererSize: RendererFabSize = 'medium';

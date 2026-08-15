@@ -3,9 +3,11 @@ import { defineComponent } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import MDFab from './MDFab.vue';
 
+// Filled Material-compatible "add" glyph (ARCHITECTURE.md "Implementation passes" #5), matching
+// the canonical Storybook fixture: a single solid contour, no `stroke`/`fill="none"`.
 const directSvgIcon = `
   <svg data-icon viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor">
-    <path d="M12 4v16m8-8H4" fill="none" stroke="currentColor" stroke-width="2" />
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
   </svg>
 `;
 
@@ -28,7 +30,7 @@ const DynamicAttrsWrapper = defineComponent({
     <MDFab label="Compose" v-bind="attrs">
       <template #icon>
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor">
-          <path d="M12 4v16m8-8H4" fill="none" stroke="currentColor" stroke-width="2" />
+          <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
         </svg>
       </template>
     </MDFab>

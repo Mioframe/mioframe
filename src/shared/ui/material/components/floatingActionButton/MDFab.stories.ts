@@ -2,10 +2,15 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { defineComponent, ref } from 'vue';
 import MDFab from './MDFab.vue';
 
+// Canonical filled Material-compatible "add" glyph (ARCHITECTURE.md "Implementation passes" #4):
+// the standard Material Icons/Material Symbols "add" path — a single solid contour describing
+// the plus shape, filled by `currentColor` with no `stroke`/`fill="none"`. Every selected story
+// fixture (Default, VisualStates, BehaviorContracts, HostAttributeBoundary, GeometryContract,
+// RealInteractionFeedback) shares this one decorative direct-SVG glyph.
 const AddIcon = defineComponent({
   template: `
     <svg aria-hidden="true" focusable="false" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 4v16m8-8H4" fill="none" stroke="currentColor" stroke-width="2" />
+      <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
     </svg>
   `,
 });
@@ -24,7 +29,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Mioframe Material Floating action button adapter backed privately by @m3e/web. Demand-scoped to the single official standalone default: medium size, primary-container color, a required icon, and a required accessible action label. No disabled affordance exists — official guidance forbids disabling a FAB.',
+          "Mioframe Material Floating action button adapter backed privately by @m3e/web. Demand-scoped to the selected configuration: medium size (Material's most-recommended size for general use), primary-container color (the documented Material default color mapping), a required filled-icon slot, and a required accessible action label. No disabled affordance exists — official guidance forbids disabling a FAB.",
       },
     },
   },
