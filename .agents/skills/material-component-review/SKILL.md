@@ -67,6 +67,8 @@ Minor issues: none | <exact issues>
 Accepted risks: none | <exact accepted risks>
 ```
 
+`Operator visual status` records whether concrete operator visual/motion evidence was supplied, not whether that evidence remains unresolved. Use `defect-reported` whenever the current invocation carries a concrete operator defect report, even if current proof resolves it. Record the resolution evidence in `## Proof and stage verification` and `## Routing evidence`. Use `no-reported-defect` only when no concrete operator defect was supplied for the family, and `not-applicable` only when the selected contract has no visual/motion surface. A resolved `defect-reported` status is compatible with `compliant`; an unresolved reported defect is not.
+
 `Final workflow verification readiness` means ready for architect-owned PR creation and exact-head GitHub CI. It does not mean a local broad verifier command has run.
 
 Legacy revision/timestamp fields in an existing REVIEW are ignored and removed when this stage rewrites it.
@@ -106,7 +108,7 @@ Required headings:
 12. Verify proof ownership/placement against current testing migration state.
 13. Inspect test-environment changes for blast radius.
 14. Verify impact metadata and stage-scoped focused checks.
-15. Check actual operator-reported visual/motion defects.
+15. Check actual operator-reported visual/motion defects and preserve their status/evidence even when current proof resolves them.
 16. Consolidate each underlying problem once and assign exact ownership.
 
 Automated checks prove only covered contracts. Absence of operator visual feedback is not a blocker. PR CI does not replace missing contract proof or architecture review.
@@ -205,6 +207,7 @@ Status: complete | blocked
 - Accepting legacy-to-canonical mapping because names/types match.
 - Accepting obsolete proof ownership relative to current testing architecture.
 - Accepting a visual baseline as the sole proof of selected fixed Material geometry.
+- Rewriting a supplied operator defect as `no-reported-defect` merely because the defect was fixed.
 - Using listed risks for incomplete work.
 - Blocking only because positive visual acknowledgement is absent.
 - Fabricating operator feedback.
