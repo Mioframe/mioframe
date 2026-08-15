@@ -5,7 +5,7 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Routing
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component targets.
-- Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. One operator command orchestrates canonical contract extraction, implementation plus migration, and fresh independent review.
+- Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. One operator command orchestrates three focused Material contracts, standalone implementation, separate migration, and fresh independent review.
 - Follow `docs/testing/storybook.md` for Storybook ownership, story authoring, catalogue hierarchy, and UI-owned browser/visual proof; follow `docs/testing/migration-plan.md` for the current executable Playwright spec location.
 - Do not use legacy Material DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW stages as the current workflow authority.
 
@@ -27,4 +27,4 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 ## Verification
 
-Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Material implementation owns standalone proof and consumer migration; a fresh independent review checks the complete resulting family before architect-owned PR CI.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Material standalone implementation owns component proof; the separate migration worker owns consumer adoption and legacy removal; a fresh independent review checks the complete resulting family before architect-owned PR CI.
