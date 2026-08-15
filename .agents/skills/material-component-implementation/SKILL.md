@@ -1,109 +1,104 @@
 ---
 name: material-component-implementation
-description: 'Use after a canonical Material family contract exists to implement the Vue/m3e adapter, prove it standalone, migrate all applicable consumers, remove legacy ownership, and run focused verification.'
+description: 'Use after the API, token and behavior contracts are complete to implement and prove one standalone canonical Vue Material component through the exact installed m3e renderer, without inspecting or migrating application consumers.'
 ---
 
 # Material component implementation
 
-Implement one canonical Material family from its fixed contract, then migrate the repository to that canonical API in the same worker context.
-
-## Authority
-
-Read applicable `AGENTS.md`, `src/shared/ui/material/docs/component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the family contract files.
-
-The contract files define what the component is. Exact-version `@m3e/web` documentation/public artifacts define only how the private renderer can implement it.
+Implement one standalone canonical Material family from three fixed contracts.
 
 ## Input gate
 
-Require:
+Require successful contract artifacts:
 
 ```text
-contract.ts
-tokens.css
-BEHAVIOR.md
-GUIDANCE.md
-SOURCES.md
+components/<family>/contract.ts
+components/<family>/tokens.css
+components/<family>/BEHAVIOR.md
 ```
 
-If the contract is missing, contradictory, or proves incorrect, return `return-to-contract` with the exact defect. Do not redesign it while coding.
+Do not start if any contract worker reported unresolved Material ambiguity.
 
-## Worker boundary
+## Authority
+
+Read applicable `AGENTS.md`, `component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the three family contract artifacts.
+
+The contracts define what the component must expose and observably do. Exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts define only how the private renderer can implement those contracts.
+
+## Isolation
 
 Run in a fresh isolated context.
 
-This worker owns both canonical component implementation and subsequent consumer migration because they form one repository transformation. Do not split migration into a second worker.
+Do not inspect application consumers, legacy call sites, or migration code before standalone implementation is complete. Do not use current demand to reinterpret or shrink the contracts.
+
+You may inspect existing Material foundation/shared infrastructure and the owning family runtime files needed to implement the canonical component. Do not copy legacy public API merely because it exists.
 
 ## Preflight
 
-Before production/component/consumer edits, run one `implementation-preflight` covering:
+Before production edits, run `implementation-preflight` scoped only to:
 
-- canonical component implementation;
-- component-owned proof;
-- consumer inventory/migration;
-- legacy-owner/proof removal;
-- task-specific `TEST IMPACT`;
+- standalone canonical component implementation;
+- private m3e mapping;
+- component-owned tests/browser/visual proof;
+- exports required for the canonical component;
 - focused verifier-managed commands.
 
-Do not run a second migration preflight merely because standalone implementation is completed first.
+Do not include consumer migration or legacy-call-site adaptation in this preflight.
 
 ## Implementation order
 
-1. Read the canonical contract without using current consumers to reinterpret it.
-2. Inspect exact lockfile-resolved `@m3e/web` docs/examples and public artifacts for every affected mapping.
-3. Implement the Vue `MD*` component using the exported `contract.ts` Props/Slots/Emits types directly through typed Vue macros; do not duplicate the public unions/interfaces inside the SFC.
-4. Implement private renderer glue and token bridges without leaking m3e vocabulary into the public contract or `tokens.css`.
-5. Add/update contract, browser, accessibility, geometry, token and visual proof as required.
-6. Establish standalone component correctness.
-7. Only then inventory all current/legacy consumers and obsolete owners/proof.
-8. Adapt consumers to the canonical API while preserving product-owned behavior and failure paths.
-9. Remove replaced legacy implementation, exports, proof and old staged family artifacts.
-10. Run focused verifier-managed checks from preflight.
+1. Read `contract.ts`, `tokens.css`, and `BEHAVIOR.md` as fixed inputs.
+2. Inspect exact lockfile-resolved m3e docs/examples/public artifacts for each affected mapping.
+3. Implement the Vue `MD*` component using the exported Props/Slots/Emits/public value types from `contract.ts` directly through typed Vue APIs.
+4. Keep m3e tags, attributes, events, types, CSS variables and workarounds private to the Material family.
+5. Map public `--md-comp-*` tokens privately to renderer inputs without adding renderer vocabulary to `tokens.css`.
+6. Implement only the minimum family-local correction required when documented m3e behavior does not satisfy a correct contract.
+7. Add/update standalone component, browser, accessibility, geometry, token and visual proof required by the three contracts.
+8. Run focused verifier-managed checks.
+9. Return after standalone component correctness is established. Do not migrate consumers in this worker.
 
-## Canonical contract rule
+## Contract corrections
 
-Never shrink, rename, alias, or otherwise distort the public Material contract because:
+Implementation does not edit a contract merely because implementation evidence contradicts it.
 
-- m3e uses different names;
-- a renderer feature is missing;
-- a legacy consumer used a different API;
-- preserving an old call site would be easier;
-- current Mioframe does not yet use an official option.
+Return the exact owner:
 
-When m3e cannot faithfully implement the contract, prefer documented direct support, then a small family-local correction, then a documented exact-version workaround that satisfies repository gates. If faithful support requires private DOM coupling, duplicated renderer systems, new shared infrastructure, or a public-contract compromise, return `needs-architect` instead of accumulating workaround logic.
+```text
+return-to-api-contract
+return-to-token-contract
+return-to-behavior-contract
+```
 
-## Consumer migration
+with the exact observable/material fact that invalidates the current artifact.
 
-Migration asks how each product scenario should use the canonical component.
+Do not route a renderer limitation back to a Material contract. A correct contract remains correct even when m3e cannot implement it directly.
 
-- Use only root-exported canonical Material APIs and supported public tokens.
-- Keep product state, persistence, routing, errors, operation lifecycle and business behavior with product owners.
-- Do not preserve legacy Material props as compatibility aliases by default.
-- If a legacy responsibility is not actually Material component behavior, keep/move it to the correct product/shared composition owner.
-- Remove replaced legacy ownership only after every applicable consumer has a correct destination.
-- Do not migrate unrelated Material families for cleanup.
+## Renderer gaps
+
+When m3e cannot faithfully implement a correct contract, prefer:
+
+1. documented direct support;
+2. the smallest family-local public-seam correction;
+3. a documented removable exact-version workaround satisfying `m3e-defects.md`;
+4. `needs-architect` when faithful support would require private DOM coupling, duplicated renderer systems, new shared infrastructure, or weakening the canonical contract.
+
+Do not recreate renderer-owned state layer, ripple, focus system, elevation, accessibility internals, geometry engine, or motion without an explicit architecture decision.
 
 ## Proof
 
-Use the lowest faithful proof selected by preflight and repository testing rules.
-
 As applicable prove:
 
-- type-check and component use one `contract.ts` source for public props/slots/emits/types;
-- public props/slots/emits/defaults and attribute boundary;
-- accepted/rejected controlled intent;
+- SFC uses `contract.ts` as the public type source rather than re-declaring it;
+- props/slots/emits/defaults and allowed attribute boundary;
+- accepted/rejected controlled intent and one source of truth;
 - pointer/keyboard/focus/native event behavior;
 - accessible role/name/state and ownership;
-- fixed Material geometry with browser-level numeric assertions;
-- public CSS token overrides through actual rendered results;
-- stable renderer-owned appearance/motion through visual/browser evidence;
-- dependency composition through canonical public APIs;
-- migrated consumer scenarios and legacy removal.
+- fixed Material geometry with numeric browser assertions;
+- public token overrides through actual rendered results;
+- renderer-owned appearance/motion through faithful browser/visual evidence;
+- dependency composition through canonical public APIs.
 
-Do not treat host attributes, CSS variable presence, source inspection, a story, or a screenshot alone as proof of a different observable contract.
-
-## Existing staged artifacts
-
-When this family completes the new workflow, remove its obsolete `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files. Do not remove staged artifacts from unrelated families.
+A story, declaration, host attribute, source mapping, CSS variable presence, or screenshot alone is not proof of a different observable contract.
 
 ## Report
 
@@ -111,25 +106,22 @@ When this family completes the new workflow, remove its obsolete `DESIGN.md`, `A
 MATERIAL IMPLEMENTATION RESULT
 family: <canonical-family>
 standalone component: complete | blocked
-consumers inventoried: <summary>
-consumers migrated: <summary>
-legacy ownership removed: yes | no | not-applicable
 focused verification: <commands/results>
-contract defect: none | <exact defect>
+contract correction owner: none | api-contract | token-contract | behavior-contract
+contract finding: none | <exact finding>
 architecture escalation: none | <exact decision>
 remaining blocker: none | <exact blocker>
-result: complete | blocked | return-to-contract | needs-architect
+result: complete | blocked | return-to-api-contract | return-to-token-contract | return-to-behavior-contract | needs-architect
 ```
 
 ## Forbidden
 
-- Changing the canonical contract to fit m3e or legacy consumers.
-- Re-declaring the public props/slots/emits/type unions inside the SFC instead of consuming `contract.ts`.
-- Starting consumer migration before standalone contract/behavior is established.
-- Exposing m3e tags, events, types, attributes, classes, CSS variables, or private DOM.
-- Recreating renderer-owned interaction/accessibility/geometry/motion systems without an explicit architecture decision.
-- Adding speculative abstractions, compatibility layers, generic adapter frameworks, or token registries.
-- Leaving replaced legacy logic merely to reduce migration work.
-- Creating IMPLEMENTATION.md or MIGRATION.md workflow logs.
+- Inspecting consumers or legacy call sites to shape implementation.
+- Migrating consumers or removing a legacy owner still used by the application.
+- Changing canonical contracts to fit m3e or current demand.
+- Re-declaring public Props/Slots/Emits/value unions inside the SFC instead of consuming `contract.ts`.
+- Exposing raw m3e details outside the Material family.
+- Adding speculative adapters, compatibility layers, generic frameworks or token registries.
+- Creating IMPLEMENTATION.md workflow logs.
 - Running broad local verification solely to duplicate exact-head PR CI.
 - Depending on Git/PR/check state for implementation correctness.
