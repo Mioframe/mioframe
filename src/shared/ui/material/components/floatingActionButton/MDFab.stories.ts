@@ -113,6 +113,23 @@ export const HostAttributeBoundary: Story = {
   }),
 };
 
+export const GeometryContract: Story = {
+  render: () => ({
+    components: { MDFab },
+    template: `
+      <div data-testid="md-fab-geometry-contract">
+        <MDFab data-testid="geometry-fab" label="Compose a new message">
+          <template #icon>
+            <svg data-testid="geometry-fab-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 4v16m8-8H4" fill="none" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </template>
+        </MDFab>
+      </div>
+    `,
+  }),
+};
+
 export const RealInteractionFeedback: Story = {
   tags: ['visual'],
   render: () => ({
