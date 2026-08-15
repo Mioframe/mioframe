@@ -2,7 +2,7 @@
 
 `src/shared/ui/material` is the canonical owner of Mioframe’s project-facing Material Vue API, supported Material token API, private renderer integration, and Material-specific documentation.
 
-Official Material 3 Expressive defines the public model. `@m3e/web` is the preferred private renderer, not an API authority.
+Official Material 3 Expressive defines the public model. Contract workers read it through the repository-configured `material3` MCP. `@m3e/web` is the preferred private renderer, not an API authority.
 
 ## Public entrypoint
 
@@ -21,23 +21,19 @@ A public `MD*` family:
 
 ## Family layout
 
-A family processed by the current workflow uses narrow durable contracts:
+A family processed by the current workflow has exactly three mandatory durable contracts:
 
 ```text
 components/<family>/
   contract.ts
   tokens.css
   BEHAVIOR.md
-  GUIDANCE.md
-  SOURCES.md
   <Vue runtime, tests, stories, private renderer glue>
 ```
 
-- `contract.ts` owns props, slots, emits, public types/defaults/combinations.
-- `tokens.css` owns the public official component-token contract.
+- `contract.ts` owns public parameters/props, slots, events, public types and defaults.
+- `tokens.css` owns the public official component-token contract/catalogue.
 - `BEHAVIOR.md` owns normative observable behavior, accessibility, geometry and motion.
-- `GUIDANCE.md` owns correct consumer usage and composition guidance.
-- `SOURCES.md` owns official-source provenance/conflicts.
 
 Old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files may remain temporarily in untouched families as legacy evidence. They are removed when that family is converted through the current workflow.
 
@@ -65,20 +61,27 @@ Material does not own:
 
 Outside this directory, code must not import `@m3e/web`, render `m3e-*`, consume renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
 
-Inside an owning family, prefer documented exact-version renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
+Inside an owning family implementation, prefer documented exact-version renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
+
+Migration consumes the finished canonical Mioframe Material API and does not inspect renderer internals.
 
 ## Workflow
 
-The normal workflow is deliberately small:
-
 ```text
-contract
-  → implement + standalone proof + migrate consumers
-  → fresh independent review
-  → architect / PR / exact-head CI
+API contract       ┐
+Token contract     ├─→ contract ready
+Behavior contract  ┘
+                        ↓
+                 implementation
+                        ↓
+                    migration
+                        ↓
+               independent review
+                        ↓
+             architect / PR / CI
 ```
 
-The canonical component is established before migration. Legacy call sites adapt to the canonical Material API; they do not define it.
+Contract workers are deliberately narrow and isolated. Standalone implementation remains focused on the Material contracts plus exact m3e mapping; only the later migration worker reads application consumers.
 
 A non-deterministic architecture/ownership problem is escalated through `architect-handoff` only when it actually appears rather than being a mandatory stage for every component.
 
