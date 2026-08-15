@@ -7,10 +7,10 @@ It is intentionally a registry, not a workflow log.
 ## Ownership
 
 ```text
-family canonical contract
-  → defines the required Material result
+contract.ts + tokens.css + BEHAVIOR.md
+  → define the required Material result
 
-component implementation + proof
+standalone component implementation + proof
   → confirms exact-version renderer behavior
   → owns any family-local mitigation
 
@@ -19,13 +19,13 @@ m3e-defects.md
     status, and removal trigger
 ```
 
-A converted family records official expectations in `contract.ts`, `tokens.css`, `BEHAVIOR.md`, `GUIDANCE.md`, and `SOURCES.md`. Untouched legacy families may still have historical DESIGN/ARCHITECTURE/IMPLEMENTATION evidence until they are converted.
+A converted family records official expectations in `contract.ts`, `tokens.css`, and `BEHAVIOR.md`. Untouched legacy families may still have historical DESIGN/ARCHITECTURE/IMPLEMENTATION evidence until they are converted.
 
 ## Inclusion boundary
 
 Create an `M3E-*` entry only when exact installed-version evidence confirms at least one of:
 
-- observable renderer behavior differs from the canonical Material contract;
+- observable renderer behavior differs from the canonical Material contracts;
 - documented m3e public API exists but is broken or implemented under another observable contract;
 - m3e documentation and the installed public implementation disagree;
 - a renderer defect requires a temporary family-local workaround or blocks faithful implementation.
@@ -38,7 +38,7 @@ Do not create an entry for:
 - a different internal implementation with equivalent observable behavior;
 - an unverified suspicion.
 
-A missing renderer capability is an implementation finding. If the canonical contract cannot be implemented through a small documented family-local seam, route it to the architect/upstream rather than redefining the public Material contract.
+A missing renderer capability is an implementation finding. If the canonical contracts cannot be implemented through a small documented family-local seam, route it to the architect/upstream rather than redefining the public Material contracts.
 
 ## Lifecycle
 
