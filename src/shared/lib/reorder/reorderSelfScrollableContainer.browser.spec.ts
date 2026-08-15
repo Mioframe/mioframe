@@ -377,10 +377,20 @@ test.describe('self-scrollable reorder container', () => {
 
     await page.mouse.up();
 
-    // After release, the temporary inline snap override is gone on both candidates, the original
-    // computed styles are restored, and neither candidate is allowed to move away from the exact
-    // position captured immediately before release. Cleanup runs once the drag-end status change
-    // flushes, so poll only for style restoration, never for a new settled scroll position.
+    // Sample both candidates concurrently immediately after pointer-up, with no blind window
+    // between the pre-release baseline and observation. Waiting for restored scroll-snap styles
+    // before sampling would let release movement settle into a new value before the test ever
+    // observes it.
+    const [containerReleaseSamples, ancestorReleaseSamples] = await Promise.all([
+      sampleScrollTop(container),
+      sampleScrollTop(ancestor),
+    ]);
+    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
+    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
+
+    // Style restoration is asserted separately from scroll-position stability: cleanup runs once
+    // the drag-end status change flushes, so poll only for style restoration, never for a new
+    // settled scroll position.
     await expect
       .poll(() => container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe('');
@@ -410,11 +420,5 @@ test.describe('self-scrollable reorder container', () => {
       ancestorSnapshotBeforeDrag.computedScrollSnapType,
     );
     expect(ancestorSnapshotAfterDrag.computedScrollBehavior).toBe('smooth');
-
-    const containerReleaseSamples = await sampleScrollTop(container);
-    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
-
-    const ancestorReleaseSamples = await sampleScrollTop(ancestor);
-    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
   });
 });
