@@ -11,6 +11,16 @@ The coding agent owns implementation feedback and task-specific proof. GitHub CI
 
 A skipped or empty local lane is not evidence that the proof type is unnecessary. Required contract proof must still exist and be owned correctly; CI is not a substitute for missing tests, stale ownership metadata, architecture review, required measurements, or visual evidence.
 
+## Execution environment
+
+Mioframe's canonical verifier entry points are `pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`. These repository-owned commands are the controlled verification boundary: they own verification scope, command coordination and locking, timeouts, resource limits, and the project-managed container path for browser checks.
+
+Keep the coding-agent runtime's sandbox and permission system enabled. The verifier entry points are a narrow project-approved exception that may run outside the generic agent sandbox only through the runtime's own command-scoped mechanism: an existing allow/exclusion rule or an explicit per-command approval/escalation request. Repository instructions do not themselves disable or bypass runtime permission checks.
+
+Do not broaden this exception to generic `pnpm`, `node`, shell interpreters, arbitrary package scripts, or unrestricted/full-access execution. If a persistent runtime rule is proposed, scope it to the verifier entry point needed for the workflow rather than a general executable prefix.
+
+If sandbox restrictions prevent a verifier invocation from reaching its project-owned execution path, keep the command unchanged and use the runtime's normal narrowly scoped approval/escalation flow. Treat the sandbox block as an execution-environment failure, not as evidence that the verifier or tested contract failed. Do not bypass the verifier by substituting raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, build, visual, mutation, or other child commands.
+
 ## Local verification purpose
 
 Local verification exists to give the coding agent fast, relevant feedback while implementing or correcting code.
