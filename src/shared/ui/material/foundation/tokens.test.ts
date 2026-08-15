@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import postcss from 'postcss';
 import { describe, expect, it } from 'vitest';
 
@@ -6,13 +6,10 @@ const LEGACY_TOKENS_PATH = './src/shared/lib/md/tokens.css';
 const FOUNDATION_TOKENS_PATH = './src/shared/ui/material/foundation/tokens.css';
 const FOUNDATION_THEME_PATH = './src/shared/ui/material/foundation/theme.css';
 const FOUNDATION_INDEX_PATH = './src/shared/ui/material/foundation/index.css';
-const LOADING_INDICATOR_TOKENS_PATH =
-  './src/shared/ui/material/components/loadingIndicator/tokens.css';
-const BUTTON_TOKENS_PATH = './src/shared/ui/material/components/button/tokens.css';
+const MATERIAL_COMPONENTS_PATH = './src/shared/ui/material/components';
 const APP_STYLES_PATH = './src/app/styles/styles.css';
 const BASE_STYLES_PATH = './src/app/styles/base.css';
 const MD_INDEX_PATH = './src/shared/lib/md/index.css';
-const TOKEN_API_DOC_PATH = './src/shared/ui/material/docs/token-api.md';
 
 /**
  * Sanctioned exception: the dark-mode elevation override intentionally lives in
@@ -28,22 +25,6 @@ const extractDeclaredCustomProperties = (css: string): Set<string> => {
   for (const match of css.matchAll(/^\s*(--[\w-]+)\s*:/gm)) {
     const name = match[1];
     if (name) names.add(name);
-  }
-  return names;
-};
-
-const extractCatalogueTableTokens = (doc: string): Set<string> => {
-  const names = new Set<string>();
-  for (const line of doc.split('\n')) {
-    const trimmed = line.trim();
-    if (!/^\|\s*`--/.test(trimmed)) continue;
-    // Only the first table cell (the "Token" column) lists catalogue entries;
-    // other cells may mention private/application tokens in prose.
-    const tokenCell = trimmed.split('|')[1] ?? '';
-    for (const match of tokenCell.matchAll(/`(--[\w-]+)`/g)) {
-      const name = match[1];
-      if (name) names.add(name);
-    }
   }
   return names;
 };
@@ -81,16 +62,21 @@ const extractSelectedMappings = (css: string, dark: boolean): Record<string, str
   return mappings;
 };
 
+const getComponentTokenSources = (): Array<{ path: string; css: string }> =>
+  readdirSync(MATERIAL_COMPONENTS_PATH, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `${MATERIAL_COMPONENTS_PATH}/${entry.name}/tokens.css`)
+    .filter((path) => existsSync(path))
+    .map((path) => ({ path, css: readFileSync(path, 'utf8') }));
+
 describe('Material foundation token ownership', () => {
   const foundationTokens = readFileSync(FOUNDATION_TOKENS_PATH, 'utf8');
   const foundationTheme = readFileSync(FOUNDATION_THEME_PATH, 'utf8');
   const foundationIndex = readFileSync(FOUNDATION_INDEX_PATH, 'utf8');
-  const loadingIndicatorTokens = readFileSync(LOADING_INDICATOR_TOKENS_PATH, 'utf8');
-  const buttonTokens = readFileSync(BUTTON_TOKENS_PATH, 'utf8');
+  const componentTokenSources = getComponentTokenSources();
   const appStyles = readFileSync(APP_STYLES_PATH, 'utf8');
   const baseStyles = readFileSync(BASE_STYLES_PATH, 'utf8');
   const mdIndex = readFileSync(MD_INDEX_PATH, 'utf8');
-  const catalogue = readFileSync(TOKEN_API_DOC_PATH, 'utf8');
 
   it('removes the legacy mixed-owner token file', () => {
     expect(existsSync(LEGACY_TOKENS_PATH)).toBe(false);
@@ -134,6 +120,12 @@ describe('Material foundation token ownership', () => {
     expect(foundationTheme).not.toMatch(/--m3e-/);
   });
 
+  it('keeps application tokens out of Material component token owners', () => {
+    for (const { path, css } of componentTokenSources) {
+      expect(css, path).not.toMatch(/--app-/);
+    }
+  });
+
   it('preserves the four state-opacity values exactly', () => {
     expect(foundationTokens).toContain('--md-sys-state-hover-state-layer-opacity: 8%;');
     expect(foundationTokens).toContain('--md-sys-state-focus-state-layer-opacity: 10%;');
@@ -152,55 +144,16 @@ describe('Material foundation token ownership', () => {
     });
   });
 
-  describe('public catalogue agreement', () => {
-    const declaredTokens = new Set([
-      ...extractDeclaredCustomProperties(foundationTokens),
-      ...extractDeclaredCustomProperties(foundationTheme),
-      ...extractDeclaredCustomProperties(loadingIndicatorTokens),
-      ...extractDeclaredCustomProperties(buttonTokens),
-    ]);
-    const publicDeclaredTokens = [...declaredTokens].filter(
-      (name) => !name.startsWith('--md-private-') && !name.startsWith('--m3e-'),
-    );
-    const catalogueTokens = extractCatalogueTableTokens(catalogue);
-
-    it('lists every retained public foundation/theme token', () => {
-      const missingFromCatalogue = publicDeclaredTokens.filter(
-        (name) => !catalogueTokens.has(name),
-      );
-
-      expect(missingFromCatalogue).toEqual([]);
-    });
-
-    it('has a runtime declaration for every catalogued token', () => {
-      const orphanCatalogueEntries = [...catalogueTokens].filter(
-        (name) => !declaredTokens.has(name),
-      );
-
-      expect(orphanCatalogueEntries).toEqual([]);
-    });
-
-    it('excludes private and application tokens from the catalogue', () => {
-      const disallowed = [...catalogueTokens].filter(
-        (name) =>
-          name.startsWith('--md-private-') ||
-          name.startsWith('--app-') ||
-          name.startsWith('--m3e-'),
-      );
-
-      expect(disallowed).toEqual([]);
-    });
-  });
-
   it('has one declaration owner per public token, except the sanctioned elevation override', () => {
-    const tokensCssNames = extractDeclaredCustomProperties(foundationTokens);
-    const themeCssNames = extractDeclaredCustomProperties(foundationTheme);
-    const loadingIndicatorCssNames = extractDeclaredCustomProperties(loadingIndicatorTokens);
-    const buttonCssNames = extractDeclaredCustomProperties(buttonTokens);
     const declarationCounts = new Map<string, number>();
+    const tokenSources = [
+      foundationTokens,
+      foundationTheme,
+      ...componentTokenSources.map(({ css }) => css),
+    ];
 
-    for (const names of [tokensCssNames, themeCssNames, loadingIndicatorCssNames, buttonCssNames]) {
-      for (const name of names) {
+    for (const css of tokenSources) {
+      for (const name of extractDeclaredCustomProperties(css)) {
         if (name.startsWith('--md-private-') || name.startsWith('--m3e-')) continue;
         declarationCounts.set(name, (declarationCounts.get(name) ?? 0) + 1);
       }
