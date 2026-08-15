@@ -65,6 +65,10 @@ Inside an owning family:
 - do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion;
 - do not add a generic adapter framework without demonstrated repeated need and a separate architecture decision.
 
+Before a renderer mapping or composition may be classified or accepted as `direct`, inspect the documentation shipped for the exact lockfile-resolved `@m3e/web` version together with its installed public artifacts for every selected element, slot, child role, property, attribute, event, and CSS input involved. A slot name or exported type alone is not proof that arbitrary content is compatible. Check documented examples and the observable composition contract, including required or assumed child elements, inherited/custom-property handoff, geometry, accessibility, and interaction semantics. When renderer examples or public styling contracts rely on a renderer-owned child element, architecture must either map that role through an independently owned canonical Mioframe component or prove that the chosen alternative satisfies the same observable contract. Do not infer composition equivalence from markup shape or slot-name similarity.
+
+When official Material defines fixed observable geometry for a selected scenario, `TEST IMPACT` must include browser-level numeric geometry proof for the rendered parts affected by renderer composition. Visual regression may supplement this proof but cannot replace the numeric contract.
+
 Controlled renderer workarounds follow `docs/component-adapter.md` and `docs/m3e-defects.md`.
 
 ## Token ownership
