@@ -22,12 +22,13 @@ rendered observable result
 | --- | --- |
 | Material reference/system foundations | `foundation/tokens.css` |
 | Default light/dark system assignments | `foundation/theme.css` |
-| Family public component tokens | `components/<family>/tokens.css` |
+| Family public component-token contract/catalogue | `components/<family>/tokens.css` |
 | Private renderer bridges/workarounds | owning component implementation/private stylesheet |
-| Supported runtime token catalogue | `docs/token-api.md` |
 | Application tokens | outside Material as `--app-*` |
 
 `--m3e-*` and `--md-private-*` are never public Material API.
+
+There is no second central component-token catalogue. Executable CSS is the source of truth and repository verification owns cross-file public-token ownership invariants.
 
 ## Family `tokens.css`
 
@@ -54,7 +55,7 @@ Product theme selection/persistence and `--app-*` customization remain outside M
 
 Implementation maps each public token through documented exact-version renderer inputs/fallbacks while keeping those details private.
 
-For every mapping that affects a selected rendered part or state, the implementation must be able to trace:
+For every mapping that affects a rendered part or state, the implementation must be able to trace:
 
 ```text
 official Material token
@@ -66,13 +67,18 @@ official Material token
 
 If the renderer fallback produces the correct result, do not duplicate it merely to create more CSS. If a public token override cannot reach the correct rendered result, that is an implementation/renderer gap rather than a reason to remove the token from the canonical contract.
 
-## Runtime catalogue
+## Legacy transition
 
-`docs/token-api.md` lists public tokens that are actually implemented and proven at runtime.
+Existing pre-contract families may temporarily keep private `--m3e-*` bridges in their historical `tokens.css` files. Do not bulk-rewrite them solely for file-shape consistency.
 
-Update catalogue entries atomically with successful implementation. The family `tokens.css` remains the executable public contract; the catalogue is the consumer-facing index.
+When such a family is next converted through the contract-first workflow:
 
-Existing families that have not yet moved to the contract-first workflow may keep their current token records temporarily. Do not bulk-convert them in unrelated PRs.
+- retain only official public `--md-comp-*` declarations in its canonical `tokens.css`;
+- move required private renderer bridges to the family implementation/private stylesheet;
+- preserve observable behavior and proof;
+- remove obsolete staged token records.
+
+The removed central `docs/token-api.md` catalogue is not replaced. Family/foundation CSS owners are the executable catalogue.
 
 ## Verification
 
@@ -91,6 +97,8 @@ Depending on the token, use faithful browser/visual proof for:
 A custom-property value on the host, source inspection, renderer mapping line, story, or screenshot alone is insufficient when the public contract concerns a different rendered part or fixed numeric result.
 
 Do not require one test per token when several tokens share one faithfully proven mapping path. Proof should be proportional while still covering materially distinct parts, states, grammars, fallbacks, and renderer gaps.
+
+Repository token-ownership verification should derive from executable foundation/family CSS rather than from a manually duplicated catalogue.
 
 ## Renderer upgrades
 
