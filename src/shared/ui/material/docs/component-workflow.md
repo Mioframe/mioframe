@@ -1,460 +1,236 @@
-# Material component staged workflow
+# Material component workflow
 
 ## Decision
 
-Every official Material family is handled by one operator command:
+One operator command handles one official Material family:
 
 ```text
 material-component <name>
 ```
 
-The command runs five isolated stages for the normal first-pass path:
+The normal workflow uses three fresh worker contexts:
 
 ```text
-DESIGN.md
-  → ARCHITECTURE.md
-  → implementation + IMPLEMENTATION.md
-  → migration + MIGRATION.md
-  → independent REVIEW.md
-  → handoff to architect for PR/CI
+CONTRACT
+  → IMPLEMENT + MIGRATE
+  → INDEPENDENT REVIEW
+  → architect / PR / exact-head CI
 ```
 
-The goal of the workflow is to help an agent implement a correct Mioframe Material component from official Material guidance and repository rules. Workflow metadata and verification orchestration must stay subordinate to that goal.
+The workflow intentionally prefers the minimum reliable orchestration. Add another stage only when a demonstrated ownership boundary cannot be handled safely inside these three roles.
 
-This document is the single owner of the Material state machine.
+The durable family source of truth is the narrow contract defined by [`component-contract.md`](./component-contract.md), plus runtime code and executable proof. Worker reports are handoff data, not persistent parallel documentation.
 
-## Core simplification
+## Why this shape
 
-The workflow does not use timestamps, hashes, counters, Git commits, or artifact revision graphs as correctness identities.
+- Contract extraction is separated from renderer and legacy influence.
+- Implementation and consumer migration stay in one coding context because they are one repository transformation and share the same canonical API.
+- Independent review remains a fresh context so the author does not approve its own work.
+- Non-deterministic architecture is exceptional and escalates to `architect-handoff`; it is not a mandatory stage for every wrapper.
+- GitHub CI and merge readiness remain architect-owned outside the coding-agent workflow.
 
-`DESIGN.md` may be reused while it is current and its refresh date is not due.
+## Canonical family contract
 
-For a normal invocation, later reasoning stages run in fresh isolated workers:
+Before implementation, the family owns:
 
 ```text
-current DESIGN
-  → fresh ARCHITECTURE
-  → fresh IMPLEMENTATION pass
-  → fresh MIGRATION pass
-  → fresh independent REVIEW
-  → PR/CI handoff
+contract.ts   — props, slots, emits, public types/defaults/combinations
+
+tokens.css    — public official Material component-token contract
+
+BEHAVIOR.md   — anatomy, states, interaction, accessibility, geometry, motion
+
+GUIDANCE.md   — correct consumer usage and composition guidance
+
+SOURCES.md    — official-source provenance and conflicts
 ```
 
-Fresh isolation means fresh worker context, not mandatory re-derivation of every already-resolved family fact after a narrow correction. A correction route uses a fresh worker for the target stage, but that worker starts from the current canonical artifacts plus the exact unresolved finding and limits work to the affected contract unless evidence shows wider invalidation.
+See [`component-contract.md`](./component-contract.md) for exact ownership.
 
-After every correction, a fresh independent review re-evaluates the complete resulting family and decides whether any preserved downstream artifact became stale. This review is the safety boundary that allows narrow correction stages without weakening final quality.
+The public contract is derived from official Material, not from current Mioframe demand, legacy API, or m3e capability. The application adapts to the canonical component after the standalone component is proven.
 
-Existing compliant implementation or migration may require no production edit. Workers inspect and verify only the scope needed to prove their owned contracts.
+## Worker boundaries
 
-Legacy `Artifact revision`, `Design contract revision`, and downstream revision-reference fields may remain in older artifacts. They are ignored by the workflow and must be removed when the owning stage next rewrites that artifact.
+### Contract worker
 
-## Evidence economy
+Runs in a fresh isolated context.
 
-Stage artifacts are contracts and durable evidence indexes, not execution transcripts.
+Owns only official Material → canonical family contract.
 
-- Read the minimum authoritative Material and exact-version renderer documentation needed for the selected scenario and affected contract; expand only when evidence is ambiguous or reveals broader impact.
-- Prefer exact section/path references, compact mapping tables, and observable conclusions over copied source excerpts or narrated searches.
-- Do not repeat unchanged renderer token chains, repository searches, arithmetic, or verification prose across ARCHITECTURE, IMPLEMENTATION, MIGRATION, and REVIEW.
-- In correction mode, update only affected artifact sections plus any control fields whose meaning changed. Preserve unrelated valid decisions instead of rewriting them as a new narrative.
-- A worker may inspect broader context when required for correctness, but its artifact records only conclusions needed by later stages.
-- Verification reports list commands/results and unresolved evidence; they do not reproduce test implementation or CI-style logs.
+It may read applicable rules, Material foundation/token conventions, current family contract files when refreshing, and official Material sources. It must not use m3e, legacy component implementation, or product consumers to choose the public API, behavior, or token surface.
 
-Conciseness must not remove a required decision, mapping, acceptance criterion, proof owner, finding, or correction route.
-
-## Boundaries
-
-### Orchestrator
-
-The orchestrator may only:
-
-- resolve the canonical family;
-- inspect fixed stage fields, required headings, dates, routes, and terminal-state combinations;
-- decide whether DESIGN must refresh;
-- launch fresh isolated stage workers;
-- process explicit dependency queues and correction routes;
-- maintain an invocation-local dependency path and route stack;
-- retain a compact execution ledger;
-- retain exact unresolved findings and exact operator observations as an invocation-local correction capsule;
-- stop on a genuine blocker or malformed worker result;
-- hand a successfully reviewed family back to the architect for PR/CI.
-
-It does not decide Material design, architecture, implementation, migration semantics, review findings, CI ownership, or merge readiness.
-
-It does not run a broad local `pnpm verify` merely to duplicate the exact-head PR CI gate.
-
-### Stage workers
-
-Design, architecture, implementation, migration, and review each run in a fresh isolated context and own their semantic decisions.
-
-A worker must resolve every fixable defect owned by its stage before returning. It must not route to its own stage.
-
-A stage returns only:
-
-- successful;
-- blocked with an exact route to an earlier stage or another family;
-- genuinely blocked with no route.
-
-`partial` is never a valid terminal state. Review must be independent from workers that authored or corrected architecture, implementation, or migration.
-
-Workers do not depend on Git, PR, commit, branch, diff, or external-check state.
-
-### Correction capsule
-
-When a stage or operator identifies a concrete unresolved defect, the orchestrator retains only the minimum lossless facts needed to route it:
+It returns one of:
 
 ```text
-family: <canonical-family>
-origin stage: <stage | operator>
-target stage: <stage>
-finding: <exact observable/contract defect>
-affected contract/proof: <concise exact scope>
-operator observations: none | <verbatim or lossless factual normalization>
+complete
+blocked — exact official-source/contract ambiguity
+needs-architect — exact non-deterministic public-contract decision
 ```
 
-Do not retain the previous worker's full report or hidden reasoning. Do not turn an operator observation into a guessed cause or prescribed fix. The target worker owns diagnosis and correction.
+### Implementation worker
 
-## Routing grammar
+Runs in a fresh isolated context after the contract is complete.
 
-Successful artifacts use:
+Owns the complete repository transformation:
+
+1. read the canonical contract;
+2. run one implementation preflight covering component implementation, proof, consumer migration, and legacy removal;
+3. inspect documentation and public artifacts shipped with the exact lockfile-resolved `@m3e/web` version;
+4. implement the canonical Vue component and private renderer mapping;
+5. prove the standalone component before adapting application consumers;
+6. inventory every legacy/current consumer;
+7. migrate consumers to the canonical API without changing the contract for convenience;
+8. remove replaced legacy ownership and obsolete staged family artifacts;
+9. update the public token catalogue after runtime token proof;
+10. run the smallest faithful verifier-managed checks for the changed contracts.
+
+Implementation may not redesign the Material contract to match m3e or legacy code.
+
+It returns one of:
 
 ```text
-Required return family: none
-Required return stage: none
+complete
+blocked — exact implementation/migration blocker
+return-to-contract — exact contract defect proved during implementation
+needs-architect — exact renderer/ownership/composition decision that is not deterministic from repository rules
 ```
 
-A correction route uses:
+### Independent review worker
+
+Always runs in a fresh context independent from the contract/implementation authors.
+
+It reviews the complete resulting family and consumers, not only the latest patch. It independently checks:
+
+- official Material sources ↔ `contract.ts`, `tokens.css`, `BEHAVIOR.md`, `GUIDANCE.md`;
+- source provenance/conflicts in `SOURCES.md`;
+- canonical contract ↔ Vue implementation;
+- exact-version m3e documentation/public artifacts ↔ private renderer mapping;
+- CSS tokens ↔ actual rendered results;
+- behavior, accessibility, geometry and motion ↔ faithful proof;
+- canonical standalone component ↔ migrated consumers;
+- removal of replaced legacy ownership and stale staged artifacts;
+- repository rules, testing ownership, and blast radius.
+
+Review does not fix production code and does not write a persistent `REVIEW.md`.
+
+It returns:
 
 ```text
-Required return family: self | <canonical-family>
-Required return stage: design | architecture | implementation | migration
+compliant
+compliant-with-listed-risks
+blocked → contract
+blocked → implementation
+blocked → architect
 ```
 
-Mixed `none` and non-`none` values are invalid.
+A successful review is readiness for architect-owned PR/CI, not merge approval.
 
-Same-family routes must target an earlier stage:
+## Renderer boundary during implementation
 
-| Emitting stage | Allowed same-family targets                     |
-| -------------- | ----------------------------------------------- |
-| design         | none                                            |
-| architecture   | design                                          |
-| implementation | design; architecture                            |
-| migration      | design; architecture; implementation            |
-| review         | design; architecture; implementation; migration |
+`@m3e/web` is a private implementation dependency. The implementation worker uses it only after the Material contract is fixed.
 
-Routes to review and same-stage self-routes are invalid.
+For every selected mapping, inspect exact-version renderer documentation/examples and public artifacts. Classify gaps by observable contract, not by naming similarity.
 
-A blocked result with route `none/none` is a genuine terminal blocker.
+Preferred order:
 
-## DESIGN.md
+1. direct documented renderer support;
+2. small family-local adapter mapping/correction that preserves the canonical contract;
+3. documented, removable exact-version workaround for a confirmed renderer defect;
+4. `architect-handoff` or upstream m3e fix when faithful implementation would require new shared infrastructure, private DOM coupling, duplicated renderer behavior, or a public-contract compromise.
 
-Control fields:
+Never shrink or rename the canonical Material API merely because m3e exposes a smaller or differently named API.
+
+## Standalone-first migration rule
+
+Consumer migration begins only after the canonical standalone component and its required proof are complete enough to establish the component contract independently of the application.
+
+Migration then asks:
 
 ```text
-Status: current | blocked
-Source revision: <exact source/cache revision>
-Source checked at: YYYY-MM-DD
-Refresh check after: YYYY-MM-DD
-Revision summary: <one concise line>
-Remaining blockers: none | <exact blockers>
-Required return family: none
-Required return stage: none
+How should this product scenario use the canonical Material component?
 ```
 
-Required headings:
+It must not ask:
 
 ```text
-## Source ledger
-## Identity and purpose
-## Anatomy and content
-## Variants and configurations
-## Geometry and layout
-## States and behavior
-## Usage guidance
-## Accessibility
-## Complete official token catalogue
-## Source conflicts and unknowns
-## Related official contracts
+How should the canonical component change to make this legacy call site easy to preserve?
 ```
 
-The refresh interval is fixed:
+If a legacy scenario is not actually Material component behavior, keep that responsibility in the correct product/shared composition owner rather than expanding the Material API.
 
-```text
-Refresh check after = Source checked at + 30 calendar days
-```
+## Proof model
 
-Run design when:
+Use the lowest faithful proof for each contract:
 
-- DESIGN is missing;
-- status is `blocked` and a source condition has materially changed;
-- refresh date is due;
-- canonical evidence records newer official Material content;
-- an exact correction route targets design.
+- TypeScript/component contract tests for props, slots, emits, defaults and boundary filtering;
+- real browser proof for keyboard, pointer, focus, accessibility and rendered geometry;
+- visual regression for stable renderer-owned appearance and motion states where appropriate;
+- computed/rendered browser results for public CSS token mappings;
+- product/E2E proof only for product scenarios that cross Material ownership.
 
-Otherwise reuse current DESIGN for the invocation.
+A declaration, source mapping, host attribute, story, or screenshot alone does not prove a rendered Material token or fixed geometry contract.
 
-A blocked design has an exact blocker and route `none/none`.
-
-## ARCHITECTURE.md
-
-Architecture runs in a fresh worker after current DESIGN is available. On the normal path it resolves the complete family architecture. On a correction route it corrects the exact affected decision and checks adjacent decisions only far enough to prove the artifact remains complete and internally consistent.
-
-Control fields:
-
-```text
-Status: ready | blocked
-DESIGN.md reference: <path>
-Renderer revision: @m3e/web@<lockfile-resolved-version>
-Revision summary: <one concise line>
-Remaining blockers: none | <exact blockers>
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Implementation readiness: ready | awaiting-dependencies | blocked
-Dependency families: none | <canonical-family>[; <canonical-family>...]
-Dependency queue: none | <canonical-family>[; <canonical-family>...]
-```
-
-Required headings:
-
-```text
-## Goal
-## Non-goals
-## Current scenarios
-## Selected and deferred Material surface
-## Dependency closure
-## Ownership
-## Public Vue API
-## Public token contract
-## Renderer mapping and gaps
-## State precedence and restoration
-## Implementation passes
-## TEST IMPACT
-## Migration plan
-## Acceptance criteria
-## Risks
-## Forbidden
-## Implementation readiness
-```
-
-Architecture resolves every coding decision. A non-empty dependency queue uses `Status: ready` with `Implementation readiness: awaiting-dependencies` and no correction route.
-
-After queued dependencies complete through independent review, parent architecture runs fresh again. It does not persist dependency review revision identities.
-
-## IMPLEMENTATION.md
-
-Implementation runs in a fresh worker after ready architecture. On a correction path, implementation consumes the exact correction capsule and corrected architecture, edits only affected component/proof files unless the correction changes a wider contract, and runs the smallest faithful verifier-managed checks for the affected proof.
-
-Control fields:
-
-```text
-Status: complete | blocked
-ARCHITECTURE.md reference: <path>
-Revision summary: <one concise line>
-Remaining blockers: none | <exact blockers>
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Architecture deviations: none | <exact deviations>
-Migration readiness: ready | blocked
-```
-
-Required headings:
-
-```text
-## Implemented passes
-## Public API implemented
-## Tokens and renderer mappings
-## Dependencies
-## Component-owned proof
-## Stage verification
-## Architecture deviations
-## Remaining blockers
-## Migration readiness
-```
-
-The worker compares current code and proof directly with current ARCHITECTURE. Existing compliant code may require no production edit. Any current-stage defect must be fixed before success.
-
-Use focused verifier-managed local checks needed for implementation feedback and contract proof. A broad local repository gate is not required merely for stage completion.
-
-## MIGRATION.md
-
-Migration runs in a fresh worker on the normal path after complete implementation, and whenever a correction route explicitly targets migration.
-
-It is not automatically rerun after every same-family architecture or implementation correction. The existing MIGRATION.md remains evidence to be checked by the next independent review. If the corrected result changes consumer-facing semantics, migration inventory, legacy disposition, or migration proof, review must route to migration before the family can complete.
-
-Control fields:
-
-```text
-Status: complete | blocked
-IMPLEMENTATION.md reference: <path>
-Revision summary: <one concise line>
-Remaining blockers: none | <exact blockers>
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Review readiness: ready | blocked
-```
-
-Required headings:
-
-```text
-## Consumer inventory
-## Migrated consumers
-## Preserved scenarios and failure paths
-## Legacy ownership removed
-## Consumer and blast-radius proof
-## Stage verification
-## Remaining blockers
-## Review readiness
-```
-
-When no consumer or legacy owner exists, record `none` / `not applicable`; do not invent a product consumer.
-
-The worker compares current consumers directly with current architecture and implementation. Existing compliant migration may require no production edit.
-
-Use focused verifier-managed local checks needed for migration feedback and preserved-scenario proof. A broad local repository gate is not required merely for stage completion.
-
-For an already-proven no-consumer case in a correction route, do not rerun migration merely to repeat the same repository search. Independent review verifies that the preserved MIGRATION.md still matches the corrected family.
-
-## REVIEW.md
-
-Review always runs fresh after the normal migration path and after every correction path, and must be independent.
-
-Control fields:
-
-```text
-Verdict: compliant | compliant-with-listed-risks | blocked
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Completion status: complete | blocked
-Final workflow verification readiness: ready | blocked
-Operator visual status: no-reported-defect | defect-reported | not-applicable
-Blockers: none | <exact blockers>
-Major issues: none | <exact issues>
-Minor issues: none | <exact issues>
-Accepted risks: none | <exact accepted risks>
-```
-
-`Final workflow verification readiness` means the family is ready for exact-head PR CI. It does not require the review worker or orchestrator to execute that CI gate locally.
-
-Required headings:
-
-```text
-## Goal and scenarios reviewed
-## Official design compliance
-## Architecture compliance
-## Implementation compliance
-## Migration and legacy removal
-## Proof and stage verification
-## Blockers
-## Major issues
-## Minor issues
-## Accepted risks
-## Items not required
-## Routing evidence
-```
-
-Review reads enough current DESIGN, ARCHITECTURE, IMPLEMENTATION, MIGRATION, code, consumers, tests, renderer evidence, and testing policy to independently evaluate the complete selected family contract. It prioritizes the correction capsule and operator observations, then verifies the rest of the selected contract and migration consistency. Complete review coverage does not require narrating or re-deriving unrelated deferred surfaces.
-
-`compliant-with-listed-risks` is only for complete work with bounded non-blocking limitations. Missing proof, unresolved findings, unknown consumers, or deferred required work are not accepted risks.
-
-## Dependency handling
-
-Architecture records only the direct dependency families and the dependencies that still require processing in the current invocation.
-
-For each queued dependency:
-
-1. append it to the invocation-local active dependency path;
-2. run its normal Material pipeline through fresh independent review;
-3. remove it from the path when returning;
-4. rerun parent architecture fresh.
-
-A dependency with an already-complete canonical implementation and successful review may still be revalidated by its own invocation. No persistent dependency revision graph is required.
-
-Before entering a dependency, detect self-dependency or an ancestor already in the active path. Return the exact cycle to the architecture worker that emitted it. Architecture must correct ownership or return a genuine blocker.
+Focused checks are implementation feedback. GitHub CI on the exact PR head is the final repository gate.
 
 ## Correction routing
 
-### Same family
-
-Use the exact correction capsule and fresh isolated workers, but do not automatically repeat unaffected downstream stages.
-
-- `review → design`: design → architecture → implementation → migration → review. Design changes may invalidate the whole family, so the full downstream path is required.
-- `review/migration/implementation → architecture`: architecture → implementation → review. Preserve the current MIGRATION.md; review routes to migration only if the corrected contract makes it stale.
-- `review/migration → implementation`: implementation → review. Preserve the current MIGRATION.md; review routes to migration only if implementation changes invalidate it.
-- `review → migration`: migration → review.
-
-The same principle applies when an earlier stage emits the route: execute the target and only the stages listed above, then independent review.
-
-If review routes to migration because a preserved MIGRATION.md is stale, run migration once and review again.
-
-If two correction rounds for the same underlying defect still reveal ownership drift, missing scenarios, mixed responsibilities, or workaround growth, stop narrow correction and restart at full architecture with the unresolved defect and operator evidence explicit.
-
-### Cross family
-
-Retain invocation-local:
+Keep correction routing small and explicit.
 
 ```text
-origin: <origin-family>/<origin-stage>
-target: <target-family>/<target-stage>
+contract defect
+  → fresh contract worker
+  → fresh implementation worker when runtime/consumers can be affected
+  → fresh independent review
+
+implementation or migration defect
+  → fresh implementation worker with the exact finding
+  → fresh independent review
+
+non-deterministic architecture/ownership decision
+  → architect-handoff
+  → resume at the earliest invalidated worker
+  → fresh independent review
 ```
 
-Run the target from the requested stage through fresh independent review. Then resume the origin. If the target can affect the origin architecture or dependency closure, restart the origin at architecture; otherwise resume at the earliest actually invalidated origin stage. Always finish with a fresh independent origin review.
+Do not rerun contract extraction for a purely local implementation correction. Do not split migration into another worker merely because the correction touches consumers.
 
-Nested routes unwind most-recent origin first.
+If two correction rounds for the same underlying problem still show ownership drift, mixed responsibilities, contract instability, or growing workaround logic, stop patching and escalate to architecture.
 
-No durable revision graph is needed because correction scope and unresolved evidence remain invocation-local.
+## Existing-family transition
 
-## Mechanical algorithm
+Untouched families may temporarily retain old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files. They are legacy evidence only.
 
-Normal path:
+When a family next completes this workflow:
 
-1. Resolve canonical family.
-2. Validate or refresh DESIGN using the design lifecycle above.
-3. Stop if DESIGN is genuinely blocked.
-4. Run ARCHITECTURE fresh.
-5. Process dependency queue; rerun parent ARCHITECTURE after dependencies.
-6. Run IMPLEMENTATION fresh with focused local proof.
-7. Run MIGRATION fresh with focused local proof.
-8. Run independent REVIEW fresh.
-9. When review is successful, stop agent orchestration and hand the family to the architect for PR creation and exact-head CI.
+- establish the five canonical contract files;
+- make runtime code/tests/consumer migration match them;
+- remove the old staged artifacts for that family;
+- do not bulk-convert unrelated families in the same PR.
 
-Correction path:
+## Orchestrator boundary
 
-1. Build the minimal correction capsule from the exact finding/operator observation.
-2. Run the target stage in a fresh worker scoped to that defect.
-3. Run only the required downstream stage(s) from `Correction routing`.
-4. Run a fresh independent REVIEW of the complete resulting family.
-5. Follow any new exact route; after two unsuccessful narrow rounds for the same underlying defect, restart at full architecture.
-6. Hand off only when no operator observation or review finding remains unresolved.
+The `material-component` orchestrator is intentionally thin. It may:
 
-Mechanical validation checks only fields, headings, dates, routes, and terminal-state combinations. It does not validate timestamps or revision identities.
+- resolve the canonical family;
+- launch the three worker roles;
+- carry exact operator observations and exact correction findings;
+- validate structured terminal results;
+- route contract/implementation corrections or architecture escalation;
+- stop on a genuine blocker;
+- hand a successfully reviewed family to the architect.
 
-## CI failure routing
-
-GitHub CI is outside the coding-agent Material invocation and is owned by the architect/PR workflow.
-
-If exact-head PR CI later fails:
-
-1. the architect captures the exact failed check/output;
-2. classify whether an exact Material family/stage owns the failure;
-3. route a correction to that stage when Material-owned;
-4. run focused local proof for the correction;
-5. push the correction and let CI rerun the authoritative exact-head gate.
-
-A fresh `material-component-review` worker may classify supplied CI output in its routing mode. An external workspace failure must not rewrite a compliant family `REVIEW.md`.
-
-## Visual channel
-
-Operator visual/motion inspection is an external defect-reporting channel. Absence of a report is not a blocker. A concrete defect is preserved in the invocation-local correction capsule and remains unresolved until a fresh independent review explicitly verifies the corrected observable behavior or routes it again.
+It must not design APIs, inspect m3e semantics, implement code, migrate consumers, perform review, invent causes from operator observations, or run broad verification to duplicate PR CI.
 
 ## Completion
 
-The coding-agent invocation is complete when:
+The coding-agent Material workflow is complete when:
 
-- DESIGN is current;
-- the current normal path or correction path has reached a successful independent review;
-- all dependencies processed in the invocation are complete;
-- no reported defect remains unresolved;
-- review declares `Final workflow verification readiness: ready`.
+- the canonical family contract is complete and internally consistent;
+- the component faithfully implements that contract through private renderer integration;
+- required standalone proof passes;
+- all applicable consumers use the canonical API correctly;
+- replaced legacy ownership and obsolete staged artifacts are removed;
+- independent review reports no unresolved finding;
+- focused implementation verification is complete or an exact external blocker is reported.
 
-The resulting family is then ready for architect-owned PR creation and exact-head GitHub CI. Merge readiness is decided only after CI and full PR review.
-
-Stage artifacts remain human-readable handoffs, not a workflow database.
+Then hand the result to the architect for PR creation/update, exact-head CI, full PR review, and merge readiness.
