@@ -26,15 +26,16 @@ Do not depend on Git history, PR metadata, branch/diff state, or external checks
 1. Independently verify current official Material sources against `SOURCES.md`.
 2. Compare official Material semantics with `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and `GUIDANCE.md`.
 3. Check that the public contract is canonical Material/Vue semantics rather than current-demand, legacy, or m3e vocabulary.
-4. Compare the contract with the Vue implementation.
-5. Independently inspect exact lockfile-resolved m3e docs/examples/public artifacts for every material renderer mapping, composition, mutable state and token bridge.
-6. Verify controlled state has one source of truth and rejected intent cannot drift.
-7. Verify public token mappings reach the correct rendered parts/states and family `tokens.css` remains the sole public component-token catalogue.
-8. Verify accessibility, keyboard/pointer/focus/native behavior, fixed geometry and motion/visual requirements at faithful observable boundaries.
-9. Verify canonical stories/browser/visual fixtures use production-valid semantic content.
-10. Verify all applicable consumers use the canonical API correctly and product behavior remains with product owners.
-11. Verify replaced legacy implementation/exports/proof and obsolete staged family artifacts are removed.
-12. Review shared-UI/test-environment blast radius and repository-rule compliance.
+4. Verify the Vue component consumes the `contract.ts` Props/Slots/Emits/types directly and does not maintain a parallel public type declaration.
+5. Compare the complete canonical contract with runtime behavior.
+6. Independently inspect exact lockfile-resolved m3e docs/examples/public artifacts for every material renderer mapping, composition, mutable state and token bridge.
+7. Verify controlled state has one source of truth and rejected intent cannot drift.
+8. Verify public token mappings reach the correct rendered parts/states and family `tokens.css` remains the sole public component-token catalogue.
+9. Verify accessibility, keyboard/pointer/focus/native behavior, fixed geometry and motion/visual requirements at faithful observable boundaries.
+10. Verify canonical stories/browser/visual fixtures use production-valid semantic content.
+11. Verify all applicable consumers use the canonical API correctly and product behavior remains with product owners.
+12. Verify replaced legacy implementation/exports/proof and obsolete staged family artifacts are removed.
+13. Review shared-UI/test-environment blast radius and repository-rule compliance.
 
 Automated checks prove only their covered contracts. Green verification is not semantic approval.
 
@@ -88,6 +89,7 @@ PR/CI readiness: ready | blocked
 - Fixing production/contract files during review.
 - Writing or updating family REVIEW.md.
 - Reviewing only changed files/latest patch.
+- Accepting a Vue component that duplicates rather than consumes the canonical TypeScript contract.
 - Accepting renderer semantics from naming similarity or successful rendering alone.
 - Accepting a CSS declaration/mapping without rendered-result proof where required.
 - Accepting a screenshot as the sole oracle for fixed Material geometry.
