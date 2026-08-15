@@ -12,40 +12,47 @@ Consumers use the curated root API:
 import { MDButton, MDLoadingIndicator } from '@shared/ui/material';
 ```
 
-A public `MD*` component:
+A public `MD*` family:
 
-- uses official Material terminology selected by its ready family architecture;
-- exposes only confirmed current demand plus the minimum coherent Material surface;
+- uses official Material terminology and semantics;
+- is defined independently from current Mioframe consumers;
 - keeps renderer tags, attributes, events, types, and private CSS inputs out of consumers;
-- contains no product behavior or undocumented Material extension without an explicit architecture decision.
+- contains no product behavior or undocumented Material extension.
 
 ## Family layout
 
+A family processed by the current workflow uses narrow durable contracts:
+
 ```text
 components/<family>/
-  DESIGN.md
-  ARCHITECTURE.md
-  IMPLEMENTATION.md
-  MIGRATION.md
-  REVIEW.md
-  README.md
-  <runtime, tests, stories, tokens>
+  contract.ts
+  tokens.css
+  BEHAVIOR.md
+  GUIDANCE.md
+  SOURCES.md
+  <Vue runtime, tests, stories, private renderer glue>
 ```
 
-The five stage artifacts are durable handoffs. A family `README.md` is only a short navigation index and must not own mutable status or next action.
+- `contract.ts` owns props, slots, emits, public types/defaults/combinations.
+- `tokens.css` owns the public official component-token contract.
+- `BEHAVIOR.md` owns normative observable behavior, accessibility, geometry and motion.
+- `GUIDANCE.md` owns correct consumer usage and composition guidance.
+- `SOURCES.md` owns official-source provenance/conflicts.
 
-The complete staged execution contract belongs only to [`docs/component-workflow.md`](./docs/component-workflow.md). The normal operator entrypoint is one `material-component <name>` invocation; the operator does not repeat it after every stage.
+Old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files may remain temporarily in untouched families as legacy evidence. They are removed when that family is converted through the current workflow.
+
+The complete operator flow belongs only to [`docs/component-workflow.md`](./docs/component-workflow.md). The normal entrypoint remains one `material-component <name>` invocation.
 
 ## Ownership
 
 Material owns:
 
-- canonical Vue adapters and exports;
-- selected official component tokens;
+- canonical Vue contracts, adapters and exports;
+- official public component tokens;
 - renderer-independent Material foundation and theme declarations;
 - private family-local renderer mappings;
-- approved wrapper corrections and controlled renderer workarounds;
-- component tests, stories, visual/browser proof, and stable defect records.
+- approved family-local renderer corrections/workarounds;
+- component tests, stories, visual/browser proof, and stable renderer defect records.
 
 Material does not own:
 
@@ -56,32 +63,23 @@ Material does not own:
 
 ## Renderer boundary
 
-Outside this directory, code must not:
+Outside this directory, code must not import `@m3e/web`, render `m3e-*`, consume renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
 
-- import `@m3e/web`;
-- render `m3e-*` elements;
-- consume renderer element types or events;
-- depend on `--m3e-*` variables;
-- inspect renderer DOM.
+Inside an owning family, prefer documented exact-version renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
 
-Inside an owning family, prefer documented renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
+## Workflow
 
-## Token boundary
+The normal workflow is deliberately small:
 
-- `DESIGN.md` captures the complete official component-token catalogue.
-- `ARCHITECTURE.md` selects the minimum complete runtime token set required by confirmed scenarios.
-- foundation owns supported `--md-ref-*` and `--md-sys-*` tokens;
-- each family owns only its selected `--md-comp-<family>-*` tokens;
-- `docs/token-api.md` is the supported public catalogue;
-- `--m3e-*` and `--md-private-*` stay private;
-- `--app-*` stays outside Material.
+```text
+contract
+  → implement + standalone proof + migrate consumers
+  → fresh independent review
+  → architect / PR / exact-head CI
+```
 
-Do not create a token registry, token DSL, compatibility alias layer, duplicate owner, or exhaustive renderer/Material token copy without a demonstrated current requirement and separate architecture decision.
+The canonical component is established before migration. Legacy call sites adapt to the canonical Material API; they do not define it.
 
-## Proof and visual feedback
-
-Architecture selects proof owners before implementation. Component tests own Vue contracts, browser tests own native and accessibility behavior, visual regression owns stable presentation, migration proof owns product scenarios, and independent review checks the complete result.
-
-Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete reported defect routes to the owning stage.
+A non-deterministic architecture/ownership problem is escalated through `architect-handoff` only when it actually appears rather than being a mandatory stage for every component.
 
 See [`docs/roadmap.md`](./docs/roadmap.md) for current program status and next action.
