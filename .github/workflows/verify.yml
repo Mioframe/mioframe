@@ -10,6 +10,12 @@ name: verify
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
     branches-ignore:
       - main
   push:
@@ -52,6 +58,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: false
 
+      - name: Fetch pull request base branch
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
@@ -61,6 +72,13 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install --frozen-lockfile
+
+      # Independent of implementation verification: a missing/invalid version-impact
+      # label leaves package.json untouched and exits successfully here, deferring the
+      # blocking decision to the release-version job (see docs/release.md).
+      - name: Materialize PR version from release-intent label
+        run: node scripts/release/materializePrVersion.mjs
+
       - name: Run autofix fixers
         id: autofix_verify
         run: |
@@ -93,7 +111,17 @@ jobs:
           # Use the standard GitHub Actions bot noreply identity for automation commits.
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: apply CI autofix"
+
+          # package.json may carry a materialized version bump alongside (or instead
+          # of) mechanical autofix output; the commit message must not describe a
+          # version materialization commit as formatting-only autofix.
+          if git diff --cached --name-only | grep -qx package.json; then
+            commit_message="chore: materialize release version and apply CI autofix"
+          else
+            commit_message="chore: apply CI autofix"
+          fi
+
+          git commit -m "$commit_message"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
           echo "Autofix commit pushed; waiting for a new workflow run on the updated head."
           exit 1

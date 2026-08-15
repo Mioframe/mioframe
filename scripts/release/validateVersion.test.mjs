@@ -1,82 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  compareSemver,
-  isReleaseSyncBackBranch,
-  parseSemver,
-  readPackageVersion,
-  readVersionAtRef,
-  resolveVersionContext,
-  tagExists,
-  validateRelease,
-} from './validateVersion.mjs';
-
-describe('parseSemver', () => {
-  it('parses a valid X.Y.Z version', () => {
-    expect(parseSemver('0.1.0')).toEqual({ major: 0, minor: 1, patch: 0 });
-    expect(parseSemver('12.34.56')).toEqual({ major: 12, minor: 34, patch: 56 });
-  });
-
-  it('rejects a version with a pre-release or build suffix', () => {
-    expect(parseSemver('0.1.0-beta.1')).toBeNull();
-    expect(parseSemver('0.1.0+build.5')).toBeNull();
-  });
-
-  it('rejects a non-SemVer string', () => {
-    expect(parseSemver('0.1')).toBeNull();
-    expect(parseSemver('v0.1.0')).toBeNull();
-    expect(parseSemver('not-a-version')).toBeNull();
-  });
-});
-
-describe('compareSemver', () => {
-  it('orders by major, then minor, then patch', () => {
-    expect(compareSemver(parseSemver('1.0.0'), parseSemver('0.9.9'))).toBeGreaterThan(0);
-    expect(compareSemver(parseSemver('0.2.0'), parseSemver('0.10.0'))).toBeLessThan(0);
-    expect(compareSemver(parseSemver('0.1.1'), parseSemver('0.1.0'))).toBeGreaterThan(0);
-    expect(compareSemver(parseSemver('0.1.0'), parseSemver('0.1.0'))).toBe(0);
-  });
-});
-
-describe('readPackageVersion', () => {
-  it('reads the version field from package.json content', () => {
-    const readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
-    expect(readPackageVersion('package.json', readFile)).toBe('0.1.0');
-    expect(readFile).toHaveBeenCalledWith('package.json', 'utf8');
-  });
-
-  it('throws when the version field is missing', () => {
-    const readFile = vi.fn().mockReturnValue(JSON.stringify({ name: 'mioframe' }));
-    expect(() => readPackageVersion('package.json', readFile)).toThrow(
-      'missing a string "version" field',
-    );
-  });
-});
-
-describe('readVersionAtRef', () => {
-  it('reads the version from a git show result', () => {
-    const spawn = vi.fn().mockReturnValue({
-      status: 0,
-      stdout: JSON.stringify({ version: '0.0.9' }),
-    });
-    expect(readVersionAtRef('origin/develop', 'package.json', spawn)).toBe('0.0.9');
-    expect(spawn).toHaveBeenCalledWith(
-      'git',
-      ['show', 'origin/develop:package.json'],
-      expect.any(Object),
-    );
-  });
-
-  it('returns null when git show fails', () => {
-    const spawn = vi.fn().mockReturnValue({ status: 1, stdout: '' });
-    expect(readVersionAtRef('origin/develop', 'package.json', spawn)).toBeNull();
-  });
-
-  it('returns null when the output is not valid JSON', () => {
-    const spawn = vi.fn().mockReturnValue({ status: 0, stdout: 'not json' });
-    expect(readVersionAtRef('origin/develop', 'package.json', spawn)).toBeNull();
-  });
-});
+import { resolveVersionContext, tagExists, validateRelease } from './validateVersion.mjs';
 
 describe('tagExists', () => {
   it('returns true when git rev-parse resolves the tag', () => {
@@ -92,25 +16,6 @@ describe('tagExists', () => {
   it('returns false when git rev-parse cannot resolve the tag', () => {
     const spawn = vi.fn().mockReturnValue({ status: 1, stdout: '' });
     expect(tagExists('v0.1.0', spawn)).toBe(false);
-  });
-});
-
-describe('isReleaseSyncBackBranch', () => {
-  it('matches a sync-back branch whose embedded version matches', () => {
-    expect(isReleaseSyncBackBranch('sync/main-0.1.0-back-to-develop', '0.1.0')).toBe(true);
-  });
-
-  it('rejects a sync-back branch whose embedded version does not match', () => {
-    expect(isReleaseSyncBackBranch('sync/main-0.1.0-back-to-develop', '0.2.0')).toBe(false);
-  });
-
-  it('rejects an ordinary feature/fix branch name', () => {
-    expect(isReleaseSyncBackBranch('feature/add-widget', '0.1.0')).toBe(false);
-    expect(isReleaseSyncBackBranch('fix/broken-thing', '0.1.0')).toBe(false);
-  });
-
-  it('rejects an undefined branch name', () => {
-    expect(isReleaseSyncBackBranch(undefined, '0.1.0')).toBe(false);
   });
 });
 
@@ -239,37 +144,6 @@ describe('validateRelease', () => {
     expect(result).toBe(false);
   });
 
-  it('passes a PR-to-develop context when the version increased', () => {
-    const deps = baseDeps();
-    deps.spawn = vi.fn().mockReturnValue({
-      status: 0,
-      stdout: JSON.stringify({ version: '0.1.0' }),
-    });
-    const result = validateRelease({
-      argv: ['--base', 'origin/develop', '--target', 'develop'],
-      env: {},
-      deps,
-    });
-    expect(result).toBe(true);
-  });
-
-  it('fails a PR-to-develop context when the version did not increase', () => {
-    const deps = baseDeps();
-    deps.spawn = vi.fn().mockReturnValue({
-      status: 0,
-      stdout: JSON.stringify({ version: '0.2.0' }),
-    });
-    const result = validateRelease({
-      argv: ['--base', 'origin/develop', '--target', 'develop'],
-      env: {},
-      deps,
-    });
-    expect(result).toBe(false);
-    expect(deps.logError).toHaveBeenCalledWith(
-      expect.stringContaining('Version must increase for this PR'),
-    );
-  });
-
   function makeCompareSpawn({ baseVersion, tagFound }) {
     return vi.fn((_command, args) => {
       if (args[0] === 'show') {
@@ -281,6 +155,166 @@ describe('validateRelease', () => {
       throw new Error(`unexpected git command: ${args.join(' ')}`);
     });
   }
+
+  describe('ordinary develop PRs: exact label-selected version', () => {
+    it('passes an exact PATCH version', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.1' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop', '--impact', 'patch'],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(true);
+      expect(deps.logError).not.toHaveBeenCalled();
+    });
+
+    it('passes an exact MINOR version', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.3.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop', '--impact', 'minor'],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(true);
+    });
+
+    it('passes an exact MAJOR version', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '1.0.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop', '--impact', 'major'],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(true);
+    });
+
+    it('fails a missing version-impact label (no --impact, no CI context)', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.1' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop'],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('No version-impact label information available'),
+      );
+    });
+
+    it('fails when the PR event payload carries no version-impact label', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn((filePath) => {
+        if (filePath === 'package.json') return JSON.stringify({ version: '0.2.1' });
+        return JSON.stringify({ pull_request: { labels: [{ name: 'needs-review' }] } });
+      });
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop'],
+        env: { GITHUB_ACTIONS: 'true', GITHUB_EVENT_PATH: '/tmp/event.json' },
+        deps,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('Missing version-impact label'),
+      );
+    });
+
+    it('fails when the PR event payload carries multiple version-impact labels', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn((filePath) => {
+        if (filePath === 'package.json') return JSON.stringify({ version: '0.2.1' });
+        return JSON.stringify({
+          pull_request: { labels: [{ name: 'version:patch' }, { name: 'version:major' }] },
+        });
+      });
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop'],
+        env: { GITHUB_ACTIONS: 'true', GITHUB_EVENT_PATH: '/tmp/event.json' },
+        deps,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('Multiple version-impact labels present'),
+      );
+    });
+
+    it('fails a version that is monotonically greater but belongs to the wrong impact class', () => {
+      const deps = baseDeps();
+      // labeled patch, but package.json carries a minor bump
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.3.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop', '--impact', 'patch'],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('package.json version must be exactly 0.2.1'),
+      );
+    });
+
+    it('fails a same-version ordinary develop PR even with a valid label', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop', '--impact', 'patch'],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('package.json version must be exactly 0.2.1'),
+      );
+    });
+
+    it('fails an ordinary feature branch carrying the same version as develop', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.1.0', tagFound: false });
+      const result = validateRelease({
+        argv: [
+          '--base',
+          'origin/develop',
+          '--target',
+          'develop',
+          '--head',
+          'feature/add-widget',
+          '--impact',
+          'patch',
+        ],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('package.json version must be exactly 0.1.1'),
+      );
+    });
+
+    it('rejects an invalid --impact value', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.1' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({
+        argv: ['--base', 'origin/develop', '--target', 'develop', '--impact', 'huge'],
+        env: {},
+        deps,
+      });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(expect.stringContaining('Invalid --impact'));
+    });
+  });
 
   it('passes a same-version PR-to-main context as a pre-tag release repair when the tag does not exist yet', () => {
     const deps = baseDeps();
@@ -310,20 +344,6 @@ describe('validateRelease', () => {
     );
   });
 
-  it('fails a same-version PR-to-develop context regardless of tag state', () => {
-    const deps = baseDeps();
-    deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
-    const result = validateRelease({
-      argv: ['--base', 'origin/develop', '--target', 'develop'],
-      env: {},
-      deps,
-    });
-    expect(result).toBe(false);
-    expect(deps.logError).toHaveBeenCalledWith(
-      expect.stringContaining('Version must increase for this PR'),
-    );
-  });
-
   it('passes a same-version release sync-back PR from main into develop', () => {
     const deps = baseDeps();
     deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
@@ -344,36 +364,6 @@ describe('validateRelease', () => {
     expect(deps.logError).not.toHaveBeenCalled();
   });
 
-  it('fails a same-version PR into develop from an ordinary feature branch', () => {
-    const deps = baseDeps();
-    deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
-    deps.spawn = makeCompareSpawn({ baseVersion: '0.1.0', tagFound: false });
-    const result = validateRelease({
-      argv: ['--base', 'origin/develop', '--target', 'develop', '--head', 'feature/add-widget'],
-      env: {},
-      deps,
-    });
-    expect(result).toBe(false);
-    expect(deps.logError).toHaveBeenCalledWith(
-      expect.stringContaining('Version must increase for this PR'),
-    );
-  });
-
-  it('fails a same-version PR into develop from an ordinary fix branch', () => {
-    const deps = baseDeps();
-    deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
-    deps.spawn = makeCompareSpawn({ baseVersion: '0.1.0', tagFound: false });
-    const result = validateRelease({
-      argv: ['--base', 'origin/develop', '--target', 'develop', '--head', 'fix/broken-thing'],
-      env: {},
-      deps,
-    });
-    expect(result).toBe(false);
-    expect(deps.logError).toHaveBeenCalledWith(
-      expect.stringContaining('Version must increase for this PR'),
-    );
-  });
-
   it('fails a release sync-back branch whose embedded version does not match package.json', () => {
     const deps = baseDeps();
     deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.0' }));
@@ -386,13 +376,15 @@ describe('validateRelease', () => {
         'develop',
         '--head',
         'sync/main-0.1.0-back-to-develop',
+        '--impact',
+        'patch',
       ],
       env: {},
       deps,
     });
     expect(result).toBe(false);
     expect(deps.logError).toHaveBeenCalledWith(
-      expect.stringContaining('Version must increase for this PR'),
+      expect.stringContaining('package.json version must be exactly 0.2.1'),
     );
   });
 

@@ -3,85 +3,21 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const SEMVER_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
+import {
+  VERSION_IMPACT_LABELS,
+  compareSemver,
+  getFlagValue,
+  incrementSemver,
+  isReleaseSyncBackBranch,
+  formatSemver,
+  parseSemver,
+  readPackageVersion,
+  readPrLabelNames,
+  readVersionAtRef,
+  resolveVersionImpactFromLabels,
+} from './versionPolicy.mjs';
+
 const TAG_PATTERN = /^v(\d+\.\d+\.\d+)$/;
-const SYNC_BACK_BRANCH_PATTERN = /^sync\/main-(\d+\.\d+\.\d+)-back-to-develop$/;
-
-/**
- * Parse a strict `X.Y.Z` SemVer version (no pre-release/build metadata).
- * @param version Raw version string.
- * @returns Parsed `{ major, minor, patch }`, or `null` when invalid.
- */
-export function parseSemver(version) {
-  const match = SEMVER_PATTERN.exec(version.trim());
-
-  if (!match) {
-    return null;
-  }
-
-  const [, major, minor, patch] = match;
-  return { major: Number(major), minor: Number(minor), patch: Number(patch) };
-}
-
-/**
- * Compare two parsed SemVer versions.
- * @param left First version.
- * @param right Second version.
- * @returns Negative when `left` < `right`, positive when `left` > `right`, `0` when equal.
- */
-export function compareSemver(left, right) {
-  if (left.major !== right.major) {
-    return left.major - right.major;
-  }
-
-  if (left.minor !== right.minor) {
-    return left.minor - right.minor;
-  }
-
-  return left.patch - right.patch;
-}
-
-/**
- * Read the `version` field out of a `package.json` file.
- * @param packageJsonPath Path to the `package.json` file.
- * @param readFile Injectable file reader, for tests.
- * @returns The raw version string.
- */
-export function readPackageVersion(packageJsonPath = 'package.json', readFile = readFileSync) {
-  const raw = readFile(packageJsonPath, 'utf8');
-  const parsed = JSON.parse(raw);
-
-  if (typeof parsed.version !== 'string' || parsed.version.trim() === '') {
-    throw new Error(`${packageJsonPath} is missing a string "version" field.`);
-  }
-
-  return parsed.version;
-}
-
-/**
- * Read the `version` field of `package.json` as it existed at a given git ref.
- * @param ref Git ref, e.g. `origin/develop`.
- * @param packageJsonPath Path to `package.json` relative to the repo root.
- * @param spawn Injectable `spawnSync`, for tests.
- * @returns The raw version string, or `null` when the ref/file is unavailable.
- */
-export function readVersionAtRef(ref, packageJsonPath = 'package.json', spawn = spawnSync) {
-  const result = spawn('git', ['show', `${ref}:${packageJsonPath}`], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-
-  if (result.status !== 0 || typeof result.stdout !== 'string') {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(result.stdout);
-    return typeof parsed.version === 'string' ? parsed.version : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Check whether a Git tag exists locally (e.g. as fetched by a full-history checkout).
@@ -96,28 +32,6 @@ export function tagExists(tag, spawn = spawnSync) {
   });
 
   return result.status === 0;
-}
-
-function getFlagValue(argv, flag) {
-  const index = argv.indexOf(flag);
-  return index !== -1 ? argv[index + 1] : undefined;
-}
-
-/**
- * Check whether `branchName` is a release sync-back branch (e.g.
- * `sync/main-0.1.0-back-to-develop`) whose embedded version matches
- * `expectedVersion`. See `docs/release.md#release-sync-back`.
- * @param branchName PR head branch name, or `undefined` outside PR context.
- * @param expectedVersion The current `package.json` version.
- * @returns `true` when `branchName` names a sync-back of `expectedVersion`.
- */
-export function isReleaseSyncBackBranch(branchName, expectedVersion) {
-  if (typeof branchName !== 'string') {
-    return false;
-  }
-
-  const match = SYNC_BACK_BRANCH_PATTERN.exec(branchName);
-  return match !== null && match[1] === expectedVersion;
 }
 
 /**
@@ -179,13 +93,76 @@ function requiresReleaseNotes(context) {
 }
 
 /**
- * Validate release/version metadata: `package.json` version format, a
- * monotonic bump against the PR base branch, a tag-matches-version check on
- * tag pushes, and release notes/checklist existence ahead of a `main`
- * promotion. A narrow same-version exception applies to release sync-back
- * PRs from `main` into `develop` (see `isReleaseSyncBackBranch` and
- * `docs/release.md#release-sync-back`). See `docs/release.md` for the full
- * policy this enforces.
+ * Resolve the exactly-one version-impact label declared for an ordinary
+ * develop PR, from an explicit `--impact` flag (local diagnosis) or the
+ * GitHub Actions PR event payload.
+ * @param argv Raw CLI arguments.
+ * @param env Process environment.
+ * @param deps Test seams for file access.
+ * @returns `{ kind: 'ok', impact }` or `{ kind: 'error', message }`.
+ */
+function resolveDevelopVersionImpact(argv, env, deps) {
+  const explicitImpact = getFlagValue(argv, '--impact');
+
+  if (explicitImpact) {
+    if (!(explicitImpact in VERSION_IMPACT_LABELS)) {
+      return {
+        kind: 'error',
+        message: `Invalid --impact "${explicitImpact}"; must be one of ${Object.keys(VERSION_IMPACT_LABELS).join(', ')}.`,
+      };
+    }
+
+    return { kind: 'ok', impact: explicitImpact };
+  }
+
+  if (env.GITHUB_ACTIONS !== 'true') {
+    return {
+      kind: 'error',
+      message:
+        'No version-impact label information available: pass --impact <patch|minor|major> for a local check, or run in GitHub Actions PR context.',
+    };
+  }
+
+  let labelNames;
+
+  try {
+    labelNames = readPrLabelNames(env.GITHUB_EVENT_PATH, deps.readFile);
+  } catch (error) {
+    return {
+      kind: 'error',
+      message: `Unable to read PR labels from the GitHub event payload: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+
+  const impactResult = resolveVersionImpactFromLabels(labelNames);
+
+  if (!impactResult.ok) {
+    if (impactResult.reason === 'missing') {
+      return {
+        kind: 'error',
+        message: `Missing version-impact label: add exactly one of ${Object.values(VERSION_IMPACT_LABELS).join(', ')} (docs/release.md#choosing-patch--minor--major).`,
+      };
+    }
+
+    return {
+      kind: 'error',
+      message: `Multiple version-impact labels present (${impactResult.impacts
+        .map((impact) => VERSION_IMPACT_LABELS[impact])
+        .join(', ')}); exactly one is required (docs/release.md#choosing-patch--minor--major).`,
+    };
+  }
+
+  return { kind: 'ok', impact: impactResult.impact };
+}
+
+/**
+ * Validate release/version metadata: `package.json` version format, an exact
+ * label-selected bump against the PR base branch for ordinary `develop` PRs,
+ * a tag-matches-version check on tag pushes, and release notes/checklist
+ * existence ahead of a `main` promotion. A narrow same-version exception
+ * applies to release sync-back PRs from `main` into `develop` (see
+ * `isReleaseSyncBackBranch` and `docs/release.md#release-sync-back`). See
+ * `docs/release.md` for the full policy this enforces.
  * @param [options] Validation inputs.
  * @param [options.argv] Raw CLI arguments.
  * @param [options.env] Process environment.
@@ -258,16 +235,34 @@ export function validateRelease({
           isDevelopCompare &&
           isReleaseSyncBackBranch(context.headBranch, currentVersionRaw);
 
-        if (cmp > 0) {
-          notices.push(`version bump confirmed: ${baseVersionRaw} -> ${currentVersionRaw}`);
-        } else if (isUnreleasedRepair) {
-          notices.push(
-            `same version as ${context.baseRef} (${currentVersionRaw}) allowed: tag ${releaseTag} does not exist yet, this is a pre-tag release repair (docs/release.md#pre-tag-release-repair).`,
-          );
+        if (isDevelopCompare && !isSyncBackException) {
+          const impactResult = resolveDevelopVersionImpact(argv, env, { readFile });
+
+          if (impactResult.kind === 'error') {
+            errors.push(impactResult.message);
+          } else {
+            const expectedVersion = formatSemver(incrementSemver(baseVersion, impactResult.impact));
+
+            if (currentVersionRaw === expectedVersion) {
+              notices.push(
+                `exact version confirmed: ${baseVersionRaw} -> ${currentVersionRaw} (${impactResult.impact}, ${VERSION_IMPACT_LABELS[impactResult.impact]}).`,
+              );
+            } else {
+              errors.push(
+                `package.json version must be exactly ${expectedVersion} (${impactResult.impact} bump from ${context.baseRef} ${baseVersionRaw} via ${VERSION_IMPACT_LABELS[impactResult.impact]}); found ${currentVersionRaw}. See docs/release.md#choosing-patch--minor--major.`,
+              );
+            }
+          }
         } else if (isSyncBackException) {
           notices.push(
             `same version as ${context.baseRef} (${currentVersionRaw}) allowed: release sync-back PR from main via head branch "${context.headBranch}" (docs/release.md#release-sync-back).`,
           );
+        } else if (isUnreleasedRepair) {
+          notices.push(
+            `same version as ${context.baseRef} (${currentVersionRaw}) allowed: tag ${releaseTag} does not exist yet, this is a pre-tag release repair (docs/release.md#pre-tag-release-repair).`,
+          );
+        } else if (cmp > 0) {
+          notices.push(`version bump confirmed: ${baseVersionRaw} -> ${currentVersionRaw}`);
         } else if (cmp === 0 && isMainCompare) {
           errors.push(
             `Version must increase for this PR: package.json is ${currentVersionRaw}, matches ${context.baseRef}, and tag ${releaseTag} already exists, so ${currentVersionRaw} is already published. Bump package.json version (docs/release.md#choosing-patch--minor--major).`,

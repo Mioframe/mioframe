@@ -102,6 +102,10 @@ For the Material workflow, the thin orchestrator selects, launches, validates, a
 - `use*` exposes reactive or lifecycle-managed capabilities; `setup*` wires dependencies and cleanup; `define*` is side-effect-light; `create*` returns a fresh owned instance; `get*` derives or looks up; `is*` is boolean; `zod*` exports schemas; `*Service` is background infrastructure; `on*` names handlers; `$` is reserved for raw RxJS observables.
 - Add a child `AGENTS.md` only for stable local invariants that the parent cannot express cleanly.
 
+## Release versioning
+
+- Coding agents must not manually bump `package.json` `version` for ordinary `develop` PRs. The architect/reviewer owns the `version:patch|minor|major` PR release-intent label; CI materializes the exact expected version from it. `main` and release sync-back behavior follow `docs/release.md`.
+
 ## Verification
 
 - Use `implementation-preflight` to resolve task-specific `TEST IMPACT` and the focused verification needed for implementation feedback.

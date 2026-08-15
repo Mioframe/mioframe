@@ -109,13 +109,27 @@ describe('workflow autofix commit detection', () => {
     const addIndex = step.indexOf('git add -A');
     const diffIndex = step.indexOf('git diff --cached --quiet --exit-code');
     const tokenIndex = step.indexOf('if [ -z "${BEAVER_CI_AUTOFIX_TOKEN}" ]');
-    const commitIndex = step.indexOf('git commit -m "chore: apply CI autofix"');
+    const commitIndex = step.indexOf('git commit -m "$commit_message"');
 
     expect(addIndex).toBeGreaterThanOrEqual(0);
     expect(diffIndex).toBeGreaterThan(addIndex);
     expect(tokenIndex).toBeGreaterThan(diffIndex);
     expect(commitIndex).toBeGreaterThan(tokenIndex);
     expect(step.slice(diffIndex, commitIndex)).not.toContain('git add -A');
+  });
+
+  it('does not describe a version materialization commit as formatting-only autofix', () => {
+    const workflow = fs.readFileSync(path.join(repoRoot, '.github/workflows/verify.yml'), 'utf8');
+    const step = workflow.slice(
+      workflow.indexOf('      - name: Handle autofix changes'),
+      workflow.indexOf('      - name: Upload autofix logs'),
+    );
+
+    expect(step).toContain('grep -qx package.json');
+    expect(step).toContain(
+      'commit_message="chore: materialize release version and apply CI autofix"',
+    );
+    expect(step).toContain('commit_message="chore: apply CI autofix"');
   });
 });
 
