@@ -21,6 +21,8 @@ const VALID_IMPACTS = new Set(Object.keys(VERSION_IMPACT_LABELS));
  * `pull_request` event context. Ordinary materialization applies only to
  * same-repository PRs targeting `develop`; missing/multiple labels and
  * non-`develop` targets resolve to a non-blocking skip, never an error.
+ * GitHub Actions PR contexts require a base-ancestry check before a write;
+ * explicit local diagnosis contexts do not.
  * @param env Process environment.
  * @param argv Raw CLI arguments.
  * @param deps Test seams for file access.
@@ -49,6 +51,7 @@ export function resolveMaterializationContext(
       baseRef: explicitBase,
       impact: explicitImpact,
       headBranch: undefined,
+      requiresBaseAncestryCheck: false,
     };
   }
 
@@ -98,6 +101,7 @@ export function resolveMaterializationContext(
     baseRef: `origin/${baseBranch}`,
     impact: impactResult.impact,
     headBranch: env.GITHUB_HEAD_REF,
+    requiresBaseAncestryCheck: true,
   };
 }
 
@@ -112,14 +116,32 @@ function writePackageVersion(packageJsonPath, nextVersion, readFile, writeFile) 
   writeFile(packageJsonPath, raw.replace(pattern, `"version": "${nextVersion}"`), 'utf8');
 }
 
+function getBaseAncestry(baseRef, spawn) {
+  try {
+    const result = spawn('git', ['merge-base', '--is-ancestor', baseRef, 'HEAD'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    if (result?.status === 0) {
+      return 'ancestor';
+    }
+
+    return result?.status === 1 ? 'stale' : 'error';
+  } catch {
+    return 'error';
+  }
+}
+
 /**
  * Deterministically materialize `package.json`'s `version` field for an
  * ordinary same-repository PR into `develop`, from its declared
  * `version:patch|minor|major` label and the current base version. Infra
  * failures (unreadable event payload, unreadable base version, invalid base
- * SemVer, failed write) fail this step. A missing or multiple version-impact
- * label is a non-blocking skip: `package.json` is left untouched and the
- * blocking decision is left to `release-version`. See
+ * SemVer, failed ancestry check, failed write) fail this step. A missing or
+ * multiple version-impact label or stale PR base is a non-blocking skip:
+ * `package.json` is left untouched and the blocking decision is left to
+ * `release-version`. See
  * `docs/release.md#same-repository-ci-materialization`.
  * @param [options] Materialization inputs.
  * @param [options.argv] Raw CLI arguments.
@@ -171,6 +193,25 @@ export function materializePrVersion({
       `[materialize-pr-version] skipped: release sync-back branch "${context.headBranch}" is exempt from version materialization (docs/release.md#release-sync-back).`,
     );
     return { status: 'skipped', reason: 'sync-back' };
+  }
+
+  if (context.requiresBaseAncestryCheck) {
+    const baseAncestry = getBaseAncestry(context.baseRef, spawn);
+
+    if (baseAncestry === 'stale') {
+      log(
+        `[materialize-pr-version] skipped: ${context.baseRef} is not an ancestor of HEAD. Synchronize this PR with develop; the resulting synchronize run will recalculate the expected version.`,
+      );
+      return { status: 'skipped', reason: 'stale-base' };
+    }
+
+    if (baseAncestry === 'error') {
+      logError(
+        `[materialize-pr-version] ERROR: unable to determine whether ${context.baseRef} is an ancestor of HEAD. Ensure the base branch is fetched and retry.`,
+      );
+      process.exitCode = 1;
+      return { status: 'error' };
+    }
   }
 
   const baseVersionRaw = readVersionAtRef(context.baseRef, 'package.json', spawn);

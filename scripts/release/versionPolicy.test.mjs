@@ -117,6 +117,21 @@ describe('resolveVersionImpactFromLabels', () => {
     });
   });
 
+  it('ignores inherited object-property names', () => {
+    for (const label of ['constructor', 'toString', '__proto__']) {
+      expect(resolveVersionImpactFromLabels([label])).toEqual({ ok: false, reason: 'missing' });
+      expect(resolveVersionImpactFromLabels([label, 'version:patch'])).toEqual({
+        ok: true,
+        impact: 'patch',
+      });
+    }
+
+    expect(resolveVersionImpactFromLabels(['constructor', 'toString', '__proto__'])).toEqual({
+      ok: false,
+      reason: 'missing',
+    });
+  });
+
   it('reports a missing version-impact label', () => {
     expect(resolveVersionImpactFromLabels(['needs-review'])).toEqual({
       ok: false,

@@ -104,7 +104,9 @@ export function calculateExpectedVersion(baseVersionRaw, impact) {
 export function resolveVersionImpactFromLabels(labelNames) {
   const matched = [
     ...new Set(
-      labelNames.filter((name) => name in LABEL_TO_IMPACT).map((name) => LABEL_TO_IMPACT[name]),
+      labelNames
+        .filter((name) => Object.hasOwn(LABEL_TO_IMPACT, name))
+        .map((name) => LABEL_TO_IMPACT[name]),
     ),
   ];
 

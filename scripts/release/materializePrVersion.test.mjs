@@ -39,6 +39,7 @@ describe('resolveMaterializationContext', () => {
       baseRef: 'origin/develop',
       impact: 'patch',
       headBranch: undefined,
+      requiresBaseAncestryCheck: false,
     });
   });
 
@@ -90,6 +91,7 @@ describe('resolveMaterializationContext', () => {
       baseRef: 'origin/develop',
       impact: 'minor',
       headBranch: 'feature/add-widget',
+      requiresBaseAncestryCheck: true,
     });
   });
 
@@ -286,14 +288,18 @@ describe('materializePrVersion', () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it('resolves CI event context end to end for a same-repo develop PR', () => {
+  it('materializes a same-repo develop PR after proving the current base is an ancestor of HEAD', () => {
     const readFile = vi.fn((filePath) => {
       if (filePath === 'package.json') return JSON.stringify({ version: '0.3.16' });
       return eventPayload(['version:patch']);
     });
-    const spawn = vi
-      .fn()
-      .mockReturnValue({ status: 0, stdout: JSON.stringify({ version: '0.3.16' }) });
+    const spawn = vi.fn((_command, args) => {
+      if (args[0] === 'merge-base') {
+        return { status: 0, stdout: '' };
+      }
+
+      return { status: 0, stdout: JSON.stringify({ version: '0.3.16' }) };
+    });
     const deps = { readFile, writeFile: vi.fn(), spawn, log: vi.fn(), logError: vi.fn() };
     const result = materializePrVersion({
       argv: [],
@@ -309,9 +315,82 @@ describe('materializePrVersion', () => {
     expect(result).toEqual({ status: 'materialized', from: '0.3.16', to: '0.3.17' });
     expect(spawn).toHaveBeenCalledWith(
       'git',
+      ['merge-base', '--is-ancestor', 'origin/develop', 'HEAD'],
+      expect.any(Object),
+    );
+    expect(spawn).toHaveBeenCalledWith(
+      'git',
       ['show', 'origin/develop:package.json'],
       expect.any(Object),
     );
+  });
+
+  it('skips a stale same-repository develop PR without writing a version from the current base', () => {
+    const readFile = vi.fn((filePath) => {
+      if (filePath === 'package.json') return JSON.stringify({ version: '0.3.16' });
+      return eventPayload(['version:patch']);
+    });
+    const spawn = vi.fn((_command, args) => {
+      if (args[0] === 'merge-base') {
+        return { status: 1, stdout: '' };
+      }
+
+      return { status: 0, stdout: JSON.stringify({ version: '0.3.17' }) };
+    });
+    const deps = { readFile, writeFile: vi.fn(), spawn, log: vi.fn(), logError: vi.fn() };
+    const result = materializePrVersion({
+      argv: [],
+      env: {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_EVENT_NAME: 'pull_request',
+        GITHUB_BASE_REF: 'develop',
+        GITHUB_HEAD_REF: 'feature/add-widget',
+        GITHUB_EVENT_PATH: '/tmp/event.json',
+      },
+      deps,
+    });
+
+    expect(result).toEqual({ status: 'skipped', reason: 'stale-base' });
+    expect(deps.writeFile).not.toHaveBeenCalled();
+    expect(spawn).toHaveBeenCalledTimes(1);
+    expect(deps.log).toHaveBeenCalledWith(
+      expect.stringContaining('Synchronize this PR with develop'),
+    );
+    expect(deps.logError).not.toHaveBeenCalled();
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  it('treats an ancestry-check failure as an infrastructure failure', () => {
+    const readFile = vi.fn((filePath) => {
+      if (filePath === 'package.json') return JSON.stringify({ version: '0.3.16' });
+      return eventPayload(['version:patch']);
+    });
+    const spawn = vi.fn((_command, args) => {
+      if (args[0] === 'merge-base') {
+        return { status: 128, stdout: '', stderr: 'fatal: bad revision' };
+      }
+
+      return { status: 0, stdout: JSON.stringify({ version: '0.3.16' }) };
+    });
+    const deps = { readFile, writeFile: vi.fn(), spawn, log: vi.fn(), logError: vi.fn() };
+    const result = materializePrVersion({
+      argv: [],
+      env: {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_EVENT_NAME: 'pull_request',
+        GITHUB_BASE_REF: 'develop',
+        GITHUB_HEAD_REF: 'feature/add-widget',
+        GITHUB_EVENT_PATH: '/tmp/event.json',
+      },
+      deps,
+    });
+
+    expect(result).toEqual({ status: 'error' });
+    expect(deps.writeFile).not.toHaveBeenCalled();
+    expect(deps.logError).toHaveBeenCalledWith(
+      expect.stringContaining('unable to determine whether origin/develop is an ancestor of HEAD'),
+    );
+    expect(process.exitCode).toBe(1);
   });
 
   it('supports explicit local base + impact mode without a GitHub event', () => {

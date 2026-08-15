@@ -113,10 +113,15 @@ before its existing fixer pipeline (`pnpm ci:autofix`):
   missing/invalid label never blocks implementation verification or PR
   preview, only the independent `release-version` gate (see
   `What CI verifies automatically` below);
+- before it writes, CI proves that the fetched `origin/develop` head is
+  already an ancestor of the PR `HEAD`. If the PR is out of date, it leaves
+  `package.json` untouched, prints a non-blocking notice to synchronize the
+  PR with `develop`, and the resulting `synchronize` run recalculates the
+  version;
 - infrastructure failures (an unreadable event payload, an unreadable or
-  invalid base version, a failed write) fail the materialization step, since
-  those indicate a broken CI environment rather than an ordinary policy
-  outcome.
+  invalid base version, an unreadable ancestry result, a failed write) fail
+  the materialization step, since those indicate a broken CI environment
+  rather than an ordinary policy outcome.
 
 Materialization only ever runs inside the existing same-repository `autofix`
 job (`github.event.pull_request.head.repo.full_name == github.repository`);
