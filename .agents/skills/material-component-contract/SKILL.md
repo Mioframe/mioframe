@@ -45,7 +45,7 @@ Do not create DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW artifacts.
 
 ## Contract rules
 
-- `contract.ts`: props, slots, emits, public value/state/variant/configuration types, defaults and valid combinations; official terminology with idiomatic Vue mechanics; complete TSDoc for touched public exports.
+- `contract.ts`: props, slots, emits, public value/state/variant/configuration types, defaults and valid combinations; official terminology with idiomatic Vue mechanics; complete TSDoc for touched public exports. Define explicit `MD<Component>Props`, `MD<Component>Slots`, and `MD<Component>Emits` contracts (plus focused aliases where useful) so the Vue component can consume them directly instead of re-declaring public types.
 - `tokens.css`: official public component tokens for the supported official family surface; official semantic names/default aliases only; no m3e/private/app tokens and no duplicate registry.
 - `BEHAVIOR.md`: normative anatomy/content roles, states, interaction/input, keyboard, accessibility semantics, geometry/layout, motion and unresolved behavior conflicts.
 - `GUIDANCE.md`: purpose, when to use/not use, variant/configuration guidance, content guidance, consumer accessibility responsibilities and related-component composition.
@@ -58,6 +58,7 @@ Do not omit official surface because the current application does not use it. Do
 Before success, cross-check that:
 
 - API types, behavior and guidance agree on variants/states/content roles;
+- props/slots/emits types are shaped for direct consumption by Vue typed macros without needing a second public declaration;
 - event/state semantics are explicit enough for implementation;
 - tokens cover the official supported variants/parts/states without renderer leakage;
 - fixed geometry, motion and accessibility requirements needed for proof are explicit;
@@ -87,6 +88,7 @@ result: complete | blocked | needs-architect
 - Deriving public API from current consumers, legacy props, or m3e vocabulary.
 - Reading renderer/legacy implementation before contract decisions to make the contract easier to implement.
 - Creating a demand-scoped Material API.
+- Creating `contract.ts` as unused documentation while the SFC redefines the public API separately.
 - Exposing raw DOM/m3e types, events, attributes, tags, or CSS variables.
 - Creating token enums/registries/DSLs/JSON mirrors.
 - Guessing missing Material facts.
