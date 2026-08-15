@@ -83,6 +83,7 @@ Required headings:
 - Implement selected precedence and restoration paths.
 - Consume dependencies only through current canonical public APIs.
 - Add no compatibility alias unless architecture requires it.
+- Storybook, browser, and visual fixtures that claim a selected semantic role must use production-valid content for that role according to the architecture's exact-version renderer composition contract. A convenience placeholder is allowed only when it cannot affect the contract being proved. Placeholder text is not valid icon content for geometry or visual proof when renderer sizing/styling depends on the icon child contract.
 
 When the only root is a raw `m3e-*` element:
 
@@ -104,6 +105,8 @@ When the only root is a raw `m3e-*` element:
 ## Focused proof
 
 Complete implementation-owned `TEST IMPACT` through faithful contract, type, browser/accessibility, visual, renderer-boundary, token, dependency-composition, and risk-specific proof as applicable.
+
+Before declaring proof complete, inspect every story/browser/visual fixture used by a selected contract and confirm that its semantic content exercises the same renderer composition path a real consumer is expected to use. Do not close a geometry or appearance defect with a special fixture while canonical visual fixtures still use content that bypasses or violates the selected composition contract.
 
 Run verifier-managed focused implementation checks only. Do not run final workflow verification.
 
@@ -165,6 +168,7 @@ Status: complete | blocked
 - Changing architecture while coding.
 - Migrating product consumers.
 - Expanding API, tokens, abstractions, or renderer support beyond architecture.
+- Using a special proof-only composition to claim a selected contract while canonical production-facing stories or fixtures still violate that composition contract.
 - Updating visual baselines without inspection.
 - Adding timestamp/hash/revision bookkeeping as workflow state.
 - Running migration, review, or final workflow verification.

@@ -1,29 +1,28 @@
 # Mioframe Material migration roadmap
 
-This file owns current Material milestone status, family-stage status, technical blockers, and next operator action. Durable workflow rules live in the canonical Material docs and skills.
+This file owns current repository-local Material milestone status, family-stage status, repository-visible technical blockers, and the next Material pipeline action. Every recorded state must be derivable from current repository contents. Durable workflow rules live in the canonical Material docs and skills.
 
 ## Current state
 
-Last updated: 2026-08-13
+Last updated: 2026-08-14
 
 Current milestone: `M3 — sequential component migration`
 
 Status: `in-progress`
 
-Checkbox family status: `complete`.
+Completed canonical families in the current repository tree:
 
-PR #194 is open. The Checkbox architecture, implementation, migration, and independent review are complete. No production correction is required.
+- Loading Indicator;
+- Button;
+- Switch;
+- Checkbox;
+- Floating Action Button.
 
 The official Material Checkbox cache contains a keyboard table copied from Chips terminology. `DESIGN.md` records it as a source conflict, so the `Space or Enter` row is not treated as reliable Checkbox-specific evidence and no Enter workaround is added.
 
-## Durable invariants
+The Floating Action Button family selects the standalone icon-only FAB. The existing `RepoExplorerPane.vue` usage remains `MDExtendedFab`, which belongs to the separate Extended FAB family and remains legacy Material ownership under `src/shared/ui/Button`.
 
-1. Official Material documentation and the project MCP/cache define Material semantics.
-2. m3e remains a private renderer and is not a semantic authority.
-3. Source conflicts are recorded instead of guessed.
-4. Public controlled props remain the source of truth.
-5. Coding agents use focused local verification; exact-head PR CI is the repository gate.
-6. Merge readiness belongs to the architect after CI and full PR review.
+No repository-local blocker prevents selecting the next M3 family.
 
 ## Milestones
 
@@ -39,9 +38,6 @@ The official Material Checkbox cache contains a keyboard table copied from Chips
 
 `RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox.
 
-## Next operator action
+## Next Material pipeline action
 
-1. Let GitHub CI verify the current exact PR #194 head.
-2. Perform the final full PR review.
-3. Merge Checkbox if no blocker remains.
-4. Select the next M3 family after merge.
+Run `material-component Extended FAB`.

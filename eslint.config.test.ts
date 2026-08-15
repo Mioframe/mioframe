@@ -111,7 +111,7 @@ describe('eslint.config.mjs m3e renderer boundary', () => {
     typeAwareLintTimeout,
   );
 
-  it.each(['m3e-button', 'm3e-checkbox', 'm3e-loading-indicator', 'm3e-switch'])(
+  it.each(['m3e-button', 'm3e-checkbox', 'm3e-fab', 'm3e-loading-indicator', 'm3e-switch'])(
     'accepts the selected <%s> renderer element in Material',
     async (tag) => {
       const result = await lint(selectedM3eElementTemplate(tag), insideMaterialVueFile);
