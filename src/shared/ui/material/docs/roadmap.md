@@ -28,13 +28,13 @@ No repository-local blocker prevents selecting the next M3 family.
 
 ## Milestones
 
-| ID  | Milestone                              | Status        |
-| --- | -------------------------------------- | ------------- |
-| M0  | focused Material definition workflow   | `complete`    |
-| M1a | Loading Indicator dependency family    | `complete`    |
-| M1  | Button action family                   | `complete`    |
-| M2  | Switch stateful pilot                  | `complete`    |
-| M3  | sequential component migration         | `in-progress` |
+| ID  | Milestone                            | Status        |
+| --- | ------------------------------------ | ------------- |
+| M0  | focused Material definition workflow | `complete`    |
+| M1a | Loading Indicator dependency family  | `complete`    |
+| M1  | Button action family                 | `complete`    |
+| M2  | Switch stateful pilot                | `complete`    |
+| M3  | sequential component migration       | `in-progress` |
 
 ## Known non-blocking follow-up
 
