@@ -22,7 +22,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 ## Architecture and implementation workflow
 
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, workflow, or architecture changes, use `architect-handoff` unless an applicable deterministic skill resolves every required decision from authoritative sources.
-- Use `implementation-preflight` before non-trivial code edits. Official Material families additionally follow the scoped `material-component` workflow; do not begin Material implementation before its definition-ready gate.
+- Use `implementation-preflight` before non-trivial code edits. Official Material families additionally follow the scoped `material-component` workflow; do not begin standalone Material implementation before its technical-contract-ready gate.
 - Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight is unresolved, or while task-specific `TEST IMPACT` is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every abstraction, state, layer, compatibility path, recovery mechanism, optimization, registry, mapping, or helper must map to a current requirement or verified invariant.
 - Compare the proposal with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
