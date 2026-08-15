@@ -1,6 +1,6 @@
 ---
 name: material-component
-description: 'Use with one official Material component name to orchestrate three focused technical contracts, independent Material usage guidance, standalone implementation, separate migration, and fresh independent review before architect-owned PR CI.'
+description: 'Use for one official Material family to orchestrate its focused definition, standalone implementation, migration, and independent review.'
 ---
 
 # Material component
@@ -11,131 +11,39 @@ The operator invokes this once. Do not require separate stage commands.
 
 ## Authority
 
-Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. The workflow document owns orchestration; this skill stays mechanical.
+Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. That workflow document is the single owner of sequencing, gates, correction routing, dependency handling, and completion rules.
 
-## Normal path
+This skill owns orchestration only. Do not duplicate or reinterpret stage semantics here.
 
-```text
-material-component-api-contract       ┐
-material-component-token-contract     │
-material-component-behavior-contract  ├─→ definition-ready gate
-material-component-guidance           ┘
-                                          ↓
-                          material-component-implementation
-                                          ↓
-                             material-component-migration
-                                          ↓
-                              material-component-review
-                                          ↓
-                              architect / PR / exact-head CI
-```
+## Execute
 
-Every role runs in a fresh isolated worker context. The four definition workers may run in parallel when supported because they own separate artifacts. Review must be independent from every authoring worker.
+1. Resolve the canonical Material family.
+2. Follow `component-workflow.md` mechanically.
+3. Launch every role in a fresh isolated worker context.
+4. Run the four definition workers in parallel only when the runtime can safely isolate their independent file writes; otherwise run them separately without merging responsibilities.
+5. Validate only structured worker results and required artifact existence at workflow gates.
+6. Preserve exact operator observations and exact correction findings without inventing causes or fixes.
+7. Route a correction only to the owner named by the workflow/result; do not rerun unaffected definition workers.
+8. Stop on a genuine blocker or hand a successfully reviewed family to the architect for PR/exact-head CI.
 
-If isolated workers are unavailable, report the workflow blocked rather than simulating independent stages in one context.
+The orchestrator must not design API/tokens/behavior/guidance, synthesize definition artifacts, inspect m3e semantics, implement code, migrate consumers, perform semantic review, or claim merge readiness.
 
-## Orchestrator boundary
+## Handoffs
 
-The orchestrator may only:
-
-- resolve the canonical family;
-- launch the four definition workers;
-- mechanically validate that all four results are complete and their artifacts exist;
-- launch standalone implementation only after that gate;
-- launch migration only after standalone implementation is complete;
-- launch fresh independent review only after migration is complete;
-- preserve exact operator observations and exact correction findings;
-- route corrections to the exact worker owner;
-- stop on a genuine blocker;
-- hand a successfully reviewed result to the architect.
-
-It must not design API/tokens/behavior/guidance, synthesize the definition artifacts, inspect m3e semantics, implement code, migrate consumers, perform semantic review, or invent causes from observations.
-
-## Definition workers
-
-Each definition worker uses Material 3 MCP as the sole official Material documentation source and owns one artifact:
-
-```text
-api-contract      → contract.ts
-token-contract    → tokens.css
-behavior-contract → BEHAVIOR.md
-guidance          → README.md
-```
-
-`README.md` is developer-facing correct-use guidance, not a runtime contract.
-
-Do not pass one worker's narrative reasoning to another. The definition-ready gate is mechanical, not another review/synthesis stage.
-
-## Worker handoffs
-
-Keep handoffs compact:
+Pass only the minimum durable state needed by the next worker:
 
 ```text
 family: <canonical-family>
-origin: api-contract | token-contract | behavior-contract | guidance | implementation | migration | review | operator | CI
-owner: api-contract | token-contract | behavior-contract | guidance | implementation | migration | architect
+origin: <worker | operator | CI>
+owner: <target worker | architect>
 finding: <exact observable, contract, or usage-guidance defect>
 affected contract/proof: <concise scope>
 operator observation: none | <lossless factual observation>
 ```
 
-Do not pass hidden reasoning, previous narrative reports, Git/PR history, or copied source encyclopedias between workers.
+Use repository artifacts as handoffs. Do not pass hidden reasoning, previous narrative reports, Git/PR history, copied source encyclopedias, or unrelated intermediate logs between workers.
 
-## Correction routing
-
-Use exact ownership:
-
-```text
-api-contract finding
-  → fresh api-contract
-  → implementation
-  → migration when public consumer shape changed
-  → review
-
-token-contract finding
-  → fresh token-contract
-  → implementation
-  → review
-
-behavior-contract finding
-  → fresh behavior-contract
-  → implementation
-  → review
-
-guidance finding
-  → fresh guidance
-  → migration when current consumer application may change
-  → review
-
-implementation finding
-  → fresh implementation
-  → review
-
-migration finding
-  → fresh migration
-  → review
-
-architecture/ownership finding
-  → architect-handoff
-  → resume earliest invalidated worker
-  → review
-```
-
-Do not rerun unaffected definition workers. After two unsuccessful correction rounds for the same underlying problem, escalate to architecture rather than accumulating patches.
-
-## Dependencies
-
-A Material family may depend on another canonical Material family only through its public API.
-
-If standalone implementation or migration proves a required dependency family is not canonical/complete, process that dependency through the same workflow before resuming the parent. Detect dependency cycles and escalate them to architecture rather than creating recursive ownership.
-
-Do not persist a dependency revision graph.
-
-## Verification
-
-Implementation and migration workers own their focused verifier-managed feedback. The orchestrator does not run broad local `pnpm verify`/`verify:release` merely to duplicate exact-head GitHub CI.
-
-Required contract/browser/visual/migration proof must exist before handoff; CI does not replace missing semantic proof or missing Material usage guidance.
+After two unsuccessful correction rounds for the same underlying problem, follow the workflow's architecture escalation instead of accumulating patches.
 
 ## Final report
 
@@ -160,11 +68,10 @@ next action: hand to architect for PR/CI | <exact required action>
 
 ## Forbidden
 
-- Reintroducing a combined worker that owns API, tokens, behavior, and guidance together.
-- Adding mandatory SOURCES/design/architecture/definition-review stages to the normal path.
 - Reusing one worker context for multiple responsibilities.
+- Reintroducing a combined Material definition worker.
 - Combining standalone implementation and consumer migration.
-- Letting m3e, legacy code or current consumer demand define Material contracts or usage guidance.
+- Letting m3e, legacy code, or current consumer demand define Material contracts or usage guidance.
 - Performing stage-owned reasoning in the orchestrator.
 - Re-running unaffected stages without an exact correction reason.
 - Retrying a genuine blocker without new evidence.
