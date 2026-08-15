@@ -21,6 +21,8 @@ If DESIGN is incomplete or mechanically invalid, write architecture as blocked w
 
 Run in a fresh isolated context. Use task-relevant workspace files, applicable rules, exact renderer package artifacts, active dependency path when provided, and documented commands. Do not depend on Git, PR, commit, or external-check state.
 
+Before classifying any selected renderer mapping or composition, read the documentation shipped with the exact lockfile-resolved `@m3e/web` version for the affected component, including its public README/API JSDoc/examples where available, and inspect the installed public artifacts that implement the documented contract. The current-version renderer documentation is required mapping evidence, not optional background reading. A slot name, exported type, successful render, or existing wrapper code is insufficient by itself to classify a mapping as `direct`.
+
 Treat code, tests, stories, and README files as implementation evidence, not architecture authority.
 
 Before selecting proof placement or impact ownership, read current `docs/testing/migration-plan.md`.
@@ -83,10 +85,10 @@ Resolve completely:
 6. complete public Vue API and state precedence/restoration;
 7. for every controlled renderer-backed state, exact transition timeline from `docs/component-adapter.md` including accepted and rejected intent;
 8. selected public token contract;
-9. renderer mappings, fallbacks, and coverage;
+9. renderer mappings, composition contracts, fallbacks, and coverage, including documented child/content requirements and parent-to-child CSS/custom-property handoff for every selected slot or content role;
 10. one owner for every renderer gap;
 11. deterministic implementation passes;
-12. implementation and migration `TEST IMPACT` using current executable testing ownership;
+12. implementation and migration `TEST IMPACT` using current executable testing ownership, including numeric browser geometry proof whenever selected official geometry can be affected by renderer composition;
 13. consumer inventory, migration order, legacy proof disposition, and every legacy-to-canonical semantic translation including capability/configuration versus current-state meaning and defaults/fallbacks;
 14. acceptance criteria, risks, forbidden approaches, and simplest viable alternative;
 15. implementation readiness.
@@ -123,6 +125,8 @@ When queue is empty and architecture is complete, use readiness `ready`.
 - Keep renderer details private.
 - Define precedence and restoration for every selected state combination.
 - Inspect exact installed renderer lifecycle for mutable state; post-mutation emit alone is insufficient when rejected intent can drift.
+- For every selected slot or child-content role, inspect exact-version renderer documentation/examples and installed public styling/typing contracts before deciding what Vue content may be passed. Do not assume arbitrary slot content is equivalent to a documented renderer child element.
+- When renderer examples or public styling contracts depend on a renderer-owned child element, either compose through a canonical Mioframe dependency or prove the chosen alternative has equivalent observable geometry, styling handoff, accessibility, and interaction for the selected contract. Otherwise classify the mapping as `partial`, `divergent`, or `missing` rather than `direct`.
 - Do not infer legacy/canonical equivalence from prop-name similarity.
 - When effective consumer state includes defaults/fallbacks, define translation from effective value.
 - Do not add adjacent surface for symmetry or future flexibility.
@@ -145,6 +149,8 @@ Implementation owns component, renderer-boundary, token, browser, visual, and co
 Migration owns consumers, product scenarios or explicit no-consumer proof, legacy removal, and impact metadata.
 
 For controlled state, implementation proof must include rejected intent. For presentation composition, browser proof must cover child suppression and positive handoff to the actual action owner.
+
+For selected official fixed geometry, browser proof must assert the numeric public observable dimensions of every rendered part whose size or alignment depends on renderer composition. A visual baseline may supplement but cannot substitute for this geometry oracle.
 
 For semantic consumer translations, migration proof must cover boundary combinations that distinguish old and canonical meaning, including defaults/fallbacks where applicable.
 
@@ -239,6 +245,7 @@ Status: complete | blocked
 - Using dependency gates or cyclic dependencies.
 - Persisting dependency-review revision identities.
 - Inventing product demand or renderer-derived APIs.
+- Classifying a renderer composition as `direct` without checking exact-version renderer documentation/examples and installed public artifact behavior for the selected child/content contract.
 - Calling post-mutation renderer state controlled without proving rejected intent cannot drift.
 - Mapping legacy consumer state by prop-name similarity.
 - Copying obsolete test-placement patterns.

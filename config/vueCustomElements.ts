@@ -2,6 +2,7 @@
 const selectedM3eCustomElements = new Set([
   'm3e-button',
   'm3e-checkbox',
+  'm3e-fab',
   'm3e-loading-indicator',
   'm3e-switch',
 ]);

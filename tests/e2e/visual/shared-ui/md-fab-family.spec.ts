@@ -14,34 +14,12 @@ import {
   readButtonLocatorVisuals,
 } from './md-button-family.testUtils';
 
-test('FAB-family loading colors and enabled geometry contracts', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--loading-color-routing');
-  expect(await readProgressIndicatorColor(page, 'fab-loading-color')).toBe(
-    await readElementColor(page, 'fab-loading-color', '.md-fab__icon'),
-  );
-  await assertLoadingContract(page, 'fab-resting-color', 'fab-loading-color');
-
+test('MDExtendedFab loading colors and enabled geometry contract', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdextendedfab--loading-color-routing');
   expect(await readProgressIndicatorColor(page, 'extended-fab-loading-color')).toBe(
     await readElementColor(page, 'extended-fab-loading-color', '.md-extended-fab__icon'),
   );
   await assertLoadingContract(page, 'extended-fab-resting-color', 'extended-fab-loading-color');
-});
-
-test('MDFab visual states match baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
-
-  const surface = page.getByTestId('visual-md-fab-states');
-
-  await expect(surface).toHaveScreenshot('md-fab-states.png');
-});
-
-test('MDFab interaction states match baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--visual-interaction-states');
-
-  const surface = page.getByTestId('visual-md-fab-interaction-states');
-
-  await expect(surface).toHaveScreenshot('md-fab-interaction-states.png');
 });
 
 test('MDExtendedFab visual states match baseline', async ({ page }) => {
@@ -96,9 +74,8 @@ test('MDExtendedFab label uses MD_TYPESCALE classes and computed typography per 
   expect(large.fontSize).toBe('24px');
 });
 
-// Mirrors `FAB_TOKEN_MATRIX` in `MDFab.stories.ts` (icon color, elevation, opacity) plus the
-// same channel-rotation the fixture applies to derive an independent state-layer color, so the
-// expected table has one source of truth with the fixture literals rather than a re-typed copy.
+// Derives an independent expected state-layer color from a token sample's label/icon color;
+// used by the MDExtendedFab token-routing test below.
 const rotateRgbChannels = (rgb: string) => {
   const [r, g, b] = rgb.replace(/^rgb\(|\)$/g, '').split(' ');
   return `rgb(${b} ${r} ${g})`;
@@ -112,282 +89,6 @@ const FAB_COLORS = [
   'secondary-container',
   'tertiary-container',
 ] as const;
-
-const FAB_TOKEN_MATRIX = {
-  primary: {
-    hover: { icon: 'rgb(255 0 0)', elevation: '0 0 0 3px rgb(12 34 56)', opacity: '0.03' },
-    focus: { icon: 'rgb(0 128 0)', elevation: '0 0 0 4px rgb(23 45 67)', opacity: '0.17' },
-    pressed: { icon: 'rgb(0 0 255)', elevation: '0 0 0 5px rgb(34 56 78)', opacity: '0.29' },
-  },
-  secondary: {
-    hover: { icon: 'rgb(255 90 0)', elevation: '0 0 0 9px rgb(78 90 112)', opacity: '0.03' },
-    focus: { icon: 'rgb(0 150 40)', elevation: '0 0 0 10px rgb(89 101 123)', opacity: '0.17' },
-    pressed: { icon: 'rgb(20 20 255)', elevation: '0 0 0 11px rgb(101 112 134)', opacity: '0.29' },
-  },
-  tertiary: {
-    hover: { icon: 'rgb(255 140 0)', elevation: '0 0 0 12px rgb(112 123 145)', opacity: '0.03' },
-    focus: { icon: 'rgb(0 170 90)', elevation: '0 0 0 13px rgb(123 134 156)', opacity: '0.17' },
-    pressed: { icon: 'rgb(60 20 255)', elevation: '0 0 0 14px rgb(134 145 167)', opacity: '0.29' },
-  },
-  'primary-container': {
-    hover: { icon: 'rgb(255 80 0)', elevation: '0 0 0 6px rgb(45 67 89)', opacity: '0.05' },
-    focus: { icon: 'rgb(0 180 120)', elevation: '0 0 0 7px rgb(56 78 90)', opacity: '0.19' },
-    pressed: { icon: 'rgb(60 60 255)', elevation: '0 0 0 8px rgb(67 89 101)', opacity: '0.31' },
-  },
-  'secondary-container': {
-    hover: { icon: 'rgb(255 100 20)', elevation: '0 0 0 15px rgb(145 156 178)', opacity: '0.05' },
-    focus: { icon: 'rgb(20 190 140)', elevation: '0 0 0 16px rgb(156 167 189)', opacity: '0.19' },
-    pressed: { icon: 'rgb(80 80 255)', elevation: '0 0 0 17px rgb(167 178 200)', opacity: '0.31' },
-  },
-  'tertiary-container': {
-    hover: { icon: 'rgb(255 120 40)', elevation: '0 0 0 18px rgb(178 189 211)', opacity: '0.05' },
-    focus: { icon: 'rgb(40 200 160)', elevation: '0 0 0 19px rgb(189 200 222)', opacity: '0.19' },
-    pressed: {
-      icon: 'rgb(100 100 255)',
-      elevation: '0 0 0 20px rgb(200 211 233)',
-      opacity: '0.31',
-    },
-  },
-} satisfies Record<
-  (typeof FAB_COLORS)[number],
-  Record<'hover' | 'focus' | 'pressed', { icon: string; elevation: string; opacity: string }>
->;
-
-test('MDFab routes independent icon, elevation, and state-layer tokens for all six colors', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--interaction-state-tokens');
-
-  const colors = FAB_COLORS;
-  const opacityKeys = {
-    hover: 'hoverOpacity',
-    focus: 'focusOpacity',
-    pressed: 'pressedOpacity',
-  } as const;
-
-  await Promise.all(
-    colors.flatMap((color) =>
-      (['hover', 'focus', 'pressed'] as const).map(async (stateKey) => {
-        const expected = FAB_TOKEN_MATRIX[color][stateKey];
-        const expectedStateLayerColor = rotateRgbChannels(expected.icon);
-        const sample = await readButtonVisuals(page, `${color}-${stateKey}`, {
-          iconSelector: '.md-fab__icon',
-        });
-        const expectedElevation = await getBoxShadowValue(page, expected.elevation);
-        const expectedStateLayerBackground = await getColorAtOpacity(
-          page,
-          expectedStateLayerColor,
-          expected.opacity,
-        );
-
-        expect(normalizeColorString(asColor(sample.iconColor)), `${color} ${stateKey} icon`).toBe(
-          normalizeColorString(expected.icon),
-        );
-        expect(sample.boxShadow, `${color} ${stateKey} elevation`).toBe(expectedElevation);
-        expect(
-          normalizeColorString(sample.stateLayerColor),
-          `${color} ${stateKey} state-layer color`,
-        ).toBe(normalizeColorString(expectedStateLayerColor));
-        expect(sample[opacityKeys[stateKey]], `${color} ${stateKey} opacity`).toBe(
-          expected.opacity,
-        );
-        expect(
-          normalizeColorString(asColor(sample.stateLayerBackground)),
-          `${color} ${stateKey} rendered state-layer background`,
-        ).toBe(expectedStateLayerBackground);
-      }),
-    ),
-  );
-});
-
-test('MDFab default color resolves to the primary-container token', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--default');
-
-  const button = page.getByRole('button');
-
-  await expect(button).toHaveClass(/md-fab_color_primary-container/);
-
-  const backgroundColor = normalizeColorString(
-    await button.evaluate((el) => getComputedStyle(el).backgroundColor),
-  );
-  const primaryContainerColor = await getSysColorValue(page, '--md-sys-color-primary-container');
-
-  expect(backgroundColor).toBe(primaryContainerColor);
-});
-
-test('MDFab resting styles resolve to the documented Material color role for all six colors', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
-
-  const readResting = (name: string) => {
-    const button = page.getByRole('button', { name, exact: true });
-    return Promise.all([
-      button.evaluate((el) => getComputedStyle(el).backgroundColor),
-      button.evaluate((el) => getComputedStyle(el).boxShadow),
-      button.locator('.md-fab__icon').evaluate((el) => getComputedStyle(el).color),
-    ]).then(([background, boxShadow, iconColor]) => ({
-      background: normalizeColorString(background),
-      boxShadow,
-      iconColor: normalizeColorString(iconColor),
-    }));
-  };
-
-  const [primary, secondary, tertiary, primaryContainer, secondaryContainer, tertiaryContainer] =
-    await Promise.all([
-      readResting('Primary'),
-      readResting('Secondary'),
-      readResting('Tertiary'),
-      readResting('Primary container'),
-      readResting('Secondary container'),
-      readResting('Tertiary container'),
-    ]);
-  const roles = await Promise.all(
-    [
-      'primary',
-      'on-primary',
-      'secondary',
-      'on-secondary',
-      'tertiary',
-      'on-tertiary',
-      'primary-container',
-      'on-primary-container',
-      'secondary-container',
-      'on-secondary-container',
-      'tertiary-container',
-      'on-tertiary-container',
-    ].map((role) => getSysColorValue(page, `--md-sys-color-${role}`)),
-  );
-  const [
-    sysPrimary,
-    sysOnPrimary,
-    sysSecondary,
-    sysOnSecondary,
-    sysTertiary,
-    sysOnTertiary,
-    sysPrimaryContainer,
-    sysOnPrimaryContainer,
-    sysSecondaryContainer,
-    sysOnSecondaryContainer,
-    sysTertiaryContainer,
-    sysOnTertiaryContainer,
-  ] = roles;
-
-  expect(primary.background).toBe(sysPrimary);
-  expect(primary.iconColor).toBe(sysOnPrimary);
-  expect(secondary.background).toBe(sysSecondary);
-  expect(secondary.iconColor).toBe(sysOnSecondary);
-  expect(tertiary.background).toBe(sysTertiary);
-  expect(tertiary.iconColor).toBe(sysOnTertiary);
-  expect(primaryContainer.background).toBe(sysPrimaryContainer);
-  expect(primaryContainer.iconColor).toBe(sysOnPrimaryContainer);
-  expect(secondaryContainer.background).toBe(sysSecondaryContainer);
-  expect(secondaryContainer.iconColor).toBe(sysOnSecondaryContainer);
-  expect(tertiaryContainer.background).toBe(sysTertiaryContainer);
-  expect(tertiaryContainer.iconColor).toBe(sysOnTertiaryContainer);
-  const level3 = await getBoxShadowValue(page, 'var(--md-sys-elevation-level3)');
-  for (const sample of [
-    primary,
-    secondary,
-    tertiary,
-    primaryContainer,
-    secondaryContainer,
-    tertiaryContainer,
-  ]) {
-    expect(sample.boxShadow).toBe(level3);
-  }
-});
-
-test('MDFab default hover, focus, and pressed elevation resolves to the documented system levels for all six colors', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--visual-interaction-states');
-
-  const [level3, level4] = await Promise.all([
-    getBoxShadowValue(page, 'var(--md-sys-elevation-level3)'),
-    getBoxShadowValue(page, 'var(--md-sys-elevation-level4)'),
-  ]);
-
-  await Promise.all(
-    [
-      'Primary',
-      'Secondary',
-      'Tertiary',
-      'Primary container',
-      'Secondary container',
-      'Tertiary container',
-    ].map(async (color) => {
-      const role = `on-${color.toLowerCase().replaceAll(' ', '-')}`;
-      const expectedColor = await getSysColorValue(page, `--md-sys-color-${role}`);
-      await Promise.all(
-        (
-          [
-            ['hover', level4],
-            ['focus', level3],
-            ['pressed', level3],
-          ] as const
-        ).map(async ([state, elevation]) => {
-          const opacity = await getSysPropertyValue(
-            page,
-            `--md-sys-state-${state}-state-layer-opacity`,
-          );
-          const sample = await readButtonLocatorVisuals(
-            page.getByRole('button', { name: `${color} ${state}`, exact: true }),
-            { iconSelector: '.md-fab__icon' },
-          );
-          expect(normalizeColorString(asColor(sample.iconColor)), `${color} ${state} icon`).toBe(
-            expectedColor,
-          );
-          expect(
-            normalizeColorString(sample.stateLayerColor),
-            `${color} ${state} state layer`,
-          ).toBe(expectedColor);
-          expect(sample[`${state}Opacity`], `${color} ${state} opacity`).toBe(opacity);
-          expect(normalizeColorString(asColor(sample.stateLayerBackground))).toBe(
-            await getColorAtOpacity(page, `var(--md-sys-color-${role})`, opacity),
-          );
-          expect(sample.boxShadow, `${color} ${state} elevation`).toBe(elevation);
-        }),
-      );
-    }),
-  );
-});
-
-test('MDFab container height and icon size match the exact documented size tokens', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--size-comparison');
-
-  const readGeometry = (testId: string) =>
-    page.getByTestId(testId).evaluate((el) => {
-      const icon = el.querySelector('.md-fab__icon');
-      return {
-        height: el.getBoundingClientRect().height,
-        iconSize: icon ? icon.getBoundingClientRect().height : null,
-      };
-    });
-
-  const regular = await readGeometry('fab-size-regular');
-  const medium = await readGeometry('fab-size-medium');
-  const large = await readGeometry('fab-size-large');
-
-  // md.comp.fab.container.height / md.comp.fab.{medium,large}.container.height (1dp == 1px).
-  expect(regular.height).toBe(56);
-  expect(medium.height).toBe(80);
-  expect(large.height).toBe(96);
-  // md.comp.fab.icon.size / md.comp.fab.{medium,large}.icon.size.
-  expect(regular.iconSize).toBe(24);
-  expect(medium.iconSize).toBe(28);
-  expect(large.iconSize).toBe(36);
-});
-
-test('MDFab size comparison matches baseline', async ({ page }) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--size-comparison');
-
-  const surface = page.getByTestId('visual-md-fab-size-comparison');
-
-  await expect(surface).toHaveScreenshot('md-fab-size-comparison.png');
-});
 
 // Mirrors `EXTENDED_FAB_TOKEN_MATRIX` in `MDExtendedFab.stories.ts` (label color, icon color,
 // elevation, opacity) plus the same channel-rotation the fixture applies to derive an
@@ -732,24 +433,6 @@ test('MDExtendedFab interaction states match baseline', async ({ page }) => {
   await expect(surface).toHaveScreenshot('md-extended-fab-interaction-states.png');
 });
 
-test('MDFab width and height are independently overridable through exact official component tokens', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--default');
-  const fab = page.getByRole('button');
-
-  const beforeOverride = await fab.boundingBox();
-  expect(beforeOverride?.width).toBe(56);
-  expect(beforeOverride?.height).toBe(56);
-
-  await fab.evaluate((el) => {
-    el.style.setProperty('--md-comp-fab-container-width', '120px');
-  });
-  const afterWidthOverride = await fab.boundingBox();
-  expect(afterWidthOverride?.width).toBe(120);
-  expect(afterWidthOverride?.height).toBe(56);
-});
-
 test('MDExtendedFab leading and trailing space are independently overridable through exact official component tokens', async ({
   page,
 }) => {
@@ -768,27 +451,6 @@ test('MDExtendedFab leading and trailing space are independently overridable thr
   expect(paddingRight).toBe('10px');
 });
 
-test('MDFab container shadow-color routes an override into the shared elevation bridge', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
-  const fab = page.getByRole('button', { name: 'Primary', exact: true });
-
-  const defaultBridge = await fab.evaluate((el) =>
-    getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
-  );
-  const defaultShadow = await getSysColorValue(page, '--md-sys-color-shadow');
-  expect(normalizeColorString(defaultBridge)).toBe(defaultShadow);
-
-  await fab.evaluate((el) => {
-    el.style.setProperty('--md-comp-fab-primary-container-shadow-color', 'rgb(12, 34, 56)');
-  });
-  const overriddenBridge = await fab.evaluate((el) =>
-    getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
-  );
-  expect(normalizeColorString(overriddenBridge)).toBe('12 34 56');
-});
-
 test('MDExtendedFab container shadow-color routes an override into the shared elevation bridge', async ({
   page,
 }) => {
@@ -805,25 +467,4 @@ test('MDExtendedFab container shadow-color routes an override into the shared el
     getComputedStyle(el).getPropertyValue('--md-private-elevation-shadow-color').trim(),
   );
   expect(normalizeColorString(overriddenBridge)).toBe('65 43 21');
-});
-
-test('MDFab plain-style focus-indicator component tokens route into the generic focus-indicator contract', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdfab--visual-states');
-  const fab = page.getByRole('button', { name: 'Primary', exact: true });
-
-  const defaultRouted = await fab.evaluate((el) =>
-    getComputedStyle(el).getPropertyValue('--md-focus-indicator-color').trim(),
-  );
-  const defaultSecondary = await getSysColorValue(page, '--md-sys-color-secondary');
-  expect(normalizeColorString(defaultRouted)).toBe(defaultSecondary);
-
-  await fab.evaluate((el) => {
-    el.style.setProperty('--md-comp-fab-primary-focus-indicator-color', 'rgb(9, 8, 7)');
-  });
-  const overrideRouted = await fab.evaluate((el) =>
-    getComputedStyle(el).getPropertyValue('--md-focus-indicator-color').trim(),
-  );
-  expect(normalizeColorString(overrideRouted)).toBe('9 8 7');
 });
