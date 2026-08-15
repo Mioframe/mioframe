@@ -22,6 +22,8 @@ Do not start if any definition worker reported unresolved Material ambiguity.
 
 `README.md` is a prerequisite proving the family definition is complete, but it is developer guidance rather than a runtime contract. Do not use usage prose to invent runtime behavior absent from the three technical contracts.
 
+Before inspecting m3e or editing production code, check the three technical contracts for direct internal contradictions only. Public states/content roles required by `BEHAVIOR.md` must be representable by `contract.ts`, and token variant/state/part terminology must not contradict the structural or behavior contracts. If they conflict, route the exact finding to the owning definition worker; do not synthesize a new contract in implementation.
+
 ## Authority
 
 Read applicable `AGENTS.md`, `component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the three technical family contract artifacts.
