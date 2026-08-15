@@ -18,13 +18,13 @@ rendered observable result
 
 ## Owners
 
-| Contract | Owner |
-| --- | --- |
-| Material reference/system foundations | `foundation/tokens.css` |
-| Default light/dark system assignments | `foundation/theme.css` |
-| Family public component-token contract/catalogue | `components/<family>/tokens.css` |
-| Private renderer bridges/workarounds | owning component implementation/private stylesheet |
-| Application tokens | outside Material as `--app-*` |
+| Contract                                         | Owner                                              |
+| ------------------------------------------------ | -------------------------------------------------- |
+| Material reference/system foundations            | `foundation/tokens.css`                            |
+| Default light/dark system assignments            | `foundation/theme.css`                             |
+| Family public component-token contract/catalogue | `components/<family>/tokens.css`                   |
+| Private renderer bridges/workarounds             | owning component implementation/private stylesheet |
+| Application tokens                               | outside Material as `--app-*`                      |
 
 `--m3e-*` and `--md-private-*` are never public Material API.
 

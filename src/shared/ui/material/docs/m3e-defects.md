@@ -66,13 +66,13 @@ Mioframe status:
 
 ## Active records
 
-| ID | Component | Summary | Affected version | Mioframe status | Upstream status | Last revalidated |
-| --- | --- | --- | --- | --- | --- | --- |
-| `M3E-001` | Loading Indicator | documented active-indicator size CSS input is not the implemented input | `2.6.2`–`2.7.4` | `workaround-active` | `unreported` | 2026-08-14 |
-| `M3E-002` | Loading Indicator | uncontained host size is coupled to active-indicator size | `2.6.2`–`2.7.4` | `workaround-active` | `unreported` | 2026-08-14 |
-| `M3E-004` | Switch | native `<label>` association does not produce an accessible name | `2.6.3`–`2.7.4` | `workaround-active` | `unreported` | 2026-08-14 |
-| `M3E-005` | Checkbox | explicit native `<label for>` association does not produce an accessible name | `2.6.3`–`2.7.4` | `workaround-active` | `unreported` | 2026-08-14 |
-| `M3E-006` | Button | small Button defaults to 20dp leading/trailing spacing instead of the required 16dp geometry | `2.7.4` | `workaround-active` | `unreported` | 2026-08-14 |
+| ID        | Component         | Summary                                                                                      | Affected version | Mioframe status     | Upstream status | Last revalidated |
+| --------- | ----------------- | -------------------------------------------------------------------------------------------- | ---------------- | ------------------- | --------------- | ---------------- |
+| `M3E-001` | Loading Indicator | documented active-indicator size CSS input is not the implemented input                      | `2.6.2`–`2.7.4`  | `workaround-active` | `unreported`    | 2026-08-14       |
+| `M3E-002` | Loading Indicator | uncontained host size is coupled to active-indicator size                                    | `2.6.2`–`2.7.4`  | `workaround-active` | `unreported`    | 2026-08-14       |
+| `M3E-004` | Switch            | native `<label>` association does not produce an accessible name                             | `2.6.3`–`2.7.4`  | `workaround-active` | `unreported`    | 2026-08-14       |
+| `M3E-005` | Checkbox          | explicit native `<label for>` association does not produce an accessible name                | `2.6.3`–`2.7.4`  | `workaround-active` | `unreported`    | 2026-08-14       |
+| `M3E-006` | Button            | small Button defaults to 20dp leading/trailing spacing instead of the required 16dp geometry | `2.7.4`          | `workaround-active` | `unreported`    | 2026-08-14       |
 
 `M3E-003` is retired; see Removed records.
 
