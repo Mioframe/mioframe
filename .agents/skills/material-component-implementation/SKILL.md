@@ -50,8 +50,8 @@ Do not run a second migration preflight merely because standalone implementation
 
 1. Read the canonical contract without using current consumers to reinterpret it.
 2. Inspect exact lockfile-resolved `@m3e/web` docs/examples and public artifacts for every affected mapping.
-3. Implement the Vue `MD*` component and private renderer glue.
-4. Implement private token bridges without leaking m3e vocabulary into public `tokens.css`.
+3. Implement the Vue `MD*` component using the exported `contract.ts` Props/Slots/Emits types directly through typed Vue macros; do not duplicate the public unions/interfaces inside the SFC.
+4. Implement private renderer glue and token bridges without leaking m3e vocabulary into the public contract or `tokens.css`.
 5. Add/update contract, browser, accessibility, geometry, token and visual proof as required.
 6. Establish standalone component correctness.
 7. Only then inventory all current/legacy consumers and obsolete owners/proof.
@@ -88,7 +88,8 @@ Use the lowest faithful proof selected by preflight and repository testing rules
 
 As applicable prove:
 
-- public props/slots/emits/defaults/types and attribute boundary;
+- type-check and component use one `contract.ts` source for public props/slots/emits/types;
+- public props/slots/emits/defaults and attribute boundary;
 - accepted/rejected controlled intent;
 - pointer/keyboard/focus/native event behavior;
 - accessible role/name/state and ownership;
@@ -123,6 +124,7 @@ result: complete | blocked | return-to-contract | needs-architect
 ## Forbidden
 
 - Changing the canonical contract to fit m3e or legacy consumers.
+- Re-declaring the public props/slots/emits/type unions inside the SFC instead of consuming `contract.ts`.
 - Starting consumer migration before standalone contract/behavior is established.
 - Exposing m3e tags, events, types, attributes, classes, CSS variables, or private DOM.
 - Recreating renderer-owned interaction/accessibility/geometry/motion systems without an explicit architecture decision.
