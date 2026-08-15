@@ -4,7 +4,7 @@ This file owns current repository-local Material milestone status, repository-vi
 
 ## Current state
 
-Last updated: 2026-08-15
+Last updated: 2026-08-16
 
 Current milestone: `M3 — sequential component migration`
 
@@ -18,9 +18,9 @@ Implemented canonical runtime families in the current repository tree:
 - Checkbox;
 - Floating Action Button.
 
-These existing families were produced by the previous staged workflow and may still contain legacy DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW artifacts. The contract-first workflow does not bulk-rewrite them; each family is converted to `contract.ts`, `tokens.css`, `BEHAVIOR.md`, `GUIDANCE.md`, and `SOURCES.md` when that family is next materially processed.
+These existing families were produced by the previous staged workflow and may still contain legacy DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW artifacts. The current workflow does not bulk-rewrite them; each family is converted to `contract.ts`, `tokens.css`, and `BEHAVIOR.md` when that family is next materially processed.
 
-The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is converted to the contract-first format, this conflict must be preserved in `SOURCES.md`/`BEHAVIOR.md` rather than silently reinterpreted.
+The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is next processed, the behavior contract worker must derive the current result from Material 3 MCP; if the source remains contradictory, the behavior contract is blocked rather than guessed from legacy evidence.
 
 The Floating Action Button runtime family selects the standalone icon-only FAB. The existing `RepoExplorerPane.vue` usage remains `MDExtendedFab`, which belongs to Extended FAB and remains legacy Material ownership under `src/shared/ui/Button`.
 
@@ -30,7 +30,7 @@ No repository-local blocker prevents selecting the next M3 family.
 
 | ID  | Milestone                           | Status        |
 | --- | ----------------------------------- | ------------- |
-| M0  | contract-first workflow and rules   | `complete`    |
+| M0  | focused contract workflow and rules | `complete`    |
 | M1a | Loading Indicator dependency family | `complete`    |
 | M1  | Button action family                | `complete`    |
 | M2  | Switch stateful pilot               | `complete`    |
@@ -42,4 +42,4 @@ No repository-local blocker prevents selecting the next M3 family.
 
 ## Next Material pipeline action
 
-Run `material-component Extended FAB` using the contract-first workflow.
+Run `material-component Extended FAB` using the focused three-contract workflow.
