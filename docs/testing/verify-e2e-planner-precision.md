@@ -1,6 +1,6 @@
 # Verify V2A — application E2E planner precision
 
-Status: implementation complete and architecture-reviewed; exact-head GitHub CI is the remaining merge gate.
+Status: implementation complete and architecture-reviewed; exact-head GitHub CI is the authoritative merge gate.
 
 This document is the implementation handoff for Stage V2A of verify modernization. `docs/testing/architecture.md` remains the canonical testing policy, and `docs/testing/migration-plan.md` remains the source of truth for the currently executable repository state.
 
