@@ -2,7 +2,7 @@
 
 ## Decision
 
-A canonical Mioframe Material family is defined before implementation by three independent technical contracts plus one independent developer-guidance artifact:
+A canonical Mioframe Material family is defined by three independent technical contracts plus one independent developer-guidance artifact:
 
 ```text
 contract.ts
@@ -24,7 +24,7 @@ Official Material facts for all four artifacts come from the repository-configur
 
 Each artifact is produced by a separate fresh worker with one narrow responsibility. Workers do not share implementation context and do not inspect m3e or application consumers.
 
-Implementation may start only after all four workers complete successfully with no unresolved Material ambiguity.
+The three technical contracts gate standalone implementation. Usage guidance is independent and may complete in parallel with contract extraction or standalone implementation, but it must be complete before consumer migration begins.
 
 ## `contract.ts` — public API contract
 
@@ -121,18 +121,30 @@ Definition workers must not inspect:
 
 Existing canonical artifacts may be read only when refreshing the same owned artifact.
 
-## Definition-ready gate
+## Gates
 
-The orchestrator performs a mechanical gate only. The family is definition-ready when:
+The orchestrator performs mechanical gates only; it does not synthesize or redesign these artifacts.
+
+### Technical-contract-ready
+
+Standalone implementation may start when:
 
 - API contract worker reports complete;
 - token contract worker reports complete;
 - behavior contract worker reports complete;
-- guidance worker reports complete;
-- `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and `README.md` exist at the canonical family owner;
-- none reports unresolved Material ambiguity or a blocker.
+- `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist at the canonical family owner;
+- none of those workers reports unresolved Material ambiguity or a blocker.
 
-The orchestrator does not synthesize or redesign these artifacts.
+`README.md` is not part of this runtime gate.
+
+### Migration-definition-ready
+
+Consumer migration may start only when:
+
+- standalone implementation is complete;
+- guidance worker reports complete;
+- `README.md` exists at the canonical family owner;
+- guidance has no unresolved Material ambiguity or blocker.
 
 If implementation or migration later proves one Material fact wrong or incomplete, route the exact finding back to the worker that owns that artifact. Do not repair it opportunistically in another stage.
 
