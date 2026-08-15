@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { z } from 'zod';
 import { openStory } from '../../../../tests/e2e/storybook/storybook.testUtils';
 
@@ -6,6 +6,9 @@ const STORY_ID = 'shared-lib-reorder-reorderselfscrollablestoryharness--default'
 const CLIPPED_STORY_ID =
   'shared-lib-reorder-reorderselfscrollablestoryharness--clipped-by-ancestor';
 const ACTIVATION_STORY_ID = 'shared-lib-reorder-reorderactivationstoryharness--default';
+
+const CONTAINER_SELECTOR = '[aria-label="Self-scrollable reorder items"]';
+const ANCESTOR_SELECTOR = '[aria-label="Reorder scroll ancestor"]';
 
 // Browser-reported scrollTop/scrollHeight/clientHeight are rounded layout values, so the inner
 // container's native scroll limit can be off by up to one CSS pixel from independent measurements.
@@ -67,6 +70,105 @@ const assertSuppressedDuringDrag = async (scrollable: Locator): Promise<void> =>
     '',
   );
 };
+
+interface ReleaseScrollPositions {
+  container: number;
+  ancestor: number;
+}
+
+interface ReleaseScrollSamples {
+  container: number[];
+  ancestor: number[];
+}
+
+interface ReleaseScrollObservation {
+  baseline: ReleaseScrollPositions;
+  samples: ReleaseScrollSamples;
+}
+
+declare global {
+  interface Window {
+    /** Pending release observation stashed by {@link armReleaseScrollObserver} for {@link awaitReleaseScrollObserver}. */
+    reorderSelfScrollableReleaseObservation?: Promise<ReleaseScrollObservation>;
+  }
+}
+
+/**
+ * Installs a capture-phase `pointerup` observer and waits for the browser to confirm it is
+ * registered before returning. The pending observation promise is stashed on `window` rather than
+ * returned directly, so this call resolves as soon as the listener is armed instead of waiting for
+ * `pointerup` itself — removing the window in which a real `page.mouse.up()` could fire before the
+ * browser-side listener exists.
+ * @param page - The Playwright page driving the drag.
+ * @param frameCount - Number of rendered frames to sample after pointer release.
+ * @returns Resolves once the browser-side `pointerup` observer is armed.
+ */
+const armReleaseScrollObserver = (page: Page, frameCount = 10): Promise<void> =>
+  page.evaluate(
+    (args) => {
+      const containerEl = document.querySelector(args.containerSelector);
+      const ancestorEl = document.querySelector(args.ancestorSelector);
+      if (!containerEl || !ancestorEl) {
+        throw new Error('missing reorder container or ancestor');
+      }
+
+      const readPositions = (): ReleaseScrollPositions => ({
+        container: containerEl.scrollTop,
+        ancestor: ancestorEl.scrollTop,
+      });
+
+      window.reorderSelfScrollableReleaseObservation = new Promise<ReleaseScrollObservation>(
+        (resolve) => {
+          window.addEventListener(
+            'pointerup',
+            () => {
+              const baseline = readPositions();
+              const samples: ReleaseScrollSamples = {
+                container: [],
+                ancestor: [],
+              };
+              let capturedFrames = 0;
+
+              const captureNextFrame = () => {
+                requestAnimationFrame(() => {
+                  const positions = readPositions();
+                  samples.container.push(positions.container);
+                  samples.ancestor.push(positions.ancestor);
+                  capturedFrames += 1;
+
+                  if (capturedFrames >= args.frameCount) {
+                    resolve({ baseline, samples });
+                    return;
+                  }
+
+                  captureNextFrame();
+                });
+              };
+
+              captureNextFrame();
+            },
+            { capture: true, once: true },
+          );
+        },
+      );
+    },
+    { containerSelector: CONTAINER_SELECTOR, ancestorSelector: ANCESTOR_SELECTOR, frameCount },
+  );
+
+/**
+ * Awaits the release observation armed by {@link armReleaseScrollObserver}, returning its
+ * pointer-up baseline and aligned post-release samples for both candidates.
+ * @param page - The Playwright page driving the drag.
+ * @returns Pointer-up baseline and aligned post-release samples for both candidates.
+ */
+const awaitReleaseScrollObserver = (page: Page): Promise<ReleaseScrollObservation> =>
+  page.evaluate(() => {
+    const observation = window.reorderSelfScrollableReleaseObservation;
+    if (!observation) {
+      throw new Error('release scroll observer was not armed before release');
+    }
+    return observation;
+  });
 
 test.describe('self-scrollable reorder container', () => {
   test('a duplicate controlled list cancels pointer activation and recovers without remounting', async ({
@@ -247,19 +349,21 @@ test.describe('self-scrollable reorder container', () => {
       SCROLL_LIMIT_TOLERANCE_PX,
     );
 
-    // Capture both positions before release, then sample both candidates concurrently immediately
-    // after pointer-up. Waiting for restored scroll-snap styles before sampling would leave a blind
-    // window in which release movement could become the test's new baseline.
-    const containerScrollTopBeforeRelease = await container.evaluate((el) => el.scrollTop);
-    const ancestorScrollTopBeforeRelease = await ancestor.evaluate((el) => el.scrollTop);
+    // Arm the browser-side release observer before the real release, so the pointer-up baseline
+    // and subsequent frames are captured inside the event boundary itself, closing the window in
+    // which release movement between a Node-side pre-release read and `page.mouse.up()` could slip
+    // in unobserved.
+    await armReleaseScrollObserver(page);
     await page.mouse.up();
-
-    const [containerReleaseSamples, ancestorReleaseSamples] = await Promise.all([
-      sampleScrollTop(container),
-      sampleScrollTop(ancestor),
-    ]);
-    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
-    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
+    const releaseObservation = await awaitReleaseScrollObserver(page);
+    assertScrollTopHoldsAtBaseline(
+      releaseObservation.samples.container,
+      releaseObservation.baseline.container,
+    );
+    assertScrollTopHoldsAtBaseline(
+      releaseObservation.samples.ancestor,
+      releaseObservation.baseline.ancestor,
+    );
     await expect(firstItem).not.toHaveClass(/reorder-self-scrollable-story-item_dragging/);
 
     await expect
@@ -372,15 +476,25 @@ test.describe('self-scrollable reorder container', () => {
     await assertSuppressedDuringDrag(container);
     await assertSuppressedDuringDrag(ancestor);
 
-    const containerScrollTopBeforeRelease = await container.evaluate((el) => el.scrollTop);
-    const ancestorScrollTopBeforeRelease = await ancestor.evaluate((el) => el.scrollTop);
-
+    // Arm the browser-side release observer before the real release, so the pointer-up baseline
+    // and subsequent frames are captured inside the event boundary itself, closing the window in
+    // which release movement between a Node-side pre-release read and `page.mouse.up()` could slip
+    // in unobserved.
+    await armReleaseScrollObserver(page);
     await page.mouse.up();
+    const releaseObservation = await awaitReleaseScrollObserver(page);
+    assertScrollTopHoldsAtBaseline(
+      releaseObservation.samples.container,
+      releaseObservation.baseline.container,
+    );
+    assertScrollTopHoldsAtBaseline(
+      releaseObservation.samples.ancestor,
+      releaseObservation.baseline.ancestor,
+    );
 
-    // After release, the temporary inline snap override is gone on both candidates, the original
-    // computed styles are restored, and neither candidate is allowed to move away from the exact
-    // position captured immediately before release. Cleanup runs once the drag-end status change
-    // flushes, so poll only for style restoration, never for a new settled scroll position.
+    // Style restoration is asserted separately from scroll-position stability: cleanup runs once
+    // the drag-end status change flushes, so poll only for style restoration, never for a new
+    // settled scroll position.
     await expect
       .poll(() => container.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe('');
@@ -388,8 +502,12 @@ test.describe('self-scrollable reorder container', () => {
       .poll(() => ancestor.evaluate((el) => el.style.getPropertyValue('scroll-snap-type')))
       .toBe('');
 
-    expect(await container.evaluate((el) => el.scrollTop)).toBe(containerScrollTopBeforeRelease);
-    expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(ancestorScrollTopBeforeRelease);
+    expect(await container.evaluate((el) => el.scrollTop)).toBe(
+      releaseObservation.baseline.container,
+    );
+    expect(await ancestor.evaluate((el) => el.scrollTop)).toBe(
+      releaseObservation.baseline.ancestor,
+    );
 
     const containerSnapshotAfterDrag = await captureScrollSnapSnapshot(container);
     expect(containerSnapshotAfterDrag.inlineValue).toBe(containerSnapshotBeforeDrag.inlineValue);
@@ -410,11 +528,5 @@ test.describe('self-scrollable reorder container', () => {
       ancestorSnapshotBeforeDrag.computedScrollSnapType,
     );
     expect(ancestorSnapshotAfterDrag.computedScrollBehavior).toBe('smooth');
-
-    const containerReleaseSamples = await sampleScrollTop(container);
-    assertScrollTopHoldsAtBaseline(containerReleaseSamples, containerScrollTopBeforeRelease);
-
-    const ancestorReleaseSamples = await sampleScrollTop(ancestor);
-    assertScrollTopHoldsAtBaseline(ancestorReleaseSamples, ancestorScrollTopBeforeRelease);
   });
 });
