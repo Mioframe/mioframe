@@ -2,7 +2,7 @@
 
 `src/shared/ui/material` is the canonical owner of Mioframe’s project-facing Material Vue API, supported Material token API, private renderer integration, and Material-specific documentation.
 
-Official Material 3 Expressive defines the public model. Contract workers read it through the repository-configured `material3` MCP. `@m3e/web` is the preferred private renderer, not an API authority.
+Official Material 3 Expressive defines the public model and correct component usage. Definition workers read it through the repository-configured `material3` MCP. `@m3e/web` is the preferred private renderer, not an API or guidance authority.
 
 ## Public entrypoint
 
@@ -16,24 +16,27 @@ A public `MD*` family:
 
 - uses official Material terminology and semantics;
 - is defined independently from current Mioframe consumers;
+- documents when and how the component should be used according to Material guidance;
 - keeps renderer tags, attributes, events, types, and private CSS inputs out of consumers;
 - contains no product behavior or undocumented Material extension.
 
 ## Family layout
 
-A family processed by the current workflow has exactly three mandatory durable contracts:
+A family processed by the current workflow has three mandatory technical contracts plus one mandatory developer-guidance artifact:
 
 ```text
 components/<family>/
   contract.ts
   tokens.css
   BEHAVIOR.md
+  README.md
   <Vue runtime, tests, stories, private renderer glue>
 ```
 
 - `contract.ts` owns public parameters/props, slots, events, public types and defaults.
 - `tokens.css` owns the public official component-token contract/catalogue.
 - `BEHAVIOR.md` owns normative observable behavior, accessibility, geometry and motion.
+- `README.md` owns the official component description, when/how to use it, variant/content guidance, consumer accessibility responsibilities, and related-component distinctions. It is not a runtime contract.
 
 Old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files may remain temporarily in untouched families as legacy evidence. They are removed when that family is converted through the current workflow.
 
@@ -45,6 +48,7 @@ Material owns:
 
 - canonical Vue contracts, adapters and exports;
 - official public component tokens;
+- official family usage guidance;
 - renderer-independent Material foundation and theme declarations;
 - private family-local renderer mappings;
 - approved family-local renderer corrections/workarounds;
@@ -63,14 +67,15 @@ Outside this directory, code must not import `@m3e/web`, render `m3e-*`, consume
 
 Inside an owning family implementation, prefer documented exact-version renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
 
-Migration consumes the finished canonical Mioframe Material API and does not inspect renderer internals.
+Migration consumes the finished canonical Mioframe Material API plus family `README.md` guidance and does not inspect renderer internals.
 
 ## Workflow
 
 ```text
 API contract       ┐
-Token contract     ├─→ contract ready
-Behavior contract  ┘
+Token contract     │
+Behavior contract  ├─→ definition ready
+Usage guidance     ┘
                         ↓
                  implementation
                         ↓
@@ -81,7 +86,7 @@ Behavior contract  ┘
              architect / PR / CI
 ```
 
-Contract workers are deliberately narrow and isolated. Standalone implementation remains focused on the Material contracts plus exact m3e mapping; only the later migration worker reads application consumers.
+Definition workers are deliberately narrow and isolated. Standalone implementation remains focused on the three technical contracts plus exact m3e mapping; only the later migration worker reads application consumers and applies the README guidance.
 
 A non-deterministic architecture/ownership problem is escalated through `architect-handoff` only when it actually appears rather than being a mandatory stage for every component.
 
