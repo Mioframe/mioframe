@@ -34,7 +34,7 @@ Do not route reusable component behavior into application E2E merely because the
 Before writing a Storybook behavior spec:
 
 1. identify the truthful UI owner;
-2. for Material, use the Material family owner selected by its `ARCHITECTURE.md`;
+2. for Material, use the canonical family owner defined by its contract/runtime boundary;
 3. for other UI, use the current FSD component or cohesive local UI module;
 4. use a family/module-level spec only when one shared observable browser contract belongs to that owner;
 5. otherwise split proof by owner.
@@ -72,7 +72,7 @@ Separate paths when they have different owners or failure risks, for example:
 - programmatic state updates when hidden renderer drift is a real risk;
 - composition pass-through when a decorative child suppresses its own actionability so an enclosing owner must receive input on the same visible region.
 
-For controlled custom-element adapters, real-browser proof must validate the observable renderer event lifecycle selected by architecture. When the renderer exposes a cancelable pre-mutation intent, prove one real action produces one public intent and that rejecting the intent leaves the rendered state controlled by the unchanged prop.
+For controlled custom-element adapters, real-browser proof must validate the observable renderer event lifecycle required by the canonical behavior and chosen private mapping. When the renderer exposes a cancelable pre-mutation intent, prove one real action produces one public intent and that rejecting the intent leaves the rendered state controlled by the unchanged prop.
 
 For decorative/presentation composition, do not stop at proving the child is inert. Also prove real input on the child’s visible region reaches the intended owner action and owner-controlled state is reflected back into the child.
 
