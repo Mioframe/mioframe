@@ -5,7 +5,7 @@ Required return family: none
 Required return stage: none
 Completion status: complete
 Final workflow verification readiness: ready
-Operator visual status: no-reported-defect
+Operator visual status: defect-reported
 Blockers: none
 Major issues: none
 Minor issues: none
@@ -41,7 +41,9 @@ The colocated component contract, owner-local Storybook behavior, and owner-loca
 - `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/floatingActionButton/MDFab.browser.spec.ts`
 - `pnpm verify --files src/shared/ui/material/components/floatingActionButton/MDFab.visual.spec.ts --profile local --only visual`
 
-The browser lane covers visible-SVG pointer pass-through, Enter/Space activation, numeric geometry, and dynamic rejected renderer inputs. The visual baselines are bounded to the selected resting, hover, focus, and pressed appearances; they were inspected as appearance evidence only. No operator visual or motion defect was reported.
+The browser lane covers visible-SVG pointer pass-through, Enter/Space activation, numeric geometry, and dynamic rejected renderer inputs. The visual baselines are bounded to the selected resting, hover, focus, and pressed appearances; they were inspected as appearance evidence only.
+
+The operator previously reported two concrete observations that must remain part of the review record: renderer ripple behavior was visually correct, while the FAB size was visually wrong when canonical fixtures used bare-text icon content. The correction now uses the same direct decorative SVG composition in all selected stories and proof. Browser proof confirms the corrected public result is an 80px by 80px host with a 28px by 28px SVG icon, and the refreshed resting/hover/focus/pressed visual baselines passed after inspection. The reported size defect is therefore resolved by current proof; the ripple observation required no correction.
 
 ## Blockers
 
@@ -65,4 +67,4 @@ No product consumer, compatibility alias, public token, alternate size/color, di
 
 ## Routing evidence
 
-The exact installed renderer public documentation, manifest, declarations, and artifact behavior agree with the selected adapter mapping and its real-browser proof. No Material family defect or stale migration fact remains; no correction route is required.
+The exact installed renderer public documentation, manifest, declarations, and artifact behavior agree with the selected adapter mapping and its real-browser proof. The operator-reported size defect is explicitly resolved by the corrected canonical SVG composition plus numeric browser geometry and inspected visual proof. No Material family defect or stale migration fact remains; no correction route is required.
