@@ -30,6 +30,10 @@ These files are durable source-of-truth artifacts. Implementation reports, migra
 - valid and invalid public combinations when TypeScript can express them clearly;
 - concise TSDoc for semantics that a type alone cannot communicate.
 
+Use explicit family types such as `MD<Component>Props`, `MD<Component>Slots`, and `MD<Component>Emits` (plus focused value/variant aliases where useful). The Vue implementation must consume these contract types directly through typed Vue APIs such as `defineProps`, `defineSlots`, and `defineEmits`; it must not restate the same public unions/interfaces inside the SFC as a second source of truth.
+
+`contract.ts` is the canonical type source, not automatically a promise that every helper type is root-exported. Re-export only consumer-useful public types through the family/root entrypoints; keep implementation-only helpers private.
+
 Derive the contract from official Material semantics and idiomatic Vue mechanics. Do not derive it from legacy Mioframe props, current consumer demand, m3e names, DOM implementation details, or speculative convenience APIs.
 
 The supported contract should represent the official component surface applicable to the canonical web/Vue component. Do not omit an official option merely because Mioframe does not currently use it. Do not invent platform-specific or undocumented surface.
