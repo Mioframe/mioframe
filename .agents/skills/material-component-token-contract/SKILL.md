@@ -40,6 +40,16 @@ Define only the canonical public component-token contract:
 
 Do not add `--m3e-*`, `--md-private-*`, `--app-*`, renderer mappings/defaults, token enums, registries, DSLs, JSON mirrors, or compatibility aliases.
 
+## Completion check
+
+Before returning `complete`:
+
+1. Query Material 3 MCP using the official family/component name and token scope.
+2. Inspect every applicable MCP token route/table surfaced for the family, including variant/state/part-specific tables when present.
+3. Re-read `tokens.css` against those sources and verify no documented public component token, official default, or official system/reference alias in this worker's scope was omitted, invented, or renamed from renderer/legacy vocabulary.
+4. Verify the artifact contains no private renderer bridges or application tokens.
+5. If complete source coverage cannot be established, report `blocked`; do not return `complete`.
+
 ## Report
 
 ```text
