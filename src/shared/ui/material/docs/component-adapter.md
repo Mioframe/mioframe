@@ -77,6 +77,30 @@ If public states coexist, architecture defines precedence and restoration.
 
 Visual loading/busy presentation and activation blocking are independent contracts unless architecture explicitly combines them.
 
+## Renderer composition contract
+
+A renderer slot, child-content position, exported type, or permissive DOM signature does not by itself prove that arbitrary content is a correct `direct` mapping.
+
+For every selected renderer-backed content role or composition, architecture and review must inspect the documentation shipped with the exact lockfile-resolved `@m3e/web` version together with the installed public artifacts. The evidence must cover, as applicable:
+
+- documented usage examples for the selected renderer element;
+- the public slot/content contract and any documented child element or semantic role;
+- inherited CSS and custom-property handoff between parent and child;
+- parent assumptions that determine child size, alignment, color, shape, accessibility, or interaction behavior;
+- observable geometry and semantics produced by the documented composition.
+
+If renderer documentation/examples rely on another renderer element for a selected role, do not replace it with arbitrary Vue content merely because the slot accepts nodes. Architecture must choose one of these explicitly:
+
+1. compose through an independently owned canonical Mioframe component that preserves the documented observable contract;
+2. prove with package evidence and browser-level result that the alternative child content is equivalent for every selected observable contract;
+3. classify the renderer mapping as `partial`, `divergent`, or `missing` and assign the appropriate owner/decision.
+
+Do not classify a composition as `direct` from slot-name similarity, successful rendering, or a stable screenshot alone.
+
+When official Material specifies fixed geometry for the selected scenario or rendered part, architecture `TEST IMPACT` must include numeric browser proof of that geometry at the public observable boundary. Visual regression supplements this proof but is not the oracle for Material dimensions: a baseline captured from an incorrect initial composition is still incorrect.
+
+Storybook/browser/visual fixtures used as canonical family proof must exercise a production-valid representation of every selected semantic content role. Placeholder text is not valid visual proof for an icon role when the renderer's documented icon composition carries sizing or other behavior required by the selected contract.
+
 ## Controlled state ownership
 
 When a public prop is declared controlled, `ARCHITECTURE.md` must define the complete renderer transition timeline, not only the prop and emitted event names.

@@ -8,7 +8,7 @@ Every official Material family is handled by one operator command:
 material-component <name>
 ```
 
-The command runs five isolated stages:
+The command runs five isolated stages for the normal first-pass path:
 
 ```text
 DESIGN.md
@@ -27,7 +27,9 @@ This document is the single owner of the Material state machine.
 
 The workflow does not use timestamps, hashes, counters, Git commits, or artifact revision graphs as correctness identities.
 
-`DESIGN.md` may be reused while it is current and its refresh date is not due. Every later reasoning stage is intentionally fresh on every operator invocation:
+`DESIGN.md` may be reused while it is current and its refresh date is not due.
+
+For a normal invocation, later reasoning stages run in fresh isolated workers:
 
 ```text
 current DESIGN
@@ -38,11 +40,26 @@ current DESIGN
   → PR/CI handoff
 ```
 
-A fresh implementation or migration pass may conclude that existing code already satisfies the current contract and therefore make no production edit. It must still inspect and verify its owned scope before completing.
+Fresh isolation means fresh worker context, not mandatory re-derivation of every already-resolved family fact after a narrow correction. A correction route uses a fresh worker for the target stage, but that worker starts from the current canonical artifacts plus the exact unresolved finding and limits work to the affected contract unless evidence shows wider invalidation.
 
-This deliberately trades a small amount of repeated agent work for a much simpler and more reliable workflow. Material families are normally migrated once; optimizing repeated invocations is not a current requirement.
+After every correction, a fresh independent review re-evaluates the complete resulting family and decides whether any preserved downstream artifact became stale. This review is the safety boundary that allows narrow correction stages without weakening final quality.
+
+Existing compliant implementation or migration may require no production edit. Workers inspect and verify only the scope needed to prove their owned contracts.
 
 Legacy `Artifact revision`, `Design contract revision`, and downstream revision-reference fields may remain in older artifacts. They are ignored by the workflow and must be removed when the owning stage next rewrites that artifact.
+
+## Evidence economy
+
+Stage artifacts are contracts and durable evidence indexes, not execution transcripts.
+
+- Read the minimum authoritative Material and exact-version renderer documentation needed for the selected scenario and affected contract; expand only when evidence is ambiguous or reveals broader impact.
+- Prefer exact section/path references, compact mapping tables, and observable conclusions over copied source excerpts or narrated searches.
+- Do not repeat unchanged renderer token chains, repository searches, arithmetic, or verification prose across ARCHITECTURE, IMPLEMENTATION, MIGRATION, and REVIEW.
+- In correction mode, update only affected artifact sections plus any control fields whose meaning changed. Preserve unrelated valid decisions instead of rewriting them as a new narrative.
+- A worker may inspect broader context when required for correctness, but its artifact records only conclusions needed by later stages.
+- Verification reports list commands/results and unresolved evidence; they do not reproduce test implementation or CI-style logs.
+
+Conciseness must not remove a required decision, mapping, acceptance criterion, proof owner, finding, or correction route.
 
 ## Boundaries
 
@@ -57,6 +74,7 @@ The orchestrator may only:
 - process explicit dependency queues and correction routes;
 - maintain an invocation-local dependency path and route stack;
 - retain a compact execution ledger;
+- retain exact unresolved findings and exact operator observations as an invocation-local correction capsule;
 - stop on a genuine blocker or malformed worker result;
 - hand a successfully reviewed family back to the architect for PR/CI.
 
@@ -79,6 +97,21 @@ A stage returns only:
 `partial` is never a valid terminal state. Review must be independent from workers that authored or corrected architecture, implementation, or migration.
 
 Workers do not depend on Git, PR, commit, branch, diff, or external-check state.
+
+### Correction capsule
+
+When a stage or operator identifies a concrete unresolved defect, the orchestrator retains only the minimum lossless facts needed to route it:
+
+```text
+family: <canonical-family>
+origin stage: <stage | operator>
+target stage: <stage>
+finding: <exact observable/contract defect>
+affected contract/proof: <concise exact scope>
+operator observations: none | <verbatim or lossless factual normalization>
+```
+
+Do not retain the previous worker's full report or hidden reasoning. Do not turn an operator observation into a guessed cause or prescribed fix. The target worker owns diagnosis and correction.
 
 ## Routing grammar
 
@@ -163,7 +196,7 @@ A blocked design has an exact blocker and route `none/none`.
 
 ## ARCHITECTURE.md
 
-Architecture always runs fresh after current DESIGN is available.
+Architecture runs in a fresh worker after current DESIGN is available. On the normal path it resolves the complete family architecture. On a correction route it corrects the exact affected decision and checks adjacent decisions only far enough to prove the artifact remains complete and internally consistent.
 
 Control fields:
 
@@ -208,7 +241,7 @@ After queued dependencies complete through independent review, parent architectu
 
 ## IMPLEMENTATION.md
 
-Implementation always runs fresh after ready architecture.
+Implementation runs in a fresh worker after ready architecture. On a correction path, implementation consumes the exact correction capsule and corrected architecture, edits only affected component/proof files unless the correction changes a wider contract, and runs the smallest faithful verifier-managed checks for the affected proof.
 
 Control fields:
 
@@ -243,7 +276,9 @@ Use focused verifier-managed local checks needed for implementation feedback and
 
 ## MIGRATION.md
 
-Migration always runs fresh after complete implementation.
+Migration runs in a fresh worker on the normal path after complete implementation, and whenever a correction route explicitly targets migration.
+
+It is not automatically rerun after every same-family architecture or implementation correction. The existing MIGRATION.md remains evidence to be checked by the next independent review. If the corrected result changes consumer-facing semantics, migration inventory, legacy disposition, or migration proof, review must route to migration before the family can complete.
 
 Control fields:
 
@@ -276,9 +311,11 @@ The worker compares current consumers directly with current architecture and imp
 
 Use focused verifier-managed local checks needed for migration feedback and preserved-scenario proof. A broad local repository gate is not required merely for stage completion.
 
+For an already-proven no-consumer case in a correction route, do not rerun migration merely to repeat the same repository search. Independent review verifies that the preserved MIGRATION.md still matches the corrected family.
+
 ## REVIEW.md
 
-Review always runs fresh after migration and must be independent.
+Review always runs fresh after the normal migration path and after every correction path, and must be independent.
 
 Control fields:
 
@@ -314,7 +351,7 @@ Required headings:
 ## Routing evidence
 ```
 
-Review reads current DESIGN, ARCHITECTURE, IMPLEMENTATION, MIGRATION, code, consumers, tests, renderer evidence, and current testing policy directly. It does not infer freshness from metadata.
+Review reads enough current DESIGN, ARCHITECTURE, IMPLEMENTATION, MIGRATION, code, consumers, tests, renderer evidence, and testing policy to independently evaluate the complete selected family contract. It prioritizes the correction capsule and operator observations, then verifies the rest of the selected contract and migration consistency. Complete review coverage does not require narrating or re-deriving unrelated deferred surfaces.
 
 `compliant-with-listed-risks` is only for complete work with bounded non-blocking limitations. Missing proof, unresolved findings, unknown consumers, or deferred required work are not accepted risks.
 
@@ -337,19 +374,18 @@ Before entering a dependency, detect self-dependency or an ancestor already in t
 
 ### Same family
 
-Run the requested earlier stage, then run every downstream reasoning stage fresh through review.
+Use the exact correction capsule and fresh isolated workers, but do not automatically repeat unaffected downstream stages.
 
-Examples:
+- `review → design`: design → architecture → implementation → migration → review. Design changes may invalidate the whole family, so the full downstream path is required.
+- `review/migration/implementation → architecture`: architecture → implementation → review. Preserve the current MIGRATION.md; review routes to migration only if the corrected contract makes it stale.
+- `review/migration → implementation`: implementation → review. Preserve the current MIGRATION.md; review routes to migration only if implementation changes invalidate it.
+- `review → migration`: migration → review.
 
-```text
-review → architecture
-  => architecture → implementation → migration → review
+The same principle applies when an earlier stage emits the route: execute the target and only the stages listed above, then independent review.
 
-migration → implementation
-  => implementation → migration → review
-```
+If review routes to migration because a preserved MIGRATION.md is stale, run migration once and review again.
 
-A design correction continues with fresh architecture and all later stages.
+If two correction rounds for the same underlying defect still reveal ownership drift, missing scenarios, mixed responsibilities, or workaround growth, stop narrow correction and restart at full architecture with the unresolved defect and operator evidence explicit.
 
 ### Cross family
 
@@ -360,13 +396,15 @@ origin: <origin-family>/<origin-stage>
 target: <target-family>/<target-stage>
 ```
 
-Run the target from the requested stage through fresh independent review. Then resume the origin by rerunning the origin stage and every later stage fresh. If the target can affect the origin architecture or dependency closure, restart the origin at architecture.
+Run the target from the requested stage through fresh independent review. Then resume the origin. If the target can affect the origin architecture or dependency closure, restart the origin at architecture; otherwise resume at the earliest actually invalidated origin stage. Always finish with a fresh independent origin review.
 
 Nested routes unwind most-recent origin first.
 
-No durable revision graph is needed because the current invocation never reuses downstream reasoning after an upstream correction.
+No durable revision graph is needed because correction scope and unresolved evidence remain invocation-local.
 
 ## Mechanical algorithm
+
+Normal path:
 
 1. Resolve canonical family.
 2. Validate or refresh DESIGN using the design lifecycle above.
@@ -376,8 +414,16 @@ No durable revision graph is needed because the current invocation never reuses 
 6. Run IMPLEMENTATION fresh with focused local proof.
 7. Run MIGRATION fresh with focused local proof.
 8. Run independent REVIEW fresh.
-9. Follow any exact correction route using the routing rules above.
-10. When review is successful, stop agent orchestration and hand the family to the architect for PR creation and exact-head CI.
+9. When review is successful, stop agent orchestration and hand the family to the architect for PR creation and exact-head CI.
+
+Correction path:
+
+1. Build the minimal correction capsule from the exact finding/operator observation.
+2. Run the target stage in a fresh worker scoped to that defect.
+3. Run only the required downstream stage(s) from `Correction routing`.
+4. Run a fresh independent REVIEW of the complete resulting family.
+5. Follow any new exact route; after two unsuccessful narrow rounds for the same underlying defect, restart at full architecture.
+6. Hand off only when no operator observation or review finding remains unresolved.
 
 Mechanical validation checks only fields, headings, dates, routes, and terminal-state combinations. It does not validate timestamps or revision identities.
 
@@ -397,14 +443,14 @@ A fresh `material-component-review` worker may classify supplied CI output in it
 
 ## Visual channel
 
-Operator visual/motion inspection is an external defect-reporting channel. Absence of a report is not a blocker. A concrete defect routes to the owning family and stage.
+Operator visual/motion inspection is an external defect-reporting channel. Absence of a report is not a blocker. A concrete defect is preserved in the invocation-local correction capsule and remains unresolved until a fresh independent review explicitly verifies the corrected observable behavior or routes it again.
 
 ## Completion
 
 The coding-agent invocation is complete when:
 
 - DESIGN is current;
-- current-invocation architecture, implementation, migration, and independent review succeed;
+- the current normal path or correction path has reached a successful independent review;
 - all dependencies processed in the invocation are complete;
 - no reported defect remains unresolved;
 - review declares `Final workflow verification readiness: ready`.
