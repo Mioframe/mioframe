@@ -19,12 +19,12 @@ Do not begin implementation when:
 - the applicable handoff is missing or `not ready`;
 - a deterministic workflow is unresolved or `blocked`;
 - required behavior, ownership, source of truth, target state, public contract, dependency, agent-access boundary, or test ownership is unresolved;
-- an official Material family is not definition-ready under `src/shared/ui/material/docs/component-contract.md` (three complete technical contracts plus family `README.md` guidance);
+- an official Material family lacks complete API, token, or behavior contracts required by `src/shared/ui/material/docs/component-contract.md`;
 - proposed passes expand scope beyond the accepted contract;
 - task-specific `TEST IMPACT` is incomplete;
 - the simplest viable implementation has not been compared with the proposed design.
 
-Resolve the upstream definition first.
+Resolve the upstream technical contract first.
 
 ## Required preflight record
 
@@ -43,18 +43,17 @@ Record compactly:
 - `TEST IMPACT`;
 - final verification.
 
-For standalone Material component implementation, the family must already contain:
+For standalone Material component implementation, the authoring source is exactly:
 
 ```text
 components/<family>/contract.ts
 components/<family>/tokens.css
 components/<family>/BEHAVIOR.md
-components/<family>/README.md
 ```
 
-The standalone implementation authoring source is the three technical contracts (`contract.ts`, `tokens.css`, `BEHAVIOR.md`). `README.md` is a readiness prerequisite and developer-usage artifact, not a fourth runtime contract. The standalone implementation preflight resolves only Vue/m3e mapping, component-owned proof, exports, and focused verification. It must not include application consumer migration.
+These are fixed renderer-independent inputs. Family `README.md` guidance is independent and does not block standalone implementation. The standalone implementation preflight resolves only Vue/m3e mapping, component-owned proof, exports, and focused verification. It must not include application consumer migration.
 
-For the later Material migration worker, run a separate focused preflight because it has a different owner/context. Its authoring source is the completed canonical component plus all four family definition artifacts; it resolves only correct Material application from `README.md`, consumer inventory, product-behavior preservation, legacy removal, migration proof, and focused verification.
+For the later Material migration worker, run a separate focused preflight because it has a different owner/context. Migration requires the completed canonical component plus all four family definition artifacts, including `README.md`; it resolves only correct Material application from guidance, consumer inventory, product-behavior preservation, legacy removal, migration proof, and focused verification.
 
 Do not repeat workspace-wide policy or the complete upstream definition.
 
@@ -103,13 +102,13 @@ When a public or shared owner changes, migration preflight records:
 - obsolete target-owned implementation and exports to remove;
 - unrelated legacy components or shared modules that must remain unchanged.
 
-For Material, this preflight belongs to `material-component-migration` and runs only after standalone component implementation/proof is complete. Consumer evidence must not feed back into canonical API/token/behavior/guidance selection.
+For Material, this preflight belongs to `material-component-migration` and runs only after standalone component implementation/proof and family guidance are complete. Consumer evidence must not feed back into canonical API/token/behavior/guidance selection.
 
 ## Workflow routing
 
 Use the domain workflow as the execution contract:
 
-- official Material component: `material-component` orchestrates three technical contracts, usage guidance, standalone implementation, separate migration, and independent review;
+- official Material component: `material-component` orchestrates three technical contracts, independent usage guidance, standalone implementation, separate migration, and independent review;
 - Material API contract: `material-component-api-contract`;
 - Material token contract: `material-component-token-contract`;
 - Material behavior contract: `material-component-behavior-contract`;
