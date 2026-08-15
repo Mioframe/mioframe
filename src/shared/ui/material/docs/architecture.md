@@ -51,15 +51,15 @@ Family `README.md` answers developer-facing questions such as:
 
 It derives only from Material 3 MCP and remains independent from current Mioframe call sites. It does not duplicate runtime API tables, token catalogues, normative interaction/geometry/motion rules, renderer details, or product migration instructions.
 
-Migration applies this guidance to product scenarios after the canonical standalone component is complete.
+Usage guidance is independent from standalone runtime implementation and may complete in parallel with it. It becomes required when migration maps real product scenarios to the finished canonical component.
 
 ## Definition isolation
 
 API contract, token contract, behavior contract, and usage guidance extraction are separate fresh worker responsibilities. All official Material facts come from Material 3 MCP.
 
-Before implementation, definition workers do not inspect m3e, legacy implementation, application consumers, or current call-site demand.
+Definition workers do not inspect m3e, legacy implementation, application consumers, or current call-site demand.
 
-There is no mandatory design, architecture, source-ledger, synthesis, or definition-review stage between those artifacts and implementation.
+There is no mandatory design, architecture, source-ledger, synthesis, or definition-review stage in the normal path.
 
 ## Renderer boundary
 
@@ -81,9 +81,9 @@ Public component tokens derive from Material 3 MCP rather than current consumer 
 
 ## Standalone-first integration
 
-A canonical family is fully defined and then implemented/proven as a standalone Material component before application consumers are inspected for migration.
+A canonical family can enter standalone implementation once its API, token, and behavior contracts are complete. The implementation is proven before application consumers are inspected for migration.
 
-After standalone proof, a separate fresh migration worker adapts consumers to the canonical API and applies the family README guidance. If a legacy behavior belongs to product/shared composition rather than the Material component, keep it with that owner instead of expanding Material.
+A separate fresh migration worker starts only after standalone proof and usage guidance are both complete. It adapts consumers to the canonical API according to family README guidance. If a legacy behavior belongs to product/shared composition rather than the Material component, keep it with that owner instead of expanding Material.
 
 ## Proof and completion
 
