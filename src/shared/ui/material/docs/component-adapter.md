@@ -85,7 +85,7 @@ Public Material types remain renderer-independent. Exact renderer drift should f
 
 ## Tokens
 
-Public tokens are defined by family `tokens.css` from official Material paths. m3e variables remain private implementation inputs.
+Public tokens are defined and catalogued by family `tokens.css` from official Material paths. m3e variables remain private implementation inputs.
 
 Private mapping follows:
 
@@ -95,7 +95,7 @@ public --md-comp-* token
   → rendered observable result
 ```
 
-Do not mirror all m3e variables or copy renderer defaults for completeness. A public token is complete only when its runtime mapping and rendered result are proven and `docs/token-api.md` is updated.
+Do not mirror all m3e variables or copy renderer defaults for completeness. A public token is complete only when its runtime mapping and rendered result are proven.
 
 ## Geometry, appearance and motion
 
