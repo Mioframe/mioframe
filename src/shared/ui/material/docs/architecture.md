@@ -12,14 +12,13 @@ Workflow mechanics belong only to [`component-workflow.md`](./component-workflow
 
 1. official Material documentation — canonical upstream semantics;
 2. family `contract.ts` — public props, slots, emits, types, defaults and combinations;
-3. family `tokens.css` — public component-token contract;
+3. family `tokens.css` — executable public component-token contract and catalogue;
 4. family `BEHAVIOR.md` — normative observable behavior, accessibility, geometry and motion;
 5. family `GUIDANCE.md` — correct consumer usage and composition;
 6. family `SOURCES.md` — official-source provenance and conflicts;
 7. runtime code and executable proof — implementation truth;
-8. `docs/token-api.md` — supported public runtime token catalogue;
-9. `docs/m3e-defects.md` — renderer defects/workarounds;
-10. `docs/roadmap.md` — mutable milestone status and next action.
+8. `docs/m3e-defects.md` — renderer defects/workarounds;
+9. `docs/roadmap.md` — mutable milestone status and next action.
 
 Legacy family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files are historical workflow evidence only until the family is converted.
 
@@ -53,7 +52,7 @@ Do not introduce a generic adapter framework without demonstrated repeated need 
 
 Foundation owns supported `--md-ref-*` and `--md-sys-*`; each family owns official public `--md-comp-<family>-*`; application code owns `--app-*`; renderer/private internals own `--m3e-*` and `--md-private-*`.
 
-Public component tokens derive from official Material token paths rather than current consumer overrides or renderer variables. Runtime mappings remain private.
+Public component tokens derive from official Material token paths rather than current consumer overrides or renderer variables. Each family `tokens.css` is the executable public component-token catalogue; do not create a second central registry. Runtime renderer mappings remain private.
 
 ## Standalone-first integration
 
