@@ -46,6 +46,16 @@ Include exact geometry, spacing, touch targets, state transitions, accessible ro
 
 Do not include Vue/m3e implementation strategy, renderer lifecycle/workarounds, tests, product behavior, migration instructions, or general usage prose that is not part of normative behavior.
 
+## Completion check
+
+Before returning `complete`:
+
+1. Query Material 3 MCP using the official family/component name and behavior/specification/accessibility scope.
+2. Inspect every applicable MCP route/result surfaced for anatomy, states, interaction, input/keyboard, accessibility, geometry/layout, and motion; do not stop after one matching page.
+3. Re-read `BEHAVIOR.md` against those sources and verify no documented normative behavior in this worker's scope was omitted, guessed, or converted into implementation-specific prose.
+4. Verify general usage advice is not duplicated here unless it is necessary to state a normative observable component rule.
+5. If complete source coverage cannot be established, report `blocked`; do not return `complete`.
+
 ## Report
 
 ```text
