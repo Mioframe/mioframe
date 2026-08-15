@@ -43,6 +43,16 @@ Prefer explicit `MD<Component>Props`, `MD<Component>Slots`, and `MD<Component>Em
 
 Do not add implementation helpers, renderer types, legacy aliases, speculative convenience API, or surface omitted from Material 3 MCP.
 
+## Completion check
+
+Before returning `complete`:
+
+1. Query Material 3 MCP using the official family/component name and API/content-role scope.
+2. Inspect every applicable MCP route/result surfaced for that scope, not only the first matching page.
+3. Re-read `contract.ts` against those sources and verify no documented prop/parameter, content role, event semantic, public value/configuration, default, or valid combination in this worker's scope was omitted or guessed.
+4. Verify the artifact contains no m3e, legacy, consumer-demand, token, or behavior implementation decisions.
+5. If complete source coverage cannot be established, report `blocked`; do not return `complete`.
+
 ## Report
 
 ```text
