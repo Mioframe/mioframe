@@ -11,7 +11,8 @@ import type { ExportZipVisibleDialogState } from '@feature/exportZip';
 import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
 import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { useFSNodeStat } from '@entity/fsEntry';
-import { FabContainer, MDExtendedFab } from '@shared/ui/Button';
+import { FabContainer } from '@shared/ui/Button';
+import { MDExtendedFab } from '@shared/ui/material';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -192,7 +193,16 @@ const onClickReturnHome = async () => {
     >
       <template #after="{ canEditDirectoryContents }">
         <FabContainer v-if="canEditDirectoryContents !== false" auto-hide>
-          <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />
+          <MDExtendedFab label="Add" @click="onClickAdd">
+            <template #icon>
+              <!-- Canonical filled Material "add" glyph (matches the MDExtendedFab family's own
+                   canonical icon-slot fixture): a decorative inline SVG, not a ligature icon
+                   font, per the migrated component's #icon slot contract. -->
+              <svg aria-hidden="true" focusable="false" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+              </svg>
+            </template>
+          </MDExtendedFab>
         </FabContainer>
       </template>
     </RepositoryExplorerWidget>

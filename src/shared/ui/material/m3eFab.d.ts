@@ -1,7 +1,7 @@
 import type { M3eFabElement } from '@m3e/web/fab';
 import type { HTMLAttributes, PublicProps } from 'vue';
 
-type RendererFabProps = Pick<M3eFabElement, 'variant' | 'size'>;
+type RendererFabProps = Pick<M3eFabElement, 'extended' | 'size' | 'variant'>;
 
 type M3eFabProps = HTMLAttributes &
   PublicProps & {

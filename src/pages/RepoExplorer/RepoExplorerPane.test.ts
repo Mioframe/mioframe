@@ -259,6 +259,15 @@ vi.mock('@shared/ui/AppBar', () => ({
 }));
 
 vi.mock('@shared/ui/Button', () => ({
+  FabContainer: defineComponent({
+    name: 'FabContainerStub',
+    setup(_props, { slots }) {
+      return () => h('div', slots.default?.());
+    },
+  }),
+}));
+
+vi.mock('@shared/ui/material', () => ({
   MDExtendedFab: defineComponent({
     name: 'MDExtendedFabStub',
     props: {
@@ -268,7 +277,7 @@ vi.mock('@shared/ui/Button', () => ({
       },
     },
     emits: ['click'],
-    setup(props, { emit }) {
+    setup(props, { emit, slots }) {
       return () =>
         h(
           'button',
@@ -279,14 +288,8 @@ vi.mock('@shared/ui/Button', () => ({
               emit('click', new MouseEvent('click'));
             },
           },
-          props.label,
+          [slots.icon?.(), props.label],
         );
-    },
-  }),
-  FabContainer: defineComponent({
-    name: 'FabContainerStub',
-    setup(_props, { slots }) {
-      return () => h('div', slots.default?.());
     },
   }),
 }));

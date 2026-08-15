@@ -2,6 +2,8 @@
 export { MDButton } from './components/button/index';
 /** Canonical Mioframe Material Checkbox adapter. */
 export { MDCheckbox } from './components/checkbox/index';
+/** Canonical Mioframe Material Extended FAB adapter. */
+export { MDExtendedFab } from './components/extendedFab/index';
 /** Canonical Mioframe Material Floating action button adapter. */
 export { MDFab } from './components/floatingActionButton/index';
 /** Canonical Mioframe Material Loading indicator adapter. */

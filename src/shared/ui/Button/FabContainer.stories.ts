@@ -1,8 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { defineComponent, h, ref } from 'vue';
 import FabContainer from './FabContainer.vue';
-import MDExtendedFab from './MDExtendedFab.vue';
+import { MDExtendedFab } from '@shared/ui/material';
 import { definePaneScrollContainer } from '../Layout';
+
+// Canonical filled Material-compatible "add" glyph markup (mirrors the extendedFab family's own
+// canonical story fixture): a decorative inline SVG, not a ligature icon font, matching
+// MDExtendedFab's `#icon` slot contract. Inlined per usage below (rather than a second local
+// component) to keep this file's single reusable local component as `StoryPaneHost`.
+const ADD_ICON_SVG =
+  '<svg aria-hidden="true" focusable="false" fill="currentColor" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>';
 
 /**
  * A minimal pane host for stories. Provides the pane container context that
@@ -76,7 +83,7 @@ export const Default: Story = {
         <StoryPaneHost>
           <div style="height: 200px;" />
           <FabContainer>
-            <MDExtendedFab label="Add" md-symbol="add" />
+            <MDExtendedFab label="Add"><template #icon>${ADD_ICON_SVG}</template></MDExtendedFab>
           </FabContainer>
         </StoryPaneHost>
       </div>
@@ -118,7 +125,7 @@ export const PaneAnchoringLoadingTransition: Story = {
             </div>
           </template>
           <FabContainer>
-            <MDExtendedFab label="Add" md-symbol="add" />
+            <MDExtendedFab label="Add"><template #icon>${ADD_ICON_SVG}</template></MDExtendedFab>
           </FabContainer>
         </StoryPaneHost>
         <button id="fab-load-content" type="button" @click="loadContent">Load content</button>
@@ -172,7 +179,7 @@ export const TwoPaneLayout: Story = {
               </div>
             </template>
             <FabContainer>
-              <MDExtendedFab label="Add" md-symbol="add" />
+              <MDExtendedFab label="Add"><template #icon>${ADD_ICON_SVG}</template></MDExtendedFab>
             </FabContainer>
           </StoryPaneHost>
         </div>
