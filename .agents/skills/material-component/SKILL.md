@@ -1,49 +1,52 @@
 ---
 name: material-component
-description: 'Use for one official Material family to orchestrate its focused definition, standalone implementation, migration, and independent review.'
+description: 'Use for one official Material family to resume its focused API/token/behavior contracts, standalone implementation, and required migration without rebuilding completed stages.'
 ---
 
 # Material component
 
-Accept one official Material component name plus any concrete operator observations about visual, motion, accessibility, interaction, geometry, behavior, or component usage.
+Accept one official Material component name plus any exact architect correction handoff and concrete operator observations.
 
-The operator invokes this once. Do not require separate stage commands.
+The operator may invoke this repeatedly. Repeated invocation resumes current repository state; it is not permission to regenerate completed stages.
 
 ## Authority
 
-Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. That workflow document is the single owner of sequencing, source readiness, gates, correction routing, dependency handling, and completion rules.
+Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. That document owns sequencing, source readiness, resume rules, correction routing, and completion.
 
-This skill owns orchestration only. Do not duplicate or reinterpret stage semantics here.
+This skill owns orchestration only.
 
 ## Execute
 
 1. Resolve the canonical Material family.
-2. Follow `component-workflow.md` mechanically, including its Material 3 MCP source-readiness check before definition workers.
-3. Launch every role in a fresh isolated worker context.
-4. Run the four definition workers in parallel only when the runtime can safely isolate their independent file writes; otherwise run them separately without merging responsibilities.
-5. Validate only structured worker results and required artifact existence at workflow gates.
-6. Preserve exact operator observations and exact correction findings without inventing causes or fixes.
-7. Route a correction only to the owner named by the workflow/result; do not rerun unaffected definition workers.
-8. Stop on a genuine blocker or hand a successfully reviewed family to the architect for PR/exact-head CI.
+2. Inspect current family artifacts/runtime/consumer migration state mechanically.
+3. If an exact architect correction handoff is supplied, reopen only its named owner and downstream invalidated stages.
+4. Otherwise run only the earliest structurally incomplete stage according to `component-workflow.md`.
+5. Launch every role in a fresh isolated worker context.
+6. For a new family, run the three independent contract workers in parallel only when isolated writes are safe; otherwise run them separately.
+7. Validate structured worker results and required artifact/proof existence at gates.
+8. Preserve operator observations and correction findings without inventing causes or fixes.
+9. Skip migration when an already-migrated family correction does not change consumer usage and legacy ownership is already removed.
+10. Stop at architect handoff. Do not run an independent coding-agent semantic review or claim PR/CI/merge readiness.
 
-The orchestrator must not design API/tokens/behavior/guidance, synthesize definition artifacts, inspect m3e semantics, implement code, migrate consumers, perform semantic review, or claim merge readiness.
+The orchestrator must not design API/tokens/behavior, inspect m3e semantics, implement code, migrate consumers, semantically review the family, or update roadmap completion state.
 
-## Handoffs
+## Resume invariants
 
-Pass only the minimum durable state needed by the next worker:
+- Existing `contract.ts`, `tokens.css`, and `BEHAVIOR.md` are durable completed-stage artifacts unless an exact correction handoff reopens their owner.
+- Do not rerun a completed contract because a fresh agent lacks prior chat context.
+- Do not rewrite already-complete behavior/docs merely to normalize prose during an implementation correction.
+- If current repository state is ambiguous enough that the next stage cannot be determined mechanically, return `needs-architect` instead of rerunning the whole pipeline.
+- After two unsuccessful correction rounds for the same underlying problem, return to the architect.
+
+## Handoff shape
 
 ```text
-family: <canonical-family>
-origin: <worker | operator | CI>
-owner: <target worker | architect>
-finding: <exact observable, contract, or usage-guidance defect>
-affected contract/proof: <concise scope>
+family: <canonical family>
+owner: <api-contract | token-contract | behavior-contract | implementation | migration | architect>
+finding: <exact defect>
+affected scope: <concise contract/proof/consumer scope>
 operator observation: none | <lossless factual observation>
 ```
-
-Use repository artifacts as handoffs. Do not pass hidden reasoning, previous narrative reports, Git/PR history, copied source encyclopedias, or unrelated intermediate logs between workers.
-
-After two unsuccessful correction rounds for the same underlying problem, follow the workflow's architecture escalation instead of accumulating patches.
 
 ## Final report
 
@@ -51,20 +54,16 @@ After two unsuccessful correction rounds for the same underlying problem, follow
 MATERIAL COMPONENT RESULT
 input component: <name>
 canonical family: <family>
-material3 source: ready | blocked
-api contract: complete | blocked
-token contract: complete | blocked
-behavior contract: complete | blocked
-guidance: complete | blocked
-standalone implementation: complete | blocked | not-run
-migration: complete | blocked | not-run
-independent review: compliant | compliant-with-listed-risks | blocked | not-run
-correction routes: none | <summary>
+api contract: complete | blocked | unchanged
+token contract: complete | blocked | unchanged
+behavior contract: complete | blocked | unchanged
+standalone implementation: complete | blocked | unchanged | not-run
+migration: complete | not-required | blocked | unchanged | not-run
+correction route: none | <owner and scope>
 operator observations: none | <status>
 focused verification: <summary>
 remaining blocker: none | <exact blocker>
-PR/CI readiness: ready | blocked
-next action: hand to architect for PR/CI | <exact required action>
+next action: hand to architect | <exact required correction>
 ```
 
 ## Forbidden
@@ -72,10 +71,8 @@ next action: hand to architect for PR/CI | <exact required action>
 - Reusing one worker context for multiple responsibilities.
 - Reintroducing a combined Material definition worker.
 - Combining standalone implementation and consumer migration.
-- Letting m3e, legacy code, or current consumer demand define Material contracts or usage guidance.
+- Re-running completed stages without an exact correction owner or structural incompleteness.
+- Using a full fresh pipeline as a substitute for missing prior-chat context.
+- Letting m3e, legacy code, or current consumer demand define Material contracts.
 - Performing stage-owned reasoning in the orchestrator.
-- Re-running unaffected stages without an exact correction reason.
-- Repeating or forcing a failed Material source refresh without new evidence.
-- Dropping or reinterpreting concrete operator observations.
-- Depending on Git/PR/check state for family correctness.
-- Claiming merge readiness.
+- Updating roadmap/PR/CI/merge status as coding-agent completion.
