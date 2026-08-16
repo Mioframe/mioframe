@@ -1,6 +1,6 @@
 ---
 name: material-component-behavior-contract
-description: 'Use for one official Material family to derive only its canonical observable behavior contract from the material3 MCP before implementation.'
+description: 'Use after the API contract is complete to derive only canonical observable Material behavior from material3 MCP.'
 ---
 
 # Material component behavior contract
@@ -11,27 +11,35 @@ Own exactly one artifact:
 src/shared/ui/material/components/<family>/BEHAVIOR.md
 ```
 
+## Input
+
+Require completed:
+
+```text
+src/shared/ui/material/components/<family>/contract.ts
+```
+
+Read it only as the current structural vocabulary/boundary: configurations, content roles and public values already established for the family. It is not behavior authority.
+
 ## Source
 
-Material behavior facts come from the repository-configured `material3` MCP server in `.mcp.json`.
+Material behavior facts come only from the repository-configured `material3` MCP server in `.mcp.json`.
 
-Do not substitute m3e behavior, legacy Mioframe behavior, application consumers, web search, or memory for Material 3 MCP.
+Do not substitute m3e behavior, legacy behavior, application consumers, web search, memory, or `contract.ts` prose for Material behavior evidence.
 
-A detail that Material does not prescribe after complete applicable source coverage is not an ambiguity and does not block the contract. Record it as Material-unspecified only when that boundary is useful to prevent a later stage from inventing a Material requirement.
-
-Report `blocked` only when applicable Material source coverage cannot be established, official Material sources contradict one another, or an unavailable fact prevents defining a Material-owned observable requirement.
+A detail Material does not prescribe after complete source coverage is not an ambiguity. Record it as Material-unspecified only when useful to prevent later invention.
 
 ## Isolation
 
 Run in a fresh isolated context.
 
-Read only applicable `AGENTS.md`, `src/shared/ui/material/docs/component-contract.md`, the Material 3 MCP pages needed for behavior/specification/accessibility, and the minimum repository terminology needed to write `BEHAVIOR.md`.
+Read only applicable `AGENTS.md`, `component-contract.md`, completed `contract.ts`, the Material 3 MCP pages needed for behavior/specification/accessibility, and minimum repository terminology needed to write `BEHAVIOR.md`.
 
-Do not inspect m3e implementation/docs, legacy component implementation, consumers, migration code, or another contract worker's reasoning.
+Do not inspect m3e implementation/docs, legacy component implementation, consumers, migration code, `tokens.css`, or another worker's reasoning.
 
 ## Output
 
-Record only normative observable Material behavior needed to implement and verify the family:
+Record only normative observable Material behavior needed to implement and verify the family, using applicable sections:
 
 ```text
 ## Anatomy and content roles
@@ -44,24 +52,28 @@ Record only normative observable Material behavior needed to implement and verif
 ## Material-unspecified behavior
 ```
 
-The final section is optional. Use it only for relevant boundaries that Material explicitly leaves unspecified or does not prescribe after complete applicable source coverage. It is not a list of missing documentation and does not make the result blocked.
+If behavior evidence proves that `contract.ts` omits a required Material content role/configuration/public value, or exposes one that current Material behavior explicitly excludes, do not compensate in prose. Return `return-to-api-contract` with the exact structural mismatch.
 
-Include exact geometry, spacing, touch targets, state transitions, accessible roles/states, content ownership and motion only when Material 3 MCP defines them for this component.
+Include exact geometry, spacing, touch targets, state transitions, accessibility semantics, content ownership and motion only when Material 3 MCP defines them for this component.
 
-Do not require Material to define generic Web/HTML/ARIA mechanics, browser event semantics, renderer internals, or combined interaction-state precedence unless Material itself prescribes those details for the component.
+Do not require Material to define generic Web/HTML/ARIA mechanics, browser event semantics, renderer internals, or combined state precedence unless Material itself prescribes them.
 
-Do not include Vue/m3e implementation strategy, renderer lifecycle/workarounds, tests, product behavior, migration instructions, or general usage prose that is not part of normative behavior.
+Do not include Vue/m3e strategy, renderer lifecycle/workarounds, tests, product behavior, migration instructions, or general usage prose.
 
 ## Completion check
 
-Before returning `complete`:
+Before writing the artifact and returning `complete`:
 
-1. Query Material 3 MCP using the official family/component name and behavior/specification/accessibility scope.
-2. Inspect every applicable MCP route/result surfaced for anatomy, states, interaction, input/keyboard, accessibility, geometry/layout, and motion; do not stop after one matching page.
-3. Re-read `BEHAVIOR.md` against those sources and verify no documented normative behavior in this worker's scope was omitted, guessed, or converted into implementation-specific prose.
-4. Verify general usage advice is not duplicated here unless it is necessary to state a normative observable component rule.
-5. Distinguish source failure/contradiction from Material silence: complete source coverage plus an unspecified detail may still return `complete`.
-6. Report `blocked` only for incomplete source coverage, contradictory official requirements, or a missing fact required to decide a Material-owned observable rule.
+1. Read `contract.ts` only for current structural scope/terminology.
+2. Query Material 3 MCP using official family/component name and behavior/specification/accessibility scope.
+3. Inspect every applicable route/result for anatomy, states, interaction, keyboard, accessibility, geometry/layout and motion.
+4. Verify no documented normative behavior in scope is omitted, guessed, or converted into implementation prose.
+5. Verify every required content role/configuration/public value is structurally representable by `contract.ts`.
+6. If Material behavior evidence contradicts that structural boundary, return `return-to-api-contract` rather than editing either artifact opportunistically.
+7. Distinguish source failure/contradiction from Material silence.
+8. Only now write/replace `BEHAVIOR.md` once.
+
+If blocked or returning to API before step 8, do not create a new partial `BEHAVIOR.md`.
 
 ## Report
 
@@ -70,17 +82,22 @@ MATERIAL BEHAVIOR CONTRACT RESULT
 family: <family>
 artifact: <BEHAVIOR.md path>
 Material 3 MCP coverage: complete | blocked
+API boundary: compatible | return-to-api-contract
+API finding: none | <exact structural mismatch>
 Material-unspecified behavior: none | <concise boundaries>
 unresolved blocking ambiguity: none | <exact ambiguity>
-result: complete | blocked
+result: complete | blocked | return-to-api-contract
 ```
 
 ## Forbidden
 
 - Reading m3e or consumers to infer expected behavior.
+- Treating `contract.ts` as behavior authority rather than structural scope.
 - Translating legacy behavior into Material requirements.
-- Treating Material silence as a requirement to invent behavior.
-- Treating a Material-unspecified Web/platform detail as a blocker when source coverage is complete.
+- Repairing an API mismatch inside `BEHAVIOR.md`.
+- Treating Material silence as permission to invent behavior.
+- Treating an unspecified Web/platform detail as a blocker after complete source coverage.
 - Editing `contract.ts`, `tokens.css`, runtime code, tests, consumers, or migration.
+- Leaving a new partial `BEHAVIOR.md` on blocked/return.
 - Guessing missing Material behavior.
-- Adding implementation or workflow history to `BEHAVIOR.md`.
+- Adding implementation/workflow history.
