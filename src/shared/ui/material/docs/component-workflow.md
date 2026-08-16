@@ -20,6 +20,21 @@ USAGE GUIDANCE ─────────────────────�
 
 The goal is to keep every worker focused on one unambiguous responsibility and keep irrelevant context out of later stages. Do not add a stage unless it owns a distinct required output or decision.
 
+## Material source readiness
+
+Before launching definition workers, the orchestrator mechanically checks the repository-configured `material3` MCP source for the selected component.
+
+The source-ready check owns availability only; it does not interpret Material semantics or pass documentation content between workers.
+
+1. Inspect MCP cache/coverage status and the relevant component routes exposed by the MCP.
+2. If the cache is missing/stale or required component routes are marked stale because the local MCP cache needs refresh, perform one explicit full `refresh_material_docs` using normal safety defaults.
+3. Do not use `force`, `promotePartial`, reduced `maxPages`, web search, or another documentation source to bypass source readiness.
+4. Recheck the source after refresh.
+5. Launch definition workers only when the relevant MCP source is readable and not stale.
+6. If refresh fails or the required routes remain stale/unavailable/unresolved, stop with the exact source-infrastructure blocker.
+
+A refreshable stale local MCP cache is not a semantic Material ambiguity and should not require operator intervention before the one normal recovery attempt. Genuine contradictory/missing Material content remains a definition-worker blocker.
+
 ## Material definition workers
 
 Launch four fresh isolated workers:
@@ -156,7 +171,7 @@ When a family completes this workflow:
 
 ## Orchestrator boundary
 
-The `material-component` orchestrator may only resolve the family, launch fresh workers, validate structured gate results, preserve exact observations/findings, route corrections, stop on blockers, and hand a successfully reviewed family to the architect.
+The `material-component` orchestrator may only resolve the family, establish Material MCP source readiness, launch fresh workers, validate structured gate results, preserve exact observations/findings, route corrections, stop on blockers, and hand a successfully reviewed family to the architect.
 
 It must not design Material API/tokens/behavior/guidance, inspect m3e semantics, implement code, migrate consumers, perform semantic review, or claim merge readiness.
 
@@ -164,6 +179,7 @@ It must not design Material API/tokens/behavior/guidance, inspect m3e semantics,
 
 The coding-agent workflow is complete when:
 
+- Material 3 MCP source readiness was established for the selected family;
 - all three technical contracts are complete;
 - family usage guidance is complete;
 - standalone implementation faithfully satisfies the technical contracts;
