@@ -29,17 +29,18 @@ Review does not fix production/definition files and does not write a persistent 
 2. Query Material 3 MCP for official component tokens and compare them with `tokens.css`.
 3. Query Material 3 MCP for observable behavior, states, keyboard, accessibility, geometry and motion and compare them with `BEHAVIOR.md`.
 4. Query Material 3 MCP for component description, when-to-use/when-not-to-use guidance, variant/configuration guidance, content guidance, consumer accessibility responsibilities, adaptive guidance and related-component distinctions; compare them with family `README.md`.
-5. Verify technical contracts and README guidance were not shaped by current demand, legacy vocabulary, or m3e vocabulary.
-6. Verify `README.md` does not duplicate API/token/behavior technical contracts or contain implementation/migration history.
-7. Verify the Vue component consumes `contract.ts` types directly instead of maintaining a parallel public API declaration.
-8. Independently inspect exact-version m3e docs/examples/public artifacts for every renderer mapping, composition, mutable state and token bridge.
-9. Verify controlled state has one source of truth and rejected intent cannot drift.
-10. Verify public token mappings reach the correct actual rendered parts/states.
-11. Verify behavior/accessibility/keyboard/focus/geometry/motion proof is faithful to `BEHAVIOR.md`.
-12. Verify canonical stories/browser/visual fixtures use production-valid semantic content.
-13. Verify every applicable consumer uses the canonical root API and follows family README guidance for component/variant/configuration choice while product behavior remains with product owners.
-14. Verify replaced legacy implementation/exports/proof and old staged family artifacts are removed.
-15. Review shared-UI/test-environment blast radius and repository-rule compliance.
+5. Verify complete applicable Material source coverage was established for each definition artifact. Do not treat a detail Material leaves unspecified after complete coverage as a missing Material requirement.
+6. Verify technical contracts and README guidance were not shaped by current demand, legacy vocabulary, or m3e vocabulary.
+7. Verify `README.md` does not duplicate API/token/behavior technical contracts or contain implementation/migration history.
+8. Verify the Vue component consumes `contract.ts` types directly instead of maintaining a parallel public API declaration.
+9. Independently inspect exact-version m3e docs/examples/public artifacts for every renderer mapping, composition, mutable state and token bridge.
+10. Verify controlled state has one source of truth and rejected intent cannot drift.
+11. Verify public token mappings reach the correct actual rendered parts/states.
+12. Verify behavior/accessibility/keyboard/focus/geometry/motion proof is faithful to `BEHAVIOR.md` and existing repository-owned Web/accessibility contracts without promoting platform behavior into Material requirements.
+13. Verify canonical stories/browser/visual fixtures use production-valid semantic content.
+14. Verify every applicable consumer uses the canonical root API and follows family README guidance for component/variant/configuration choice while product behavior remains with product owners.
+15. Verify replaced legacy implementation/exports/proof and old staged family artifacts are removed.
+16. Review shared-UI/test-environment blast radius and repository-rule compliance.
 
 Green automated checks prove only covered contracts and do not replace semantic review.
 
@@ -57,13 +58,17 @@ Route each underlying problem to one exact owner:
 
 Do not collapse Material definition findings into a generic contract route.
 
+Material silence is not a finding by itself. It becomes blocking only when applicable source coverage is incomplete, official Material requirements conflict, or the missing fact is necessary to decide a Material-owned contract requirement.
+
 If two correction rounds for the same underlying problem still reveal ownership drift, unstable semantics, or growing workaround logic, route to `architect`.
 
 ## Verdicts
 
 `compliant` requires no unresolved findings.
 
-`compliant-with-listed-risks` is only for complete work with bounded non-blocking limitations. It cannot represent missing proof, missing/incorrect README guidance, unknown consumers, incomplete migration, Material ambiguity, or deferred required work.
+`compliant-with-listed-risks` is only for complete work with bounded non-blocking limitations. It cannot represent missing proof, missing/incorrect README guidance, unknown consumers, incomplete migration, a blocking Material ambiguity, or deferred required work.
+
+A Material-unspecified detail after complete source coverage is not automatically a risk and does not prevent `compliant`.
 
 `blocked` must identify the earliest exact correction owner.
 
@@ -105,5 +110,6 @@ PR/CI readiness: ready | blocked
 - Accepting a screenshot as the sole oracle for fixed Material geometry.
 - Accepting legacy-to-canonical mapping because names/types look similar.
 - Treating missing proof, missing guidance or unknown consumers as accepted risk.
+- Treating Material silence after complete source coverage as a contract defect by itself.
 - Depending on Git/PR/check state during full review.
 - Claiming merge readiness.
