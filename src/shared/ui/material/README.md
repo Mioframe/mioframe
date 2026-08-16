@@ -41,21 +41,9 @@ Old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `RE
 
 ## Ownership
 
-Material owns:
+Material owns canonical Vue contracts/adapters/exports, official public component tokens, renderer-independent foundation/theme declarations, private family-local renderer mappings/workarounds, and component-owned proof.
 
-- canonical Vue contracts, adapters and exports;
-- official public component tokens;
-- renderer-independent Material foundation/theme declarations;
-- private family-local renderer mappings;
-- approved family-local renderer corrections/workarounds;
-- component tests, stories, browser/visual proof, and stable renderer defect records.
-
-Material does not own:
-
-- product/domain behavior, operation state, persistence, routing, or errors;
-- application-owned `--app-*` tokens;
-- generic shared UI that is not an official Material component;
-- renderer internals, private shadow DOM, or copied renderer interaction systems.
+Material does not own product/domain behavior, operation state, persistence, routing/errors, application `--app-*` tokens, generic non-Material shared UI, renderer internals, private shadow DOM, or copied renderer interaction systems.
 
 ## Renderer boundary
 
@@ -66,12 +54,16 @@ Inside an owning family implementation, prefer documented exact-version renderer
 ## Workflow
 
 ```text
-API contract       ┐
-Token contract     ├─→ contract ready → implementation → migration if required → architect review / CI
-Behavior contract  ┘
+API contract
+     ↓
+Token contract ───┐
+                  ├─→ contract ready → implementation → migration if required → architect review / CI
+Behavior contract ┘
 ```
 
-The workflow is resume-first. Reinvoking `material-component <name>` continues the current repository state and does not regenerate completed contracts. A completed stage is reopened only by an exact architect correction handoff.
+API establishes the current structural surface first. Token and behavior workers then stay independently focused on their own Material facts while using `contract.ts` only as structural scope/terminology.
+
+The workflow is resume-first. Reinvoking `material-component <name>` continues current repository state and does not regenerate completed contracts. A completed stage is reopened only by an exact architect correction handoff.
 
 Coding-agent work ends at architect handoff. Semantic review, PR/CI handling, roadmap completion, and merge readiness are architect-owned.
 
