@@ -33,7 +33,7 @@ Do not invoke generic `implementation-preflight` for this deterministic stage.
 
 ## Authority
 
-Read applicable `AGENTS.md`, `component-adapter.md`, `component-tokens.md`, the three family contracts, exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts, and only the testing conventions needed for selected proof.
+Read applicable `AGENTS.md`, `component-adapter.md`, `component-tokens.md`, the three family contracts, exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts, `vue-component-implementation`, and only the testing conventions needed for selected proof.
 
 The contracts define what must be exposed and observably satisfied. m3e defines only the private implementation seam.
 
@@ -43,36 +43,125 @@ Run in a fresh context. Do not inspect application consumers, legacy call sites,
 
 When resuming an interrupted implementation, inspect the current family runtime/proof first and preserve already-correct work. Do not rewrite contracts, restyle unrelated code, regenerate snapshots, or broaden proof merely because the previous worker context is unavailable.
 
+## Vue implementation shape
+
+Use modern Vue 3 `<script setup>` conventions already supported by the repository:
+
+- consume imported `contract.ts` types directly in `defineProps`, `defineSlots`, and `defineEmits` only where an emit contract actually exists;
+- prefer Vue 3.5 reactive props destructure for primitive/configuration defaults so implementation consumes the canonical defaults without creating a second defaults table;
+- use named handlers for non-trivial event logic;
+- prefer declarative class/style binding and computed derivation over imperative DOM/class mutation;
+- keep a stable component block class for library-owned styling;
+- use `inheritAttrs: false` only for the documented transparent adapter boundary and explicitly forward the narrow native/ARIA contract.
+
+Do not wrap a native event in a Vue emit solely because the root is interactive. If the public contract intentionally owns an emit, implement that exact emit; otherwise preserve the documented native/transparent listener seam.
+
 ## Implementation
 
-1. Consume `contract.ts` types directly through typed Vue APIs.
+1. Consume `contract.ts` directly through typed Vue APIs and canonical defaults.
 2. Use documented exact-version m3e public inputs for props/content/events/state.
 3. Keep renderer tags, types, variables and workarounds private to the family.
-4. Keep token declarations, aliases and public-to-private custom-property bridges in CSS. TypeScript/Vue may select a configuration through an explicit prop/property/class/attribute, but must not enumerate token names, compose custom-property names, or build runtime token maps/style objects.
-5. Map every supported public token group to an actual renderer/result path. Prefer explicit family-local CSS declarations/selectors. A shared CSS grammar may be factored only when it is genuinely identical and the result remains statically inspectable.
+4. Keep token declarations, aliases and public-to-private custom-property bridges in CSS. Vue may select a configuration through an explicit renderer property or component class, but must not enumerate token names, compose custom-property names, or build a runtime token mapping engine.
+5. Map every supported public token group to an actual renderer/result path. Prefer one static class-scoped CSS bridge when renderer token namespaces already distinguish configurations. Add explicit class modifiers only when configuration-dependent remapping is actually required.
 6. Forward only explicit public/native/ARIA inputs needed by `contract.ts` and `BEHAVIOR.md`; adapter-owned renderer configuration must win over conflicting fallthrough.
 7. Do not recreate renderer-owned state layer, ripple, focus, elevation, accessibility internals, geometry engines, or motion unless an explicit renderer defect requires the smallest documented family-local correction.
 8. Add only proof required by the contracts and materially distinct renderer paths.
 9. Run focused verifier-managed checks and return to the orchestrator.
 
-## Token mapping examples
+## Decision examples
 
-Examples illustrate implementation shape only; exact token/renderer names come from current family contracts and exact installed m3e documentation.
+Examples illustrate implementation shape only; exact API/token/renderer names come from the current contracts and exact installed m3e documentation.
+
+### Vue 3.5 contract consumption
 
 GOOD:
 
+```vue
+<script setup lang="ts">
+import {
+  mdExampleActionDefaults,
+  type MDExampleActionProps,
+  type MDExampleActionSlots,
+} from './contract';
+
+const {
+  appearance = mdExampleActionDefaults.appearance,
+  size = mdExampleActionDefaults.size,
+} = defineProps<MDExampleActionProps>();
+
+defineSlots<MDExampleActionSlots>();
+</script>
+```
+
+Why: imported contract types remain the public source of truth and Vue 3.5 owns runtime prop/default generation.
+
+BAD:
+
+```ts
+const props = defineProps({
+  appearance: { type: String, default: 'primary' },
+  size: { type: String, default: 'small' },
+});
+```
+
+when `contract.ts` already owns those types/defaults.
+
+Why: runtime declaration duplicates the canonical contract and can drift.
+
+### Static CSS token bridge first
+
+GOOD when m3e exposes configuration-specific private token namespaces:
+
 ```css
-.md-example-action[data-appearance='primary'] {
-  --m3e-example-action-container-color: var(--md-comp-example-action-primary-container-color);
-  --m3e-example-action-icon-color: var(--md-comp-example-action-primary-icon-color);
+.md-example-action {
+  --m3e-example-action-primary-container-color: var(
+    --md-comp-example-action-primary-container-color
+  );
+  --m3e-example-action-secondary-container-color: var(
+    --md-comp-example-action-secondary-container-color
+  );
 }
 ```
 
-with Vue/TypeScript selecting only the configuration:
-
-```html
-<m3e-example-action :data-appearance="props.appearance" />
+```vue
+<m3e-example-action
+  class="md-example-action"
+  :variant="appearance"
+/>
 ```
+
+Why: Vue selects the documented renderer configuration; CSS owns the token bridge; no extra styling state exists.
+
+### Use class modifiers only when the renderer requires remapping
+
+If m3e reuses one private token name for multiple public configurations, use an explicit class binding:
+
+```vue
+<m3e-example-action
+  class="md-example-action"
+  :class="{
+    'md-example-action--primary': appearance === 'primary',
+    'md-example-action--secondary': appearance === 'secondary',
+  }"
+  :variant="appearance"
+/>
+```
+
+```css
+.md-example-action--primary {
+  --m3e-example-action-container-color: var(
+    --md-comp-example-action-primary-container-color
+  );
+}
+
+.md-example-action--secondary {
+  --m3e-example-action-container-color: var(
+    --md-comp-example-action-secondary-container-color
+  );
+}
+```
+
+Why: the class is an explicit library styling hook and token mapping remains readable CSS. Do not invent `data-*` attributes solely as styling hooks when a class or existing renderer property is the clearer owner.
 
 BAD:
 
@@ -82,16 +171,14 @@ const suffixes = ['container-color', 'icon-color'];
 const tokenStyles = Object.fromEntries(
   suffixes.map((suffix) => [
     `--m3e-example-action-${suffix}`,
-    `var(--md-comp-example-action-${props.appearance}-${suffix})`,
+    `var(--md-comp-example-action-${appearance}-${suffix})`,
   ]),
 );
 ```
 
 Why: runtime TypeScript has become an implicit token catalogue/mapping engine and can hide mismatched token grammars.
 
-GOOD: bind a documented renderer `variant`/`size` property from TypeScript when that property is the renderer's actual non-token configuration seam.
-
-BAD: move CSS token aliases/mappings into TypeScript merely because `:style` can set custom properties.
+Normal Vue `:style` object binding remains valid for ordinary dynamic styling that is not the Material token catalogue/bridge. Do not ban an idiomatic Vue mechanism more broadly than the token-ownership problem requires.
 
 ## Contract corrections
 
@@ -152,10 +239,12 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Inspecting consumers or legacy call sites to shape runtime implementation.
 - Migrating consumers.
 - Changing canonical contracts to fit m3e/current demand.
-- Re-declaring public Props/Slots/Emits/value unions inside the SFC.
+- Re-declaring public Props/Slots/Emits/value unions or canonical defaults inside the SFC.
+- Adding/wrapping component emits not owned by the public contract.
 - Dropping behavior-required accessibility/native inputs merely because renderer root uses `inheritAttrs: false`.
 - Exposing raw m3e details outside the family.
-- Creating TypeScript token maps, token-name/suffix arrays, generated custom-property names, runtime token registries, or `:style` token objects that duplicate CSS ownership.
+- Creating TypeScript token maps, token-name/suffix arrays, generated custom-property names, or runtime token registries that duplicate CSS ownership.
+- Inventing `data-*` attributes solely as styling hooks when a stable class or documented renderer configuration already owns the distinction.
 - Adding speculative adapters or generic token frameworks solely to reduce line count.
 - Treating source-level CSS wiring as rendered token proof.
 - Rewriting already-correct family work during an interrupted-run resume without an exact defect.
