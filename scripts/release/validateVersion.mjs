@@ -105,7 +105,7 @@ function resolveDevelopVersionImpact(argv, env, deps) {
   const explicitImpact = getFlagValue(argv, '--impact');
 
   if (explicitImpact) {
-    if (!(explicitImpact in VERSION_IMPACT_LABELS)) {
+    if (!Object.hasOwn(VERSION_IMPACT_LABELS, explicitImpact)) {
       return {
         kind: 'error',
         message: `Invalid --impact "${explicitImpact}"; must be one of ${Object.keys(VERSION_IMPACT_LABELS).join(', ')}.`,

@@ -314,6 +314,29 @@ describe('validateRelease', () => {
       expect(result).toBe(false);
       expect(deps.logError).toHaveBeenCalledWith(expect.stringContaining('Invalid --impact'));
     });
+
+    it.each(['constructor', 'toString', '__proto__'])(
+      'rejects inherited Object property %s as an invalid --impact without throwing',
+      (impact) => {
+        const deps = baseDeps();
+        deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.1' }));
+        deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+        let result;
+
+        expect(() => {
+          result = validateRelease({
+            argv: ['--base', 'origin/develop', '--target', 'develop', '--impact', impact],
+            env: {},
+            deps,
+          });
+        }).not.toThrow();
+
+        expect(result).toBe(false);
+        expect(deps.logError).toHaveBeenCalledWith(
+          expect.stringContaining(`Invalid --impact "${impact}"`),
+        );
+      },
+    );
   });
 
   it('passes a same-version PR-to-main context as a pre-tag release repair when the tag does not exist yet', () => {
