@@ -52,22 +52,45 @@ Material silence about generic Web/HTML/ARIA mechanics, browser event semantics,
 - valid/invalid combinations when TypeScript can express them clearly;
 - concise TSDoc where the type alone is insufficient.
 
+A current Material component-owned choice belongs to this contract when Material presents it as developer-selectable and it changes the component configuration. Material may call such a choice a variant, style, color mapping, configuration, emphasis, or another term; documentation taxonomy does not determine whether the public API needs to express it.
+
 Use explicit family types such as `MD<Component>Props`, `MD<Component>Slots`, and `MD<Component>Emits` where applicable. The Vue implementation must consume these types directly through typed Vue APIs instead of restating a parallel public contract inside the SFC.
 
 Derive public terminology from Material 3 MCP and idiomatic Vue mechanics. Do not derive it from m3e names, legacy props, DOM implementation details, or current Mioframe demand.
 
+Do not promote a configuration explicitly scoped by Material to a baseline/legacy family into the current Expressive public contract merely because historical documentation remains available.
+
 ## `tokens.css` — public token contract
 
-`tokens.css` owns the official Material component-token surface for the canonical family contract.
+`tokens.css` owns the official Material component-token surface for the current canonical family contract.
 
 - Derive token semantics and defaults from Material 3 MCP.
 - Public names use canonical `--md-comp-*` Material semantics, never renderer or legacy vocabulary.
 - Preserve official system/reference aliases where Material specifies them.
-- Cover the official variants, parts and states represented by the family contract even when Mioframe does not currently override them.
+- Cover the official current configurations, variants, parts and states represented by the family contract even when Mioframe does not currently override them.
+- Exclude token groups explicitly scoped to baseline/legacy/deprecated configurations that are not part of the current Expressive public family.
 - Do not expose `--m3e-*`, `--md-private-*`, renderer defaults, or application `--app-*` tokens.
 - Do not create a TypeScript token enum, registry, DSL, JSON mirror, second catalogue, or compatibility alias layer.
 
 `tokens.css` is the executable public component-token catalogue. Private renderer bridges belong to implementation, not to this contract.
+
+## Cross-contract reachability
+
+The three technical artifacts are independently authored but must describe one coherent current Material family before implementation is considered complete.
+
+For every current developer-selectable Material configuration:
+
+```text
+Material configuration
+  → contract.ts public configuration
+  → applicable tokens.css groups / BEHAVIOR.md rules
+  → private renderer mapping
+  → observable rendered result / proof
+```
+
+Not every token is selected directly by a prop; unconditional component tokens and state/part tokens may apply automatically to a reachable configuration. But no public token group may describe a configuration that the canonical component can never reach, and no current selectable Material configuration may disappear because another worker used different terminology.
+
+Implementation performs this consistency check before renderer work, and independent review repeats it from source. The orchestrator does not synthesize the artifacts.
 
 ## `BEHAVIOR.md` — behavior contract
 
@@ -151,6 +174,8 @@ Standalone implementation may start when:
 - none of those workers reports a blocking Material ambiguity or source-coverage blocker.
 
 Material-unspecified details recorded after complete source coverage do not block this gate.
+
+This gate means the three definition artifacts exist and passed their own source checks. The implementation worker must still perform the cross-contract reachability check above before renderer work; any inconsistency routes back to the earliest owning definition worker instead of being synthesized in implementation.
 
 `README.md` is not part of this runtime gate.
 
