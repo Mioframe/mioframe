@@ -2,42 +2,35 @@
 
 ## Decision
 
-One operator command handles one official Material family:
+One official Material family is implemented through three focused technical contracts and two coding stages:
+
+```text
+API CONTRACT       ┐
+TOKEN CONTRACT     ├─→ CONTRACT READY → IMPLEMENTATION → MIGRATION IF REQUIRED → ARCHITECT REVIEW / CI
+BEHAVIOR CONTRACT  ┘
+```
+
+The coding workflow ends at architect handoff. Semantic PR review, exact-head CI review, roadmap completion, and merge readiness are architect-owned and are not duplicated by another coding-agent review worker.
+
+The normal operator entrypoint remains:
 
 ```text
 material-component <name>
 ```
 
-The workflow is split by responsibility:
-
-```text
-API CONTRACT       ┐
-TOKEN CONTRACT     ├─→ TECHNICAL CONTRACT READY → IMPLEMENTATION ┐
-BEHAVIOR CONTRACT  ┘                                              │
-                                                                 ├─→ MIGRATION → INDEPENDENT REVIEW
-USAGE GUIDANCE ──────────────────────────────────────────────────┘
-```
-
-The goal is to keep every worker focused on one unambiguous responsibility and keep irrelevant context out of later stages. Do not add a stage unless it owns a distinct required output or decision.
+The workflow is resume-first. Repository artifacts are durable stage results; a repeated invocation continues from the current stage instead of rebuilding completed work.
 
 ## Material source readiness
 
-Before launching definition workers, the orchestrator mechanically checks the repository-configured `material3` MCP source for the selected component.
+Before running a contract worker, mechanically verify that the repository-configured `material3` MCP source for the selected component is readable and current enough for that worker.
 
-The source-ready check owns availability only; it does not interpret Material semantics or pass documentation content between workers.
+If the source is missing or stale because the local cache needs refresh, perform one normal non-forced full refresh and recheck. Do not use `force`, `promotePartial`, reduced `maxPages`, web search, memory, or another documentation source to bypass a source failure.
 
-1. Inspect MCP cache/coverage status and the relevant component routes exposed by the MCP.
-2. If the cache is missing/stale or required component routes are marked stale because the local MCP cache needs refresh, perform one explicit full `refresh_material_docs` using normal safety defaults.
-3. Do not use `force`, `promotePartial`, reduced `maxPages`, web search, or another documentation source to bypass source readiness.
-4. Recheck the source after refresh.
-5. Launch definition workers only when the relevant MCP source is readable and not stale.
-6. If refresh fails or the required routes remain stale/unavailable/unresolved, stop with the exact source-infrastructure blocker.
+Do not repeat source refresh/check work merely because implementation, migration, or architect review is being resumed from already-written contracts.
 
-A refreshable stale local MCP cache is not a semantic Material ambiguity and should not require operator intervention before the one normal recovery attempt.
+## Contract workers
 
-## Material definition workers
-
-Launch four fresh isolated workers:
+Exactly three fresh isolated definition workers own the canonical technical contracts:
 
 ```text
 material-component-api-contract
@@ -48,155 +41,125 @@ material-component-token-contract
 
 material-component-behavior-contract
   → components/<family>/BEHAVIOR.md
-
-material-component-guidance
-  → components/<family>/README.md
 ```
 
-Material facts for all four workers come only from the repository-configured `material3` MCP server in `.mcp.json`.
+Material facts come only from the repository-configured `material3` MCP server.
 
-The workers own separate artifacts and may run in parallel when the runtime can safely isolate their file writes. Parallel execution is an optimization, not a correctness requirement; otherwise run the workers separately without merging responsibilities.
+The workers do not inspect m3e, legacy implementation, application consumers/current demand, or another contract worker's reasoning.
 
-Definition workers must not inspect m3e, legacy component implementation, application consumers/current demand, or another definition worker's reasoning.
+The three workers may run in parallel for a new family when their writes are isolated safely. Parallelism is an optimization, not a requirement.
 
-Each worker must distinguish source completeness from specification completeness:
+## Resume rules
 
-- incomplete/stale/unreadable applicable source coverage is blocking;
-- contradictory applicable official Material requirements are blocking;
-- after complete source coverage, a detail Material does not prescribe is a non-blocking boundary of that artifact unless the missing fact is required to decide a Material-owned requirement.
+The orchestrator first inspects the current family files and determines the earliest structurally incomplete stage.
 
-`README.md` is developer-facing correct-use guidance, not a fourth runtime contract.
+Without an explicit correction handoff:
 
-## Gates
+1. Run only missing contract workers.
+2. When all three contracts exist and are complete, run standalone implementation only if the canonical runtime/proof is not complete.
+3. Run migration only when current consumers or replaced legacy ownership still require migration.
+4. When contracts, standalone runtime/proof, and required migration are already present, stop and hand the current family to the architect. Do not regenerate contracts or perform a self-review to search for new work.
 
-The orchestrator performs mechanical gates only. It does not synthesize or reinterpret definition artifacts.
+A completed contract worker is not rerun simply because `material-component <name>` is invoked in a fresh agent session.
 
-### Technical-contract-ready
+To reopen a completed stage, require an exact correction handoff naming the owner and finding. A correction discovered by the architect is authoritative routing input for the coding workflow; the orchestrator does not reconstruct the previous review from chat history or guess what should be rerun.
+
+If repository state is too ambiguous to determine whether an existing stage is complete, return `needs-architect` instead of conservatively rebuilding the full pipeline.
+
+## Contract-ready gate
 
 Standalone implementation may start when:
 
-- API contract result is `complete`;
-- token contract result is `complete`;
-- behavior contract result is `complete`;
 - `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist;
-- none of those workers reports a blocking Material ambiguity or source-coverage blocker.
+- the corresponding worker results are complete for any contract worker run in the current invocation;
+- no current correction handoff still targets a contract;
+- the three artifacts have no direct structural contradiction visible without re-deriving Material semantics.
 
-Material-unspecified details recorded after complete source coverage do not block implementation.
-
-Guidance does not block implementation because implementation does not consume it.
-
-### Migration-ready
-
-Migration may start only when:
-
-- standalone implementation is complete;
-- guidance result is `complete`;
-- `README.md` exists;
-- guidance reports no blocking Material ambiguity or source-coverage blocker.
-
-This allows usage guidance to run in parallel with contract extraction or standalone implementation without becoming an unnecessary serial dependency.
+Implementation does not perform another Material definition pass.
 
 ## Standalone implementation
 
-Run `material-component-implementation` in a fresh context after the technical-contract-ready gate.
+Run `material-component-implementation` in one fresh context.
 
-Its inputs are the three fixed technical contracts plus exact lockfile-resolved `@m3e/web` documentation/public artifacts. It owns only the standalone canonical Vue component, private renderer mapping, exports, and component-owned proof.
+Inputs are only the three fixed contracts, applicable Material adapter/token rules, exact lockfile-resolved `@m3e/web` documentation/public artifacts, and component-owned proof conventions.
 
-Implementation must not inspect application consumers or legacy call sites to shape the component. If the technical artifacts directly contradict one another, route the exact contradiction to its owning definition worker before coding rather than synthesizing a new contract.
+The implementation worker owns:
 
-For a behavior detail that Material intentionally leaves unspecified, implementation must not invent a Material requirement. Preserve normal Web/renderer behavior unless another repository-owned platform/accessibility contract requires a specific result, and prove only the observable behavior actually owned by Mioframe.
+- canonical Vue runtime;
+- private renderer mapping;
+- canonical exports;
+- component-owned unit/browser/visual proof;
+- focused verifier-managed checks.
 
-A correct Material contract is not weakened because m3e lacks direct support. Use the smallest allowed family-local mapping/workaround or escalate a genuine architecture/renderer ownership problem.
+It must not inspect application consumers or migrate legacy call sites.
+
+If implementation proves a contract wrong, return the exact owner (`api-contract`, `token-contract`, or `behavior-contract`) and stop. Do not rewrite the contract inside implementation.
 
 ## Migration
 
-Run `material-component-migration` in a separate fresh context after the migration-ready gate.
+Run `material-component-migration` in a separate fresh context only when migration work is actually required.
 
-Its inputs are the finished canonical component, all four family definition artifacts, current consumers, and replaced legacy ownership. Migration reads `README.md` before adapting consumers so component/variant/configuration choice follows official Material guidance rather than legacy convenience.
+For a first family conversion, migration inventories consumers, adapts them to the finished canonical API, preserves product-owned behavior, removes replaced legacy ownership, and runs focused consumer proof.
 
-Migration does not inspect renderer internals and does not redesign the canonical family. Product state, persistence, routing, errors, operation lifecycle, and business behavior remain with their truthful product owners.
+For a correction to an already-migrated family, skip migration when the correction does not require any consumer change and legacy ownership is already gone. Adding an optional public configuration with an unchanged default, for example, does not by itself require another migration worker.
 
-## Independent review
-
-Run `material-component-review` in a fresh context independent from every authoring worker after migration completes.
-
-Review the complete resulting family, not only the latest patch. The reviewer independently uses Material 3 MCP to check API, tokens, behavior, and usage guidance; checks exact-version m3e mapping and proof; checks current consumers; and checks legacy removal/ownership.
-
-Review does not fix files and does not create a persistent `REVIEW.md`.
-
-A successful review means ready for architect-owned PR/exact-head CI, not merge approval.
+Migration does not inspect m3e internals and does not redefine Material contracts.
 
 ## Correction routing
 
-Route each underlying problem to its exact owner and rerun only stages invalidated by that correction:
+Correction runs are targeted:
 
 ```text
 api-contract
-  → API worker → implementation → migration if consumer-facing shape changed → review
+  → API contract worker → implementation → migration only if consumer-facing usage changed → architect
 
 token-contract
-  → token worker → implementation → review
+  → token contract worker → implementation → architect
 
 behavior-contract
-  → behavior worker → implementation → review
-
-guidance
-  → guidance worker → migration if current application may change → review
+  → behavior contract worker → implementation → migration only if consumer composition changed → architect
 
 implementation
-  → implementation worker → review
+  → implementation worker → architect
 
 migration
-  → migration worker → review
+  → migration worker → architect
 
-non-deterministic ownership/architecture
-  → architect-handoff → resume at earliest invalidated worker → review
+architecture / unclear ownership
+  → architect
 ```
 
-Do not rerun unaffected definition workers. After two unsuccessful correction rounds for the same underlying problem, stop patching and escalate to architecture.
+Do not rerun unaffected contracts or coding stages. After two unsuccessful correction rounds for the same underlying problem, stop patching and return to architecture.
 
-## Dependencies
+## Handoffs
 
-A Material family consumes another Material family only through its canonical public API. If implementation or migration discovers a required dependency family that is not canonical/complete, process that family through the same workflow before resuming the parent.
+Pass only the minimum durable state needed by the next coding worker:
 
-Detect dependency cycles and escalate them to architecture. Do not persist a dependency revision graph.
+```text
+family: <canonical family>
+owner: <target worker>
+finding: <exact contract or observable defect>
+affected scope: <concise files/contract/proof>
+operator observation: none | <lossless factual observation>
+```
 
-## Handoffs and context
+Repository files remain the durable implementation handoff. Do not pass hidden reasoning, previous narrative reports, copied source encyclopedias, Git/PR history, or unrelated logs between workers.
 
-Repository artifacts are the durable handoffs. Pass only exact unresolved findings, affected scope, and lossless operator observations between worker contexts.
+No extra workflow-status artifact is required. The architect supplies exact correction findings when a completed stage must be reopened.
 
-Do not pass hidden reasoning, previous narrative reports, copied source encyclopedias, unrelated logs, Git/PR state, or external-check state between workers.
+## Status ownership
 
-## Existing-family transition
+Coding stages must not mark the Material roadmap, PR, or family as architect-reviewed, CI-ready, merge-ready, or complete for the program.
 
-Untouched families may temporarily retain old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, `REVIEW.md`, and legacy index README files as historical evidence.
-
-When a family completes this workflow:
-
-- establish `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and canonical usage `README.md`;
-- make runtime/proof satisfy the three technical contracts;
-- migrate consumers using canonical guidance;
-- remove that family's obsolete staged artifacts and legacy README index content;
-- leave unrelated families untouched.
-
-## Orchestrator boundary
-
-The `material-component` orchestrator may only resolve the family, establish Material MCP source readiness, launch fresh workers, validate structured gate results, preserve exact observations/findings, route corrections, stop on blockers, and hand a successfully reviewed family to the architect.
-
-It must not design Material API/tokens/behavior/guidance, inspect m3e semantics, implement code, migrate consumers, perform semantic review, or claim merge readiness.
+`docs/roadmap.md` is updated only after architect review establishes the truthful resulting status. An interrupted coding run therefore cannot leave a false `no blocker` / `review complete` milestone behind.
 
 ## Completion
 
 The coding-agent workflow is complete when:
 
-- Material 3 MCP source readiness was established for the selected family;
-- all three technical contracts are complete;
-- family usage guidance is complete;
-- standalone implementation faithfully satisfies the technical contracts;
-- required standalone proof passes;
-- all applicable consumers are migrated using canonical Material guidance;
-- replaced legacy ownership is removed;
-- independent review has no unresolved finding;
-- focused implementation/migration verification is complete or an exact external blocker is reported.
+- the three technical contracts exist and no current correction targets them;
+- standalone implementation and required proof are complete;
+- required consumer migration and legacy removal are complete, or migration is explicitly not required for the correction;
+- focused local verification required for the edited contracts has completed or an exact external blocker is reported.
 
-Then hand the result to the architect for PR update, exact-head CI, full PR review, and merge readiness.
+The final action is always handoff to the architect for semantic review, PR handling, exact-head CI, roadmap update, and merge readiness.
