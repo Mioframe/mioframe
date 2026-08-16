@@ -15,7 +15,7 @@ import { setupStackNavigation } from '@page/routes';
  * @param app - Optional pre-created Vue app instance used by tests and alternative bootstraps.
  * @returns The configured Vue app instance.
  */
-export const setupApp = async (app: App = createApp(MainApp)) => {
+export const setupApp = (app: App = createApp(MainApp)) => {
   registerLazyVueSentryBackend();
   app.use(sentryPlugin, {
     dsn: SENTRY_DSN,
