@@ -5,9 +5,9 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 ## Routing
 
 - Use `shared-ui-implementation` for project-specific presentation primitives, wrappers, and generic shared UI infrastructure outside official Material component targets.
-- Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. One operator command orchestrates three focused technical Material contracts, independent usage guidance, standalone implementation, separate migration, and fresh independent review.
-- Follow `docs/testing/storybook.md` for Storybook ownership, story authoring, catalogue hierarchy, and UI-owned browser/visual proof; follow `docs/testing/migration-plan.md` for the current executable Playwright spec location.
-- Do not use legacy Material DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW stages as the current workflow authority.
+- Use `material-component <name>` and the deeper `src/shared/ui/material/AGENTS.md` rules for one official Material family. The coding workflow owns three focused technical contracts, standalone implementation, and consumer migration only when required; architect review/CI is not duplicated by a coding worker.
+- Follow `docs/testing/storybook.md` for Storybook ownership and `docs/testing/migration-plan.md` for current executable Playwright spec placement.
+- Do not use legacy Material DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW stages as current workflow authority.
 
 ## Contains
 
@@ -27,4 +27,4 @@ Inherits `src/shared/AGENTS.md`. Applies to `src/shared/ui` and descendants unti
 
 ## Verification
 
-Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Material standalone implementation owns component proof; the separate migration worker owns correct application of family guidance, consumer adoption and legacy removal; a fresh independent review checks the complete resulting family before architect-owned PR CI.
+Shared UI changes require consumer and blast-radius review plus proof at the layer that owns the changed contract. Material standalone implementation owns component proof; migration owns only required consumer adoption and legacy removal. The architect owns the final semantic family/PR review and exact-head CI decision.
