@@ -6,7 +6,7 @@ This directory owns the canonical documentation for `src/shared/ui/material`.
 
 - [Architecture](./architecture.md) — durable library ownership, public Vue boundary, renderer isolation, tokens, and completion principles.
 - [Component workflow](./component-workflow.md) — resume-first contract/implementation/migration orchestration and correction routing.
-- [Family definition](./component-contract.md) — ownership and isolation of `contract.ts`, `tokens.css`, and `BEHAVIOR.md`.
+- [Family definition](./component-contract.md) — ownership and dependency boundary of `contract.ts`, `tokens.css`, and `BEHAVIOR.md`.
 - [Component adapter contract](./component-adapter.md) — Vue-to-m3e mapping, controlled state, composition, renderer gaps, accessibility, and proof rules.
 - [Component token contract](./component-tokens.md) — public official token ownership, private renderer mapping, and observable verification. Family/foundation CSS files are the executable token catalogues.
 - [Confirmed m3e defects](./m3e-defects.md) — stable defect identities, evidence, mitigation, revalidation, and removal.
@@ -21,7 +21,9 @@ The normal operator entrypoint is:
 material-component <name>
 ```
 
-For a new family, the orchestrator runs three narrow isolated contract workers (API, tokens, behavior), then standalone implementation and consumer migration if required.
+For a new family, API extraction runs first. After `contract.ts` is complete, token and behavior workers run in separate fresh contexts and may run in parallel. They use `contract.ts` only as structural scope while deriving their own facts from Material 3 MCP.
+
+Then one standalone implementation worker owns runtime plus component proof, followed by consumer migration only when migration is actually required.
 
 For an existing/incomplete family, the same command resumes current repository state instead of rebuilding completed stages. A completed stage is reopened only by an exact architect correction handoff.
 
