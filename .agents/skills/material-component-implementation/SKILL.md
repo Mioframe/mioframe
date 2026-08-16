@@ -19,7 +19,14 @@ components/<family>/BEHAVIOR.md
 
 Do not start if any technical contract worker reported a blocking unresolved Material ambiguity or source-coverage blocker. A Material-unspecified detail recorded after complete source coverage is not a blocker.
 
-Before inspecting m3e or editing production code, check the three technical contracts for direct internal contradictions only. Public states/content roles required by `BEHAVIOR.md` must be representable by `contract.ts`, and token variant/state/part terminology must not contradict the structural or behavior contracts. If they conflict, route the exact finding to the owning definition worker; do not synthesize a new contract in implementation.
+Before inspecting m3e or editing production code, check the three technical contracts for cross-contract consistency and reachability:
+
+- public states/content roles required by `BEHAVIOR.md` must be representable by `contract.ts`;
+- every developer-selectable configuration represented by technical contracts must be expressible through the public API;
+- every public token configuration/variant/state/part group must belong to a configuration reachable from `contract.ts` or to an unconditional behavior of that reachable component;
+- token terminology must not contradict the structural or behavior contracts.
+
+If a public token group describes a configuration the public API cannot select, or the API exposes a configuration with no corresponding required token/behavior coverage, stop and route the exact inconsistency to the owning definition worker before inspecting m3e. Do not silently hardcode one configuration and leave other public contract groups inert.
 
 ## Authority
 
@@ -51,13 +58,13 @@ Do not include consumer migration or legacy-call-site adaptation in this preflig
 
 ## Implementation order
 
-1. Read `contract.ts`, `tokens.css`, and `BEHAVIOR.md` as fixed runtime inputs.
-2. Inspect exact lockfile-resolved m3e docs/examples/public artifacts for each affected mapping.
+1. Read `contract.ts`, `tokens.css`, and `BEHAVIOR.md` as fixed runtime inputs and complete the cross-contract reachability check above.
+2. Inspect exact lockfile-resolved m3e docs/examples/public artifacts for every reachable configuration and affected mapping.
 3. Implement the Vue `MD*` component using the exported Props/Slots/Emits/public value types from `contract.ts` directly through typed Vue APIs.
 4. Keep m3e tags, attributes, events, types, CSS variables and workarounds private to the Material family.
-5. Map public `--md-comp-*` tokens privately to renderer inputs without adding renderer vocabulary to `tokens.css`.
+5. Map every public `--md-comp-*` token group for reachable configurations privately to renderer inputs. A public token group that has no path to an observable rendered result is an implementation blocker, not completed catalogue work.
 6. Implement only the minimum family-local correction required when documented m3e behavior does not satisfy a correct contract.
-7. Add/update standalone component, browser, accessibility, geometry, token and visual proof required by the three contracts.
+7. Add/update standalone component, browser, accessibility, geometry, token and visual proof required by the three contracts. Proof may be proportional, but it must cover materially distinct configurations, parts, states and mapping grammars.
 8. Run focused verifier-managed checks.
 9. Return after standalone component correctness is established. Do not migrate consumers in this worker.
 
@@ -74,6 +81,8 @@ return-to-behavior-contract
 ```
 
 with the exact observable/material fact that invalidates the current artifact.
+
+When the inconsistency crosses API and token artifacts, return to the earliest definition owner needed to establish a coherent public configuration, then rerun only subsequently invalidated stages. Do not choose a renderer-compatible subset in implementation.
 
 A correct Material contract remains correct even when m3e cannot implement it directly.
 
@@ -94,12 +103,13 @@ As applicable prove:
 
 - SFC uses `contract.ts` as the public type source rather than re-declaring it;
 - props/slots/emits/defaults and allowed attribute boundary;
+- every materially distinct public configuration reaches the intended renderer configuration and observable result;
 - accepted/rejected controlled intent and one source of truth;
 - pointer/keyboard/focus/native event behavior;
 - accessible role/name/state and ownership required by the component or existing Web/accessibility contract;
 - fixed Material geometry with numeric browser assertions;
-- public token overrides through actual rendered results;
-- renderer-owned appearance/motion through faithful browser/visual evidence;
+- public token overrides through actual rendered results, including materially distinct configuration/state mapping paths;
+- renderer-owned appearance/motion through faithful browser/visual evidence where required by `BEHAVIOR.md`;
 - dependency composition through canonical public APIs.
 
 A story, declaration, host attribute, source mapping, CSS variable presence, or screenshot alone is not proof of a different observable contract.
@@ -123,6 +133,8 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Inspecting consumers, legacy call sites, or usage guidance to shape runtime implementation.
 - Migrating consumers or removing a legacy owner still used by the application.
 - Changing canonical contracts to fit m3e or current demand.
+- Hardcoding one public configuration while leaving other canonical API/token configurations unreachable.
+- Declaring public token groups complete when they have no renderer/result path.
 - Re-declaring public Props/Slots/Emits/value unions inside the SFC instead of consuming `contract.ts`.
 - Exposing raw m3e details outside the Material family.
 - Adding speculative adapters, compatibility layers, generic frameworks or token registries.
