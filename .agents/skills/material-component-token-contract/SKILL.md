@@ -52,7 +52,107 @@ If token evidence proves that `contract.ts` exposes a historical/non-current con
 
 Use repository Material CSS authoring conventions. Material `dp` and `sp` are supported authoring units transformed by the project pipeline.
 
+The public token catalogue lives only in CSS. Do not mirror token names, defaults, aliases, groups, or token metadata into TypeScript, JSON, enums, registries, DSLs, or generated runtime maps. `tokens.css` is the source of truth for the public family token surface.
+
 Do not add `--m3e-*`, `--md-private-*`, `--app-*`, renderer mappings/defaults, token enums, registries, DSLs, JSON mirrors, or compatibility aliases.
+
+## Decision examples
+
+These examples illustrate the decision rule and CSS shape only. They are not Material source evidence. If an example conflicts with current Material 3 MCP, current Material wins.
+
+### Public token catalogue is executable CSS
+
+Suppose the current Material family has a `primary` configuration with container/icon colors, a hovered state-layer opacity, and a fixed small container height. Material defines system aliases for the colors/state opacity and a direct `56dp` value for the height.
+
+GOOD:
+
+```css
+:root {
+  --md-comp-example-action-primary-container-color: var(--md-sys-color-primary);
+  --md-comp-example-action-primary-icon-color: var(--md-sys-color-on-primary);
+  --md-comp-example-action-primary-hovered-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity
+  );
+  --md-comp-example-action-small-container-height: 56dp;
+}
+```
+
+Why: the public contract is directly executable, preserves official aliases when they exist, and preserves an official literal when Material does not provide a system alias.
+
+BAD:
+
+```ts
+export const exampleActionTokens = {
+  primaryContainerColor: '--md-comp-example-action-primary-container-color',
+  primaryIconColor: '--md-comp-example-action-primary-icon-color',
+  smallContainerHeight: '--md-comp-example-action-small-container-height',
+} as const;
+```
+
+Why: TypeScript becomes a second token catalogue that can drift from CSS and encourages runtime token machinery.
+
+### Do not invent aliases
+
+Suppose Material gives `16dp` as the component spacing value and does not give a system/reference alias for that row.
+
+GOOD:
+
+```css
+--md-comp-example-action-icon-label-space: 16dp;
+```
+
+BAD:
+
+```css
+--md-comp-example-action-icon-label-space: var(--md-sys-spacing-large);
+```
+
+Why: an attractive-looking system alias is still invented semantics when Material does not define it.
+
+### Current versus historical rows
+
+Suppose one Material token page contains a current Expressive configuration and a separately identified baseline configuration retained for historical reference.
+
+GOOD: include only token rows belonging to configurations reachable through the current `contract.ts` plus unconditional current-family rows.
+
+BAD: copy both groups because both appear under the same component page or table.
+
+Why: page/table membership alone does not establish current canonical ownership.
+
+### API mismatch is returned, not repaired in CSS
+
+Suppose `contract.ts` exposes `primary | secondary`, but token/spec evidence clearly establishes a third current developer-selectable `tertiary` configuration.
+
+GOOD:
+
+```text
+return-to-api-contract
+finding: current Material token/spec evidence includes developer-selectable tertiary configuration absent from contract.ts
+```
+
+BAD: silently add `tertiary` token groups to `tokens.css` while leaving the public API unable to select that configuration.
+
+Why: the three contracts must describe one reachable family rather than individually plausible files.
+
+### Renderer tokens never enter the public catalogue
+
+GOOD:
+
+```css
+:root {
+  --md-comp-example-action-primary-container-color: var(--md-sys-color-primary);
+}
+```
+
+BAD:
+
+```css
+:root {
+  --m3e-example-action-container-color: var(--md-comp-example-action-primary-container-color);
+}
+```
+
+Why: `tokens.css` owns Material public tokens only. The later implementation may bridge them to the private renderer, but renderer vocabulary must not become part of this contract artifact.
 
 ## Completion check
 
@@ -65,7 +165,7 @@ Before writing the artifact and returning `complete`:
 5. Verify every current token/default/alias required by reachable configurations is present and no historical-only group is promoted.
 6. Verify no token group describes a configuration the public contract cannot reach.
 7. Verify values follow repository conventions, including `dp`/`sp` when specified.
-8. Verify no private renderer/application token entered the artifact.
+8. Verify no private renderer/application token or second non-CSS token catalogue entered the artifact/worktree.
 9. Only now write/replace `tokens.css` once.
 
 If source evidence conflicts with the API boundary, return `return-to-api-contract` before writing. If blocked for source coverage/contradiction, do not create a new partial `tokens.css`.
@@ -95,3 +195,4 @@ result: complete | blocked | return-to-api-contract
 - Leaving a new partial `tokens.css` on blocked/return.
 - Replacing supported `dp`/`sp` solely to mimic browser syntax.
 - Adding private renderer bridges to the public contract file.
+- Creating TypeScript/JSON token catalogues, token-name enums, token registries, token DSLs, or runtime token metadata mirrors.
