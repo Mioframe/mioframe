@@ -18,13 +18,13 @@ rendered observable result
 
 ## Owners
 
-| Contract                                         | Owner                                              |
-| ------------------------------------------------ | -------------------------------------------------- |
-| Material reference/system foundations            | `foundation/tokens.css`                            |
-| Default light/dark system assignments            | `foundation/theme.css`                             |
-| Family public component-token contract/catalogue | `components/<family>/tokens.css`                   |
+| Contract                                         | Owner                                               |
+| ------------------------------------------------ | --------------------------------------------------- |
+| Material reference/system foundations            | `foundation/tokens.css`                             |
+| Default light/dark system assignments            | `foundation/theme.css`                              |
+| Family public component-token contract/catalogue | `components/<family>/tokens.css`                    |
 | Private renderer bridges/workarounds             | owning component implementation/private stylesheet |
-| Application tokens                               | outside Material as `--app-*`                      |
+| Application tokens                               | outside Material as `--app-*`                       |
 
 `--m3e-*` and `--md-private-*` are never public Material API.
 
@@ -41,7 +41,19 @@ The dedicated `material-component-token-contract` worker derives this artifact o
 - Do not expose renderer variables, copy renderer defaults, or add convenience aliases.
 - Do not create a TypeScript token enum, registry, DSL, JSON mirror, or second catalogue.
 
-If required token data is unavailable or contradictory in Material 3 MCP, the token worker reports `blocked`; do not guess or fall back to m3e/current code/current demand.
+### Web serialization
+
+Material token tables can use design/platform notation that is not directly consumable Web CSS. Family `tokens.css` is executable Web CSS, not a textual mirror of table cells.
+
+- Prefer an official `--md-sys-*` or `--md-ref-*` alias instead of copying its resolved literal.
+- Material spatial `dp` values without an alias serialize to the same numeric CSS `px` value for the Mioframe Web contract.
+- Family public token declaration values must not contain raw `dp` or `sp` units.
+- Typography and other values without an official alias require an already-defined deterministic Web representation; otherwise token extraction blocks rather than inventing a conversion.
+- Colors, opacity, type weight, duration, shapes and other values must be serialized in the CSS grammar that will actually consume them.
+
+This conversion changes representation, not Material semantics. Renderer vocabulary and renderer-specific conversions still belong only to implementation.
+
+If required token data or deterministic Web serialization is unavailable or contradictory, the token worker reports `blocked`; do not guess or fall back to m3e/current code/current demand.
 
 ## Foundation and theme
 
@@ -50,6 +62,8 @@ Foundation owns intentionally supported `--md-ref-*` and `--md-sys-*` roles. `th
 A family token may reference those foundation roles but must not duplicate their ownership.
 
 Product theme selection/persistence and `--app-*` customization remain outside Material.
+
+Existing foundation values predate the focused family-contract workflow and are not automatically rewritten by a family conversion. If a referenced foundation role itself is not valid for the required Web CSS grammar, implementation must report that existing foundation blocker to the architect rather than copying the invalid literal into the family contract.
 
 ## Private renderer mapping
 
