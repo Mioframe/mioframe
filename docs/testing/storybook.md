@@ -21,7 +21,8 @@ Make Storybook a predictable interactive UI workbench and proof surface:
 
 ## Storybook role
 
-Storybook is the interactive isolated UI workbench for Mioframe. It provides:
+Storybook is Mioframe's supported interactive isolated shared-UI development and demonstration
+surface. The legacy application playground has been removed. It provides:
 
 - a navigable catalogue of reusable UI owners and supported states;
 - a Playground surface for live public-API exploration through args and Controls;

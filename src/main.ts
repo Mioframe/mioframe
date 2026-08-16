@@ -19,7 +19,7 @@ if (rootMountElement) {
   restoreGhPagesSpaFallbackPath(import.meta.env.BASE_URL);
   const { setupApp } = await import('./app/setupApp');
   const { router } = await import('./app/router');
-  const app = await setupApp();
+  const app = setupApp();
 
   // For managed builds, an unhandled error anywhere in this initial boot
   // window (mount, first navigation, first render tick) must reach the
