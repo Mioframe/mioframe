@@ -5,13 +5,13 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 ## Routing
 
 - Use `material-component <name>` as the normal entrypoint for one official Material family. Do not require the operator to supply a stage or correction handoff.
-- `docs/component-workflow.md` owns sequencing, resume rules, compatibility gates, repository-local correction recovery, and coding-agent completion.
+- `docs/component-workflow.md` owns sequencing, resume rules, deterministic compatibility routing, semantic correction recovery, and coding-agent completion.
 - `docs/component-contract.md` owns the three family definition artifacts and their dependency boundary.
 - `docs/component-adapter.md` owns Vue/m3e implementation invariants.
 - `docs/component-tokens.md` owns token boundaries and rendered-result proof.
 - `docs/m3e-defects.md` owns stable renderer-defect records.
 - `docs/roadmap.md` is architect-maintained program status; coding stages do not mark review/CI/merge completion there.
-- Use `architect-handoff` only when current contracts and repository rules cannot deterministically resolve ownership, composition, or renderer behavior.
+- Use `architect-handoff` only when current contracts, deterministic routing, and repository rules cannot resolve ownership, composition, or renderer behavior.
 
 Do not duplicate detailed workflow mechanics here.
 
@@ -36,12 +36,15 @@ Old family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, 
 ## Resume and correction
 
 - Reinvoking `material-component` reconstructs the next action from repository state; lack of previous chat context is not an operator problem.
-- Before reusing existing artifacts, apply the current-rules compatibility gate from `docs/component-workflow.md`.
+- Before reusing family artifacts, the orchestrator runs exactly `node scripts/materialComponentCompatibility.mjs --family <family>` inside the normal agent sandbox and uses its JSON result for mechanical routing.
+- This helper is workflow routing, not verification proof. Its narrow use does not permit raw Node/pnpm/test/lint commands as substitutes for verifier-managed checks elsewhere.
+- Do not reproduce the helper's deterministic checks in LLM reasoning. If the helper cannot run or returns invalid output, report that failure instead of falling back to a manual semantic audit.
 - A new contract artifact becomes durable only after its worker completion check succeeds; blocked workers must not leave a new partial contract file.
-- A semantic correction that cannot always be reconstructed safely after interruption is persisted transiently as `components/<family>/.material-correction.json` by the orchestrator or architect, never pasted by the operator.
-- The correction marker stores only one unresolved owner/finding/scope and is deleted when resolved; it is not a Material contract or workflow history database.
-- An interrupted implementation resumes from current runtime/proof unless the correction marker targets an earlier owner.
-- If current stage cannot be determined mechanically and no correction marker resolves it, stop at `needs-architect` rather than rerunning the full pipeline.
+- Mechanically stale state is recomputed by the helper and is not persisted.
+- A semantic correction that cannot safely be reconstructed after interruption is persisted transiently as `components/<family>/.material-correction.json` by the orchestrator or architect, never pasted by the operator.
+- The correction marker stores only one unresolved semantic owner/finding/scope and is deleted when resolved; it is not a Material contract or workflow history database.
+- An interrupted implementation resumes from current runtime/proof unless an earlier deterministic or semantic correction takes precedence.
+- If current stage cannot be resolved from the helper, the semantic marker, and explicit stage gates, stop at `needs-architect` rather than rerunning the full pipeline.
 - After two unsuccessful correction rounds for one underlying problem, return to architecture.
 
 ## Public and renderer boundary
@@ -60,4 +63,4 @@ Old family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, 
 
 A declaration, source mapping, host attribute, story, or screenshot alone does not prove a different observable Material contract. Token/state/motion/geometry/accessibility results require the lowest faithful proof.
 
-Coding-agent work ends after contracts, standalone proof, and required migration are complete and no correction marker remains. Hand the family to the architect for semantic review, GitHub PR/CI, roadmap update, and merge readiness.
+Coding-agent work ends after contracts, standalone proof, and required migration are complete, the deterministic resolver is clean, and no semantic correction marker remains. Hand the family to the architect for semantic review, GitHub PR/CI, roadmap update, and merge readiness.
