@@ -128,20 +128,24 @@ describe('isBroadVisualRelevantPath', () => {
 });
 
 describe('isSafeVisualExclusionPath', () => {
-  it('flags colocated Vitest specs, browser-behavior specs, and Markdown regardless of owner', () => {
-    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_TEST)).toBe(true);
-    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_BROWSER_SPEC)).toBe(true);
-    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_DOC)).toBe(true);
-    expect(isSafeVisualExclusionPath(BUTTON_TEST)).toBe(true);
-    expect(isSafeVisualExclusionPath(BUTTON_BROWSER_SPEC)).toBe(true);
-    expect(isSafeVisualExclusionPath(BUTTON_DOC)).toBe(true);
-    expect(isSafeVisualExclusionPath(MD_LIB_TEST)).toBe(true);
+  it.each([
+    ['migrated owner *.test.ts', LOADING_INDICATOR_TEST],
+    ['migrated owner *.browser.spec.ts', LOADING_INDICATOR_BROWSER_SPEC],
+    ['migrated owner .md', LOADING_INDICATOR_DOC],
+    ['unmigrated shared UI *.test.ts', BUTTON_TEST],
+    ['unmigrated shared UI *.browser.spec.ts', BUTTON_BROWSER_SPEC],
+    ['unmigrated shared UI .md', BUTTON_DOC],
+    ['src/shared/lib/md/index.test.ts', MD_LIB_TEST],
+  ])('flags %s: %s', (_description, filePath) => {
+    expect(isSafeVisualExclusionPath(filePath)).toBe(true);
   });
 
-  it('does not flag a colocated visual spec, a runtime file, or a story', () => {
-    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_VISUAL_SPEC)).toBe(false);
-    expect(isSafeVisualExclusionPath(BUTTON_VUE)).toBe(false);
-    expect(isSafeVisualExclusionPath(`${BUTTON_OWNER_DIR}/MDButton.stories.ts`)).toBe(false);
+  it.each([
+    ['a colocated visual spec', LOADING_INDICATOR_VISUAL_SPEC],
+    ['a runtime file', BUTTON_VUE],
+    ['a story', `${BUTTON_OWNER_DIR}/MDButton.stories.ts`],
+  ])('does not flag %s: %s', (_description, filePath) => {
+    expect(isSafeVisualExclusionPath(filePath)).toBe(false);
   });
 });
 
@@ -401,39 +405,36 @@ describe('resolveVisualPlan unmigrated visual owners', () => {
 
     expect(plan.mode).toBe('full');
   });
+
+  it.each([
+    ['src/shared/lib/md/index.css'],
+    ['src/shared/lib/md/typography.css'],
+    ['src/shared/lib/md/space.css'],
+  ])(
+    'preserves the full lane for the Storybook preview style dependency closure: %s',
+    (filePath) => {
+      const plan = resolveVisualPlan([filePath]);
+
+      expect(plan.mode).toBe('full');
+    },
+  );
 });
 
 describe('resolveVisualPlan safe non-visual proof/documentation exclusions', () => {
-  it('skips a migrated owner Vitest spec even though it is colocated with a visual spec', () => {
-    expect(resolveVisualPlan([LOADING_INDICATOR_TEST]).mode).toBe('skip');
-  });
-
-  it('skips a migrated owner browser-behavior spec even though it is colocated with a visual spec', () => {
-    expect(resolveVisualPlan([LOADING_INDICATOR_BROWSER_SPEC]).mode).toBe('skip');
-  });
-
-  it('skips migrated owner Markdown documentation even though it is colocated with a visual spec', () => {
-    expect(resolveVisualPlan([LOADING_INDICATOR_DOC]).mode).toBe('skip');
-  });
-
-  it('skips an unmigrated shared UI Vitest spec that would otherwise fail closed to full', () => {
-    expect(resolveVisualPlan([BUTTON_TEST]).mode).toBe('skip');
-  });
-
-  it('skips an unmigrated shared UI browser-behavior spec that would otherwise fail closed to full', () => {
-    expect(resolveVisualPlan([BUTTON_BROWSER_SPEC]).mode).toBe('skip');
-  });
-
-  it('skips unmigrated shared UI Markdown documentation that would otherwise fail closed to full', () => {
-    expect(resolveVisualPlan([BUTTON_DOC]).mode).toBe('skip');
-  });
-
-  it('skips a legacy shared/lib/md Vitest spec', () => {
-    expect(resolveVisualPlan([MD_LIB_TEST]).mode).toBe('skip');
-  });
-
-  it('skips the application-shell stylesheet Storybook does not import', () => {
-    expect(resolveVisualPlan([APP_STYLES_CSS]).mode).toBe('skip');
+  it.each([
+    ['migrated owner *.test.ts, colocated with a visual spec', LOADING_INDICATOR_TEST],
+    [
+      'migrated owner *.browser.spec.ts, colocated with a visual spec',
+      LOADING_INDICATOR_BROWSER_SPEC,
+    ],
+    ['migrated owner .md, colocated with a visual spec', LOADING_INDICATOR_DOC],
+    ['unmigrated shared UI *.test.ts, otherwise fail-closed to full', BUTTON_TEST],
+    ['unmigrated shared UI *.browser.spec.ts, otherwise fail-closed to full', BUTTON_BROWSER_SPEC],
+    ['unmigrated shared UI .md, otherwise fail-closed to full', BUTTON_DOC],
+    ['src/shared/lib/md/index.test.ts', MD_LIB_TEST],
+    ['the application-shell stylesheet Storybook does not import', APP_STYLES_CSS],
+  ])('skips %s: %s', (_description, filePath) => {
+    expect(resolveVisualPlan([filePath]).mode).toBe('skip');
   });
 });
 
