@@ -1,13 +1,13 @@
 ---
 name: verification
-description: 'Use to run verifier-managed focused project checks for local development feedback, apply safe fix mode, interpret failures, and hand final exact-head verification to GitHub CI.'
+description: 'Use the canonical automatic pnpm verify workflow for coding-agent handoff, with focused verifier-managed reruns only when useful during implementation or diagnosis, and hand final exact-head verification to GitHub CI.'
 ---
 
 # Verification workflow
 
 Follow `docs/testing/architecture.md`. For Storybook-owned UI proof also follow `docs/testing/storybook.md`; `docs/testing/migration-plan.md` is the source of truth for which target discovery/ownership mechanisms are currently implemented.
 
-The coding agent owns implementation feedback and task-specific proof. GitHub CI owns the final repository verification for a pull request on its exact head. Do not duplicate the CI gate locally merely to declare the coding task complete.
+The coding agent owns implementation feedback, task-specific proof, and one final automatic local `pnpm verify` handoff run. GitHub CI owns the final repository verification for a pull request on its exact head. Ordinary `pnpm verify` is not a full-project CI duplicate: it resolves the current workspace diff to the smallest workspace-backed verification plan. Only `pnpm verify --full` / `pnpm verify:release` is unconditional full-project release verification.
 
 A skipped or empty local lane is not evidence that the proof type is unnecessary. Required contract proof must still exist and be owned correctly; CI is not a substitute for missing tests, stale ownership metadata, architecture review, required measurements, or visual evidence.
 
@@ -23,22 +23,29 @@ If sandbox restrictions prevent a verifier invocation from reaching its project-
 
 ## Local verification purpose
 
-Local verification exists to give the coding agent fast, relevant feedback while implementing or correcting code.
+Local verification exists to give the coding agent fast, relevant feedback while implementing or correcting code and to produce one canonical agent-facing summary before handoff.
 
-Use the smallest verifier-managed scope that faithfully proves the changed contract. Run broader local checks only when the changed risk or a failure diagnosis requires them.
+During implementation, use focused verifier-managed checks only when they materially shorten the feedback loop for the contract currently being edited or diagnose a failure. They are optional iteration tools, not a mandatory checklist.
 
-A coding task may be complete without a local full-project `pnpm verify` when:
+When implementation and required proof are ready for handoff, run:
 
-- the requested implementation is complete;
-- required task-specific proof exists;
-- relevant focused checks have passed, or any omitted local check is intentionally delegated to CI;
-- no known in-scope failure remains.
+```bash
+pnpm verify
+```
+
+This is the default final local coding-agent verification. It automatically resolves changed paths, selects the smallest supported checks, applies safe full-lane fallback where impact is unknown, and prints the aggregated `VERIFY RESULT` with failures, warnings, skipped lanes, trigger reasons, logs, and actions required.
+
+Do not mechanically run format, lint, type-check, unit, browser, visual, E2E, mutation, or other lanes one-by-one and then immediately repeat the same work through `pnpm verify`. If no focused feedback is needed, run the final automatic `pnpm verify` directly. If a focused check was useful during implementation, do not expand that into a complete per-label checklist before the final automatic run.
+
+If the final automatic run fails, use the smallest relevant `pnpm verify --only <label>` rerun while correcting that failure when useful, then run the original automatic `pnpm verify` once after the corrections are stable. Do not rerun every unaffected label individually.
+
+A task may hand back with a partial local verification result only when the final automatic `pnpm verify` cannot complete for a concrete environment, unrelated repository, or unresolved external blocker. Report the exact blocker and do not replace the automatic run with a manually assembled list of labels.
 
 The architect owns PR creation, exact-head CI review, and merge readiness.
 
 ## Focused execution
 
-Use verifier-managed labels:
+Focused execution is for intermediate feedback, diagnosis, or a narrow rerun after a failed automatic check. Use verifier-managed labels when that narrower iteration is materially useful:
 
 ```bash
 pnpm verify --only format --files <paths...>
@@ -54,12 +61,16 @@ pnpm verify --only mutation --files <paths...>
 
 `--files` names readable existing paths. Removed, moved, or uncertain ownership must be handled by automatic status-aware planning or a full owning-lane fallback, not by passing nonexistent paths.
 
+Do not use `--only` to reconstruct the final verification plan manually. The automatic `pnpm verify` planner owns that decision for handoff.
+
 Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or mutation commands are narrow diagnostic exceptions only. Return to a verifier-managed command for accepted local proof.
 
 ## Mode constraints
 
 - Unknown, positional, or repeated arguments are rejected rather than silently changing scope.
+- `pnpm verify` without `--full` is automatic changed-workspace verification and is the normal coding-agent handoff command.
 - `--full` is unconditional full-project scope and must not be combined with `--files`.
+- `pnpm verify --full` / `pnpm verify:release` is not the normal coding-agent handoff path unless the task explicitly requires release/full-project proof.
 - Release-only labels require `--full`.
 - Mutation is targeted and is not available as `--full --only mutation`.
 - Fix modes are limited to checks that actually own safe automatic fixes.
@@ -116,19 +127,19 @@ A passing screenshot comparison does not prove Material correctness or browser b
 
 ## Mutation
 
-A focused mutation audit may run after focused deterministic tests pass:
+A focused mutation audit may run after focused deterministic tests pass when mutation-specific feedback is actually required:
 
 ```bash
 pnpm verify --only mutation --files <narrow-source-or-test-paths...>
 ```
 
-Use persistent registered high-risk ownership when implemented. Do not infer semantic applicability merely from neighboring files or agent prose.
+Use persistent registered high-risk ownership when implemented. Do not infer semantic applicability merely from neighboring files or agent prose. Do not add a separate mutation run merely because mutation may also be selected by the final automatic `pnpm verify`.
 
 ## Release-sensitive work
 
 Build/release configuration, routing/base paths, manifest/PWA/service-worker/channel isolation, release scripts, artifact assembly, or production-output dependency changes may require release-sensitive proof.
 
-The coding agent runs focused local release-sensitive checks when useful for implementation feedback. The authoritative final release/merge gate is the required GitHub CI workflow for the exact PR head. Do not run a second broad local gate solely to duplicate CI.
+Use the normal automatic `pnpm verify` for coding-agent handoff unless the implementation contract explicitly requires a release/full-project local gate. `pnpm verify --full` / `pnpm verify:release` remains an explicit release verification mode, not a synonym for ordinary final local verification. The authoritative final release/merge gate is the required GitHub CI workflow for the exact PR head.
 
 ## Performance evidence
 
@@ -143,19 +154,19 @@ A durable product budget belongs in an automated check with stable impact owners
 
 ## Fix mode
 
-When only automatic formatting, lint fixes, or instruction compatibility generation is needed:
+When automatic formatting, lint fixes, or instruction compatibility generation is needed:
 
 ```bash
 pnpm verify --fix-only
 ```
 
-Inspect resulting file changes. Fix mode is development tooling; it does not replace CI and does not itself prove correctness.
+Inspect resulting file changes. Fix mode is development tooling; it does not replace the final automatic `pnpm verify` and does not itself prove correctness.
 
 ## CI merge gate
 
 For pull-request work, GitHub CI is the authoritative final repository verification because it runs against the exact published PR head in the controlled CI environment.
 
-The coding agent does not own this gate and must not delay handoff merely because a full local `pnpm verify` has not been run.
+The coding agent owns the optimized automatic local handoff run (`pnpm verify`) but does not own or duplicate unconditional full-project/release CI verification locally. Do not require `pnpm verify --full` or `pnpm verify:release` merely to hand work back to the architect.
 
 The architect must not recommend merge until all required exact-head CI checks are green and the implementation has passed architecture/review requirements.
 
@@ -164,14 +175,17 @@ If CI fails:
 1. identify the failed CI contract and exact output;
 2. route the failure to the correct owner;
 3. fix in-scope failures;
-4. run the smallest relevant verifier-managed local check for feedback;
-5. push the correction and let CI rerun the authoritative exact-head gate.
+4. run the smallest relevant verifier-managed local check for feedback when useful;
+5. before handoff of that correction, run the automatic `pnpm verify` once on the corrected workspace;
+6. push the correction and let CI rerun the authoritative exact-head gate.
 
-Do not require a full local rerun after every correction unless it is materially useful for diagnosis.
+Do not precede that final automatic run with a redundant complete checklist of `--only` lanes.
 
 ## Mode-specific changes
 
-When verifier tooling, Storybook, Playwright configuration, resolver logic, build configuration, package scripts, or command output changes, verify every affected user-visible mode during focused development proof.
+When verifier tooling, Storybook, Playwright configuration, resolver logic, build configuration, package scripts, or command output changes, verify every affected user-visible mode during implementation proof.
+
+Prefer resolver/unit/command-planning tests that exercise the affected modes as part of the code's normal proof, then let the final automatic `pnpm verify` select executable lanes. Use separate `--only` invocations only when they materially improve iteration or diagnose a failure; do not execute every affected mode separately merely to repeat it in the final automatic run.
 
 Examples:
 
@@ -188,10 +202,11 @@ When a local required check, ownership validation, or measurement fails:
 1. identify the failed label/plan/command/metric;
 2. determine whether current changes caused it;
 3. fix in-scope failures or stale ownership facts;
-4. rerun the narrow failed proof through `pnpm verify --only <label>` while preserving applicable scope;
-5. report unrelated/unresolved failures exactly.
+4. rerun the narrow failed proof through `pnpm verify --only <label>` only when useful for the correction loop;
+5. once corrections are stable, rerun the original automatic `pnpm verify` once for handoff;
+6. report unrelated/unresolved failures exactly.
 
-Do not substitute a raw child command printed by a failed step for the verifier-managed rerun.
+Do not substitute a raw child command printed by a failed step for the verifier-managed rerun. Do not rerun all successful labels individually before the final automatic run.
 
 If verification is active, use `pnpm verify:status` and `pnpm verify:resume` according to repository output rather than starting duplicate expensive runs.
 
@@ -207,12 +222,12 @@ status: complete | partial | blocked
 remaining: none | <remaining implementation/proof/blocker>
 
 LOCAL VERIFY RESULT
-commands: <focused verifier-managed commands actually run, or none>
+commands: <final pnpm verify, plus only focused verifier-managed commands that were actually useful during implementation/diagnosis>
 status: passed | failed | partial | not run
-reason if partial/not run: <reason>
+reason if partial/not run: <reason the final automatic pnpm verify could not complete>
 
 CI GATE
 status: not owned by coding agent
 ```
 
-`complete` requires assigned implementation scope, acceptance criteria, required task-specific proof, and no known in-scope failure. It does not require the coding agent to duplicate the PR CI gate locally.
+`complete` requires assigned implementation scope, acceptance criteria, required task-specific proof, no known in-scope failure, and an attempted final automatic `pnpm verify` handoff run. A concrete unrelated/environment blocker may make `LOCAL VERIFY RESULT` partial without changing implementation completeness, but the blocker must be reported exactly. `complete` does not require the coding agent to run `pnpm verify --full` / `pnpm verify:release` or duplicate the exact-head PR CI gate locally.
