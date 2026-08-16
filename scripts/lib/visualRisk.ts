@@ -34,8 +34,15 @@ const FULL_LANE_EXACT_FILES = new Set([
   'vite.config.ts',
   'src/app/styles/base.css',
   'src/app/styles/fonts.css',
-  'src/app/styles/styles.css',
 ]);
+
+// Safe non-visual proof/documentation suffixes that cannot affect Storybook
+// rendering: colocated Vitest specs, Storybook browser-behavior specs, and
+// plain Markdown documentation. Checked ahead of owner-local and broad
+// visual-relevant classification so these never select or force the visual
+// lane, but after global infrastructure/package.json/spec/snapshot
+// resolution, which stays independently authoritative.
+const SAFE_VISUAL_EXCLUSION_SUFFIXES = ['.test.ts', '.browser.spec.ts', '.md'];
 
 // Legacy central visual execution remains full-fallback for its entire
 // subtree during S3: specs, snapshots, and shared visual helpers alike.
@@ -149,6 +156,18 @@ export function isBroadVisualRelevantPath(filePath: string): boolean {
 }
 
 /**
+ * Check whether a changed file is a safe non-visual proof/documentation
+ * path that cannot affect Storybook rendering, regardless of which owner
+ * directory it lives in: a colocated Vitest spec, a Storybook
+ * browser-behavior spec, or plain Markdown documentation.
+ * @param filePath Repository-relative changed file path.
+ * @returns True when the path is a safe non-visual exclusion.
+ */
+export function isSafeVisualExclusionPath(filePath: string): boolean {
+  return SAFE_VISUAL_EXCLUSION_SUFFIXES.some((suffix) => filePath.endsWith(suffix));
+}
+
+/**
  * The owner root a colocated visual spec's local ownership applies to: the
  * directory containing the spec. A changed path starting with this root
  * (including the spec itself) belongs to the spec's owner.
@@ -241,7 +260,9 @@ export interface ResolveVisualPlanOptions {
  * resolvable colocated owner, or a Storybook/Playwright-relevant
  * `package.json` change), focused (changed colocated visual specs,
  * colocated owner-local source relations, and/or colocated baseline
- * relations), or skip (no relevant changes).
+ * relations), or skip (safe non-visual proof/documentation paths, or no
+ * relevant changes). Safe non-visual proof/documentation paths never widen
+ * to full and never narrow an independently full or focused result.
  * @param changedFiles Sorted unique list of repository-relative changed file paths.
  * @param [options] Resolution options.
  * @returns Plan with `mode`, candidate `specs`, and human-readable `reasons`.
@@ -299,6 +320,10 @@ export function resolveVisualPlan(
         );
       }
 
+      continue;
+    }
+
+    if (isSafeVisualExclusionPath(filePath)) {
       continue;
     }
 
