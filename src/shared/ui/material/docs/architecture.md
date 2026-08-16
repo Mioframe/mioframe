@@ -4,62 +4,50 @@
 
 Mioframe exposes one canonical Vue Material library under `src/shared/ui/material`.
 
-Official Material 3 Expressive defines the public component API, behavior, geometry, motion, accessibility, token model, and correct component usage. Definition workers and independent review read those official facts through the repository-configured `material3` MCP. `@m3e/web` is a private renderer and never defines Mioframe public API or usage guidance.
+Official Material 3 Expressive defines the public component API, behavior, geometry, motion, accessibility, and token model. The three contract workers read those facts through the repository-configured `material3` MCP. `@m3e/web` is a private renderer and never defines Mioframe public API.
 
 Workflow mechanics belong only to [`component-workflow.md`](./component-workflow.md). Family definition ownership belongs to [`component-contract.md`](./component-contract.md). This document owns durable library boundaries.
 
 ## Sources of truth
 
-1. Material 3 MCP — canonical upstream Material semantics and usage guidance;
-2. family `contract.ts` — public parameters/props, slots, events, values/types and defaults;
-3. family `tokens.css` — executable public component-token contract and catalogue;
+1. Material 3 MCP — canonical upstream Material semantics;
+2. family `contract.ts` — public parameters/props, slots, events, configurations/types and defaults;
+3. family `tokens.css` — executable current public component-token contract/catalogue;
 4. family `BEHAVIOR.md` — normative observable behavior, accessibility, geometry and motion;
-5. family `README.md` — developer-facing description and correct Material application guidance;
-6. runtime code and executable proof — standalone implementation truth;
-7. migrated consumers and product proof — adoption truth;
-8. `docs/m3e-defects.md` — renderer defects/workarounds;
-9. `docs/roadmap.md` — mutable milestone status and next action.
+5. runtime code and executable proof — standalone implementation truth;
+6. migrated consumers/product proof — adoption truth;
+7. `docs/m3e-defects.md` — renderer defects/workarounds;
+8. `docs/roadmap.md` — architect-maintained milestone status and next action.
 
-Legacy family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files are historical workflow evidence only until the family is converted.
+A family `README.md` may contain ordinary developer documentation but is not a workflow source of truth or stage-completion record.
+
+Legacy family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files are historical workflow evidence only until conversion.
 
 ## Ownership
 
-Each official family owns its three technical contracts, developer usage README, Vue adapter, public component tokens, private renderer mappings/workarounds, and component-specific proof.
+Each official family owns its three technical contracts, Vue adapter, public component tokens, private renderer mappings/workarounds, and component-specific proof.
 
 Product layers retain product state, persistence, routing, errors, operation lifecycle, availability/disabled guards, and business behavior.
 
 Dependencies remain separate Material families consumed through canonical public APIs.
 
+The architect owns semantic review of the resulting family/PR, correction routing after coding handoff, roadmap status, exact-head CI review, and merge readiness.
+
 ## Public Vue boundary
 
 Public APIs use official Material terminology and idiomatic Vue semantics. They keep types renderer-independent and expose no raw m3e tags, attributes, events, types, classes, or CSS variables.
 
-The public family contract is not demand-scoped. Current Mioframe consumers do not decide which official Material variants, states, content roles, events, or tokens exist in the canonical component.
+The public family contract is not demand-scoped. Current Mioframe consumers do not decide which official current Material configurations, states, content roles, events, or tokens exist in the canonical component.
 
 Do not add undocumented convenience surface, platform-inapplicable surface, renderer vocabulary, legacy compatibility aliases, or speculative non-Material behavior.
 
-## Usage guidance boundary
-
-Family `README.md` answers developer-facing questions such as:
-
-- what the component is for;
-- when to use or avoid it;
-- which official variant/configuration fits a scenario;
-- what content is appropriate;
-- what accessibility responsibility remains with the consumer;
-- when a related Material component is the correct choice instead.
-
-It derives only from Material 3 MCP and remains independent from current Mioframe call sites. It does not duplicate runtime API tables, token catalogues, normative interaction/geometry/motion rules, renderer details, or product migration instructions.
-
-Usage guidance is independent from standalone runtime implementation and may complete in parallel with it. It becomes required when migration maps real product scenarios to the finished canonical component.
-
 ## Definition isolation
 
-API contract, token contract, behavior contract, and usage guidance extraction are separate fresh worker responsibilities. All official Material facts come from Material 3 MCP.
+API contract, token contract, and behavior contract extraction are separate fresh worker responsibilities. All official Material facts come from Material 3 MCP.
 
-Definition workers do not inspect m3e, legacy implementation, application consumers, or current call-site demand.
+Contract workers do not inspect m3e, legacy implementation, application consumers, or current call-site demand.
 
-There is no mandatory design, architecture, source-ledger, synthesis, or definition-review stage in the normal path.
+There is no mandatory design, architecture, source-ledger, synthesis, guidance, definition-review, or coding-agent final-review stage in the normal path.
 
 ## Renderer boundary
 
@@ -67,32 +55,42 @@ Outside `src/shared/ui/material`, consumers must not import `@m3e/web`, render `
 
 Inside standalone implementation, prefer documented exact-version renderer inputs, derive glue from exported types, keep mappings local, avoid private-shadow-DOM coupling, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
 
-A renderer limitation does not redefine a Material contract. Use a small family-local correction or documented exact-version workaround when that preserves the contracts; otherwise escalate to architecture/upstream rather than weakening public API/behavior/tokens.
+A renderer limitation does not redefine a Material contract. Use a small family-local correction or documented exact-version workaround when that preserves the contracts; otherwise escalate rather than weakening public API/behavior/tokens.
 
-Do not introduce a generic adapter framework without demonstrated repeated need and a separate architecture decision.
+Prefer explicit local mapping over generic adapter machinery. Generalize only when repeated proven needs make total ownership simpler.
 
-Migration consumes only the finished canonical Mioframe Material API plus family README guidance; it does not inspect renderer internals.
+Migration consumes only the finished canonical Mioframe Material API and current consumers; it does not inspect renderer internals or redefine Material.
 
 ## Token boundary
 
-Foundation owns supported `--md-ref-*` and `--md-sys-*`; each family owns official public `--md-comp-<family>-*`; application code owns `--app-*`; renderer/private internals own `--m3e-*` and `--md-private-*`.
+Foundation owns supported `--md-ref-*` and `--md-sys-*`; each family owns current official public `--md-comp-<family>-*`; application code owns `--app-*`; renderer/private internals own `--m3e-*` and `--md-private-*`.
 
 Public component tokens derive from Material 3 MCP rather than current consumer overrides or renderer variables. Each family `tokens.css` is the executable public component-token catalogue; do not create a second central registry. Runtime renderer mappings remain private.
 
+Historical/baseline token rows still present in Material documentation are not automatically part of the current Expressive public contract.
+
 ## Standalone-first integration
 
-A canonical family can enter standalone implementation once its API, token, and behavior contracts are complete. The implementation is proven before application consumers are inspected for migration.
+A canonical family enters standalone implementation once its API, token, and behavior contracts are complete.
 
-A separate fresh migration worker starts only after standalone proof and usage guidance are both complete. It adapts consumers to the canonical API according to family README guidance. If a legacy behavior belongs to product/shared composition rather than the Material component, keep it with that owner instead of expanding Material.
+The implementation is proven before application consumers are inspected for first migration. For later corrections, migration runs again only when the correction actually changes consumer usage or legacy ownership remains.
+
+## Resume-first workflow
+
+Repository artifacts are durable stage results. A fresh invocation does not rerun completed contract workers solely because previous chat context is unavailable.
+
+A completed stage is reopened only by an exact architect correction handoff naming the owner and finding. If the current stage cannot be determined mechanically, the coding workflow stops at `needs-architect` rather than rebuilding everything.
+
+This keeps correction work bounded and prevents an interrupted coding run from rewriting unrelated contracts or marking false completion state.
 
 ## Proof and completion
 
 Standalone implementation proves the canonical API, renderer mapping, public tokens, behavior, accessibility, geometry, motion, and standalone presentation at the lowest faithful level.
 
-Migration separately proves consumer adoption, preserved product behavior and legacy removal. Correct-use guidance itself is reviewed against Material 3 MCP; add product proof only when applying that guidance changes an observable product scenario.
+Source-level CSS assignment is not rendered token proof. Screenshots are not the sole oracle for fixed geometry/state semantics.
 
-A fresh independent reviewer checks Material 3 MCP against all three technical contracts and the family README, then implementation, exact-version renderer behavior, proof, consumers and ownership.
+Migration separately proves required consumer adoption, preserved product behavior and legacy removal.
 
-After successful review, the coding-agent workflow hands the family to the architect. GitHub CI on the exact PR head is the authoritative repository verification gate. Merge readiness belongs to the architect after CI and full PR review.
+The coding-agent workflow then stops. The architect reviews Material fidelity, cross-contract reachability, exact-version renderer behavior, proof, consumers, ownership, and the full PR before exact-head CI/merge decisions.
 
-Renderer-owned appearance requires faithful browser or visual evidence. Green automated checks do not replace semantic or independent review.
+Green automated checks do not replace architect semantic review.
