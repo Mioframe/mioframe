@@ -100,7 +100,15 @@ The gate must not:
 - inspect consumers to re-derive public demand;
 - act as a semantic family review.
 
-When one deterministic incompatibility maps to one owner, persist that exact correction in the recovery marker and run the owner automatically. When ownership cannot be determined mechanically, use `needs-architect`; do not guess or rebuild the full pipeline.
+When several deterministic incompatibilities map to different owners, process the earliest owner in this fixed recovery order and rerun the gate after that correction:
+
+```text
+api-contract → token-contract → behavior-contract → implementation → migration
+```
+
+Token and behavior remain independent definition owners; this ordering exists only to recover deterministically from an already-stale repository. Do not pre-plan later corrections because an earlier correction may invalidate or remove them.
+
+For the selected earliest owner, consolidate all currently visible mechanical violations for that owner into one correction marker and run it automatically. When ownership still cannot be determined mechanically, use `needs-architect`; do not guess or rebuild the full pipeline.
 
 ## Durable correction recovery
 
