@@ -49,6 +49,105 @@ Framework mechanics are not additional Material semantics. Do not create an even
 
 Do not add implementation helpers, renderer types, legacy aliases, speculative convenience API, or surface omitted from Material 3 MCP.
 
+## Decision examples
+
+These examples illustrate the decision rule and artifact shape only. They are not Material source evidence. If an example conflicts with current Material 3 MCP, current Material wins.
+
+### Current Material surface, not current Mioframe demand
+
+Suppose Material documents one current action family with three sizes, two developer-selectable appearances, an optional icon, visible label content, and explicit defaults. Mioframe currently uses only one size and one appearance.
+
+GOOD:
+
+```ts
+export type MDExampleActionSize = 'small' | 'medium' | 'large';
+export type MDExampleActionAppearance = 'primary' | 'secondary';
+
+export interface MDExampleActionProps {
+  size?: MDExampleActionSize;
+  appearance?: MDExampleActionAppearance;
+}
+
+export interface MDExampleActionSlots {
+  default: () => unknown;
+  icon?: () => unknown;
+}
+
+export interface MDExampleActionEmits {
+  click: [event: MouseEvent];
+}
+
+export const mdExampleActionDefaults = {
+  appearance: 'primary',
+  size: 'small',
+} as const satisfies Pick<MDExampleActionProps, 'appearance' | 'size'>;
+```
+
+Why: the contract represents the complete current Material-owned structural surface and keeps public terminology independent from the renderer and current consumer count.
+
+BAD:
+
+```ts
+export interface MDExampleActionProps {
+  size?: 'small';
+}
+```
+
+Why: this shrinks the canonical family to today's Mioframe usage.
+
+### Historical rows do not become current API
+
+Suppose a Material page documents `small | medium | large` as the current Expressive sizes and also keeps a separately labelled baseline size for historical reference.
+
+GOOD:
+
+```ts
+export type MDExampleActionSize = 'small' | 'medium' | 'large';
+```
+
+BAD:
+
+```ts
+export type MDExampleActionSize = 'baseline' | 'small' | 'medium' | 'large';
+```
+
+Why: mere presence on the page is not evidence that a baseline/deprecated configuration belongs to the current family.
+
+### Renderer capability does not create public API
+
+Suppose m3e supports `disabled`, `lowered`, and an extra renderer variant, but current Material documentation for the selected family does not expose those as current component-owned choices.
+
+GOOD: omit them from `contract.ts`.
+
+BAD:
+
+```ts
+export interface MDExampleActionProps {
+  disabled?: boolean;
+  lowered?: boolean;
+  rendererVariant?: string;
+}
+```
+
+Why: renderer capability is private implementation information, not Material API authority.
+
+### Material silence does not create convenience API
+
+Suppose Material defines an activatable control but does not define a loading mode or arbitrary `tone` customization for this family.
+
+GOOD: expose neither unless another canonical Material requirement actually owns that surface.
+
+BAD:
+
+```ts
+export interface MDExampleActionProps {
+  loading?: boolean;
+  tone?: 'brand' | 'danger';
+}
+```
+
+Why: useful-looking application conveniences are not part of a canonical Material contract unless Material owns them.
+
 ## Completion check
 
 Before writing the artifact and returning `complete`:
