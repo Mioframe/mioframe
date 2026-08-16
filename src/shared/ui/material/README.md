@@ -2,7 +2,7 @@
 
 `src/shared/ui/material` is the canonical owner of Mioframe’s project-facing Material Vue API, supported Material token API, private renderer integration, and Material-specific documentation.
 
-Official Material 3 Expressive defines the public model and correct component usage. Definition workers read it through the repository-configured `material3` MCP. `@m3e/web` is the preferred private renderer, not an API or guidance authority.
+Official Material 3 Expressive defines the public model. Contract workers read it through the repository-configured `material3` MCP. `@m3e/web` is the preferred private renderer, not a public API authority.
 
 ## Public entrypoint
 
@@ -16,31 +16,28 @@ A public `MD*` family:
 
 - uses official Material terminology and semantics;
 - is defined independently from current Mioframe consumers;
-- documents when and how the component should be used according to Material guidance;
 - keeps renderer tags, attributes, events, types, and private CSS inputs out of consumers;
 - contains no product behavior or undocumented Material extension.
 
 ## Family layout
 
-A family processed by the current workflow has three mandatory technical contracts plus one mandatory developer-guidance artifact:
+A family processed by the current workflow has exactly three mandatory definition artifacts:
 
 ```text
 components/<family>/
   contract.ts
   tokens.css
   BEHAVIOR.md
-  README.md
   <Vue runtime, tests, stories, private renderer glue>
 ```
 
-- `contract.ts` owns public parameters/props, slots, events, public types and defaults.
-- `tokens.css` owns the public official component-token contract/catalogue.
+- `contract.ts` owns public parameters/props, slots, events, public types/configurations and defaults.
+- `tokens.css` owns the current official public component-token contract/catalogue.
 - `BEHAVIOR.md` owns normative observable behavior, accessibility, geometry and motion.
-- `README.md` owns the official component description, when/how to use it, variant/content guidance, consumer accessibility responsibilities, and related-component distinctions. It is not a runtime contract.
+
+A family `README.md` may exist as ordinary developer documentation. It is not a workflow stage, runtime contract, migration gate, or completion record.
 
 Old `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` files may remain temporarily in untouched families as legacy evidence. They are removed when that family is converted through the current workflow.
-
-The complete operator flow belongs only to [`docs/component-workflow.md`](./docs/component-workflow.md). The normal entrypoint remains one `material-component <name>` invocation.
 
 ## Ownership
 
@@ -48,11 +45,10 @@ Material owns:
 
 - canonical Vue contracts, adapters and exports;
 - official public component tokens;
-- official family usage guidance;
-- renderer-independent Material foundation and theme declarations;
+- renderer-independent Material foundation/theme declarations;
 - private family-local renderer mappings;
 - approved family-local renderer corrections/workarounds;
-- component tests, stories, visual/browser proof, and stable renderer defect records.
+- component tests, stories, browser/visual proof, and stable renderer defect records.
 
 Material does not own:
 
@@ -65,22 +61,18 @@ Material does not own:
 
 Outside this directory, code must not import `@m3e/web`, render `m3e-*`, consume renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
 
-Inside an owning family implementation, prefer documented exact-version renderer inputs, derive private glue from package-exported types, and do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion.
-
-Migration consumes the finished canonical Mioframe Material API plus family `README.md` guidance and does not inspect renderer internals.
+Inside an owning family implementation, prefer documented exact-version renderer inputs and keep private glue local. Do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion when the renderer already satisfies the contract.
 
 ## Workflow
 
 ```text
 API contract       ┐
-Token contract     ├─→ technical contract ready → implementation ┐
-Behavior contract  ┘                                              │
-                                                                 ├─→ migration → independent review
-Usage guidance ──────────────────────────────────────────────────┘
+Token contract     ├─→ contract ready → implementation → migration if required → architect review / CI
+Behavior contract  ┘
 ```
 
-Definition workers are deliberately narrow and isolated. Standalone implementation is gated only by the three technical contracts and stays focused on exact m3e mapping; usage guidance is independent and must be complete before the later migration worker reads application consumers.
+The workflow is resume-first. Reinvoking `material-component <name>` continues the current repository state and does not regenerate completed contracts. A completed stage is reopened only by an exact architect correction handoff.
 
-A non-deterministic architecture/ownership problem is escalated through `architect-handoff` only when it actually appears rather than being a mandatory stage for every component.
+Coding-agent work ends at architect handoff. Semantic review, PR/CI handling, roadmap completion, and merge readiness are architect-owned.
 
-See [`docs/roadmap.md`](./docs/roadmap.md) for current program status and next action.
+See [`docs/component-workflow.md`](./docs/component-workflow.md) for sequencing and [`docs/roadmap.md`](./docs/roadmap.md) for architect-maintained program status.
