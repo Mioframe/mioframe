@@ -1,6 +1,6 @@
 ---
 name: material-component-token-contract
-description: 'Use for one official Material family to derive only its canonical public component-token CSS contract from the material3 MCP before implementation.'
+description: 'Use after the API contract is complete to derive only the current public Material component-token CSS contract from material3 MCP.'
 ---
 
 # Material component token contract
@@ -11,54 +11,64 @@ Own exactly one artifact:
 src/shared/ui/material/components/<family>/tokens.css
 ```
 
+## Input
+
+Require completed:
+
+```text
+src/shared/ui/material/components/<family>/contract.ts
+```
+
+Read it only to know the current developer-selectable configurations/content terminology already established for the family. It is not a source for token facts.
+
 ## Source
 
-Material token facts come from the repository-configured `material3` MCP server in `.mcp.json`.
+Material token facts come only from the repository-configured `material3` MCP server in `.mcp.json`.
 
-Do not substitute m3e token docs, legacy CSS, application overrides, web search, or memory for Material 3 MCP.
+Do not substitute m3e token docs, legacy CSS, application overrides, web search, memory, or `contract.ts` contents for Material token evidence.
 
-After complete applicable source coverage, a token/default/alias Material does not define is not an ambiguity. Do not invent one to make the catalogue look complete.
-
-Report `blocked` only when applicable Material token source coverage cannot be established, official Material token data contradicts itself, or an unavailable fact prevents defining a Material-owned public token requirement.
+After complete source coverage, a token/default/alias Material does not define is not an ambiguity. Do not invent one.
 
 ## Isolation
 
 Run in a fresh isolated context.
 
-Read only applicable `AGENTS.md`, `src/shared/ui/material/docs/component-contract.md`, `src/shared/ui/material/docs/component-tokens.md`, the Material 3 MCP token/spec pages needed for this family, and the minimum Material foundation naming conventions needed to serialize `tokens.css`.
+Read only applicable `AGENTS.md`, `component-contract.md`, `component-tokens.md`, completed `contract.ts`, the Material 3 MCP token/spec pages needed for this family, and minimum Material foundation naming conventions needed to serialize CSS.
 
-Do not inspect m3e mappings, legacy component CSS, application consumers, runtime implementation, or another contract worker's reasoning.
+Do not inspect m3e mappings, legacy component CSS, application consumers, runtime implementation, `BEHAVIOR.md`, or another worker's reasoning.
 
 ## Output
 
-Define only the canonical public component-token contract for the current Material 3 Expressive family:
+Define only the canonical public token contract for the current Material 3 Expressive family:
 
-- official component tokens for current family configurations, variants, parts and states;
+- official tokens for current configurations, parts and states reachable through `contract.ts` or unconditional to the family;
 - canonical `--md-comp-*` names derived from Material semantics;
 - official defaults and `--md-sys-*` / `--md-ref-*` aliases where defined;
-- comments only when needed to preserve a non-obvious official semantic distinction.
+- comments only for non-obvious official distinctions.
 
-Material pages can retain baseline, legacy, deprecated, or no-longer-recommended token tables next to current Expressive tables. Do not copy a token group merely because it appears on the page. Include it only when it belongs to a current canonical family configuration; exclude groups explicitly scoped to a retired/baseline configuration that the current Expressive public contract does not expose.
+Material pages may mix current and historical rows in one section/table. Classify at row/group level from surrounding Material headings/prose and current family semantics; do not treat every row in a current-looking table as current automatically.
 
-`tokens.css` is the executable public catalogue.
+If token evidence proves that `contract.ts` exposes a historical/non-current configuration, or reveals a current developer-selectable configuration missing from `contract.ts`, do not compensate in CSS. Return `return-to-api-contract` with the exact configuration mismatch.
 
-Use the repository's existing Material CSS authoring conventions when serializing official values. Material `dp` and `sp` units are supported project authoring units and are transformed by the repository PostCSS pipeline; do not replace them merely because browsers do not natively parse those units.
+Use repository Material CSS authoring conventions. Material `dp` and `sp` are supported authoring units transformed by the project pipeline.
 
 Do not add `--m3e-*`, `--md-private-*`, `--app-*`, renderer mappings/defaults, token enums, registries, DSLs, JSON mirrors, or compatibility aliases.
 
 ## Completion check
 
-Before returning `complete`:
+Before writing the artifact and returning `complete`:
 
-1. Query Material 3 MCP using the official family/component name and token/spec scope.
-2. Inspect every applicable MCP token route/table surfaced for the family, including configuration/variant/state/part-specific tables and surrounding headings/prose that classify each table as current, baseline, legacy, deprecated, or no longer recommended.
-3. Identify the current Expressive token groups before serializing them. Do not merge baseline-only groups into the current catalogue.
-4. Re-read `tokens.css` against those sources and verify no documented public component token, official default, or official system/reference alias for a current canonical configuration was omitted, invented, or renamed from renderer/legacy vocabulary.
-5. Verify every token group in `tokens.css` belongs to a current canonical family configuration rather than a historical configuration absent from the current public family.
-6. Verify values follow the repository's established Material CSS authoring conventions, including supported `dp`/`sp` units where Material specifies them.
-7. Verify the artifact contains no private renderer bridges or application tokens.
-8. Distinguish Material silence from a blocker: complete source coverage plus an unspecified token/default/alias may still return `complete`.
-9. Report `blocked` only for incomplete source coverage, contradictory official token data, or a missing fact required to decide a Material-owned token rule.
+1. Read the current configuration/content boundary from `contract.ts` without changing it.
+2. Query Material 3 MCP using official family/component name and token/spec scope.
+3. Inspect every applicable token route/table and surrounding classification prose.
+4. Classify current versus baseline/legacy/deprecated rows/groups; do not rely on table title alone.
+5. Verify every current token/default/alias required by reachable configurations is present and no historical-only group is promoted.
+6. Verify no token group describes a configuration the public contract cannot reach.
+7. Verify values follow repository conventions, including `dp`/`sp` when specified.
+8. Verify no private renderer/application token entered the artifact.
+9. Only now write/replace `tokens.css` once.
+
+If source evidence conflicts with the API boundary, return `return-to-api-contract` before writing. If blocked for source coverage/contradiction, do not create a new partial `tokens.css`.
 
 ## Report
 
@@ -67,18 +77,21 @@ MATERIAL TOKEN CONTRACT RESULT
 family: <family>
 artifact: <tokens.css path>
 Material 3 MCP coverage: complete | blocked
+API boundary: compatible | return-to-api-contract
+API finding: none | <exact configuration mismatch>
 unresolved blocking ambiguity: none | <exact ambiguity>
-result: complete | blocked
+result: complete | blocked | return-to-api-contract
 ```
 
 ## Forbidden
 
-- Reading m3e or consumers to select or name public tokens.
-- Making the token surface demand-scoped.
-- Copying baseline/legacy token groups into the current Expressive contract solely because Material still documents them historically.
-- Treating absent Material token data as permission to invent a public token.
-- Treating a non-existent Material token/default/alias as a blocker after complete source coverage.
+- Reading m3e or consumers to select/name public tokens.
+- Treating `contract.ts` as token authority rather than structural scope.
+- Making token surface demand-scoped.
+- Copying all rows from a mixed current/baseline table without classification.
+- Repairing an API-boundary mismatch inside `tokens.css`.
+- Treating absent Material token data as permission to invent a token.
 - Editing `contract.ts`, `BEHAVIOR.md`, runtime code, tests, consumers, or migration.
-- Guessing missing Material token facts.
-- Replacing repository-supported Material `dp`/`sp` authoring units solely to mimic native browser syntax.
+- Leaving a new partial `tokens.css` on blocked/return.
+- Replacing supported `dp`/`sp` solely to mimic browser syntax.
 - Adding private renderer bridges to the public contract file.
