@@ -1,6 +1,6 @@
 # Mioframe Material migration roadmap
 
-This file owns current repository-local Material milestone status, repository-visible technical blockers, and the next Material pipeline action. Every recorded state must be derivable from current repository contents. Durable workflow rules live in the canonical Material docs and skills.
+This architect-maintained file owns current repository-local Material milestone status, repository-visible technical blockers, and the next Material pipeline action. Coding stages must not mark review/CI/merge completion here. Every recorded state must be derivable from current repository contents.
 
 ## Current state
 
@@ -18,7 +18,7 @@ Implemented canonical runtime families in the current repository tree:
 - Checkbox;
 - Floating Action Button.
 
-These existing families were produced by the previous staged workflow and may still contain legacy DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW artifacts. The current workflow does not bulk-rewrite them; each family is converted to `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and developer-facing `README.md` when that family is next materially processed.
+These existing families were produced by the previous staged workflow and may still contain legacy DESIGN/ARCHITECTURE/IMPLEMENTATION/MIGRATION/REVIEW artifacts. The current workflow does not bulk-rewrite them; each family is converted to `contract.ts`, `tokens.css`, and `BEHAVIOR.md` when that family is next materially processed.
 
 The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is next processed, the behavior contract worker must derive the current result from Material 3 MCP; if the source remains contradictory, the behavior contract is blocked rather than guessed from legacy evidence.
 
@@ -42,4 +42,4 @@ No repository-local blocker prevents selecting the next M3 family.
 
 ## Next Material pipeline action
 
-Run `material-component Extended FAB` using the focused three-contract plus usage-guidance workflow.
+Run `material-component Extended FAB` using the resume-first three-contract workflow, then hand the completed coding result to the architect for semantic review and PR/CI handling.
