@@ -43,7 +43,7 @@ Define only the canonical renderer-independent public structural contract:
 
 A Material configuration is not omitted merely because documentation calls it a style, color mapping, configuration, emphasis, or another term instead of `variant`. If Material presents a component-owned choice as developer-selectable and it changes the canonical rendered/behavioral configuration, represent it unless Material explicitly scopes it to a legacy/baseline surface outside the current Expressive family.
 
-Prefer explicit `MD<Component>Props`, `MD<Component>Slots`, and, only when applicable, `MD<Component>Emits` contracts so the Vue SFC can consume them directly through `<script setup>` macros.
+Prefer explicit `MD<Component>Props`, `MD<Component>Slots`, and, only when applicable, `MD<Component>Emits` contracts so the Vue SFC can consume them directly through `<script setup>` macros. Slot contracts should use Vue-shaped slot method signatures; their return type is not used to invent slot semantics.
 
 Framework mechanics are not additional Material semantics. Do not create an emit merely because Vue supports emits. A native interaction may remain native/transparent when that is the documented public boundary; use a component emit only when the component contract intentionally owns that output.
 
@@ -71,8 +71,8 @@ export interface MDExampleActionProps {
 }
 
 export interface MDExampleActionSlots {
-  default: () => unknown;
-  icon?: () => unknown;
+  default(): unknown;
+  icon?(): unknown;
 }
 
 export const mdExampleActionDefaults = {
