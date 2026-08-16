@@ -17,56 +17,61 @@ Do not require the operator to provide a stage, correction owner, previous worke
 
 ## Authority
 
-Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. That document owns sequencing, source readiness, compatibility checks, recovery state, correction routing, and completion.
+Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. That document owns sequencing, source readiness, deterministic compatibility routing, semantic recovery state, correction routing, and completion.
 
 This skill owns orchestration only.
 
 ## Execute
 
 1. Resolve the canonical Material family.
-2. Inspect current family artifacts/runtime/consumer migration state mechanically.
-3. Read the family-local `.material-correction.json` recovery marker when it exists.
-4. Run the current-rules compatibility gate from `component-workflow.md` before treating existing artifacts as reusable completed stages.
-5. If a pending correction exists or the compatibility gate identifies an exact owner, run only that owner and downstream stages actually invalidated by the correction.
-6. Otherwise run only the earliest missing/incomplete stage according to `component-workflow.md`.
-7. For a new family, run API contract first.
-8. After API completes, run token and behavior workers in separate fresh contexts; they may run in parallel when isolated writes are safe.
-9. Launch implementation and migration only when their gates require them; never combine their contexts.
-10. When any worker returns a correction route, persist that route to `.material-correction.json` before launching another worker or returning control. This makes interruption recoverable without chat history.
-11. Clear `.material-correction.json` only after its targeted correction completes and no replacement correction is returned.
-12. Validate structured worker results and required artifact/proof existence at gates.
-13. Preserve concrete operator observations without inventing causes or fixes.
-14. Stop at architect handoff. Do not run an independent coding-agent semantic review or claim PR/CI/merge readiness.
+2. Read the family-local `.material-correction.json` when it exists.
+3. Run the repository-owned deterministic route resolver inside the normal agent sandbox:
 
-The orchestrator must not design API/tokens/behavior, inspect m3e semantics, implement code, migrate consumers, semantically review the family, or update roadmap completion state.
+   ```text
+   node scripts/materialComponentCompatibility.mjs --family <family>
+   ```
 
-## Current-rules compatibility boundary
+   The command returns one compact JSON result: `clean`, or `route` with the earliest mechanically stale owner and exact violations.
+4. Choose the earliest owner between a pending semantic correction and a deterministic `route`, using:
 
-The compatibility gate is deliberately mechanical. It may detect explicit violations of current repository rules from current files, for example:
+   ```text
+   api-contract → token-contract → behavior-contract → implementation → migration
+   ```
 
-- wrong/missing mandatory artifact shape;
-- renderer/private vocabulary inside public contracts;
-- component token defaults declared on `:root` instead of the family block selector;
-- `--m3e-*` inside public `tokens.css`;
-- TypeScript token catalogues/generated token-name mapping machinery forbidden by current token rules;
-- implementation/test/workflow prose inside `BEHAVIOR.md`;
-- stale legacy workflow artifacts being treated as current completion state.
+   A deterministic route is recomputable and is not persisted. A pending semantic correction remains stored until its own finding is resolved.
+5. Run only the selected owner. After it completes, rerun the deterministic resolver before selecting another stage.
+6. When the resolver is `clean` and no semantic correction is pending, continue only the genuinely incomplete downstream work: implementation proof, then migration when consumers or legacy ownership still require it.
+7. Keep every worker in a separate fresh context. Never combine contract, implementation, or migration responsibilities.
+8. When a worker returns a semantic correction route that cannot be reconstructed mechanically, persist it to `.material-correction.json` before launching another worker or returning control.
+9. Clear `.material-correction.json` only after its targeted semantic correction completes and no replacement semantic correction is returned.
+10. Validate structured worker results and required artifact/proof existence at gates.
+11. Preserve concrete operator observations without inventing causes or fixes.
+12. Stop at architect handoff. Do not run an independent coding-agent semantic review or claim PR/CI/merge readiness.
 
-It must not decide whether a Material fact is semantically correct, infer undocumented Material requirements, inspect m3e behavior, or perform a hidden full family review. Semantic disagreement belongs to the focused owner worker or architect.
+The orchestrator must not design API/tokens/behavior, inspect Material or m3e semantics, implement code, migrate consumers, semantically review the family, or update roadmap completion state.
 
-When mechanical incompatibilities exist in several stages at once, do not escalate merely because more than one owner is stale. Process the earliest owner in pipeline order, then rerun the compatibility gate:
+## Deterministic compatibility resolver
 
-```text
-api-contract → token-contract → behavior-contract → implementation → migration
-```
+`scripts/materialComponentCompatibility.mjs` owns only repository-visible structural compatibility with current rules. The orchestrator must use its result rather than re-implementing these checks in LLM reasoning.
 
-Token and behavior remain independently owned; this ordering is only a deterministic recovery priority when both already contain visible stale-rule violations. A corrected earlier owner may invalidate or eliminate later findings, so do not pre-plan the whole correction chain.
+The resolver may identify only mechanically provable conditions such as:
 
-For the selected earliest owner, consolidate its visible mechanical violations into the internal correction marker and route it without asking the operator.
+- missing mandatory contract/runtime artifacts;
+- old Vue slot contract syntax that violates the current API artifact shape;
+- renderer-private vocabulary inside `contract.ts`;
+- component-token defaults declared on `:root`;
+- private `--m3e-*` variables inside public `tokens.css`;
+- Material/m3e custom-property mapping kept in runtime Vue/TypeScript instead of CSS.
 
-## Durable correction recovery
+It deliberately does **not** decide Material semantics, current-vs-baseline classification, m3e behavior/capability, accessibility meaning, motion fidelity, consumer demand, or migration correctness.
 
-A pending correction is stored only while unresolved at:
+If the resolver command itself cannot execute or returns invalid output, do not fall back to a manual LLM compatibility audit. Return the exact execution/contract failure to the architect.
+
+The resolver is workflow routing, not verification proof. It does not replace `pnpm verify ...` for edited code/tests.
+
+## Durable semantic correction recovery
+
+A semantic correction that cannot be recomputed mechanically is stored only while unresolved at:
 
 ```text
 src/shared/ui/material/components/<family>/.material-correction.json
@@ -86,31 +91,32 @@ This file is transient recovery state, not a Material contract, design document,
 
 Rules:
 
-- exactly one active owner at a time;
+- exactly one active semantic correction at a time;
 - keep the finding factual and minimal;
 - no timestamps, hashes, counters, worker transcripts, hidden reasoning, Git/PR/CI state, or speculative fix;
-- when several known defects share the same owner, consolidate them into one concise finding/scope rather than creating several markers;
-- if a worker returns a different owner, replace the marker atomically before routing;
-- if the targeted worker completes but returns another correction, replace rather than clear the marker;
-- clear the marker only when the active correction is resolved;
+- when several known semantic defects share the same owner, consolidate them into one concise finding/scope;
+- if a worker returns a different semantic owner, replace the marker atomically before routing;
+- if the targeted worker completes but returns another semantic correction, replace rather than clear the marker;
+- deterministic resolver findings are never copied into the marker because they are recomputable;
+- clear the marker only when the active semantic correction is resolved;
 - the marker must be absent at successful architect handoff.
 
-Architect review may create this marker directly for a repository-visible correction. The operator still reruns only `material-component <name>`.
+Architect review may create this marker directly for a repository-visible semantic correction. The operator still reruns only `material-component <name>`.
 
 ## Resume invariants
 
-- A new contract artifact is durable only when its worker returned `complete`; blocked workers must not leave new partial contract files.
-- Existing artifacts are reusable only when they pass the current-rules compatibility gate and no pending correction targets them.
+- Existing artifacts are reusable only when the deterministic resolver no longer routes to their owner and no pending semantic correction targets them.
 - A fresh agent does not rerun completed stages merely because previous chat context is unavailable.
-- An interrupted correction resumes automatically from `.material-correction.json`.
-- An interrupted implementation resumes inside the implementation worker from current family files unless a pending correction targets an earlier owner.
+- Mechanically stale state is rediscovered by the resolver after interruption; no recovery file is required.
+- An interrupted semantic correction resumes automatically from `.material-correction.json`.
+- An interrupted implementation resumes from current runtime/proof unless an earlier deterministic or semantic correction takes precedence.
 - Do not rewrite already-correct contracts/docs or regenerate unrelated proof merely to normalize output during a correction.
-- If repository state is ambiguous enough that the next stage cannot be determined mechanically and no pending marker resolves it, return `needs-architect` instead of rerunning the whole pipeline.
+- If current ownership cannot be determined by the resolver, a pending semantic correction, or the explicit stage gates, return `needs-architect` instead of rebuilding the whole pipeline.
 - After two unsuccessful correction rounds for the same underlying problem, return to the architect.
 
 ## Internal worker handoff
 
-The orchestrator derives this block from `.material-correction.json` or a worker route; the operator does not supply it:
+The orchestrator derives this block from the deterministic resolver or `.material-correction.json`; the operator does not supply it:
 
 ```text
 family: <canonical family>
@@ -133,7 +139,7 @@ token contract: complete | blocked | unchanged | return-to-api-contract
 behavior contract: complete | blocked | unchanged | return-to-api-contract
 standalone implementation: complete | blocked | unchanged | not-run
 migration: complete | not-required | blocked | unchanged | not-run
-pending correction: none | <owner and scope>
+pending semantic correction: none | <owner and scope>
 operator observations: none | <status>
 focused verification: <summary>
 remaining blocker: none | <exact blocker>
@@ -143,11 +149,13 @@ next action: hand to architect | rerun material-component <name> | <genuine exte
 ## Forbidden
 
 - Requiring the operator to reconstruct or paste a correction handoff.
+- Re-implementing deterministic compatibility checks in LLM reasoning instead of using the resolver.
+- Falling back to a semantic audit when the resolver cannot execute.
+- Persisting recomputable mechanical violations in `.material-correction.json`.
 - Reusing one worker context for multiple responsibilities.
-- Running token/behavior before API is complete for a new/reopened API contract.
 - Reintroducing a combined Material definition worker.
 - Combining standalone implementation and consumer migration.
-- Re-running completed stages without a current incompatibility, pending correction, worker route, or structural incompleteness.
+- Re-running completed stages without a deterministic incompatibility, pending semantic correction, worker route, or genuine incomplete stage.
 - Using a full fresh pipeline as a substitute for missing prior-chat context.
 - Letting m3e, legacy code, or current consumer demand define Material contracts.
 - Performing stage-owned semantic reasoning in the orchestrator.
