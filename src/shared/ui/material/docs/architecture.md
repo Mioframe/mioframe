@@ -4,7 +4,7 @@
 
 Mioframe exposes one canonical Vue Material library under `src/shared/ui/material`.
 
-Official Material 3 Expressive defines the public component API, behavior, geometry, motion, accessibility, and token model. The three contract workers read those facts through the repository-configured `material3` MCP. `@m3e/web` is a private renderer and never defines Mioframe public API.
+Official Material 3 Expressive defines the public component API, behavior, geometry, motion, accessibility, and token model. Contract workers read those facts through the repository-configured `material3` MCP. `@m3e/web` is a private renderer and never defines Mioframe public API.
 
 Workflow mechanics belong only to [`component-workflow.md`](./component-workflow.md). Family definition ownership belongs to [`component-contract.md`](./component-contract.md). This document owns durable library boundaries.
 
@@ -41,11 +41,13 @@ The public family contract is not demand-scoped. Current Mioframe consumers do n
 
 Do not add undocumented convenience surface, platform-inapplicable surface, renderer vocabulary, legacy compatibility aliases, or speculative non-Material behavior.
 
-## Definition isolation
+## Definition dependency and isolation
 
-API contract, token contract, and behavior contract extraction are separate fresh worker responsibilities. All official Material facts come from Material 3 MCP.
+API contract is the first definition boundary because it establishes the current developer-selectable configurations, content roles, public values and defaults.
 
-Contract workers do not inspect m3e, legacy implementation, application consumers, or current call-site demand.
+Token and behavior extraction run afterward in separate fresh contexts. They may read completed `contract.ts` only for structural scope/terminology, while Material 3 MCP remains the sole factual authority for token/behavior semantics. If their Material evidence proves the structural boundary wrong, they return to the API owner instead of compensating locally.
+
+Contract workers do not inspect m3e, legacy implementation, application consumers, or current call-site demand. They do not read one another's narrative reasoning.
 
 There is no mandatory design, architecture, source-ledger, synthesis, guidance, definition-review, or coding-agent final-review stage in the normal path.
 
@@ -77,15 +79,19 @@ The implementation is proven before application consumers are inspected for firs
 
 ## Resume-first workflow
 
-Repository artifacts are durable stage results. A fresh invocation does not rerun completed contract workers solely because previous chat context is unavailable.
+Contract workers write new owned artifacts only after their completion checks pass. A blocked worker must not leave a new partial contract file.
 
-A completed stage is reopened only by an exact architect correction handoff naming the owner and finding. If the current stage cannot be determined mechanically, the coding workflow stops at `needs-architect` rather than rebuilding everything.
+Repository artifacts are durable completed-stage results. A fresh invocation does not rerun completed contract workers solely because previous chat context is unavailable.
 
-This keeps correction work bounded and prevents an interrupted coding run from rewriting unrelated contracts or marking false completion state.
+A completed stage is reopened only by an exact architect correction handoff naming the owner and finding. If that correction run is interrupted, the same handoff remains required on resume. If current stage cannot be determined mechanically, the coding workflow stops at `needs-architect` rather than rebuilding everything.
+
+An interrupted implementation resumes within the implementation owner from current runtime/proof and does not reopen contracts.
 
 ## Proof and completion
 
 Standalone implementation proves the canonical API, renderer mapping, public tokens, behavior, accessibility, geometry, motion, and standalone presentation at the lowest faithful level.
+
+When a behavior requirement needs consumer-supplied native/ARIA information, the adapter must preserve an explicit public/native/ARIA seam. `inheritAttrs: false` is not permission to drop required accessibility inputs.
 
 Source-level CSS assignment is not rendered token proof. Screenshots are not the sole oracle for fixed geometry/state semantics.
 
