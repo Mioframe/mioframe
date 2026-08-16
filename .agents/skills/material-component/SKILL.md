@@ -11,14 +11,14 @@ The operator invokes this once. Do not require separate stage commands.
 
 ## Authority
 
-Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. That workflow document is the single owner of sequencing, gates, correction routing, dependency handling, and completion rules.
+Read applicable `AGENTS.md` and `src/shared/ui/material/docs/component-workflow.md`. That workflow document is the single owner of sequencing, source readiness, gates, correction routing, dependency handling, and completion rules.
 
 This skill owns orchestration only. Do not duplicate or reinterpret stage semantics here.
 
 ## Execute
 
 1. Resolve the canonical Material family.
-2. Follow `component-workflow.md` mechanically.
+2. Follow `component-workflow.md` mechanically, including its Material 3 MCP source-readiness check before definition workers.
 3. Launch every role in a fresh isolated worker context.
 4. Run the four definition workers in parallel only when the runtime can safely isolate their independent file writes; otherwise run them separately without merging responsibilities.
 5. Validate only structured worker results and required artifact existence at workflow gates.
@@ -51,6 +51,7 @@ After two unsuccessful correction rounds for the same underlying problem, follow
 MATERIAL COMPONENT RESULT
 input component: <name>
 canonical family: <family>
+material3 source: ready | blocked
 api contract: complete | blocked
 token contract: complete | blocked
 behavior contract: complete | blocked
@@ -74,7 +75,7 @@ next action: hand to architect for PR/CI | <exact required action>
 - Letting m3e, legacy code, or current consumer demand define Material contracts or usage guidance.
 - Performing stage-owned reasoning in the orchestrator.
 - Re-running unaffected stages without an exact correction reason.
-- Retrying a genuine blocker without new evidence.
+- Repeating or forcing a failed Material source refresh without new evidence.
 - Dropping or reinterpreting concrete operator observations.
 - Depending on Git/PR/check state for family correctness.
 - Claiming merge readiness.
