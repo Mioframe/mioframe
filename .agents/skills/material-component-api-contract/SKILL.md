@@ -17,7 +17,9 @@ Material facts come from the repository-configured `material3` MCP server in `.m
 
 Do not substitute m3e docs, legacy Mioframe code, application consumers, web search, or memory for Material 3 MCP.
 
-If the required Material API is unavailable or contradictory in Material 3 MCP, report the exact blocker instead of guessing.
+After complete applicable source coverage, an API detail Material does not prescribe is not an ambiguity. Omit it rather than inventing a Material API.
+
+Report `blocked` only when applicable Material source coverage cannot be established, official Material sources contradict one another, or an unavailable fact prevents defining a Material-owned public contract requirement.
 
 ## Isolation
 
@@ -51,7 +53,8 @@ Before returning `complete`:
 2. Inspect every applicable MCP route/result surfaced for that scope, not only the first matching page.
 3. Re-read `contract.ts` against those sources and verify no documented prop/parameter, content role, event semantic, public value/configuration, default, or valid combination in this worker's scope was omitted or guessed.
 4. Verify the artifact contains no m3e, legacy, consumer-demand, token, or behavior implementation decisions.
-5. If complete source coverage cannot be established, report `blocked`; do not return `complete`.
+5. Distinguish Material silence from a blocker: complete source coverage plus an unspecified detail may still return `complete`.
+6. Report `blocked` only for incomplete source coverage, contradictory official requirements, or a missing fact required to decide a Material-owned API rule.
 
 ## Report
 
@@ -60,7 +63,7 @@ MATERIAL API CONTRACT RESULT
 family: <family>
 artifact: <contract.ts path>
 Material 3 MCP coverage: complete | blocked
-unresolved ambiguity: none | <exact ambiguity>
+unresolved blocking ambiguity: none | <exact ambiguity>
 result: complete | blocked
 ```
 
@@ -68,6 +71,8 @@ result: complete | blocked
 
 - Reading m3e or consumers to shape the API.
 - Designing from current demand or legacy props.
+- Treating Material silence as permission to invent public API.
+- Treating an unspecified platform/runtime detail as a blocker after complete Material source coverage.
 - Editing `tokens.css`, `BEHAVIOR.md`, runtime code, tests, consumers, or migration.
 - Guessing missing Material facts.
 - Creating DESIGN/ARCHITECTURE workflow documents.
