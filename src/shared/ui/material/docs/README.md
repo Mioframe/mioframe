@@ -4,28 +4,32 @@ This directory owns the canonical documentation for `src/shared/ui/material`.
 
 ## Canonical documents
 
-- [Architecture](./architecture.md) — durable library ownership, public Vue boundary, renderer isolation, tokens, guidance, and completion principles.
-- [Component workflow](./component-workflow.md) — the complete definition/implementation/migration/review orchestration and correction routing.
-- [Family definition](./component-contract.md) — ownership and isolation of `contract.ts`, `tokens.css`, `BEHAVIOR.md`, and family `README.md` guidance.
+- [Architecture](./architecture.md) — durable library ownership, public Vue boundary, renderer isolation, tokens, and completion principles.
+- [Component workflow](./component-workflow.md) — resume-first contract/implementation/migration orchestration and correction routing.
+- [Family definition](./component-contract.md) — ownership and isolation of `contract.ts`, `tokens.css`, and `BEHAVIOR.md`.
 - [Component adapter contract](./component-adapter.md) — Vue-to-m3e mapping, controlled state, composition, renderer gaps, accessibility, and proof rules.
 - [Component token contract](./component-tokens.md) — public official token ownership, private renderer mapping, and observable verification. Family/foundation CSS files are the executable token catalogues.
 - [Confirmed m3e defects](./m3e-defects.md) — stable defect identities, evidence, mitigation, revalidation, and removal.
-- [Roadmap](./roadmap.md) — the only owner of current milestone status, blockers, and next operator action.
-- [Library README](../README.md) — public entrypoint, family layout, guidance ownership, and renderer boundary.
+- [Roadmap](./roadmap.md) — architect-maintained current milestone status, blockers, and next action.
+- [Library README](../README.md) — public entrypoint, family layout, and renderer boundary.
 
 ## Operating model
 
-The operator invokes:
+The normal operator entrypoint is:
 
 ```text
 material-component <name>
 ```
 
-once. The orchestrator launches narrow workers for API contract, token contract, behavior contract, and developer usage guidance. The three technical contracts gate standalone implementation; guidance is independent and must be complete before the later migration worker. Migration and fresh independent review remain separate contexts. Non-deterministic architecture is escalated only when required.
+For a new family, the orchestrator runs three narrow isolated contract workers (API, tokens, behavior), then standalone implementation and consumer migration if required.
 
-The sole official Material documentation source for definition extraction and independent definition verification is the repository-configured `material3` MCP server in `.mcp.json`.
+For an existing/incomplete family, the same command resumes current repository state instead of rebuilding completed stages. A completed stage is reopened only by an exact architect correction handoff.
 
-Family `README.md` is generated from Material guidance in its own fresh context and explains what the component is and how it should be used. It is not a substitute for `contract.ts`, `tokens.css`, or `BEHAVIOR.md`.
+The coding workflow stops after implementation/proof and required migration. Final semantic review, PR/CI handling, roadmap completion, and merge readiness are architect-owned.
+
+The sole official Material documentation source for contract extraction is the repository-configured `material3` MCP server in `.mcp.json`.
+
+Family `README.md` files may exist as ordinary developer documentation but are not mandatory workflow artifacts or gates.
 
 Repository documentation is intentionally layered: `AGENTS.md` files route agents to these focused sources instead of duplicating the full workflow.
 
