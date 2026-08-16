@@ -16,17 +16,19 @@ rendered observable result
 
 `@m3e/web` token names, legacy CSS and current application overrides do not define the public token API.
 
-Token declarations, aliases and public-to-private custom-property bridges are CSS ownership. TypeScript may select a public component configuration or renderer property/class/attribute, but it must not become a token catalogue or token mapping engine.
+Token declarations, aliases and public-to-private custom-property bridges are CSS ownership. TypeScript/Vue may select a public component configuration or renderer property/class, but it must not become a token catalogue or token mapping engine.
+
+This does not ban Vue `:style` as a general feature. Dynamic non-token CSS values may use normal Vue class/style binding when that is the simplest component design. The restriction is specifically against moving the Material token graph, token-name inventory, aliases, or public-to-private custom-property mapping into runtime TypeScript.
 
 ## Owners
 
-| Contract                                         | Owner                                                   |
-| ------------------------------------------------ | ------------------------------------------------------- |
-| Material reference/system foundations            | `foundation/tokens.css`                                 |
-| Default light/dark system assignments            | `foundation/theme.css`                                  |
-| Family public component-token contract/catalogue | `components/<family>/tokens.css`                        |
-| Private renderer token bridges/workarounds       | owning component CSS / family-local private stylesheet  |
-| Application tokens                               | outside Material as `--app-*`                           |
+| Contract                                         | Owner                                                  |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| Material reference/system foundations            | `foundation/tokens.css`                                |
+| Default light/dark system assignments            | `foundation/theme.css`                                 |
+| Family public component-token contract/catalogue | `components/<family>/tokens.css`                       |
+| Private renderer token bridges/workarounds       | owning component CSS / family-local private stylesheet |
+| Application tokens                               | outside Material as `--app-*`                          |
 
 `--m3e-*` and `--md-private-*` are never public Material API.
 
@@ -59,24 +61,66 @@ Product theme selection/persistence and `--app-*` customization remain outside M
 
 Only the later standalone implementation maps each public token through documented exact-version renderer inputs/fallbacks while keeping those details private.
 
-When m3e requires private CSS custom properties, bridge them in CSS, not TypeScript. Keep the mapping explicit and family-local unless one identical CSS grammar is proven across all affected tokens.
+When m3e requires private CSS custom properties, bridge them in CSS, not TypeScript.
 
-GOOD:
+Prefer the simplest static class-scoped bridge when the renderer exposes configuration-specific private token namespaces:
 
 ```css
-.md-example-action[data-appearance='primary'] {
-  --m3e-example-action-container-color: var(--md-comp-example-action-primary-container-color);
-  --m3e-example-action-icon-color: var(--md-comp-example-action-primary-icon-color);
+.md-example-action {
+  --m3e-example-action-primary-container-color: var(
+    --md-comp-example-action-primary-container-color
+  );
+  --m3e-example-action-primary-icon-color: var(
+    --md-comp-example-action-primary-icon-color
+  );
+  --m3e-example-action-secondary-container-color: var(
+    --md-comp-example-action-secondary-container-color
+  );
+  --m3e-example-action-secondary-icon-color: var(
+    --md-comp-example-action-secondary-icon-color
+  );
 }
 ```
 
-TypeScript/Vue may select the configuration:
+Vue then selects the renderer configuration through its documented non-token property:
 
-```html
-<m3e-example-action :data-appearance="props.appearance" />
+```vue
+<m3e-example-action
+  class="md-example-action"
+  :variant="appearance"
+/>
 ```
 
-but it does not own the token graph.
+No extra CSS state hook is needed when the renderer already selects the appropriate private namespace.
+
+If the renderer instead reuses one private token name across multiple configurations, use an explicit component-library class modifier rather than inventing a `data-*` styling protocol:
+
+```vue
+<m3e-example-action
+  class="md-example-action"
+  :class="{
+    'md-example-action--primary': appearance === 'primary',
+    'md-example-action--secondary': appearance === 'secondary',
+  }"
+  :variant="appearance"
+/>
+```
+
+```css
+.md-example-action--primary {
+  --m3e-example-action-container-color: var(
+    --md-comp-example-action-primary-container-color
+  );
+}
+
+.md-example-action--secondary {
+  --m3e-example-action-container-color: var(
+    --md-comp-example-action-secondary-container-color
+  );
+}
+```
+
+Use this selector layer only when the renderer seam actually requires configuration-dependent remapping. Do not add state classes/attributes when one static CSS bridge is sufficient.
 
 BAD:
 
@@ -86,14 +130,14 @@ const tokenSuffixes = ['container-color', 'icon-color'];
 const tokenStyles = Object.fromEntries(
   tokenSuffixes.map((suffix) => [
     `--m3e-example-action-${suffix}`,
-    `var(--md-comp-example-action-${props.appearance}-${suffix})`,
+    `var(--md-comp-example-action-${appearance}-${suffix})`,
   ]),
 );
 ```
 
 Why: this moves token names and mapping semantics into runtime TypeScript, creates a second implicit catalogue, hides grammar mismatches behind string composition, and makes CSS no longer the inspectable token source of truth.
 
-A renderer property such as `variant`, `size`, or another documented non-token configuration input may still be bound from TypeScript when it is the correct renderer seam. The CSS-only rule applies to token declarations/aliases/custom-property mappings, not to all component configuration.
+A renderer property such as `variant`, `size`, or another documented non-token configuration input may still be bound from Vue when it is the correct renderer seam. Normal Vue `:class`/`:style` remains available for ordinary component styling; only token declaration/alias/custom-property mapping stays in CSS ownership.
 
 For every public token group that affects a reachable configuration, rendered part or state, implementation must be able to trace:
 
