@@ -49,6 +49,8 @@ Use modern Vue 3 `<script setup>` conventions already supported by the repositor
 
 - consume imported `contract.ts` types directly in `defineProps`, `defineSlots`, and `defineEmits` only where an emit contract actually exists;
 - prefer Vue 3.5 reactive props destructure for primitive/configuration defaults so implementation consumes the canonical defaults without creating a second defaults table;
+- use `defineModel()` when the public contract is ordinary Vue `v-model` state and its semantics preserve the required single source of truth;
+- keep an explicit controlled prop + intent emit instead when the renderer interaction contract requires canceling pre-mutation intent or otherwise proving that rejected intent cannot create a second local source of truth;
 - use named handlers for non-trivial event logic;
 - prefer declarative class/style binding and computed derivation over imperative DOM/class mutation;
 - keep a stable component block class for library-owned styling;
@@ -107,6 +109,32 @@ const props = defineProps({
 when `contract.ts` already owns those types/defaults.
 
 Why: runtime declaration duplicates the canonical contract and can drift.
+
+### Stateful model mechanics follow the contract
+
+GOOD for ordinary Vue model semantics:
+
+```ts
+const selected = defineModel<boolean>('selected', { required: true });
+```
+
+when the public state contract is exactly a normal `v-model:selected` binding and no renderer-specific rejected-intent invariant requires another mechanism.
+
+GOOD for strict controlled pre-mutation intent:
+
+```ts
+const { selected } = defineProps<MDExampleToggleProps>();
+const emit = defineEmits<MDExampleToggleEmits>();
+
+const onBeforeinput = (event: Event) => {
+  event.preventDefault();
+  emit('update:selected', !selected);
+};
+```
+
+when `BEHAVIOR.md`/renderer evidence requires canceling renderer mutation before emitting intent and the prop must remain the sole state source until the parent accepts the update.
+
+BAD: choosing either `defineModel` or manual prop+emit by habit without checking the actual controlled-state contract.
 
 ### Static CSS token bridge first
 
@@ -241,6 +269,7 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Changing canonical contracts to fit m3e/current demand.
 - Re-declaring public Props/Slots/Emits/value unions or canonical defaults inside the SFC.
 - Adding/wrapping component emits not owned by the public contract.
+- Choosing `defineModel` or manual prop+emit mechanically without preserving the required state ownership semantics.
 - Dropping behavior-required accessibility/native inputs merely because renderer root uses `inheritAttrs: false`.
 - Exposing raw m3e details outside the family.
 - Creating TypeScript token maps, token-name/suffix arrays, generated custom-property names, or runtime token registries that duplicate CSS ownership.
