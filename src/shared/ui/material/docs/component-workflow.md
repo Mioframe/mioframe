@@ -33,7 +33,7 @@ The source-ready check owns availability only; it does not interpret Material se
 5. Launch definition workers only when the relevant MCP source is readable and not stale.
 6. If refresh fails or the required routes remain stale/unavailable/unresolved, stop with the exact source-infrastructure blocker.
 
-A refreshable stale local MCP cache is not a semantic Material ambiguity and should not require operator intervention before the one normal recovery attempt. Genuine contradictory/missing Material content remains a definition-worker blocker.
+A refreshable stale local MCP cache is not a semantic Material ambiguity and should not require operator intervention before the one normal recovery attempt.
 
 ## Material definition workers
 
@@ -59,6 +59,12 @@ The workers own separate artifacts and may run in parallel when the runtime can 
 
 Definition workers must not inspect m3e, legacy component implementation, application consumers/current demand, or another definition worker's reasoning.
 
+Each worker must distinguish source completeness from specification completeness:
+
+- incomplete/stale/unreadable applicable source coverage is blocking;
+- contradictory applicable official Material requirements are blocking;
+- after complete source coverage, a detail Material does not prescribe is a non-blocking boundary of that artifact unless the missing fact is required to decide a Material-owned requirement.
+
 `README.md` is developer-facing correct-use guidance, not a fourth runtime contract.
 
 ## Gates
@@ -73,7 +79,9 @@ Standalone implementation may start when:
 - token contract result is `complete`;
 - behavior contract result is `complete`;
 - `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist;
-- none of those workers reports unresolved Material ambiguity or a blocker.
+- none of those workers reports a blocking Material ambiguity or source-coverage blocker.
+
+Material-unspecified details recorded after complete source coverage do not block implementation.
 
 Guidance does not block implementation because implementation does not consume it.
 
@@ -84,7 +92,7 @@ Migration may start only when:
 - standalone implementation is complete;
 - guidance result is `complete`;
 - `README.md` exists;
-- guidance reports no unresolved Material ambiguity or blocker.
+- guidance reports no blocking Material ambiguity or source-coverage blocker.
 
 This allows usage guidance to run in parallel with contract extraction or standalone implementation without becoming an unnecessary serial dependency.
 
@@ -95,6 +103,8 @@ Run `material-component-implementation` in a fresh context after the technical-c
 Its inputs are the three fixed technical contracts plus exact lockfile-resolved `@m3e/web` documentation/public artifacts. It owns only the standalone canonical Vue component, private renderer mapping, exports, and component-owned proof.
 
 Implementation must not inspect application consumers or legacy call sites to shape the component. If the technical artifacts directly contradict one another, route the exact contradiction to its owning definition worker before coding rather than synthesizing a new contract.
+
+For a behavior detail that Material intentionally leaves unspecified, implementation must not invent a Material requirement. Preserve normal Web/renderer behavior unless another repository-owned platform/accessibility contract requires a specific result, and prove only the observable behavior actually owned by Mioframe.
 
 A correct Material contract is not weakened because m3e lacks direct support. Use the smallest allowed family-local mapping/workaround or escalate a genuine architecture/renderer ownership problem.
 
