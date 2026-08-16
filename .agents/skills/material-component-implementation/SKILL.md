@@ -1,6 +1,6 @@
 ---
 name: material-component-implementation
-description: 'Use after the API, token, and behavior contracts complete to implement and prove one standalone canonical Vue Material component through the exact installed m3e renderer, without inspecting application consumers.'
+description: 'Use after the three Material technical contracts are ready to implement and prove one standalone canonical Vue component through the exact installed m3e renderer without inspecting consumers.'
 ---
 
 # Material component implementation
@@ -9,7 +9,7 @@ Implement one standalone canonical Material family from three fixed technical co
 
 ## Input gate
 
-Require successful technical contracts:
+Require:
 
 ```text
 components/<family>/contract.ts
@@ -17,62 +17,43 @@ components/<family>/tokens.css
 components/<family>/BEHAVIOR.md
 ```
 
-Do not start if any technical contract worker reported a blocking unresolved Material ambiguity or source-coverage blocker. A Material-unspecified detail recorded after complete source coverage is not a blocker.
+Do not start while a current correction still targets one of these contracts.
 
-Before inspecting m3e or editing production code, check the three technical contracts for cross-contract consistency and reachability:
+Before production edits, perform only this local consistency check:
 
-- public states/content roles required by `BEHAVIOR.md` must be representable by `contract.ts`;
-- every developer-selectable configuration represented by technical contracts must be expressible through the public API;
-- every public token configuration/variant/state/part group must belong to a configuration reachable from `contract.ts` or to an unconditional behavior of that reachable component;
-- token terminology must not contradict the structural or behavior contracts.
+1. Every developer-selectable configuration in `contract.ts` has a coherent token/behavior owner when applicable.
+2. Every public token group belongs to a reachable configuration or unconditional component behavior.
+3. `BEHAVIOR.md` does not require a public state/configuration absent from the structural contract.
+4. No simpler existing renderer seam already satisfies the contract.
 
-If a public token group describes a configuration the public API cannot select, or the API exposes a configuration with no corresponding required token/behavior coverage, stop and route the exact inconsistency to the owning definition worker before inspecting m3e. Do not silently hardcode one configuration and leave other public contract groups inert.
+If those checks expose a wrong contract, return its exact owner. Do not invoke the generic `implementation-preflight` workflow for this deterministic Material stage.
 
 ## Authority
 
-Read applicable `AGENTS.md`, `component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the three technical family contract artifacts.
+Read applicable `AGENTS.md`, `component-adapter.md`, `component-tokens.md`, the three family contracts, exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts, and only the testing conventions needed for the selected proof.
 
-The technical contracts define what the component must expose and observably do. Exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts define only how the private renderer can implement those contracts.
-
-For behavior Material leaves unspecified, do not invent or document a Material requirement. Preserve normal Web/renderer semantics unless an existing repository-owned platform/accessibility contract requires a specific observable result.
+The contracts define what must be exposed and observably satisfied. m3e defines only the private implementation seam.
 
 ## Isolation
 
-Run in a fresh isolated context.
+Run in a fresh context. Do not inspect application consumers, legacy call sites, migration code, or current demand to shape the standalone component.
 
-Do not inspect application consumers, legacy call sites, migration code, or usage guidance to shape runtime implementation. Do not use current demand to reinterpret or shrink the contracts.
+## Implementation
 
-You may inspect existing Material foundation/shared infrastructure and the owning family runtime files needed to implement the canonical component. Do not copy legacy public API merely because it exists.
-
-## Preflight
-
-Before production edits, run `implementation-preflight` scoped only to:
-
-- standalone canonical component implementation;
-- private m3e mapping;
-- component-owned tests/browser/visual proof;
-- exports required for the canonical component;
-- focused verifier-managed commands.
-
-Do not include consumer migration or legacy-call-site adaptation in this preflight.
-
-## Implementation order
-
-1. Read `contract.ts`, `tokens.css`, and `BEHAVIOR.md` as fixed runtime inputs and complete the cross-contract reachability check above.
-2. Inspect exact lockfile-resolved m3e docs/examples/public artifacts for every reachable configuration and affected mapping.
-3. Implement the Vue `MD*` component using the exported Props/Slots/Emits/public value types from `contract.ts` directly through typed Vue APIs.
-4. Keep m3e tags, attributes, events, types, CSS variables and workarounds private to the Material family.
-5. Map every public `--md-comp-*` token group for reachable configurations privately to renderer inputs. A public token group that has no path to an observable rendered result is an implementation blocker, not completed catalogue work.
-6. Implement only the minimum family-local correction required when documented m3e behavior does not satisfy a correct contract.
-7. Add/update standalone component, browser, accessibility, geometry, token and visual proof required by the three contracts. Proof may be proportional, but it must cover materially distinct configurations, parts, states and mapping grammars.
-8. Run focused verifier-managed checks.
-9. Return after standalone component correctness is established. Do not migrate consumers in this worker.
+1. Consume `contract.ts` types directly through typed Vue APIs.
+2. Use documented exact-version m3e public inputs for props/content/events/state.
+3. Keep renderer tags, types, variables and workarounds private to the family.
+4. Map every supported public token group to an actual renderer/result path.
+5. Prefer explicit family-local mappings over broad abstractions. A generated/string-composed token mapping is acceptable only when one exact grammar is proven for every covered token and it materially reduces total complexity; otherwise keep mappings explicit and statically inspectable.
+6. Do not recreate renderer-owned state layer, ripple, focus, elevation, accessibility internals, geometry engines, or motion unless an explicit renderer defect requires the smallest documented family-local correction.
+7. Add only proof required by the contracts and materially distinct renderer paths.
+8. Run focused verifier-managed checks and return to the orchestrator.
 
 ## Contract corrections
 
-Implementation does not edit a contract merely because implementation evidence contradicts it.
+Implementation never edits a technical contract because implementation evidence disagrees with it.
 
-Return the exact owner:
+Return exactly one of:
 
 ```text
 return-to-api-contract
@@ -80,45 +61,38 @@ return-to-token-contract
 return-to-behavior-contract
 ```
 
-with the exact observable/material fact that invalidates the current artifact.
+with the exact contradictory fact and affected scope.
 
-When the inconsistency crosses API and token artifacts, return to the earliest definition owner needed to establish a coherent public configuration, then rerun only subsequently invalidated stages. Do not choose a renderer-compatible subset in implementation.
-
-A correct Material contract remains correct even when m3e cannot implement it directly.
-
-## Renderer gaps
-
-When m3e cannot faithfully implement a correct contract, prefer:
-
-1. documented direct support;
-2. the smallest family-local public-seam correction;
-3. a documented removable exact-version workaround satisfying `m3e-defects.md`;
-4. `needs-architect` when faithful support would require private DOM coupling, duplicated renderer systems, new shared infrastructure, or weakening the canonical contract.
-
-Do not recreate renderer-owned state layer, ripple, focus system, elevation, accessibility internals, geometry engine, or motion without an explicit architecture decision.
+If faithful support would require private DOM coupling, duplicated renderer systems, new shared infrastructure, or weakening a correct contract, return `needs-architect`.
 
 ## Proof
 
-As applicable prove:
+Use the lowest faithful proof for each changed contract.
 
-- SFC uses `contract.ts` as the public type source rather than re-declaring it;
-- props/slots/emits/defaults and allowed attribute boundary;
-- every materially distinct public configuration reaches the intended renderer configuration and observable result;
-- accepted/rejected controlled intent and one source of truth;
-- pointer/keyboard/focus/native event behavior;
-- accessible role/name/state and ownership required by the component or existing Web/accessibility contract;
-- fixed Material geometry with numeric browser assertions;
-- public token overrides through actual rendered results, including materially distinct configuration/state mapping paths;
-- renderer-owned appearance/motion through faithful browser/visual evidence where required by `BEHAVIOR.md`;
-- dependency composition through canonical public APIs.
+Unit/component tests may prove:
 
-A story, declaration, host attribute, source mapping, CSS variable presence, or screenshot alone is not proof of a different observable contract.
+- public prop/slot/event/default mapping;
+- host attribute boundary;
+- deterministic adapter-owned state or event forwarding.
+
+Browser/visual proof owns observable renderer results such as:
+
+- accessible role/name/focus/keyboard behavior;
+- fixed geometry;
+- RTL/layout behavior;
+- hover/focus/pressed appearance;
+- public token overrides reaching actual rendered parts/states;
+- required motion and reduced-motion behavior.
+
+Do **not** add tests whose only assertion is that one CSS custom-property string was assigned to another string. Source mapping presence is not proof that the renderer consumes it correctly. A screenshot alone is not proof of fixed numeric geometry or state semantics.
+
+Proof should be proportional: one test may cover several tokens that share a genuinely identical rendered mapping path, but materially different configuration/state grammars require independent observable coverage.
 
 ## Report
 
 ```text
 MATERIAL IMPLEMENTATION RESULT
-family: <canonical-family>
+family: <canonical family>
 standalone component: complete | blocked
 focused verification: <commands/results>
 contract correction owner: none | api-contract | token-contract | behavior-contract
@@ -130,14 +104,11 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 
 ## Forbidden
 
-- Inspecting consumers, legacy call sites, or usage guidance to shape runtime implementation.
-- Migrating consumers or removing a legacy owner still used by the application.
-- Changing canonical contracts to fit m3e or current demand.
-- Hardcoding one public configuration while leaving other canonical API/token configurations unreachable.
-- Declaring public token groups complete when they have no renderer/result path.
-- Re-declaring public Props/Slots/Emits/value unions inside the SFC instead of consuming `contract.ts`.
-- Exposing raw m3e details outside the Material family.
-- Adding speculative adapters, compatibility layers, generic frameworks or token registries.
-- Creating IMPLEMENTATION.md workflow logs.
-- Running broad local verification solely to duplicate exact-head PR CI.
-- Depending on Git/PR/check state for implementation correctness.
+- Inspecting consumers or legacy call sites to shape runtime implementation.
+- Migrating consumers.
+- Changing canonical contracts to fit m3e/current demand.
+- Re-declaring public Props/Slots/Emits/value unions inside the SFC.
+- Exposing raw m3e details outside the family.
+- Adding speculative adapters, generic token frameworks, or runtime mapping abstraction solely to reduce line count.
+- Treating source-level CSS wiring as rendered token proof.
+- Running broad local verification solely to duplicate architect-owned exact-head CI.
