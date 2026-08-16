@@ -48,12 +48,50 @@ When resuming an interrupted implementation, inspect the current family runtime/
 1. Consume `contract.ts` types directly through typed Vue APIs.
 2. Use documented exact-version m3e public inputs for props/content/events/state.
 3. Keep renderer tags, types, variables and workarounds private to the family.
-4. Map every supported public token group to an actual renderer/result path.
-5. Prefer explicit family-local mappings over broad abstractions. A generated/string-composed token mapping is acceptable only when one exact grammar is proven for every covered token and it materially reduces total complexity; otherwise keep mappings explicit and statically inspectable.
-6. Forward only the explicit public/native/ARIA inputs needed by `contract.ts` and `BEHAVIOR.md`; adapter-owned renderer configuration must win over conflicting fallthrough.
+4. Keep token declarations, aliases and public-to-private custom-property bridges in CSS. TypeScript/Vue may select a configuration through an explicit prop/property/class/attribute, but must not enumerate token names, compose custom-property names, or build runtime token maps/style objects.
+5. Map every supported public token group to an actual renderer/result path. Prefer explicit family-local CSS declarations/selectors. A shared CSS grammar may be factored only when it is genuinely identical and the result remains statically inspectable.
+6. Forward only explicit public/native/ARIA inputs needed by `contract.ts` and `BEHAVIOR.md`; adapter-owned renderer configuration must win over conflicting fallthrough.
 7. Do not recreate renderer-owned state layer, ripple, focus, elevation, accessibility internals, geometry engines, or motion unless an explicit renderer defect requires the smallest documented family-local correction.
 8. Add only proof required by the contracts and materially distinct renderer paths.
 9. Run focused verifier-managed checks and return to the orchestrator.
+
+## Token mapping examples
+
+Examples illustrate implementation shape only; exact token/renderer names come from current family contracts and exact installed m3e documentation.
+
+GOOD:
+
+```css
+.md-example-action[data-appearance='primary'] {
+  --m3e-example-action-container-color: var(--md-comp-example-action-primary-container-color);
+  --m3e-example-action-icon-color: var(--md-comp-example-action-primary-icon-color);
+}
+```
+
+with Vue/TypeScript selecting only the configuration:
+
+```html
+<m3e-example-action :data-appearance="props.appearance" />
+```
+
+BAD:
+
+```ts
+const suffixes = ['container-color', 'icon-color'];
+
+const tokenStyles = Object.fromEntries(
+  suffixes.map((suffix) => [
+    `--m3e-example-action-${suffix}`,
+    `var(--md-comp-example-action-${props.appearance}-${suffix})`,
+  ]),
+);
+```
+
+Why: runtime TypeScript has become an implicit token catalogue/mapping engine and can hide mismatched token grammars.
+
+GOOD: bind a documented renderer `variant`/`size` property from TypeScript when that property is the renderer's actual non-token configuration seam.
+
+BAD: move CSS token aliases/mappings into TypeScript merely because `:style` can set custom properties.
 
 ## Contract corrections
 
@@ -115,9 +153,10 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Migrating consumers.
 - Changing canonical contracts to fit m3e/current demand.
 - Re-declaring public Props/Slots/Emits/value unions inside the SFC.
-- Dropping behavior-required accessibility/native inputs merely because the renderer root uses `inheritAttrs: false`.
+- Dropping behavior-required accessibility/native inputs merely because renderer root uses `inheritAttrs: false`.
 - Exposing raw m3e details outside the family.
-- Adding speculative adapters, generic token frameworks, or runtime mapping abstractions solely to reduce line count.
+- Creating TypeScript token maps, token-name/suffix arrays, generated custom-property names, runtime token registries, or `:style` token objects that duplicate CSS ownership.
+- Adding speculative adapters or generic token frameworks solely to reduce line count.
 - Treating source-level CSS wiring as rendered token proof.
 - Rewriting already-correct family work during an interrupted-run resume without an exact defect.
 - Running broad local verification solely to duplicate architect-owned exact-head CI.
