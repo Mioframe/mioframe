@@ -17,7 +17,9 @@ Material description and usage guidance come from the repository-configured `mat
 
 Do not substitute m3e docs, legacy Mioframe code, application consumers, web search, or memory for Material 3 MCP.
 
-If required usage guidance is unavailable or contradictory in Material 3 MCP, report the exact ambiguity instead of guessing.
+After complete applicable source coverage, guidance Material does not provide is not an ambiguity. Omit unsupported guidance instead of filling gaps with generic advice.
+
+Report `blocked` only when applicable Material guidance source coverage cannot be established, official Material guidance contradicts itself, or an unavailable fact prevents deciding a Material-owned usage rule.
 
 ## Isolation
 
@@ -46,10 +48,9 @@ Write concise developer-facing Material guidance with this shape when applicable
 ## Consumer accessibility responsibilities
 ## Related components and choosing alternatives
 ## Adaptive or platform guidance
-## Unresolved Material guidance
 ```
 
-Include only sections supported by Material 3 MCP. Omit an inapplicable section rather than filling it with generic advice.
+Include only sections supported by Material 3 MCP. Omit an inapplicable or undocumented section rather than filling it with generic advice.
 
 The README explains what the component is and how a developer should apply it correctly. It does not define implementation mechanics.
 
@@ -72,7 +73,8 @@ Before returning `complete`:
 2. Inspect every applicable MCP route/result surfaced for purpose, when-to-use/not-use guidance, variants/configurations, content guidance, consumer accessibility responsibilities, related-component distinctions, and adaptive/platform guidance when present.
 3. Re-read `README.md` against those sources and verify no documented guidance in this worker's scope was omitted, guessed, or replaced by Mioframe/legacy convenience.
 4. Verify the README does not duplicate the technical API, token, or normative behavior contracts.
-5. If complete source coverage cannot be established, report `blocked`; do not return `complete`.
+5. Distinguish Material silence from a blocker: complete source coverage plus undocumented/inapplicable guidance may still return `complete`.
+6. Report `blocked` only for incomplete source coverage, contradictory official guidance, or a missing fact required to decide a Material-owned usage rule.
 
 ## Report
 
@@ -82,7 +84,7 @@ family: <family>
 artifact: <README.md path>
 Material 3 MCP coverage: complete | blocked
 legacy README index replaced: yes | no | not-applicable
-unresolved ambiguity: none | <exact ambiguity>
+unresolved blocking ambiguity: none | <exact ambiguity>
 result: complete | blocked
 ```
 
@@ -91,6 +93,8 @@ result: complete | blocked
 - Reading m3e or consumers to decide correct Material usage.
 - Turning current product usage into canonical guidance.
 - Treating an existing legacy README as Material source evidence.
+- Treating Material silence as permission to invent guidance.
+- Treating an undocumented/inapplicable guidance section as a blocker after complete source coverage.
 - Editing `contract.ts`, `tokens.css`, `BEHAVIOR.md`, runtime code, tests, consumers, or migration.
 - Adding Vue/m3e implementation examples that are not owned by this guidance artifact.
 - Guessing missing Material guidance.
