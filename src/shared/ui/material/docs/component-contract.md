@@ -2,7 +2,7 @@
 
 ## Decision
 
-A canonical Mioframe Material family is defined by exactly three independent technical contracts:
+A canonical Mioframe Material family is defined by exactly three technical contracts:
 
 ```text
 contract.ts
@@ -15,11 +15,9 @@ BEHAVIOR.md
   → normative observable Material behavior
 ```
 
-Official Material facts for these artifacts come from the repository-configured `material3` MCP server in `.mcp.json`.
+Official Material facts come from the repository-configured `material3` MCP server in `.mcp.json`.
 
-Do not substitute m3e documentation, legacy Mioframe code, current consumers, web search, or remembered Material behavior for this source.
-
-Each artifact is produced by a separate fresh worker with one narrow responsibility. These three contracts are the complete definition gate for standalone implementation.
+The contracts have separate owners, but they are not symmetric: `contract.ts` is established first because it defines the current structural surface. `tokens.css` and `BEHAVIOR.md` may read `contract.ts` only for that already-selected configuration/content-role boundary and terminology; they still derive their own facts independently from Material 3 MCP.
 
 A family `README.md` may document developer usage as ordinary maintained documentation, but it is not a mandatory definition artifact, worker stage, implementation input, or migration gate.
 
@@ -53,19 +51,24 @@ Use explicit family types such as `MD<Component>Props`, `MD<Component>Slots`, an
 
 Do not derive public terminology from m3e names, legacy props, DOM mechanics, or current Mioframe demand.
 
+Framework event mechanics are not invented merely because Vue supports them. Expose an event only when the Material interaction model plus the project public boundary require a consumer-observable output; keep naming idiomatic to Vue without adding semantics Material does not define.
+
 ## `tokens.css` — public token contract
 
 `tokens.css` owns the current official Material component-token surface for the canonical family.
 
 - Derive token semantics/defaults from Material 3 MCP.
-- Separate current Expressive groups from baseline/legacy/deprecated groups before serializing the catalogue.
+- Use `contract.ts` only to know which current developer-selectable configurations/content terminology the family exposes.
+- Separate current Expressive rows/groups from baseline/legacy/deprecated rows/groups before serializing the catalogue; do not assume an entire table is current merely because its heading is current.
 - Public names use canonical `--md-comp-*` Material semantics.
 - Preserve official system/reference aliases when Material specifies them.
 - Cover official current configurations, parts and states even when Mioframe does not currently override them.
 - Do not expose `--m3e-*`, `--md-private-*`, renderer defaults, or application `--app-*` tokens.
 - Do not create token enums, registries, DSLs, JSON mirrors, second catalogues, or compatibility aliases.
 
-`tokens.css` is the executable public component-token catalogue. A historical token present on the Material page is not current public API merely because the page still documents a baseline configuration.
+If token-source evidence proves a configuration in `contract.ts` is historical/non-current or reveals a current developer-selectable configuration missing from `contract.ts`, return to the API owner instead of compensating inside `tokens.css`.
+
+`tokens.css` is the executable public component-token catalogue. A historical token present on the Material page is not current public API merely because the page still documents it.
 
 ## `BEHAVIOR.md` — behavior contract
 
@@ -84,11 +87,13 @@ Use only the applicable sections:
 ## Material-unspecified behavior
 ```
 
+Use `contract.ts` only as the current structural vocabulary/boundary. If behavior-source evidence proves that boundary wrong or incomplete, return to the API owner rather than rewriting the structure inside `BEHAVIOR.md`.
+
 Record geometry, state transitions, accessibility, content ownership and motion only when Material 3 MCP defines them for the family. Do not include Vue strategy, m3e lifecycle/workarounds, test plans, product behavior, migration instructions, or general usage prose.
 
 ## Cross-contract reachability
 
-The three contracts are authored independently but must describe one coherent current Material family:
+The three contracts must describe one coherent current Material family:
 
 ```text
 Material configuration
@@ -98,28 +103,35 @@ Material configuration
   → observable result / proof
 ```
 
-No public token group may describe a configuration the canonical component can never reach. No current selectable Material configuration may disappear because another worker used different terminology.
+No public token group may describe a configuration the canonical component can never reach. No current selectable Material configuration may disappear because different docs sections use different terminology.
 
-Implementation checks this reachability before renderer work. The orchestrator does not synthesize the contracts.
+Implementation checks this reachability before renderer work. The orchestrator does not synthesize Material facts.
 
 ## Isolation
 
-The three contract workers may run in parallel when isolated writes are safe.
+API contract runs first in its own fresh context.
 
-Each worker reads only:
+After API completes, token and behavior workers run in separate fresh contexts and may run in parallel. They may read only:
 
-- applicable `AGENTS.md` and its own skill;
-- this document and the narrow token/contract conventions required for its artifact;
-- the `material3` MCP documentation required for its single scope.
+- applicable `AGENTS.md` and their own skill;
+- this document and the narrow token/adapter conventions required for their artifact;
+- completed `contract.ts` for structural scope/terminology only;
+- the Material 3 MCP documentation required for their single factual scope.
 
-Contract workers must not inspect:
+No contract worker may inspect:
 
 - `@m3e/web` documentation or implementation;
 - legacy component implementation;
 - application consumers/current call-site demand;
-- another contract worker's reasoning.
+- another worker's narrative reasoning.
 
-Existing canonical artifacts may be read only when refreshing the same owned artifact because an exact correction handoff reopened that stage.
+## Atomic contract output
+
+A contract file is a durable completed-stage artifact only after its worker completion check passes.
+
+For a new/missing contract, finish source inspection and validation before writing the owned artifact. A blocked worker must not leave a new partial contract file.
+
+When an architect correction reopens an existing contract, that correction remains authoritative until the worker returns `complete`; interruption does not make the old file valid again. Repeat the same correction handoff when resuming an interrupted correction.
 
 ## Gate
 
@@ -128,10 +140,11 @@ Standalone implementation may start when:
 - API contract is complete;
 - token contract is complete;
 - behavior contract is complete;
-- `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist;
-- no current correction still targets one of them.
+- `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist as completed artifacts;
+- no current correction still targets one of them;
+- token/behavior workers have not reported an API-boundary contradiction.
 
-A repeated `material-component` invocation does not rerun an existing contract worker unless an exact correction handoff reopens that owner.
+A repeated `material-component` invocation does not rerun an existing complete contract unless an exact correction handoff reopens that owner.
 
 If implementation later proves one contract wrong, route the exact finding back to that owner and rerun only downstream invalidated stages.
 
