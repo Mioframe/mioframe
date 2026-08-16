@@ -5,10 +5,14 @@
 One official Material family is implemented through three focused technical contracts and two coding stages:
 
 ```text
-API CONTRACT       ┐
-TOKEN CONTRACT     ├─→ CONTRACT READY → IMPLEMENTATION → MIGRATION IF REQUIRED → ARCHITECT REVIEW / CI
-BEHAVIOR CONTRACT  ┘
+API CONTRACT
+     ↓
+TOKEN CONTRACT ─┐
+                ├─→ CONTRACT READY → IMPLEMENTATION → MIGRATION IF REQUIRED → ARCHITECT REVIEW / CI
+BEHAVIOR CONTRACT┘
 ```
+
+The API contract runs first because it establishes the canonical current structural surface: developer-selectable configurations, content roles, public values and defaults. Token and behavior workers may then run in parallel. They may read `contract.ts` only as that structural boundary; Material facts still come only from Material 3 MCP.
 
 The coding workflow ends at architect handoff. Semantic PR review, exact-head CI review, roadmap completion, and merge readiness are architect-owned and are not duplicated by another coding-agent review worker.
 
@@ -18,7 +22,7 @@ The normal operator entrypoint remains:
 material-component <name>
 ```
 
-The workflow is resume-first. Repository artifacts are durable stage results; a repeated invocation continues from the current stage instead of rebuilding completed work.
+The workflow is resume-first. Repository artifacts are durable stage results; a repeated invocation continues from current repository state instead of rebuilding completed work.
 
 ## Material source readiness
 
@@ -26,16 +30,27 @@ Before running a contract worker, mechanically verify that the repository-config
 
 If the source is missing or stale because the local cache needs refresh, perform one normal non-forced full refresh and recheck. Do not use `force`, `promotePartial`, reduced `maxPages`, web search, memory, or another documentation source to bypass a source failure.
 
-Do not repeat source refresh/check work merely because implementation, migration, or architect review is being resumed from already-written contracts.
+Do not repeat source refresh/check work merely because implementation, migration, or architect review is being resumed from already-complete contracts.
 
 ## Contract workers
 
-Exactly three fresh isolated definition workers own the canonical technical contracts:
+### API contract
+
+Run `material-component-api-contract` first in a fresh isolated context.
+
+It owns only:
 
 ```text
-material-component-api-contract
-  → components/<family>/contract.ts
+components/<family>/contract.ts
+```
 
+It establishes the current public structural boundary from Material 3 MCP without reading m3e, legacy code or consumers.
+
+### Token and behavior contracts
+
+After API completes, run these in separate fresh contexts; they may run in parallel when writes are safely isolated:
+
+```text
 material-component-token-contract
   → components/<family>/tokens.css
 
@@ -43,36 +58,58 @@ material-component-behavior-contract
   → components/<family>/BEHAVIOR.md
 ```
 
-Material facts come only from the repository-configured `material3` MCP server.
+Both may read `contract.ts` only to reuse the already-established current configuration/content-role boundary and public terminology. They must independently query Material 3 MCP for the facts in their own scope. They must not copy facts from `contract.ts`, reinterpret it to fit m3e, or edit it.
 
-The workers do not inspect m3e, legacy implementation, application consumers/current demand, or another contract worker's reasoning.
+If Material evidence in token/behavior scope proves `contract.ts` structurally wrong or incomplete, report `return-to-api-contract` with the exact contradiction instead of compensating locally.
 
-The three workers may run in parallel for a new family when their writes are isolated safely. Parallelism is an optimization, not a requirement.
+## Contract artifact atomicity
+
+A contract artifact is a durable completed-stage artifact only when its worker returns `complete`.
+
+For a new/missing contract:
+
+1. finish Material source inspection first;
+2. perform the worker completion check;
+3. write/replace the owned artifact only after that check can return `complete`.
+
+If the worker is blocked, it must not create a partial owned artifact.
+
+For an architect correction that reopens an existing contract, the correction handoff remains the authoritative invalidation until the corrected worker returns `complete`. If that correction run is interrupted, repeat the same correction handoff on the next invocation; file existence alone does not cancel an active architect correction.
 
 ## Resume rules
 
-The orchestrator first inspects the current family files and determines the earliest structurally incomplete stage.
+The orchestrator first inspects current family files and any exact architect correction handoff.
 
 Without an explicit correction handoff:
 
-1. Run only missing contract workers.
-2. When all three contracts exist and are complete, run standalone implementation only if the canonical runtime/proof is not complete.
-3. Run migration only when current consumers or replaced legacy ownership still require migration.
-4. When contracts, standalone runtime/proof, and required migration are already present, stop and hand the current family to the architect. Do not regenerate contracts or perform a self-review to search for new work.
+1. If `contract.ts` is missing, run API only.
+2. If `contract.ts` exists and either `tokens.css` or `BEHAVIOR.md` is missing, run only the missing token/behavior workers.
+3. When all three contracts exist, run/continue standalone implementation for a family not yet handed to the architect as implementation-complete.
+4. Run migration only when current consumers or replaced legacy ownership still require migration.
+5. When the current invocation has completed implementation and any required migration, stop and hand the family to the architect.
 
-A completed contract worker is not rerun simply because `material-component <name>` is invoked in a fresh agent session.
+A completed contract worker is not rerun because a fresh agent lacks prior chat context.
 
-To reopen a completed stage, require an exact correction handoff naming the owner and finding. A correction discovered by the architect is authoritative routing input for the coding workflow; the orchestrator does not reconstruct the previous review from chat history or guess what should be rerun.
+A correction may reopen a completed stage only through an exact architect handoff using this shape:
 
-If repository state is too ambiguous to determine whether an existing stage is complete, return `needs-architect` instead of conservatively rebuilding the full pipeline.
+```text
+family: <canonical family>
+owner: <api-contract | token-contract | behavior-contract | implementation | migration | architect>
+finding: <one exact defect>
+affected scope: <concise contract/proof/consumer scope>
+```
+
+Pass that block unchanged to the targeted worker. Do not broaden it into a general re-review request.
+
+If repository state is ambiguous enough that the next stage cannot be determined mechanically, return `needs-architect` instead of rebuilding the pipeline.
 
 ## Contract-ready gate
 
 Standalone implementation may start when:
 
-- `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist;
-- the corresponding worker results are complete for any contract worker run in the current invocation;
-- no current correction handoff still targets a contract;
+- `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist as completed contract artifacts;
+- no current correction still targets a contract;
+- token/behavior workers reported no `return-to-api-contract` contradiction;
 - the three artifacts have no direct structural contradiction visible without re-deriving Material semantics.
 
 Implementation does not perform another Material definition pass.
@@ -95,6 +132,8 @@ It must not inspect application consumers or migrate legacy call sites.
 
 If implementation proves a contract wrong, return the exact owner (`api-contract`, `token-contract`, or `behavior-contract`) and stop. Do not rewrite the contract inside implementation.
 
+An interrupted implementation is resumed by the implementation worker from current family files; it does not reopen completed contracts.
+
 ## Migration
 
 Run `material-component-migration` in a separate fresh context only when migration work is actually required.
@@ -111,7 +150,7 @@ Correction runs are targeted:
 
 ```text
 api-contract
-  → API contract worker → implementation → migration only if consumer-facing usage changed → architect
+  → API contract worker → token/behavior only when API correction invalidates their scope → implementation → migration only if consumer usage changed → architect
 
 token-contract
   → token contract worker → implementation → architect
@@ -133,19 +172,9 @@ Do not rerun unaffected contracts or coding stages. After two unsuccessful corre
 
 ## Handoffs
 
-Pass only the minimum durable state needed by the next coding worker:
+Repository files are the durable implementation handoff. Between coding workers pass only the exact correction block plus lossless operator observations that materially affect that worker.
 
-```text
-family: <canonical family>
-owner: <target worker>
-finding: <exact contract or observable defect>
-affected scope: <concise files/contract/proof>
-operator observation: none | <lossless factual observation>
-```
-
-Repository files remain the durable implementation handoff. Do not pass hidden reasoning, previous narrative reports, copied source encyclopedias, Git/PR history, or unrelated logs between workers.
-
-No extra workflow-status artifact is required. The architect supplies exact correction findings when a completed stage must be reopened.
+Do not pass hidden reasoning, previous narrative reports, copied source encyclopedias, Git/PR history, or unrelated logs between workers.
 
 ## Status ownership
 
@@ -158,7 +187,7 @@ Coding stages must not mark the Material roadmap, PR, or family as architect-rev
 The coding-agent workflow is complete when:
 
 - the three technical contracts exist and no current correction targets them;
-- standalone implementation and required proof are complete;
+- standalone implementation and required proof are complete in the current/resumed implementation run;
 - required consumer migration and legacy removal are complete, or migration is explicitly not required for the correction;
 - focused local verification required for the edited contracts has completed or an exact external blocker is reported.
 
