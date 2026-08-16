@@ -27,7 +27,7 @@ This skill owns orchestration only.
 2. Inspect current family artifacts/runtime/consumer migration state mechanically.
 3. Read the family-local `.material-correction.json` recovery marker when it exists.
 4. Run the current-rules compatibility gate from `component-workflow.md` before treating existing artifacts as reusable completed stages.
-5. If a pending correction exists or the compatibility gate identifies one exact owner, run only that owner and downstream stages actually invalidated by the correction.
+5. If a pending correction exists or the compatibility gate identifies an exact owner, run only that owner and downstream stages actually invalidated by the correction.
 6. Otherwise run only the earliest missing/incomplete stage according to `component-workflow.md`.
 7. For a new family, run API contract first.
 8. After API completes, run token and behavior workers in separate fresh contexts; they may run in parallel when isolated writes are safe.
@@ -54,7 +54,15 @@ The compatibility gate is deliberately mechanical. It may detect explicit violat
 
 It must not decide whether a Material fact is semantically correct, infer undocumented Material requirements, inspect m3e behavior, or perform a hidden full family review. Semantic disagreement belongs to the focused owner worker or architect.
 
-When one mechanical violation uniquely identifies an owner, create the internal correction marker and route it without asking the operator.
+When mechanical incompatibilities exist in several stages at once, do not escalate merely because more than one owner is stale. Process the earliest owner in pipeline order, then rerun the compatibility gate:
+
+```text
+api-contract → token-contract → behavior-contract → implementation → migration
+```
+
+Token and behavior remain independently owned; this ordering is only a deterministic recovery priority when both already contain visible stale-rule violations. A corrected earlier owner may invalidate or eliminate later findings, so do not pre-plan the whole correction chain.
+
+For the selected earliest owner, consolidate its visible mechanical violations into the internal correction marker and route it without asking the operator.
 
 ## Durable correction recovery
 
