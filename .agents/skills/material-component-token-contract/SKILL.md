@@ -17,7 +17,9 @@ Material token facts come from the repository-configured `material3` MCP server 
 
 Do not substitute m3e token docs, legacy CSS, application overrides, web search, or memory for Material 3 MCP.
 
-If required token data is unavailable or contradictory in Material 3 MCP, report the exact blocker instead of guessing.
+After complete applicable source coverage, a token/default/alias Material does not define is not an ambiguity. Do not invent one to make the catalogue look complete.
+
+Report `blocked` only when applicable Material token source coverage cannot be established, official Material token data contradicts itself, or an unavailable fact prevents defining a Material-owned public token requirement.
 
 ## Isolation
 
@@ -51,7 +53,8 @@ Before returning `complete`:
 3. Re-read `tokens.css` against those sources and verify no documented public component token, official default, or official system/reference alias in this worker's scope was omitted, invented, or renamed from renderer/legacy vocabulary.
 4. Verify values follow the repository's established Material CSS authoring conventions, including supported `dp`/`sp` units where Material specifies them.
 5. Verify the artifact contains no private renderer bridges or application tokens.
-6. If complete source coverage cannot be established, report `blocked`; do not return `complete`.
+6. Distinguish Material silence from a blocker: complete source coverage plus an unspecified token/default/alias may still return `complete`.
+7. Report `blocked` only for incomplete source coverage, contradictory official token data, or a missing fact required to decide a Material-owned token rule.
 
 ## Report
 
@@ -60,7 +63,7 @@ MATERIAL TOKEN CONTRACT RESULT
 family: <family>
 artifact: <tokens.css path>
 Material 3 MCP coverage: complete | blocked
-unresolved ambiguity: none | <exact ambiguity>
+unresolved blocking ambiguity: none | <exact ambiguity>
 result: complete | blocked
 ```
 
@@ -68,6 +71,8 @@ result: complete | blocked
 
 - Reading m3e or consumers to select or name public tokens.
 - Making the token surface demand-scoped.
+- Treating absent Material token data as permission to invent a public token.
+- Treating a non-existent Material token/default/alias as a blocker after complete source coverage.
 - Editing `contract.ts`, `BEHAVIOR.md`, runtime code, tests, consumers, or migration.
 - Guessing missing Material token facts.
 - Replacing repository-supported Material `dp`/`sp` authoring units solely to mimic native browser syntax.
