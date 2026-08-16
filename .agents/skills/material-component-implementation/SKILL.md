@@ -17,7 +17,7 @@ components/<family>/tokens.css
 components/<family>/BEHAVIOR.md
 ```
 
-Do not start if any technical contract worker reported unresolved Material ambiguity.
+Do not start if any technical contract worker reported a blocking unresolved Material ambiguity or source-coverage blocker. A Material-unspecified detail recorded after complete source coverage is not a blocker.
 
 Before inspecting m3e or editing production code, check the three technical contracts for direct internal contradictions only. Public states/content roles required by `BEHAVIOR.md` must be representable by `contract.ts`, and token variant/state/part terminology must not contradict the structural or behavior contracts. If they conflict, route the exact finding to the owning definition worker; do not synthesize a new contract in implementation.
 
@@ -26,6 +26,8 @@ Before inspecting m3e or editing production code, check the three technical cont
 Read applicable `AGENTS.md`, `component-contract.md`, `component-adapter.md`, `component-tokens.md`, current testing ownership, and the three technical family contract artifacts.
 
 The technical contracts define what the component must expose and observably do. Exact lockfile-resolved `@m3e/web` documentation/examples/public artifacts define only how the private renderer can implement those contracts.
+
+For behavior Material leaves unspecified, do not invent or document a Material requirement. Preserve normal Web/renderer semantics unless an existing repository-owned platform/accessibility contract requires a specific observable result.
 
 ## Isolation
 
@@ -94,7 +96,7 @@ As applicable prove:
 - props/slots/emits/defaults and allowed attribute boundary;
 - accepted/rejected controlled intent and one source of truth;
 - pointer/keyboard/focus/native event behavior;
-- accessible role/name/state and ownership;
+- accessible role/name/state and ownership required by the component or existing Web/accessibility contract;
 - fixed Material geometry with numeric browser assertions;
 - public token overrides through actual rendered results;
 - renderer-owned appearance/motion through faithful browser/visual evidence;
