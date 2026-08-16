@@ -6,9 +6,9 @@ Generic reorder primitives for Vue surfaces.
 
 **Legacy.** `@shared/lib/reorder` is the canonical reorder implementation for new consumers. This
 module is retained only for its remaining unmigrated production consumer,
-`src/features/databaseItemSorting/DatabaseItemSortingListSection.vue`, plus its own
-`ReorderSurfacePlayground.vue` dev playground. It is closed to new consumers and feature
-additions, and is planned for removal once that consumer migrates to `@shared/lib/reorder`.
+`src/features/databaseItemSorting/DatabaseItemSortingListSection.vue`. It is closed to new
+consumers and feature additions, and is planned for removal once that consumer migrates to
+`@shared/lib/reorder`.
 
 This module is a generic reorder primitive: it does not know anything about database views,
 sorting rules, or any other business data. It is not the current shared drag-to-reorder layer —
@@ -188,7 +188,6 @@ from the older commit must not overwrite it.
 - `reorderPostDragClick.ts`: synthetic click suppression rules after drag.
 - `constants.ts`: shared attributes, class names, and selectors.
 - `reorderSurface.css`: drag-session CSS overrides.
-- `ReorderSurfacePlayground.vue`: manual playground for behavior checks.
 - `*.test.ts`: focused unit coverage for the touched invariants.
 
 ## Invariants

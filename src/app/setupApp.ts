@@ -26,15 +26,6 @@ export const setupApp = async (app: App = createApp(MainApp)) => {
 
   setupStackNavigation(router);
 
-  if (import.meta.env.DEV) {
-    const [{ setupPlayground }, { playgroundPages }] = await Promise.all([
-      import('@shared/lib/playground'),
-      import('./playgroundPages'),
-    ]);
-
-    setupPlayground(router, playgroundPages);
-  }
-
   app.use(router);
 
   app.use(
