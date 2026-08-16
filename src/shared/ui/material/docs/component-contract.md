@@ -26,6 +26,20 @@ Each artifact is produced by a separate fresh worker with one narrow responsibil
 
 The three technical contracts gate standalone implementation. Usage guidance is independent and may complete in parallel with contract extraction or standalone implementation, but it must be complete before consumer migration begins.
 
+## Source completeness versus specification completeness
+
+Definition workers must establish complete coverage of the applicable Material 3 MCP sources for their scope. They do not require Material to prescribe every Web/runtime detail.
+
+After complete source coverage, a detail Material does not define is a boundary of the Material contract, not an unresolved ambiguity. Omit it or record it concisely as Material-unspecified when that prevents a later stage from inventing a Material requirement.
+
+A definition worker blocks only when:
+
+- applicable Material source coverage cannot be established;
+- applicable official Material sources contradict one another; or
+- an unavailable fact prevents deciding a requirement that Material owns for that artifact.
+
+Material silence about generic Web/HTML/ARIA mechanics, browser event semantics, renderer internals, or other platform-owned details does not itself block the family definition.
+
 ## `contract.ts` — public API contract
 
 `contract.ts` owns only the renderer-independent Vue-facing structural API:
@@ -69,8 +83,10 @@ Keep the document focused on facts required to implement and verify the componen
 ## Accessibility semantics
 ## Geometry and layout
 ## Motion
-## Unresolved Material ambiguity
+## Material-unspecified behavior
 ```
+
+The last section is optional and records only relevant boundaries that Material leaves unspecified after complete source coverage. Such boundaries are not requirements and do not block implementation.
 
 Record fixed geometry, spacing, touch targets, state transitions, accessible roles/states, content ownership and motion only when Material 3 MCP defines them for the component.
 
@@ -94,7 +110,6 @@ It may contain, when Material 3 MCP provides them:
 ## Consumer accessibility responsibilities
 ## Related components and choosing alternatives
 ## Adaptive or platform guidance
-## Unresolved Material guidance
 ```
 
 The README owns semantic application guidance, not implementation mechanics. It must not duplicate prop/event/slot tables, token catalogues, normative interaction/geometry/motion contracts, m3e details, product-specific migration instructions, or workflow history.
@@ -133,7 +148,9 @@ Standalone implementation may start when:
 - token contract worker reports complete;
 - behavior contract worker reports complete;
 - `contract.ts`, `tokens.css`, and `BEHAVIOR.md` exist at the canonical family owner;
-- none of those workers reports unresolved Material ambiguity or a blocker.
+- none of those workers reports a blocking Material ambiguity or source-coverage blocker.
+
+Material-unspecified details recorded after complete source coverage do not block this gate.
 
 `README.md` is not part of this runtime gate.
 
@@ -144,7 +161,7 @@ Consumer migration may start only when:
 - standalone implementation is complete;
 - guidance worker reports complete;
 - `README.md` exists at the canonical family owner;
-- guidance has no unresolved Material ambiguity or blocker.
+- guidance has no blocking Material ambiguity or source-coverage blocker.
 
 If implementation or migration later proves one Material fact wrong or incomplete, route the exact finding back to the worker that owns that artifact. Do not repair it opportunistically in another stage.
 
