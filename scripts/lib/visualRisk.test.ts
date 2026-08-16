@@ -14,6 +14,7 @@ import {
   isColocatedVisualSpecPath,
   isFullVisualLanePath,
   isLegacyVisualPath,
+  isSafeVisualExclusionPath,
   resolveVisualPlan,
 } from './visualRisk.ts';
 
@@ -22,6 +23,18 @@ const isVisualRelevantPackageJsonChange = vi.mocked(isVisualRelevantPackageJsonC
 const LOADING_INDICATOR_OWNER_DIR = 'src/shared/ui/material/components/loadingIndicator';
 const LOADING_INDICATOR_VISUAL_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.visual.spec.ts`;
 const LOADING_INDICATOR_SNAPSHOT_DIR = `${LOADING_INDICATOR_VISUAL_SPEC}-snapshots`;
+const LOADING_INDICATOR_TEST = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.test.ts`;
+const LOADING_INDICATOR_BROWSER_SPEC = `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.browser.spec.ts`;
+const LOADING_INDICATOR_DOC = `${LOADING_INDICATOR_OWNER_DIR}/README.md`;
+
+const BUTTON_OWNER_DIR = 'src/shared/ui/material/components/button';
+const BUTTON_TEST = `${BUTTON_OWNER_DIR}/MDButton.test.ts`;
+const BUTTON_BROWSER_SPEC = `${BUTTON_OWNER_DIR}/MDButton.browser.spec.ts`;
+const BUTTON_DOC = `${BUTTON_OWNER_DIR}/README.md`;
+const BUTTON_VUE = `${BUTTON_OWNER_DIR}/MDButton.vue`;
+
+const MD_LIB_TEST = 'src/shared/lib/md/index.test.ts';
+const APP_STYLES_CSS = 'src/app/styles/styles.css';
 
 describe('isColocatedVisualSpecPath', () => {
   it('flags owner-local visual specs under src/', () => {
@@ -77,7 +90,10 @@ describe('isFullVisualLanePath', () => {
   it('flags global app/base fonts and visual styling', () => {
     expect(isFullVisualLanePath('src/app/styles/base.css')).toBe(true);
     expect(isFullVisualLanePath('src/app/styles/fonts.css')).toBe(true);
-    expect(isFullVisualLanePath('src/app/styles/styles.css')).toBe(true);
+  });
+
+  it('does not flag the application-shell stylesheet Storybook does not import', () => {
+    expect(isFullVisualLanePath(APP_STYLES_CSS)).toBe(false);
   });
 
   it('flags the entire legacy central visual subtree', () => {
@@ -108,6 +124,24 @@ describe('isBroadVisualRelevantPath', () => {
   it('does not flag unrelated source paths', () => {
     expect(isBroadVisualRelevantPath('src/features/documentCreate/index.ts')).toBe(false);
     expect(isBroadVisualRelevantPath('src/entities/document/model/document.ts')).toBe(false);
+  });
+});
+
+describe('isSafeVisualExclusionPath', () => {
+  it('flags colocated Vitest specs, browser-behavior specs, and Markdown regardless of owner', () => {
+    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_TEST)).toBe(true);
+    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_BROWSER_SPEC)).toBe(true);
+    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_DOC)).toBe(true);
+    expect(isSafeVisualExclusionPath(BUTTON_TEST)).toBe(true);
+    expect(isSafeVisualExclusionPath(BUTTON_BROWSER_SPEC)).toBe(true);
+    expect(isSafeVisualExclusionPath(BUTTON_DOC)).toBe(true);
+    expect(isSafeVisualExclusionPath(MD_LIB_TEST)).toBe(true);
+  });
+
+  it('does not flag a colocated visual spec, a runtime file, or a story', () => {
+    expect(isSafeVisualExclusionPath(LOADING_INDICATOR_VISUAL_SPEC)).toBe(false);
+    expect(isSafeVisualExclusionPath(BUTTON_VUE)).toBe(false);
+    expect(isSafeVisualExclusionPath(`${BUTTON_OWNER_DIR}/MDButton.stories.ts`)).toBe(false);
   });
 });
 
@@ -366,6 +400,89 @@ describe('resolveVisualPlan unmigrated visual owners', () => {
     ]);
 
     expect(plan.mode).toBe('full');
+  });
+});
+
+describe('resolveVisualPlan safe non-visual proof/documentation exclusions', () => {
+  it('skips a migrated owner Vitest spec even though it is colocated with a visual spec', () => {
+    expect(resolveVisualPlan([LOADING_INDICATOR_TEST]).mode).toBe('skip');
+  });
+
+  it('skips a migrated owner browser-behavior spec even though it is colocated with a visual spec', () => {
+    expect(resolveVisualPlan([LOADING_INDICATOR_BROWSER_SPEC]).mode).toBe('skip');
+  });
+
+  it('skips migrated owner Markdown documentation even though it is colocated with a visual spec', () => {
+    expect(resolveVisualPlan([LOADING_INDICATOR_DOC]).mode).toBe('skip');
+  });
+
+  it('skips an unmigrated shared UI Vitest spec that would otherwise fail closed to full', () => {
+    expect(resolveVisualPlan([BUTTON_TEST]).mode).toBe('skip');
+  });
+
+  it('skips an unmigrated shared UI browser-behavior spec that would otherwise fail closed to full', () => {
+    expect(resolveVisualPlan([BUTTON_BROWSER_SPEC]).mode).toBe('skip');
+  });
+
+  it('skips unmigrated shared UI Markdown documentation that would otherwise fail closed to full', () => {
+    expect(resolveVisualPlan([BUTTON_DOC]).mode).toBe('skip');
+  });
+
+  it('skips a legacy shared/lib/md Vitest spec', () => {
+    expect(resolveVisualPlan([MD_LIB_TEST]).mode).toBe('skip');
+  });
+
+  it('skips the application-shell stylesheet Storybook does not import', () => {
+    expect(resolveVisualPlan([APP_STYLES_CSS]).mode).toBe('skip');
+  });
+});
+
+describe('resolveVisualPlan mixed changes', () => {
+  it('stays skip when only safe proof-only paths change, across multiple owner directories', () => {
+    const plan = resolveVisualPlan([LOADING_INDICATOR_TEST, LOADING_INDICATOR_DOC, BUTTON_TEST], {
+      colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC],
+    });
+
+    expect(plan.mode).toBe('skip');
+  });
+
+  it('combines a safe proof-only path with a focused runtime change to stay focused', () => {
+    const plan = resolveVisualPlan(
+      [LOADING_INDICATOR_TEST, `${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`],
+      { colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC] },
+    );
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([LOADING_INDICATOR_VISUAL_SPEC]);
+  });
+
+  it('falls back to full when a focused owner change accompanies an unresolvable visually-relevant path', () => {
+    const plan = resolveVisualPlan(
+      [`${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`, BUTTON_VUE],
+      { colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC] },
+    );
+
+    expect(plan.mode).toBe('full');
+  });
+
+  it('falls back to full when a focused owner change accompanies global infrastructure', () => {
+    const plan = resolveVisualPlan(
+      [`${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`, '.storybook/main.ts'],
+      { colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC] },
+    );
+
+    expect(plan.mode).toBe('full');
+  });
+
+  it('unions and deduplicates visual specs from multiple distinct focused owners', () => {
+    const buttonSpec = `${BUTTON_OWNER_DIR}/MDButton.visual.spec.ts`;
+    const plan = resolveVisualPlan(
+      [`${LOADING_INDICATOR_OWNER_DIR}/MDLoadingIndicator.vue`, BUTTON_VUE],
+      { colocatedSpecFiles: [LOADING_INDICATOR_VISUAL_SPEC, buttonSpec] },
+    );
+
+    expect(plan.mode).toBe('focused');
+    expect(plan.specs).toEqual([LOADING_INDICATOR_VISUAL_SPEC, buttonSpec].sort());
   });
 });
 
