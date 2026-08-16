@@ -35,7 +35,7 @@ Define only the canonical renderer-independent public structural contract:
 
 - parameters/props;
 - slots/content inputs;
-- events/emits;
+- events/emits when the component contract owns component output;
 - public value/state/variant/configuration types required by those inputs/events;
 - defaults;
 - valid combinations when TypeScript can express them clearly;
@@ -43,9 +43,11 @@ Define only the canonical renderer-independent public structural contract:
 
 A Material configuration is not omitted merely because documentation calls it a style, color mapping, configuration, emphasis, or another term instead of `variant`. If Material presents a component-owned choice as developer-selectable and it changes the canonical rendered/behavioral configuration, represent it unless Material explicitly scopes it to a legacy/baseline surface outside the current Expressive family.
 
-Prefer explicit `MD<Component>Props`, `MD<Component>Slots`, and `MD<Component>Emits` contracts where applicable so the Vue SFC can consume them directly.
+Prefer explicit `MD<Component>Props`, `MD<Component>Slots`, and, only when applicable, `MD<Component>Emits` contracts so the Vue SFC can consume them directly through `<script setup>` macros.
 
-Framework mechanics are not additional Material semantics. Do not create an event merely because Vue supports emits; expose only consumer-observable output required by the Material interaction model/project public boundary, with idiomatic Vue naming.
+Framework mechanics are not additional Material semantics. Do not create an emit merely because Vue supports emits. A native interaction may remain native/transparent when that is the documented public boundary; use a component emit only when the component contract intentionally owns that output.
+
+Defaults in `contract.ts` must be reusable by the Vue implementation without creating a parallel default source. Prefer a typed immutable defaults object for optional primitive/configuration props when the family has canonical defaults.
 
 Do not add implementation helpers, renderer types, legacy aliases, speculative convenience API, or surface omitted from Material 3 MCP.
 
@@ -57,7 +59,7 @@ These examples illustrate the decision rule and artifact shape only. They are no
 
 Suppose Material documents one current action family with three sizes, two developer-selectable appearances, an optional icon, visible label content, and explicit defaults. Mioframe currently uses only one size and one appearance.
 
-GOOD:
+GOOD — canonical `contract.ts`:
 
 ```ts
 export type MDExampleActionSize = 'small' | 'medium' | 'large';
@@ -73,17 +75,34 @@ export interface MDExampleActionSlots {
   icon?: () => unknown;
 }
 
-export interface MDExampleActionEmits {
-  click: [event: MouseEvent];
-}
-
 export const mdExampleActionDefaults = {
   appearance: 'primary',
   size: 'small',
-} as const satisfies Pick<MDExampleActionProps, 'appearance' | 'size'>;
+} as const satisfies Required<
+  Pick<MDExampleActionProps, 'appearance' | 'size'>
+>;
 ```
 
-Why: the contract represents the complete current Material-owned structural surface and keeps public terminology independent from the renderer and current consumer count.
+The later Vue 3.5 SFC should be able to consume that contract directly, for example:
+
+```vue
+<script setup lang="ts">
+import {
+  mdExampleActionDefaults,
+  type MDExampleActionProps,
+  type MDExampleActionSlots,
+} from './contract';
+
+const {
+  appearance = mdExampleActionDefaults.appearance,
+  size = mdExampleActionDefaults.size,
+} = defineProps<MDExampleActionProps>();
+
+defineSlots<MDExampleActionSlots>();
+</script>
+```
+
+Why: the contract represents the complete current Material-owned structural surface, provides one reusable default source, and fits Vue 3.5 type-based props/reactive props destructure without renderer-specific runtime declarations.
 
 BAD:
 
@@ -94,6 +113,37 @@ export interface MDExampleActionProps {
 ```
 
 Why: this shrinks the canonical family to today's Mioframe usage.
+
+BAD — duplicating defaults in the SFC:
+
+```ts
+const { appearance = 'primary', size = 'small' } =
+  defineProps<MDExampleActionProps>();
+```
+
+when the same defaults are already separately declared in `contract.ts`.
+
+Why: two independently edited default sources can drift.
+
+### Do not invent emits for native behavior
+
+Suppose the family is an action whose only output is ordinary native activation and the adapter contract intentionally forwards that native listener.
+
+GOOD: omit `MDExampleActionEmits` and preserve the narrow native listener seam.
+
+BAD:
+
+```ts
+export interface MDExampleActionEmits {
+  click: [event: MouseEvent];
+}
+```
+
+when no component-owned event contract requires wrapping/re-emitting the native click.
+
+Why: Vue emits are public component semantics, not mandatory boilerplate for every interactive root.
+
+If Material/project state ownership genuinely requires component output, define the smallest typed emit contract for that output; do not infer it from this example.
 
 ### Historical rows do not become current API
 
@@ -157,10 +207,11 @@ Before writing the artifact and returning `complete`:
 3. Verify no documented parameter, content role, consumer-observable interaction output, public value/configuration, default, selectable style/color mapping, or valid combination in this worker's scope is omitted or guessed.
 4. Verify legacy/baseline/deprecated configurations are not promoted into the current Expressive public contract solely because historical Material tables remain on the page.
 5. Verify no m3e, legacy, consumer-demand, token, or behavior implementation decision entered the contract.
-6. Distinguish Material silence from a blocker: complete source coverage plus an unspecified detail may still return `complete`.
-7. Only now write/replace `contract.ts` once with the completed result.
+6. Verify defaults have one canonical contract source and can be consumed directly by the Vue implementation without re-declaration.
+7. Distinguish Material silence from a blocker: complete source coverage plus an unspecified detail may still return `complete`.
+8. Only now write/replace `contract.ts` once with the completed result.
 
-If blocked before step 7, do not create a new partial `contract.ts`. When correcting an existing contract, do not treat the old file as corrected unless this worker reaches step 7 and returns `complete`.
+If blocked before step 8, do not create a new partial `contract.ts`. When correcting an existing contract, do not treat the old file as corrected unless this worker reaches step 8 and returns `complete`.
 
 ## Report
 
@@ -182,6 +233,8 @@ result: complete | blocked
 - Promoting a baseline/legacy-only configuration into the current Expressive API without current Material support.
 - Treating Material silence as permission to invent public API.
 - Treating an unspecified platform/runtime detail as a blocker after complete Material source coverage.
+- Adding component emits as boilerplate when the public boundary only needs a native/transparent interaction seam.
+- Duplicating canonical prop defaults in implementation instead of consuming the contract defaults.
 - Editing `tokens.css`, `BEHAVIOR.md`, runtime code, tests, consumers, or migration.
 - Leaving a new partial `contract.ts` on `blocked`.
 - Guessing missing Material facts.
