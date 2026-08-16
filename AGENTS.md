@@ -22,8 +22,9 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 ## Architecture and implementation workflow
 
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, workflow, or architecture changes, use `architect-handoff` unless an applicable deterministic skill resolves every required decision from authoritative sources.
-- Use `implementation-preflight` before non-trivial code edits. Official Material families additionally follow the scoped `material-component` workflow; do not begin standalone Material implementation before its technical-contract-ready gate.
-- Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight is unresolved, or while task-specific `TEST IMPACT` is unresolved.
+- Use `implementation-preflight` before non-trivial code edits unless an applicable deterministic workflow explicitly owns an equivalent narrower implementation check. Official Material implementation and migration use their scoped Material skills and do not invoke the generic preflight.
+- Official Material families follow the scoped `material-component` workflow; do not begin standalone Material implementation before its three-contract-ready gate.
+- Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight/checks are unresolved, or while task-specific proof ownership is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every abstraction, state, layer, compatibility path, recovery mechanism, optimization, registry, mapping, or helper must map to a current requirement or verified invariant.
 - Compare the proposal with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
 - Treat the ready handoff or workspace-backed deterministic blueprint as the implementation contract. If new facts invalidate it, stop and update it explicitly.
@@ -63,10 +64,8 @@ Use the applicable skill instead of duplicating its rules:
 - `material-component-api-contract`;
 - `material-component-token-contract`;
 - `material-component-behavior-contract`;
-- `material-component-guidance`;
 - `material-component-implementation`;
 - `material-component-migration`;
-- `material-component-review`;
 - `test-first`;
 - `unit-testing`;
 - `component-contract-testing`;
@@ -77,7 +76,7 @@ Use the applicable skill instead of duplicating its rules:
 - `diagnostic-events`;
 - `verification`.
 
-For Material-specific worker roles, source authority, isolation, and sequencing, follow `src/shared/ui/material/AGENTS.md` and `material-component`. Do not collapse isolated Material responsibilities into one context.
+For Material-specific worker roles, source authority, resume/correction routing, and sequencing, follow `src/shared/ui/material/AGENTS.md` and `material-component`. Do not collapse isolated Material responsibilities into one context.
 
 ## Implementation quality
 
@@ -108,15 +107,15 @@ For Material-specific worker roles, source authority, isolation, and sequencing,
 ## Verification
 
 - Keep the agent runtime's sandbox and permission system enabled. Mioframe's canonical verifier entry points (`pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`) are repository-approved to run outside the generic agent sandbox only through the runtime's narrowly scoped command allow/exclusion or per-command approval/escalation mechanism. `verify` itself owns verification scope, locking, timeouts, resource limits, and containerized browser execution. Never enable unrestricted/full-access execution for the session, broaden approval to generic `pnpm`, `node`, or shell execution, or replace a blocked verifier invocation with a raw child command.
-- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` and the focused verification needed for implementation feedback.
+- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` for ordinary non-trivial implementation; deterministic Material implementation/migration skills own their narrower proof checklist directly.
 - Coding agents use verifier-managed focused checks while implementing or correcting code. Choose the smallest faithful scope for the changed contract.
 - A coding agent does not need to run a broad local `pnpm verify` or `pnpm verify:release` merely to hand work back to the architect when GitHub CI will run the authoritative exact-head gate.
 - Use `pnpm verify --fix-only` only for safe automatic formatting, lint fixes, or instruction compatibility generation. Inspect resulting file changes before continuing.
 - Use `pnpm verify --only <label> --files ...` for focused development feedback when supported.
 - Do not substitute raw underlying test, lint, visual, mutation, or browser commands for verifier-managed checks except for narrow diagnosis explicitly allowed by the verification skill.
 - Required contract proof must exist before handoff; CI does not replace missing tests, architecture review, browser/visual evidence, or risk-specific verification.
-- After the architect opens or updates a PR, GitHub CI is the authoritative final repository verification on the exact PR head. The architect owns CI review and merge readiness.
-- If CI fails because of the PR, route the failure to the correct owner, fix it, run the smallest useful local verifier-managed check, push the correction, and let CI rerun. Do not require a full local rerun unless it is materially useful for diagnosis.
+- After the architect opens or updates a PR, GitHub CI is the authoritative final repository verification on the exact PR head. The architect owns semantic review, CI review, roadmap status, and merge readiness.
+- If CI fails because of the PR, route the failure to the correct owner, fix it, run the smallest useful local verifier-managed check, push the correction, and let CI rerun. Do not require a full local rerun unless materially useful for diagnosis.
 - Do not claim merge readiness while required exact-head CI is missing or failing.
 
 Final response after coding-agent edits must include:
