@@ -66,16 +66,93 @@ Rebase merge is forbidden. Synchronization PRs preserve shared ancestry; ordinar
 
 ### PR-level version bump policy
 
-- **Every PR into `develop` must bump `package.json` version** strictly above
-  the version currently on `develop`. This is enforced by CI (see
-  `scripts/release/validateVersion.mjs`, run as the `release-version` /
-  version-bump check).
+- **Every ordinary PR into `develop` declares release intent with exactly one
+  label**: `version:patch`, `version:minor`, or `version:major`. The
+  product/review owner applies this label — never the PR author's
+  implementation, commit messages, changed files, or branch name.
+- **Same-repository CI then materializes the exact expected `package.json`
+  version** from the current `develop` version and the declared label —
+  contributors do not hand-edit `package.json` `version` for an ordinary
+  `develop` PR. See `Same-repository CI materialization` below.
+- `release-version` (`scripts/release/validateVersion.mjs`) then validates
+  **exact equality**: `package.json` version must equal the one value the
+  label selects, not merely be any larger version. A missing label, more than
+  one label, or a version belonging to a different impact class all fail.
 - **Every PR into `main`** (promotion or hotfix) must also carry a version
   strictly above the version currently on `main`, with one narrow exception:
-  see `Pre-tag release repair` below.
-- CI verifies that a bump exists and is monotonically increasing. CI does
-  **not** decide whether the bump should be PATCH, MINOR, or MAJOR — that is
-  a product/review decision made by the PR author and reviewer.
+  see `Pre-tag release repair` below. `main` versioning stays manual — labels
+  and materialization apply only to ordinary `develop` PRs.
+- CI never infers PATCH/MINOR/MAJOR from commit messages, PR title, changed
+  files, branch prefix, or code ownership. Choosing the label remains a
+  human product/review decision (see `Choosing PATCH / MINOR / MAJOR` below);
+  CI only materializes and validates that decision.
+- `package.json` `version` remains the single source of truth for the app
+  version, whether it was set by materialization or (for `main`) by hand.
+
+### Same-repository CI materialization
+
+`scripts/release/versionPolicy.mjs` is the single owner of the reusable
+SemVer parsing/comparison/increment algorithms and the three canonical
+`version:patch` / `version:minor` / `version:major` labels, shared by both
+the materializer and the validator so the policy is defined once.
+
+For a same-repository PR into `develop`, the `autofix` job in
+`.github/workflows/verify.yml` runs `scripts/release/materializePrVersion.mjs`
+before its existing fixer pipeline (`pnpm ci:autofix`):
+
+- it resolves the PR's labels from the GitHub Actions event payload and the
+  base ref from `GITHUB_BASE_REF`;
+- when the PR targets `develop`, is not a release sync-back PR (see
+  `Release sync-back` below), and carries **exactly one** version-impact
+  label, it reads the current `develop` version, calculates the exact
+  expected version, and updates `package.json` `version` only when it
+  differs — it is idempotent, so a rerun with the version already correct
+  makes no change;
+- when the label is **missing or there is more than one**, it leaves
+  `package.json` untouched, prints a notice, and exits successfully — a
+  missing/invalid label never blocks implementation verification or PR
+  preview, only the independent `release-version` gate (see
+  `What CI verifies automatically` below);
+- before it writes, CI proves that the fetched `origin/develop` head is
+  already an ancestor of the PR `HEAD`. If the PR is out of date, it leaves
+  `package.json` untouched, prints a non-blocking notice to synchronize the
+  PR with `develop`, and the resulting `synchronize` run recalculates the
+  version;
+- infrastructure failures (an unreadable event payload, an unreadable or
+  invalid base version, an unreadable ancestry result, a failed write) fail
+  the materialization step, since those indicate a broken CI environment
+  rather than an ordinary policy outcome.
+
+Materialization only ever runs inside the existing same-repository `autofix`
+job (`github.event.pull_request.head.repo.full_name == github.repository`);
+it never runs with `pull_request_target`, and it never grants write
+credentials to a fork PR. **For a fork PR, automatic materialization is
+unsupported** — `release-version` still validates the declared label against
+the exact `package.json` version, so a maintainer or contributor must
+prepare the expected version on the fork branch by hand before merge.
+
+When materialization changes `package.json`, the existing autofix
+commit/push mechanism commits it (together with any ordinary autofix output)
+and pushes to the PR branch, which triggers a new `synchronize` run — the
+same mechanism used for ordinary autofix output, not a second
+branch-writing job or push path. `pnpm-lock.yaml` is never touched by a
+version materialization.
+
+Changing a PR's `version:*` label re-triggers `verify.yml` (the workflow
+listens for `labeled`/`unlabeled` in addition to
+`opened`/`synchronize`/`reopened`), which reruns materialization against the
+newly declared label.
+
+#### Parallel PR safety
+
+No locking, reservation service, merge bot, or persistent counter is used.
+Two PRs may initially materialize the same next version; when the first
+merges, the repository's existing `develop` branch-protection ruleset
+(strict required status checks / "must be up to date before merging")
+prevents the second from merging until it is synchronized with the new
+`develop` head, which reruns materialization and produces the next correct
+version and a fresh exact-head verification run. This existing repository
+invariant is relied on directly rather than duplicated in code.
 
 ### Pre-tag release repair
 
@@ -110,23 +187,27 @@ maintenance path, not new product work, so it is exempt from the ordinary
 sync-back, not an ordinary feature/fix PR in disguise.
 
 `scripts/release/validateVersion.mjs` allows a PR into `develop` to keep the
-**same** version as `develop`'s current version only when **all** of the
-following hold:
+**same** version as `develop`'s current version, and requires no
+`version:patch|minor|major` label, only when **all** of the following hold:
 
 - the PR targets `develop`;
 - the current `package.json` version equals `develop`'s current version
   (no bump, and no downgrade);
 - the PR head branch name matches `sync/main-X.Y.Z-back-to-develop`, where
   `X.Y.Z` is the release being synchronized back (see
-  `isReleaseSyncBackBranch` in `scripts/release/validateVersion.mjs`);
+  `isReleaseSyncBackBranch` in `scripts/release/versionPolicy.mjs`);
 - `X.Y.Z` in the branch name matches the current `package.json` version
   exactly.
 
 If the branch name does not match this pattern, or the embedded version
 does not match `package.json`, the PR is treated as an ordinary PR into
-`develop` and must bump the version like any other change. This keeps the
-exception narrow: it is not possible to open an arbitrary same-version PR
-into `develop` by picking any branch name.
+`develop` and must carry exactly one `version:*` label and the exact version
+it selects, like any other change. This keeps the exception narrow: it is
+not possible to open an arbitrary same-version, label-free PR into `develop`
+by picking any branch name. `scripts/release/materializePrVersion.mjs`
+applies the same exception (see `Same-repository CI materialization` above),
+so a sync-back PR's `package.json` is never touched by materialization
+either.
 
 A release sync-back PR:
 
@@ -159,9 +240,16 @@ focused and the full gate, and tag pushes never rerun the full gate:
 
 - **`verify` workflow** (`.github/workflows/verify.yml`): PRs into any
   branch except `main`, and pushes to `develop`. Its `pull_request` trigger uses
-  `branches-ignore: [main]`, so it never fires for a PR into `main`. The workflow
-  keeps implementation verification parallel while preserving one deployable-source
-  gate and one required merge check:
+  `branches-ignore: [main]`, so it never fires for a PR into `main`, and explicit
+  `types: [opened, synchronize, reopened, labeled, unlabeled]`, so changing a
+  PR's `version:*` label reruns the workflow (and re-evaluates materialization)
+  the same as pushing a new commit. The workflow keeps implementation
+  verification parallel while preserving one deployable-source gate and one
+  required merge check:
+  - same-repository `autofix` fetches the PR base branch and runs
+    `scripts/release/materializePrVersion.mjs` before its existing fixer
+    pipeline (`pnpm ci:autofix`) — see `Same-repository CI materialization`
+    above;
   - `verification-static` runs format, oxlint, eslint, type-check, unit tests,
     Storybook build, and mutation through verifier-managed focused lanes;
   - `verification-browser` expands application E2E, Storybook behavior, and visual
@@ -169,7 +257,8 @@ focused and the full gate, and tag pushes never rerun the full gate:
     selection and changed-file scope;
   - aggregate `verification` succeeds only when the static job and the complete
     browser matrix succeed, and owns whether deployable PR source is valid;
-  - PR-only `release-version` enforces the version-bump policy independently;
+  - PR-only `release-version` independently enforces the exact label-selected
+    version;
   - aggregate `verify` preserves the required merge check and succeeds only when
     `verification` and, for PRs, `release-version` both succeed.
 
@@ -206,7 +295,10 @@ focused and the full gate, and tag pushes never rerun the full gate:
 
 ## What remains a manual product/release decision
 
-- Whether a change is PATCH, MINOR, or MAJOR.
+- Whether a change is PATCH, MINOR, or MAJOR — applied as the ordinary
+  `develop` PR's `version:patch|minor|major` label; CI only materializes and
+  validates the exact version that label selects (see
+  `Same-repository CI materialization` above).
 - Whether a given `develop` state is ready to promote to `main`.
 - Writing the release notes for a version (`docs/releases/<version>.md`).
 - Creating and pushing the `vX.Y.Z` tag after `main` is updated.
@@ -658,8 +750,10 @@ apply these manually in the GitHub UI):
   Disallow direct pushes; only merges through a reviewed PR. The `verify`
   workflow does not run for PRs into `main`, so it is not a required check
   there.
-- `develop`: require the `verify` workflow (`verify` job and the
-  version-bump check) to pass before merge.
+- `develop`: require the `verify` workflow (`verify` job, which includes the
+  `release-version` exact-label-version check) to pass before merge, and
+  require branches to be up to date — this "up to date" requirement is what
+  makes parallel-PR materialization safe (see `Parallel PR safety` above).
 - Tag pushes: the `release-tag` workflow is informational (it validates the
   tag after the fact); it is not a branch-protection required check since
   tags are not a protected branch.
