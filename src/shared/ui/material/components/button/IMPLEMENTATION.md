@@ -4,7 +4,7 @@ Artifact revision: 2026-08-18
 Status: complete
 ARCHITECTURE.md reference: `src/shared/ui/material/components/button/ARCHITECTURE.md`
 ARCHITECTURE.md revision: 2026-08-14T12:28:07.000Z
-Revision summary: Revalidated the installed 2.7.4 Button boundary and Loading Indicator composition. The selected public token semantics are unchanged; the repository-wide component-token cascade correction now places family defaults on `:root` in `tokens.css` and keeps private renderer bridges in `MDButton.vue` CSS. M3E-006 remains a private, documented small-spacing mapping.
+Revision summary: Revalidated the installed 2.7.4 Button boundary and Loading Indicator composition. The selected public token semantics are unchanged; the repository-wide component-token cascade correction places family defaults on `:root` in `tokens.css` and keeps private renderer bridges in `MDButton.vue` CSS. M3E-006 remains a private, documented small-spacing mapping. S4-E moves Button visual proof to the family-local owner without changing runtime behavior.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -18,7 +18,8 @@ Migration readiness: ready
 3. Revalidated the strict host-attribute allow-list, adapter-owned binding precedence, native type and Boolean-property mapping, required label, leading icon, and Loading Indicator composition.
 4. Revalidated the seven selected official text Button tokens and the matching `docs/token-api.md` catalogue entries. Their Material defaults are declared once on `:root` in `tokens.css`; `MDButton.vue` maps those public tokens to the private renderer inputs without repeating defaults.
 5. Revalidated the component and real-browser regression proof for the selected 16dp small geometry. The inert Navigation Path `--md-button-horizontal-padding` declaration remains unchanged for the migration stage.
-6. Applied the repository component-token cascade correction: public family defaults no longer compete with contextual descendant overrides, and Loading Indicator composition uses one normal `.md-button__loading-indicator` override with no specificity escalation or source-order dependency.
+6. Revalidated the merged repository component-token cascade correction: public family defaults no longer compete with contextual descendant overrides, and Loading Indicator composition uses one normal `.md-button__loading-indicator` override with no specificity escalation or source-order dependency.
+7. Moved the Button-owned visual Playwright spec and snapshots to the family-local visual owner. The legacy-surface screenshot excludes the standalone Loading Indicator dependency while the story retains that fixture outside the screenshot target for the existing cascade browser proof.
 
 ## Public API implemented
 
@@ -57,8 +58,8 @@ Dependency queue: none.
 
 ## Component-owned proof
 
-- `MDButton.test.ts` proves defaults and retained mappings, Boolean-property behavior, label/icon projection, unchanged click payload, loading replacement/restoration and decorative semantics, disabled/loading independence, selected token ownership, private renderer-bridge ownership, M3E-006 mapping ownership, the ordinary non-doubled Loading Indicator contextual selector, and the exact host-attribute allow-list including dynamic add/remove/re-add and rejected attributes/listeners.
-- `MDButton.browser.spec.ts` proves native form submission, ordinary and disabled activation, loading activation ownership, selected small geometry, target behavior, focus/pointer/keyboard behavior, dynamic renderer-surface rejection, native click bubbling, rendered label/loading color ownership, the contextual Loading Indicator token handoff, and contextual label states without private shadow-DOM inspection.
+- `MDButton.test.ts` proves defaults and retained mappings, Boolean-property behavior, label/icon projection, unchanged click payload, loading replacement/restoration and decorative semantics, disabled/loading independence, selected token ownership, private renderer-bridge ownership, M3E-006 mapping ownership, and the exact host-attribute allow-list including dynamic add/remove/re-add and rejected attributes/listeners.
+- `MDButton.browser.spec.ts` proves native form submission, ordinary and disabled activation, loading activation ownership, selected small geometry, target behavior, focus/pointer/keyboard behavior, dynamic renderer-surface rejection, native click bubbling, rendered label/loading color ownership, contextual label states, and the Loading Indicator cascade contract: the nested indicator receives Button's `currentColor` override while the standalone indicator in the same legacy Material context resolves to the family default.
 - `MDButton.visual.spec.ts` owns bounded selected variant, size, loading, interaction-state, contextual-token, and legacy-surface baselines under the family-local visual ownership convention. `md-button-loading-linux.png` remains the rendered proof for Button loading composition.
 - Loading Indicator standalone semantics, default/public token behavior, geometry, animation, renderer workarounds, and standalone visuals remain dependency-owned and are not duplicated here.
 
@@ -79,11 +80,11 @@ Focused verifier-managed compatibility proof completed on 2026-08-14:
 - `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts src/shared/ui/material/components/button/MDButton.browser.spec.ts src/shared/ui/material/components/switch/MDSwitch.browser.spec.ts src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts` — passed; all 37 affected-family browser contracts passed.
 - `pnpm verify --only visual --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts src/shared/ui/material/components/switch/MDSwitch.visual.spec.ts src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts tests/e2e/visual/shared-ui/md-button.spec.ts` — passed; verifier-selected 214-reference visual suite passed with no baseline update.
 
-For the later S4-E ownership/cascade correction, the coding-agent handoff reports final `pnpm verify` passed. Exact-head GitHub CI remains the architect-owned final gate and is not recorded as passed here until the current PR head completes it successfully.
+After synchronization with merged PR #203 and the S4-E rebase cleanup, the coding-agent handoff reports final `pnpm verify` passed. Exact-head GitHub CI remains the architect-owned final gate.
 
 ## Architecture deviations
 
-None. The later public-default/private-bridge placement follows the repository-wide cascade contract in `../../docs/component-tokens.md` and does not change the selected public token semantics.
+None. Public-default/private-bridge placement follows the repository-wide cascade contract in `../../docs/component-tokens.md` and does not change the selected public token semantics. S4-E changes only visual proof ownership and the screenshot boundary of the existing legacy-surface story.
 
 ## Remaining blockers
 
@@ -91,4 +92,4 @@ None.
 
 ## Migration readiness
 
-Ready. Runtime, tokens, exports, dependency composition, component-owned proof, and selected public semantics remain aligned with `ARCHITECTURE.md`; cascade/default placement additionally follows the repository-wide `docs/component-tokens.md` contract. Consumer inventory, contextual Snackbar adoption, obsolete consumer ownership removal (including Navigation Path's inert legacy padding declaration), and product-scenario verification remain exclusively in the migration stage.
+Ready. Runtime, tokens, exports, dependency composition, component-owned proof, and selected public semantics remain aligned with `ARCHITECTURE.md`; cascade/default placement additionally follows the repository-wide `docs/component-tokens.md` contract. S4-E visual proof ownership is family-local and the existing Button/Loading Indicator cascade browser contract remains intact. Consumer inventory, contextual Snackbar adoption, obsolete consumer ownership removal (including Navigation Path's inert legacy padding declaration), and product-scenario verification remain exclusively in the migration stage.
