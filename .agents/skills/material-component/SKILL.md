@@ -17,10 +17,12 @@ This skill is the single executable source of truth for Material component seque
 
 ## State and owner order
 
-Completed work lives in repository artifacts and proof. Unresolved state has two forms:
+Completed work lives in repository artifacts and proof. Unresolved coding state has two forms:
 
 - mechanical compatibility: recompute with `node scripts/materialComponentCompatibility.mjs --family <family>`;
 - semantic correction that cannot be reconstructed mechanically: `src/shared/ui/material/components/<family>/.material-correction.json`.
+
+Owner-local `REVIEW.md` is architect-owned semantic review state, not a coding correction queue. Coding workers must not reinterpret, update, or independently clear review findings. A blocked review is still known in-scope state, however, so it must prevent a false `remaining blocker: none` claim after a routed correction finishes.
 
 Owner order is:
 
@@ -43,7 +45,7 @@ Keep only one active semantic correction. Do not store deterministic findings, t
 ## Execute
 
 1. Resolve the canonical Material family and preserve any concrete operator observations losslessly.
-2. Read `.material-correction.json` if present.
+2. Read `.material-correction.json` if present. Note whether owner-local `REVIEW.md` exists and its verdict, but do not use the review document as implementation instructions.
 3. Run exactly:
    ```text
    node scripts/materialComponentCompatibility.mjs --family <family>
@@ -55,7 +57,10 @@ Keep only one active semantic correction. Do not store deterministic findings, t
 7. Rerun the resolver after every completed owner. Do not pre-plan a correction chain and do not rerun unaffected owners.
 8. When all three contracts are ready, no earlier route exists, and no contract correction is pending, run or resume `material-component-implementation` until its own completion gate returns `complete`.
 9. Run `material-component-migration` only when current consumers or replaced legacy ownership actually require migration. A correction with unchanged public usage/defaults and no legacy ownership does not require another migration pass.
-10. When contracts, implementation/proof, and required migration are complete, the resolver is clean, and no semantic marker remains, stop at architect handoff.
+10. When contracts, implementation/proof, and required migration are complete, the resolver is clean, and no semantic marker remains, inspect only the verdict of any existing owner-local `REVIEW.md`:
+    - no review artifact: normal architect handoff;
+    - `ready` or `ready-with-listed-risks`: hand to architect; do not claim CI/merge readiness;
+    - `blocked`: stop at architect handoff and report that active review findings require architect re-review/routing. Do not claim `remaining blocker: none`, do not select a review finding yourself, and do not continue coding without a resolver/marker route.
 
 A fresh session resumes from repository state. Lack of previous chat context is never a reason to rerun the whole family.
 
@@ -68,7 +73,7 @@ After two unsuccessful correction rounds for the same underlying problem, or whe
 - `material-component-behavior-contract`: owns only `BEHAVIOR.md`; Material facts from Material3 MCP.
 - `material-component-implementation`: owns standalone Vue/m3e adaptation and component-owned proof; no consumers.
 - `material-component-migration`: owns consumers and removal of replaced legacy ownership; does not redefine Material or inspect m3e internals.
-- Architect: owns final semantic review, roadmap/PR metadata, exact-head CI review, and merge readiness.
+- Architect: owns final semantic review, `REVIEW.md`, roadmap/PR metadata, exact-head CI review, and merge readiness.
 
 API runs first. Token and behavior may use completed `contract.ts` only as the structural scope/terminology boundary and return to API when their Material evidence proves that boundary wrong.
 
@@ -90,6 +95,8 @@ The coding workflow is complete only when:
 - migration returned `complete` or `not-required`;
 - no known in-scope blocker remains.
 
+An existing owner-local `REVIEW.md` with `Verdict: blocked` is known in-scope blocker state until the architect re-reviews and updates/removes it. Coding workers do not decide that a review finding is resolved merely because their routed correction passed verification.
+
 Then hand the family to the architect. Coding workers do not update roadmap completion, claim PR/CI readiness, or perform another independent semantic review.
 
 ## Final report
@@ -106,7 +113,7 @@ migration: complete | not-required | blocked | unchanged | not-run
 pending semantic correction: none | <owner and scope>
 operator observations: none | <status>
 focused verification: <summary>
-remaining blocker: none | <exact blocker>
+remaining blocker: none | active architect review requires re-review/routing | <exact blocker>
 next action: hand to architect | rerun material-component <name> | <genuine external action>
 ```
 
@@ -114,6 +121,8 @@ next action: hand to architect | rerun material-component <name> | <genuine exte
 
 - Requiring the operator to reconstruct workflow state or paste a correction handoff.
 - Re-implementing deterministic resolver checks in LLM reasoning.
+- Treating `REVIEW.md` as a coding-agent review queue or independently clearing architect findings.
+- Claiming `remaining blocker: none` while owner-local `REVIEW.md` is still `blocked`.
 - Persisting mechanically recomputable findings in `.material-correction.json`.
 - Combining contract, implementation, or migration responsibilities in one worker context.
 - Rerunning completed owners without an actual route or incomplete downstream stage.
