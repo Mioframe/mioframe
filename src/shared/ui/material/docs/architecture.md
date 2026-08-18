@@ -4,7 +4,7 @@
 
 Mioframe exposes one canonical Vue Material library under `src/shared/ui/material`.
 
-Official Material 3 Expressive defines the public component API, behavior, geometry, motion, accessibility, and token model. Contract workers read those facts through the repository-configured `material3` MCP. `@m3e/web` is a private renderer and never defines Mioframe public API.
+Official Material 3 Expressive defines the public component API, behavior, visual design, motion, accessibility, and token model. Contract workers read those facts through the repository-configured `material3` MCP. `@m3e/web` is a private renderer and never defines Mioframe public API.
 
 Workflow mechanics belong only to [`component-workflow.md`](./component-workflow.md). Family definition ownership belongs to [`component-contract.md`](./component-contract.md). This document owns durable library boundaries.
 
@@ -12,8 +12,8 @@ Workflow mechanics belong only to [`component-workflow.md`](./component-workflow
 
 1. Material 3 MCP — canonical upstream Material semantics;
 2. family `contract.ts` — public parameters/props, slots, events, configurations/types and defaults;
-3. family `tokens.css` — executable current public component-token contract/catalogue;
-4. family `BEHAVIOR.md` — normative observable behavior, accessibility, geometry and motion;
+3. family `tokens.css` — executable current public component-token contract and tokenized visual values;
+4. family `BEHAVIOR.md` — remaining normative observable behavior, accessibility, interaction/layout relationships, motion and non-tokenized constraints;
 5. runtime code and executable proof — standalone implementation truth;
 6. migrated consumers/product proof — adoption truth;
 7. `docs/m3e-defects.md` — renderer defects/workarounds;
@@ -26,6 +26,8 @@ Legacy family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md
 ## Ownership
 
 Each official family owns its three technical contracts, Vue adapter, public component tokens, private renderer mappings/workarounds, and component-specific proof.
+
+`tokens.css` is the sole family contract owner for current official tokenized visual values. `BEHAVIOR.md` must not duplicate those values in prose; it owns the remaining normative observable behavior and non-tokenized relationships/constraints.
 
 Product layers retain product state, persistence, routing, errors, operation lifecycle, availability/disabled guards, and business behavior.
 
@@ -43,9 +45,19 @@ Do not add undocumented convenience surface, platform-inapplicable surface, rend
 
 ## Definition dependency and isolation
 
-API contract is the first definition boundary because it establishes the current developer-selectable configurations, content roles, public values and defaults.
+Definition order is explicit:
 
-Token and behavior extraction run afterward in separate fresh contexts. They may read completed `contract.ts` only for structural scope/terminology, while Material 3 MCP remains the sole factual authority for token/behavior semantics. If their Material evidence proves the structural boundary wrong, they return to the API owner instead of compensating locally.
+```text
+API → TOKEN → BEHAVIOR
+```
+
+API establishes the current developer-selectable configurations, content roles, public values and defaults.
+
+Token runs next in a fresh context. It may read completed `contract.ts` only for structural scope/terminology, while Material 3 MCP remains the factual authority for token semantics.
+
+Behavior runs after token in another fresh context. It may read completed `contract.ts` for structural scope and completed `tokens.css` only to exclude already-owned visual values. Material 3 MCP remains the sole factual authority for behavior semantics. Token names/defaults are not evidence that a behavior exists.
+
+This order prevents one Material visual fact from having two normative family owners while preserving isolated semantic derivation. If token or behavior Material evidence proves the API structural boundary wrong, that worker returns to the API owner instead of compensating locally.
 
 Contract workers do not inspect m3e, legacy implementation, application consumers, or current call-site demand. They do not read one another's narrative reasoning.
 
@@ -67,9 +79,15 @@ Migration consumes only the finished canonical Mioframe Material API and current
 
 Foundation owns supported `--md-ref-*` and `--md-sys-*`; each family owns current official public `--md-comp-<family>-*`; application code owns `--app-*`; renderer/private internals own `--m3e-*` and `--md-private-*`.
 
-Public component tokens derive from Material 3 MCP rather than current consumer overrides or renderer variables. Each family `tokens.css` is the executable public component-token catalogue; do not create a second central registry. Runtime renderer mappings remain private.
+Public component tokens derive from Material 3 MCP rather than current consumer overrides or renderer variables. Each family `tokens.css` is the executable public component-token catalogue and sole contract owner for official tokenized color, geometry/size, shape, typography, spacing, elevation, opacity, focus-indicator metrics and other visual values; do not create a second central or prose catalogue. Runtime renderer mappings remain private.
 
 Historical/baseline token rows still present in Material documentation are not automatically part of the current Expressive public contract.
+
+## Behavior boundary
+
+`BEHAVIOR.md` owns the Material-defined observable behavior left after tokenized visual values are excluded: anatomy/content relationships, state existence/relationships, interaction/input, keyboard, accessibility, layout relationships/non-tokenized constraints, motion and useful Material-unspecified boundaries.
+
+It may describe the condition around a tokenized visual state without copying its token value. Exact geometry belongs in behavior only when it is an intrinsic normative component constraint with no corresponding current component token. External parent/layout placement guidance is not automatically a family behavior contract.
 
 ## Standalone-first integration
 
@@ -91,11 +109,11 @@ An interrupted implementation resumes within the implementation owner from curre
 
 ## Proof and completion
 
-Standalone implementation proves the canonical API, renderer mapping, public tokens, behavior, accessibility, geometry, motion, and standalone presentation at the lowest faithful level.
+Standalone implementation proves the canonical API, renderer mapping, public tokens, remaining behavior, accessibility, token-driven visual/geometry results, non-tokenized layout constraints, motion, and standalone presentation at the lowest faithful level.
 
 When a behavior requirement needs consumer-supplied native/ARIA information, the adapter must preserve an explicit public/native/ARIA seam. `inheritAttrs: false` is not permission to drop required accessibility inputs.
 
-Source-level CSS assignment is not rendered token proof. Screenshots are not the sole oracle for fixed geometry/state semantics.
+Source-level CSS assignment is not rendered token proof. Screenshots are not the sole oracle for numeric geometry or interaction semantics.
 
 Migration separately proves required consumer adoption, preserved product behavior and legacy removal.
 
