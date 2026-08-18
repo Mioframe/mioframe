@@ -54,6 +54,16 @@ Completed contract/runtime/proof files remain the durable work product. There is
 
 Mechanical routing is code; Material semantics stay with focused workers. After a correction, routing is recomputed rather than pre-planning speculative follow-up work.
 
+### Legacy staged families
+
+Families created by the previous staged workflow may still contain `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, and/or `MIGRATION.md`. Those files identify a family that has not finished conversion to the current three-contract workflow.
+
+The old workflow did not create `BEHAVIOR.md`, so an old `tokens.css` cannot be treated as proof of a current token contract merely because its CSS shape is mechanically valid. During conversion, after current `contract.ts` exists and before current `BEHAVIOR.md` exists, the orchestrator runs current token derivation and then current behavior derivation in separate fresh worker contexts.
+
+No extra persistent marker is needed for this one-time boundary. If execution is interrupted after token derivation but before behavior is written, the next invocation may repeat the token derivation before continuing. That bounded duplicate work is intentionally preferred over adding token identity metadata, a completion manifest, or workflow-history storage.
+
+Once `BEHAVIOR.md` exists, the normal resolver/semantic-marker model resumes. Legacy staged review files with `Verdict: compliant` remain historical evidence and are not interpreted as current `project-review` state; migration removes the replaced staged artifacts after successful conversion.
+
 ## Cross-family architecture migrations
 
 `material-component <name>` is a one-family semantic/implementation workflow, not a batch repository migration framework.
@@ -108,7 +118,8 @@ Prefer this minimum workflow over adding more infrastructure:
 - no proof/status database;
 - no second compatibility model;
 - no generic adapter/token framework created for workflow convenience;
-- no rerun of completed owners merely because previous chat context is unavailable;
+- no rerun of completed current-workflow owners merely because previous chat context is unavailable;
+- one bounded token re-derivation is acceptable only when resuming an interrupted legacy token→behavior transition;
 - no empty operator iteration between blocked architect review and a known correction owner;
 - no repeated semantic derivation for a mechanical cross-family architecture migration.
 
