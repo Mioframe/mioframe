@@ -10,7 +10,7 @@ Current milestone: `M3 — sequential component migration`
 
 Status: `in-progress`
 
-Implemented canonical runtime families include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. These predate the new three-contract workflow and still retain legacy staged evidence until each family is converted. Extended FAB is the active family pilot on this branch.
+Implemented canonical runtime families include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. These predate the new three-contract workflow and still retain legacy staged evidence until each family is converted. Extended FAB is the current integration family in PR #207.
 
 ## Global component-token cascade correction
 
@@ -28,7 +28,7 @@ family tokens.css
 
 `docs/component-tokens.md` is the detailed authority. Family token contracts own public names/defaults; implementation CSS owns private renderer bridges/contextual overrides; system/reference tokens remain document-wide theme inputs.
 
-The global cascade correction in PR #203 has passed architect semantic re-review:
+The global cascade correction merged through PR #203 and is now part of the `develop` baseline:
 
 - Button and Loading Indicator public defaults live on exact `:root`;
 - private `--m3e-*` bridges/workarounds stay in family implementation CSS;
@@ -38,13 +38,13 @@ The global cascade correction in PR #203 has passed architect semantic re-review
 - compatibility routing rejects local/root-containing selectors and same-file/cross-family duplicate defaults;
 - foundation ownership proof no longer hides repeated declarations within the same selector/source.
 
-No active review finding remains for the cascade correction, and this branch contains that correction from `refactor/material-contract-workflow`.
+No active review finding remains for the cascade correction.
 
 ## Contract ownership correction
 
-The pilot exposed that its first `BEHAVIOR.md` duplicated token-owned geometry, spacing, typography, elevation, state opacity and focus-indicator values from `tokens.css`.
+The Extended FAB pilot exposed that its first `BEHAVIOR.md` duplicated token-owned geometry, spacing, typography, elevation, state opacity and focus-indicator values from `tokens.css`.
 
-The synchronized #203 baseline now defines:
+The workflow baseline merged through PR #203 now defines:
 
 ```text
 contract.ts
@@ -61,7 +61,7 @@ Contract order is `API → TOKEN → BEHAVIOR`; behavior may read `tokens.css` o
 
 ## Resume architecture
 
-PR #203 uses the normal resolver plus one semantic correction marker for current-workflow families. It does not add workflow history, a completion manifest, or token identity metadata.
+The merged Material workflow uses the normal resolver plus one semantic correction marker for current-workflow families. It does not add workflow history, a completion manifest, or token identity metadata.
 
 A small temporary bridge exists only for pre-workflow families. Old staged artifacts identify a family that still needs conversion. Because the old workflow never produced `BEHAVIOR.md` but could already contain a demand-scoped `tokens.css`, the only transition exception is:
 
@@ -78,7 +78,7 @@ The bridge is deliberately temporary and must be removed once the last legacy fa
 
 ## Legacy family conversion plan
 
-Do not bulk-convert the existing families inside PR #203. After the new workflow is accepted and the Extended FAB pilot validates the steady-state path, convert the remaining pre-workflow families one at a time through the normal operator command:
+Do not bulk-convert the existing families as part of the Extended FAB integration. After PR #207 completes the pilot integration into `develop`, convert the remaining pre-workflow families one at a time through the normal operator command:
 
 ```text
 Loading Indicator
@@ -105,7 +105,7 @@ The current family state includes:
 - complete migration from legacy `MDExtendedFab` and removal of replaced legacy proof/implementation;
 - Repo Explorer Add action composed through the existing shared `MDSymbol` in the canonical Extended FAB `icon` slot, with no hand-written product SVG and no restored legacy `mdSymbol` prop.
 
-The previous migration correction is resolved, `.material-correction.json` is absent, and the clean architect review artifact has been removed. Exact-head CI remains a separate delivery gate and is not implied by semantic readiness.
+The previous migration correction is resolved, `.material-correction.json` is absent, and the clean architect review artifact has been removed. The branch has been normalized onto the merged #203 `develop` tree without changing the reviewed Extended FAB code/test contents. Exact-head CI against `develop` remains the final delivery gate and is not implied by semantic readiness.
 
 ## Other known state
 
@@ -127,4 +127,4 @@ The Extended FAB SFC is above the repository's 500-line review trigger because t
 
 ## Next Material pipeline action
 
-Treat Extended FAB as semantically ready and complete the architect-owned exact-head delivery gate for stacked PR #207. After PR #203 is accepted, normalize #207 onto the resulting `develop` state before final merge readiness. Then convert the remaining legacy families in dependency-first order and finally delete the temporary legacy bridge.
+Complete the architect-owned exact-head delivery gate for PR #207 against `develop`. If that integration verification is clean, perform final merge-readiness review and merge the Extended FAB migration. Then convert the remaining legacy families in dependency-first order and finally delete the temporary legacy bridge.
