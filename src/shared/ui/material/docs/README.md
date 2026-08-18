@@ -25,7 +25,7 @@ For a new family, API extraction runs first. After `contract.ts` is complete, to
 
 Then one standalone implementation worker owns runtime plus component proof, followed by consumer migration only when migration is actually required.
 
-For an existing/incomplete family, the same command resumes current repository state instead of rebuilding completed stages. A compatible completed owner is not rerun unless the mechanical resolver or an exact semantic correction marker routes back to it.
+For an existing/incomplete family, the same command resumes current repository state instead of rebuilding completed current-workflow stages. Compatible owners normally rerun only when the mechanical resolver or an exact semantic correction marker routes back to them. Legacy staged families have one bounded exception: if conversion was interrupted after current token derivation but before the new `BEHAVIOR.md` was written, token derivation may repeat before behavior continues. No extra completion marker is stored for that edge case.
 
 The coding workflow stops after implementation/proof and required migration. Final semantic review, PR/CI handling, roadmap completion, and merge readiness are architect-owned.
 
