@@ -10,7 +10,7 @@ Current milestone: `M3 — sequential component migration`
 
 Status: `in-progress`
 
-Implemented canonical runtime families in the current repository tree include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. These predate the new three-contract workflow and still retain legacy staged evidence until each family is converted. Extended FAB is the active pilot on its dedicated branch.
+Implemented canonical runtime families include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. These predate the new three-contract workflow and still retain legacy staged evidence until each family is converted. Extended FAB is the active family pilot on this branch.
 
 ## Global component-token cascade correction
 
@@ -20,9 +20,9 @@ Architecture decision:
 
 ```text
 family tokens.css
-  → :root --md-comp-* Material defaults
+  → :root --md-comp-* Material default
   → optional inherited/contextual --md-comp-* override
-  → .md-<component> private renderer bridge
+  → component private renderer bridge
   → rendered result
 ```
 
@@ -38,13 +38,13 @@ The global cascade correction in PR #203 has passed architect semantic re-review
 - compatibility routing rejects local/root-containing selectors and same-file/cross-family duplicate defaults;
 - foundation ownership proof no longer hides repeated declarations within the same selector/source.
 
-No active review finding remains for the cascade correction.
+No active review finding remains for the cascade correction, and this branch contains that correction from `refactor/material-contract-workflow`.
 
 ## Contract ownership correction
 
-The Extended FAB pilot exposed a second workflow-boundary defect: `BEHAVIOR.md` repeated token-owned geometry, spacing, typography, elevation, state opacity and focus-indicator values already present in `tokens.css`.
+The pilot exposed that its first `BEHAVIOR.md` duplicated token-owned geometry, spacing, typography, elevation, state opacity and focus-indicator values from `tokens.css`.
 
-PR #203 now defines one visual source of truth:
+The synchronized #203 baseline now defines:
 
 ```text
 contract.ts
@@ -57,9 +57,7 @@ BEHAVIOR.md
   → remaining observable behavior and non-tokenized relationships/constraints
 ```
 
-The executable owner order is therefore `API → TOKEN → BEHAVIOR`. The behavior worker may read completed `tokens.css` only as an exclusion boundary so it does not duplicate token-owned values; Material3 MCP remains its behavior authority. Exact geometry belongs in behavior only when it is an intrinsic normative constraint with no corresponding current component token.
-
-The Extended FAB pilot has already been updated to this boundary by removing duplicated visual-value prose while keeping existing token proof intact.
+Contract order is `API → TOKEN → BEHAVIOR`; behavior may read `tokens.css` only as an exclusion boundary. Extended FAB `BEHAVIOR.md` has been cleaned accordingly. Its size/shape/spacing/typography/state visual values remain exclusively in `tokens.css`; existing browser/visual token proof remains valid and does not need to be removed merely because the prose duplication was removed.
 
 ## Resume architecture
 
@@ -94,11 +92,28 @@ The dependency-first order keeps Button composition on an already-converted Load
 
 When no legacy staged family remains, remove the temporary legacy bridge from `material-component` and its documentation. The steady-state workflow must then contain no legacy compatibility path.
 
+## Extended FAB pilot state
+
+Architect re-review finds no active blocker, major issue, minor issue, or accepted risk for the Extended FAB family and its migration.
+
+The current family state includes:
+
+- canonical API/token/behavior contracts with tokenized visual values owned only by `tokens.css`;
+- private `@m3e/web` renderer adaptation with one stable family boundary;
+- typed `click` activation, current size/color mappings, host-attribute boundary, RTL and motion behavior;
+- owner-local browser/visual proof for accessibility, interaction, token-driven geometry/state appearance, overrides and reduced motion;
+- complete migration from legacy `MDExtendedFab` and removal of replaced legacy proof/implementation;
+- Repo Explorer Add action composed through the existing shared `MDSymbol` in the canonical Extended FAB `icon` slot, with no hand-written product SVG and no restored legacy `mdSymbol` prop.
+
+The previous migration correction is resolved, `.material-correction.json` is absent, and the clean architect review artifact has been removed. Exact-head CI remains a separate delivery gate and is not implied by semantic readiness.
+
 ## Other known state
 
-The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is next processed, the behavior contract worker must derive the current result from Material 3 MCP; if the source remains contradictory, the behavior contract is blocked rather than guessed from legacy evidence.
+The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. When Checkbox is next semantically processed, the behavior contract worker must derive the current result from Material3 MCP; if the source remains contradictory, the behavior contract is blocked rather than guessed from legacy evidence.
 
-`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox; this is unrelated to PR #203 workflow architecture.
+`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox.
+
+The Extended FAB SFC is above the repository's 500-line review trigger because the explicit private renderer bridge dominates the file. This is not a correctness blocker by itself; when the family is next edited, prefer a family-local private stylesheet only if it materially improves ownership/readability without adding abstraction.
 
 ## Milestones
 
@@ -112,4 +127,4 @@ The existing Checkbox evidence records an official-source conflict where a keybo
 
 ## Next Material pipeline action
 
-Run/review exact-head GitHub CI and semantic review for the updated PR #203 contract boundary. The Extended FAB pilot is synchronized with this baseline but remains blocked on its separate migration-owned Material Symbol regression. After both are accepted, convert the remaining legacy families in dependency-first order and finally delete the temporary legacy bridge.
+Treat Extended FAB as semantically ready and complete the architect-owned exact-head delivery gate for stacked PR #207. After PR #203 is accepted, normalize #207 onto the resulting `develop` state before final merge readiness. Then convert the remaining legacy families in dependency-first order and finally delete the temporary legacy bridge.

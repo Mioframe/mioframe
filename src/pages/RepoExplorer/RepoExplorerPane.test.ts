@@ -259,34 +259,46 @@ vi.mock('@shared/ui/AppBar', () => ({
 }));
 
 vi.mock('@shared/ui/Button', () => ({
-  MDExtendedFab: defineComponent({
-    name: 'MDExtendedFabStub',
+  FabContainer: defineComponent({
+    name: 'FabContainerStub',
+    setup(_props, { slots }) {
+      return () => h('div', slots.default?.());
+    },
+  }),
+}));
+
+vi.mock('@shared/ui/Icon', () => ({
+  MDSymbol: defineComponent({
+    name: 'MDSymbolStub',
     props: {
-      label: {
+      name: {
         type: String,
         required: true,
       },
     },
-    emits: ['click'],
-    setup(props, { emit }) {
+    setup(props) {
+      return () => h('span', { 'data-testid': 'symbol' }, props.name);
+    },
+  }),
+}));
+
+vi.mock('@shared/ui/material', () => ({
+  MDExtendedFloatingActionButton: defineComponent({
+    name: 'MDExtendedFloatingActionButtonStub',
+    setup(_props, { slots }) {
+      // This stub does not declare the real component's typed `click` emit; the parent's
+      // `@click` listener still reaches this single-root `<button>` through Vue's default
+      // attrs fallthrough, so the wiring proof here does not need to model emit forwarding
+      // (that is proven by the family's own component-contract test).
       return () =>
         h(
           'button',
           {
             type: 'button',
-            'aria-label': props.label,
-            onClick: () => {
-              emit('click', new MouseEvent('click'));
-            },
+            'aria-label': 'Add',
           },
-          props.label,
+          [slots.icon?.(), slots.default?.()],
         );
-    },
-  }),
-  FabContainer: defineComponent({
-    name: 'FabContainerStub',
-    setup(_props, { slots }) {
-      return () => h('div', slots.default?.());
     },
   }),
 }));
@@ -412,6 +424,10 @@ describe('RepoExplorerPane', () => {
 
     expect(wrapper.text()).toContain('Current directory actions: Create directory');
     expect(wrapper.findAll('button[aria-label="Add"]')).toHaveLength(1);
+    expect(wrapper.get('button[aria-label="Add"]').text()).toContain('Add');
+    expect(wrapper.get('button[aria-label="Add"]').find('[data-testid="symbol"]').text()).toBe(
+      'add',
+    );
 
     await wrapper.get('button[aria-label="Add"]').trigger('click');
 

@@ -1,0 +1,299 @@
+:root {
+  /* Current M3 Expressive color mappings */
+  --md-comp-extended-fab-primary-container-color: var(--md-sys-color-primary);
+  --md-comp-extended-fab-primary-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-primary-container-shadow-color: var(--md-sys-color-shadow);
+  --md-comp-extended-fab-primary-label-text-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-icon-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-hovered-container-elevation: var(--md-sys-elevation-level4);
+  --md-comp-extended-fab-primary-hovered-state-layer-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-hovered-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity
+  );
+  --md-comp-extended-fab-primary-hovered-label-text-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-hovered-icon-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-focused-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-primary-focused-state-layer-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-focused-state-layer-opacity: var(
+    --md-sys-state-focus-state-layer-opacity
+  );
+  --md-comp-extended-fab-primary-focused-label-text-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-focused-icon-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-pressed-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-primary-pressed-state-layer-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-pressed-state-layer-opacity: var(
+    --md-sys-state-pressed-state-layer-opacity
+  );
+  --md-comp-extended-fab-primary-pressed-label-text-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-pressed-icon-color: var(--md-sys-color-on-primary);
+  --md-comp-extended-fab-primary-focus-indicator-outline-offset: var(
+    --md-sys-state-focus-indicator-outer-offset
+  );
+  --md-comp-extended-fab-primary-focus-indicator-thickness: var(
+    --md-sys-state-focus-indicator-thickness
+  );
+  --md-comp-extended-fab-primary-focus-indicator-color: var(--md-sys-color-secondary);
+
+  --md-comp-extended-fab-secondary-container-color: var(--md-sys-color-secondary);
+  --md-comp-extended-fab-secondary-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-secondary-container-shadow-color: var(--md-sys-color-shadow);
+  --md-comp-extended-fab-secondary-label-text-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-icon-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-pressed-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-secondary-pressed-state-layer-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-pressed-state-layer-opacity: var(
+    --md-sys-state-pressed-state-layer-opacity
+  );
+  --md-comp-extended-fab-secondary-pressed-label-text-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-pressed-icon-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-hovered-container-elevation: var(--md-sys-elevation-level4);
+  --md-comp-extended-fab-secondary-hovered-state-layer-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-hovered-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity
+  );
+  --md-comp-extended-fab-secondary-hovered-label-text-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-hovered-icon-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-focused-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-secondary-focused-state-layer-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-focused-state-layer-opacity: var(
+    --md-sys-state-focus-state-layer-opacity
+  );
+  --md-comp-extended-fab-secondary-focused-label-text-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-focused-icon-color: var(--md-sys-color-on-secondary);
+  --md-comp-extended-fab-secondary-focus-indicator-color: var(--md-sys-color-secondary);
+  --md-comp-extended-fab-secondary-focus-indicator-thickness: var(
+    --md-sys-state-focus-indicator-thickness
+  );
+  --md-comp-extended-fab-secondary-focus-indicator-outline-offset: var(
+    --md-sys-state-focus-indicator-outer-offset
+  );
+
+  --md-comp-extended-fab-tertiary-container-color: var(--md-sys-color-tertiary);
+  --md-comp-extended-fab-tertiary-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-tertiary-container-shadow-color: var(--md-sys-color-shadow);
+  --md-comp-extended-fab-tertiary-label-text-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-icon-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-pressed-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-tertiary-pressed-state-layer-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-pressed-state-layer-opacity: var(
+    --md-sys-state-pressed-state-layer-opacity
+  );
+  --md-comp-extended-fab-tertiary-pressed-label-text-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-pressed-icon-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-hovered-container-elevation: var(--md-sys-elevation-level4);
+  --md-comp-extended-fab-tertiary-hovered-state-layer-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-hovered-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity
+  );
+  --md-comp-extended-fab-tertiary-hovered-label-text-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-hovered-icon-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-focused-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-tertiary-focused-state-layer-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-focused-state-layer-opacity: var(
+    --md-sys-state-focus-state-layer-opacity
+  );
+  --md-comp-extended-fab-tertiary-focused-label-text-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-focused-icon-color: var(--md-sys-color-on-tertiary);
+  --md-comp-extended-fab-tertiary-focus-indicator-color: var(--md-sys-color-secondary);
+  --md-comp-extended-fab-tertiary-focus-indicator-thickness: var(
+    --md-sys-state-focus-indicator-thickness
+  );
+  --md-comp-extended-fab-tertiary-focus-indicator-outline-offset: var(
+    --md-sys-state-focus-indicator-outer-offset
+  );
+
+  --md-comp-extended-fab-primary-container-container-color: var(--md-sys-color-primary-container);
+  --md-comp-extended-fab-primary-container-container-shadow-color: var(--md-sys-color-shadow);
+  --md-comp-extended-fab-primary-container-label-text-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-icon-color: var(--md-sys-color-on-primary-container);
+  --md-comp-extended-fab-primary-container-hovered-state-layer-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-hovered-label-text-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-hovered-icon-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-hovered-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity
+  );
+  --md-comp-extended-fab-primary-container-hovered-container-elevation: var(
+    --md-sys-elevation-level4
+  );
+  --md-comp-extended-fab-primary-container-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-primary-container-pressed-container-elevation: var(
+    --md-sys-elevation-level3
+  );
+  --md-comp-extended-fab-primary-container-pressed-state-layer-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-pressed-state-layer-opacity: var(
+    --md-sys-state-pressed-state-layer-opacity
+  );
+  --md-comp-extended-fab-primary-container-pressed-label-text-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-pressed-icon-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-focused-container-elevation: var(
+    --md-sys-elevation-level3
+  );
+  --md-comp-extended-fab-primary-container-focused-state-layer-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-focused-state-layer-opacity: var(
+    --md-sys-state-focus-state-layer-opacity
+  );
+  --md-comp-extended-fab-primary-container-focused-label-text-color: var(
+    --md-sys-color-on-primary-container
+  );
+  --md-comp-extended-fab-primary-container-focused-icon-color: var(
+    --md-sys-color-on-primary-container
+  );
+
+  --md-comp-extended-fab-secondary-container-container-color: var(
+    --md-sys-color-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-secondary-container-container-shadow-color: var(--md-sys-color-shadow);
+  --md-comp-extended-fab-secondary-container-label-text-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-icon-color: var(--md-sys-color-on-secondary-container);
+  --md-comp-extended-fab-secondary-container-hovered-container-elevation: var(
+    --md-sys-elevation-level4
+  );
+  --md-comp-extended-fab-secondary-container-hovered-state-layer-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-hovered-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity
+  );
+  --md-comp-extended-fab-secondary-container-hovered-label-text-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-hovered-icon-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-focused-container-elevation: var(
+    --md-sys-elevation-level3
+  );
+  --md-comp-extended-fab-secondary-container-focused-state-layer-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-focused-state-layer-opacity: var(
+    --md-sys-state-focus-state-layer-opacity
+  );
+  --md-comp-extended-fab-secondary-container-focused-label-text-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-focused-icon-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-pressed-container-elevation: var(
+    --md-sys-elevation-level3
+  );
+  --md-comp-extended-fab-secondary-container-pressed-state-layer-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-pressed-state-layer-opacity: var(
+    --md-sys-state-pressed-state-layer-opacity
+  );
+  --md-comp-extended-fab-secondary-container-pressed-label-text-color: var(
+    --md-sys-color-on-secondary-container
+  );
+  --md-comp-extended-fab-secondary-container-pressed-icon-color: var(
+    --md-sys-color-on-secondary-container
+  );
+
+  --md-comp-extended-fab-tertiary-container-container-color: var(--md-sys-color-tertiary-container);
+  --md-comp-extended-fab-tertiary-container-container-elevation: var(--md-sys-elevation-level3);
+  --md-comp-extended-fab-tertiary-container-container-shadow-color: var(--md-sys-color-shadow);
+  --md-comp-extended-fab-tertiary-container-label-text-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-icon-color: var(--md-sys-color-on-tertiary-container);
+  --md-comp-extended-fab-tertiary-container-hovered-container-elevation: var(
+    --md-sys-elevation-level4
+  );
+  --md-comp-extended-fab-tertiary-container-hovered-state-layer-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-hovered-state-layer-opacity: var(
+    --md-sys-state-hover-state-layer-opacity
+  );
+  --md-comp-extended-fab-tertiary-container-hovered-label-text-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-hovered-icon-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-focused-container-elevation: var(
+    --md-sys-elevation-level3
+  );
+  --md-comp-extended-fab-tertiary-container-focused-state-layer-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-focused-state-layer-opacity: var(
+    --md-sys-state-focus-state-layer-opacity
+  );
+  --md-comp-extended-fab-tertiary-container-focused-label-text-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-focused-icon-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-pressed-container-elevation: var(
+    --md-sys-elevation-level3
+  );
+  --md-comp-extended-fab-tertiary-container-pressed-state-layer-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-pressed-state-layer-opacity: var(
+    --md-sys-state-pressed-state-layer-opacity
+  );
+  --md-comp-extended-fab-tertiary-container-pressed-label-text-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+  --md-comp-extended-fab-tertiary-container-pressed-icon-color: var(
+    --md-sys-color-on-tertiary-container
+  );
+
+  /* Current M3 Expressive size mappings */
+  --md-comp-extended-fab-small-container-height: 56dp;
+  --md-comp-extended-fab-small-label-text: var(
+    --md-sys-typescale-title-medium,
+    Roboto Flex 500 16sp 24sp
+  );
+  --md-comp-extended-fab-small-icon-size: 24dp;
+  --md-comp-extended-fab-small-container-shape: var(--md-sys-shape-corner-large);
+  --md-comp-extended-fab-small-leading-space: var(--md-sys-measurement-space200, 16dp);
+  --md-comp-extended-fab-small-icon-label-space: var(--md-sys-measurement-space100, 8dp);
+  --md-comp-extended-fab-small-trailing-space: var(--md-sys-measurement-space200, 16dp);
+
+  --md-comp-extended-fab-medium-container-height: 80dp;
+  --md-comp-extended-fab-medium-label-text: var(
+    --md-sys-typescale-title-large,
+    Roboto Flex 400 22sp 28sp
+  );
+  --md-comp-extended-fab-medium-icon-size: 28dp;
+  --md-comp-extended-fab-medium-container-shape: var(--md-sys-shape-corner-large-increased);
+  --md-comp-extended-fab-medium-leading-space: 26dp;
+  --md-comp-extended-fab-medium-icon-label-space: var(--md-sys-measurement-space150, 12dp);
+  --md-comp-extended-fab-medium-trailing-space: 26dp;
+
+  --md-comp-extended-fab-large-container-height: 96dp;
+  --md-comp-extended-fab-large-label-text: var(
+    --md-sys-typescale-headline-small,
+    Roboto Flex 400 24sp 32sp
+  );
+  --md-comp-extended-fab-large-icon-size: 36dp;
+  --md-comp-extended-fab-large-container-shape: var(--md-sys-shape-corner-extra-large);
+  --md-comp-extended-fab-large-leading-space: 28dp;
+  --md-comp-extended-fab-large-icon-label-space: var(--md-sys-measurement-space200, 16dp);
+  --md-comp-extended-fab-large-trailing-space: 28dp;
+}

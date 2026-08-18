@@ -11,7 +11,9 @@ import type { ExportZipVisibleDialogState } from '@feature/exportZip';
 import { ImportZipDialog, useImportZipAction } from '@feature/importZip';
 import type { ImportZipVisibleDialogState } from '@feature/importZip';
 import { useFSNodeStat } from '@entity/fsEntry';
-import { FabContainer, MDExtendedFab } from '@shared/ui/Button';
+import { FabContainer } from '@shared/ui/Button';
+import { MDSymbol } from '@shared/ui/Icon';
+import { MDExtendedFloatingActionButton } from '@shared/ui/material';
 import { MDPane } from '@shared/ui/Layout';
 import { MDAppBar } from '@shared/ui/AppBar';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
@@ -192,7 +194,12 @@ const onClickReturnHome = async () => {
     >
       <template #after="{ canEditDirectoryContents }">
         <FabContainer v-if="canEditDirectoryContents !== false" auto-hide>
-          <MDExtendedFab label="Add" md-symbol="add" @click="onClickAdd" />
+          <MDExtendedFloatingActionButton @click="onClickAdd">
+            <template #icon>
+              <MDSymbol name="add" />
+            </template>
+            Add
+          </MDExtendedFloatingActionButton>
         </FabContainer>
       </template>
     </RepositoryExplorerWidget>
