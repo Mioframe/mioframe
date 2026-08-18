@@ -40,6 +40,27 @@ The global cascade correction in PR #203 has passed architect semantic re-review
 
 No active review finding remains for the cascade correction.
 
+## Contract ownership correction
+
+The Extended FAB pilot exposed a second workflow-boundary defect: `BEHAVIOR.md` repeated token-owned geometry, spacing, typography, elevation, state opacity and focus-indicator values already present in `tokens.css`.
+
+PR #203 now defines one visual source of truth:
+
+```text
+contract.ts
+  → public structure/configuration
+
+tokens.css
+  → official tokenized visual values
+
+BEHAVIOR.md
+  → remaining observable behavior and non-tokenized relationships/constraints
+```
+
+The executable owner order is therefore `API → TOKEN → BEHAVIOR`. The behavior worker may read completed `tokens.css` only as an exclusion boundary so it does not duplicate token-owned values; Material3 MCP remains its behavior authority. Exact geometry belongs in behavior only when it is an intrinsic normative constraint with no corresponding current component token.
+
+The Extended FAB pilot has already been updated to this boundary by removing duplicated visual-value prose while keeping existing token proof intact.
+
 ## Resume architecture
 
 PR #203 uses the normal resolver plus one semantic correction marker for current-workflow families. It does not add workflow history, a completion manifest, or token identity metadata.
@@ -91,4 +112,4 @@ The existing Checkbox evidence records an official-source conflict where a keybo
 
 ## Next Material pipeline action
 
-Run/review exact-head GitHub CI for PR #203. If the current head remains green and no new semantic finding appears, accept the workflow PR, synchronize the Extended FAB pilot with the accepted baseline, and resume it through `material-component Extended FAB`. After the pilot is accepted, convert the remaining legacy families in the dependency-first order above and finally delete the temporary legacy bridge.
+Run/review exact-head GitHub CI and semantic review for the updated PR #203 contract boundary. The Extended FAB pilot is synchronized with this baseline but remains blocked on its separate migration-owned Material Symbol regression. After both are accepted, convert the remaining legacy families in dependency-first order and finally delete the temporary legacy bridge.
