@@ -65,7 +65,7 @@ The installed loading-indicator artifact still reads `--m3e-loading-indicator-si
 - `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.stories.ts tests/e2e/storybook/md-loading-indicator.spec.ts` — passed, 5/5.
 - `pnpm verify --only visual --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.stories.ts tests/e2e/visual/shared-ui/md-loading-indicator.spec.ts src/shared/ui/material/components/button/MDButton.vue tests/e2e/visual/shared-ui/md-button.spec.ts` — passed, 219/219 through the then-current full-lane fallback.
 
-The later cascade correction was verified through the current PR's normal `pnpm verify` handoff and exact-head CI gate; the stage commands above remain the historical implementation-stage record.
+For the later cascade correction, the coding-agent handoff reports final `pnpm verify` passed. Exact-head GitHub CI remains the architect-owned final gate and is not recorded as passed here until the current PR head completes it successfully.
 
 ## Architecture deviations
 
