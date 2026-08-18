@@ -43,6 +43,7 @@ A family `README.md` is ordinary developer documentation, not a workflow gate.
 `docs/component-tokens.md` is the single detailed authority for component-token cascade/ownership.
 
 - A family `tokens.css` is the single owner of that family's public `--md-comp-*` names/defaults; family defaults are declared on `:root`.
+- Family `tokens.css` must be loaded as unscoped/global CSS; do not import it through a Vue `<style scoped>` block.
 - Component/family implementation CSS owns private renderer bridges and may own intentional contextual overrides, but must not redeclare family defaults or duplicate them in renderer fallbacks.
 - Do not solve component-token composition with specificity escalation, `!important`, inline token wiring, TypeScript token maps, or bundle/source-order dependence.
 - `--md-ref-*` / `--md-sys-*` are document-wide Material theme inputs; independent subtree Material system themes are not currently guaranteed.
