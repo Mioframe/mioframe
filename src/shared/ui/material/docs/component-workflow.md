@@ -60,6 +60,26 @@ Completed contract/runtime/proof files remain the durable work product. There is
 
 Mechanical routing is code; Material semantics stay with focused workers. After a correction, routing is recomputed rather than pre-planning a chain of speculative follow-up work.
 
+## Architect review handoff
+
+`project-review` remains independent architect-owned review and `REVIEW.md` remains review state, not a coding queue.
+
+When architect review returns `blocked` with an actionable `NEXT CORRECTION`, the same architect pass must translate that handoff into the family's `.material-correction.json` before telling the operator to run `material-component <name>` again.
+
+For Material, the generic review handoff maps directly to the existing marker fields:
+
+```text
+NEXT CORRECTION owner         → .material-correction.json owner
+NEXT CORRECTION finding       → .material-correction.json finding
+NEXT CORRECTION affected scope → .material-correction.json affectedScope
+```
+
+Only the next owner is routed. Findings owned by later/downstream owners stay in `REVIEW.md` until the next architect re-review. This preserves owner order without requiring a no-op coding run between review and correction.
+
+Do not ask the operator to rerun `material-component` while review is blocked and no correction marker exists, unless `project-review` reported that the next owner/order itself is unresolved. In that case resolve architecture/ownership first rather than using the coding workflow as a router.
+
+The coding workflow still must not select findings from `REVIEW.md` itself. That would create a second competing correction queue and blur architect ownership.
+
 ## Completion boundary
 
 A coding run is complete only when the three contracts are ready, no correction remains, standalone implementation has faithful proof with required focused verifier checks completed, and migration is complete or unnecessary.
@@ -77,6 +97,7 @@ Prefer this minimum workflow over adding more infrastructure:
 - no proof/status database;
 - no second compatibility model;
 - no generic adapter/token framework created for workflow convenience;
-- no rerun of completed owners merely because previous chat context is unavailable.
+- no rerun of completed owners merely because previous chat context is unavailable;
+- no empty operator iteration between blocked architect review and a known correction owner.
 
 If repeated corrections show that ownership or the architecture itself is wrong, return to the architect instead of adding workaround stages.
