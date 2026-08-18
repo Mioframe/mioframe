@@ -1,10 +1,10 @@
 # Button implementation
 
-Artifact revision: 2026-08-14T12:28:07.000Z
+Artifact revision: 2026-08-18
 Status: complete
 ARCHITECTURE.md reference: `src/shared/ui/material/components/button/ARCHITECTURE.md`
 ARCHITECTURE.md revision: 2026-08-14T12:28:07.000Z
-Revision summary: Revalidated the installed 2.7.4 Button boundary and Loading Indicator composition. The public API and migration-owned product behavior are unchanged; M3E-006 adds one private, documented small-spacing mapping to preserve selected Material geometry.
+Revision summary: Revalidated the installed 2.7.4 Button boundary and Loading Indicator composition. The selected public token semantics are unchanged; the repository-wide component-token cascade correction now places family defaults on `:root` in `tokens.css` and keeps private renderer bridges in `MDButton.vue` CSS. M3E-006 remains a private, documented small-spacing mapping.
 Remaining blockers: none
 Required return family: none
 Required return stage: none
@@ -14,10 +14,11 @@ Migration readiness: ready
 ## Implemented passes
 
 1. Revalidated the single `m3e-button` host, package-derived renderer typing, selected custom-element registration, and family/root exports against installed `@m3e/web@2.7.4`.
-2. Confirmed M3E-006: installed small Button defaults use 20dp leading/trailing spacing rather than the selected 16dp values. `tokens.css` maps only the two documented size-specific renderer inputs to 16px inside the family boundary.
+2. Confirmed M3E-006: installed small Button defaults use 20dp leading/trailing spacing rather than the selected 16dp values. `MDButton.vue` keeps the two documented size-specific renderer inputs at 16px inside the family boundary; they are private implementation CSS, not public token declarations.
 3. Revalidated the strict host-attribute allow-list, adapter-owned binding precedence, native type and Boolean-property mapping, required label, leading icon, and Loading Indicator composition.
-4. Revalidated the seven selected official text Button tokens, their private renderer mappings and fallbacks, and the matching `docs/token-api.md` catalogue entries.
-5. Added component and real-browser regression proof for the selected 16dp small geometry. The inert Navigation Path `--md-button-horizontal-padding` declaration remains unchanged for the migration stage.
+4. Revalidated the seven selected official text Button tokens and the matching `docs/token-api.md` catalogue entries. Their Material defaults are declared once on `:root` in `tokens.css`; `MDButton.vue` maps those public tokens to the private renderer inputs without repeating defaults.
+5. Revalidated the component and real-browser regression proof for the selected 16dp small geometry. The inert Navigation Path `--md-button-horizontal-padding` declaration remains unchanged for the migration stage.
+6. Applied the repository component-token cascade correction: public family defaults no longer compete with contextual descendant overrides, and Loading Indicator composition uses one normal `.md-button__loading-indicator` override with no specificity escalation or source-order dependency.
 
 ## Public API implemented
 
@@ -30,7 +31,7 @@ Migration readiness: ready
 
 ## Tokens and renderer mappings
 
-`components/button/tokens.css` owns exactly these public tokens:
+`components/button/tokens.css` owns exactly these public tokens and declares their selected Material defaults on `:root`:
 
 - `--md-comp-button-text-label-text-color`
 - `--md-comp-button-text-hovered-label-text-color`
@@ -40,11 +41,11 @@ Migration readiness: ready
 - `--md-comp-button-text-focused-state-layer-color`
 - `--md-comp-button-text-pressed-state-layer-color`
 
-They map owner-locally to the corresponding private `--m3e-text-button-*` label and state-layer inputs. Transient tokens fall back to the resting public label token. No icon token, compatibility alias, old `hover`/`focus` public name, or renderer variable is public.
+`MDButton.vue` owns the corresponding private `--m3e-text-button-*` label and state-layer bridges. Transient public defaults resolve through the resting public label token. No icon token, compatibility alias, old `hover`/`focus` public name, or renderer variable is public.
 
-The same family-local stylesheet sets `--m3e-button-small-leading-space` and `--m3e-button-small-trailing-space` to 16px for the selected small renderer host (M3E-006). These documented renderer inputs are not public Mioframe tokens and do not add a Vue prop.
+The same component-local implementation CSS sets `--m3e-button-small-leading-space` and `--m3e-button-small-trailing-space` to 16px for the selected small renderer host (M3E-006). These documented renderer inputs are not public Mioframe tokens and do not add a Vue prop.
 
-Public `color`, `size`, and `nativeType` map through exported renderer types. Round shape and `toggle=false` are private constants. `disabled` is a Boolean property. Loading sets Button `aria-busy`, projects public `MDLoadingIndicator` at 24 px with `aria-hidden="true"`, and hands off `currentColor` through the dependency's public active-indicator token without acquiring interaction or operation ownership.
+Public `color`, `size`, and `nativeType` map through exported renderer types. Round shape and `toggle=false` are private constants. `disabled` is a Boolean property. Loading sets Button `aria-busy`, projects public `MDLoadingIndicator` at 24 px with `aria-hidden="true"`, and hands off `currentColor` through the dependency's public active-indicator token without acquiring interaction or operation ownership. The dependency's family `:root` default remains available whenever the contextual Button override is absent.
 
 ## Dependencies
 
@@ -56,16 +57,16 @@ Dependency queue: none.
 
 ## Component-owned proof
 
-- `MDButton.test.ts` proves defaults and retained mappings, Boolean-property behavior, label/icon projection, unchanged click payload, loading replacement/restoration and decorative semantics, disabled/loading independence, selected token ownership, M3E-006 mapping ownership, and the exact host-attribute allow-list including dynamic add/remove/re-add and rejected attributes/listeners.
-- `MDButton.browser.spec.ts` proves native form submission, ordinary and disabled activation, loading activation ownership, selected small geometry, target behavior, focus/pointer/keyboard behavior, dynamic renderer-surface rejection, native click bubbling, rendered label/loading color ownership, and contextual label states without private shadow-DOM inspection.
-- `tests/e2e/visual/shared-ui/md-button.spec.ts` owns bounded selected variant, size, loading, interaction-state, contextual-token, and legacy-surface baselines. The 2.7.4 compatibility run passed all 214 verifier-selected visual references with no baseline update.
-- Loading Indicator standalone semantics, geometry, animation, renderer workarounds, and standalone visuals remain dependency-owned and are not duplicated here.
+- `MDButton.test.ts` proves defaults and retained mappings, Boolean-property behavior, label/icon projection, unchanged click payload, loading replacement/restoration and decorative semantics, disabled/loading independence, selected token ownership, private renderer-bridge ownership, M3E-006 mapping ownership, the ordinary non-doubled Loading Indicator contextual selector, and the exact host-attribute allow-list including dynamic add/remove/re-add and rejected attributes/listeners.
+- `MDButton.browser.spec.ts` proves native form submission, ordinary and disabled activation, loading activation ownership, selected small geometry, target behavior, focus/pointer/keyboard behavior, dynamic renderer-surface rejection, native click bubbling, rendered label/loading color ownership, the contextual Loading Indicator token handoff, and contextual label states without private shadow-DOM inspection.
+- `MDButton.visual.spec.ts` owns bounded selected variant, size, loading, interaction-state, contextual-token, and legacy-surface baselines under the family-local visual ownership convention. `md-button-loading-linux.png` remains the rendered proof for Button loading composition.
+- Loading Indicator standalone semantics, default/public token behavior, geometry, animation, renderer workarounds, and standalone visuals remain dependency-owned and are not duplicated here.
 
 Operator visual status: no-reported-defect. Automated proof does not claim subjective Material or renderer-motion acceptance.
 
 ## @m3e/web 2.7.4 compatibility revalidation
 
-The installed public Button types remain compatible with the existing package-derived mapping. Installed `2.7.4` changes the small leading/trailing fallback from 16dp to 20dp, while preserving the documented size-specific CSS inputs; M3E-006 keeps the selected 16dp geometry through those inputs within `tokens.css`. PressedController, ripple, and StateLayer implementation changes remain renderer-private: `MDButton` keeps one semantic renderer host and does not expose or recreate those details. Pointer, keyboard, focus, loading, disabled, geometry, and visual proof remain the contract owners.
+The installed public Button types remain compatible with the existing package-derived mapping. Installed `2.7.4` changes the small leading/trailing fallback from 16dp to 20dp, while preserving the documented size-specific CSS inputs; M3E-006 keeps the selected 16dp geometry through those inputs within `MDButton.vue` implementation CSS. PressedController, ripple, and StateLayer implementation changes remain renderer-private: `MDButton` keeps one semantic renderer host and does not expose or recreate those details. Pointer, keyboard, focus, loading, disabled, geometry, and visual proof remain the contract owners.
 
 ## Stage verification
 
@@ -78,11 +79,11 @@ Focused verifier-managed compatibility proof completed on 2026-08-14:
 - `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts src/shared/ui/material/components/button/MDButton.browser.spec.ts src/shared/ui/material/components/switch/MDSwitch.browser.spec.ts src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts` — passed; all 37 affected-family browser contracts passed.
 - `pnpm verify --only visual --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts src/shared/ui/material/components/switch/MDSwitch.visual.spec.ts src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts tests/e2e/visual/shared-ui/md-button.spec.ts` — passed; verifier-selected 214-reference visual suite passed with no baseline update.
 
-This implementation stage did not run migration, independent review, or the outer workflow's final verification.
+The later S4-E ownership/cascade correction was verified through the current PR's normal `pnpm verify` handoff and exact-head CI gate; the stage commands above remain the historical 2026-08-14 implementation record.
 
 ## Architecture deviations
 
-None.
+None. The later public-default/private-bridge placement follows the repository-wide cascade contract in `../../docs/component-tokens.md` and does not change the selected public token semantics.
 
 ## Remaining blockers
 
@@ -90,4 +91,4 @@ None.
 
 ## Migration readiness
 
-Ready. Runtime, tokens, exports, dependency composition, component-owned proof, and focused stage verification match `ARCHITECTURE.md` revision `2026-08-14T12:28:07.000Z`. Consumer inventory, contextual Snackbar adoption, obsolete consumer ownership removal (including Navigation Path's inert legacy padding declaration), and product-scenario verification remain exclusively in the migration stage.
+Ready. Runtime, tokens, exports, dependency composition, component-owned proof, and selected public semantics remain aligned with `ARCHITECTURE.md`; cascade/default placement additionally follows the repository-wide `docs/component-tokens.md` contract. Consumer inventory, contextual Snackbar adoption, obsolete consumer ownership removal (including Navigation Path's inert legacy padding declaration), and product-scenario verification remain exclusively in the migration stage.
