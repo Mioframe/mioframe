@@ -63,7 +63,7 @@ Behavior contract ┘
 
 API establishes the current structural surface first. Token and behavior workers then stay independently focused on their own Material facts while using `contract.ts` only as structural scope/terminology.
 
-The workflow is resume-first. Reinvoking `material-component <name>` continues current repository state and does not regenerate completed contracts. A completed stage is reopened only by an exact architect correction handoff.
+The workflow is resume-first. Reinvoking `material-component <name>` continues current repository state and does not regenerate compatible completed contracts. An owner is reopened only when the mechanical compatibility resolver or an exact semantic correction marker routes back to it.
 
 Coding-agent work ends at architect handoff. Semantic review, PR/CI handling, roadmap completion, and merge readiness are architect-owned.
 
