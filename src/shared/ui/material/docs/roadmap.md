@@ -42,13 +42,36 @@ No active review finding remains for the cascade correction.
 
 ## Resume architecture
 
-PR #203 now handles new families and pre-workflow staged families without adding a completion manifest or workflow-history database.
+PR #203 uses the normal resolver plus one semantic correction marker for current-workflow families. It does not add workflow history, a completion manifest, or token identity metadata.
 
-Normal current-workflow resume remains resolver/semantic-marker driven. Legacy staged families are identified by their old `DESIGN.md` / `ARCHITECTURE.md` / `IMPLEMENTATION.md` / `MIGRATION.md` evidence. Because the old workflow never created `BEHAVIOR.md`, an existing legacy `tokens.css` is not accepted as proof of a completed current token contract before the current token→behavior sequence reaches `BEHAVIOR.md`.
+A small temporary bridge exists only for pre-workflow families. Old staged artifacts identify a family that still needs conversion. Because the old workflow never produced `BEHAVIOR.md` but could already contain a demand-scoped `tokens.css`, the only transition exception is:
 
-The transition intentionally permits one bounded token re-derivation if execution is interrupted after current token derivation but before behavior is written. This is simpler than introducing token identity metadata or persistent stage history. Legacy `REVIEW.md` with `Verdict: compliant` remains historical evidence and is not interpreted as current `project-review` state. Migration removes replaced staged artifacts after successful conversion.
+```text
+legacy staged artifacts remain
++ current contract.ts exists
++ current BEHAVIOR.md does not exist
+→ current token-contract is still incomplete
+```
 
-Architect semantic review found no remaining blocker in this transition model. The temporary cross-workflow `REVIEW.md` has been removed because no active review finding remains.
+After token derivation the ordinary resolver continues to behavior. If execution stops between those owners, token may repeat on resume. Legacy `REVIEW.md` with `Verdict: compliant` is historical evidence, not active current review state.
+
+The bridge is deliberately temporary and must be removed once the last legacy family is converted.
+
+## Legacy family conversion plan
+
+Do not bulk-convert the existing families inside PR #203. After the new workflow is accepted and the Extended FAB pilot validates the steady-state path, convert the remaining pre-workflow families one at a time through the normal operator command:
+
+```text
+Loading Indicator
+→ Button
+→ Switch
+→ Checkbox
+→ Floating Action Button
+```
+
+The dependency-first order keeps Button composition on an already-converted Loading Indicator. Each conversion must produce current `contract.ts`, full current `tokens.css`, and `BEHAVIOR.md`, revalidate standalone implementation/proof against those contracts, migrate consumers only when required, and remove the replaced staged workflow artifacts.
+
+When no legacy staged family remains, remove the temporary legacy bridge from `material-component` and its documentation. The steady-state workflow must then contain no legacy compatibility path.
 
 ## Other known state
 
@@ -68,4 +91,4 @@ The existing Checkbox evidence records an official-source conflict where a keybo
 
 ## Next Material pipeline action
 
-Run/review exact-head GitHub CI for PR #203. If the current head remains green and no new semantic finding appears, accept the workflow PR, synchronize the Extended FAB pilot with the accepted baseline, and resume it through `material-component Extended FAB`.
+Run/review exact-head GitHub CI for PR #203. If the current head remains green and no new semantic finding appears, accept the workflow PR, synchronize the Extended FAB pilot with the accepted baseline, and resume it through `material-component Extended FAB`. After the pilot is accepted, convert the remaining legacy families in the dependency-first order above and finally delete the temporary legacy bridge.
