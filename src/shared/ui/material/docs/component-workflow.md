@@ -54,15 +54,24 @@ Completed contract/runtime/proof files remain the durable work product. There is
 
 Mechanical routing is code; Material semantics stay with focused workers. After a correction, routing is recomputed rather than pre-planning speculative follow-up work.
 
-### Legacy staged families
+### Temporary legacy bridge
 
-Families created by the previous staged workflow may still contain `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, and/or `MIGRATION.md`. Those files identify a family that has not finished conversion to the current three-contract workflow.
+Families created by the previous staged workflow may still contain `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, or `MIGRATION.md`. Those files only identify that the family has not finished conversion yet.
 
-The old workflow did not create `BEHAVIOR.md`, so an old `tokens.css` cannot be treated as proof of a current token contract merely because its CSS shape is mechanically valid. During conversion, after current `contract.ts` exists and before current `BEHAVIOR.md` exists, the orchestrator runs current token derivation and then current behavior derivation in separate fresh worker contexts.
+The old workflow did not create `BEHAVIOR.md` but could already contain a demand-scoped `tokens.css`. Therefore the transition needs one exception only:
 
-No extra persistent marker is needed for this one-time boundary. If execution is interrupted after token derivation but before behavior is written, the next invocation may repeat the token derivation before continuing. That bounded duplicate work is intentionally preferred over adding token identity metadata, a completion manifest, or workflow-history storage.
+```text
+legacy staged artifacts remain
++ current contract.ts exists
++ current BEHAVIOR.md does not exist
+→ current token-contract is still incomplete
+```
 
-Once `BEHAVIOR.md` exists, the normal resolver/semantic-marker model resumes. Legacy staged review files with `Verdict: compliant` remain historical evidence and are not interpreted as current `project-review` state; migration removes the replaced staged artifacts after successful conversion.
+The orchestrator runs token normally, reruns deterministic routing, then continues to behavior and the ordinary owner order. If execution stops between token and behavior, token may be derived again on the next invocation. This bounded repeat is cheaper and clearer than introducing completion metadata or another state mechanism.
+
+An old `REVIEW.md` with `Verdict: compliant` is historical evidence while legacy staged artifacts remain. Migration removes replaced staged artifacts after the family is converted.
+
+This bridge is temporary. After the existing legacy families have all been converted, remove the bridge instead of keeping permanent compatibility logic.
 
 ## Cross-family architecture migrations
 
@@ -119,8 +128,9 @@ Prefer this minimum workflow over adding more infrastructure:
 - no second compatibility model;
 - no generic adapter/token framework created for workflow convenience;
 - no rerun of completed current-workflow owners merely because previous chat context is unavailable;
-- one bounded token re-derivation is acceptable only when resuming an interrupted legacy token→behavior transition;
+- one bounded token repeat is acceptable only at the temporary legacy token→behavior boundary;
 - no empty operator iteration between blocked architect review and a known correction owner;
-- no repeated semantic derivation for a mechanical cross-family architecture migration.
+- no repeated semantic derivation for a mechanical cross-family architecture migration;
+- delete the legacy bridge after the final legacy family is converted.
 
 If repeated corrections show that ownership or the architecture itself is wrong, return to the architect instead of adding workaround stages.
