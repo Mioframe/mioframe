@@ -100,6 +100,26 @@ Consolidate one root cause into one finding. Do not scatter symptoms across mult
 
 Two correction rounds that still expose ownership drift, mixed responsibilities, missing scenarios, or accumulating workaround logic are a signal to return to architecture rather than continue patching symptoms.
 
+## Correction handoff
+
+A blocked review must not end with only a list of findings when at least one finding is actionable through an existing repository owner.
+
+Before returning a `blocked` verdict:
+
+1. determine which unresolved blocker/major owner must act next from dependency direction, ownership, and any repository-defined owner order;
+2. consolidate all currently known unresolved findings for that same owner that can be corrected safely in one pass without depending on a later owner's unresolved change;
+3. return one concise `NEXT CORRECTION` containing only:
+   - `owner` — the next repository owner;
+   - `finding` — the consolidated current defect(s), stated as required final-state problem rather than an implementation recipe;
+   - `affected scope` — the smallest code/contract/proof/consumer scope that must be reconsidered;
+4. leave findings owned by later/downstream owners in `REVIEW.md` for re-review after the first correction.
+
+This is a handoff, not implementation. Do not edit production code, invoke a coding workflow, create workflow-specific state, or prescribe unnecessary implementation detail while reviewing.
+
+If no safe next owner can be selected because ownership/order itself is unresolved, say so explicitly instead of manufacturing a correction handoff; architecture must be resolved before coding resumes.
+
+For `ready` or `ready-with-listed-risks`, `NEXT CORRECTION` is `none`.
+
 ## Review artifact ownership
 
 `REVIEW.md` is durable working state for an active review, not permanent product documentation.
@@ -216,6 +236,11 @@ blockers: <count>
 major issues: <count>
 minor issues: <count>
 accepted risks: <count>
+
+NEXT CORRECTION
+owner: <next owner> | none | unresolved
+finding: <consolidated actionable finding> | none | <why owner/order is unresolved>
+affected scope: <smallest correction scope> | none
 ```
 
 Then list only the findings that need the user's/implementer's attention. The `REVIEW.md` files are the durable source for full finding details.
@@ -232,5 +257,7 @@ Then list only the findings that need the user's/implementer's attention. The `R
 - Writing a component-owned defect into a pane/consumer review merely because that is where it was observed.
 - Treating green automated checks as semantic or architecture approval.
 - Leaving stale resolved findings in `REVIEW.md`.
+- Returning `blocked` with actionable findings but no next-owner correction handoff.
 - Turning `REVIEW.md` into permanent architecture/product documentation.
+- Creating workflow-specific correction state from this generic review skill.
 - Automatically inserting this skill into `material-component` or another implementation workflow without a separate architecture decision.
