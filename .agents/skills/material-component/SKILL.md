@@ -22,7 +22,7 @@ Completed work lives in repository artifacts and proof. Unresolved coding state 
 - mechanical compatibility: recompute with `node scripts/materialComponentCompatibility.mjs --family <family>`;
 - semantic correction that cannot be reconstructed mechanically: `src/shared/ui/material/components/<family>/.material-correction.json`.
 
-Owner-local `REVIEW.md` is architect-owned semantic review state, not a coding correction queue. Coding workers must not reinterpret, update, or independently clear review findings. A blocked current review is still known in-scope state, however, so it must prevent a false `remaining blocker: none` claim after a routed correction finishes.
+Owner-local `REVIEW.md` is architect-owned review state, not a coding correction queue. Coding workers must not select, update, or clear review findings themselves.
 
 Owner order is:
 
@@ -40,59 +40,51 @@ The semantic marker stores exactly:
 }
 ```
 
-Keep only one active semantic correction. Do not store deterministic findings, timestamps, hashes, counters, worker transcripts, hidden reasoning, Git/PR/CI state, or proposed fixes. Clear the marker only after its finding is resolved and no replacement semantic correction is returned.
+Keep only one active semantic correction. Do not store deterministic findings, timestamps, hashes, counters, worker transcripts, hidden reasoning, Git/PR/CI state, proposed fixes, or workflow progress. Clear the marker only after its finding is resolved and no replacement semantic correction is returned.
 
-## Legacy staged-family transition
+## Temporary legacy-family bridge
 
-Pre-workflow families may still contain one or more old staged artifacts:
+Pre-workflow families may still contain `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, or `MIGRATION.md`. Their presence means that family has not yet completed conversion to the current three-contract workflow.
+
+The old workflow did not create `BEHAVIOR.md`. It could already contain a demand-scoped `tokens.css`, so that file alone must not let conversion skip the current token contract.
+
+Use one temporary rule only:
 
 ```text
-DESIGN.md
-ARCHITECTURE.md
-IMPLEMENTATION.md
-MIGRATION.md
+legacy staged artifacts remain
++ current contract.ts exists
++ current BEHAVIOR.md does not exist
+→ treat token-contract as the earliest incomplete owner after any earlier api-contract route
 ```
 
-Their presence means the family is still in legacy transition until migration removes the replaced staged artifacts. `REVIEW.md` alone is not a legacy-identity marker because the current architect review also uses that filename.
+Run that token worker normally, rerun the resolver, and continue through behavior and the ordinary owner order. If execution stops after token completion but before `BEHAVIOR.md` is written, a fresh invocation may repeat token derivation once. That bounded duplicate work is intentionally preferred over a completion manifest, token identity marker, or workflow-history database.
 
-The old workflow did not create `BEHAVIOR.md`. Therefore, while legacy staged artifacts remain:
+While legacy staged artifacts remain, an old `REVIEW.md` with `Verdict: compliant` is historical evidence and is ignored as current `project-review` state. Current review verdicts remain `blocked`, `ready-with-listed-risks`, and `ready`.
 
-- an existing `tokens.css` is not by itself proof of a completed current token contract;
-- an `api-contract` resolver/marker route still wins and must be resolved before token or behavior work;
-- when `contract.ts` exists but `BEHAVIOR.md` does not, current token derivation must occur before current behavior derivation unless an active `behavior-contract` semantic marker proves that a previous behavior attempt was already reached;
-- an active `token-contract` marker is resolved by the token worker before behavior; later implementation/migration markers do not bypass missing earlier contracts;
-- do not insert a persistent completion marker merely to remember the token→behavior boundary;
-- if execution is interrupted after token completion but before `BEHAVIOR.md` is written, the next invocation may repeat the token-contract derivation once before continuing to behavior. This bounded repeat is preferable to a workflow-history database or another artifact identity protocol;
-- once current `BEHAVIOR.md` exists, ordinary resolver/marker routing resumes. Its presence is the durable downstream evidence that the current token→behavior definition sequence has crossed the legacy ambiguity boundary.
-
-Legacy staged `REVIEW.md` files use `Verdict: compliant` and are historical evidence, not active current `project-review` state. While legacy staged artifacts remain:
-
-- `Verdict: compliant` is ignored for current review routing;
-- `Verdict: blocked`, `Verdict: ready-with-listed-risks`, and `Verdict: ready` are current review state;
-- any other verdict is ambiguous and returns `needs-architect` rather than being guessed.
-
-Migration removes replaced legacy staged artifacts only after the current family implementation and required consumer migration are complete.
+Migration removes replaced legacy staged artifacts after successful conversion. Once all legacy families are converted, remove this temporary bridge from the workflow rather than retaining permanent compatibility logic.
 
 ## Execute
 
 1. Resolve the canonical Material family and preserve any concrete operator observations losslessly.
-2. Read `.material-correction.json` if present. Detect whether legacy staged artifacts remain. Classify owner-local `REVIEW.md` using the legacy/current rules above, but do not use the review document as implementation instructions.
+2. Read `.material-correction.json` if present. Detect whether legacy staged artifacts remain. If a legacy `REVIEW.md` says `Verdict: compliant`, treat it only as historical evidence; otherwise do not use review contents as coding instructions.
 3. Run exactly:
    ```text
    node scripts/materialComponentCompatibility.mjs --family <family>
    ```
    Treat `route` as routing, not failed verification. If the resolver cannot execute or returns invalid output, return that exact failure; do not replace it with an LLM compatibility audit.
-4. Choose the earliest owner between the semantic marker and resolver route, except for the explicit legacy transition below.
-5. Legacy transition exception: when legacy staged artifacts remain, `contract.ts` exists, `BEHAVIOR.md` is absent, neither resolver nor marker selects `api-contract`, and no active marker selects `behavior-contract`, run `material-component-token-contract` in a fresh context even if the existing legacy `tokens.css` is mechanically compatible. If an active marker selects `token-contract`, pass that exact correction to the token worker. If token completes without a return/blocker, clear any resolved token marker and run `material-component-behavior-contract` next in another fresh context. Do not rerun the resolver between these two legacy-transition owners; rerun it after behavior completes. If the session stops between them, a later invocation safely repeats token-contract as described above. If an active marker selects `behavior-contract`, skip this exception and run that behavior correction directly. Later implementation/migration markers do not override this earlier incomplete contract transition.
-6. Outside that exception, run only the selected owner in a fresh context. Pass only family, owner, exact finding/scope, and relevant operator observations.
-7. If a worker returns a semantic correction, persist or replace the marker before routing elsewhere. If it resolves the active semantic correction without replacement, clear the marker.
-8. Rerun the resolver after every completed owner except the intentional token→behavior legacy-transition pair above. Do not pre-plan any other correction chain and do not rerun unaffected owners.
-9. When all three contracts are ready, no earlier route exists, and no contract correction is pending, run or resume `material-component-implementation` until its own completion gate returns `complete`.
-10. Run `material-component-migration` only when current consumers or replaced legacy ownership actually require migration. A correction with unchanged public usage/defaults and no legacy ownership does not require another migration pass.
-11. When contracts, implementation/proof, and required migration are complete, the resolver is clean, and no semantic marker remains, inspect only active current review state:
+4. Determine the earliest owner from:
+   - semantic marker;
+   - resolver route;
+   - the temporary legacy rule above, which contributes `token-contract` only when its three conditions hold.
+5. Run only that owner in a fresh context. Pass only family, owner, exact finding/scope when one exists, and relevant operator observations.
+6. If the worker returns a semantic correction, persist or replace the marker before routing elsewhere. If it resolves the active semantic correction without replacement, clear the marker.
+7. Rerun the resolver after every completed owner and recalculate the earliest owner. Do not pre-plan a correction chain and do not rerun unaffected owners, except for the explicitly accepted repeated token derivation when resuming the temporary legacy boundary.
+8. When all three contracts are ready, no earlier route exists, and no contract correction is pending, run or resume `material-component-implementation` until its completion gate returns `complete`.
+9. Run `material-component-migration` only when current consumers or replaced legacy ownership actually require migration. A correction with unchanged public usage/defaults and no legacy ownership does not require another migration pass.
+10. When contracts, implementation/proof, and required migration are complete, the resolver is clean, and no semantic marker remains, inspect only active current review state:
     - no active current review artifact: normal architect handoff;
     - `ready` or `ready-with-listed-risks`: hand to architect; do not claim CI/merge readiness;
-    - `blocked`: stop at architect handoff and report that active review findings require architect re-review/routing. Do not claim `remaining blocker: none`, do not select a review finding yourself, and do not continue coding without a resolver/marker route.
+    - `blocked`: stop at architect handoff and report that active review findings require architect re-review/routing. Do not select a finding yourself or continue coding without a resolver/marker route.
 
 A fresh session resumes from repository state. Lack of previous chat context is never a reason to rerun the whole family.
 
@@ -113,7 +105,7 @@ API runs first. Token and behavior may use completed `contract.ts` only as the s
 
 Coding workers run their required focused verifier-managed checks themselves.
 
-If sandbox or Podman restrictions block a canonical `pnpm verify ...` invocation, follow the `verification` skill and use the runtime's narrowly scoped command approval/escalation path. **Do not ask the operator to run verifier commands.** If that mechanism itself is unavailable or fails, return `blocked` with the exact execution-environment failure.
+If sandbox or Podman restrictions block canonical `pnpm verify ...`, follow the `verification` skill and use the runtime's narrowly scoped command approval/escalation path. Do not ask the operator to run verifier commands. If that mechanism itself is unavailable or fails, return `blocked` with the exact execution-environment failure.
 
 Do not use broad local verification merely to duplicate architect-owned exact-head CI.
 
@@ -127,7 +119,7 @@ The coding workflow is complete only when:
 - migration returned `complete` or `not-required`;
 - no known in-scope blocker remains.
 
-An active current owner-local `REVIEW.md` with `Verdict: blocked` is known in-scope blocker state until the architect re-reviews and updates/removes it. Legacy `Verdict: compliant` evidence is not current review state. Coding workers do not decide that a current review finding is resolved merely because their routed correction passed verification.
+An active current owner-local `REVIEW.md` with `Verdict: blocked` remains known blocker state until architect re-review. Legacy `Verdict: compliant` evidence is not current review state.
 
 Then hand the family to the architect. Coding workers do not update roadmap completion, claim PR/CI readiness, or perform another independent semantic review.
 
@@ -153,14 +145,13 @@ next action: hand to architect | rerun material-component <name> | <genuine exte
 
 - Requiring the operator to reconstruct workflow state or paste a correction handoff.
 - Re-implementing deterministic resolver compatibility checks in LLM reasoning.
-- Treating legacy `Verdict: compliant` review evidence as active current review state.
+- Treating legacy `Verdict: compliant` as active current review state.
 - Treating current `REVIEW.md` as a coding-agent review queue or independently clearing architect findings.
-- Claiming `remaining blocker: none` while active current `REVIEW.md` is still `blocked`.
 - Persisting mechanically recomputable findings or legacy transition progress in `.material-correction.json`.
-- Adding a workflow-history database, completion manifest, or token-contract identity marker solely for legacy transition.
-- Combining contract, implementation, or migration responsibilities in one worker context. The explicit legacy token→behavior pair still runs as two fresh worker contexts.
-- Rerunning completed owners without an actual route, incomplete downstream legacy transition, or incomplete downstream stage.
-- Asking the operator to run `pnpm verify`, Playwright, Podman, or other verifier commands.
+- Adding a workflow-history database, completion manifest, token-contract identity marker, or permanent legacy compatibility layer.
+- Combining contract, implementation, or migration responsibilities in one worker context.
+- Rerunning completed current-workflow owners without an actual route.
+- Asking the operator to run verifier/Podman commands.
 - Reintroducing a coding-agent Material review stage.
 - Letting m3e, legacy code, or current consumer demand define Material contracts.
 - Updating roadmap/PR/CI/merge status as coding-agent completion.
