@@ -70,6 +70,25 @@ describe('material component compatibility resolver', () => {
     });
   });
 
+  it('accepts multiple distinct public defaults declared in the same :root block', () => {
+    const root = createRoot();
+    const base = createFamily(root);
+    const token = tokenNameFor('exampleAction');
+    write(
+      root,
+      `${base}/tokens.css`,
+      `:root {\n  ${token}: var(--md-sys-color-primary);\n  --md-comp-example-action-container-height: 56dp;\n}\n`,
+    );
+
+    expect(resolveMaterialComponentCompatibility(root, 'exampleAction')).toEqual({
+      version: 1,
+      family: 'exampleAction',
+      status: 'clean',
+      owner: null,
+      violations: [],
+    });
+  });
+
   it('routes old slot syntax to API before later token violations', () => {
     const root = createRoot();
     const base = createFamily(root);
@@ -107,6 +126,78 @@ describe('material component compatibility resolver', () => {
     expect(result.violations.map((violation) => violation.rule)).toEqual([
       'component-token-outside-root',
     ]);
+  });
+
+  it('routes a family-owned public default declared under :root .md-example to token-contract', () => {
+    const root = createRoot();
+    const base = createFamily(root);
+    write(
+      root,
+      `${base}/tokens.css`,
+      `:root .md-example-action {\n  ${tokenNameFor('exampleAction')}: var(--md-sys-color-primary);\n}\n`,
+    );
+
+    const result = resolveMaterialComponentCompatibility(root, 'exampleAction');
+
+    expect(result.owner).toBe('token-contract');
+    expect(result.violations.map((violation) => violation.rule)).toEqual([
+      'component-token-outside-root',
+    ]);
+  });
+
+  it('routes a family-owned public default declared under a selector list such as :root, .md-example to token-contract', () => {
+    const root = createRoot();
+    const base = createFamily(root);
+    write(
+      root,
+      `${base}/tokens.css`,
+      `:root, .md-example-action {\n  ${tokenNameFor('exampleAction')}: var(--md-sys-color-primary);\n}\n`,
+    );
+
+    const result = resolveMaterialComponentCompatibility(root, 'exampleAction');
+
+    expect(result.owner).toBe('token-contract');
+    expect(result.violations.map((violation) => violation.rule)).toEqual([
+      'component-token-outside-root',
+    ]);
+  });
+
+  it('routes the same public token declared twice in one :root block to token-contract', () => {
+    const root = createRoot();
+    const base = createFamily(root);
+    const token = tokenNameFor('exampleAction');
+    write(
+      root,
+      `${base}/tokens.css`,
+      `:root {\n  ${token}: var(--md-sys-color-primary);\n  ${token}: var(--md-sys-color-secondary);\n}\n`,
+    );
+
+    const result = resolveMaterialComponentCompatibility(root, 'exampleAction');
+
+    expect(result.owner).toBe('token-contract');
+    expect(result.violations.map((violation) => violation.rule)).toEqual([
+      'duplicate-public-default-in-file',
+    ]);
+    expect(result.violations[0].message).toContain(token);
+  });
+
+  it('routes the same public token declared in two separate :root blocks in one tokens.css to token-contract', () => {
+    const root = createRoot();
+    const base = createFamily(root);
+    const token = tokenNameFor('exampleAction');
+    write(
+      root,
+      `${base}/tokens.css`,
+      `:root {\n  ${token}: var(--md-sys-color-primary);\n}\n\n:root {\n  ${token}: var(--md-sys-color-secondary);\n}\n`,
+    );
+
+    const result = resolveMaterialComponentCompatibility(root, 'exampleAction');
+
+    expect(result.owner).toBe('token-contract');
+    expect(result.violations.map((violation) => violation.rule)).toEqual([
+      'duplicate-public-default-in-file',
+    ]);
+    expect(result.violations[0].message).toContain(token);
   });
 
   it('routes private --m3e-* tokens inside the public tokens.css to token-contract', () => {

@@ -29,6 +29,28 @@ const extractDeclaredCustomProperties = (css: string): Set<string> => {
   return names;
 };
 
+// Repeated declarations of the same custom property under different selectors in one
+// file (e.g. theme.css light vs. dark-mode overrides) are sanctioned theming, not a
+// duplicate-ownership bug. Only a repeated declaration under the identical selector
+// (the same rule twice, or two separate rules with the same selector text) indicates
+// an accidental duplicate default.
+const findRepeatedDeclarationsWithinFile = (css: string, from: string): string[] => {
+  const root = postcss.parse(css, { from });
+  const counts = new Map<string, { prop: string; count: number }>();
+
+  root.walkDecls((decl) => {
+    if (!decl.prop.startsWith('--') || decl.parent?.type !== 'rule') return;
+    const key = `${decl.prop}::${decl.parent.selector.trim()}`;
+    const existing = counts.get(key);
+    counts.set(key, { prop: decl.prop, count: (existing?.count ?? 0) + 1 });
+  });
+
+  return [...counts.values()]
+    .filter(({ count }) => count > 1)
+    .map(({ prop }) => prop)
+    .sort((left, right) => left.localeCompare(right));
+};
+
 const SELECTED_SYSTEM_COLOR_MAPPINGS = {
   '--md-sys-color-inverse-surface': '--md-ref-palette-neutral20',
   '--md-sys-color-inverse-on-surface': '--md-ref-palette-neutral95',
@@ -164,5 +186,17 @@ describe('Material foundation token ownership', () => {
       .map(([name]) => name);
 
     expect(new Set(sharedNames)).toEqual(SANCTIONED_CROSS_FILE_TOKENS);
+  });
+
+  it('has no repeated declaration of the same custom property under the same selector within one source', () => {
+    const sources: Array<{ path: string; css: string }> = [
+      { path: FOUNDATION_TOKENS_PATH, css: foundationTokens },
+      { path: FOUNDATION_THEME_PATH, css: foundationTheme },
+      ...componentTokenSources,
+    ];
+
+    for (const { path, css } of sources) {
+      expect(findRepeatedDeclarationsWithinFile(css, path), path).toEqual([]);
+    }
   });
 });

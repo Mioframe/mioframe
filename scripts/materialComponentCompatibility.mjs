@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import postcss from 'postcss';
+
 export const MATERIAL_COMPATIBILITY_VERSION = 1;
 
 const FAMILY_ROOT = 'src/shared/ui/material/components';
@@ -75,36 +77,6 @@ function findInterfaceBodies(source, suffix) {
   return bodies;
 }
 
-function findRootBlocks(source) {
-  const blocks = [];
-  let cursor = 0;
-
-  while (cursor < source.length) {
-    const rootIndex = source.indexOf(':root', cursor);
-
-    if (rootIndex < 0) {
-      break;
-    }
-
-    const openIndex = source.indexOf('{', rootIndex + ':root'.length);
-
-    if (openIndex < 0) {
-      break;
-    }
-
-    const closeIndex = findMatchingBrace(source, openIndex);
-
-    if (closeIndex < 0) {
-      break;
-    }
-
-    blocks.push(source.slice(openIndex + 1, closeIndex));
-    cursor = closeIndex + 1;
-  }
-
-  return blocks;
-}
-
 function listFilesRecursively(root) {
   if (!fs.existsSync(root)) {
     return [];
@@ -167,52 +139,66 @@ function findScopedStyleBlocks(source) {
   return blocks;
 }
 
-function removeRootBlocks(source) {
-  let result = '';
-  let cursor = 0;
-
-  while (cursor < source.length) {
-    const rootIndex = source.indexOf(':root', cursor);
-
-    if (rootIndex < 0) {
-      result += source.slice(cursor);
-      break;
-    }
-
-    const openIndex = source.indexOf('{', rootIndex + ':root'.length);
-
-    if (openIndex < 0) {
-      result += source.slice(cursor);
-      break;
-    }
-
-    const closeIndex = findMatchingBrace(source, openIndex);
-
-    if (closeIndex < 0) {
-      result += source.slice(cursor);
-      break;
-    }
-
-    result += source.slice(cursor, rootIndex);
-    cursor = closeIndex + 1;
-  }
-
-  return result;
+function isCanonicalRootSelector(selector) {
+  return typeof selector === 'string' && selector.trim() === ':root';
 }
 
-function findRootDeclaredComponentTokenNames(source) {
-  const names = new Set();
-  const pattern = /(--md-comp-[\w-]+)\s*:/g;
+function parseStylesheet(filePath, source) {
+  return postcss.parse(source, { from: filePath });
+}
 
-  for (const block of findRootBlocks(source)) {
-    let match;
+// A public --md-comp-* default only counts as family-owned when its rule
+// selector is exactly the canonical `:root` (after trimming). Selectors that
+// merely contain ":root" (".md-example", ":root .md-example", ":root, .md-example")
+// are ownership violations, not alternate spellings of root ownership.
+function collectComponentTokenDeclarations(stylesheet) {
+  const rootDeclarations = [];
+  const nonRootDeclarations = [];
 
-    while ((match = pattern.exec(block)) !== null) {
-      names.add(match[1]);
+  stylesheet.walkDecls(/^--md-comp-/, (decl) => {
+    const parentRule = decl.parent;
+
+    if (parentRule?.type === 'rule' && isCanonicalRootSelector(parentRule.selector)) {
+      rootDeclarations.push(decl);
+    } else {
+      nonRootDeclarations.push(decl);
     }
+  });
 
-    pattern.lastIndex = 0;
+  return { rootDeclarations, nonRootDeclarations };
+}
+
+function findSameFileDuplicateNames(rootDeclarations) {
+  const counts = new Map();
+
+  for (const decl of rootDeclarations) {
+    counts.set(decl.prop, (counts.get(decl.prop) ?? 0) + 1);
   }
+
+  return [...counts]
+    .filter(([, count]) => count > 1)
+    .map(([name]) => name)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function findFamilyRootDeclaredNames(tokensPath) {
+  let stylesheet;
+
+  try {
+    stylesheet = parseStylesheet(tokensPath, readText(tokensPath));
+  } catch {
+    return new Set();
+  }
+
+  const names = new Set();
+
+  stylesheet.walkDecls(/^--md-comp-/, (decl) => {
+    const parentRule = decl.parent;
+
+    if (parentRule?.type === 'rule' && isCanonicalRootSelector(parentRule.selector)) {
+      names.add(decl.prop);
+    }
+  });
 
   return names;
 }
@@ -237,9 +223,7 @@ function findDuplicatePublicDefaults(root, family) {
       continue;
     }
 
-    const source = stripComments(readText(tokensPath));
-
-    for (const name of findRootDeclaredComponentTokenNames(source)) {
+    for (const name of findFamilyRootDeclaredNames(tokensPath)) {
       if (!familiesByName.has(name)) {
         familiesByName.set(name, new Set());
       }
@@ -330,10 +314,28 @@ function checkTokens(root, familyRoot, family) {
     ];
   }
 
-  const source = stripComments(readText(tokensPath));
+  const rawSource = readText(tokensPath);
   const violations = [];
 
-  if (/--md-comp-[\w-]+\s*:/.test(removeRootBlocks(source))) {
+  let stylesheet;
+
+  try {
+    stylesheet = parseStylesheet(tokensPath, rawSource);
+  } catch (error) {
+    return [
+      createViolation(
+        'token-contract',
+        'invalid-css',
+        tokensPath,
+        root,
+        `tokens.css failed to parse: ${error instanceof Error ? error.message : String(error)}`,
+      ),
+    ];
+  }
+
+  const { rootDeclarations, nonRootDeclarations } = collectComponentTokenDeclarations(stylesheet);
+
+  if (nonRootDeclarations.length > 0) {
     violations.push(
       createViolation(
         'token-contract',
@@ -345,7 +347,21 @@ function checkTokens(root, familyRoot, family) {
     );
   }
 
-  if (source.includes('--m3e-')) {
+  const sameFileDuplicates = findSameFileDuplicateNames(rootDeclarations);
+
+  if (sameFileDuplicates.length > 0) {
+    violations.push(
+      createViolation(
+        'token-contract',
+        'duplicate-public-default-in-file',
+        tokensPath,
+        root,
+        `public default(s) declared more than once in this family's tokens.css: ${sameFileDuplicates.join(', ')}`,
+      ),
+    );
+  }
+
+  if (stripComments(rawSource).includes('--m3e-')) {
     violations.push(
       createViolation(
         'token-contract',
