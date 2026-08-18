@@ -96,9 +96,7 @@ GOOD:
 
 ```css
 .md-example-action {
-  --m3e-example-action-container-color: var(
-    --md-comp-example-action-primary-container-color
-  );
+  --m3e-example-action-container-color: var(--md-comp-example-action-primary-container-color);
 }
 ```
 
@@ -107,9 +105,7 @@ BAD:
 ```css
 .md-example-action {
   --md-comp-example-action-primary-container-color: var(--md-sys-color-primary);
-  --m3e-example-action-container-color: var(
-    --md-comp-example-action-primary-container-color
-  );
+  --m3e-example-action-container-color: var(--md-comp-example-action-primary-container-color);
 }
 ```
 

@@ -83,14 +83,14 @@ Contextual **component-token** overrides remain supported and are the normal com
 
 ## Ownership
 
-| Contract | Owner |
-| --- | --- |
-| Material reference/system foundations | `foundation/tokens.css` |
-| Default/user-selected document theme assignments | `foundation/theme.css` |
-| Family public `--md-comp-*` names and defaults | `components/<family>/tokens.css` on `:root` |
-| Contextual component-token overrides | composing component / consumer CSS |
-| Private renderer token bridges/workarounds | owning component CSS / family-local private stylesheet |
-| Application tokens | outside Material as `--app-*` |
+| Contract                                         | Owner                                                  |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| Material reference/system foundations            | `foundation/tokens.css`                                |
+| Default/user-selected document theme assignments | `foundation/theme.css`                                 |
+| Family public `--md-comp-*` names and defaults   | `components/<family>/tokens.css` on `:root`            |
+| Contextual component-token overrides             | composing component / consumer CSS                     |
+| Private renderer token bridges/workarounds       | owning component CSS / family-local private stylesheet |
+| Application tokens                               | outside Material as `--app-*`                          |
 
 `--m3e-*` and `--md-private-*` are never public Material API.
 

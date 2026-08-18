@@ -62,10 +62,8 @@ If 1–4 prove a contract wrong, return to its owner instead of editing it. Chec
 GOOD:
 
 ```ts
-const {
-  appearance = mdExampleDefaults.appearance,
-  size = mdExampleDefaults.size,
-} = defineProps<MDExampleProps>();
+const { appearance = mdExampleDefaults.appearance, size = mdExampleDefaults.size } =
+  defineProps<MDExampleProps>();
 
 defineSlots<MDExampleSlots>();
 ```
@@ -87,9 +85,7 @@ Implementation bridge:
 
 ```css
 .md-example {
-  --m3e-example-primary-container-color: var(
-    --md-comp-example-primary-container-color
-  );
+  --m3e-example-primary-container-color: var(--md-comp-example-primary-container-color);
 }
 ```
 

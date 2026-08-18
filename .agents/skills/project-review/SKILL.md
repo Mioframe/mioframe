@@ -175,10 +175,12 @@ Owner: `<owner>`
 Problem: <concrete defect>
 
 Evidence:
-- [<source>](<link>) — <symbol/section/observed fact>
+
+- [<source>](link) — <symbol/section/observed fact>
 
 Basis:
-- [<project rule / contract / official documentation>](<link>) — <exact requirement supported by the source>
+
+- [<project rule / contract / official documentation>](link) — <exact requirement supported by the source>
 
 Risk: <concrete consequence>
 

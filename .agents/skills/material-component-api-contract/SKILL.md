@@ -82,9 +82,7 @@ export interface MDExampleActionEmits {
 export const mdExampleActionDefaults = {
   appearance: 'primary',
   size: 'small',
-} as const satisfies Required<
-  Pick<MDExampleActionProps, 'appearance' | 'size'>
->;
+} as const satisfies Required<Pick<MDExampleActionProps, 'appearance' | 'size'>>;
 ```
 
 The later Vue 3.5 SFC should be able to consume that contract directly, for example:
@@ -98,10 +96,8 @@ import {
   type MDExampleActionSlots,
 } from './contract';
 
-const {
-  appearance = mdExampleActionDefaults.appearance,
-  size = mdExampleActionDefaults.size,
-} = defineProps<MDExampleActionProps>();
+const { appearance = mdExampleActionDefaults.appearance, size = mdExampleActionDefaults.size } =
+  defineProps<MDExampleActionProps>();
 
 const emit = defineEmits<MDExampleActionEmits>();
 defineSlots<MDExampleActionSlots>();
@@ -123,8 +119,7 @@ Why: this shrinks the canonical family to today's Mioframe usage.
 BAD — duplicating defaults in the SFC:
 
 ```ts
-const { appearance = 'primary', size = 'small' } =
-  defineProps<MDExampleActionProps>();
+const { appearance = 'primary', size = 'small' } = defineProps<MDExampleActionProps>();
 ```
 
 when the same defaults are already separately declared in `contract.ts`.
