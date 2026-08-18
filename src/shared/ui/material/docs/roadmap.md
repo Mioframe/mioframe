@@ -16,7 +16,7 @@ Implemented canonical runtime families in the current repository tree include Lo
 
 Verification of `MDButton → MDLoadingIndicator` composition exposed a library-wide defect in the previous component-token model: family `--md-comp-*` defaults were declared on `.md-<component>`, so a nested component could shadow a contextual/ancestor public-token override and make the result depend on specificity/source order.
 
-Canonical architecture is defined in `docs/component-tokens.md`:
+Architecture decision:
 
 ```text
 family tokens.css
@@ -26,36 +26,26 @@ family tokens.css
   → rendered result
 ```
 
-Key invariants:
+`docs/component-tokens.md` is the detailed authority. Family token contracts own public names/defaults; implementation CSS owns private renderer bridges/contextual overrides; system/reference tokens remain document-wide theme inputs.
 
-- each public `--md-comp-*` default has exactly one owning family `tokens.css` declaration;
-- family defaults are declared on `:root`;
-- implementation CSS owns private renderer mapping and intentional contextual overrides, not family defaults;
-- Material `--md-ref-*` / `--md-sys-*` remain document-wide theme inputs and may later be changed by global user theme settings;
-- no specificity escalation, `!important`, inline token wiring, duplicate renderer fallbacks, or bundle-order dependency.
+### Current implementation status
 
-### Execution model
+The mechanical family migration has been applied for the current three-contract families in PR #203:
 
-This is a one-time cross-family **mechanical repository architecture migration**, not a new `material-component` stage.
+- Button and Loading Indicator public defaults now live in family `tokens.css` on `:root`;
+- private `--m3e-*` bridges/workarounds were moved back to family implementation CSS;
+- family token contracts are loaded unscoped;
+- Button keeps its Loading Indicator contextual override through normal inheritance;
+- browser plus existing visual ownership cover the composed override and standalone fallback scenario;
+- compatibility fixtures were inverted to the root-default model.
 
-For already-known tokens whose names/defaults/aliases/current Material semantics do not change, migrate their existing declarations from the family host selector to `:root` directly as one scoped repository correction. Do not force every converted family through a fresh Material3 MCP derivation merely to move the selector.
+Architect review remains `blocked` by the shared guard recorded in `../REVIEW.md`: the resolver currently deduplicates declarations by token/family and treats any selector block containing `:root` as root ownership, so it does not yet prove the required invariant of exactly one actual root default declaration. The related foundation ownership check also collapses same-file duplicates.
 
-If the migration exposes uncertainty about a token's semantic facts or ownership, route only that family/question through the normal contract owner.
-
-### Required implementation work before PR #203 is complete
-
-- change `scripts/materialComponentCompatibility.mjs` so `:root` family defaults are valid and host/local family defaults are invalid;
-- mechanically enforce that the same public default is not declared by more than one family `tokens.css`, without treating implementation/consumer contextual overrides as duplicate ownership;
-- invert/update `scripts/materialComponentCompatibility.test.mjs` fixtures and expectations;
-- migrate all already-converted families to the single root-default model without changing established Material token facts;
-- preserve private renderer bridges and intentional contextual overrides;
-- add/retain observable composition proof for contextual override inheritance and restoration of the family default, including Button → Loading Indicator.
-
-Do not add a compatibility layer for the old host-default model and do not add a permanent batch/migration stage to `material-component`.
+The global correction is complete only after that mechanical guard closes and exact-head CI is reviewed.
 
 ## Other known state
 
-The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is next semantically processed, the behavior contract worker must derive the current result from Material3 MCP; if the source remains contradictory, the behavior contract is blocked rather than guessed from legacy evidence.
+The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is next processed, the behavior contract worker must derive the current result from Material 3 MCP; if the source remains contradictory, the behavior contract is blocked rather than guessed from legacy evidence.
 
 `RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox; this is unrelated to the token-cascade correction.
 
@@ -71,4 +61,4 @@ The existing Checkbox evidence records an official-source conflict where a keybo
 
 ## Next Material pipeline action
 
-Complete the global component-token cascade repository correction in PR #203 (guard/tests + converted-family migration/proof), then continue/accept Extended FAB under the same model.
+Close the remaining global compatibility-guard finding in PR #203, re-review the correction, then run exact-head CI. Only after the global cascade correction is accepted should the Extended FAB pilot be synchronized and resumed with `material-component Extended FAB`.
