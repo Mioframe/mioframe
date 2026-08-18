@@ -21,11 +21,11 @@ The normal operator entrypoint is:
 material-component <name>
 ```
 
-For a new family, API extraction runs first. After `contract.ts` is complete, token and behavior workers run in separate fresh contexts and may run in parallel. They use `contract.ts` only as structural scope while deriving their own facts from Material 3 MCP.
+For a new family, API extraction runs first. After `contract.ts` is complete, token and behavior workers run independently in the orchestrator's owner order. They use `contract.ts` only as structural scope while deriving their own facts from Material 3 MCP.
 
 Then one standalone implementation worker owns runtime plus component proof, followed by consumer migration only when migration is actually required.
 
-For an existing/incomplete family, the same command resumes current repository state instead of rebuilding completed stages. A completed stage is reopened only by an exact architect correction handoff.
+For an existing/incomplete family, the same command resumes current repository state instead of rebuilding completed stages. A compatible completed owner is not rerun unless the mechanical resolver or an exact semantic correction marker routes back to it.
 
 The coding workflow stops after implementation/proof and required migration. Final semantic review, PR/CI handling, roadmap completion, and merge readiness are architect-owned.
 
