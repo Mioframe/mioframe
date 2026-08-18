@@ -17,13 +17,13 @@ BEHAVIOR.md
 
 Official Material facts come from the repository-configured Material3 MCP.
 
-The contracts have separate owners, but they are not symmetric: `contract.ts` is established first because it defines the current structural surface. `tokens.css` and `BEHAVIOR.md` may read `contract.ts` only for that already-selected configuration/content-role boundary and terminology; they still derive their own facts independently from Material 3 MCP.
+The contracts have separate owners, but they are not symmetric: `contract.ts` is established first because it defines the current structural surface. `tokens.css` and `BEHAVIOR.md` may read `contract.ts` only for that already-selected configuration/content-role boundary and terminology; they still derive their own facts independently from Material3 MCP.
 
 A family `README.md` may document developer usage as ordinary maintained documentation, but it is not a mandatory definition artifact, worker stage, implementation input, or migration gate.
 
 ## Source completeness versus specification completeness
 
-Contract workers establish complete coverage of the applicable Material 3 MCP sources for their scope. Material does not need to prescribe every Web/runtime detail.
+Contract workers establish complete coverage of the applicable Material3 MCP sources for their scope. Material does not need to prescribe every Web/runtime detail.
 
 After complete source coverage, a detail Material does not define is a boundary of the Material contract, not an unresolved ambiguity. Omit it or record it concisely as Material-unspecified when later stages could otherwise invent a requirement.
 
@@ -47,37 +47,17 @@ Do not derive public terminology from m3e names, legacy props, DOM mechanics, or
 
 ## `tokens.css` — public token contract
 
-`tokens.css` owns the current official Material component-token surface for the canonical family:
+`tokens.css` owns the current official Material component-token names, defaults, aliases, and current family/configuration/part/state coverage.
 
-- canonical `--md-comp-*` public names;
-- official Material defaults;
-- official system/reference aliases when defined;
-- current family/configuration/part/state coverage.
+The full cascade, theme, ownership, composition, migration, and verification model is defined only in [`component-tokens.md`](./component-tokens.md). In particular, family repository ownership and CSS cascade scope are separate concerns: the family owns its public defaults even though those defaults are root-scoped for inheritance.
 
-Public token ownership is **family-local in the repository but root-scoped in the CSS cascade**:
+Do not duplicate renderer/application token ownership or create a second token catalogue here.
 
-```css
-/* components/example/tokens.css */
-:root {
-  --md-comp-example-container-color: var(--md-sys-color-primary);
-}
-```
-
-The family `tokens.css` remains the single owner/source of truth even though the default declaration is on `:root`.
-
-Do not redeclare family defaults on `.md-<component>` or another local selector. `--md-comp-*` is an inheritable public override input, so a closer ancestor/composer/consumer declaration must be able to override the family default without specificity/source-order tricks.
-
-A composing component may intentionally set another family's public token in its own implementation CSS to customize a nested Material component. That is contextual composition, not ownership of the nested family's default.
-
-Material reference/system tokens are document-wide theme inputs. Global user theme customization may replace those root-level values in the future. Independent subtree Material system themes are not part of the current contract.
-
-Do not expose `--m3e-*`, `--md-private-*`, renderer defaults, or application `--app-*` tokens from `tokens.css`, and do not create token enums, registries, DSLs, JSON mirrors, second catalogues, or compatibility aliases.
-
-If token-source evidence proves a configuration in `contract.ts` is historical/non-current or reveals a current developer-selectable configuration missing from `contract.ts`, return to the API owner instead of compensating inside CSS.
+If token evidence proves a configuration in `contract.ts` is historical/non-current or reveals a current developer-selectable configuration missing from `contract.ts`, return to the API owner instead of compensating inside CSS.
 
 ## `BEHAVIOR.md` — behavior contract
 
-`BEHAVIOR.md` owns only observable normative Material behavior derived from Material 3 MCP.
+`BEHAVIOR.md` owns only observable normative Material behavior derived from Material3 MCP.
 
 Use only applicable sections for anatomy/content, states/precedence, interaction/input, keyboard, accessibility, geometry/layout, motion, and Material-unspecified behavior.
 
@@ -93,11 +73,11 @@ The three contracts must describe one coherent current Material family:
 Material configuration
   → contract.ts public configuration
   → tokens.css / BEHAVIOR.md requirements
-  → :root public token default
-  → optional inherited/contextual public override
   → private renderer mapping
   → observable result / proof
 ```
+
+Token cascade/default/override reachability follows `component-tokens.md`; do not duplicate that model here.
 
 No public token group may describe a configuration the canonical component can never reach. No current selectable Material configuration may disappear because different docs sections use different terminology.
 
@@ -107,7 +87,7 @@ Implementation checks this reachability before renderer work. The orchestrator d
 
 API contract runs first in its own fresh context.
 
-After API completes, token and behavior workers run in separate fresh contexts and may read only applicable project rules/their skill, this document and narrow token/adapter conventions, completed `contract.ts` for structural scope/terminology, and Material 3 MCP documentation required for their factual scope.
+After API completes, token and behavior workers run in separate fresh contexts and may read only applicable project rules/their skill, this document and narrow token/adapter conventions, completed `contract.ts` for structural scope/terminology, and Material3 MCP documentation required for their factual scope.
 
 No contract worker may inspect `@m3e/web` implementation/docs, legacy component implementation, application consumers/current demand, or another worker's narrative reasoning.
 
