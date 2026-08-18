@@ -9,15 +9,23 @@ contract.ts
   → public parameters/props, slots, events and public value/configuration types
 
 tokens.css
-  → public official Material component-token names and defaults
+  → public official Material component-token names, defaults, aliases and tokenized visual values
 
 BEHAVIOR.md
-  → normative observable Material behavior
+  → normative observable Material behavior not already represented by the component-token contract
 ```
 
 Official Material facts come from the repository-configured Material3 MCP.
 
-The contracts have separate owners, but they are not symmetric: `contract.ts` is established first because it defines the current structural surface. `tokens.css` and `BEHAVIOR.md` may read `contract.ts` only for that already-selected configuration/content-role boundary and terminology; they still derive their own facts independently from Material3 MCP.
+The contracts have separate owners, but they are intentionally ordered rather than symmetric:
+
+```text
+contract.ts
+  → tokens.css
+  → BEHAVIOR.md
+```
+
+`contract.ts` establishes the current structural surface. `tokens.css` establishes the current tokenized visual contract for that surface. `BEHAVIOR.md` is derived last so it can avoid duplicating visual facts already owned by `tokens.css`.
 
 A family `README.md` may document developer usage as ordinary maintained documentation, but it is not a mandatory definition artifact, worker stage, implementation input, or migration gate.
 
@@ -45,9 +53,21 @@ A developer-selectable Material configuration remains API scope even when Materi
 
 Do not derive public terminology from m3e names, legacy props, DOM mechanics, or current Mioframe demand.
 
-## `tokens.css` — public token contract
+## `tokens.css` — public visual token contract
 
 `tokens.css` owns the current official Material component-token names, defaults, aliases, and current family/configuration/part/state coverage.
+
+It is the sole family contract owner for values represented by official component tokens, including as applicable:
+
+- colors;
+- dimensions and component size values;
+- shape/corner values;
+- typography;
+- internal spacing;
+- elevation;
+- state-layer colors/opacities;
+- focus-indicator visual metrics;
+- other current official component-token values.
 
 The full cascade, theme, ownership, composition, migration, and verification model is defined only in [`component-tokens.md`](./component-tokens.md). In particular, family repository ownership and CSS cascade scope are separate concerns: the family owns its public defaults even though those defaults are root-scoped for inheritance.
 
@@ -55,13 +75,28 @@ Do not duplicate renderer/application token ownership or create a second token c
 
 If token evidence proves a configuration in `contract.ts` is historical/non-current or reveals a current developer-selectable configuration missing from `contract.ts`, return to the API owner instead of compensating inside CSS.
 
-## `BEHAVIOR.md` — behavior contract
+## `BEHAVIOR.md` — observable behavior contract
 
-`BEHAVIOR.md` owns only observable normative Material behavior derived from Material3 MCP.
+`BEHAVIOR.md` owns observable normative Material behavior derived from Material3 MCP that is not already expressed as a tokenized visual value in `tokens.css`.
 
-Use only applicable sections for anatomy/content, states/precedence, interaction/input, keyboard, accessibility, geometry/layout, motion, and Material-unspecified behavior.
+Use only applicable sections for:
 
-Use `contract.ts` only as the current structural vocabulary/boundary. If behavior-source evidence proves that boundary wrong or incomplete, return to the API owner rather than rewriting the structure inside `BEHAVIOR.md`.
+- anatomy/content relationships;
+- state existence and behavioral/state relationships;
+- interaction/input;
+- keyboard behavior;
+- accessibility semantics;
+- layout relationships and non-tokenized constraints;
+- motion behavior;
+- Material-unspecified behavior.
+
+`BEHAVIOR.md` must not become a second visual specification. Do not repeat token-owned colors, dimensions, spacing, shape, typography, elevation, opacity, focus-indicator metrics, or other visual values already represented by the family `tokens.css`.
+
+Behavior may still describe a semantic relationship involving a tokenized visual state without repeating the token value. For example, it may state that a focus indicator appears for a particular state/configuration while its color/thickness/offset remain owned only by `tokens.css`.
+
+Exact geometry belongs in `BEHAVIOR.md` only when Material defines a normative observable constraint that is not represented by the current family component-token contract. External placement guidance owned by a parent/layout is not a family geometry contract merely because Material documentation mentions a margin around the component.
+
+Use `contract.ts` only as the current structural vocabulary/boundary. Read completed `tokens.css` only as the exclusion boundary for already-owned visual facts; it is not behavior authority. If behavior-source evidence proves the API boundary wrong or incomplete, return to the API owner rather than rewriting the structure inside `BEHAVIOR.md`.
 
 Do not include Vue strategy, m3e lifecycle/workarounds, test plans, product behavior, migration instructions, or general usage prose.
 
@@ -72,14 +107,15 @@ The three contracts must describe one coherent current Material family:
 ```text
 Material configuration
   → contract.ts public configuration
-  → tokens.css / BEHAVIOR.md requirements
+  → tokens.css tokenized visual contract
+  → BEHAVIOR.md remaining observable behavior
   → private renderer mapping
   → observable result / proof
 ```
 
 Token cascade/default/override reachability follows `component-tokens.md`; do not duplicate that model here.
 
-No public token group may describe a configuration the canonical component can never reach. No current selectable Material configuration may disappear because different docs sections use different terminology.
+No public token group may describe a configuration the canonical component can never reach. No current selectable Material configuration may disappear because different docs sections use different terminology. No Material visual value should have two normative family owners.
 
 Implementation checks this reachability before renderer work. The orchestrator does not synthesize Material facts.
 
@@ -87,7 +123,9 @@ Implementation checks this reachability before renderer work. The orchestrator d
 
 API contract runs first in its own fresh context.
 
-After API completes, token and behavior workers run in separate fresh contexts and may read only applicable project rules/their skill, this document and narrow token/adapter conventions, completed `contract.ts` for structural scope/terminology, and Material3 MCP documentation required for their factual scope.
+Token contract then runs in a separate fresh context and may read only applicable project rules/its skill, this document and narrow token conventions, completed `contract.ts` for structural scope/terminology, and Material3 MCP documentation required for token scope.
+
+Behavior contract runs after token in another fresh context. It may read applicable project rules/its skill, this document, completed `contract.ts`, completed `tokens.css` only to exclude token-owned visual values, and Material3 MCP documentation required for behavior/specification/accessibility scope.
 
 No contract worker may inspect `@m3e/web` implementation/docs, legacy component implementation, application consumers/current demand, or another worker's narrative reasoning.
 
