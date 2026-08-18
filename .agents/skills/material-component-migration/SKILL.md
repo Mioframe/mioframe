@@ -42,7 +42,7 @@ You may inspect consumers and legacy implementation because they are the migrati
 6. Remove replaced legacy implementation/exports/proof only after every consumer has a valid destination.
 7. Remove old family `DESIGN.md`, `ARCHITECTURE.md`, `IMPLEMENTATION.md`, `MIGRATION.md`, and `REVIEW.md` artifacts when that family has fully moved to the current contract/runtime shape.
 8. Leave unrelated families untouched.
-9. Run focused consumer verification and return to the orchestrator.
+9. Use focused verifier feedback only when useful while migrating, then satisfy the repository-required final automatic `pnpm verify` gate before returning edited migration state to the orchestrator.
 
 If the family was already migrated and an architect correction changes only standalone implementation/tokens while preserving the public consumer usage/defaults, the orchestrator should skip this worker entirely.
 
@@ -72,6 +72,8 @@ As applicable verify:
 
 Do not duplicate standalone Material behavior/token tests at the product layer.
 
+Follow the root rules and `.agents/skills/verification/SKILL.md`; exact-head GitHub CI remains architect-owned and does not replace the local coding-agent handoff gate.
+
 ## Report
 
 ```text
@@ -81,7 +83,7 @@ consumers inventoried: <summary>
 consumers migrated: <summary>
 product behavior preserved: yes | blocked
 legacy ownership removed: yes | no | not-applicable
-focused verification: <commands/results>
+local verification: <final automatic pnpm verify result plus any useful focused feedback>
 required return owner: none | api-contract | token-contract | behavior-contract | implementation | architect
 remaining blocker: none | <exact blocker>
 result: complete | blocked | return-to-api-contract | return-to-token-contract | return-to-behavior-contract | return-to-implementation | needs-architect
@@ -95,4 +97,5 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Preserving legacy aliases by default.
 - Moving product/business behavior into Material.
 - Migrating unrelated families for cleanup.
+- Asking the operator to run verifier/Podman commands.
 - Updating roadmap, PR, CI, review, or merge status.
