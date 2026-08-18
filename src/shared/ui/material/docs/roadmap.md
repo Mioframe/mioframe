@@ -10,7 +10,7 @@ Current milestone: `M3 — sequential component migration`
 
 Status: `in-progress`
 
-Implemented canonical runtime families in the current repository tree include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. Extended FAB is the active pilot on its dedicated branch.
+Implemented canonical runtime families in the current repository tree include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. These predate the new three-contract workflow and still retain legacy staged evidence. Extended FAB is the active pilot on its dedicated branch.
 
 ## Global component-token cascade correction
 
@@ -28,19 +28,25 @@ family tokens.css
 
 `docs/component-tokens.md` is the detailed authority. Family token contracts own public names/defaults; implementation CSS owns private renderer bridges/contextual overrides; system/reference tokens remain document-wide theme inputs.
 
-### Current implementation status
-
 The global cascade correction in PR #203 has passed architect semantic re-review:
 
-- Button and Loading Indicator public defaults live in family `tokens.css` on exact `:root`;
+- Button and Loading Indicator public defaults live on exact `:root`;
 - private `--m3e-*` bridges/workarounds stay in family implementation CSS;
 - family token contracts are loaded unscoped;
 - Button keeps its Loading Indicator contextual override through normal inheritance;
 - browser plus existing visual ownership cover the composed override and standalone fallback scenario;
-- compatibility routing accepts only exact `:root` family defaults, rejects local/root-containing selectors, detects same-file and cross-family duplicate defaults, preserves contextual implementation overrides, and keeps scoped-load detection;
+- compatibility routing rejects local/root-containing selectors and same-file/cross-family duplicate defaults;
 - foundation ownership proof no longer hides repeated declarations within the same selector/source.
 
-No active review finding remains for the global cascade correction. Exact-head GitHub CI and final review of the complete PR #203 are still required before merge readiness can be decided.
+No active review finding remains for the cascade correction itself.
+
+## Current PR #203 blocker — legacy family resume
+
+Full PR review found that the new resume-first workflow cannot yet deterministically distinguish an old staged family token file from a token contract completed under the new workflow.
+
+Existing families such as Button and Loading Indicator have no new `contract.ts`/`BEHAVIOR.md`, but already contain legacy demand-scoped `tokens.css` files. Once API contract creation succeeds, the mechanical resolver can accept that pre-existing `tokens.css` by shape and skip the required current Material token derivation. The same families also retain legacy `REVIEW.md` files using the old `Verdict: compliant` format.
+
+This cross-workflow identity problem is recorded in `../REVIEW.md` and must be resolved architecturally before another coding correction. The solution must keep fresh-session resume deterministic without bulk semantic rederivation, operator-carried stage state, or a general workflow-history database.
 
 ## Other known state
 
@@ -60,4 +66,4 @@ The existing Checkbox evidence records an official-source conflict where a keybo
 
 ## Next Material pipeline action
 
-Run exact-head GitHub CI and complete final review of PR #203. Only after PR #203 is accepted should the Extended FAB pilot be synchronized and resumed with `material-component Extended FAB`.
+Resolve the legacy/current token-contract identity and resume architecture in PR #203, then implement and re-review that correction. Exact-head GitHub CI and final merge review follow only after the workflow can resume both new/current families and existing staged families deterministically. Extended FAB remains paused until PR #203 is accepted.
