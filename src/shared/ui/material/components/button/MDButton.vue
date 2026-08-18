@@ -175,7 +175,14 @@ const getForwardedAttrs = (): Record<string, unknown> => {
   color: inherit;
 }
 
-.md-button__loading-indicator {
+/*
+ * Doubled selector (not a typo): this and Loading indicator's own tokens.css both
+ * set `--md-comp-loading-indicator-active-indicator-color` at identical specificity
+ * (one class + one Vue scope attribute), so the final bundle's CSS source order
+ * decides the tie. Doubling the class raises this rule's specificity so Button's
+ * `currentColor` composition deterministically wins instead of depending on build order.
+ */
+.md-button__loading-indicator.md-button__loading-indicator {
   --md-comp-loading-indicator-active-indicator-color: currentColor;
 }
 </style>
