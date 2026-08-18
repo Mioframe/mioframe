@@ -112,6 +112,25 @@ test('MDButton preserves form, loading accessibility, disabled, and public press
   await expect(page.locator('#md-button-disabled-count')).toHaveText('0');
 });
 
+test('MDButton composes its loading indicator with the ordinary contextual currentColor override, not a specificity-escalating rule', async ({
+  page,
+}) => {
+  await openStory(page, 'material-3-components-buttons-mdbutton--loading-indicator-presentation');
+
+  const filledLoadingIndicator = page
+    .getByTestId('visual-md-button-loading')
+    .getByRole('button', { name: 'Saving', exact: true })
+    .locator('.md-button__loading-indicator');
+
+  const computedActiveIndicatorColor = await filledLoadingIndicator.evaluate((element) =>
+    getComputedStyle(element).getPropertyValue(
+      '--md-comp-loading-indicator-active-indicator-color',
+    ),
+  );
+
+  expect(computedActiveIndicatorColor.trim().toLowerCase()).toBe('currentcolor');
+});
+
 test('MDButton drops undeclared dynamic attrs and never exposes their renderer state', async ({
   page,
 }) => {

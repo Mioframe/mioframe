@@ -20,7 +20,7 @@ const DynamicAttrsWrapper = defineComponent({
 });
 
 describe('MDButton adapter', () => {
-  it('owns the selected text Button color tokens and private M3E-006 geometry correction', () => {
+  it('declares the selected public text Button color token defaults on :root in tokens.css', () => {
     const css = readFileSync('./src/shared/ui/material/components/button/tokens.css', 'utf8');
     const publicTokens = [
       '--md-comp-button-text-label-text-color',
@@ -32,20 +32,44 @@ describe('MDButton adapter', () => {
       '--md-comp-button-text-pressed-state-layer-color',
     ];
 
+    expect(css).toMatch(/:root\s*{/);
     for (const token of publicTokens) expect(css).toContain(`${token}:`);
-    expect(css).toContain('--m3e-text-button-label-text-color:');
-    expect(css).toContain('--m3e-text-button-hover-label-text-color:');
-    expect(css).toContain('--m3e-text-button-focus-label-text-color:');
-    expect(css).toContain('--m3e-text-button-pressed-label-text-color:');
-    expect(css).toContain('--m3e-text-button-hover-state-layer-color:');
-    expect(css).toContain('--m3e-text-button-focus-state-layer-color:');
-    expect(css).toContain('--m3e-text-button-pressed-state-layer-color:');
-    expect(css).toContain('--m3e-button-small-leading-space: 16px');
-    expect(css).toContain('--m3e-button-small-trailing-space: 16px');
+    expect(css).not.toContain('--m3e-');
     expect(css).not.toContain('--md-comp-button-text-icon-color');
     expect(css).not.toContain('--md-comp-button-text-hover-state-layer-color');
     expect(css).not.toContain('--md-comp-button-text-focus-state-layer-color');
     expect(css).not.toContain('--md-content-color');
+  });
+
+  it('keeps the private M3E-006 geometry correction and text-Button renderer bridges in the family implementation, not tokens.css', () => {
+    const componentCss = readFileSync(
+      './src/shared/ui/material/components/button/MDButton.vue',
+      'utf8',
+    );
+
+    expect(componentCss).toContain('--m3e-text-button-label-text-color:');
+    expect(componentCss).toContain('--m3e-text-button-hover-label-text-color:');
+    expect(componentCss).toContain('--m3e-text-button-focus-label-text-color:');
+    expect(componentCss).toContain('--m3e-text-button-pressed-label-text-color:');
+    expect(componentCss).toContain('--m3e-text-button-hover-state-layer-color:');
+    expect(componentCss).toContain('--m3e-text-button-focus-state-layer-color:');
+    expect(componentCss).toContain('--m3e-text-button-pressed-state-layer-color:');
+    expect(componentCss).toContain('--m3e-button-small-leading-space: 16px');
+    expect(componentCss).toContain('--m3e-button-small-trailing-space: 16px');
+  });
+
+  it('composes the Loading indicator with a single normal selector, not a specificity-escalating doubled selector', () => {
+    const componentCss = readFileSync(
+      './src/shared/ui/material/components/button/MDButton.vue',
+      'utf8',
+    );
+
+    expect(componentCss).toContain(
+      '.md-button__loading-indicator {\n  --md-comp-loading-indicator-active-indicator-color: currentColor;\n}',
+    );
+    expect(componentCss).not.toContain(
+      '.md-button__loading-indicator.md-button__loading-indicator',
+    );
   });
 
   it('maps the demand-scoped defaults and retained values', () => {
