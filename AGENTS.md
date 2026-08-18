@@ -24,6 +24,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, workflow, or architecture changes, use `architect-handoff` unless an applicable deterministic skill resolves every required decision from authoritative sources.
 - Use `implementation-preflight` before non-trivial code edits unless an applicable deterministic workflow explicitly owns an equivalent narrower implementation check. Official Material implementation and migration use their scoped Material skills and do not invoke the generic preflight.
 - Official Material families follow the scoped `material-component` workflow; do not begin standalone Material implementation before its three-contract-ready gate.
+- For explicit project, PR, architecture, implementation, or scoped code review, use `project-review`. It is a standalone reviewer protocol and is not automatically part of `material-component` or another implementation workflow. Persist active findings in the narrowest owner-local `REVIEW.md`; every finding must include linked evidence and a linked project/contract/authoritative basis.
 - Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight/checks are unresolved, or while task-specific proof ownership is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every abstraction, state, layer, compatibility path, recovery mechanism, optimization, registry, mapping, or helper must map to a current requirement or verified invariant.
 - Compare the proposal with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
@@ -60,6 +61,7 @@ Use the applicable skill instead of duplicating its rules:
 
 - `vue-component-implementation`;
 - `shared-ui-implementation`;
+- `project-review`;
 - `material-component`;
 - `material-component-api-contract`;
 - `material-component-token-contract`;
