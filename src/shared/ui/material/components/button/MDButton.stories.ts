@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 import '../../../../lib/md/index.css';
 import { useFocusIndicator } from '../../../State/useFocusIndicator';
-import { MDLoadingIndicator } from '../loadingIndicator';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
 
@@ -221,7 +220,7 @@ export const LoadingIndicatorPresentation: Story = {
 export const LegacySurfaceColorOwnership: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDButton, MDLoadingIndicator },
+    components: { MDButton },
     template: `
       <div
         data-testid="visual-md-button-legacy-surface"
@@ -239,7 +238,6 @@ export const LegacySurfaceColorOwnership: Story = {
             <template #icon><span data-testid="legacy-surface-button-icon">+</span></template>
           </MDButton>
           <MDButton label="Surface loading" color="text" loading />
-          <MDLoadingIndicator label="Surface standalone loading" />
         </div>
       </div>
     `,
