@@ -101,6 +101,6 @@ When an architect correction reopens an existing contract, that correction remai
 
 Standalone implementation may start only when all three contracts exist as completed artifacts, no current correction targets them, and token/behavior workers have not reported an API-boundary contradiction.
 
-A repeated `material-component` invocation does not rerun an existing complete contract unless an exact correction route reopens that owner.
+A repeated `material-component` invocation does not rerun a compatible completed current-workflow contract merely because chat history is unavailable. Owners reopen through the mechanical resolver or an exact semantic correction marker. The one transition exception is a legacy staged family interrupted after current token derivation but before its new `BEHAVIOR.md` exists: token derivation may repeat once so the workflow cannot mistake an old demand-scoped `tokens.css` for a completed current contract. `component-workflow.md` owns that transition rationale.
 
 If implementation later proves one contract wrong, route the exact finding back to that owner and rerun only downstream invalidated stages.
