@@ -17,7 +17,7 @@ Do not start while a correction targets a contract owner.
 
 ## Authority and isolation
 
-Read applicable `AGENTS.md`, the three family contracts, `component-adapter.md`, `component-tokens.md`, exact lockfile-resolved `@m3e/web` public docs/artifacts, `vue-component-implementation`, and only testing/verification guidance needed for the required proof.
+Read applicable `AGENTS.md`, the three family contracts, `component-adapter.md`, `component-tokens.md`, exact lockfile-resolved `@m3e/web` public docs/artifacts, `vue-component-implementation`, and only testing/verification guidance needed for required proof.
 
 Contracts define required public/observable behavior. m3e is private implementation detail.
 
@@ -31,30 +31,31 @@ Before production edits verify only:
 
 1. every public configuration has coherent token/behavior ownership where applicable;
 2. every public token group belongs to a reachable configuration or unconditional family behavior;
-3. every structural state/content role required by `BEHAVIOR.md` is representable by the public contract;
-4. behavior-required consumer accessibility/native information has an explicit public or narrow native/ARIA seam;
-5. no simpler documented renderer seam already satisfies the contract.
+3. family `tokens.css` owns public `--md-comp-*` defaults on `:root`, not the component host/local selector;
+4. every structural state/content role required by `BEHAVIOR.md` is representable by the public contract;
+5. behavior-required consumer accessibility/native information has an explicit public or narrow native/ARIA seam;
+6. no simpler documented renderer seam already satisfies the contract.
 
-If 1–3 prove a contract wrong, return to its owner instead of editing it. Check 4 is implementation-owned when only the adapter seam is missing. If faithful support requires private DOM coupling, duplicated renderer systems, new shared infrastructure, or weakening a correct contract, return `needs-architect`.
+If 1–4 prove a contract wrong, return to its owner instead of editing it. Check 5 is implementation-owned when only the adapter seam is missing. If faithful support requires private DOM coupling, duplicated renderer systems, new shared infrastructure, or weakening a correct contract, return `needs-architect`.
 
 ## Implementation rules
 
 - Consume `contract.ts` types/defaults directly through modern Vue 3 `<script setup>` APIs.
 - Prefer Vue 3.5 reactive props destructure for ordinary primitive/configuration defaults.
 - Use `defineModel()` for ordinary Vue model semantics; keep explicit controlled prop + intent emit when pre-mutation cancellation or another proven ownership invariant requires it.
-- Do not wrap native events in component emits unless the public contract intentionally owns that output.
+- Represent Material-defined consumer interactions through the contract's idiomatic typed Vue events; do not force dynamic `v-on`/cast workarounds.
 - Use documented exact-version m3e public properties/events/content seams.
 - Keep renderer tags/types/workarounds private and family-local.
 - Keep token declarations, aliases, and `--md-comp-* → --m3e-*` bridges in CSS. Vue may select a renderer configuration or explicit modifier class; TypeScript must not enumerate token names, compose custom-property names, or build token maps.
+- Treat family `tokens.css` `:root` declarations as the single Material default source. Component/renderer bridge CSS consumes `--md-comp-*`; it must not redeclare public defaults or copy Material defaults into `var()` fallbacks.
 - Prefer one static CSS bridge when renderer namespaces already distinguish configurations. Add modifier classes only for real configuration-dependent remapping.
-- Use one stable family block class as root styling/token boundary. Do not introduce an alias class solely to attach `tokens.css`.
-- Forward only native/ARIA inputs required by the contracts; adapter-owned renderer configuration wins over conflicting fallthrough.
+- Use one stable family block class as root styling/private-renderer bridge boundary. Do not introduce an alias class solely for token ownership.
+- Forward only native/ARIA inputs required by contracts; adapter-owned renderer configuration wins over conflicting fallthrough.
 - Do not recreate renderer-owned ripple/state-layer/focus/elevation/accessibility/geometry/motion unless an explicit renderer defect requires the smallest family-local correction.
+- Do not solve token cascade/composition with specificity escalation, `!important`, inline Vue token wiring, or stylesheet/bundle order.
 - Keep production files cohesive. The repository's 500+ line review trigger still applies; extract a large private renderer bridge into a family-local stylesheet when that makes ownership/readability clearer, not merely to reduce line count.
 
 ## Decision examples
-
-Examples illustrate decisions only; current contracts and exact renderer artifacts remain authoritative.
 
 ### Consume the contract, do not duplicate it
 
@@ -71,26 +72,49 @@ defineSlots<MDExampleSlots>();
 
 BAD: a second runtime props/default table when `contract.ts` already owns those facts.
 
-### State mechanics follow ownership
+### CSS owns token defaults and renderer mapping separately
 
-GOOD: `defineModel()` for an ordinary `v-model`.
-
-GOOD: explicit prop + intent emit when renderer mutation must be cancelled before parent acceptance.
-
-BAD: choosing either mechanism by habit rather than the state contract.
-
-### CSS owns the token graph
-
-GOOD:
+Family contract:
 
 ```css
-.md-example {
-  --m3e-example-primary-container-color:
-    var(--md-comp-example-primary-container-color);
+/* tokens.css */
+:root {
+  --md-comp-example-primary-container-color: var(--md-sys-color-primary);
 }
 ```
 
-with Vue selecting the documented renderer variant.
+Implementation bridge:
+
+```css
+.md-example {
+  --m3e-example-primary-container-color: var(
+    --md-comp-example-primary-container-color
+  );
+}
+```
+
+Why: `tokens.css` owns the one Material default while the component bridge owns only renderer adaptation. A closer contextual `--md-comp-*` declaration can inherit into the component without fighting a host default.
+
+BAD:
+
+```css
+.md-example {
+  --md-comp-example-primary-container-color: var(--md-sys-color-primary);
+}
+```
+
+BAD:
+
+```css
+.md-example {
+  --m3e-example-primary-container-color: var(
+    --md-comp-example-primary-container-color,
+    var(--md-sys-color-primary)
+  );
+}
+```
+
+Why: the first shadows inherited overrides; the second duplicates the token-contract default in implementation.
 
 BAD:
 
@@ -106,6 +130,18 @@ const styles = Object.fromEntries(
 
 Normal Vue `:style` remains valid for ordinary non-token dynamic styling.
 
+### Composition uses public inherited tokens
+
+When this component owns a nested canonical Material component and Material composition requires contextual styling, implementation may set the child's public token on the composing context:
+
+```css
+.md-button {
+  --md-comp-loading-indicator-color: currentColor;
+}
+```
+
+Do not couple to the child's `--m3e-*` token. Proof must show the nested child receives the contextual override and that removing it restores the child's family `:root` default.
+
 ### Prove rendered behavior, not source wiring
 
 BAD: asserting only that one CSS custom-property string points at another.
@@ -114,36 +150,28 @@ GOOD: override the public token or trigger the real state in a browser and asser
 
 ## Proof
 
-Add only proof required by the contracts and materially distinct renderer paths.
+Add only proof required by contracts and materially distinct renderer/cascade paths.
 
 Unit/component tests may prove public prop/slot/event/default mapping, host allow-lists, and deterministic adapter-owned state/event forwarding.
 
-Browser/visual proof owns observable renderer results such as:
+Browser/visual proof owns observable renderer results such as accessible role/name/focus/keyboard behavior, relationships, fixed geometry, RTL/layout, hover/focus/pressed appearance, public token overrides reaching rendered parts/states, contextual composition inheritance/fallback, and required motion/reduced-motion behavior.
 
-- accessible role/name/focus/keyboard behavior;
-- required consumer accessibility labels/relationships;
-- fixed geometry;
-- RTL/layout;
-- hover/focus/pressed appearance;
-- public token overrides reaching rendered parts/states;
-- required motion and reduced-motion behavior.
-
-A screenshot alone is not proof of fixed numeric geometry or interaction semantics. Selector state alone is not proof of the required visual state. Coverage should be proportional: shared renderer paths may share proof; materially different state/configuration grammars need observable coverage.
+A screenshot alone is not proof of fixed numeric geometry or interaction semantics. Selector state alone is not proof of required visual state. Coverage should be proportional: shared renderer paths may share proof; materially different state/configuration/token grammars need observable coverage.
 
 ## Verification and completion gate
 
 Run the smallest faithful verifier-managed checks for edited runtime/proof.
 
-If sandbox or Podman blocks canonical `pnpm verify ...`, follow the `verification` skill and use the runtime's narrowly scoped command approval/escalation mechanism. **Do not ask the operator to run verifier commands.** If that mechanism itself is unavailable or fails, return `blocked` with the exact execution-environment failure.
+If sandbox or Podman blocks canonical `pnpm verify ...`, follow the `verification` skill and use the runtime's narrowly scoped command approval/escalation mechanism. Do not ask the operator to run verifier commands. If that mechanism itself is unavailable or fails, return `blocked` with the exact execution-environment failure.
 
-Implementation may return `complete` **only when all four are true**:
+Implementation may return `complete` only when all four are true:
 
-1. runtime satisfies all three fixed contracts;
-2. every required observable contract has faithful proof;
-3. every required focused verifier command for the edited runtime/proof actually completed and passed;
+1. runtime satisfies all three fixed contracts and the root-default token cascade model;
+2. every required observable contract/cascade path has faithful proof;
+3. every required focused verifier command for edited runtime/proof actually completed and passed;
 4. no known in-scope blocker remains.
 
-Missing or unexecuted required browser/visual proof means `blocked`/`partial`, never `complete`. Broad local verification is not required merely to duplicate architect-owned exact-head CI.
+Missing/unexecuted required browser/visual proof means `blocked`/`partial`, never `complete`. Broad local verification is not required merely to duplicate architect-owned exact-head CI.
 
 ## Return
 
@@ -177,10 +205,12 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Migrating consumers.
 - Changing correct contracts to fit m3e/current demand.
 - Redeclaring public types/defaults inside the SFC.
-- Adding/wrapping emits not owned by the public contract.
 - Dropping behavior-required accessibility/native inputs because of `inheritAttrs: false`.
 - Exposing raw m3e details outside the family.
 - Creating TypeScript token maps/name arrays/generated custom-property names/registries.
+- Redeclaring family-owned public `--md-comp-*` defaults on component/local selectors.
+- Duplicating Material defaults inside private renderer bridge fallbacks.
+- Using specificity escalation, `!important`, inline token wiring, or bundle/source order as token-cascade fixes.
 - Adding alias styling classes solely to attach public tokens.
 - Treating source CSS wiring or selector state as rendered proof.
 - Asking the operator to run verifier/Podman commands.
