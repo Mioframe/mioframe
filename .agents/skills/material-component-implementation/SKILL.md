@@ -156,18 +156,20 @@ A screenshot alone is not proof of fixed numeric geometry or interaction semanti
 
 ## Verification and completion gate
 
-Run the smallest faithful verifier-managed checks for edited runtime/proof.
+Follow the root rules and `.agents/skills/verification/SKILL.md`.
 
-If sandbox or Podman blocks canonical `pnpm verify ...`, follow the `verification` skill and use the runtime's narrowly scoped command approval/escalation mechanism. Do not ask the operator to run verifier commands. If that mechanism itself is unavailable or fails, return `blocked` with the exact execution-environment failure.
+Use focused `pnpm verify --only ...` commands only when useful as implementation/diagnostic feedback. Do not mechanically assemble a final checklist of focused lanes.
+
+Before returning edited implementation/proof as `complete`, run the repository-required final automatic `pnpm verify` without `--full`. If sandbox or Podman blocks it, use the verification skill's narrowly scoped command approval/escalation mechanism; do not ask the operator to run verifier commands. If the verification skill permits only a partial/environment-blocked result, do not claim a fully verified `complete` handoff.
 
 Implementation may return `complete` only when all four are true:
 
 1. runtime satisfies all three fixed contracts and the root-default token cascade model;
 2. every required observable contract/cascade path has faithful proof;
-3. every required focused verifier command for edited runtime/proof actually completed and passed;
+3. repository-required local verification completed successfully, including any risk-specific proof selected by the automatic plan or useful focused feedback;
 4. no known in-scope blocker remains.
 
-Missing/unexecuted required browser/visual proof means `blocked`/`partial`, never `complete`. Broad local verification is not required merely to duplicate architect-owned exact-head CI.
+Missing or failing required browser/visual proof means `blocked`/`partial`, never `complete`. Exact-head GitHub CI remains architect-owned and does not replace local proof or the final coding-agent verification gate.
 
 ## Return
 
@@ -187,7 +189,7 @@ Otherwise report:
 MATERIAL IMPLEMENTATION RESULT
 family: <canonical family>
 standalone component: complete | blocked
-focused verification: <commands/results>
+local verification: <final automatic pnpm verify result plus any useful focused feedback>
 contract correction owner: none | api-contract | token-contract | behavior-contract
 contract finding: none | <exact finding>
 architecture escalation: none | <exact decision>
@@ -212,4 +214,3 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Asking the operator to run verifier/Podman commands.
 - Claiming `complete` with required proof unrun or failing.
 - Rewriting already-correct work on resume without an exact defect.
-- Running broad local verification solely to duplicate architect-owned CI.
