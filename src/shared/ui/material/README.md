@@ -32,8 +32,8 @@ components/<family>/
 ```
 
 - `contract.ts` owns public parameters/props, slots, events, public types/configurations and defaults.
-- `tokens.css` owns the current official public component-token contract/catalogue.
-- `BEHAVIOR.md` owns normative observable behavior, accessibility, geometry and motion.
+- `tokens.css` owns the current official public component-token contract and all tokenized visual values.
+- `BEHAVIOR.md` owns normative observable behavior that is not already represented by token-owned visual values: anatomy/content relationships, interaction, keyboard, accessibility, state relationships, layout relationships/non-tokenized constraints, motion and Material-unspecified boundaries.
 
 A family `README.md` may exist as ordinary developer documentation. It is not a workflow stage, runtime contract, migration gate, or completion record.
 
@@ -56,12 +56,14 @@ Inside an owning family implementation, prefer documented exact-version renderer
 ```text
 API contract
      ↓
-Token contract ───┐
-                  ├─→ contract ready → implementation → migration if required → architect review / CI
-Behavior contract ┘
+Token contract
+     ↓
+Behavior contract
+     ↓
+contract ready → implementation → migration if required → architect review / CI
 ```
 
-API establishes the current structural surface first. Token and behavior workers then stay independently focused on their own Material facts while using `contract.ts` only as structural scope/terminology.
+API establishes the current structural surface first. Token establishes the tokenized visual-value contract second. Behavior then derives the remaining observable Material behavior and may read completed `tokens.css` only as an exclusion boundary so it does not duplicate token-owned values; Material3 MCP remains behavior authority.
 
 The workflow is resume-first. Reinvoking `material-component <name>` continues current repository state and does not regenerate compatible completed current-workflow contracts. Owners normally reopen only through the mechanical resolver or an exact semantic correction marker. During one-time conversion of a legacy staged family, token derivation may repeat if execution stopped before the new `BEHAVIOR.md` was written; `docs/component-workflow.md` defines that bounded exception.
 
