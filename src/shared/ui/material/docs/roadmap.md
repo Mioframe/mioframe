@@ -10,7 +10,7 @@ Current milestone: `M3 — sequential component migration`
 
 Status: `in-progress`
 
-Implemented canonical runtime families in the current repository tree include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. These predate the new three-contract workflow and still retain legacy staged evidence. Extended FAB is the active pilot on its dedicated branch.
+Implemented canonical runtime families in the current repository tree include Loading Indicator, Button, Switch, Checkbox, and Floating Action Button. These predate the new three-contract workflow and still retain legacy staged evidence until each family is converted. Extended FAB is the active pilot on its dedicated branch.
 
 ## Global component-token cascade correction
 
@@ -38,21 +38,23 @@ The global cascade correction in PR #203 has passed architect semantic re-review
 - compatibility routing rejects local/root-containing selectors and same-file/cross-family duplicate defaults;
 - foundation ownership proof no longer hides repeated declarations within the same selector/source.
 
-No active review finding remains for the cascade correction itself.
+No active review finding remains for the cascade correction.
 
-## Current PR #203 blocker — legacy family resume
+## Resume architecture
 
-Full PR review found that the new resume-first workflow cannot yet deterministically distinguish an old staged family token file from a token contract completed under the new workflow.
+PR #203 now handles new families and pre-workflow staged families without adding a completion manifest or workflow-history database.
 
-Existing families such as Button and Loading Indicator have no new `contract.ts`/`BEHAVIOR.md`, but already contain legacy demand-scoped `tokens.css` files. Once API contract creation succeeds, the mechanical resolver can accept that pre-existing `tokens.css` by shape and skip the required current Material token derivation. The same families also retain legacy `REVIEW.md` files using the old `Verdict: compliant` format.
+Normal current-workflow resume remains resolver/semantic-marker driven. Legacy staged families are identified by their old `DESIGN.md` / `ARCHITECTURE.md` / `IMPLEMENTATION.md` / `MIGRATION.md` evidence. Because the old workflow never created `BEHAVIOR.md`, an existing legacy `tokens.css` is not accepted as proof of a completed current token contract before the current token→behavior sequence reaches `BEHAVIOR.md`.
 
-This cross-workflow identity problem is recorded in `../REVIEW.md` and must be resolved architecturally before another coding correction. The solution must keep fresh-session resume deterministic without bulk semantic rederivation, operator-carried stage state, or a general workflow-history database.
+The transition intentionally permits one bounded token re-derivation if execution is interrupted after current token derivation but before behavior is written. This is simpler than introducing token identity metadata or persistent stage history. Legacy `REVIEW.md` with `Verdict: compliant` remains historical evidence and is not interpreted as current `project-review` state. Migration removes replaced staged artifacts after successful conversion.
+
+Architect semantic review found no remaining blocker in this transition model.
 
 ## Other known state
 
 The existing Checkbox evidence records an official-source conflict where a keyboard table uses Chips terminology. The current implementation therefore does not add an Enter workaround. When Checkbox is next processed, the behavior contract worker must derive the current result from Material 3 MCP; if the source remains contradictory, the behavior contract is blocked rather than guessed from legacy evidence.
 
-`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox; this is unrelated to the token-cascade correction.
+`RelationValueFieldData.vue` still has the pre-existing accessible-name gap on its standalone relation-selection checkbox; this is unrelated to PR #203 workflow architecture.
 
 ## Milestones
 
@@ -66,4 +68,4 @@ The existing Checkbox evidence records an official-source conflict where a keybo
 
 ## Next Material pipeline action
 
-Resolve the legacy/current token-contract identity and resume architecture in PR #203, then implement and re-review that correction. Exact-head GitHub CI and final merge review follow only after the workflow can resume both new/current families and existing staged families deterministically. Extended FAB remains paused until PR #203 is accepted.
+Run/review exact-head GitHub CI for PR #203. If the current head remains green and no new semantic finding appears, accept the workflow PR, synchronize the Extended FAB pilot with the accepted baseline, and resume it through `material-component Extended FAB`.
