@@ -4,7 +4,7 @@ This architect-maintained file owns current repository-local Material milestone 
 
 ## Current state
 
-Last updated: 2026-08-18
+Last updated: 2026-08-19
 
 Current milestone: `M3 — sequential component migration`
 
@@ -105,7 +105,7 @@ The current family state includes:
 - complete migration from legacy `MDExtendedFab` and removal of replaced legacy proof/implementation;
 - Repo Explorer Add action composed through the existing shared `MDSymbol` in the canonical Extended FAB `icon` slot, with no hand-written product SVG and no restored legacy `mdSymbol` prop.
 
-The previous migration correction is resolved, `.material-correction.json` is absent, and the clean architect review artifact has been removed. The branch is based directly on the merged #203 `develop` tree without changing the reviewed Extended FAB code/test contents. Exact-head CI for PR #207 against `develop` remains the final delivery gate and is not implied by semantic readiness.
+The previous migration correction is resolved, `.material-correction.json` is absent, and the clean architect review artifact has been removed. The branch is based directly on the merged #203 `develop` tree without changing the reviewed Extended FAB code/test contents. Delivery/merge readiness is determined by the architect from the live PR exact-head verification and is not persisted as family contract state in this roadmap.
 
 ## Other known state
 
@@ -127,4 +127,4 @@ The Extended FAB SFC is above the repository's 500-line review trigger because t
 
 ## Next Material pipeline action
 
-Complete the architect-owned exact-head delivery gate for PR #207 against `develop`. If that integration verification is clean, perform final merge-readiness review and merge the Extended FAB migration. Then convert the remaining legacy families in dependency-first order and finally delete the temporary legacy bridge.
+Integrate PR #207 into `develop`. After that integration, convert the remaining legacy families in dependency-first order starting with Loading Indicator, then remove the temporary legacy bridge after the last legacy family is converted.
