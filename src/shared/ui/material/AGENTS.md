@@ -16,13 +16,15 @@ Do not duplicate detailed orchestration mechanics here.
 
 ## Family contracts
 
-A converted family has exactly three technical contracts:
+A converted family has exactly three ordered technical contracts:
 
 - `contract.ts` — canonical public Vue structure and defaults;
-- `tokens.css` — current public Material component-token names/defaults;
-- `BEHAVIOR.md` — normative observable behavior, accessibility, geometry, states, and motion.
+- `tokens.css` — current public Material component-token names/defaults and tokenized visual values;
+- `BEHAVIOR.md` — normative observable behavior not already represented by token-owned visual values.
 
-Material facts come from the repository-configured Material3 MCP. API runs first; token and behavior workers may use `contract.ts` only as structural scope/terminology and derive their own facts from Material3 MCP.
+Contract order is `API → TOKEN → BEHAVIOR`. Material facts come from the repository-configured Material3 MCP. The token worker uses `contract.ts` only as structural scope/terminology. The behavior worker uses `contract.ts` as structural scope and completed `tokens.css` only as an exclusion boundary so token-owned colors, dimensions, spacing, shape, typography, elevation, opacity, focus-indicator metrics, and other visual values are not duplicated in prose.
+
+`BEHAVIOR.md` may still own anatomy/content relationships, interaction/input, keyboard, accessibility, state relationships, layout relationships/non-tokenized constraints, motion, and Material-unspecified boundaries. Exact geometry belongs there only when it is a normative intrinsic component constraint with no corresponding current component token.
 
 Contract workers must not use m3e, legacy implementation, application consumers/current demand, or another worker's narrative reasoning as Material authority.
 
@@ -56,7 +58,7 @@ A family `README.md` is ordinary developer documentation, not a workflow gate.
 
 ## Proof and handoff
 
-Source wiring is not rendered proof. Use the lowest faithful observable proof for accessibility, geometry, RTL, states, token effects, composition/cascade, and motion.
+Source wiring is not rendered proof. Use the lowest faithful observable proof for accessibility, token-driven appearance/geometry, non-tokenized layout relationships, RTL, states, token effects, composition/cascade, and motion.
 
 When one Material component contextually overrides another family's public token, proof must show both that the nested component receives the override and that removing it restores the family default.
 
