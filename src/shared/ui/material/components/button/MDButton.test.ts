@@ -20,7 +20,7 @@ const DynamicAttrsWrapper = defineComponent({
 });
 
 describe('MDButton adapter', () => {
-  it('owns the selected text Button color tokens and private M3E-006 geometry correction', () => {
+  it('owns the selected text Button public color tokens as :root defaults', () => {
     const css = readFileSync('./src/shared/ui/material/components/button/tokens.css', 'utf8');
     const publicTokens = [
       '--md-comp-button-text-label-text-color',
@@ -32,20 +32,27 @@ describe('MDButton adapter', () => {
       '--md-comp-button-text-pressed-state-layer-color',
     ];
 
+    expect(css).toContain(':root {');
     for (const token of publicTokens) expect(css).toContain(`${token}:`);
-    expect(css).toContain('--m3e-text-button-label-text-color:');
-    expect(css).toContain('--m3e-text-button-hover-label-text-color:');
-    expect(css).toContain('--m3e-text-button-focus-label-text-color:');
-    expect(css).toContain('--m3e-text-button-pressed-label-text-color:');
-    expect(css).toContain('--m3e-text-button-hover-state-layer-color:');
-    expect(css).toContain('--m3e-text-button-focus-state-layer-color:');
-    expect(css).toContain('--m3e-text-button-pressed-state-layer-color:');
-    expect(css).toContain('--m3e-button-small-leading-space: 16px');
-    expect(css).toContain('--m3e-button-small-trailing-space: 16px');
+    expect(css).not.toContain('--m3e-');
     expect(css).not.toContain('--md-comp-button-text-icon-color');
     expect(css).not.toContain('--md-comp-button-text-hover-state-layer-color');
     expect(css).not.toContain('--md-comp-button-text-focus-state-layer-color');
     expect(css).not.toContain('--md-content-color');
+  });
+
+  it('keeps the private M3E-006 geometry correction and renderer bridges local to the component', () => {
+    const source = readFileSync('./src/shared/ui/material/components/button/MDButton.vue', 'utf8');
+
+    expect(source).toContain('--m3e-text-button-label-text-color:');
+    expect(source).toContain('--m3e-text-button-hover-label-text-color:');
+    expect(source).toContain('--m3e-text-button-focus-label-text-color:');
+    expect(source).toContain('--m3e-text-button-pressed-label-text-color:');
+    expect(source).toContain('--m3e-text-button-hover-state-layer-color:');
+    expect(source).toContain('--m3e-text-button-focus-state-layer-color:');
+    expect(source).toContain('--m3e-text-button-pressed-state-layer-color:');
+    expect(source).toContain('--m3e-button-small-leading-space: 16px');
+    expect(source).toContain('--m3e-button-small-trailing-space: 16px');
   });
 
   it('maps the demand-scoped defaults and retained values', () => {

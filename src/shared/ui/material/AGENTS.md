@@ -4,102 +4,64 @@ Inherits `src/shared/ui/AGENTS.md`. This directory is the canonical project-faci
 
 ## Routing
 
-- Use `material-component <name>` as the normal operator-facing entrypoint for one official Material family.
-- Read `docs/component-workflow.md` as the single complete state-machine contract.
-- Use the five stage skills only through the stage selected by that workflow.
-- Use `architect-handoff` for unresolved cross-family foundation ownership, renderer strategy, global theme ownership, public token architecture, or product behavior outside one deterministic family architecture.
-- The Storybook inspection requirement does not make theme ownership unresolved: Material foundation owns the deterministic theme-mode seam described by `docs/testing/storybook.md`; use `architect-handoff` for broader product/global theme changes beyond that bounded workbench requirement.
+- Use `material-component <name>` as the normal entrypoint for one official Material family. The operator does not supply a stage or correction handoff.
+- `.agents/skills/material-component/SKILL.md` owns executable sequencing, resume, correction routing, and coding-agent completion.
+- `docs/component-workflow.md` explains workflow architecture only.
+- `docs/component-contract.md`, `docs/component-adapter.md`, and `docs/component-tokens.md` own stable contract/adapter/token design rules.
+- `.agents/skills/verification/SKILL.md` owns verifier execution mechanics and the final coding-agent handoff gate.
+- `docs/m3e-defects.md` owns stable renderer-defect records.
+- `docs/roadmap.md` is architect-maintained program status.
 
-Do not reproduce the full workflow in this file, README files, architecture docs, or roadmap.
+Do not duplicate detailed orchestration mechanics here.
 
-## Worker boundary
+## Family contracts
 
-Every design, architecture, implementation, migration, and review stage runs in a fresh isolated worker context using the current runtime’s supported mechanism.
+A converted family has exactly three ordered technical contracts:
 
-Workers receive only task-relevant readable workspace files, applicable rules, canonical artifact paths, and documented project commands.
+- `contract.ts` — canonical public Vue structure and defaults;
+- `tokens.css` — current public Material component-token names/defaults and tokenized visual values;
+- `BEHAVIOR.md` — normative observable behavior not already represented by token-owned visual values.
 
-Workers must not depend on:
+Contract order is `API → TOKEN → BEHAVIOR`. Material facts come from the repository-configured Material3 MCP. The token worker uses `contract.ts` only as structural scope/terminology. The behavior worker uses `contract.ts` as structural scope and completed `tokens.css` only as an exclusion boundary so token-owned colors, dimensions, spacing, shape, typography, elevation, opacity, focus-indicator metrics, and other visual values are not duplicated in prose.
 
-- Git history, diff, branch, worktree/index state, or commit identifiers;
-- pull-request metadata or review threads;
-- GitHub checks or another external publication system.
+`BEHAVIOR.md` may still own anatomy/content relationships, interaction/input, keyboard, accessibility, state relationships, layout relationships/non-tokenized constraints, motion, and Material-unspecified boundaries. Exact geometry belongs there only when it is a normative intrinsic component constraint with no corresponding current component token.
 
-If isolated workers are unavailable, report the workflow as blocked. Do not continue several reasoning stages in one context.
+Contract workers must not use m3e, legacy implementation, application consumers/current demand, or another worker's narrative reasoning as Material authority.
 
-## Authority
+A family `README.md` is ordinary developer documentation, not a workflow gate.
 
-- Official Material 3 Expressive documentation defines the complete public component and token model.
-- Family `DESIGN.md` is the complete normalized official snapshot.
-- Family `ARCHITECTURE.md` selects current Mioframe demand and resolves ownership, Vue API, tokens, renderer mapping, proof, and migration.
-- Runtime code plus `IMPLEMENTATION.md` records component-owned implementation and proof.
-- `MIGRATION.md` records consumer adoption, preserved scenarios, and legacy removal.
-- `REVIEW.md` records independent compliance and readiness for architect-owned PR/CI.
-- Canonical CSS plus `docs/token-api.md` defines the supported public token surface.
-- `docs/m3e-defects.md` owns renderer-defect records.
-- `docs/roadmap.md` alone owns mutable milestone status and next action.
-- `docs/roadmap.md` records only repository-local state derivable from current repository contents and the next Material pipeline action. It must not record branch, pull-request, CI/check, review-thread, merge, or other external publication state.
+## Public and renderer boundary
 
-Current code, renderer output, tests, stories, and README files are evidence to inspect, not substitutes for stage artifacts or official Material authority.
+- Expose canonical Material semantics through Vue `MD*` APIs.
+- Complete standalone implementation and proof before inspecting consumers.
+- Run migration only when consumers or replaced legacy ownership actually require changes.
+- Keep product state, persistence, routing, errors, operation lifecycle, and business rules outside Material.
+- Consumers import through the root `@shared/ui/material` entrypoint.
+- Outside this directory, do not import `@m3e/web`, render `m3e-*`, use renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
+- Inside an owning family, keep renderer mappings/workarounds local and never weaken a correct canonical contract to fit m3e.
 
-## Public boundary
+## Token cascade hard invariants
 
-- Expose official Material semantics through curated Vue `MD*` APIs.
-- Keep public types and terminology independent from m3e.
-- Select the minimum complete surface for confirmed scenarios.
-- Do not expose raw renderer attributes, events, tags, classes, types, or CSS inputs.
-- Do not add speculative native, renderer, token, or compatibility surface.
-- Keep product behavior, operation state, persistence, routing, errors, and business rules in their product owners.
+`docs/component-tokens.md` is the single detailed authority for component-token cascade/ownership.
 
-Consumers use the root `@shared/ui/material` entrypoint. Internal family modules do not import the root barrel or another family’s private files.
+- A family `tokens.css` is the single owner of that family's public `--md-comp-*` names/defaults; family defaults are declared on `:root`.
+- Family `tokens.css` must be loaded as unscoped/global CSS; do not import it through a Vue `<style scoped>` block.
+- Component/family implementation CSS owns private renderer bridges and may own intentional contextual overrides, but must not redeclare family defaults or duplicate them in renderer fallbacks.
+- Do not solve component-token composition with specificity escalation, `!important`, inline token wiring, TypeScript token maps, or bundle/source-order dependence.
+- `--md-ref-*` / `--md-sys-*` are document-wide Material theme inputs; independent subtree Material system themes are not currently guaranteed.
 
-## Renderer boundary
+## Vue/component boundary
 
-Outside this directory, code must not import `@m3e/web`, render `m3e-*`, use renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
+- Use one stable family block class for component styling/private renderer adaptation; do not add aliases solely for token ownership.
+- With `inheritAttrs: false`, explicitly preserve every native/ARIA seam required by the public/behavior contract.
+- Keep public events idiomatic and type-safe; do not force normal consumers through dynamic `v-on`/casts to bypass template typing.
 
-Inside an owning family:
+## Proof and handoff
 
-- prefer documented renderer inputs;
-- derive private custom-element glue from exported renderer types;
-- keep mappings owner-local;
-- do not inspect private shadow DOM or copy renderer internals;
-- do not recreate renderer-owned geometry, accessibility, state layer, ripple, focus, elevation, or motion;
-- do not add a generic adapter framework without demonstrated repeated need and a separate architecture decision.
+Source wiring is not rendered proof. Use the lowest faithful observable proof for accessibility, token-driven appearance/geometry, non-tokenized layout relationships, RTL, states, token effects, composition/cascade, and motion.
 
-Before a renderer mapping or composition may be classified or accepted as `direct`, inspect the documentation shipped for the exact lockfile-resolved `@m3e/web` version together with its installed public artifacts for every selected element, slot, child role, property, attribute, event, and CSS input involved. A slot name or exported type alone is not proof that arbitrary content is compatible. Check documented examples and the observable composition contract, including required or assumed child elements, inherited/custom-property handoff, geometry, accessibility, and interaction semantics. When renderer examples or public styling contracts rely on a renderer-owned child element, architecture must either map that role through an independently owned canonical Mioframe component or prove that the chosen alternative satisfies the same observable contract. Do not infer composition equivalence from markup shape or slot-name similarity.
+When one Material component contextually overrides another family's public token, proof must show both that the nested component receives the override and that removing it restores the family default.
 
-When official Material defines fixed observable geometry for a selected scenario, `TEST IMPACT` must include browser-level numeric geometry proof for the rendered parts affected by renderer composition. Visual regression may supplement this proof but cannot replace the numeric contract.
+Follow the repository `verification` skill. Focused verifier commands are optional feedback during implementation/correction; the final local coding-agent handoff uses the repository-required automatic `pnpm verify` gate. Sandbox/Podman restrictions use the verification skill's narrowly scoped approval/escalation path; do not ask the operator to run verifier commands.
 
-Controlled renderer workarounds follow `docs/component-adapter.md` and `docs/m3e-defects.md`.
-
-## Token ownership
-
-- `DESIGN.md` captures the complete official component-token catalogue.
-- `ARCHITECTURE.md` selects only the minimum complete runtime token surface.
-- foundation owns selected `--md-ref-*` and `--md-sys-*` tokens and application of their system/light/dark theme mode;
-- the production default remains system-following unless a separate product requirement changes it;
-- Storybook may request deterministic light/dark inspection only through the foundation-owned mode seam and must not own duplicate token values;
-- each family owns only its selected `--md-comp-<family>-*` tokens;
-- `docs/token-api.md` lists supported public tokens;
-- `--m3e-*` and `--md-private-*` remain private;
-- `--app-*` remains outside Material.
-
-Do not create duplicate public owners, compatibility token aliases, token registries, token DSLs, or exhaustive renderer copies.
-
-## Proof and Storybook
-
-Architecture selects proof owners before implementation. Use the lowest faithful proof and preserve shared-UI blast-radius coverage.
-
-- The Material family is the Storybook owner for its component stories and family-owned browser/visual proof.
-- Follow `docs/testing/storybook.md` for Storybook workbench behavior, Playground/Controls, preview isolation, theme modes, story authoring, catalogue naming, routing sandbox, generated docs, proof boundaries, target placement, and ownership conventions.
-- A configurable public Material component should expose a useful args-driven Playground through its family stories when the public surface has meaningful options; Controls represent only the curated Mioframe Vue API, never raw m3e/private inputs.
-- Follow `docs/testing/migration-plan.md` for the current executable Playwright spec location and workbench capabilities. Once canonical owner-local browser/visual ownership is executable, a Material migration must finish family proof there and remove replaced legacy proof in the same workflow rather than scheduling a second ownership-only cleanup.
-- Keep stories deterministic and family-local; do not introduce product stores, services, workers, persistence, production routing, network, or business behavior into family stories.
-- Routing-aware reusable Material composition may use the project-wide Storybook router harness only when routing is part of the reusable contract; product navigation remains outside Material.
-- Family browser proof contains no screenshots. Family visual proof contains no browser-behavior success criteria.
-- Do not introduce a Material-specific Storybook runner, controls registry, router, theme copy, taxonomy, or workflow that duplicates project-wide Storybook/testing rules.
-
-Renderer-owned appearance requires browser or visual evidence. Host state, token presence, source inspection, or a story alone is insufficient.
-
-Operator visual/motion inspection is an external defect-reporting channel, not a positive-acknowledgement gate. Absence of a reported defect does not block completion. A concrete reported defect routes to the owning stage.
-
-Stage workers run only focused proof needed for their owned contracts. After independent review succeeds, the agent workflow hands the family to the architect. GitHub CI owns the authoritative exact-head repository gate after PR creation; merge readiness belongs to the architect after CI and full PR review.
+Coding work ends only after contracts, standalone implementation/proof, and required migration are complete, deterministic routing is clean, required local verification is satisfied, and no semantic correction remains. Final semantic review, roadmap status, PR/CI handling, and merge readiness are architect-owned.
