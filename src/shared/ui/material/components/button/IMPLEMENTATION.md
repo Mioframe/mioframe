@@ -79,7 +79,7 @@ Focused verifier-managed compatibility proof completed on 2026-08-14:
 - `pnpm verify --only storybook-behavior --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.browser.spec.ts src/shared/ui/material/components/button/MDButton.browser.spec.ts src/shared/ui/material/components/switch/MDSwitch.browser.spec.ts src/shared/ui/material/components/checkbox/MDCheckbox.browser.spec.ts` — passed; all 37 affected-family browser contracts passed.
 - `pnpm verify --only visual --files src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.visual.spec.ts src/shared/ui/material/components/switch/MDSwitch.visual.spec.ts src/shared/ui/material/components/checkbox/MDCheckbox.visual.spec.ts tests/e2e/visual/shared-ui/md-button.spec.ts` — passed; verifier-selected 214-reference visual suite passed with no baseline update.
 
-The later S4-E ownership/cascade correction was verified through the current PR's normal `pnpm verify` handoff and exact-head CI gate; the stage commands above remain the historical 2026-08-14 implementation record.
+For the later S4-E ownership/cascade correction, the coding-agent handoff reports final `pnpm verify` passed. Exact-head GitHub CI remains the architect-owned final gate and is not recorded as passed here until the current PR head completes it successfully.
 
 ## Architecture deviations
 
