@@ -81,11 +81,11 @@ The implementation is proven before application consumers are inspected for firs
 
 Contract workers write new owned artifacts only after their completion checks pass. A blocked worker must not leave a new partial contract file.
 
-Repository artifacts are durable completed-stage results. A fresh invocation does not rerun completed contract workers solely because previous chat context is unavailable.
+Repository artifacts are durable completed-stage results. A fresh invocation does not rerun a compatible completed owner solely because previous chat context is unavailable.
 
-A completed stage is reopened only by an exact architect correction handoff naming the owner and finding. If that correction run is interrupted, the same handoff remains required on resume. If current stage cannot be determined mechanically, the coding workflow stops at `needs-architect` rather than rebuilding everything.
+An owner is reopened only when current repository state produces a mechanical compatibility route or an exact semantic correction marker names that owner/finding. If a semantic correction run is interrupted, the marker remains required on resume. If current stage cannot be determined mechanically or by the marker, the coding workflow stops at `needs-architect` rather than rebuilding everything.
 
-An interrupted implementation resumes within the implementation owner from current runtime/proof and does not reopen contracts.
+An interrupted implementation resumes within the implementation owner from current runtime/proof and does not reopen contracts without an actual route.
 
 ## Proof and completion
 
