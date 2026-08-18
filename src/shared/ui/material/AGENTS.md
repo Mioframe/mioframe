@@ -19,7 +19,7 @@ Do not duplicate detailed orchestration mechanics here.
 A converted family has exactly three technical contracts:
 
 - `contract.ts` — canonical public Vue structure and defaults;
-- `tokens.css` — current public Material component-token catalogue/defaults;
+- `tokens.css` — current public Material component-token names/defaults;
 - `BEHAVIOR.md` — normative observable behavior, accessibility, geometry, states, and motion.
 
 Material facts come from the repository-configured Material3 MCP. API runs first; token and behavior workers may use `contract.ts` only as structural scope/terminology and derive their own facts from Material3 MCP.
@@ -38,20 +38,18 @@ A family `README.md` is ordinary developer documentation, not a workflow gate.
 - Outside this directory, do not import `@m3e/web`, render `m3e-*`, use renderer types/events, depend on `--m3e-*`, or inspect renderer DOM.
 - Inside an owning family, keep renderer mappings/workarounds local and never weaken a correct canonical contract to fit m3e.
 
-## Token cascade
+## Token cascade hard invariants
 
-- Family `tokens.css` is the single owner of that family's public `--md-comp-*` names and Material defaults.
-- Family-owned `--md-comp-*` defaults are declared on `:root`, not on `.md-<component>` or another local selector.
-- `--md-comp-*` remains inheritable public override input: a closer ancestor/composer/consumer may intentionally override it for nested instances.
-- `.md-<component>` is the stable family styling/private-renderer bridge boundary, not the owner of public token defaults.
-- Private `--md-comp-* → --m3e-*` mappings remain CSS-owned and must not repeat Material defaults.
-- Runtime Vue/TypeScript may select configuration but must not become a token catalogue or custom-property mapping engine.
-- Do not use specificity escalation, `!important`, inline token wiring, or bundle/source order to make contextual overrides win.
-- Material `--md-ref-*`/`--md-sys-*` are document-wide theme inputs. Future global user theme settings are supported; independent subtree Material system themes are not currently guaranteed.
+`docs/component-tokens.md` is the single detailed authority for component-token cascade/ownership.
+
+- A family `tokens.css` is the single owner of that family's public `--md-comp-*` names/defaults; family defaults are declared on `:root`.
+- Component/family implementation CSS owns private renderer bridges and may own intentional contextual overrides, but must not redeclare family defaults or duplicate them in renderer fallbacks.
+- Do not solve component-token composition with specificity escalation, `!important`, inline token wiring, TypeScript token maps, or bundle/source-order dependence.
+- `--md-ref-*` / `--md-sys-*` are document-wide Material theme inputs; independent subtree Material system themes are not currently guaranteed.
 
 ## Vue/component boundary
 
-- Use one stable family block class for component styling and private renderer-token mapping; do not add alias classes solely for token ownership.
+- Use one stable family block class for component styling/private renderer adaptation; do not add aliases solely for token ownership.
 - With `inheritAttrs: false`, explicitly preserve every native/ARIA seam required by the public/behavior contract.
 - Keep public events idiomatic and type-safe; do not force normal consumers through dynamic `v-on`/casts to bypass template typing.
 
@@ -59,7 +57,7 @@ A family `README.md` is ordinary developer documentation, not a workflow gate.
 
 Source wiring is not rendered proof. Use the lowest faithful observable proof for accessibility, geometry, RTL, states, token effects, composition/cascade, and motion.
 
-When one Material component contextually overrides another family's public token, proof must show the nested component receives the override and that removing it restores the family `:root` default.
+When one Material component contextually overrides another family's public token, proof must show both that the nested component receives the override and that removing it restores the family default.
 
 Required focused verifier checks are coding-agent work. If sandbox/Podman blocks canonical `pnpm verify ...`, use the `verification` skill's narrowly scoped approval/escalation path; do not ask the operator to run verifier commands.
 
