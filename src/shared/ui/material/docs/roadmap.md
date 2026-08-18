@@ -30,18 +30,17 @@ family tokens.css
 
 ### Current implementation status
 
-The mechanical family migration has been applied for the current three-contract families in PR #203:
+The global cascade correction in PR #203 has passed architect semantic re-review:
 
-- Button and Loading Indicator public defaults now live in family `tokens.css` on `:root`;
-- private `--m3e-*` bridges/workarounds were moved back to family implementation CSS;
+- Button and Loading Indicator public defaults live in family `tokens.css` on exact `:root`;
+- private `--m3e-*` bridges/workarounds stay in family implementation CSS;
 - family token contracts are loaded unscoped;
 - Button keeps its Loading Indicator contextual override through normal inheritance;
 - browser plus existing visual ownership cover the composed override and standalone fallback scenario;
-- compatibility fixtures were inverted to the root-default model.
+- compatibility routing accepts only exact `:root` family defaults, rejects local/root-containing selectors, detects same-file and cross-family duplicate defaults, preserves contextual implementation overrides, and keeps scoped-load detection;
+- foundation ownership proof no longer hides repeated declarations within the same selector/source.
 
-Architect review remains `blocked` by the shared guard recorded in `../REVIEW.md`: the resolver currently deduplicates declarations by token/family and treats any selector block containing `:root` as root ownership, so it does not yet prove the required invariant of exactly one actual root default declaration. The related foundation ownership check also collapses same-file duplicates.
-
-The global correction is complete only after that mechanical guard closes and exact-head CI is reviewed.
+No active review finding remains for the global cascade correction. Exact-head GitHub CI and final review of the complete PR #203 are still required before merge readiness can be decided.
 
 ## Other known state
 
@@ -61,4 +60,4 @@ The existing Checkbox evidence records an official-source conflict where a keybo
 
 ## Next Material pipeline action
 
-Close the remaining global compatibility-guard finding in PR #203, re-review the correction, then run exact-head CI. Only after the global cascade correction is accepted should the Extended FAB pilot be synchronized and resumed with `material-component Extended FAB`.
+Run exact-head GitHub CI and complete final review of PR #203. Only after PR #203 is accepted should the Extended FAB pilot be synchronized and resumed with `material-component Extended FAB`.
