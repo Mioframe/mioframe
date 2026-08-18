@@ -2,7 +2,7 @@
 
 ## Decision
 
-Official Material component tokens are one of the three canonical family contracts, not a demand-scoped customization layer.
+Official Material component tokens are one of the three canonical family contracts. `components/<family>/tokens.css` is the single repository owner of that family's public `--md-comp-*` names and Material defaults.
 
 ```text
 Material 3 MCP token contract
@@ -11,25 +11,20 @@ family tokens.css
         ↓
 :root public --md-comp-* defaults
         ↓
-inherited/scoped --md-comp-* overrides
+optional inherited/contextual --md-comp-* override
         ↓
 family-local CSS renderer bridge
         ↓
 rendered observable result
 ```
 
-`@m3e/web` token names, legacy CSS and current application overrides do not define the public token API.
+`@m3e/web`, legacy CSS, and current application overrides do not define the public token API.
 
-Token declarations, aliases and public-to-private custom-property bridges are CSS ownership. TypeScript/Vue may select a public component configuration or renderer property/class, but it must not become a token catalogue or token mapping engine.
+Token declarations, aliases, and public-to-private custom-property bridges are CSS ownership. Runtime TypeScript/Vue may select component configuration, but it must not become a token catalogue or token mapping engine.
 
 ## Cascade model
 
-`--md-comp-*` has two roles only:
-
-1. the family-owned public Material component-token name and default;
-2. an inheritable override input that a consumer or composing Material component may set closer to a rendered instance.
-
-Family `tokens.css` declares the official defaults on `:root`, even though the file remains owned by that component family:
+Family defaults are declared on `:root` in the owning family's `tokens.css`:
 
 ```css
 /* components/exampleAction/tokens.css */
@@ -39,9 +34,9 @@ Family `tokens.css` declares the official defaults on `:root`, even though the f
 }
 ```
 
-The selector controls cascade scope; it does not change repository ownership. The family directory remains the single owner of those public names/defaults.
+The selector controls cascade scope; it does not change repository ownership. The family directory remains the owner of those names/defaults.
 
-Do **not** redeclare those defaults on `.md-<component>`:
+Do not redeclare those defaults on `.md-<component>` or another local selector:
 
 ```css
 /* BAD */
@@ -50,9 +45,9 @@ Do **not** redeclare those defaults on `.md-<component>`:
 }
 ```
 
-A host declaration would shadow inherited contextual overrides and can make composition depend on specificity or stylesheet order.
+A host declaration shadows inherited contextual overrides and can make composition depend on specificity or stylesheet order.
 
-A composing component may intentionally override another family's public token in its own styling context:
+A composing component or consumer may intentionally override another family's public token closer to a nested instance:
 
 ```css
 .md-button {
@@ -60,15 +55,15 @@ A composing component may intentionally override another family's public token i
 }
 ```
 
-A nested Loading Indicator then inherits that override naturally. Removing the contextual declaration falls back to the family-owned `:root` default.
+The nested component inherits that value. Removing the contextual declaration restores the owning family's `:root` default.
 
-Never repair token composition with specificity escalation, `!important`, inline Vue token wiring, or bundle-order assumptions.
+Never repair token composition with specificity escalation, `!important`, inline Vue token wiring, or bundle/source-order assumptions.
 
 ## Theme model
 
-Material reference/system tokens (`--md-ref-*`, `--md-sys-*`) are application-wide document theme inputs owned by the Material foundation/theme layer. Future user theme settings may replace those root-level system assignments globally.
+Material reference/system tokens (`--md-ref-*`, `--md-sys-*`) are document-wide theme inputs owned by the Material foundation/theme layer. Future user theme settings may replace those root-level assignments globally.
 
-Component-token defaults may reference system/reference tokens from `:root`:
+Component defaults may reference them from `:root`:
 
 ```css
 :root {
@@ -76,11 +71,11 @@ Component-token defaults may reference system/reference tokens from `:root`:
 }
 ```
 
-Mioframe does not currently guarantee multiple independent Material system themes in different DOM subtrees. If simultaneous subtree Material themes become a real product requirement, revisit the component-default resolution model explicitly rather than adding local specificity workarounds.
+Mioframe does not currently guarantee multiple independent Material system themes in different DOM subtrees. If that becomes a real product requirement, revisit component-default resolution explicitly rather than adding local cascade workarounds.
 
 Contextual **component-token** overrides remain supported and are the normal composition mechanism.
 
-## Owners
+## Ownership
 
 | Contract | Owner |
 | --- | --- |
@@ -93,93 +88,65 @@ Contextual **component-token** overrides remain supported and are the normal com
 
 `--m3e-*` and `--md-private-*` are never public Material API.
 
-There is no second central component-token catalogue. Executable family CSS is the source of truth and repository verification owns cross-file public-token invariants.
+There is no second central component-token catalogue. Executable family CSS is the source of truth.
+
+### Single default ownership
+
+Across `components/*/tokens.css`, one public `--md-comp-*` name may have exactly one family-default declaration. That declaration must be on `:root` in its owning family contract.
+
+Repository mechanical verification must detect duplicate default declarations across family `tokens.css` files. This check applies only to family token contracts; declarations in implementation/consumer CSS are allowed when they are contextual overrides rather than default ownership.
+
+Do not make correctness depend on which family's stylesheet is bundled last.
 
 ## Family `tokens.css`
 
-The dedicated `material-component-token-contract` worker derives this artifact only from the repository-configured `material3` MCP plus the completed structural `contract.ts` boundary and minimum repository token naming/foundation conventions needed to serialize CSS.
+The `material-component-token-contract` worker derives this artifact from the repository-configured Material3 MCP plus completed `contract.ts` structural scope.
 
-- Preserve official current family/configuration/variant/state/part/property semantics.
-- Use canonical `--md-comp-*` names derived from Material rather than legacy or renderer vocabulary.
-- Preserve official system/reference aliases and defaults when defined.
-- Declare family-owned public token defaults on `:root`.
-- Include official tokens for current canonical family configurations, variants, parts and states even when Mioframe does not currently override them.
-- Material pages may retain baseline, legacy, deprecated or no-longer-recommended token tables. Exclude a group explicitly scoped to such a historical configuration unless that configuration is intentionally part of the current canonical public family.
-- Use repository Material CSS authoring conventions. `dp` and `sp` are supported authoring units transformed by the project PostCSS pipeline.
-- Do not expose renderer variables, copy renderer defaults, or add convenience aliases.
-- Do not create a TypeScript token enum, registry, DSL, JSON mirror, generated token-name list, runtime token map, or second catalogue.
+The artifact must:
 
-If required token data is unavailable or contradictory in Material 3 MCP, the token worker reports `blocked`; do not guess or fall back to m3e/current code/current demand.
+- use canonical `--md-comp-*` names derived from Material semantics;
+- preserve official current defaults and official system/reference aliases;
+- include current reachable configurations, variants, parts, and states;
+- distinguish current Expressive rows/groups from baseline/legacy/deprecated material;
+- declare family-owned defaults on `:root`;
+- use repository Material CSS authoring conventions (`dp`/`sp` are supported by the project pipeline);
+- contain no renderer/application token vocabulary or compatibility aliases;
+- remain the only public token catalogue for that family.
 
-## Foundation and theme
-
-Foundation owns intentionally supported `--md-ref-*` and `--md-sys-*` roles. `theme.css` owns canonical light/dark and future user-selected global assignments.
-
-A family component token may reference those foundation roles but must not duplicate their ownership.
-
-Product theme selection/persistence and `--app-*` customization remain outside Material.
+If Material evidence is unavailable/contradictory, the token contract is blocked. If token evidence proves the structural API boundary wrong, return to the API owner rather than compensating in CSS.
 
 ## Private renderer mapping
 
-Standalone implementation maps public tokens to exact-version renderer inputs while keeping renderer vocabulary private.
-
-When the renderer exposes configuration-specific private namespaces, prefer one static CSS bridge:
+Standalone implementation consumes the already-defined public token. It owns only renderer adaptation:
 
 ```css
 .md-example-action {
   --m3e-example-action-primary-container-color: var(
     --md-comp-example-action-primary-container-color
   );
-  --m3e-example-action-primary-icon-color: var(
-    --md-comp-example-action-primary-icon-color
-  );
 }
 ```
 
-The bridge does not repeat the Material default. `tokens.css` already owns that default on `:root`.
+The bridge must not repeat the Material default. `tokens.css` already owns it.
 
-Vue may select the documented renderer configuration:
+Use a static bridge when renderer namespaces already distinguish configurations. Use an explicit family modifier class only when the renderer genuinely requires configuration-dependent remapping. Do not build token names/maps in TypeScript.
 
-```vue
-<m3e-example-action
-  class="md-example-action"
-  :variant="appearance"
-/>
-```
-
-If the renderer reuses one private token name across multiple configurations, use an explicit component-library modifier class only for that real remapping seam. Do not invent `data-*` styling protocols or runtime token maps.
-
-BAD:
-
-```ts
-const tokenSuffixes = ['container-color', 'icon-color'];
-const tokenStyles = Object.fromEntries(
-  tokenSuffixes.map((suffix) => [
-    `--m3e-example-action-${suffix}`,
-    `var(--md-comp-example-action-${appearance}-${suffix})`,
-  ]),
-);
-```
-
-Why: this moves token names/mapping semantics into runtime TypeScript and creates a second implicit catalogue.
-
-For every public token group that affects a reachable configuration, rendered part or state, implementation must be able to trace:
+For each required token path, implementation must be able to trace:
 
 ```text
-current Material configuration/state/part
+Material configuration/state/part
   → public contract reachability
   → family-owned :root --md-comp-* default
-  → optional inherited/contextual --md-comp-* override
-  → family-local CSS/private renderer input
-  → rendered part/state
-  → observable result
+  → optional inherited/contextual override
+  → family-local private renderer input
+  → rendered result
 ```
 
-If a valid public override cannot reach the correct rendered result, that is an implementation/renderer gap rather than a reason to remove the public token.
+A valid public override that cannot reach the rendered result is an implementation/renderer defect, not a reason to weaken the token contract.
 
-## Composition invariant
+## Composition proof
 
-Composition proof must cover both sides of the cascade when one Material component customizes a nested Material component:
+When one Material component contextually customizes a nested Material component, proof must cover both sides of the cascade:
 
 ```text
 family :root default
@@ -191,38 +158,33 @@ nested component inherits override
 renderer consumes it
 ```
 
-The proof must also show that removing the contextual override restores the Material family default. This catches host-level redeclarations, specificity conflicts, and accidental bundle-order dependence.
+The proof must also show that removing the contextual override restores the family default. This catches host-level redeclarations, specificity conflicts, and accidental bundle-order dependence.
 
-## Legacy transition
+## Architecture migration
 
-Existing converted families that declare `--md-comp-*` defaults on their `.md-<component>` host use the superseded cascade model and must be migrated when this architecture change is applied. Do not preserve two cascade models across converted families.
+Existing converted families that declare their own `--md-comp-*` defaults on `.md-<component>` use the superseded cascade model and must be migrated to one repository-wide model.
 
-Migration means:
+When the public token names, values, aliases, and Material semantics are already known and unchanged, moving those existing declarations from the family host selector to `:root` is a **mechanical repository architecture migration**, not a reason to rerun Material3 MCP derivation for every family.
 
-- move family-owned public defaults to `:root` in the same family `tokens.css`;
-- keep private renderer bridges on the stable family block/modifier classes;
-- remove host-level public default declarations;
-- preserve intentional contextual overrides owned by composers/consumers;
-- add/retain observable override and fallback proof.
+Perform that selector-only transition as one scoped repository correction:
 
-No TypeScript token machinery, specificity escalation, `!important`, inline token wiring, or bundle-order dependency is allowed as a compatibility layer.
+- move unchanged family defaults to `:root` in their existing owning `tokens.css`;
+- preserve private renderer bridges and intentional contextual overrides;
+- update repository compatibility verification and its tests;
+- add/retain observable composition override/fallback proof;
+- do not create compatibility support for the old host-default model.
+
+If the migration uncovers uncertainty about a token's name, default, alias, current status, or ownership, stop treating that family as mechanical and route that exact semantic question to `token-contract`.
+
+Normal `material-component <name>` runs after this repository migration use the root-default model directly; the normal workflow does not gain a new migration stage or special mode.
 
 ## Verification
 
-Token verification proves observable behavior, not merely declaration presence.
-
-Depending on the token, use faithful browser/visual proof for computed/rendered colors, typography, shapes, elevation, dimensions/spacing, state-specific values, and global theme resolution.
-
-Repository mechanical verification should enforce at least:
+Repository mechanical verification must enforce at least:
 
 - family `tokens.css` contains no private `--m3e-*` tokens;
-- family-owned `--md-comp-*` default declarations are rooted at `:root`, not `.md-<component>` or another local selector;
+- family-owned `--md-comp-*` defaults are declared on `:root`, not a component/local selector;
+- the same public default is not declared by more than one family `tokens.css`;
 - runtime TypeScript/Vue does not become a token catalogue/mapping engine.
 
-A custom-property value on the host, source inspection, mapping line, story, or screenshot alone is insufficient when the public contract concerns a different rendered part or fixed numeric result.
-
-Do not require one test per token when several tokens share one faithfully proven mapping path. Proof should be proportional while covering every materially distinct configuration, part, state, grammar, fallback, composition path, and renderer gap.
-
-## Renderer upgrades
-
-Every consumed `@m3e/web` update must revalidate affected private token mappings and known renderer defects. Public Material token names/defaults do not change merely because m3e renames or reorganizes private inputs.
+Observable verification remains proportional to risk: rendered colors, typography, shape, dimensions, state values, composition inheritance/fallback, and global theme resolution use the lowest faithful browser/visual proof required by the contract.
