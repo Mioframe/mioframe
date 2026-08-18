@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 type SentryPluginOptions = {
   authToken?: string;
-  release?: { name?: string };
+  release?: { name?: string; inject?: boolean };
   sourcemaps?: { filesToDeleteAfterUpload?: string[] };
 };
 
@@ -63,7 +63,7 @@ describe('getSentryPlugins', () => {
     );
   });
 
-  it('passes release name when release is provided', async () => {
+  it('passes release name without injecting it into build chunks', async () => {
     sentryVitePluginMock.mockClear();
     const { getSentryPlugins } = await import('./sentry.ts');
     const plugins = getSentryPlugins({
@@ -75,7 +75,7 @@ describe('getSentryPlugins', () => {
 
     expect(plugins).toHaveLength(1);
     const options = getFirstPluginOptions();
-    expect(options?.release?.name).toBe('abc123sha');
+    expect(options?.release).toEqual({ name: 'abc123sha', inject: false });
   });
 
   it('omits release when not provided', async () => {
