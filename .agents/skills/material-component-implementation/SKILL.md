@@ -1,176 +1,216 @@
 ---
 name: material-component-implementation
-description: 'Use after current DESIGN.md and ready ARCHITECTURE.md exist to implement the canonical family component, tokens, proof, stories, exports, and renderer integration without migrating consumers or changing architecture.'
+description: 'Use after the three Material technical contracts are ready to implement and prove one standalone canonical Vue component through the exact installed m3e renderer without inspecting consumers.'
 ---
 
 # Material component implementation
 
-Implement one Material family strictly from current architecture and return control to the orchestrator.
-
-This stage owns canonical component code and component-owned focused proof. It does not own official research, architecture, consumer migration, independent review, or final workflow verification.
-
-## Input gate
-
-Require current successful DESIGN and ready ARCHITECTURE with dependency queue `none` and implementation readiness `ready`.
-
-Read current artifacts directly. Do not require or compare artifact revision identities.
-
-If an input is invalid, write implementation as blocked, set the exact earlier-stage or other-family route, and return without production edits.
-
-## Worker boundary
-
-Run in a fresh isolated context.
-
-Use task-relevant workspace files, applicable rules, canonical artifacts, exact renderer package artifacts, and documented commands. Do not depend on Git, PR, commit, or external-check state.
-
-Do not redesign API, ownership, dependencies, token selection, renderer strategy, gap strategy, or proof ownership while coding.
-
-## Mandatory preflight
-
-Before production edits, run `implementation-preflight` using current design and architecture.
-
-Preflight resolves exact files, ordered passes, implementation-owned `TEST IMPACT`, focused verifier scopes, preserved contracts, and upstream blockers. It does not reopen architecture.
-
-## Output
-
-Write exactly:
+Implement or resume one standalone family from fixed:
 
 ```text
-src/shared/ui/material/components/<family>/IMPLEMENTATION.md
+components/<family>/contract.ts
+components/<family>/tokens.css
+components/<family>/BEHAVIOR.md
 ```
 
-Control fields:
+Do not start while a correction targets a contract owner.
 
-```text
-Status: complete | blocked
-ARCHITECTURE.md reference: <path>
-Revision summary: <one concise line>
-Remaining blockers: none | <exact blockers>
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Architecture deviations: none | <exact deviations>
-Migration readiness: ready | blocked
-```
+## Authority and isolation
 
-Do not create artifact timestamps, hashes, revision counters, or other persistent freshness identities.
+Read applicable `AGENTS.md`, the three family contracts, `component-adapter.md`, `component-tokens.md`, exact lockfile-resolved `@m3e/web` public docs/artifacts, `vue-component-implementation`, and only testing/verification guidance needed for required proof.
 
-Legacy revision fields in an existing IMPLEMENTATION are ignored and removed when this stage rewrites the file.
+Contracts define required public/observable behavior. m3e is private implementation detail.
 
-This stage always executes fresh for the current Material invocation. Existing compliant code may require no production edit, but the worker must still compare code and proof with current architecture and run the owned focused verification.
+Do not inspect application consumers, legacy call sites, migration code, current demand, or old narrative review artifacts to shape standalone runtime.
 
-Required headings:
+On resume, preserve correct existing runtime/proof and fix only the actual incomplete/incorrect scope.
 
-```text
-## Implemented passes
-## Public API implemented
-## Tokens and renderer mappings
-## Dependencies
-## Component-owned proof
-## Stage verification
-## Architecture deviations
-## Remaining blockers
-## Migration readiness
-```
+## Local consistency gate
+
+Before production edits verify only:
+
+1. every public configuration has coherent token/behavior ownership where applicable;
+2. every public token group belongs to a reachable configuration or unconditional family behavior;
+3. family `tokens.css` owns public `--md-comp-*` defaults on `:root`, not the component host/local selector;
+4. every structural state/content role required by `BEHAVIOR.md` is representable by the public contract;
+5. behavior-required consumer accessibility/native information has an explicit public or narrow native/ARIA seam;
+6. no simpler documented renderer seam already satisfies the contract.
+
+If 1–4 prove a contract wrong, return to its owner instead of editing it. Check 5 is implementation-owned when only the adapter seam is missing. If faithful support requires private DOM coupling, duplicated renderer systems, new shared infrastructure, or weakening a correct contract, return `needs-architect`.
 
 ## Implementation rules
 
-- Implement only the selected architecture surface.
-- Keep public terminology and types independent from the renderer.
-- Derive private glue from package-exported renderer types.
-- Keep renderer details inside the owning family.
-- Use only architecture-approved corrections and controlled workarounds.
-- Do not inspect private shadow DOM or recreate renderer-owned state, ripple, focus, geometry, accessibility, elevation, or motion.
-- Implement selected precedence and restoration paths.
-- Consume dependencies only through current canonical public APIs.
-- Add no compatibility alias unless architecture requires it.
-- Storybook, browser, and visual fixtures that claim a selected semantic role must use production-valid content for that role according to the architecture's exact-version renderer composition contract. A convenience placeholder is allowed only when it cannot affect the contract being proved. Placeholder text is not valid icon content for geometry or visual proof when renderer sizing/styling depends on the icon child contract.
+- Consume `contract.ts` types/defaults directly through modern Vue 3 `<script setup>` APIs.
+- Prefer Vue 3.5 reactive props destructure for ordinary primitive/configuration defaults.
+- Use `defineModel()` for ordinary Vue model semantics; keep explicit controlled prop + intent emit when pre-mutation cancellation or another proven ownership invariant requires it.
+- Represent Material-defined consumer interactions through the contract's idiomatic typed Vue events; do not force dynamic `v-on`/cast workarounds.
+- Use documented exact-version m3e public properties/events/content seams.
+- Keep renderer tags/types/workarounds private and family-local.
+- Keep token declarations, aliases, and `--md-comp-* → --m3e-*` bridges in CSS. Vue may select a renderer configuration or explicit modifier class; TypeScript must not enumerate token names, compose custom-property names, or build token maps.
+- Treat family `tokens.css` `:root` declarations as the single Material default source. Component/renderer bridge CSS consumes `--md-comp-*`; it must not redeclare public defaults or copy Material defaults into `var()` fallbacks.
+- Prefer one static CSS bridge when renderer namespaces already distinguish configurations. Add modifier classes only for real configuration-dependent remapping.
+- Use one stable family block class as root styling/private-renderer bridge boundary. Do not introduce an alias class solely for token ownership.
+- Forward only native/ARIA inputs required by contracts; adapter-owned renderer configuration wins over conflicting fallthrough.
+- Do not recreate renderer-owned ripple/state-layer/focus/elevation/accessibility/geometry/motion unless an explicit renderer defect requires the smallest family-local correction.
+- Do not solve token cascade/composition with specificity escalation, `!important`, inline Vue token wiring, or stylesheet/bundle order.
+- Keep production files cohesive. The repository's 500+ line review trigger still applies; extract a large private renderer bridge into a family-local stylesheet when that makes ownership/readability clearer, not merely to reduce line count.
 
-When the only root is a raw `m3e-*` element:
+## Decision examples
 
-- set `inheritAttrs: false`;
-- forward only the approved positive allow-list;
-- do not mutate Vue `$attrs`;
-- do not forward undeclared `on*` listeners;
-- ensure adapter-owned bindings win over consumer conflicts.
+### Consume the contract, do not duplicate it
 
-## Token rules
+GOOD:
 
-- Implement only tokens selected by architecture.
-- Keep one family owner and update `docs/token-api.md` atomically with declarations.
-- Preserve exact official state/part naming.
-- Implement required renderer inputs and fallbacks.
-- Do not publish unconsumed parts or mirror renderer defaults for completeness.
-- Prove computed rendered results where contextual appearance is selected.
+```ts
+const { appearance = mdExampleDefaults.appearance, size = mdExampleDefaults.size } =
+  defineProps<MDExampleProps>();
 
-## Focused proof
-
-Complete implementation-owned `TEST IMPACT` through faithful contract, type, browser/accessibility, visual, renderer-boundary, token, dependency-composition, and risk-specific proof as applicable.
-
-Before declaring proof complete, inspect every story/browser/visual fixture used by a selected contract and confirm that its semantic content exercises the same renderer composition path a real consumer is expected to use. Do not close a geometry or appearance defect with a special fixture while canonical visual fixtures still use content that bypasses or violates the selected composition contract.
-
-Run verifier-managed focused implementation checks only. Do not run final workflow verification.
-
-## Terminal-state rules
-
-### Success
-
-Return `Status: complete` only when every implementation pass and focused check is complete, deviations and blockers are `none`, route is `none/none`, and migration readiness is `ready`.
-
-### Earlier-stage or cross-family correction
-
-Return `Status: blocked` with an exact route only when correction belongs to `self/design`, `self/architecture`, or another family/stage.
-
-### Current-stage defect
-
-A component-owned implementation, token, mapping, export, story, test, or focused-proof defect must be corrected in this worker.
-
-If it remains impossible after available implementation mechanisms are exhausted, return:
-
-```text
-Status: blocked
-Remaining blockers: <exact blocker>
-Required return family: none
-Required return stage: none
-Migration readiness: blocked
+defineSlots<MDExampleSlots>();
 ```
 
-Do not return `self/implementation` and do not return `partial`.
+BAD: a second runtime props/default table when `contract.ts` already owns those facts.
 
-Do not migrate product consumers in this stage.
+### CSS owns token defaults and renderer mapping separately
 
-## Report
+Family contract:
+
+```css
+/* tokens.css */
+:root {
+  --md-comp-example-primary-container-color: var(--md-sys-color-primary);
+}
+```
+
+Implementation bridge:
+
+```css
+.md-example {
+  --m3e-example-primary-container-color: var(--md-comp-example-primary-container-color);
+}
+```
+
+Why: `tokens.css` owns the one Material default while the component bridge owns only renderer adaptation. A closer contextual `--md-comp-*` declaration can inherit into the component without fighting a host default.
+
+BAD:
+
+```css
+.md-example {
+  --md-comp-example-primary-container-color: var(--md-sys-color-primary);
+}
+```
+
+BAD:
+
+```css
+.md-example {
+  --m3e-example-primary-container-color: var(
+    --md-comp-example-primary-container-color,
+    var(--md-sys-color-primary)
+  );
+}
+```
+
+Why: the first shadows inherited overrides; the second duplicates the token-contract default in implementation.
+
+BAD:
+
+```ts
+const suffixes = ['container-color', 'icon-color'];
+const styles = Object.fromEntries(
+  suffixes.map((suffix) => [
+    `--m3e-example-${suffix}`,
+    `var(--md-comp-example-${appearance}-${suffix})`,
+  ]),
+);
+```
+
+Normal Vue `:style` remains valid for ordinary non-token dynamic styling.
+
+### Composition uses public inherited tokens
+
+When this component owns a nested canonical Material component and Material composition requires contextual styling, implementation may set the child's public token on the composing context:
+
+```css
+.md-button {
+  --md-comp-loading-indicator-color: currentColor;
+}
+```
+
+Do not couple to the child's `--m3e-*` token. Proof must show the nested child receives the contextual override and that removing it restores the child's family `:root` default.
+
+### Prove rendered behavior, not source wiring
+
+BAD: asserting only that one CSS custom-property string points at another.
+
+GOOD: override the public token or trigger the real state in a browser and assert the affected rendered result at the lowest faithful level.
+
+## Proof
+
+Add only proof required by contracts and materially distinct renderer/cascade paths.
+
+Unit/component tests may prove public prop/slot/event/default mapping, host allow-lists, and deterministic adapter-owned state/event forwarding.
+
+Browser/visual proof owns observable renderer results such as accessible role/name/focus/keyboard behavior, relationships, fixed geometry, RTL/layout, hover/focus/pressed appearance, public token overrides reaching rendered parts/states, contextual composition inheritance/fallback, and required motion/reduced-motion behavior.
+
+A screenshot alone is not proof of fixed numeric geometry or interaction semantics. Selector state alone is not proof of required visual state. Coverage should be proportional: shared renderer paths may share proof; materially different state/configuration/token grammars need observable coverage.
+
+## Verification and completion gate
+
+Follow the root rules and `.agents/skills/verification/SKILL.md`.
+
+Use focused `pnpm verify --only ...` commands only when useful as implementation/diagnostic feedback. Do not mechanically assemble a final checklist of focused lanes.
+
+Before returning edited implementation/proof as `complete`, run the repository-required final automatic `pnpm verify` without `--full`. If sandbox or Podman blocks it, use the verification skill's narrowly scoped command approval/escalation mechanism; do not ask the operator to run verifier commands. If the verification skill permits only a partial/environment-blocked result, do not claim a fully verified `complete` handoff.
+
+Implementation may return `complete` only when all four are true:
+
+1. runtime satisfies all three fixed contracts and the root-default token cascade model;
+2. every required observable contract/cascade path has faithful proof;
+3. repository-required local verification completed successfully, including any risk-specific proof selected by the automatic plan or useful focused feedback;
+4. no known in-scope blocker remains.
+
+Missing or failing required browser/visual proof means `blocked`/`partial`, never `complete`. Exact-head GitHub CI remains architect-owned and does not replace local proof or the final coding-agent verification gate.
+
+## Return
+
+If implementation evidence proves a technical contract wrong, do not edit it. Return exactly one of:
+
+```text
+return-to-api-contract
+return-to-token-contract
+return-to-behavior-contract
+```
+
+with the exact contradictory fact/scope.
+
+Otherwise report:
 
 ```text
 MATERIAL IMPLEMENTATION RESULT
-Input component:
-Canonical family:
-IMPLEMENTATION.md path:
-Preflight result:
-Implemented passes:
-Public API implemented:
-Tokens and mappings implemented:
-Dependencies consumed:
-Focused proof completed:
-Implementation-stage verification:
-Architecture deviations: none | <details>
-Remaining blockers: none | <details>
-Required return family: none | self | <canonical-family>
-Required return stage: none | design | architecture | implementation | migration
-Migration readiness: ready | blocked
-Status: complete | blocked
+family: <canonical family>
+standalone component: complete | blocked
+local verification: <final automatic pnpm verify result plus any useful focused feedback>
+contract correction owner: none | api-contract | token-contract | behavior-contract
+contract finding: none | <exact finding>
+architecture escalation: none | <exact decision>
+remaining blocker: none | <exact blocker>
+result: complete | blocked | return-to-api-contract | return-to-token-contract | return-to-behavior-contract | needs-architect
 ```
 
 ## Forbidden
 
-- Returning `partial`.
-- Returning `self/implementation`.
-- Leaving a current-stage fixable defect unresolved.
-- Changing architecture while coding.
-- Migrating product consumers.
-- Expanding API, tokens, abstractions, or renderer support beyond architecture.
-- Using a special proof-only composition to claim a selected contract while canonical production-facing stories or fixtures still violate that composition contract.
-- Updating visual baselines without inspection.
-- Adding timestamp/hash/revision bookkeeping as workflow state.
-- Running migration, review, or final workflow verification.
-- Recording the pending final command as a blocker or risk.
-- Depending on Git or PR state.
+- Inspecting consumers/legacy to shape standalone runtime.
+- Migrating consumers.
+- Changing correct contracts to fit m3e/current demand.
+- Redeclaring public types/defaults inside the SFC.
+- Dropping behavior-required accessibility/native inputs because of `inheritAttrs: false`.
+- Exposing raw m3e details outside the family.
+- Creating TypeScript token maps/name arrays/generated custom-property names/registries.
+- Redeclaring family-owned public `--md-comp-*` defaults on component/local selectors.
+- Duplicating Material defaults inside private renderer bridge fallbacks.
+- Using specificity escalation, `!important`, inline token wiring, or bundle/source order as token-cascade fixes.
+- Adding alias styling classes solely to attach public tokens.
+- Treating source CSS wiring or selector state as rendered proof.
+- Asking the operator to run verifier/Podman commands.
+- Claiming `complete` with required proof unrun or failing.
+- Rewriting already-correct work on resume without an exact defect.

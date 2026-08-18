@@ -234,6 +234,22 @@ test('MDButton variants and content keep component color inside a legacy Materia
     'color',
     'rgb(103, 80, 164)',
   );
+
+  // Component-token cascade proof (docs/component-tokens.md "Composition proof"): the
+  // nested Loading indicator receives Button's contextual public-token override
+  // (`.md-button__loading-indicator`) unresolved, since `currentColor` is a CSS-wide
+  // keyword rather than a var() reference and is not substituted at custom-property
+  // computed-value time. The standalone Loading indicator in the same legacy surface
+  // carries no such override and resolves back to the family's own `:root` Material
+  // default, proving the composition does not depend on specificity or source order.
+  await expect(loadingButton.locator('.md-loading-indicator')).toHaveCSS(
+    '--md-comp-loading-indicator-active-indicator-color',
+    'currentColor',
+  );
+  await expect(page.getByRole('progressbar', { name: 'Surface standalone loading' })).toHaveCSS(
+    '--md-comp-loading-indicator-active-indicator-color',
+    '#6750a4',
+  );
 });
 
 test('MDButton renders contextual text label colors in every selected state', async ({ page }) => {

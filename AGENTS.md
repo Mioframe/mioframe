@@ -10,7 +10,7 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 - Verify uncertain workspace behavior, third-party semantics, and required behavior from available files or project commands. Otherwise report the fact as unresolved.
 - `docs/testing/architecture.md` is the canonical project-wide testing policy.
 - `docs/testing/storybook.md` is the canonical Storybook ownership, authoring, and target-placement policy; `docs/testing/migration-plan.md` records which target locations and verifier mechanisms are currently executable.
-- `src/shared/ui/material/docs/component-workflow.md`, `design-document.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `token-api.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
+- `src/shared/ui/material/docs/component-workflow.md`, `component-contract.md`, `architecture.md`, `component-adapter.md`, `component-tokens.md`, `m3e-defects.md`, and `roadmap.md` are the canonical Material workflow and library records.
 - Update an `AGENTS.md` or skill only for a durable rule, ownership model, public-contract convention, or verification workflow.
 
 ## Task scope
@@ -22,7 +22,10 @@ Applies to the whole workspace. Applicable instructions are cumulative: a deeper
 ## Architecture and implementation workflow
 
 - For non-trivial product, feature, cross-layer, shared UI, storage, diagnostics, workflow, or architecture changes, use `architect-handoff` unless an applicable deterministic skill resolves every required decision from authoritative sources.
-- Use `implementation-preflight` before non-trivial code edits. Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight is unresolved, or while task-specific `TEST IMPACT` is unresolved.
+- Use `implementation-preflight` before non-trivial code edits unless an applicable deterministic workflow explicitly owns an equivalent narrower implementation check. Official Material implementation and migration use their scoped Material skills and do not invoke the generic preflight.
+- Official Material families follow the scoped `material-component` workflow; do not begin standalone Material implementation before its three-contract-ready gate.
+- For explicit project, PR, architecture, implementation, or scoped code review, use `project-review`. It is a standalone reviewer protocol and is not automatically part of `material-component` or another implementation workflow. Persist active findings in the narrowest owner-local `REVIEW.md`; every finding must include linked evidence and a linked project/contract/authoritative basis.
+- Do not begin implementation while a required handoff is missing or not ready, while deterministic preflight/checks are unresolved, or while task-specific proof ownership is unresolved.
 - Prefer the minimum complete design for confirmed requirements. Every abstraction, state, layer, compatibility path, recovery mechanism, optimization, registry, mapping, or helper must map to a current requirement or verified invariant.
 - Compare the proposal with the simplest viable alternative. If fewer concepts satisfy the same acceptance criteria without breaking ownership, use the simpler design.
 - Treat the ready handoff or workspace-backed deterministic blueprint as the implementation contract. If new facts invalidate it, stop and update it explicitly.
@@ -58,12 +61,13 @@ Use the applicable skill instead of duplicating its rules:
 
 - `vue-component-implementation`;
 - `shared-ui-implementation`;
+- `project-review`;
 - `material-component`;
-- `material-component-design`;
-- `material-component-architecture`;
+- `material-component-api-contract`;
+- `material-component-token-contract`;
+- `material-component-behavior-contract`;
 - `material-component-implementation`;
 - `material-component-migration`;
-- `material-component-review`;
 - `test-first`;
 - `unit-testing`;
 - `component-contract-testing`;
@@ -74,7 +78,7 @@ Use the applicable skill instead of duplicating its rules:
 - `diagnostic-events`;
 - `verification`.
 
-For the Material workflow, the thin orchestrator selects, launches, validates, and routes. Each design, architecture, implementation, migration, and review stage runs in a fresh worker context and consumes only workspace files, applicable rules, the component name, and canonical upstream artifacts. The review worker must be independent from workers that authored architecture, implementation, or migration. If isolated workers are unavailable, report the Material workflow as blocked rather than simulating isolation.
+For Material-specific worker roles, source authority, resume/correction routing, and sequencing, follow `src/shared/ui/material/AGENTS.md` and `material-component`. Do not collapse isolated Material responsibilities into one context.
 
 ## Implementation quality
 
@@ -109,7 +113,7 @@ For the Material workflow, the thin orchestrator selects, launches, validates, a
 ## Verification
 
 - Keep the agent runtime's sandbox and permission system enabled. Mioframe's canonical verifier entry points (`pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`) are repository-approved to run outside the generic agent sandbox only through the runtime's narrowly scoped command allow/exclusion or per-command approval/escalation mechanism. `verify` itself owns verification scope, locking, timeouts, resource limits, and containerized browser execution. Never enable unrestricted/full-access execution for the session, broaden approval to generic `pnpm`, `node`, or shell execution, or replace a blocked verifier invocation with a raw child command.
-- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` and any focused verification useful for implementation feedback.
+- Use `implementation-preflight` to resolve task-specific `TEST IMPACT` for ordinary non-trivial implementation; deterministic Material implementation/migration skills own their narrower proof checklist directly.
 - During implementation or correction, coding agents may use `pnpm verify --only <label> --files ...` for the smallest useful verifier-managed feedback. Focused commands are optional iteration/diagnostic tools, not a mandatory final checklist.
 - The default final local coding-agent handoff check is `pnpm verify` without `--full`. It automatically resolves the changed workspace to the smallest supported verification plan and prints the aggregated `VERIFY RESULT`.
 - Do not confuse ordinary `pnpm verify` with full-project verification. Only `pnpm verify --full` / `pnpm verify:release` is unconditional full-project release scope, and coding agents do not run it merely to hand work back to the architect.
@@ -118,7 +122,7 @@ For the Material workflow, the thin orchestrator selects, launches, validates, a
 - Do not substitute raw underlying test, lint, visual, mutation, or browser commands for verifier-managed checks except for narrow diagnosis explicitly allowed by the verification skill.
 - Required contract proof must exist before handoff; the final automatic run and CI do not replace missing tests, architecture review, browser/visual evidence, or risk-specific verification.
 - If the final automatic `pnpm verify` cannot complete because of a concrete environment, unrelated repository, or external blocker, report the exact blocker and a partial local verification result; do not replace it with a manually assembled complete list of `--only` checks.
-- After the architect opens or updates a PR, GitHub CI is the authoritative final repository verification on the exact PR head. The architect owns CI review and merge readiness.
+- After the architect opens or updates a PR, GitHub CI is the authoritative final repository verification on the exact PR head. The architect owns semantic review, CI review, roadmap status, and merge readiness.
 - If CI fails because of the PR, route the failure to the correct owner, fix it, use the smallest useful focused verifier-managed rerun if needed, then run the automatic `pnpm verify` once before handing the correction back. Do not rerun all unaffected labels individually.
 - Do not claim merge readiness while required exact-head CI is missing or failing.
 
