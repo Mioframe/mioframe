@@ -23,9 +23,9 @@ material-component <name>
 
 ## Why the contracts are separate
 
-`contract.ts` owns renderer-independent Vue structure: public configuration, content roles, values, events when genuinely component-owned, and defaults.
+`contract.ts` owns renderer-independent Vue structure: public configuration, content roles, values, events, and defaults.
 
-`tokens.css` owns the current Material component-token catalogue.
+`tokens.css` owns the current Material component-token contract. Detailed token cascade/ownership is defined by `component-tokens.md`.
 
 `BEHAVIOR.md` owns observable behavior, accessibility, geometry, states, and motion.
 
@@ -35,13 +35,7 @@ This prevents renderer details, legacy code, and current Mioframe demand from sh
 
 ## Standalone implementation before consumers
 
-Implementation consumes the fixed three contracts and exact installed `@m3e/web` public artifacts. It owns only:
-
-- canonical Vue runtime;
-- private family-local renderer adaptation;
-- public-to-private token bridge in CSS;
-- component-owned unit/browser/visual proof;
-- focused verifier-managed implementation feedback.
+Implementation consumes the fixed three contracts and exact installed `@m3e/web` public artifacts. It owns canonical Vue runtime, private family-local renderer adaptation, CSS token bridges, component-owned proof, and focused verifier-managed implementation feedback.
 
 It does not inspect application consumers to shape the component.
 
@@ -58,7 +52,24 @@ Two deliberately small mechanisms make resume deterministic:
 
 Completed contract/runtime/proof files remain the durable work product. There is no workflow history database, completion manifest, review agent, or generic Material manager.
 
-Mechanical routing is code; Material semantics stay with focused workers. After a correction, routing is recomputed rather than pre-planning a chain of speculative follow-up work.
+Mechanical routing is code; Material semantics stay with focused workers. After a correction, routing is recomputed rather than pre-planning speculative follow-up work.
+
+## Cross-family architecture migrations
+
+`material-component <name>` is a one-family semantic/implementation workflow, not a batch repository migration framework.
+
+When an architect changes a library-wide mechanical invariant while existing Material facts remain unchanged — for example moving already-known family component-token defaults from the old host selector to the canonical `:root` cascade model — apply that change as one scoped repository architecture correction rather than forcing every affected family through a fresh semantic Material3 MCP derivation.
+
+Such a repository correction may update only mechanically implied state plus its verification/proof:
+
+- unchanged declarations/ownership placement;
+- compatibility resolver/guard behavior and tests;
+- affected private bridges only where the invariant requires it;
+- cross-family composition proof required by the architectural change.
+
+It must not silently change token names/defaults/aliases/current-status semantics. If a family exposes a semantic uncertainty during the migration, stop treating that family as mechanical and route the exact question through the normal owner (`api-contract`, `token-contract`, or `behavior-contract`).
+
+Do not add a new permanent workflow stage, batch manager, compatibility layer, or special family mode for a one-time architecture migration. Once the repository baseline is migrated, normal `material-component` runs operate directly on the new invariant.
 
 ## Architect review handoff
 
@@ -69,16 +80,16 @@ When architect review returns `blocked` with an actionable `NEXT CORRECTION`, th
 For Material, the generic review handoff maps directly to the existing marker fields:
 
 ```text
-NEXT CORRECTION owner         → .material-correction.json owner
-NEXT CORRECTION finding       → .material-correction.json finding
+NEXT CORRECTION owner          → .material-correction.json owner
+NEXT CORRECTION finding        → .material-correction.json finding
 NEXT CORRECTION affected scope → .material-correction.json affectedScope
 ```
 
-Only the next owner is routed. Findings owned by later/downstream owners stay in `REVIEW.md` until the next architect re-review. This preserves owner order without requiring a no-op coding run between review and correction.
+Only the next owner is routed. Findings owned by later/downstream owners stay in `REVIEW.md` until the next architect re-review. This preserves owner order without a no-op coding run between review and correction.
 
-Do not ask the operator to rerun `material-component` while review is blocked and no correction marker exists, unless `project-review` reported that the next owner/order itself is unresolved. In that case resolve architecture/ownership first rather than using the coding workflow as a router.
+Do not ask the operator to rerun `material-component` while review is blocked and no correction marker exists, unless `project-review` reported that the next owner/order itself is unresolved. Resolve architecture/ownership first rather than using the coding workflow as a router.
 
-The coding workflow still must not select findings from `REVIEW.md` itself. That would create a second competing correction queue and blur architect ownership.
+The coding workflow must not select findings from `REVIEW.md` itself; that would create a competing correction queue and blur architect ownership.
 
 ## Completion boundary
 
@@ -98,6 +109,7 @@ Prefer this minimum workflow over adding more infrastructure:
 - no second compatibility model;
 - no generic adapter/token framework created for workflow convenience;
 - no rerun of completed owners merely because previous chat context is unavailable;
-- no empty operator iteration between blocked architect review and a known correction owner.
+- no empty operator iteration between blocked architect review and a known correction owner;
+- no repeated semantic derivation for a mechanical cross-family architecture migration.
 
 If repeated corrections show that ownership or the architecture itself is wrong, return to the architect instead of adding workaround stages.
