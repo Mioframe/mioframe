@@ -46,19 +46,13 @@ For every public content role:
 
 Do not render another family’s raw `m3e-*` element from a parent adapter.
 
+When a parent/composer intentionally customizes a nested canonical Material component, prefer that child's public `--md-comp-*` override API over renderer-private coupling. The nested component must inherit the contextual override naturally; do not repair composition with selector specificity or source-order assumptions.
+
 ## Controlled state
 
 For every controlled public state, keep one source of truth.
 
-Inspect the exact renderer transition lifecycle and prove:
-
-1. which public prop owns state;
-2. which renderer property reflects it;
-3. what event represents user intent;
-4. whether the renderer mutates optimistically before/after that event;
-5. how accepted intent updates the prop;
-6. how rejected intent leaves renderer state equal to the unchanged prop;
-7. how disabled/presentation/suppressed modes affect the path.
+Inspect the exact renderer transition lifecycle and prove which public prop owns state, which renderer property reflects it, what event represents user intent, whether the renderer mutates optimistically, how accepted/rejected intent is reconciled, and how disabled/presentation modes affect the path.
 
 Prefer a documented cancelable pre-mutation event when available. Do not repair drift with duplicate wrapper state, delayed watchers, or private renderer mutation unless an explicit architecture decision proves no cleaner seam exists.
 
@@ -75,7 +69,7 @@ When a raw `m3e-*` element is the Vue component root:
 - ensure adapter bindings win over conflicting fallthrough;
 - keep filtering local to the family rather than creating a generic registry/framework.
 
-Required semantics should be represented by explicit props or an explicit allow-list, never unrestricted `$attrs` fallthrough.
+Required semantics should be represented by explicit props/events or an explicit allow-list, never unrestricted `$attrs` fallthrough or consumer typing workarounds.
 
 ## Renderer typing
 
@@ -85,15 +79,43 @@ Public Material types remain renderer-independent. Exact renderer drift should f
 
 ## Tokens
 
-Public tokens are defined and catalogued by family `tokens.css` from Material 3 MCP. m3e variables remain private implementation inputs.
+Public token names/defaults are defined by family `tokens.css` from Material 3 MCP. m3e variables remain private implementation inputs.
 
-Private mapping follows:
+The cascade contract is:
 
 ```text
-public --md-comp-* token
-  → documented m3e input/fallback
+family tokens.css :root --md-comp-* default
+  → optional inherited/contextual --md-comp-* override
+  → family block/modifier private renderer bridge
   → rendered observable result
 ```
+
+A component adapter must **consume** public tokens; it must not redeclare their Material defaults on the component host and must not duplicate those defaults as renderer fallbacks.
+
+GOOD:
+
+```css
+.md-example-action {
+  --m3e-example-action-container-color: var(
+    --md-comp-example-action-primary-container-color
+  );
+}
+```
+
+BAD:
+
+```css
+.md-example-action {
+  --md-comp-example-action-primary-container-color: var(--md-sys-color-primary);
+  --m3e-example-action-container-color: var(
+    --md-comp-example-action-primary-container-color
+  );
+}
+```
+
+Why: the host-level public declaration shadows inherited contextual overrides and creates a second cascade owner.
+
+Also forbidden as fixes: stronger selectors, `!important`, inline Vue token wiring, or relying on stylesheet order.
 
 Do not mirror all m3e variables or copy renderer defaults for completeness. A public token is implemented only when its runtime mapping and rendered result satisfy `tokens.css`.
 
@@ -114,15 +136,7 @@ Put semantics on the actual interaction owner and satisfy `BEHAVIOR.md`.
 
 ## Exact-version renderer defects
 
-A family-local temporary workaround is allowed only when:
-
-- one of the three canonical contracts requires the result;
-- the installed m3e version is confirmed divergent;
-- the correction uses a documented/public host seam;
-- it stays private to the family;
-- it does not recreate renderer internals;
-- focused proof covers the observable result;
-- `docs/m3e-defects.md` records evidence and a removal trigger.
+A family-local temporary workaround is allowed only when one of the three canonical contracts requires the result, the installed m3e version is confirmed divergent, the correction uses a documented/public host seam, it stays private to the family, it does not recreate renderer internals, focused proof covers the result, and `docs/m3e-defects.md` records evidence/removal trigger.
 
 If these conditions are not met, escalate instead of accumulating workaround logic.
 
@@ -141,7 +155,7 @@ The implementation worker follows this order:
 1. consume `contract.ts`, `tokens.css`, and `BEHAVIOR.md` without redesigning them;
 2. inspect exact-version m3e documentation/public artifacts;
 3. implement renderer mapping and standalone component;
-4. add component/browser/visual/token proof as required;
+4. add component/browser/visual/token proof as required, including contextual-override/fallback proof when composition depends on inherited public tokens;
 5. establish standalone correctness;
 6. run focused verifier-managed checks;
 7. return to the orchestrator without inspecting or migrating application consumers.
