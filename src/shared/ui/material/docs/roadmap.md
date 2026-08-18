@@ -48,7 +48,7 @@ Normal current-workflow resume remains resolver/semantic-marker driven. Legacy s
 
 The transition intentionally permits one bounded token re-derivation if execution is interrupted after current token derivation but before behavior is written. This is simpler than introducing token identity metadata or persistent stage history. Legacy `REVIEW.md` with `Verdict: compliant` remains historical evidence and is not interpreted as current `project-review` state. Migration removes replaced staged artifacts after successful conversion.
 
-Architect semantic review found no remaining blocker in this transition model.
+Architect semantic review found no remaining blocker in this transition model. The temporary cross-workflow `REVIEW.md` has been removed because no active review finding remains.
 
 ## Other known state
 
