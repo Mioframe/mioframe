@@ -151,6 +151,114 @@ function stripVueStyleBlocks(source) {
   return source.replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '');
 }
 
+function findScopedStyleBlocks(source) {
+  const blocks = [];
+  const pattern = /<style\b([^>]*)>([\s\S]*?)<\/style>/gi;
+  let match;
+
+  while ((match = pattern.exec(source)) !== null) {
+    const [, openingAttrs, body] = match;
+
+    if (/(?:^|\s)scoped(?:\s|=|>|$)/.test(openingAttrs)) {
+      blocks.push(body);
+    }
+  }
+
+  return blocks;
+}
+
+function removeRootBlocks(source) {
+  let result = '';
+  let cursor = 0;
+
+  while (cursor < source.length) {
+    const rootIndex = source.indexOf(':root', cursor);
+
+    if (rootIndex < 0) {
+      result += source.slice(cursor);
+      break;
+    }
+
+    const openIndex = source.indexOf('{', rootIndex + ':root'.length);
+
+    if (openIndex < 0) {
+      result += source.slice(cursor);
+      break;
+    }
+
+    const closeIndex = findMatchingBrace(source, openIndex);
+
+    if (closeIndex < 0) {
+      result += source.slice(cursor);
+      break;
+    }
+
+    result += source.slice(cursor, rootIndex);
+    cursor = closeIndex + 1;
+  }
+
+  return result;
+}
+
+function findRootDeclaredComponentTokenNames(source) {
+  const names = new Set();
+  const pattern = /(--md-comp-[\w-]+)\s*:/g;
+
+  for (const block of findRootBlocks(source)) {
+    let match;
+
+    while ((match = pattern.exec(block)) !== null) {
+      names.add(match[1]);
+    }
+
+    pattern.lastIndex = 0;
+  }
+
+  return names;
+}
+
+function findDuplicatePublicDefaults(root, family) {
+  const componentsRoot = path.join(root, FAMILY_ROOT);
+
+  if (!fs.existsSync(componentsRoot)) {
+    return [];
+  }
+
+  const familiesByName = new Map();
+
+  for (const entry of fs.readdirSync(componentsRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const tokensPath = path.join(componentsRoot, entry.name, 'tokens.css');
+
+    if (!fs.existsSync(tokensPath)) {
+      continue;
+    }
+
+    const source = stripComments(readText(tokensPath));
+
+    for (const name of findRootDeclaredComponentTokenNames(source)) {
+      if (!familiesByName.has(name)) {
+        familiesByName.set(name, new Set());
+      }
+
+      familiesByName.get(name).add(entry.name);
+    }
+  }
+
+  const duplicates = [];
+
+  for (const [name, families] of familiesByName) {
+    if (families.size > 1 && families.has(family)) {
+      duplicates.push(name);
+    }
+  }
+
+  return duplicates.sort((left, right) => left.localeCompare(right));
+}
+
 function createViolation(owner, rule, filePath, root, message) {
   return {
     owner,
@@ -207,7 +315,7 @@ function checkApi(root, familyRoot) {
   return violations;
 }
 
-function checkTokens(root, familyRoot) {
+function checkTokens(root, familyRoot, family) {
   const tokensPath = path.join(familyRoot, 'tokens.css');
 
   if (!fs.existsSync(tokensPath)) {
@@ -225,14 +333,14 @@ function checkTokens(root, familyRoot) {
   const source = stripComments(readText(tokensPath));
   const violations = [];
 
-  if (findRootBlocks(source).some((body) => body.includes('--md-comp-'))) {
+  if (/--md-comp-[\w-]+\s*:/.test(removeRootBlocks(source))) {
     violations.push(
       createViolation(
         'token-contract',
-        'component-tokens-on-root',
+        'component-token-outside-root',
         tokensPath,
         root,
-        'component-token defaults are declared on :root instead of the family component boundary',
+        'a family-owned public default is declared on a local/component selector instead of :root',
       ),
     );
   }
@@ -245,6 +353,20 @@ function checkTokens(root, familyRoot) {
         tokensPath,
         root,
         'public tokens.css contains private --m3e-* custom properties',
+      ),
+    );
+  }
+
+  const duplicates = findDuplicatePublicDefaults(root, family);
+
+  if (duplicates.length > 0) {
+    violations.push(
+      createViolation(
+        'token-contract',
+        'duplicate-public-default',
+        tokensPath,
+        root,
+        `public default(s) declared by more than one family tokens.css: ${duplicates.join(', ')}`,
       ),
     );
   }
@@ -290,6 +412,25 @@ function checkImplementation(root, familyRoot) {
 
   for (const filePath of files) {
     const rawSource = readText(filePath);
+
+    if (filePath.endsWith('.vue')) {
+      const scopedTokensImport = findScopedStyleBlocks(rawSource).some((block) =>
+        /@import\s+['"][^'"]*tokens\.css['"]/.test(block),
+      );
+
+      if (scopedTokensImport) {
+        violations.push(
+          createViolation(
+            'implementation',
+            'scoped-token-contract-load',
+            filePath,
+            root,
+            'family tokens.css is loaded through a scoped Vue <style> block instead of unscoped/global CSS',
+          ),
+        );
+      }
+    }
+
     const withoutStyles = filePath.endsWith('.vue') ? stripVueStyleBlocks(rawSource) : rawSource;
     const source = stripComments(withoutStyles);
 
@@ -320,7 +461,7 @@ export function resolveMaterialComponentCompatibility(root, family) {
   const familyRoot = path.join(root, FAMILY_ROOT, family);
   const checks = [
     () => checkApi(root, familyRoot),
-    () => checkTokens(root, familyRoot),
+    () => checkTokens(root, familyRoot, family),
     () => checkBehavior(root, familyRoot),
     () => checkImplementation(root, familyRoot),
   ];

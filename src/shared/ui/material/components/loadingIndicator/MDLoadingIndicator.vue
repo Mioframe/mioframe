@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import '@m3e/web/loading-indicator';
+import './tokens.css';
 // Documented transparent host/adaptor contract (ARCHITECTURE.md "Host-attribute
 // boundary"): `useAttrs` is read-only here and feeds the explicit, family-scoped
 // host-attribute allow-list below. It is never spread wholesale and is not a
@@ -122,9 +123,10 @@ const getForwardedAttrs = (): Record<string, unknown> => {
 </template>
 
 <style scoped>
-@import './tokens.css';
-
 .md-loading-indicator {
   vertical-align: middle;
+  --m3e-loading-indicator-active-indicator-color: var(
+    --md-comp-loading-indicator-active-indicator-color
+  );
 }
 </style>

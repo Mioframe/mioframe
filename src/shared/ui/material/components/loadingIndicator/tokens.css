@@ -1,6 +1,3 @@
-.md-loading-indicator {
+:root {
   --md-comp-loading-indicator-active-indicator-color: var(--md-sys-color-primary);
-  --m3e-loading-indicator-active-indicator-color: var(
-    --md-comp-loading-indicator-active-indicator-color
-  );
 }
