@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 import '../../../../lib/md/index.css';
 import { useFocusIndicator } from '../../../State/useFocusIndicator';
+import { MDLoadingIndicator } from '../loadingIndicator';
 import MDButton from './MDButton.vue';
 import MDButtonTargetHitVisualStory from './MDButtonTargetHitVisualStory.vue';
 
@@ -220,24 +221,29 @@ export const LoadingIndicatorPresentation: Story = {
 export const LegacySurfaceColorOwnership: Story = {
   tags: ['visual'],
   render: () => ({
-    components: { MDButton },
+    components: { MDButton, MDLoadingIndicator },
     template: `
-      <div
-        data-testid="visual-md-button-legacy-surface"
-        class="md visual-checker-backdrop"
-        style="--md-container-color: #fff8f7; --md-content-color: #b3261e;"
-      >
-        <p data-testid="legacy-surface-text">Surface-owned ordinary text</p>
-        <div class="visual-row">
-          <MDButton label="Surface filled" color="filled" />
-          <MDButton label="Surface outlined" color="outlined" />
-          <MDButton label="Surface text" color="text" />
+      <div>
+        <div
+          data-testid="visual-md-button-legacy-surface"
+          class="md visual-checker-backdrop"
+          style="--md-container-color: #fff8f7; --md-content-color: #b3261e;"
+        >
+          <p data-testid="legacy-surface-text">Surface-owned ordinary text</p>
+          <div class="visual-row">
+            <MDButton label="Surface filled" color="filled" />
+            <MDButton label="Surface outlined" color="outlined" />
+            <MDButton label="Surface text" color="text" />
+          </div>
+          <div class="visual-row">
+            <MDButton label="Surface icon" color="outlined">
+              <template #icon><span data-testid="legacy-surface-button-icon">+</span></template>
+            </MDButton>
+            <MDButton label="Surface loading" color="text" loading />
+          </div>
         </div>
-        <div class="visual-row">
-          <MDButton label="Surface icon" color="outlined">
-            <template #icon><span data-testid="legacy-surface-button-icon">+</span></template>
-          </MDButton>
-          <MDButton label="Surface loading" color="text" loading />
+        <div class="md">
+          <MDLoadingIndicator label="Surface standalone loading" />
         </div>
       </div>
     `,

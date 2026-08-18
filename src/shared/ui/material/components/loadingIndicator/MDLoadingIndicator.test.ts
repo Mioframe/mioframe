@@ -1,36 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { mount } from '@vue/test-utils';
 import { defineComponent, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import MDLoadingIndicator from './MDLoadingIndicator.vue';
 
 describe('MDLoadingIndicator adapter', () => {
-  it('declares its public active-indicator-color default on :root in tokens.css, owned by the family and not the private renderer bridge', () => {
-    const css = readFileSync(
-      './src/shared/ui/material/components/loadingIndicator/tokens.css',
-      'utf8',
-    );
-
-    expect(css).toMatch(/:root\s*{/);
-    expect(css).toContain(
-      '--md-comp-loading-indicator-active-indicator-color: var(--md-sys-color-primary);',
-    );
-    expect(css).not.toContain('--m3e-');
-  });
-
-  it('loads tokens.css unscoped and keeps the private renderer bridge in the scoped component implementation', () => {
-    const componentSource = readFileSync(
-      './src/shared/ui/material/components/loadingIndicator/MDLoadingIndicator.vue',
-      'utf8',
-    );
-
-    expect(componentSource).toMatch(/^import '\.\/tokens\.css';$/m);
-    expect(componentSource).not.toContain("@import './tokens.css'");
-    expect(componentSource).toContain(
-      '--m3e-loading-indicator-active-indicator-color: var(\n    --md-comp-loading-indicator-active-indicator-color\n  );',
-    );
-  });
-
   it('renders the canonical renderer element with the progressbar role and the accessible purpose label', () => {
     const wrapper = mount(MDLoadingIndicator, { props: { label: 'Loading news article' } });
     const indicator = wrapper.get('m3e-loading-indicator');

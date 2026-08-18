@@ -194,27 +194,6 @@ const getForwardedAttrs = (): Record<string, unknown> => {
   color: inherit;
 }
 
-.md-button[size='small'] {
-  /*
-   * M3E-006: @m3e/web 2.7.4 defaults the selected small Button to 20dp horizontal
-   * spacing, while the Mioframe Material contract is 16dp on each side. These
-   * documented renderer inputs stay private to this family and are removed once a
-   * consumed renderer version supplies the selected default directly.
-   */
-  --m3e-button-small-leading-space: 16px;
-  --m3e-button-small-trailing-space: 16px;
-}
-
-.md-button {
-  --m3e-text-button-label-text-color: var(--md-comp-button-text-label-text-color);
-  --m3e-text-button-hover-label-text-color: var(--md-comp-button-text-hovered-label-text-color);
-  --m3e-text-button-focus-label-text-color: var(--md-comp-button-text-focused-label-text-color);
-  --m3e-text-button-pressed-label-text-color: var(--md-comp-button-text-pressed-label-text-color);
-  --m3e-text-button-hover-state-layer-color: var(--md-comp-button-text-hovered-state-layer-color);
-  --m3e-text-button-focus-state-layer-color: var(--md-comp-button-text-focused-state-layer-color);
-  --m3e-text-button-pressed-state-layer-color: var(--md-comp-button-text-pressed-state-layer-color);
-}
-
 .md-button__loading-indicator {
   --md-comp-loading-indicator-active-indicator-color: currentColor;
 }
