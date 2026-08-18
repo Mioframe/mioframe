@@ -36,7 +36,7 @@ export const getSentryPlugins = ({
           project: 'mioframe',
           authToken,
           telemetry: false,
-          ...(release ? { release: { name: release } } : {}),
+          ...(release ? { release: { name: release, inject: false } } : {}),
           sourcemaps: {
             // Delete uploaded .map files from the output directory so they are
             // not served publicly. Matches app and worker source maps.
