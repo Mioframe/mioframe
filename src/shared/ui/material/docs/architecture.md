@@ -81,9 +81,11 @@ The implementation is proven before application consumers are inspected for firs
 
 Contract workers write new owned artifacts only after their completion checks pass. A blocked worker must not leave a new partial contract file.
 
-Repository artifacts are durable completed-stage results. A fresh invocation does not rerun a compatible completed owner solely because previous chat context is unavailable.
+Repository artifacts are durable completed-stage results. A fresh invocation does not rerun a compatible completed current-workflow owner solely because previous chat context is unavailable.
 
-An owner is reopened only when current repository state produces a mechanical compatibility route or an exact semantic correction marker names that owner/finding. If a semantic correction run is interrupted, the marker remains required on resume. If current stage cannot be determined mechanically or by the marker, the coding workflow stops at `needs-architect` rather than rebuilding everything.
+An owner is normally reopened only when current repository state produces a mechanical compatibility route or an exact semantic correction marker names that owner/finding. Legacy staged families have one narrow transition rule: because the previous workflow could leave an old demand-scoped `tokens.css` but never created `BEHAVIOR.md`, current token derivation is repeated when necessary until the current token→behavior sequence reaches `BEHAVIOR.md`. An interruption between those two owners may therefore cause one bounded token re-derivation; no persistent completion marker or workflow-history state is added for that edge case.
+
+If a semantic correction run is interrupted, its marker remains required on resume. If current state cannot be resolved by the normal routes plus the explicit legacy transition, the coding workflow stops at `needs-architect` rather than rebuilding everything.
 
 An interrupted implementation resumes within the implementation owner from current runtime/proof and does not reopen contracts without an actual route.
 
