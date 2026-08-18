@@ -79,7 +79,7 @@ Public Material types remain renderer-independent. Exact renderer drift should f
 
 ## Tokens
 
-Public token names/defaults are defined by family `tokens.css` from Material 3 MCP. m3e variables remain private implementation inputs.
+Public token names/defaults and tokenized visual values are defined by family `tokens.css` from Material 3 MCP. m3e variables remain private implementation inputs.
 
 The cascade contract is:
 
@@ -117,9 +117,11 @@ Do not mirror all m3e variables or copy renderer defaults for completeness. A pu
 
 ## Geometry, appearance and motion
 
-When `BEHAVIOR.md` specifies fixed observable geometry, browser proof must measure the public rendered boundary numerically. A screenshot alone is not a geometry oracle.
+Tokenized appearance and geometry are owned by `tokens.css`, not repeated in `BEHAVIOR.md`. Proof of a token default or override must exercise the public token and assert the rendered result at the lowest faithful level; numeric geometry uses browser measurement when a screenshot is not a reliable oracle.
 
-Renderer-owned appearance and motion require faithful browser/visual evidence where the behavior contract depends on them. Do not add host overrides that fight renderer-owned transient timing or geometry merely to match a screenshot.
+`BEHAVIOR.md` may still define layout relationships or exact intrinsic constraints that have no current component-token representation. Prove those directly from the public rendered boundary.
+
+Renderer-owned appearance and motion require faithful browser/visual evidence where the contracts depend on them. Do not add host overrides that fight renderer-owned transient timing or geometry merely to match a screenshot.
 
 ## Accessibility and native behavior
 
