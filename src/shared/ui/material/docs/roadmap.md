@@ -105,7 +105,7 @@ The current family state includes:
 - complete migration from legacy `MDExtendedFab` and removal of replaced legacy proof/implementation;
 - Repo Explorer Add action composed through the existing shared `MDSymbol` in the canonical Extended FAB `icon` slot, with no hand-written product SVG and no restored legacy `mdSymbol` prop.
 
-The previous migration correction is resolved, `.material-correction.json` is absent, and the clean architect review artifact has been removed. The branch is based directly on the merged #203 `develop` tree without changing the reviewed Extended FAB code/test contents. Exact-head CI against `develop` remains the final delivery gate and is not implied by semantic readiness.
+The previous migration correction is resolved, `.material-correction.json` is absent, and the clean architect review artifact has been removed. The branch is based directly on the merged #203 `develop` tree without changing the reviewed Extended FAB code/test contents. Exact-head CI for PR #207 against `develop` remains the final delivery gate and is not implied by semantic readiness.
 
 ## Other known state
 
