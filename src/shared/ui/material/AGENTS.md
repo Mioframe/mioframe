@@ -79,6 +79,8 @@ Controlled renderer workarounds follow `docs/component-adapter.md` and `docs/m3e
 - the production default remains system-following unless a separate product requirement changes it;
 - Storybook may request deterministic light/dark inspection only through the foundation-owned mode seam and must not own duplicate token values;
 - each family owns only its selected `--md-comp-<family>-*` tokens;
+- each selected public `--md-comp-*` token has one family-owned default declared on `:root` in that family's `tokens.css`; component/local selectors may provide contextual overrides but must not redeclare the family default;
+- private renderer bridges consume the public token from family implementation CSS and must not make correctness depend on selector specificity, `!important`, inline token wiring, or stylesheet order;
 - `docs/token-api.md` lists supported public tokens;
 - `--m3e-*` and `--md-private-*` remain private;
 - `--app-*` remains outside Material.
