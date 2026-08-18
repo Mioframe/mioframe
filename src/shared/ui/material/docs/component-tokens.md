@@ -88,19 +88,58 @@ components/button/ARCHITECTURE.md
   → selected Button runtime tokens and complete state/part trace
 
 components/button/tokens.css
-  → executable selected --md-comp-button-* declarations
+  → executable selected --md-comp-button-* names and family defaults
+
+components/button/MDButton.vue CSS
   → private mapping to documented --m3e-* inputs
 ```
 
 A family runtime must not:
 
-- define another family’s tokens;
+- define another family’s defaults;
 - expose the complete design catalogue as supported CSS;
 - mirror all renderer variables;
 - use a global component-token file as a second owner;
 - expose renderer token names to consumers.
 
 A parent uses a dependency’s public props, slots, inherited color, or supported official tokens. It must not set dependency-private renderer inputs.
+
+### Cascade and contextual composition
+
+Each selected public `--md-comp-*` token has exactly one family-owned Material default. That default is declared on `:root` in the owning family `tokens.css`.
+
+```css
+/* components/loadingIndicator/tokens.css */
+:root {
+  --md-comp-loading-indicator-active-indicator-color: var(--md-sys-color-primary);
+}
+```
+
+The component implementation consumes the public token through its private renderer bridge without redeclaring the public default:
+
+```css
+.md-loading-indicator {
+  --m3e-loading-indicator-active-indicator-color: var(
+    --md-comp-loading-indicator-active-indicator-color
+  );
+}
+```
+
+A composer or consumer may intentionally override a supported dependency token closer to a nested instance:
+
+```css
+.md-button__loading-indicator {
+  --md-comp-loading-indicator-active-indicator-color: currentColor;
+}
+```
+
+The nested component inherits that contextual value. Removing the contextual declaration restores the owning family’s `:root` default.
+
+Do not redeclare a family default on `.md-<component>` or another local component selector. A host-level default can shadow inherited contextual overrides and make the result depend on selector specificity or stylesheet order.
+
+Do not repair composition with doubled selectors, specificity escalation, `!important`, inline Vue token wiring, private cross-family renderer variables, or bundle/source-order assumptions.
+
+`tokens.css` is a public token-contract stylesheet and must be loaded unscoped when it contains `:root` declarations. Private renderer bridges remain in the owning family implementation CSS or another family-local private stylesheet.
 
 ## Effect of using m3e
 
@@ -167,8 +206,9 @@ Do not add tokens because adjacent renderer inputs exist. Adjacent official toke
 ```text
 exact official path in DESIGN.md
   → selected public token in ARCHITECTURE.md
-  → canonical runtime declaration
-  → documented renderer input
+  → family-owned :root default
+  → optional inherited/contextual override
+  → owner-local private renderer input
   → renderer fallback
   → rendered consumer result
 ```
@@ -176,7 +216,7 @@ exact official path in DESIGN.md
 For every selected token:
 
 - preserve official family/variant/state/part/property semantics and order;
-- keep one canonical base declaration owner;
+- keep one canonical family default owner;
 - prefer direct system-role consumption when correct;
 - keep mappings inside the owning family;
 - prefer documented renderer inputs;
@@ -217,14 +257,17 @@ Verify both official completeness and selected runtime correctness:
 - `DESIGN.md` contains the complete official catalogue;
 - `ARCHITECTURE.md` selects exact official paths and contains complete state/part/input/fallback traces;
 - public names derive from official paths;
-- canonical runtime declarations exist;
+- every selected public component token has one family-owned `:root` default;
+- component/local selectors do not redeclare family defaults;
 - `token-api.md` matches declarations and theme overrides;
 - CSS grammar works for every selected consumer;
 - family mappings use documented inputs or gated workarounds;
+- contextual composition proof covers both inherited override and restoration of the family default;
 - browser proof checks computed rendered results in every selected state;
 - custom-property values, host state, source mapping, or screenshots alone are insufficient;
 - no unconsumed public token is included for symmetry;
 - no `--m3e-*` leaks outside Material;
-- no duplicate public owner remains.
+- no duplicate public owner remains;
+- correctness does not depend on specificity escalation or stylesheet order.
 
 Do not require one runtime test per official or renderer token. Runtime proof is limited to architecture-selected states and parts; complete official enumeration belongs to `DESIGN.md`.
