@@ -58,12 +58,12 @@ Their presence means the family is still in legacy transition until migration re
 The old workflow did not create `BEHAVIOR.md`. Therefore, while legacy staged artifacts remain:
 
 - an existing `tokens.css` is not by itself proof of a completed current token contract;
-- if `contract.ts` exists but `BEHAVIOR.md` does not and no active semantic correction routes elsewhere, run the current `token-contract` worker and then the current `behavior-contract` worker in fresh contexts before returning to ordinary resolver-driven resume;
+- an `api-contract` resolver/marker route still wins and must be resolved before token or behavior work;
+- when `contract.ts` exists but `BEHAVIOR.md` does not, current token derivation must occur before current behavior derivation unless an active `behavior-contract` semantic marker proves that a previous behavior attempt was already reached;
+- an active `token-contract` marker is resolved by the token worker before behavior; later implementation/migration markers do not bypass missing earlier contracts;
 - do not insert a persistent completion marker merely to remember the token→behavior boundary;
 - if execution is interrupted after token completion but before `BEHAVIOR.md` is written, the next invocation may repeat the token-contract derivation once before continuing to behavior. This bounded repeat is preferable to a workflow-history database or another artifact identity protocol;
 - once current `BEHAVIOR.md` exists, ordinary resolver/marker routing resumes. Its presence is the durable downstream evidence that the current token→behavior definition sequence has crossed the legacy ambiguity boundary.
-
-A semantic correction marker still takes precedence by normal owner order. In particular, a persisted behavior correction from a previous behavior attempt must not be displaced by the legacy token repeat rule.
 
 Legacy staged `REVIEW.md` files use `Verdict: compliant` and are historical evidence, not active current `project-review` state. While legacy staged artifacts remain:
 
@@ -83,7 +83,7 @@ Migration removes replaced legacy staged artifacts only after the current family
    ```
    Treat `route` as routing, not failed verification. If the resolver cannot execute or returns invalid output, return that exact failure; do not replace it with an LLM compatibility audit.
 4. Choose the earliest owner between the semantic marker and resolver route, except for the explicit legacy transition below.
-5. Legacy transition exception: when legacy staged artifacts remain, `contract.ts` exists, `BEHAVIOR.md` is absent, and no semantic marker selects an earlier or already-persisted downstream correction, run `material-component-token-contract` in a fresh context even if the existing legacy `tokens.css` is mechanically compatible. If it completes without a return/blocker, run `material-component-behavior-contract` next in another fresh context. Do not rerun the resolver between these two legacy-transition owners; rerun it after behavior completes. If the session stops between them, a later invocation safely repeats token-contract as described above.
+5. Legacy transition exception: when legacy staged artifacts remain, `contract.ts` exists, `BEHAVIOR.md` is absent, neither resolver nor marker selects `api-contract`, and no active marker selects `behavior-contract`, run `material-component-token-contract` in a fresh context even if the existing legacy `tokens.css` is mechanically compatible. If an active marker selects `token-contract`, pass that exact correction to the token worker. If token completes without a return/blocker, clear any resolved token marker and run `material-component-behavior-contract` next in another fresh context. Do not rerun the resolver between these two legacy-transition owners; rerun it after behavior completes. If the session stops between them, a later invocation safely repeats token-contract as described above. If an active marker selects `behavior-contract`, skip this exception and run that behavior correction directly. Later implementation/migration markers do not override this earlier incomplete contract transition.
 6. Outside that exception, run only the selected owner in a fresh context. Pass only family, owner, exact finding/scope, and relevant operator observations.
 7. If a worker returns a semantic correction, persist or replace the marker before routing elsewhere. If it resolves the active semantic correction without replacement, clear the marker.
 8. Rerun the resolver after every completed owner except the intentional token→behavior legacy-transition pair above. Do not pre-plan any other correction chain and do not rerun unaffected owners.
