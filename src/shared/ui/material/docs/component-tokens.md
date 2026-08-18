@@ -59,6 +59,12 @@ The nested component inherits that value. Removing the contextual declaration re
 
 Never repair token composition with specificity escalation, `!important`, inline Vue token wiring, or bundle/source-order assumptions.
 
+### Unscoped contract loading
+
+Because family defaults intentionally target document `:root`, the owning `tokens.css` must be loaded as **unscoped/global CSS**. Do not import the token contract through a Vue `<style scoped>` block or another transform that scopes its selectors to one component instance.
+
+Keep local component styling and private renderer bridges scoped when useful, but load the public family token contract separately through an existing unscoped CSS import mechanism. Do not use Vue `:global()` wrappers inside the token catalogue as a substitute; `tokens.css` remains renderer/framework-independent CSS ownership.
+
 ## Theme model
 
 Material reference/system tokens (`--md-ref-*`, `--md-sys-*`) are document-wide theme inputs owned by the Material foundation/theme layer. Future user theme settings may replace those root-level assignments globally.
@@ -158,7 +164,7 @@ nested component inherits override
 renderer consumes it
 ```
 
-The proof must also show that removing the contextual override restores the family default. This catches host-level redeclarations, specificity conflicts, and accidental bundle-order dependence.
+The proof must also show that removing the contextual override restores the family default. This catches host-level redeclarations, specificity conflicts, accidental scoped-contract loading, and bundle-order dependence.
 
 ## Architecture migration
 
@@ -166,10 +172,12 @@ Existing converted families that declare their own `--md-comp-*` defaults on `.m
 
 When the public token names, values, aliases, and Material semantics are already known and unchanged, moving those existing declarations from the family host selector to `:root` is a **mechanical repository architecture migration**, not a reason to rerun Material3 MCP derivation for every family.
 
-Perform that selector-only transition as one scoped repository correction:
+Perform that transition as one scoped repository correction:
 
 - move unchanged family defaults to `:root` in their existing owning `tokens.css`;
-- preserve private renderer bridges and intentional contextual overrides;
+- ensure each family `tokens.css` is loaded unscoped/global so its `:root` contract is effective;
+- move unchanged private renderer bridges/workarounds out of `tokens.css` into the owning family implementation CSS/private stylesheet when encountered;
+- preserve intentional contextual overrides and exact existing renderer mappings/workaround values;
 - update repository compatibility verification and its tests;
 - add/retain observable composition override/fallback proof;
 - do not create compatibility support for the old host-default model.
@@ -185,6 +193,7 @@ Repository mechanical verification must enforce at least:
 - family `tokens.css` contains no private `--m3e-*` tokens;
 - family-owned `--md-comp-*` defaults are declared on `:root`, not a component/local selector;
 - the same public default is not declared by more than one family `tokens.css`;
+- family token contracts are not loaded through scoped component CSS;
 - runtime TypeScript/Vue does not become a token catalogue/mapping engine.
 
 Observable verification remains proportional to risk: rendered colors, typography, shape, dimensions, state values, composition inheritance/fallback, and global theme resolution use the lowest faithful browser/visual proof required by the contract.
