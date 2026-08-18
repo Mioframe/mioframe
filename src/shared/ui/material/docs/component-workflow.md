@@ -2,15 +2,18 @@
 
 ## Decision
 
-One canonical Material family is delivered through three definition contracts, one standalone implementation stage, and migration only when product consumers require it:
+One canonical Material family is delivered through three ordered definition contracts, one standalone implementation stage, and migration only when product consumers require it:
 
 ```text
 API CONTRACT
      ↓
-TOKEN CONTRACT ─┐
-                ├─→ CONTRACT READY → IMPLEMENTATION → MIGRATION IF REQUIRED
-BEHAVIOR CONTRACT┘                                      ↓
-                                                   ARCHITECT REVIEW / CI
+TOKEN CONTRACT
+     ↓
+BEHAVIOR CONTRACT
+     ↓
+CONTRACT READY → IMPLEMENTATION → MIGRATION IF REQUIRED
+                                      ↓
+                                 ARCHITECT REVIEW / CI
 ```
 
 The normal operator command is:
@@ -25,13 +28,13 @@ material-component <name>
 
 `contract.ts` owns renderer-independent Vue structure: public configuration, content roles, values, events, and defaults.
 
-`tokens.css` owns the current Material component-token contract. Detailed token cascade/ownership is defined by `component-tokens.md`.
+`tokens.css` owns the current Material component-token contract and is the sole owner of tokenized visual values. Detailed token cascade/ownership is defined by `component-tokens.md`.
 
-`BEHAVIOR.md` owns observable behavior, accessibility, geometry, states, and motion.
+`BEHAVIOR.md` owns remaining observable behavior: anatomy/content relationships, interaction, keyboard, accessibility, state relationships, layout relationships/non-tokenized constraints, motion, and Material-unspecified boundaries. It must not repeat visual values already represented by `tokens.css`.
 
-API runs first because token and behavior workers need one shared structural vocabulary. Token and behavior remain independent semantic owners and derive their own facts from the repository-configured Material3 MCP. They may use `contract.ts` as structural scope, not as token or behavior authority.
+The order is intentional. API establishes structural scope first. Token then establishes the visual-value contract. Behavior runs last and may read completed `tokens.css` only as an exclusion boundary so one visual fact never gets two normative owners. Behavior still derives its own facts from the repository-configured Material3 MCP; token names/defaults are not behavior authority.
 
-This prevents renderer details, legacy code, and current Mioframe demand from shaping the canonical Material surface.
+This prevents renderer details, legacy code, current Mioframe demand, and duplicated visual specifications from shaping the canonical Material surface.
 
 ## Standalone implementation before consumers
 
