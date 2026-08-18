@@ -103,11 +103,13 @@ API runs first. Token and behavior may use completed `contract.ts` only as the s
 
 ## Verification ownership
 
-Coding workers run their required focused verifier-managed checks themselves.
+Follow the root rules and `.agents/skills/verification/SKILL.md`; do not define a second Material-specific verification protocol.
 
-If sandbox or Podman restrictions block canonical `pnpm verify ...`, follow the `verification` skill and use the runtime's narrowly scoped command approval/escalation path. Do not ask the operator to run verifier commands. If that mechanism itself is unavailable or fails, return `blocked` with the exact execution-environment failure.
+Focused `pnpm verify --only ...` commands are optional implementation/diagnostic feedback. Before a coding worker hands edited repository state back, it must satisfy the repository-required final automatic `pnpm verify` gate unless the `verification` skill permits an exact partial/environment-blocked result.
 
-Do not use broad local verification merely to duplicate architect-owned exact-head CI.
+If sandbox or Podman restrictions block canonical `pnpm verify ...`, use the `verification` skill's narrowly scoped command approval/escalation path. Do not ask the operator to run verifier commands.
+
+Exact-head GitHub CI remains architect-owned and does not replace required local proof or the coding-agent handoff gate.
 
 ## Completion
 
@@ -136,7 +138,7 @@ standalone implementation: complete | blocked | unchanged | not-run
 migration: complete | not-required | blocked | unchanged | not-run
 pending semantic correction: none | <owner and scope>
 operator observations: none | <status>
-focused verification: <summary>
+local verification: <final automatic pnpm verify result plus any useful focused feedback>
 remaining blocker: none | active architect review requires re-review/routing | <exact blocker>
 next action: hand to architect | rerun material-component <name> | <genuine external action>
 ```
