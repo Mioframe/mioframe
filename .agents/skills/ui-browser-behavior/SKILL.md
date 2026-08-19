@@ -55,7 +55,7 @@ Always re-read `docs/testing/migration-plan.md` before choosing placement; it is
 6. Wait for observable readiness/outcomes.
 7. Assert the exact public result, not a proxy that merely correlates with it.
 8. Use owner-local discovery for ordinary reusable UI; use central proof only for a demonstrated cross-owner/infrastructure contract.
-9. Preserve the current browser project matrix unless a dedicated audited project-applicability migration changes it.
+9. Preserve each application E2E spec's current persistent project applicability unless a dedicated audited reclassification changes it.
 10. Run focused verifier-managed proof and return to the top-level task. This skill does not run a separate final gate.
 
 ## Scenario selection
@@ -144,7 +144,9 @@ For application E2E, source-to-product-scenario impact remains explicit because 
 
 Source impact chooses scenarios; project applicability belongs to persistent test metadata.
 
-Current selected application E2E scenarios retain the existing desktop/mobile matrix until a separate migration audits every scenario and proves narrower execution preserves mobile-risk coverage.
+Application E2E uses persistent spec-level project applicability from `scripts/lib/e2eProjectApplicability.ts`. Each root application spec is classified as `desktop`, `mobile`, or `both`; source-impact selection does not change that classification. Reclassify a spec only through a dedicated audit of the scenario's observable platform, input, viewport, lifecycle, and composition requirements, preserving explicit mobile-risk coverage.
+
+Missing or stale applicability metadata is verifier-invalid. Direct Playwright collection must not silently omit an unclassified root application spec; the fail-safe behavior is to leave it eligible for both projects.
 
 Reusable responsive UI normally uses focused Storybook viewports rather than duplicating complete product scenarios.
 
@@ -168,7 +170,7 @@ Use readable existing paths accepted by the current verifier. Preserve applicabl
 - architectural boundary violations to simplify setup;
 - duplicate registry metadata for a relation already expressed by supported local ownership;
 - source mappings overloaded with spec grouping;
-- reducing desktop/mobile coverage without the dedicated audited migration;
+- changing application-E2E desktop/mobile applicability without a dedicated audited reclassification;
 - declaration-only CSS assertions presented as rendered proof;
 - private renderer DOM or animation parameters;
 - proxy assertions presented as proof of a different contract;
