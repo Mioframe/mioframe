@@ -50,17 +50,17 @@ When a remembered local directory can no longer be read, Mioframe must distingui
 
 ## Ownership
 
-| Owner                                  | Responsibility                                                                                                                |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error                                                      |
-| `src/shared/lib/fileSystem`            | Canonical Mioframe marker inspection                                                                                          |
-| `src/shared/service/fileSystem`        | Persisted handle replacement, provider remount, access-request cleanup, narrow service-internal lifecycle registration       |
-| `src/shared/service/repositories`      | Repo cache/write settlement; confirmed-replacement reservation and gating of new Repo cache creation under a reserved mount   |
-| `src/entities/mountedDirectories`      | Narrow UI-facing reconnect/replacement mutations                                                                              |
-| `src/features/localDirectoryRecovery`  | Picker, marker inspection, confirmation, pending/result/error UX                                                              |
-| `src/widgets/RepositoryExplorerWidget` | Recovery precedence/rendering only                                                                                            |
-| page/pane                              | No change                                                                                                                     |
-| shared UI                              | No API/primitive change                                                                                                       |
+| Owner                                  | Responsibility                                                                                                              |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error                                                    |
+| `src/shared/lib/fileSystem`            | Canonical Mioframe marker inspection                                                                                        |
+| `src/shared/service/fileSystem`        | Persisted handle replacement, provider remount, access-request cleanup, narrow service-internal lifecycle registration      |
+| `src/shared/service/repositories`      | Repo cache/write settlement; confirmed-replacement reservation and gating of new Repo cache creation under a reserved mount |
+| `src/entities/mountedDirectories`      | Narrow UI-facing reconnect/replacement mutations                                                                            |
+| `src/features/localDirectoryRecovery`  | Picker, marker inspection, confirmation, pending/result/error UX                                                            |
+| `src/widgets/RepositoryExplorerWidget` | Recovery precedence/rendering only                                                                                          |
+| page/pane                              | No change                                                                                                                   |
+| shared UI                              | No API/primitive change                                                                                                     |
 
 `fileSystem` must not import `repositories`. Repositories register their lifecycle behavior with fileSystem inside the background service runtime. The registration capability is not a worker/client API.
 
@@ -199,26 +199,26 @@ None. Reuse existing dialog, `MDButton`, and `MDEmptyState` APIs.
 
 ## Acceptance matrix
 
-| Scenario                                                          | Required result                                                              |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| permission `prompt`/`denied`                                      | existing permission recovery                                                 |
-| granted root enumeration failure                                  | unavailable-folder recovery                                                  |
-| picker cancelled                                                  | no mutation                                                                  |
-| same entry, no cached writes                                      | reconnected                                                                  |
-| same entry with queued/cached writes, settlement succeeds         | reconnected; writes flushed through new handle                               |
-| same entry, settlement not fully flushed                          | provider remains reconnected; explicit write-recovery warning/result         |
-| locator differs/unverifiable                                      | `confirmationRequired`; zero mutation                                        |
-| fallback candidate lacks marker                                   | reject; zero mutation                                                        |
-| confirmation cancelled                                            | zero mutation                                                                |
-| confirmed fallback with repository already cached                 | `repositoryStateActive`; zero mutation                                       |
-| confirmed fallback with clean cache                               | exclusive lease acquired before persistence                                  |
-| repo access starts during confirmed replacement                   | no Repo cached during lease; access resumes only after release                |
-| confirmed replacement succeeds                                   | persisted handle/provider replaced under same name; lease released           |
-| confirmed replacement persistence fails                          | old runtime provider remains mounted; lease released                          |
-| remembered record missing                                         | `missingRecord`; no new mount                                                 |
-| stale feature recovery target                                     | no replacement/state overwrite                                               |
-| nested child failure                                              | original semantics                                                           |
-| public worker file-system client                                  | no repository lifecycle registration/lease APIs                              |
+| Scenario                                                  | Required result                                                      |
+| --------------------------------------------------------- | -------------------------------------------------------------------- |
+| permission `prompt`/`denied`                              | existing permission recovery                                         |
+| granted root enumeration failure                          | unavailable-folder recovery                                          |
+| picker cancelled                                          | no mutation                                                          |
+| same entry, no cached writes                              | reconnected                                                          |
+| same entry with queued/cached writes, settlement succeeds | reconnected; writes flushed through new handle                       |
+| same entry, settlement not fully flushed                  | provider remains reconnected; explicit write-recovery warning/result |
+| locator differs/unverifiable                              | `confirmationRequired`; zero mutation                                |
+| fallback candidate lacks marker                           | reject; zero mutation                                                |
+| confirmation cancelled                                    | zero mutation                                                        |
+| confirmed fallback with repository already cached         | `repositoryStateActive`; zero mutation                               |
+| confirmed fallback with clean cache                       | exclusive lease acquired before persistence                          |
+| repo access starts during confirmed replacement           | no Repo cached during lease; access resumes only after release       |
+| confirmed replacement succeeds                            | persisted handle/provider replaced under same name; lease released   |
+| confirmed replacement persistence fails                   | old runtime provider remains mounted; lease released                 |
+| remembered record missing                                 | `missingRecord`; no new mount                                        |
+| stale feature recovery target                             | no replacement/state overwrite                                       |
+| nested child failure                                      | original semantics                                                   |
+| public worker file-system client                          | no repository lifecycle registration/lease APIs                      |
 
 ## Risk matrix
 
