@@ -20,12 +20,11 @@ const defaultDeps = {
  * `dev` stays an unguarded manual server; `build` goes through the local safety policy.
  *
  * When `STORYBOOK_STATIC_SKIP_BUILD=1` is set for `build` mode, this reuses an existing
- * Storybook static build instead of recompiling. `scripts/verify.ts` sets this for the
- * `storybook-behavior`/`visual` checks only when an earlier `storybook-build` check already
- * produced a fresh static build in the same run, so a single `pnpm verify` run does not
- * compile Storybook once per browser lane that needs it. Standalone invocations (e.g.
- * `pnpm storybook:build`, `pnpm verify --only storybook-behavior`) never set this flag and
- * always build Storybook themselves.
+ * Storybook static build instead of recompiling. Verification orchestration sets this only
+ * after the same verification scope already has a complete static artifact: automatic
+ * local `pnpm verify` uses its prior successful `storybook-build` result, while GitHub CI
+ * downloads the run-scoped producer artifact before enabling reuse for a Storybook browser
+ * lane. Standalone invocations do not opt into reuse and build Storybook themselves.
  * @param [mode] Storybook mode.
  * @param [deps] Test seams for guarded execution and result handling.
  * @param [env] Process environment, for the reuse-if-prebuilt test seam.
