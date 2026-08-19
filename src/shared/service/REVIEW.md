@@ -8,11 +8,11 @@ Verdict: blocked
 
 ## Blockers
 
-### B1 — Locator-different recovery has crossed service ownership because it live-rebinds the current runtime
+### B1 — Locator-different recovery has crossed service ownership because it live-rebinds the existing VFS path
 
 Owner: `src/shared/service`
 
-Problem: the current design treats a user-confirmed locator-different folder as a live VFS replacement in the current runtime. That forces fileSystem to own repository-specific states and callbacks (`ConfirmedReplacementLeaseProvider`, `repositoryStateActive`, `confirmedReplacementLeaseUnavailable`), forces repositories to understand a file-system/user-confirmed replacement scenario, and adds worker-surface filtering solely to hide that internal coupling. The lease only gates Repo creation; a repository operation started before/during replacement is deliberately resumed after release against the new physical storage, so the old operation intent can cross the storage-identity boundary.
+Problem: the current design treats a user-confirmed locator-different folder as a replacement backing store for the same live VFS path. That forces fileSystem to own repository-specific states and callbacks (`ConfirmedReplacementLeaseProvider`, `repositoryStateActive`, `confirmedReplacementLeaseUnavailable`), forces repositories to understand a file-system/user-confirmed replacement scenario, and adds worker-surface filtering solely to hide that internal coupling. The lease only gates Repo creation; a repository operation started before/during replacement is deliberately resumed after release against the new physical storage, so old operation intent crosses the storage-identity boundary.
 
 Evidence:
 
@@ -20,8 +20,9 @@ Evidence:
 - [File-system public contracts](fileSystem/fileSystemContracts.ts) — a file-system replacement result exposes `repositoryStateActive` and prescribes a reload/retry user workflow.
 - [File-system invariant error](fileSystem/fileSystemServiceErrorCode.ts) — fileSystem has a repository-lease availability invariant solely for this flow.
 - [Repositories service](repositories/repositoriesService.ts) — generic Repo lookup/cache creation contains `confirmed-replacement` reservation behavior and waits before retrying against the post-release mount.
-- [Worker setup](setupMainService.ts) — a new negative projection exists to hide the lifecycle registration APIs introduced/used by this cross-service design.
-- [Cross-service proof](fileSystemRepositoriesReplacement.integration.test.ts) — a repository operation started while replacement is active is expected to resume against the new physical mount after lease release.
+- [Worker setup](setupMainService.ts) — a new negative projection exists to hide lifecycle registration APIs introduced by this cross-service design.
+- [Cross-service proof](fileSystemRepositoriesReplacement.integration.test.ts) — repository access started while replacement is active is expected to resume against the new physical mount after lease release.
+- [Existing file-system behavior](fileSystem/useFileSystemService.ts) — `addDeviceDirectory()` already treats mounted name/path as replaceable presentation state and can move a proven-same handle to a new mounted name; the old mounted name is not a persistent domain identity that justifies rebinding different physical storage beneath it.
 
 Basis:
 
@@ -31,11 +32,11 @@ Basis:
 - [Architecture handoff workflow](../../../.agents/skills/architect-handoff/SKILL.md) — repeated rounds adding protocols/conditions or showing mixed responsibilities require stopping patches and simplifying the architecture.
 - [CRDT/storage workflow](../../../.agents/skills/crdt-storage/SKILL.md) — provider/runtime ownership and repository/cache lifecycle must remain explicit and separate.
 
-Risk: the current solution couples two service owners around one feature scenario, keeps adding synchronization protocol, and still cannot establish that every path-keyed operation belongs to the post-replacement storage generation. A stale operation may continue after the physical storage behind the same VFS path changes.
+Risk: the current solution couples two service owners around one feature scenario, keeps adding synchronization protocol, and still cannot establish that every path-keyed operation belongs to the post-replacement storage generation. A stale operation can continue after the physical storage behind the same path changes.
 
-Required final state: redo the handoff around the simpler boundary: `isSameEntry() === true` may remain a live reconnect because physical identity is proven; locator-different/unverifiable user-confirmed replacement must not live-remount a different physical directory into the current runtime. Persist the selected replacement as the next-runtime location and require a clean restart/reload boundary before it becomes the active provider. fileSystem owns that persisted-vs-runtime transition; repositories must not own or register a confirmed-replacement lease. Remove repository-specific replacement statuses/hooks/errors from the file-system contract and remove lease/reservation logic from repositories. Same-entry reconnect may continue to invoke the existing generic registered write-recovery handlers after the proven-identical remount.
+Required final state: `isSameEntry() === true` may remain a live reconnect under the existing mounted path because physical identity is proven. When identity is false/unverifiable and the user explicitly accepts the candidate, fileSystem must recover it under a **different mounted VFS identity/path**, never replace the backing store under the old live path. Persist the record transition atomically, unmount the unavailable old path, and mount the selected handle under a unique new mounted name/path; if the selected physical directory is already represented by another persisted mount, return an expected already-mounted outcome with zero mutation. Repositories must not own or register any confirmed-replacement lease/reservation and must not contain local-directory relocation logic. Remove repository-specific replacement statuses/hooks/errors and the PR-specific lease worker-surface workaround. Same-entry reconnect may continue to invoke the existing generic registered write-recovery handlers after the proven-identical remount.
 
-Verification: the revised handoff must prove that locator-different replacement changes persisted location without exposing the new physical storage to current-runtime Repo/DocHandle/path operations, and that a fresh service/runtime hydrates the replacement normally. Same-entry reconnect keeps deterministic queued-write settlement proof.
+Verification: prove that locator-different recovery never exposes the selected storage at the old VFS path, that old path-keyed Repo/DocHandle operations cannot reach the recovered storage, that the persisted record moves to a unique new mount path, and that an already-mounted candidate performs zero mutation. Same-entry reconnect keeps deterministic queued-write settlement proof.
 
 ### B2 — Same-entry repository settlement proof is not deterministic or effect-based
 
@@ -73,7 +74,7 @@ None.
 
 ## Items not required
 
-- Do not expand this PR into a general cleanup of every pre-existing file-system worker-client capability. If the revised architecture no longer needs the new lease-registration hiding workaround, remove that PR-specific machinery rather than broadening this bug fix into a service-API redesign.
+- Do not expand this PR into a general cleanup of every pre-existing file-system worker-client capability. Once the lease design is removed, remove its PR-specific worker projection machinery unless another current requirement independently needs it.
 
 ## Unresolved questions
 
