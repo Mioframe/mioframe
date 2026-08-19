@@ -223,7 +223,10 @@ export const LegacySurfaceColorOwnership: Story = {
   render: () => ({
     components: { MDButton, MDLoadingIndicator },
     template: `
-      <div>
+      <div
+        class="md"
+        style="--md-container-color: #fff8f7; --md-content-color: #b3261e;"
+      >
         <div
           data-testid="visual-md-button-legacy-surface"
           class="md visual-checker-backdrop"
@@ -242,9 +245,7 @@ export const LegacySurfaceColorOwnership: Story = {
             <MDButton label="Surface loading" color="text" loading />
           </div>
         </div>
-        <div class="md">
-          <MDLoadingIndicator label="Surface standalone loading" />
-        </div>
+        <MDLoadingIndicator label="Surface standalone loading" />
       </div>
     `,
   }),
