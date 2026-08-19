@@ -86,6 +86,7 @@ describe('isFullLaneE2EInfrastructurePath', () => {
     expect(isFullLaneE2EInfrastructurePath('scripts/playwrightContainer.ts')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('scripts/verify.ts')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('scripts/lib/e2eRisk.ts')).toBe(true);
+    expect(isFullLaneE2EInfrastructurePath('scripts/lib/e2eProjectApplicability.ts')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('pnpm-lock.yaml')).toBe(true);
     expect(isFullLaneE2EInfrastructurePath('tsconfig.app.json')).toBe(true);
   });

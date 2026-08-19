@@ -20,6 +20,7 @@ const FULL_LANE_E2E_INFRASTRUCTURE_EXACT_FILES = new Set([
   'scripts/e2eContainer.mjs',
   'scripts/e2eHost.mjs',
   'scripts/lib/e2eRisk.ts',
+  'scripts/lib/e2eProjectApplicability.ts',
   'scripts/playwrightContainer.ts',
   'scripts/verify.ts',
   'vite.config.ts',

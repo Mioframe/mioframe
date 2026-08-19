@@ -160,7 +160,7 @@ Follow the root rules and `.agents/skills/verification/SKILL.md`.
 
 Use focused `pnpm verify --only ...` commands only when useful as implementation/diagnostic feedback. Do not mechanically assemble a final checklist of focused lanes.
 
-Before returning edited implementation/proof as `complete`, run the repository-required final automatic `pnpm verify` without `--full`. If sandbox or Podman blocks it, use the verification skill's narrowly scoped command approval/escalation mechanism; do not ask the operator to run verifier commands. If the verification skill permits only a partial/environment-blocked result, do not claim a fully verified `complete` handoff.
+Before returning edited implementation/proof as `complete`, run the repository-required final automatic `pnpm verify` without `--full`. Verifier invocation and environment handling are owned exclusively by the verification skill; do not preflight verifier internals or ask the operator to run verifier commands. If the verification skill permits only a partial/environment-blocked result, do not claim a fully verified `complete` handoff.
 
 Implementation may return `complete` only when all four are true:
 
@@ -211,6 +211,6 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Using specificity escalation, `!important`, inline token wiring, or bundle/source order as token-cascade fixes.
 - Adding alias styling classes solely to attach public tokens.
 - Treating source CSS wiring or selector state as rendered proof.
-- Asking the operator to run verifier/Podman commands.
+- Asking the operator to run verifier commands.
 - Claiming `complete` with required proof unrun or failing.
 - Rewriting already-correct work on resume without an exact defect.

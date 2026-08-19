@@ -13,13 +13,15 @@ A skipped or empty local lane is not evidence that the proof type is unnecessary
 
 ## Execution environment
 
-Mioframe's canonical verifier entry points are `pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`. These repository-owned commands are the controlled verification boundary: they own verification scope, command coordination and locking, timeouts, resource limits, and the project-managed container path for browser checks.
+Mioframe's canonical verifier entry points are `pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`. Invoke these commands normally when required. They are the repository-owned verification boundary and own their execution environment and transitive tooling.
 
-Keep the coding-agent runtime's sandbox and permission system enabled. The verifier entry points are a narrow project-approved exception that may run outside the generic agent sandbox only through the runtime's own command-scoped mechanism: an existing allow/exclusion rule or an explicit per-command approval/escalation request. Repository instructions do not themselves disable or bypass runtime permission checks.
+Do not preflight verifier internals or infer that a verifier command is unavailable from generic sandbox capabilities, tool availability visible inside the current shell, or knowledge of how a child check is implemented. Attempt the canonical verifier command first.
 
-Do not broaden this exception to generic `pnpm`, `node`, shell interpreters, arbitrary package scripts, or unrestricted/full-access execution. If a persistent runtime rule is proposed, scope it to the verifier entry point needed for the workflow rather than a general executable prefix.
+Keep the coding-agent runtime's sandbox and permission system enabled. If the runtime itself rejects the verifier invocation, keep the command unchanged and use the runtime's normal command-scoped approval/escalation mechanism. Report an environment blocker only after an actual invocation still cannot run, using the exact visible failure.
 
-If sandbox restrictions prevent a verifier invocation from reaching its project-owned execution path, keep the command unchanged and use the runtime's normal narrowly scoped approval/escalation flow. Treat the sandbox block as an execution-environment failure, not as evidence that the verifier or tested contract failed. Do not bypass the verifier by substituting raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, build, visual, mutation, or other child commands.
+Never ask the operator to execute verifier commands, broaden approval to generic `pnpm`, `node`, shell interpreters or arbitrary package scripts, enable unrestricted/full-access execution, or replace a blocked verifier invocation with raw child commands.
+
+Do not diagnose repository or host-file corruption from sandbox-visible protected-path representations alone. Attribute a failure to the verifier only when verifier output or other direct evidence supports that conclusion.
 
 ## Local verification purpose
 
