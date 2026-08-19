@@ -288,21 +288,22 @@ focused and the full gate, and tag pushes never rerun the full gate:
     pipeline (`pnpm ci:autofix`) — see `Same-repository CI materialization`
     above;
   - `verification-static` runs format, oxlint, eslint, type-check, unit tests,
-    and mutation through verifier-managed focused lanes;
-  - `storybook-build` is the single Storybook static-build producer for
-    implementation verification. It runs the verifier-owned `storybook-build`
-    check when the existing Storybook build/behavior/visual plans require the
-    artifact, validates complete `index.html`/`iframe.html` output, and uploads
-    that deterministic output as a run-scoped artifact when present;
+    and mutation through verifier-managed focused lanes, then invokes
+    `pnpm verify --verbose --only storybook-build` with
+    `STORYBOOK_BUILD_CI_FALLBACK=1`. That narrow verifier-owned fallback performs
+    a real static Storybook build only when the ordinary build plan requires one
+    and neither Storybook browser lane will run; otherwise it skips inside the
+    already-provisioned static job. It produces no cross-job Storybook artifact;
   - `verification-browser (e2e)` remains an independent application E2E job
-    that depends only on `autofix` and never waits for the Storybook producer;
-  - Storybook behavior and visual remain independent parallel
-    `verification-browser (...)` jobs. They depend on the Storybook producer
-    and reuse its run-scoped static artifact when it was built, while retaining
-    their own verifier risk selection and proof ownership;
-  - aggregate `verification` succeeds only when static verification, the
-    Storybook producer, application E2E, and the complete Storybook browser
-    matrix succeed, and owns whether deployable PR source is valid;
+    that depends only on `autofix`;
+  - Storybook behavior and visual are independent, self-contained parallel
+    `verification-browser (...)` jobs that also depend only on `autofix`.
+    Each runs its own verifier-selected Playwright proof and builds the
+    Storybook it needs in that job; neither waits for nor consumes output from
+    `verification-static`;
+  - aggregate `verification` succeeds only when static verification,
+    application E2E, and the complete Storybook browser matrix succeed, and
+    owns whether deployable PR source is valid;
   - PR-only `release-version` enforces the exact label-selected version for an
     ordinary `develop` PR and the exact inherited direct-base version for an
     intermediate dependent PR;
@@ -829,11 +830,12 @@ same build script and base-path contract the release gate validates.
 - Locally: `.verify/logs/<label>.log`, one file per check
   (see `pnpm verify:status`).
 - In GitHub Actions: the failing step's inline log. For the ordinary `verify`
-  workflow, failed/cancelled static verification uploads `verify-static-logs`,
-  the Storybook producer uploads `verify-storybook-build-logs`, application
-  E2E uploads `verify-e2e-logs`, and failed/cancelled Storybook browser lanes
-  upload `verify-<lane>-logs`; the `release` workflow uploads `release-logs`
-  on failure or cancellation (Actions run page -> Summary -> Artifacts).
+  workflow, failed/cancelled static verification — including the Storybook
+  build fallback when it actually runs — uploads `verify-static-logs`,
+  application E2E uploads `verify-e2e-logs`, and failed/cancelled Storybook
+  browser lanes upload `verify-<lane>-logs`; the `release` workflow uploads
+  `release-logs` on failure or cancellation (Actions run page -> Summary ->
+  Artifacts).
 
 See `docs/release-checklist.md` for the step-by-step promotion/hotfix
 checklist.
