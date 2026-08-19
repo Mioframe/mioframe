@@ -387,6 +387,20 @@ Final executable S4-D state:
 - the existing `MDSwitch.browser.spec.ts` remains the owner of interaction, accessibility, presentation, and hit-area browser behavior and is unchanged by S4-D;
 - no production Switch file, story, resolver, registry, or explicit mapping changed; owner-local selection resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
 
+#### S4-E — MDButton visual ownership (complete)
+
+Authorized and completed group: canonical Material `button` family only.
+
+Final executable S4-E state:
+
+- canonical Material `MDButton` (`src/shared/ui/material/components/button/`) is the owner; the central Button visual spec moved from `tests/e2e/visual/shared-ui/md-button.spec.ts` to `src/shared/ui/material/components/button/MDButton.visual.spec.ts`, unchanged in test titles, story IDs, and screenshot assertions;
+- eleven baselines (`md-button-states-linux.png`, `md-button-size-geometry-linux.png`, `md-button-loading-linux.png`, `md-button-hover-linux.png`, `md-button-focus-linux.png`, `md-button-pointer-pressed-linux.png`, `md-button-space-pressed-linux.png`, `md-button-contextual-resting-linux.png`, `md-button-contextual-hover-linux.png`, `md-button-contextual-focus-linux.png`, `md-button-contextual-pressed-linux.png`) moved byte-for-byte unchanged to `src/shared/ui/material/components/button/MDButton.visual.spec.ts-snapshots/`;
+- `md-button-legacy-surface-linux.png` was intentionally reaccepted because the Button-owned `LegacySurfaceColorOwnership` screenshot target now excludes the standalone `MDLoadingIndicator` dependency while the same story retains that fixture outside the screenshot target for cascade browser proof; the remaining Button-owned pixels, including Button's own `Surface loading` composition, are unchanged;
+- Button's own internal Loading Indicator composition (`MDButton loading`) remains covered by `md-button-loading-linux.png`, unaffected by the legacy-surface fixture cleanup;
+- `src/shared/ui/material/components/button/MDButton.visual.spec.ts` imports the existing central `openStory` helper directly rather than duplicating it;
+- the replaced central Button visual spec and its snapshot directory are removed;
+- no new resolver mapping, registry, or Button-specific metadata was added; ownership resolves through the existing filesystem-derived `visualRisk` mechanism established in Stage S3.
+
 Later S4 groups remain pending. Stage S4 as a whole is not complete.
 
 Acceptance before removing legacy visual discovery:
