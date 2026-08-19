@@ -4,74 +4,103 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Remembered local-directory unavailable-root detection, two-stage reconnect/replacement, persisted/runtime provider replacement, repository lease/write-recovery coordination, public worker-service projection, feature result handling, deterministic multi-service proof, and required real-browser proof.
+- Complete PR #211 local-directory recovery path from provider detection through worker/service contracts, persisted/runtime mount state, repository lifecycle, entity/feature/widget composition, and required proof.
 
 ## Blockers
 
-### B1 — Confirmed-replacement lease is not exclusive across concurrent acquisitions
-
-Owner: `src/shared/service/repositories`
-
-Problem: `acquireConfirmedReplacementLease()` checks only `repoObservableCache` before writing `reservedMountReleaseGates.set(mountPath, gate)`. It does not reject or serialize an already-active reservation for the same mount. A second acquisition can therefore overwrite the first gate. When either holder releases, `delete(mountPath)` can remove the other holder's reservation and allow repository creation while the other locator-different replacement is still in progress.
-
-Evidence:
-
-- [Repositories service](repositories/repositoriesService.ts) — lease acquisition checks cached repositories but not `reservedMountReleaseGates` before replacing the map entry; `release()` deletes by mount path rather than by lease identity.
-- [Repositories service tests](repositories/repositoriesService.test.ts) — existing lease tests cover cached state, sibling isolation, and repository access gating, but not repeated/concurrent acquisition for one mount.
-
-Basis:
-
-- [Local directory access recovery architecture](../../../docs/local-directory-access-recovery.md) — the repository-owned lease is required to be exclusive for the complete locator-different persistence/remount transition and no Repo may be created under the reserved mount until release.
-- [CRDT and storage workflow](../../../.agents/skills/crdt-storage/SKILL.md) — lifecycle/cache changes must cover multiple independent callers when applicable and lifecycle-managed resources require explicit cleanup semantics.
-
-Risk: Two confirmed replacements for the same mount can both enter the critical section; one release can prematurely remove the other's exclusion and permit an old/new Repo to be created while the mount is still being rebound. This defeats the core data-safety invariant of the lease architecture.
-
-Required final state: At most one confirmed-replacement lease may own a mount at a time. An overlapping acquisition must not overwrite or release another holder's reservation, and repository creation must remain blocked until the actual active holder releases. The behavior of a second confirmed replacement must be explicit and must not reuse stale persisted-record state.
-
-Verification: Add deterministic repeated/concurrent-acquisition proof for the same mount, including release ordering, and prove repository access cannot resume until the owning lease is released.
-
-### B2 — Required cross-service proof is timing-dependent and does not fully prove queued-write settlement
+### B1 — Locator-different recovery has crossed service ownership because it live-rebinds the current runtime
 
 Owner: `src/shared/service`
 
-Problem: `fileSystemRepositoriesReplacement.integration.test.ts` now exercises the real service registration, but its mandatory lifecycle proof relies on arbitrary `setTimeout` waits (`20 ms` and `250 ms`) to infer when Automerge saves, lease acquisition, and deferred persistence have reached the desired state. The same-entry success case also does not assert that the deliberately queued document bytes were actually written through the rebound handle; it only asserts the returned reconnect status.
+Problem: the current design treats a user-confirmed locator-different folder as a live VFS replacement in the current runtime. That forces fileSystem to own repository-specific states and callbacks (`ConfirmedReplacementLeaseProvider`, `repositoryStateActive`, `confirmedReplacementLeaseUnavailable`), forces repositories to understand a file-system/user-confirmed replacement scenario, and adds worker-surface filtering solely to hide that internal coupling. The lease only gates Repo creation; a repository operation started before/during replacement is deliberately resumed after release against the new physical storage, so the old operation intent can cross the storage-identity boundary.
 
 Evidence:
 
-- [Cross-service integration proof](fileSystemRepositoriesReplacement.integration.test.ts) — `wait(250)` is used to let background saves settle and `wait(20)` is used to infer lease/persistence state before concurrency assertions.
-- [Testing architecture](../../../docs/testing/architecture.md) — required deterministic multi-module proof must use direct observable boundaries and explicitly forbids arbitrary sleeps that can hide timing defects.
+- [File-system service](fileSystem/useFileSystemService.ts) — fileSystem defines/registers a confirmed-replacement repository lease and holds it around persistence + provider remount.
+- [File-system public contracts](fileSystem/fileSystemContracts.ts) — a file-system replacement result exposes `repositoryStateActive` and prescribes a reload/retry user workflow.
+- [File-system invariant error](fileSystem/fileSystemServiceErrorCode.ts) — fileSystem has a repository-lease availability invariant solely for this flow.
+- [Repositories service](repositories/repositoriesService.ts) — generic Repo lookup/cache creation contains `confirmed-replacement` reservation behavior and waits before retrying against the post-release mount.
+- [Worker setup](setupMainService.ts) — a new negative projection exists to hide the lifecycle registration APIs introduced/used by this cross-service design.
+- [Cross-service proof](fileSystemRepositoriesReplacement.integration.test.ts) — a repository operation started while replacement is active is expected to resume against the new physical mount after lease release.
 
 Basis:
 
-- [Local directory access recovery architecture](../../../docs/local-directory-access-recovery.md) — requires deterministic same-entry proof that a real cached repository queued write is settled after remount, plus deterministic locator-different lease concurrency proof.
-- [Testing architecture](../../../docs/testing/architecture.md) — failures must remain visible; arbitrary sleeps are not valid synchronization, and deterministic multi-module outcomes should use the lowest faithful deterministic proof.
-- [Project review skill](../../../.agents/skills/project-review/SKILL.md) — missing or non-faithful mandatory proof is a blocker.
+- [Root architecture rules](../../../AGENTS.md) — keep behavior with the owner, prefer the minimum complete design, and return to architecture after repeated ownership drift/workaround growth.
+- [Service rules](AGENTS.md) — services expose infrastructural capabilities with narrow contracts; do not spread mixed responsibilities or wrapper infrastructure without a required invariant.
+- [File-system service rules](fileSystem/AGENTS.md) — fileSystem owns persisted handles, providers, VFS mounts and access recovery; Automerge pending/cache state remains repository ownership.
+- [Architecture handoff workflow](../../../.agents/skills/architect-handoff/SKILL.md) — repeated rounds adding protocols/conditions or showing mixed responsibilities require stopping patches and simplifying the architecture.
+- [CRDT/storage workflow](../../../.agents/skills/crdt-storage/SKILL.md) — provider/runtime ownership and repository/cache lifecycle must remain explicit and separate.
 
-Risk: The tests can pass or fail based on scheduler/runtime timing rather than the contract, and a regression where the queued save is not actually persisted through the rebound provider may still satisfy the current status-only assertion.
+Risk: the current solution couples two service owners around one feature scenario, keeps adding synchronization protocol, and still cannot establish that every path-keyed operation belongs to the post-replacement storage generation. A stale operation may continue after the physical storage behind the same VFS path changes.
 
-Required final state: Replace timing sleeps with explicit deferred barriers/observable events owned by the test, and assert the queued write reaches the rebound same-entry storage (or another direct storage effect proving the same contract). Lease-concurrency proof must know deterministically when persistence has started and when repository access is blocked/released.
+Required final state: redo the handoff around the simpler boundary: `isSameEntry() === true` may remain a live reconnect because physical identity is proven; locator-different/unverifiable user-confirmed replacement must not live-remount a different physical directory into the current runtime. Persist the selected replacement as the next-runtime location and require a clean restart/reload boundary before it becomes the active provider. fileSystem owns that persisted-vs-runtime transition; repositories must not own or register a confirmed-replacement lease. Remove repository-specific replacement statuses/hooks/errors from the file-system contract and remove lease/reservation logic from repositories. Same-entry reconnect may continue to invoke the existing generic registered write-recovery handlers after the proven-identical remount.
 
-Verification: The cross-service test must fail deterministically if real lifecycle registration is missing, if the queued write is not persisted after same-entry remount, if repository creation occurs during a locator-different lease, or if release does not unblock it.
+Verification: the revised handoff must prove that locator-different replacement changes persisted location without exposing the new physical storage to current-runtime Repo/DocHandle/path operations, and that a fresh service/runtime hydrates the replacement normally. Same-entry reconnect keeps deterministic queued-write settlement proof.
 
-### B3 — Final real Chrome/PWA recovery proof is still required
+### B2 — Confirmed replacement can persist one physical directory under two mounted names
+
+Owner: `src/shared/service/fileSystem`
+
+Problem: `addDeviceDirectory()` already enforces the persisted-handle uniqueness invariant by finding an existing `isSameEntry()` record and reusing/replacing it. `replaceRememberedDeviceDirectory()` does not check the selected handle against other persisted records before replacing the target record. Selecting a Mioframe directory already connected under another mounted name can therefore persist two records for the same physical directory.
+
+Evidence:
+
+- [File-system service](fileSystem/useFileSystemService.ts) — `addDeviceDirectory()` calls `findRecordByHandle()` while `replaceRememberedDeviceDirectory()` only finds the target by `spaceName` and writes the selected handle into that record.
+- [File-system service tests](fileSystem/useFileSystemService.test.ts) — existing add-directory proof explicitly verifies that the same handle is reused instead of duplicated; replacement proof contains no already-mounted-candidate scenario.
+
+Basis:
+
+- [File-system service rules](fileSystem/AGENTS.md) — persisted handles, provider registration and mount lifecycle are fileSystem-owned invariants.
+- [Root architecture rules](../../../AGENTS.md) — one source of truth and complete storage lifecycle behavior must be preserved; fixes must not introduce conflicting ownership/state.
+- [CRDT/storage workflow](../../../.agents/skills/crdt-storage/SKILL.md) — storage/provider state and cache lifecycle are data-safety state.
+
+Risk: two VFS paths can point at the same Automerge storage. They can then acquire independent repository instances/caches and write the same physical files through different logical mounts. The current replacement lease only protects the target path and does not protect an already-mounted sibling path.
+
+Required final state: the revised replacement contract must preserve the existing one-physical-directory/one-persisted-mount invariant. A candidate already represented by another mounted record is an expected rejection with zero mutation; do not silently merge, rename, disconnect, or alias the other mount.
+
+Verification: add focused service proof for an already-mounted selected handle and confirm persisted records/runtime mounts remain unchanged.
+
+### B3 — Same-entry repository settlement proof is not deterministic or effect-based
+
+Owner: `src/shared/service`
+
+Problem: the new cross-service integration test uses fixed `20 ms`/`250 ms` waits as lifecycle synchronization. In the same-entry success case it asserts the reconnect status but does not assert that the deliberately queued write actually reached storage through the rebound handle.
+
+Evidence:
+
+- [Cross-service integration proof](fileSystemRepositoriesReplacement.integration.test.ts) — fixed `wait()` calls are used to infer Automerge-save and replacement state; the success case has no direct assertion on the queued write's post-remount storage effect.
+
+Basis:
+
+- [Testing architecture](../../../docs/testing/architecture.md) — deterministic multi-module outcomes use direct observable boundaries; arbitrary sleeps are not valid proof and failures must remain visible.
+- [Local directory recovery handoff](../../../docs/local-directory-access-recovery.md) — same-entry reconnect requires proof that queued writes are settled after provider remount.
+- [Project review workflow](../../../.agents/skills/project-review/SKILL.md) — missing/non-faithful mandatory proof is a blocker.
+
+Risk: scheduler timing can determine test success, and a regression that reports `flushed` without actually persisting the queued change can remain green.
+
+Required final state: keep only the cross-service proof still required by the revised architecture and make it deterministic. For same-entry reconnect, use explicit test-controlled barriers/events and assert a direct post-remount storage effect for the queued write, not only the returned status.
+
+Verification: the test must fail if the real repository recovery handler is not registered/invoked or if the queued write does not reach the rebound same-entry storage.
+
+### B4 — Final real Chrome/PWA recovery proof is missing
 
 Owner: `src/features/localDirectoryRecovery`
 
-Problem: The architecture contract still requires real Chrome/PWA verification after the final recovery implementation because mocked `FileSystemDirectoryHandle` behavior cannot prove actual permission persistence, picker identity behavior, or installed/browser reconnect behavior. The previously observed browser mismatch drove the architecture changes, but the final lease-based implementation has not yet been reported as operator-verified.
+Problem: the browser behavior that motivated this PR cannot be proven by mocked `FileSystemDirectoryHandle` fixtures. The final implementation has not yet passed the required real Chrome/PWA scenarios.
 
 Evidence:
 
-- [Local directory access recovery architecture](../../../docs/local-directory-access-recovery.md) — final real Chrome/PWA proof remains mandatory, including the previously failing locator-different scenario and reload/retry behavior when repository state is active.
+- [Local directory recovery handoff](../../../docs/local-directory-access-recovery.md) — real Chrome/PWA operator proof is a merge gate.
 
 Basis:
 
-- [Project review skill](../../../.agents/skills/project-review/SKILL.md) — missing proof is a finding when the project requires that proof.
+- [Project review workflow](../../../.agents/skills/project-review/SKILL.md) — required but missing proof blocks acceptance.
 
-Risk: The PR could be accepted without proving the browser behavior that motivated the recovery feature and its revised identity/reconnect flow.
+Risk: the final recovery semantics may still differ from real persisted-handle/picker behavior.
 
-Required final state: The final implementation passes the architecture handoff's real Chrome/PWA operator scenarios without revealing a new implementation or architecture defect.
+Required final state: after the architecture and implementation are stable, run the revised real-browser matrix including revoked permission, granted-but-unavailable root, cancellation, proven same-entry recovery, locator-different confirmed recovery across the clean-runtime boundary, invalid candidate, and already-mounted candidate.
 
-Verification: Repeat the required revoked-access, unavailable-root, cancellation, same-entry, locator-different confirmed replacement, active-repository reload/retry, and non-Mioframe selection scenarios in real Chrome/PWA.
+Verification: operator proof on the final implementation/head.
 
 ## Major issues
 
@@ -87,8 +116,8 @@ None.
 
 ## Items not required
 
-None.
+- Do not expand this PR into a general cleanup of every pre-existing file-system worker-client capability. If the revised architecture no longer needs the new lease-registration hiding workaround, remove that PR-specific machinery rather than broadening this bug fix into a service-API redesign.
 
 ## Unresolved questions
 
-- The architecture currently requires an exclusive lease but does not explicitly choose whether a second same-mount confirmed replacement waits, returns a dedicated expected result, or is otherwise rejected. Resolve that behavior before coding the B1 correction so stale pre-lease record state cannot be reused.
+None. The next step is architecture redesign, not another lease correction.
