@@ -748,6 +748,33 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 
+  it('suppresses stale navigation when directoryPath changes while reconnectFolder is pending', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedUnavailableRootError({ spaceName: 'Work' }),
+    ];
+    hasUnavailableRootRecoveryRef.value = true;
+    let resolveReconnect: (name: string) => void = () => {};
+    reconnectFolderMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveReconnect = resolve;
+      }),
+    );
+
+    const wrapper = await mountWidget();
+    const reconnectButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reconnect folder');
+
+    const clickPromise = reconnectButton?.trigger('click');
+
+    await wrapper.setProps({ directoryPath: '/Device Files/Elsewhere' });
+    resolveReconnect('Work (2)');
+    await clickPromise;
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.emitted('clickPath')).toBeUndefined();
+  });
+
   it('falls back to the generic folder error for an unrelated failure', async () => {
     errorMessageRef.value = 'Could not read this folder';
     repositoryRecoveryErrorsRef.value = [new Error('boom')];

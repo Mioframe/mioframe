@@ -8,7 +8,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { partialKeyToFileName } from '@shared/lib/automergeAdapter';
 import type { RetryingStorageAdapterOptions } from '@shared/lib/automergeAdapter';
-import { FSNodeType, type FSNodeStat } from '@shared/lib/virtualFileSystem';
+import {
+  FSNodeType,
+  VfsEventSource,
+  VfsEventType,
+  type FSNodeStat,
+} from '@shared/lib/virtualFileSystem';
+import type { VfsEvent } from '@shared/lib/virtualFileSystem';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
 import type { DiagnosticEvent } from '@shared/lib/diagnostics';
 
@@ -16,6 +22,7 @@ type MockRepoInstance = {
   create: ReturnType<typeof vi.fn<(initialValue: CFRDocumentContent) => { documentId: string }>>;
   delete: ReturnType<typeof vi.fn>;
   flush: ReturnType<typeof vi.fn<() => Promise<void>>>;
+  shutdown: ReturnType<typeof vi.fn<() => Promise<void>>>;
 };
 
 const directoryContentByPath = vi.hoisted(
@@ -59,6 +66,21 @@ const vfsReadDirectory = vi.hoisted(() =>
   }),
 );
 const vfsReadFile = vi.hoisted(() => vi.fn<(path: string) => Promise<File>>());
+const vfsWatchListeners = vi.hoisted(() => new Set<(event: VfsEvent) => void>());
+const vfsWatch = vi.hoisted(() =>
+  vi.fn((callback: (event: VfsEvent) => void) => {
+    vfsWatchListeners.add(callback);
+    return () => {
+      vfsWatchListeners.delete(callback);
+    };
+  }),
+);
+const emitVfsEvent = (event: Omit<VfsEvent, 'source'>) => {
+  const fullEvent: VfsEvent = { source: VfsEventSource.VFS, ...event };
+  vfsWatchListeners.forEach((listener) => {
+    listener(fullEvent);
+  });
+};
 const vfsDelete = vi.hoisted(() =>
   vi.fn((filePath: string) => {
     const slashIndex = filePath.lastIndexOf('/');
@@ -132,6 +154,7 @@ vi.mock('../fileSystem', () => ({
       readDirectory: vfsReadDirectory,
       readFile: vfsReadFile,
       delete: vfsDelete,
+      watch: vfsWatch,
     },
     registerWriteAccessRecoveryHandler: registerWriteAccessRecoveryHandlerMock,
   }),
@@ -162,6 +185,7 @@ vi.mock('@automerge/automerge-repo', async (importOriginal) => {
 
     readonly delete = vi.fn();
     readonly flush = vi.fn().mockResolvedValue(undefined);
+    readonly shutdown = vi.fn().mockResolvedValue(undefined);
     lastCreatedValue?: CFRDocumentContent | undefined;
 
     constructor(readonly config: RepoConfig & { storage?: { path?: string | undefined } }) {
@@ -199,6 +223,8 @@ describe('useRepositoriesService', () => {
     vfsReadDirectory.mockClear();
     vfsReadFile.mockClear();
     vfsDelete.mockClear();
+    vfsWatch.mockClear();
+    vfsWatchListeners.clear();
   });
 
   afterEach(() => {
@@ -962,6 +988,139 @@ describe('useRepositoriesService', () => {
 
     expect(repoInstances.get(path)).toHaveLength(2);
     expect(recreatedRepo).not.toBe(firstRepo);
+  });
+
+  describe('repository VFS-identity lifecycle', () => {
+    it('keeps the cached repo across ordinary content CREATE/WRITE/UPDATE events at its path', async () => {
+      const path = '/lifecycle-content';
+      createDirectoryContentSubject(path);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      const repo = await firstValueFrom(service.getRepo$(path, true));
+
+      emitVfsEvent({ type: VfsEventType.CREATE, path, nodeType: FSNodeType.File });
+      emitVfsEvent({ type: VfsEventType.WRITE, path, nodeType: FSNodeType.File });
+      emitVfsEvent({ type: VfsEventType.UPDATE, path, nodeType: FSNodeType.File });
+
+      const stillCachedRepo = await firstValueFrom(service.getRepo$(path, true));
+
+      expect(stillCachedRepo).toBe(repo);
+      expect(repoInstances.get(path)).toHaveLength(1);
+    });
+
+    it('keeps the cached repo through provider MOUNT/UNMOUNT refresh events (proven same-entry remount)', async () => {
+      const path = '/lifecycle-remount';
+      createDirectoryContentSubject(path);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+      const repo = await firstValueFrom(service.getRepo$(path, true));
+
+      emitVfsEvent({ type: VfsEventType.UNMOUNT, path });
+      emitVfsEvent({ type: VfsEventType.MOUNT, path });
+
+      const stillCachedRepo = await firstValueFrom(service.getRepo$(path, true));
+
+      expect(stillCachedRepo).toBe(repo);
+      expect(repoInstances.get(path)).toHaveLength(1);
+    });
+
+    it('retires the cached repo and creates a fresh one on next access after its directory is deleted', async () => {
+      const path = '/lifecycle-delete';
+      createDirectoryContentSubject(path);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await firstValueFrom(service.getRepo$(path, true));
+      const [firstRepo] = repoInstances.get(path) ?? [];
+
+      emitVfsEvent({ type: VfsEventType.DELETE, path, nodeType: FSNodeType.Directory });
+      await Promise.resolve();
+
+      expect(firstRepo?.shutdown).toHaveBeenCalledTimes(1);
+
+      const recreatedRepo = await firstValueFrom(service.getRepo$(path, true));
+
+      expect(recreatedRepo).not.toBe(firstRepo);
+      expect(repoInstances.get(path)).toHaveLength(2);
+    });
+
+    it('retires the cached repo when its directory is renamed away', async () => {
+      const path = '/lifecycle-rename-old';
+      createDirectoryContentSubject(path);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await firstValueFrom(service.getRepo$(path, true));
+      const [firstRepo] = repoInstances.get(path) ?? [];
+
+      emitVfsEvent({
+        type: VfsEventType.RENAME,
+        path,
+        newPath: '/lifecycle-rename-new',
+        nodeType: FSNodeType.Directory,
+      });
+      await Promise.resolve();
+
+      const recreatedRepo = await firstValueFrom(service.getRepo$(path, true));
+
+      expect(recreatedRepo).not.toBe(firstRepo);
+      expect(repoInstances.get(path)).toHaveLength(2);
+    });
+
+    it('retires exact and descendant cached repos when an ancestor directory is deleted, leaving sibling repos alive', async () => {
+      const ancestorPath = '/lifecycle-ancestor';
+      const nestedPath = '/lifecycle-ancestor/child';
+      const siblingPath = '/lifecycle-sibling';
+      createDirectoryContentSubject(ancestorPath);
+      createDirectoryContentSubject(nestedPath);
+      createDirectoryContentSubject(siblingPath);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await firstValueFrom(service.getRepo$(ancestorPath, true));
+      await firstValueFrom(service.getRepo$(nestedPath, true));
+      await firstValueFrom(service.getRepo$(siblingPath, true));
+
+      const [ancestorRepo] = repoInstances.get(ancestorPath) ?? [];
+      const [nestedRepo] = repoInstances.get(nestedPath) ?? [];
+      const [siblingRepo] = repoInstances.get(siblingPath) ?? [];
+
+      emitVfsEvent({
+        type: VfsEventType.DELETE,
+        path: ancestorPath,
+        nodeType: FSNodeType.Directory,
+      });
+      await Promise.resolve();
+
+      const recreatedAncestorRepo = await firstValueFrom(service.getRepo$(ancestorPath, true));
+      const recreatedNestedRepo = await firstValueFrom(service.getRepo$(nestedPath, true));
+      const stillCachedSiblingRepo = await firstValueFrom(service.getRepo$(siblingPath, true));
+
+      expect(recreatedAncestorRepo).not.toBe(ancestorRepo);
+      expect(recreatedNestedRepo).not.toBe(nestedRepo);
+      expect(stillCachedSiblingRepo).toBe(siblingRepo);
+      expect(repoInstances.get(siblingPath)).toHaveLength(1);
+    });
+
+    it('normalizes a rejecting repo.flush() into a non-flushed write-recovery result instead of throwing', async () => {
+      const path = '/lifecycle-flush-failure';
+      createDirectoryContentSubject(path, []);
+      const { useRepositoriesService } = await import('./repositoriesService');
+      const service = useRepositoriesService();
+
+      await service.initializeRepository(path);
+      const [repo] = repoInstances.get(path) ?? [];
+      repo?.flush.mockRejectedValueOnce(new Error('disk full'));
+
+      const [handler] = registerWriteAccessRecoveryHandlerMock.mock.calls[0] ?? [];
+
+      await expect(
+        handler({ mountPath: path, operation: 'write', spaceName: 'lifecycle-flush-failure' }),
+      ).resolves.toEqual({
+        status: 'failed',
+        replay: { flushedCount: 0, pendingCount: 0, failureClassification: 'storageFailure' },
+      });
+    });
   });
 
   it('wires onSaveFailure callback to emit repositoryStorage.saveQueued for queued failures', async () => {

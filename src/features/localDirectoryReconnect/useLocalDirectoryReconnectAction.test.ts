@@ -6,6 +6,7 @@ import { WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE } from '@shared/lib/webFileSystem
 import { useLocalDirectoryReconnectAction } from './useLocalDirectoryReconnectAction';
 
 const {
+  addSnackbarMock,
   captureDiagnosticExceptionMock,
   confirmMock,
   inspectMioframeSpaceDirectoryMock,
@@ -13,6 +14,7 @@ const {
   relocateRememberedDirectoryMock,
   showDirectoryPickerMock,
 } = vi.hoisted(() => ({
+  addSnackbarMock: vi.fn(),
   captureDiagnosticExceptionMock: vi.fn(),
   confirmMock: vi.fn(),
   inspectMioframeSpaceDirectoryMock: vi.fn(),
@@ -38,6 +40,12 @@ vi.mock('@shared/ui/Dialog', () => ({
   }),
 }));
 
+vi.mock('@shared/ui/Snackbar', () => ({
+  useSnackbar: () => ({
+    addSnackbar: addSnackbarMock,
+  }),
+}));
+
 vi.mock('@shared/lib/automergeAdapter', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@shared/lib/automergeAdapter')>();
   return {
@@ -60,6 +68,7 @@ const errorsFor = (spaceName: string) =>
 
 describe('useLocalDirectoryReconnectAction', () => {
   beforeEach(() => {
+    addSnackbarMock.mockReset();
     captureDiagnosticExceptionMock.mockReset();
     confirmMock.mockReset();
     inspectMioframeSpaceDirectoryMock.mockReset();
@@ -190,7 +199,7 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(reportedError.cause).toBe(serviceError);
   });
 
-  it('shows the pending-write warning and clears diagnostics for reconnectedWithWriteRecoveryFailure', async () => {
+  it('shows the pending-write warning through Snackbar for reconnectedWithWriteRecoveryFailure, independent of the recovery empty-state', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({
@@ -203,11 +212,38 @@ describe('useLocalDirectoryReconnectAction', () => {
 
     await expect(reconnectFolder()).resolves.toBeUndefined();
 
-    expect(reconnectMessage.value).toBe(
-      'The folder is reconnected, but some pending changes could not be saved.',
-    );
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'The folder is reconnected, but some pending changes could not be saved.',
+    });
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     expect(inspectMioframeSpaceDirectoryMock).not.toHaveBeenCalled();
+
+    // The warning does not depend on the unavailable-root empty-state staying rendered: it is
+    // expected to disappear once the folder reconnects successfully.
+    errors.value = [];
+    expect(addSnackbarMock).toHaveBeenCalledTimes(1);
+    expect(reconnectMessage.value).toBe('');
+  });
+
+  it('shows the pending-write warning through Snackbar even when the unavailable-root recovery disappears because the reconnect itself committed', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    const errors = errorsFor('Work');
+
+    reconnectDirectoryMock.mockImplementationOnce(() => {
+      // The mutation itself is what makes the unavailable-root recovery disappear.
+      errors.value = [];
+      return Promise.resolve({ status: 'reconnectedWithWriteRecoveryFailure', name: 'Work' });
+    });
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    await expect(reconnectFolder()).resolves.toBeUndefined();
+
+    expect(addSnackbarMock).toHaveBeenCalledWith({
+      text: 'The folder is reconnected, but some pending changes could not be saved.',
+    });
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
   it('reports missingRecord without a diagnostic exception when the same-entry reconnect target disappeared', async () => {
@@ -259,10 +295,36 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(confirmMock).toHaveBeenCalledWith({
       headline: 'Reconnect this Mioframe space?',
       supportingText:
-        "Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect it as a new location and remove the unavailable remembered location. Unsaved in-memory changes from the unavailable location cannot be transferred.",
+        "Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect the selected space without transferring unsaved in-memory changes from the unavailable location.",
       confirmLabel: 'Reconnect',
       cancelLabel: 'Cancel',
     });
+  });
+
+  it('uses the same confirmation copy for the alreadyMounted zero-mutation outcome, without promising removal', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
+    confirmMock.mockResolvedValueOnce(true);
+    relocateRememberedDirectoryMock.mockResolvedValueOnce({
+      status: 'alreadyMounted',
+      name: 'Archive',
+    });
+    const errors = errorsFor('Work');
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    await reconnectFolder();
+
+    expect(confirmMock).toHaveBeenCalledWith({
+      headline: 'Reconnect this Mioframe space?',
+      supportingText:
+        "Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect the selected space without transferring unsaved in-memory changes from the unavailable location.",
+      confirmLabel: 'Reconnect',
+      cancelLabel: 'Cancel',
+    });
+    expect(confirmMock.mock.calls[0]?.[0].supportingText).not.toContain('remove');
   });
 
   it('performs no relocation and no diagnostic exception when confirmation is cancelled', async () => {
@@ -336,6 +398,45 @@ describe('useLocalDirectoryReconnectAction', () => {
     await expect(reconnectFolder()).resolves.toBeUndefined();
 
     expect(reconnectMessage.value).toBe('Mioframe no longer remembers this folder.');
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves a committed relocation result even when its source recovery disappears because the relocation itself committed', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
+    confirmMock.mockResolvedValueOnce(true);
+    const errors = errorsFor('Work');
+
+    relocateRememberedDirectoryMock.mockImplementationOnce(() => {
+      // The mutation itself is what makes the source unavailable-root recovery disappear.
+      errors.value = [];
+      return Promise.resolve({ status: 'relocated', name: 'Work (2)' });
+    });
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    await expect(reconnectFolder()).resolves.toBe('Work (2)');
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('preserves a committed alreadyMounted result even when its source recovery disappears because the relocation itself committed', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
+    confirmMock.mockResolvedValueOnce(true);
+    const errors = errorsFor('Work');
+
+    relocateRememberedDirectoryMock.mockImplementationOnce(() => {
+      errors.value = [];
+      return Promise.resolve({ status: 'alreadyMounted', name: 'Archive' });
+    });
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    await expect(reconnectFolder()).resolves.toBe('Archive');
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 

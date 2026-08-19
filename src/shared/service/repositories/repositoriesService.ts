@@ -1,9 +1,10 @@
 import type { AMDocumentId } from '@shared/lib/automerge';
 import { useFileSystemService } from '../fileSystem';
 import { Repo } from '@automerge/automerge-repo';
-import { PathUtils } from '@shared/lib/virtualFileSystem';
+import { PathUtils, VfsEventType, type VfsEvent } from '@shared/lib/virtualFileSystem';
 import { createVFSAdapter } from '@shared/lib/automergeAdapter/createVFSAdapter';
 import { createRetryingStorageAdapter } from '@shared/lib/automergeAdapter';
+import { createRetirableStorageAdapter } from './repositoryLifecycle';
 import type { WriteAccessRecoveryResult } from '../fileSystem/fileSystemAccessRequestRegistry';
 import { createGlobalState } from '@vueuse/core';
 import type { CFRDocumentContent } from '@shared/lib/cfrDocument';
@@ -55,9 +56,20 @@ export const REPO_IDLE_TIMEOUT_MS = 60_000;
 const isBrowserFileStateChangedError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'InvalidStateError';
 
+const isRepositoryIdentityEndingEvent = (event: VfsEvent) =>
+  event.type === VfsEventType.DELETE || event.type === VfsEventType.RENAME;
+
 const setupRepositoriesService = () => {
   const { directoryContent$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
-  const repoObservableCache = new Map<string, Observable<RepositoryCacheEntry>>();
+
+  type RepositoryCacheHandle = {
+    /** Shared repo observable for this path's current identity. */
+    observable: Observable<RepositoryCacheEntry>;
+    /** Retires this cache entry: gates storage IO and shuts down the underlying Repo. */
+    retire: () => void;
+  };
+
+  const repoObservableCache = new Map<string, RepositoryCacheHandle>();
 
   const shouldQueueFailedSave = (error: unknown) =>
     !!getFileSystemAccessRecovery(error, {
@@ -156,12 +168,31 @@ const setupRepositoriesService = () => {
       ),
   );
 
-  const createRepoObservable = (path: string) => {
+  const createRepoObservable = (path: string): RepositoryCacheHandle => {
     let repoEntry: RepositoryCacheEntry | undefined;
+    let retirableStorage: ReturnType<typeof createRetirableStorageAdapter> | undefined;
+    let retired = false;
 
-    return defer(() => {
+    const retire = () => {
+      if (retired) return;
+      retired = true;
+      retirableStorage?.retire();
+      repoObservableCache.delete(path);
+
+      const entryToShutDown = repoEntry;
+      repoEntry = undefined;
+
+      if (entryToShutDown) {
+        // The gate above already blocks new storage IO, so a teardown failure here is expected
+        // retirement behavior (the directory/mount is already gone), not a user-facing error.
+        void entryToShutDown.repo.shutdown().catch(() => undefined);
+      }
+    };
+
+    const observable = defer(() => {
       if (!repoEntry) {
-        const storageRecovery = createRetryingStorageAdapter(createVFSAdapter(vfs, path), {
+        retirableStorage = createRetirableStorageAdapter(createVFSAdapter(vfs, path));
+        const storageRecovery = createRetryingStorageAdapter(retirableStorage.adapter, {
           shouldQueueFailedSave,
           onSaveFailure: ({ queued, pendingCount, caughtError }) => {
             if (queued) {
@@ -187,8 +218,12 @@ const setupRepositoriesService = () => {
       return concat(of(repoEntry), NEVER);
     }).pipe(
       finalize(() => {
-        repoEntry = undefined;
-        repoObservableCache.delete(path);
+        // Skip when already retired: this path's cache entry may already belong to a fresh
+        // identity created after retirement, and this stale finalize must not evict it.
+        if (!retired) {
+          repoEntry = undefined;
+          repoObservableCache.delete(path);
+        }
       }),
       share({
         connector: () => new ReplaySubject<RepositoryCacheEntry>(1),
@@ -197,18 +232,34 @@ const setupRepositoriesService = () => {
         resetOnRefCountZero: () => timer(REPO_IDLE_TIMEOUT_MS),
       }),
     );
+
+    return { observable, retire };
   };
 
   const repoByPath$ = (path: string): Observable<RepositoryCacheEntry> => {
-    let repo$ = repoObservableCache.get(path);
+    let cacheHandle = repoObservableCache.get(path);
 
-    if (!repo$) {
-      repo$ = createRepoObservable(path);
-      repoObservableCache.set(path, repo$);
+    if (!cacheHandle) {
+      cacheHandle = createRepoObservable(path);
+      repoObservableCache.set(path, cacheHandle);
     }
 
-    return repo$;
+    return cacheHandle.observable;
   };
+
+  // Retires cached repositories whose directory/mount identity ended (removed or renamed away),
+  // so a later access at the same path always constructs a fresh Repo instead of reusing a stale
+  // one. Ordinary content events and provider MOUNT/UNMOUNT refreshes — including a proven
+  // same-entry remount — are not identity-ending and never retire the current Repo.
+  vfs.watch((event) => {
+    if (!isRepositoryIdentityEndingEvent(event)) return;
+
+    for (const [repoPath, cacheHandle] of repoObservableCache.entries()) {
+      if (PathUtils.isSameOrDescendantOf(repoPath, event.path)) {
+        cacheHandle.retire();
+      }
+    }
+  });
 
   const repo$ = (path: string, initial = false) => {
     if (initial) {
@@ -266,7 +317,7 @@ const setupRepositoriesService = () => {
     const cached = repoObservableCache.get(path);
     if (!cached) return { status: 'flushed' };
 
-    const { repo, storageRecovery } = await firstValueFrom(cached.pipe(take(1)));
+    const { repo, storageRecovery } = await firstValueFrom(cached.observable.pipe(take(1)));
 
     if (storageRecovery.hasPendingSaves()) {
       const result = await storageRecovery.flushPendingSaves();
@@ -300,7 +351,28 @@ const setupRepositoriesService = () => {
       }
     }
 
-    await repo.flush();
+    try {
+      await repo.flush();
+    } catch (caughtError) {
+      // A same-entry reconnect has already persisted/remounted the replacement handle before
+      // this settlement runs, so a storage failure here must not reject the already-committed
+      // reconnect — it is reported as a non-flushed recovery result instead.
+      const failureClassification = isBrowserFileStateChangedError(caughtError)
+        ? 'browserFileStateChanged'
+        : 'storageFailure';
+
+      reportWriteAccessReplayStorageFailure({
+        flushedCount: 0,
+        pendingCount: 0,
+        failureClassification,
+      });
+
+      return {
+        status: 'failed',
+        replay: { flushedCount: 0, pendingCount: 0, failureClassification },
+      };
+    }
+
     return { status: 'flushed' };
   };
 

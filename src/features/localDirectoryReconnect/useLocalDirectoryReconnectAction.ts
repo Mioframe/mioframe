@@ -7,6 +7,7 @@ import { useFileSystem } from '@entity/mountedDirectories';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
 import { useDialog } from '@shared/ui/Dialog';
+import { useSnackbar } from '@shared/ui/Snackbar';
 import { isFunction } from 'es-toolkit';
 import { computed, ref, watch, type Ref } from 'vue';
 
@@ -41,6 +42,7 @@ const alreadyMountedMessage = (name: string) =>
 export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unknown[]> }) => {
   const { reconnectDirectory, relocateRememberedDirectory } = useFileSystem();
   const { confirm } = useDialog();
+  const { addSnackbar } = useSnackbar();
   const isReconnectPending = ref(false);
   const reconnectMessageOverride = ref<string>();
 
@@ -72,7 +74,7 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
     confirm({
       headline: 'Reconnect this Mioframe space?',
       supportingText:
-        "Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect it as a new location and remove the unavailable remembered location. Unsaved in-memory changes from the unavailable location cannot be transferred.",
+        "Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect the selected space without transferring unsaved in-memory changes from the unavailable location.",
       confirmLabel: 'Reconnect',
       cancelLabel: 'Cancel',
     });
@@ -149,17 +151,15 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
         return undefined;
       }
 
-      if (recovery.value !== currentRecovery) {
-        return undefined;
-      }
-
+      // `result` is now a committed service outcome. It stays authoritative even if this
+      // mutation is itself what makes `recovery.value` disappear or change afterward.
       if (result.status === 'reconnected') {
         reconnectMessageOverride.value = undefined;
         return undefined;
       }
 
       if (result.status === 'reconnectedWithWriteRecoveryFailure') {
-        reconnectMessageOverride.value = WRITE_RECOVERY_FAILURE_MESSAGE;
+        addSnackbar({ text: WRITE_RECOVERY_FAILURE_MESSAGE });
         return undefined;
       }
 
@@ -230,10 +230,8 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
         return undefined;
       }
 
-      if (recovery.value !== currentRecovery) {
-        return undefined;
-      }
-
+      // `relocateResult` is now a committed service outcome. It stays authoritative even if this
+      // mutation is itself what makes `recovery.value` disappear or change afterward.
       if (relocateResult.status === 'relocated') {
         reconnectMessageOverride.value = undefined;
         return relocateResult.name;

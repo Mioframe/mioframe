@@ -93,9 +93,10 @@ const onClickGrantFullAccess = () => {
 };
 
 const onClickReconnectFolder = async () => {
+  const initiatingDirectoryPath = directoryPath.value;
   const mountedName = await reconnectFolder();
 
-  if (mountedName) {
+  if (mountedName && directoryPath.value === initiatingDirectoryPath) {
     onClickPath(PathUtils.join('/', DEVICE_FILES_ROOT_NAME, mountedName));
   }
 };
