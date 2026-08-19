@@ -8,30 +8,30 @@ Verdict: blocked
 
 ## Blockers
 
-### B1 — Reconnect replacement drops write-recovery coordination for cached repositories
+### B1 — Reconnect implementation does not apply the repository lifecycle contract
 
 Owner: `src/shared/service`
 
-Problem: A successful local-directory replacement persists and remounts the new handle, then calls `registry.clearForSpace()`. That removes any pending read/write access requests for the old handle but does not run the registered write-recovery handlers. `repositoriesService` keeps Automerge `Repo` instances and retrying storage adapters cached by the unchanged VFS path, and retrying adapters retain queued failed saves until `flushPendingSaves()` is invoked. Therefore a reconnect can remove the pending write-recovery trigger while leaving queued repository saves alive and unflushed behind the same mount path.
+Problem: `persistAndMountReplacement()` currently remounts the provider and clears old access requests without coordinating cached Automerge repository state. The updated architecture now distinguishes two safe cases: proven same-entry reconnect must settle cached repository writes after remount; locator-different confirmed replacement must be rejected while a repository is cached under the mount.
 
 Evidence:
 
-- [File-system replacement](fileSystem/useFileSystemService.ts) — `persistAndMountReplacement()` remounts the provider and then calls `registry.clearForSpace()` without repository/write-recovery settlement.
-- [Access-request registry](fileSystem/fileSystemAccessRequestRegistry.ts) — `clearForSpace()` only deletes requests; registered `WriteAccessRecoveryHandler`s are invoked only by `resolve()` after a granted write-access request.
-- [Repositories service](repositories/repositoriesService.ts) — repository instances are cached by path and `registerWriteAccessRecoveryHandler()` wires `settleCachedRepositoriesUnderPath()`, which flushes queued saves and then `repo.flush()`.
-- [Retrying storage adapter](../../lib/automergeAdapter/createRetryingStorageAdapter.ts) — failed access-required saves remain in `pendingSaves` until `flushPendingSaves()` succeeds.
+- [File-system replacement](fileSystem/useFileSystemService.ts) — current replacement remounts and calls `registry.clearForSpace()` without settlement or a confirmed-replacement cache guard.
+- [Access-request registry](fileSystem/fileSystemAccessRequestRegistry.ts) — registered write-recovery handlers currently run only from permission `resolve()`.
+- [Repositories service](repositories/repositoriesService.ts) — cached `Repo` instances are keyed by VFS path and existing settlement already owns `flushPendingSaves()` + `repo.flush()`.
+- [Retrying storage adapter](../../lib/automergeAdapter/createRetryingStorageAdapter.ts) — access-blocked saves remain queued until settlement.
 
 Basis:
 
-- [Local directory access recovery architecture](../../../docs/local-directory-access-recovery.md) — confirmed replacement is required to preserve the remembered mounted path and recover the selected historical space; recovery must not leave storage/runtime behavior incomplete.
-- [CRDT and storage workflow](../../../.agents/skills/crdt-storage/SKILL.md) — caches and pending resources are lifecycle-managed, provider recovery must define retry/cleanup behavior, and cache/recovery transitions require focused proof.
-- [Root architecture rules](../../../AGENTS.md) — storage/service changes must preserve ownership, invalidation, required user scenarios, and complete lifecycle behavior rather than relying on green verification alone.
+- [Local directory access recovery architecture](../../../docs/local-directory-access-recovery.md) — same-entry remount must invoke repository settlement; locator-different replacement must return `repositoryStateActive` with zero mutation while repository state is cached.
+- [CRDT and storage workflow](../../../.agents/skills/crdt-storage/SKILL.md) — caches, pending writes, provider recovery, and cleanup are lifecycle-managed and require explicit transition proof.
+- [Root architecture rules](../../../AGENTS.md) — storage/service changes must preserve complete lifecycle behavior and dependency ownership.
 
-Risk: Previously queued Automerge saves can remain stranded after reconnect and be lost if the runtime ends before another settlement trigger. A later settlement can also replay stale queued work only after an unrelated action, making reconnect completion nondeterministic. Clearing the old request without coordinating the repository recovery lifecycle breaks the existing guarantee that write-access recovery settles cached repository state.
+Risk: Same-entry reconnect can orphan queued saves when the old access request is cleared. Locator-different confirmed replacement can let an old cached Repo continue operating through the unchanged VFS path against a different physical Mioframe storage directory.
 
-Required final state: The reconnect/replacement architecture must explicitly define what happens to cached repository state and queued saves when a remembered mount is rebound. After a successful reconnect of the user-confirmed historical space, pending repository writes must have a deterministic recovery/settlement path tied to that reconnect, and recovery failures must remain observable instead of being silently orphaned by clearing the old request. Ownership and ordering between file-system replacement and repository recovery must be explicit before another code correction.
+Required final state: Implement the architecture contract without a direct `fileSystem` → `repositories` dependency: reuse the registered write-recovery handlers after proven same-entry remount; add a narrow service-internal confirmed-replacement guard registered by repositories; block confirmed replacement while the target mount has cached repository state; preserve zero mutation on that block.
 
-Verification: Add focused cross-service proof with a cached repository containing queued saves under the recovered mount. Reconnect/replacement must demonstrate the chosen settlement lifecycle, including success and recovery failure, and prove that no pending write is silently orphaned when the old access request is cleared.
+Verification: Focused cross-service proof must cover same-entry settlement success/non-flushed outcomes, stale old-request cleanup, exact/descendant cached-repository blocking for confirmed replacement, sibling isolation, and zero persistence/runtime mutation when replacement is blocked.
 
 ## Major issues
 
@@ -51,4 +51,4 @@ None.
 
 ## Unresolved questions
 
-- The exact cross-service ordering/contract for repository settlement versus provider replacement is not resolved by the current architecture handoff. This must be resolved architecturally before coding resumes.
+None.
