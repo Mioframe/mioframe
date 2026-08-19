@@ -6,8 +6,9 @@ import { runPlaywrightInContainer } from './playwrightContainer.ts';
  * Builds the explicit env allowlist forwarded into the Playwright container:
  * the fixed container marker, plus `STORYBOOK_STATIC_SKIP_BUILD` forwarded only when the
  * parent process received exactly `'1'`. Automatic local verification supplies it after a
- * successful prior `storybook-build`; GitHub CI supplies it only after downloading the
- * run-scoped producer artifact.
+ * successful prior `storybook-build` in the same invocation. GitHub CI never supplies it:
+ * this lane runs as a self-contained job there and always builds its own Storybook when
+ * selected (see `.github/workflows/verify.yml`).
  * @param env Source environment, e.g. `process.env`.
  * @returns The container's explicit extra env.
  */

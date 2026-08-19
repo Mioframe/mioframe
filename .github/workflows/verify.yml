@@ -195,12 +195,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # Single run-scoped producer for the Storybook static build. It remains the
-  # verifier-owned `storybook-build` proof whenever that plan selects it and
-  # also serves as the shared prerequisite for independent parallel behavior
-  # and visual proof. The job builds at most once per workflow run and hands
-  # the result to both consumers as a run-scoped GitHub Actions artifact
-  # (never a cross-run cache). E2E does not depend on this job.
+  # Parallel fallback proof for the Storybook static build, starting directly
+  # after autofix with no dependency on either browser lane. It exists so a
+  # storybook-build-relevant change is still proven buildable even when no
+  # browser lane happens to select Storybook. STORYBOOK_BUILD_CI_FALLBACK
+  # requests the verifier's narrow CI-only fallback contract (see
+  # `storybookBuildCiFallback` in scripts/verify.ts): this job builds only
+  # when the ordinary storybook-build plan requires it AND neither the
+  # storybook-behavior nor the visual plan will run. When either browser lane
+  # is selected, that self-contained lane already builds the equivalent
+  # static Storybook output itself, so this job skips successfully instead of
+  # duplicating that work. No artifact is produced or uploaded here; nothing
+  # downstream consumes this job's output.
   storybook-build:
     needs:
       - autofix
@@ -211,8 +217,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-    outputs:
-      ready: ${{ steps.build.outputs.ready }}
 
     steps:
       - uses: actions/checkout@v4
@@ -236,34 +240,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Verify storybook build
-        id: build
-        run: |
-          set -euo pipefail
-          pnpm verify --verbose --only storybook-build
-
-          index_present=false
-          iframe_present=false
-          [ -f storybook-static/index.html ] && index_present=true
-          [ -f storybook-static/iframe.html ] && iframe_present=true
-
-          if [ "$index_present" = true ] && [ "$iframe_present" = true ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          elif [ "$index_present" = false ] && [ "$iframe_present" = false ]; then
-            echo "Storybook static build was not required for this change; no artifact to publish."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Storybook static build produced partial output (only one of index.html/iframe.html)." >&2
-            exit 1
-          fi
-
-      - name: Upload Storybook static artifact
-        if: steps.build.outputs.ready == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: storybook-static
-          path: storybook-static
-          retention-days: 1
+      - name: Verify storybook build (CI fallback)
+        env:
+          STORYBOOK_BUILD_CI_FALLBACK: '1'
+        run: pnpm verify --verbose --only storybook-build
 
       - name: Upload storybook-build verify logs
         if: ${{ failure() || cancelled() }}
@@ -275,7 +255,7 @@ jobs:
           retention-days: 7
 
   # E2E is an independent proof owner with no Storybook dependency: it must
-  # not wait on the storybook-build producer above.
+  # not wait on the storybook-build fallback job above.
   verification-browser-e2e:
     needs:
       - autofix
@@ -322,17 +302,17 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # Storybook-owned browser proof: parallel behavior/visual lanes that reuse
-  # the shared storybook-build producer's artifact instead of each compiling
-  # Storybook themselves.
+  # Storybook-owned browser proof: parallel, self-contained behavior/visual
+  # lanes that each build their own Storybook static output when selected,
+  # with no dependency on the storybook-build fallback job. This keeps both
+  # lanes on the critical path directly behind autofix instead of behind a
+  # shared build producer.
   verification-storybook-browser:
     needs:
       - autofix
-      - storybook-build
     if: >-
       !cancelled() &&
-      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped') &&
-      needs.storybook-build.result == 'success'
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
     strategy:
       fail-fast: false
       matrix:
@@ -367,19 +347,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Only ever populated when the producer actually built Storybook; when
-      # it legitimately skipped (no storybook-relevant change), this lane
-      # builds its own Storybook static output, same as a standalone run.
-      - name: Download Storybook static artifact
-        if: needs.storybook-build.outputs.ready == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: storybook-static
-          path: storybook-static
-
       - name: Verify ${{ matrix.lane }}
-        env:
-          STORYBOOK_STATIC_SKIP_BUILD: ${{ needs.storybook-build.outputs.ready == 'true' && '1' || '' }}
         run: pnpm verify --verbose --only ${{ matrix.lane }}
 
       - name: Upload browser verify logs
@@ -417,7 +385,7 @@ jobs:
           fi
 
           if [ "$STORYBOOK_BUILD_RESULT" != "success" ]; then
-            echo "Storybook build producer result: $STORYBOOK_BUILD_RESULT"
+            echo "Storybook build fallback result: $STORYBOOK_BUILD_RESULT"
             failed=1
           fi
 

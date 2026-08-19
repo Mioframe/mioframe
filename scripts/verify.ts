@@ -1253,6 +1253,17 @@ export interface BuildCommandsOptions {
   storybookBehaviorPlan?: StorybookBehaviorPlan | null;
   storybookBuildPlan?: StorybookBuildPlan | null;
   visualPlan?: BuildCommandsVisualPlan | null;
+  /**
+   * Dedicated GitHub Actions fallback contract for the `storybook-build` label only (see
+   * `.github/workflows/verify.yml`): storybook-behavior and visual run as separate
+   * self-contained CI jobs that build their own Storybook when selected, so this narrows the
+   * `storybook-build` trigger to the ordinary storybook-build plan alone, skipping whenever a
+   * self-contained browser lane will already supply the equivalent static-build prerequisite.
+   * Has no effect on any other label and does not change `--full` or the ordinary (non-CI)
+   * `--only storybook-build` reuse-aware trigger. Defaults to
+   * `STORYBOOK_BUILD_CI_FALLBACK=1` in the process environment.
+   */
+  storybookBuildCiFallback?: boolean;
 }
 
 /**
@@ -1272,6 +1283,7 @@ export function buildCommands(
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
     storybookBuildPlan: storybookBuildPlanOverride = null,
     visualPlan: visualPlanOverride = null,
+    storybookBuildCiFallback = process.env.STORYBOOK_BUILD_CI_FALLBACK === '1',
   }: BuildCommandsOptions = {},
 ): CommandEntry[] {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1466,13 +1478,18 @@ export function buildCommands(
     });
   }
 
-  // The shared Storybook static build is a prerequisite for both
+  // Locally, the shared Storybook static build is a prerequisite for both
   // storybook-behavior and visual, not an independent proof owner. Schedule
   // it before either lane so a successful build result is already available
   // in `results` (see `getExtraEnvForEntry`) when they run, and derive the
   // requirement from the three existing plans only: no separate impact
   // registry. `invalid` behavior/visual plans fail closed on their own lane
   // below and must not, by themselves, force an otherwise-unneeded build.
+  // In GitHub Actions, storybook-behavior and visual are separate
+  // self-contained jobs that never reuse this lane's output (see
+  // `storybookBuildCiFallback` below), so this reuse-aware trigger applies
+  // only to `--full` and to the ordinary (non-CI-fallback) `--only
+  // storybook-build` invocation.
   const storybookBehaviorNeedsStaticBuild =
     storybookBehaviorPlan.mode === 'full' || storybookBehaviorPlan.mode === 'focused';
   const visualNeedsStaticBuild =
@@ -1498,6 +1515,34 @@ export function buildCommands(
       weight: classifyCommandWeight({ label: 'storybook-build' }),
       triggerReason: 'full-project release verification',
     });
+  } else if (storybookBuildCiFallback) {
+    // Narrow CI-only fallback contract: fires only for the ordinary
+    // storybook-build plan, and only when neither self-contained browser
+    // lane will already build an equivalent static Storybook output.
+    if (
+      storybookBuildPlan.mode === 'full' &&
+      !storybookBehaviorNeedsStaticBuild &&
+      !visualNeedsStaticBuild
+    ) {
+      commands.push({
+        kind: 'run',
+        label: 'storybook-build',
+        command: 'pnpm',
+        args: ['storybook:build'],
+        weight: classifyCommandWeight({ label: 'storybook-build' }),
+        triggerReason: storybookBuildPlan.reasons.join('; '),
+      });
+    } else {
+      commands.push({
+        kind: 'skipped',
+        label: 'storybook-build',
+        command: 'pnpm storybook:build',
+        reason:
+          storybookBehaviorNeedsStaticBuild || visualNeedsStaticBuild
+            ? 'CI fallback: a self-contained Storybook browser lane already supplies the static build prerequisite'
+            : 'no storybook-relevant changes',
+      });
+    }
   } else if (storybookStaticBuildReasons.length > 0) {
     commands.push({
       kind: 'run',
@@ -2040,6 +2085,12 @@ async function main(
       fullMode: invocation.scope.kind === 'full',
       packageJsonOldRef,
       fixMode: invocation.fixMode,
+      // Only the explicit `--only storybook-build` invocation can meaningfully act on the
+      // CI fallback env contract; every other invocation ignores it (see
+      // `storybookBuildCiFallback` on BuildCommandsOptions).
+      storybookBuildCiFallback:
+        invocation.onlyLabel === 'storybook-build' &&
+        process.env.STORYBOOK_BUILD_CI_FALLBACK === '1',
     }),
     onlyLabel,
   );

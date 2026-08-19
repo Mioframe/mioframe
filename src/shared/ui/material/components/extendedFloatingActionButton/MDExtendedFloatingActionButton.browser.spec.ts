@@ -35,6 +35,12 @@ test('MDExtendedFloatingActionButton accepts real hover, Tab focus, and pointer 
   expect(await fab.evaluate((element) => element.matches(':hover'))).toBe(true);
 
   await page.mouse.move(0, 0);
+
+  // @m3e/web sets the FAB role during connectedCallback but establishes tabindex through the
+  // later Lit update lifecycle. Waiting for the real platform tab-order state before pressing
+  // Tab avoids racing that lifecycle and permanently missing the focus transition below.
+  await expect(fab).toHaveJSProperty('tabIndex', 0);
+
   await page.keyboard.press('Tab');
   await expect(fab).toBeFocused();
   expect(await fab.evaluate((element) => element.matches(':focus-visible'))).toBe(true);
