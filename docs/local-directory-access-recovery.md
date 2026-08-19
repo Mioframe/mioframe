@@ -4,66 +4,89 @@ This document is the implementation contract for recovering access to a remember
 
 ## Goal
 
-When a remembered local directory can no longer be read, Mioframe must distinguish missing browser permission from an unavailable saved root and provide the matching explicit recovery action.
+When a remembered local directory can no longer be read, Mioframe must distinguish missing browser permission from an unavailable saved root and provide an explicit recovery flow that also works when browser locator equality can no longer prove that a newly selected directory is the remembered entry.
 
 ## Confirmed current behavior
 
-- `WebFileSystemProvider` already checks `queryPermission()` before read/write operations and emits `WebFileSystemAccessRequiredError` when permission is not granted.
-- Browser permission prompts are already owned by the explicit `localDirectoryRecovery` user action through the main-thread permission broker.
+- `WebFileSystemProvider` checks `queryPermission()` before read/write operations and emits `WebFileSystemAccessRequiredError` when permission is not granted.
+- A granted root-enumeration failure is already represented by the provider-owned `WebFileSystemUnavailableRootError` and rendered as `Folder unavailable` with `Reconnect folder`.
+- Browser permission prompts and directory pickers are owned by explicit feature actions.
 - Persisted local directory handles and mounted provider replacement are owned by `src/shared/service/fileSystem`.
 - `DeviceFileSystemProvider.upsertRecord()` replaces the nested provider when the handle changes while keeping the mounted root name.
-- `RepositoryExplorerWidget` already renders the existing `Permission required` recovery state before the generic folder error state.
+- The current reconnect service uses `FileSystemHandle.isSameEntry()` as a hard identity gate.
+- Real Chrome/PWA operator verification showed that the intended recovery directory can return `isSameEntry() === false`, so locator equality is not sufficient as the only recovery identity mechanism.
+- Mioframe already recognizes an existing Mioframe storage directory by the stable `storage-adapter-id.automerge` marker used by Automerge storage.
 
 ## Non-goals
 
 - recovery from an already-open document;
 - changing document-not-found semantics;
-- Repo Explorer loading-state redesign or transient-empty retries;
+- Repository Explorer loading-state redesign or transient-empty retries;
 - changing the persisted directory-record format;
-- introducing a persistent Mioframe space identifier;
-- generic recovery managers, registries, retry frameworks, or shared UI changes;
-- guaranteeing recovery after an OS-level move/rename when the browser cannot prove entry identity.
+- introducing or persisting a new Mioframe space identifier in this PR;
+- changing the Automerge storage marker format or contents;
+- generic recovery managers, registries, retry frameworks, or shared UI primitives;
+- automatically proving that two locator-different directories are the same historical directory when the browser cannot provide that proof.
 
 ## Affected user scenarios
 
 1. Saved handle reports `prompt` or `denied`: show the existing `Permission required` state and preserve `Read only` / `Grant full access`.
-2. Saved root reports read permission `granted`, but root directory enumeration fails: show a neutral unavailable-folder state with `Reconnect folder`.
+2. Saved root reports read permission `granted`, but root directory enumeration fails: show `Folder unavailable` with `Reconnect folder`.
 3. Reconnect picker is cancelled: keep the remembered space unchanged and leave recovery available.
-4. The same directory is selected and identity is confirmed: persist the replacement handle under the same mounted name, replace the provider, and let existing VFS invalidation retry reads.
-5. A different directory is selected, or identity cannot be confirmed: do not change persisted or mounted state; show a clear retryable message.
-6. A nested file/path fails after the root is readable: preserve the original error semantics; do not classify arbitrary child I/O failures as reconnect-required.
+4. Selected directory satisfies `isSameEntry()` against the remembered handle: reconnect immediately without additional confirmation.
+5. `isSameEntry()` returns `false`, is unavailable, or throws: do not mutate yet; inspect the selected directory as a Mioframe storage directory.
+6. Locator-different/unverifiable selection has no Mioframe storage marker: reject it without mutation and keep recovery available.
+7. Locator-different/unverifiable selection is an existing Mioframe storage directory: explain that Mioframe cannot prove it is the same historical location and require explicit user confirmation before replacing the remembered location.
+8. User cancels that confirmation: do not mutate persisted or runtime state.
+9. User explicitly confirms replacement: persist the selected handle under the existing mounted name, replace the mounted provider, clear stale access requests, and let existing VFS invalidation retry reads.
+10. A nested file/path fails after the root is readable: preserve the original error semantics; do not classify arbitrary child I/O failures as reconnect-required.
 
 ## Boundaries and ownership
 
-| Owner                                  | Responsibility                                                                                                                           |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/lib/webFileSystemProvider` | Permission checks, root-directory read semantics, provider-owned typed unavailable-root error, raw cause preservation                    |
-| `src/shared/service/fileSystem`        | Persisted handle lookup/replacement, `isSameEntry()` identity verification, mounted provider replacement, stale recovery-request cleanup |
-| `src/entities/mountedDirectories`      | Narrow UI-facing access to the reconnect service mutation                                                                                |
-| `src/features/localDirectoryRecovery`  | Explicit picker action, pending/cancel/result state, user-facing reconnect outcome                                                       |
-| `src/widgets/RepositoryExplorerWidget` | Recovery precedence and rendering only                                                                                                   |
-| page/pane                              | No change                                                                                                                                |
-| shared UI                              | No change                                                                                                                                |
+| Owner | Responsibility |
+| --- | --- |
+| `src/shared/lib/webFileSystemProvider` | Permission checks, root-directory read semantics, provider-owned unavailable-root error, raw cause preservation |
+| reusable shared filesystem/storage inspection | One canonical check for whether a selected `FileSystemDirectoryHandle` contains the Mioframe/Automerge storage marker; no feature-to-feature import or duplicated marker algorithm |
+| `src/shared/service/fileSystem` | Persisted handle lookup, `isSameEntry()` fast-path classification, explicit remembered-handle replacement, mounted provider replacement, stale recovery-request cleanup |
+| `src/entities/mountedDirectories` | Narrow UI-facing access to reconnect classification and explicit confirmed replacement mutations |
+| `src/features/localDirectoryRecovery` | Picker action, marker-inspection orchestration, explicit confirmation UI, pending/cancel/result/error state |
+| `src/widgets/RepositoryExplorerWidget` | Recovery precedence and rendering only |
+| page/pane | No change |
+| shared UI | No primitive/API change; reuse the existing dialog and Material controls |
+
+The existing marker inspection currently owned inside `mioframeSpacePick` must be moved or factored into the narrowest reusable shared owner rather than imported from one feature into another. `mioframeSpacePick` and `localDirectoryRecovery` must consume the same canonical inspection logic.
 
 ## Source of truth
 
 - Permission state: the remembered root handle at the provider boundary.
-- Remembered directory identity and current handle: the persisted `PersistedDeviceDirectoryRecord` selected by stable mounted `name`.
-- Entry equality: `FileSystemHandle.isSameEntry()`; the WHATWG File System Standard defines it as true only when both handles represent the same locator/entry.
-- Recovery UI state: typed provider errors propagated through the existing service/client error boundary; widgets do not infer browser causes from messages.
+- Remembered mount key and current persisted handle: `PersistedDeviceDirectoryRecord`, selected by stable mounted `name`.
+- Same-locator proof: `FileSystemHandle.isSameEntry()`. A `true` result is sufficient to reconnect automatically.
+- Existing-Mioframe-directory classification for the fallback path: presence of the canonical Automerge storage marker (`storage-adapter-id.automerge`) through one shared inspection helper.
+- Historical sameness after locator equality is lost: not inferred from folder name, marker presence, or heuristics. The user becomes the authority through an explicit confirmation that replaces the remembered location.
+- Recovery UI state: typed provider errors and explicit feature state; widgets do not infer browser causes from raw messages.
+
+Marker presence means only “this is an existing Mioframe/Automerge storage directory”. It does **not** prove that the directory is the previously remembered one.
 
 ## State and public contracts
 
-Keep permission recovery and reconnect recovery distinct.
+Keep permission recovery and unavailable-root recovery distinct.
 
-- Preserve `FileSystemAccessRecovery` for permission-required state.
-- Add one transfer-safe provider-owned unavailable-root error carrying only the stable mounted `spaceName` plus safe error identity; preserve the original caught `Error`/`DOMException` as `cause` before transport.
-- Add one narrow parser/read model for unavailable-root recovery rather than widening the permission-recovery type into a generic state manager.
-- Add a file-system service mutation equivalent to `reconnectDeviceDirectory({ spaceName, handle })` with explicit result statuses for success, missing remembered record, different directory, and unverified identity.
-- Expose that mutation through the mounted-directories entity facade.
-- Extend `localDirectoryRecovery` with a reconnect action; do not reuse `addDeviceDirectory()` for this flow.
+Preserve the existing unavailable-root transport/error contracts.
 
-Exact exported names may follow existing local naming conventions, but ownership and result semantics above are fixed.
+Revise the reconnect service contract into two explicit stages:
+
+1. **Safe reconnect attempt** — equivalent to `reconnectDeviceDirectory({ spaceName, handle })`:
+   - `reconnected`: `isSameEntry()` returned `true`; replacement completed;
+   - `confirmationRequired`: locator equality was false or could not be established; no mutation occurred;
+   - `missingRecord`: no remembered record exists for `spaceName`; no mutation occurred.
+2. **Confirmed remembered-location replacement** — a separate narrow service mutation equivalent to `replaceRememberedDeviceDirectory({ spaceName, handle })`:
+   - may be called only by the explicit recovery flow after shared marker inspection succeeded and the user confirmed replacement;
+   - persists the new handle under the existing record name, then replaces runtime provider state;
+   - returns success or missing-record state; unexpected persistence/runtime failures reject normally for feature-owned error handling.
+
+Do not keep separate `mismatch` and `identityUnverified` UI outcomes. They now have the same safe next state: `confirmationRequired` with no mutation.
+
+Exact exported names may follow local naming conventions, but the two-stage semantics and ownership are fixed.
 
 ## Minimum sufficient design
 
@@ -74,114 +97,158 @@ For user-selected directories only:
 1. Check read permission before the operation as today.
 2. For root directory enumeration (`readDirectory('/')`), if enumeration throws after the pre-check was `granted`, re-query root read permission once.
 3. If the re-check is no longer `granted`, emit the existing permission-required error.
-4. If the re-check remains `granted`, emit the new unavailable-root error with the original enumeration failure as cause.
+4. If the re-check remains `granted`, emit the unavailable-root error with the original enumeration failure as cause.
 5. Do not convert nested lookup/read failures into unavailable-root recovery merely because they threw after a granted permission check.
 
-This handles permission revocation races without treating every granted-state I/O error as a permission error or reconnect request.
+This part of the existing implementation remains unchanged.
 
-### Reconnect mutation
+### Safe reconnect attempt
 
-The service mutation must:
+The service safe-attempt mutation must:
 
 1. await mounted-directory hydration;
-2. find the persisted record by the stable mounted `spaceName`;
-3. verify identity with the remembered handle's `isSameEntry(selectedHandle)` when callable;
-4. reject a confirmed mismatch and fail closed when identity cannot be verified;
-5. persist the replacement handle while preserving the same record name;
-6. replace the mounted provider through the existing `DeviceFileSystemProvider.upsertRecord()` path;
-7. clear pending permission requests for that space because they reference the old handle;
-8. rely on the existing VFS mount/provider events to invalidate reads rather than adding a second refresh mechanism.
+2. find the persisted record by stable mounted `spaceName`;
+3. when callable, evaluate `existingRecord.handle.isSameEntry(selectedHandle)`;
+4. if it resolves `true`, use the existing persistence-first replacement path and return `reconnected`;
+5. if it resolves `false`, is unavailable, or throws, return `confirmationRequired` without changing persistence, runtime provider state, pending access requests, or mounted display state;
+6. return `missingRecord` when the remembered record no longer exists.
 
-Persist before replacing runtime state so a storage-write failure cannot leave an unpersisted replacement mounted for the session.
+`isSameEntry()` remains a fast-path proof, not a hard fail-closed terminal gate.
 
-### User action
+### Fallback candidate inspection and confirmation
 
-`Reconnect folder` is an explicit feature action and may call `showDirectoryPicker()` only from the user gesture. Use the same writable-directory intent as existing local-directory mounting. Cancellation is an expected result and must not be reported as an exception or mutate state.
+When the safe attempt returns `confirmationRequired`, the feature must:
 
-## Diagnostics
+1. inspect the already selected handle with the canonical shared Mioframe-storage marker check;
+2. treat a missing marker as an expected invalid selection: show a clear retryable message and perform no mutation;
+3. wrap unexpected browser/File System API inspection failures in the existing privacy-safe `DomainError` pattern before diagnostics;
+4. if the marker exists, show an explicit confirmation dialog explaining that Mioframe cannot verify this is the same historical folder and that continuing will make the selected folder the remembered location for the current mounted space;
+5. treat confirmation cancellation as expected: no mutation and no diagnostic exception;
+6. re-check that the recovery target is still current before invoking the confirmed replacement mutation;
+7. only after confirmation call the explicit remembered-location replacement mutation.
+
+The confirmation is the authority for locator-different/unverifiable replacement. It must not be implicit in picker selection alone.
+
+### Confirmed remembered-location replacement
+
+The service replacement mutation must:
+
+1. await mounted-directory hydration;
+2. find the persisted record by `spaceName`;
+3. build the replacement record with the same persisted/mounted `name` and the selected handle;
+4. persist the replacement record list **before** changing runtime state;
+5. replace the mounted provider through `DeviceFileSystemProvider.upsertRecord()`;
+6. clear pending file-system access requests for that space because they reference the old handle;
+7. synchronize the UI-facing display records;
+8. rely on existing VFS mount/provider events for read invalidation; do not add a second refresh mechanism.
+
+If persistence fails, the old runtime provider must remain mounted.
+
+The service does not inspect the marker and does not display confirmation UI. Those are feature/shared-inspection responsibilities. The explicit mutation is intentionally narrow and semantically represents a user-confirmed replacement.
+
+## Diagnostics and privacy
 
 Keep diagnostics thin and privacy-safe:
 
-- record technical breadcrumbs for the root-read stage and permission state;
-- root-read breadcrumbs use the actual safe permission state (`granted`/`denied`/`prompt`) observed at that step when known; they must not emit a derived `errorClass`, `domExceptionName`, or equivalent synthetic classifier;
-- preserve the real caught `DOMException`/`Error` so native exception type/name remains available to diagnostics when an unexpected provider failure is captured by the owning upper boundary;
-- do not add custom `domExceptionName`, raw message, path, filename, handle, or folder-name diagnostic fields;
-- expected picker cancellation, identity mismatch, and permission-required states are not diagnostic exceptions.
+- keep the existing root-read stage/permission breadcrumbs;
+- preserve the real caught `DOMException`/`Error` as raw `DomainError.cause` where unexpected browser/service failures are reported;
+- do not add raw browser messages, paths, filenames, handles, selected folder names, or mounted space names to diagnostic context;
+- do not derive `errorClass`, `domExceptionName`, VFS codes, or similar classifiers for this flow;
+- picker cancellation, confirmation cancellation, missing marker, `confirmationRequired`, and `missingRecord` are expected states and are not diagnostic exceptions;
+- unexpected picker, marker-inspection, persistence, or proxy failures are wrapped with project-controlled safe messages/codes before `captureDiagnosticException`.
 
 ## Rejected approaches
 
-- Reusing `addDeviceDirectory()`: it may create a second mount when identity does not match.
-- Handling raw `DOMException` in the widget: duplicates provider semantics and breaks ownership.
-- Classifying every granted-state read failure as reconnect-required: mislabels child/file errors.
-- Adding a generic recovery manager or new persisted recovery state: no current requirement needs it.
-- Falling back to folder name or repository marker for identity: neither proves that the selected directory is the remembered entry.
-- Adding a persistent space ID in this bug fix: it changes storage identity and is unnecessary for the confirmed scenarios.
+- **Hard fail on `isSameEntry() !== true`:** real Chrome/PWA proof showed this can reject the intended recovery directory.
+- **Treat marker presence as identity proof:** the same marker exists in every Mioframe storage directory and cannot prove historical sameness.
+- **Silently replace on any selected Mioframe directory:** risks rebinding the remembered mount to an unrelated space without informed user intent.
+- **Persist a new Mioframe space ID in this PR:** existing broken remembered records do not have such metadata, so a legacy fallback would still be required; it also changes persisted state without being necessary for the current recovery requirement.
+- **Persist/compare Automerge `storage-adapter-id` in remembered records now:** it could improve future automatic identity, but existing records lack the old value and the unavailable handle may not be readable enough to backfill it. Explicit confirmation is still required for the current broken scenario.
+- **Reuse `addDeviceDirectory()`:** it owns open/add behavior and may rename/create a separate mount instead of replacing the remembered location.
+- **Import marker inspection from `mioframeSpacePick`:** feature-to-feature dependency is the wrong ownership direction.
+- **Add a generic recovery manager/state machine:** no current requirement needs it.
 
 ## Shared UI blast radius
 
-None. Reuse existing Material button and empty-state components. No `src/shared/ui` contract or visual primitive changes are required.
+No shared UI contract change. Reuse the existing dialog API, `MDButton`, and `MDEmptyState`. Only the local-directory recovery flow composes the confirmation.
 
 ## Acceptance matrix
 
-| Scenario                                                      | Required result                                                                                         |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| read permission `prompt`                                      | existing `Permission required`; no generic folder error                                                 |
-| read permission `denied`                                      | existing `Permission required`; no generic folder error                                                 |
-| granted + root enumeration failure + permission still granted | unavailable-folder state with `Reconnect folder`                                                        |
-| permission revoked between pre-check and failed root read     | existing permission recovery, not reconnect recovery                                                    |
-| picker cancelled                                              | remembered record and mount unchanged                                                                   |
-| same entry selected                                           | persisted handle replaced under same name; provider replaced; reads retry through existing invalidation |
-| different entry selected                                      | no persisted/runtime replacement; retryable mismatch message                                            |
-| identity API unavailable/fails to confirm                     | fail closed; no replacement                                                                             |
-| nested file/path error while root remains usable              | original non-reconnect error semantics                                                                  |
-| reconnect storage update fails                                | old runtime provider remains mounted; error is surfaced safely                                          |
+| Scenario | Required result |
+| --- | --- |
+| read permission `prompt` | existing `Permission required`; no generic folder error |
+| read permission `denied` | existing `Permission required`; no generic folder error |
+| granted + root enumeration failure + permission still granted | `Folder unavailable` with `Reconnect folder` |
+| permission revoked between pre-check and failed root read | existing permission recovery, not reconnect recovery |
+| picker cancelled | remembered record and runtime mount unchanged |
+| same locator selected (`isSameEntry() === true`) | reconnect immediately; no marker fallback dialog; same mounted name |
+| locator differs or equality cannot be verified | no mutation; feature enters candidate-inspection/confirmation flow |
+| fallback candidate has no Mioframe marker | reject with retryable message; no mutation |
+| fallback candidate is a Mioframe directory; confirmation cancelled | no persisted/runtime replacement |
+| fallback candidate is a Mioframe directory; confirmation accepted | selected handle becomes remembered handle under the same mounted name; provider replaced; reads invalidate/retry |
+| confirmed replacement persistence fails | old runtime provider remains mounted; safe retryable error shown |
+| remembered record disappears before safe attempt/replacement | `missingRecord`; no new mount created |
+| recovery target changes while picker/inspection/confirmation is pending | stale action must not replace or overwrite state for the new recovery target |
+| nested file/path error while root remains usable | original non-reconnect error semantics |
 
 ## Risk matrix
 
-- **Data/identity safety — high:** never replace a remembered mount without confirmed identity.
-- **Permission classification — high:** re-check after failed root enumeration to cover revocation races.
-- **Worker/service boundary — medium:** keep handles only in explicit service mutation/request contracts, never display records.
-- **Diagnostics privacy — medium:** no paths, names, raw messages, handles, or synthetic error classifiers.
+- **Data/identity safety — high:** locator-different replacement is allowed only after marker validation plus explicit user confirmation; never silently substitute.
+- **Legacy recovery — high:** the design must work for existing persisted records that contain only `name` + `handle`.
+- **Permission classification — high:** preserve the provider re-check after failed root enumeration.
+- **Persistence consistency — high:** persist first, then replace runtime provider.
+- **Feature race/staleness — medium:** do not apply confirmation/replacement to a recovery target that changed while the action was pending.
+- **Worker/service boundary — medium:** handles remain only in explicit mutation contracts, never display records.
+- **Diagnostics privacy — medium:** no path/name/handle/raw external text in reportable metadata.
 - **Shared UI — none:** no primitive changes.
-- **Performance — low:** one additional permission query occurs only after a failed root enumeration; normal reads have no new retry loop.
+- **Performance — low:** marker inspection and confirmation happen only on the exceptional `confirmationRequired` path; same-entry recovery keeps the direct fast path.
 
 ## Required proof
 
 Implementation preflight owns exact `TEST IMPACT`, but the resulting proof must cover:
 
-- provider: `prompt`, `denied`, granted root read failure, permission-revocation race, and nested failure staying non-reconnect;
-- service: same-entry replacement, different-entry rejection, identity-unverified rejection, persistence failure leaving runtime unchanged, stale pending-request cleanup, and provider invalidation after replacement;
-- feature: picker success, cancel, mismatch/unverified result, pending-state reset, and safe failure message;
-- widget: permission recovery precedence, unavailable-folder recovery rendering/action, and generic error fallback;
-- diagnostics: safe stage/permission breadcrumbs and no private data added by the new path.
+- provider: existing `prompt`, `denied`, granted root read failure, permission-revocation race, and nested failure staying non-reconnect;
+- shared marker inspection: marker present, marker missing, and unexpected browser failure;
+- `mioframeSpacePick`: still uses the canonical shared marker inspection and preserves open/create guardrail behavior;
+- service safe attempt: same-entry automatic reconnect; false/missing/throwing `isSameEntry()` => `confirmationRequired` with zero mutation; missing record;
+- service confirmed replacement: same mounted name, persistence-first ordering, provider invalidation, stale pending-request cleanup, and persistence failure leaving runtime unchanged;
+- feature: picker cancel; same-entry success without confirmation; non-Mioframe fallback rejection; valid Mioframe fallback confirmation cancel; confirmation accept invoking explicit replacement; unexpected inspection/replacement failure; pending reset; stale recovery-target protection;
+- widget: permission precedence, unavailable-folder recovery rendering/action, generic error fallback; no provider/storage logic added;
+- diagnostics: expected fallback/cancel states are unreported; unexpected boundary failures use safe `DomainError` wrappers with raw causes.
 
-Real Chrome/PWA operator verification remains required for revoking site access and reconnecting an installed app because mocked handles do not prove browser permission persistence behavior.
+Real Chrome/PWA operator verification remains required after the correction. It must specifically repeat the scenario that previously produced the mismatch message and confirm that the intended locator-different/unverifiable Mioframe directory can be explicitly rebound after confirmation.
 
 ## Required verification
 
 - Run implementation preflight before production edits and follow its `TEST IMPACT`.
 - Use focused verifier-managed checks only when useful during implementation.
 - Final coding-agent handoff must run `pnpm verify` once after the implementation is stable.
-- Architect review and exact-head GitHub CI remain required before merge.
+- Re-run `project-review` on the complete affected scope after implementation.
+- Exact-head GitHub CI and the real Chrome/PWA operator proof are required before merge readiness.
 
 ## Forbidden
 
 - No `requestPermission()` in provider/service code.
-- No picker calls in provider/service/entity/widget/page code.
+- No picker or confirmation dialog in provider/service/entity/widget/page code.
 - No `addDeviceDirectory()` reuse for reconnect.
-- No replacement on folder name, marker presence, or other heuristic identity.
-- No removal/recreation of the remembered space as recovery.
-- No raw browser messages, paths, folder names, or handles in diagnostic payloads.
+- No silent replacement when `isSameEntry()` is false or unverifiable.
+- No treating marker presence as proof that the candidate is the historical remembered directory.
+- No replacement of a marker-valid candidate without explicit user confirmation.
+- No feature-to-feature import from `localDirectoryRecovery` to `mioframeSpacePick` or vice versa.
+- No duplicated Mioframe marker-inspection algorithm.
+- No new persisted space ID, persisted storage-adapter ID, record-format migration, recovery token, or generic recovery infrastructure in this PR.
+- No removal/recreation of the remembered mount as recovery.
+- No raw browser messages, paths, folder names, mounted names, or handles in diagnostic payloads.
 - No catch-all conversion of child I/O errors to reconnect recovery.
-- No generic recovery abstraction, persistent recovery state, compatibility path, or storage-format change.
-- No shared UI changes unless new evidence proves the existing primitives insufficient.
+- No shared UI primitive changes unless new evidence proves existing primitives insufficient.
 
 ## Implementation readiness
 
-- Product behavior: resolved.
+- Product behavior: resolved — locator-different/unverifiable recovery is allowed only through marker validation plus explicit confirmation.
 - Ownership and source of truth: resolved.
-- State shape and public boundaries: resolved.
-- Browser identity rule: resolved; `isSameEntry()` confirmation is required and failure is fail-closed.
+- State shape and public boundaries: resolved; persisted record format remains unchanged.
+- Browser identity rule: resolved — `isSameEntry() === true` is an automatic fast-path proof, not a terminal gate; explicit confirmation is the fallback authority when locator equality is unavailable.
+- Legacy remembered-record behavior: resolved without migration.
 - Required proof categories: resolved; exact test paths deferred to implementation preflight.
-- Unresolved blockers: none.
+- Unresolved blockers: none for implementation; current `REVIEW.md` remains blocked until the corrected implementation and real-browser proof are complete.
 - Verdict: **ready**.
