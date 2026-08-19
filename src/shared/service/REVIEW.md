@@ -4,7 +4,7 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Complete PR #211 local-directory recovery path from provider detection through worker/service contracts, persisted/runtime mount state, repository lifecycle, entity/feature/widget composition, and required proof.
+- Cross-service portion of PR #211: file-system persisted/runtime mount transition, repository lifecycle, worker/service contracts, and deterministic multi-service proof.
 
 ## Blockers
 
@@ -37,30 +37,7 @@ Required final state: redo the handoff around the simpler boundary: `isSameEntry
 
 Verification: the revised handoff must prove that locator-different replacement changes persisted location without exposing the new physical storage to current-runtime Repo/DocHandle/path operations, and that a fresh service/runtime hydrates the replacement normally. Same-entry reconnect keeps deterministic queued-write settlement proof.
 
-### B2 — Confirmed replacement can persist one physical directory under two mounted names
-
-Owner: `src/shared/service/fileSystem`
-
-Problem: `addDeviceDirectory()` already enforces the persisted-handle uniqueness invariant by finding an existing `isSameEntry()` record and reusing/replacing it. `replaceRememberedDeviceDirectory()` does not check the selected handle against other persisted records before replacing the target record. Selecting a Mioframe directory already connected under another mounted name can therefore persist two records for the same physical directory.
-
-Evidence:
-
-- [File-system service](fileSystem/useFileSystemService.ts) — `addDeviceDirectory()` calls `findRecordByHandle()` while `replaceRememberedDeviceDirectory()` only finds the target by `spaceName` and writes the selected handle into that record.
-- [File-system service tests](fileSystem/useFileSystemService.test.ts) — existing add-directory proof explicitly verifies that the same handle is reused instead of duplicated; replacement proof contains no already-mounted-candidate scenario.
-
-Basis:
-
-- [File-system service rules](fileSystem/AGENTS.md) — persisted handles, provider registration and mount lifecycle are fileSystem-owned invariants.
-- [Root architecture rules](../../../AGENTS.md) — one source of truth and complete storage lifecycle behavior must be preserved; fixes must not introduce conflicting ownership/state.
-- [CRDT/storage workflow](../../../.agents/skills/crdt-storage/SKILL.md) — storage/provider state and cache lifecycle are data-safety state.
-
-Risk: two VFS paths can point at the same Automerge storage. They can then acquire independent repository instances/caches and write the same physical files through different logical mounts. The current replacement lease only protects the target path and does not protect an already-mounted sibling path.
-
-Required final state: the revised replacement contract must preserve the existing one-physical-directory/one-persisted-mount invariant. A candidate already represented by another mounted record is an expected rejection with zero mutation; do not silently merge, rename, disconnect, or alias the other mount.
-
-Verification: add focused service proof for an already-mounted selected handle and confirm persisted records/runtime mounts remain unchanged.
-
-### B3 — Same-entry repository settlement proof is not deterministic or effect-based
+### B2 — Same-entry repository settlement proof is not deterministic or effect-based
 
 Owner: `src/shared/service`
 
@@ -81,26 +58,6 @@ Risk: scheduler timing can determine test success, and a regression that reports
 Required final state: keep only the cross-service proof still required by the revised architecture and make it deterministic. For same-entry reconnect, use explicit test-controlled barriers/events and assert a direct post-remount storage effect for the queued write, not only the returned status.
 
 Verification: the test must fail if the real repository recovery handler is not registered/invoked or if the queued write does not reach the rebound same-entry storage.
-
-### B4 — Final real Chrome/PWA recovery proof is missing
-
-Owner: `src/features/localDirectoryRecovery`
-
-Problem: the browser behavior that motivated this PR cannot be proven by mocked `FileSystemDirectoryHandle` fixtures. The final implementation has not yet passed the required real Chrome/PWA scenarios.
-
-Evidence:
-
-- [Local directory recovery handoff](../../../docs/local-directory-access-recovery.md) — real Chrome/PWA operator proof is a merge gate.
-
-Basis:
-
-- [Project review workflow](../../../.agents/skills/project-review/SKILL.md) — required but missing proof blocks acceptance.
-
-Risk: the final recovery semantics may still differ from real persisted-handle/picker behavior.
-
-Required final state: after the architecture and implementation are stable, run the revised real-browser matrix including revoked permission, granted-but-unavailable root, cancellation, proven same-entry recovery, locator-different confirmed recovery across the clean-runtime boundary, invalid candidate, and already-mounted candidate.
-
-Verification: operator proof on the final implementation/head.
 
 ## Major issues
 
