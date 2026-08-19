@@ -183,9 +183,6 @@ jobs:
       - name: Verify unit tests
         run: pnpm verify --verbose --only unit-tests
 
-      - name: Verify storybook build
-        run: pnpm verify --verbose --only storybook-build
-
       - name: Verify mutation
         run: pnpm verify --verbose --only mutation
 
@@ -198,18 +195,148 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  verification-browser:
+  # Single run-scoped producer for the Storybook static build: behavior and
+  # visual are independent parallel proof lanes, but the static compilation
+  # they both preview is only a shared prerequisite, not proof itself. This
+  # job builds it at most once per workflow run and hands it to both lanes as
+  # a run-scoped GitHub Actions artifact (never a cross-run cache). E2E does
+  # not depend on this job — it needs no Storybook artifact.
+  storybook-build:
     needs:
       - autofix
     if: >-
       !cancelled() &&
       (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      ready: ${{ steps.build.outputs.ready }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify storybook build
+        id: build
+        run: |
+          set -euo pipefail
+          pnpm verify --verbose --only storybook-build
+
+          index_present=false
+          iframe_present=false
+          [ -f storybook-static/index.html ] && index_present=true
+          [ -f storybook-static/iframe.html ] && iframe_present=true
+
+          if [ "$index_present" = true ] && [ "$iframe_present" = true ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          elif [ "$index_present" = false ] && [ "$iframe_present" = false ]; then
+            echo "Storybook static build was not required for this change; no artifact to publish."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Storybook static build produced partial output (only one of index.html/iframe.html)." >&2
+            exit 1
+          fi
+
+      - name: Upload Storybook static artifact
+        if: steps.build.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-static
+          path: storybook-static
+          retention-days: 1
+
+      - name: Upload storybook-build verify logs
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-storybook-build-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # E2E is an independent proof owner with no Storybook dependency: it must
+  # not wait on the storybook-build producer above.
+  verification-browser-e2e:
+    needs:
+      - autofix
+    if: >-
+      !cancelled() &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped')
+    name: verification-browser (e2e)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref || github.ref }}
+
+      - name: Fetch pull request base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags origin "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verify e2e
+        run: pnpm verify --verbose --only e2e
+
+      - name: Upload browser verify logs
+        if: ${{ failure() || cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-e2e-logs
+          path: .verify/logs/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Storybook-owned browser proof: parallel behavior/visual lanes that reuse
+  # the shared storybook-build producer's artifact instead of each compiling
+  # Storybook themselves.
+  verification-storybook-browser:
+    needs:
+      - autofix
+      - storybook-build
+    if: >-
+      !cancelled() &&
+      (needs.autofix.result == 'success' || needs.autofix.result == 'skipped') &&
+      needs.storybook-build.result == 'success'
     strategy:
       fail-fast: false
-      max-parallel: 3
       matrix:
         lane:
-          - e2e
           - storybook-behavior
           - visual
     name: verification-browser (${{ matrix.lane }})
@@ -240,7 +367,19 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Only ever populated when the producer actually built Storybook; when
+      # it legitimately skipped (no storybook-relevant change), this lane
+      # builds its own Storybook static output, same as a standalone run.
+      - name: Download Storybook static artifact
+        if: needs.storybook-build.outputs.ready == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: storybook-static
+          path: storybook-static
+
       - name: Verify ${{ matrix.lane }}
+        env:
+          STORYBOOK_STATIC_SKIP_BUILD: ${{ needs.storybook-build.outputs.ready == 'true' && '1' || '' }}
         run: pnpm verify --verbose --only ${{ matrix.lane }}
 
       - name: Upload browser verify logs
@@ -255,7 +394,9 @@ jobs:
   verification:
     needs:
       - verification-static
-      - verification-browser
+      - storybook-build
+      - verification-browser-e2e
+      - verification-storybook-browser
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 1
@@ -264,7 +405,9 @@ jobs:
       - name: Require implementation verification lanes
         env:
           STATIC_RESULT: ${{ needs.verification-static.result }}
-          BROWSER_RESULT: ${{ needs.verification-browser.result }}
+          STORYBOOK_BUILD_RESULT: ${{ needs.storybook-build.result }}
+          E2E_RESULT: ${{ needs.verification-browser-e2e.result }}
+          STORYBOOK_BROWSER_RESULT: ${{ needs.verification-storybook-browser.result }}
         run: |
           failed=0
 
@@ -273,8 +416,18 @@ jobs:
             failed=1
           fi
 
-          if [ "$BROWSER_RESULT" != "success" ]; then
-            echo "Browser verification result: $BROWSER_RESULT"
+          if [ "$STORYBOOK_BUILD_RESULT" != "success" ]; then
+            echo "Storybook build producer result: $STORYBOOK_BUILD_RESULT"
+            failed=1
+          fi
+
+          if [ "$E2E_RESULT" != "success" ]; then
+            echo "E2E verification result: $E2E_RESULT"
+            failed=1
+          fi
+
+          if [ "$STORYBOOK_BROWSER_RESULT" != "success" ]; then
+            echo "Storybook browser verification result: $STORYBOOK_BROWSER_RESULT"
             failed=1
           fi
 

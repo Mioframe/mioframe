@@ -1466,6 +1466,56 @@ export function buildCommands(
     });
   }
 
+  // The shared Storybook static build is a prerequisite for both
+  // storybook-behavior and visual, not an independent proof owner. Schedule
+  // it before either lane so a successful build result is already available
+  // in `results` (see `getExtraEnvForEntry`) when they run, and derive the
+  // requirement from the three existing plans only: no separate impact
+  // registry. `invalid` behavior/visual plans fail closed on their own lane
+  // below and must not, by themselves, force an otherwise-unneeded build.
+  const storybookBehaviorNeedsStaticBuild =
+    storybookBehaviorPlan.mode === 'full' || storybookBehaviorPlan.mode === 'focused';
+  const visualNeedsStaticBuild =
+    visualPlan !== null && (visualPlan.mode === 'full' || visualPlan.mode === 'focused');
+  const storybookStaticBuildReasons = [
+    ...(storybookBuildPlan.mode === 'full' ? storybookBuildPlan.reasons : []),
+    ...(storybookBehaviorNeedsStaticBuild
+      ? [
+          `storybook-behavior lane requires a Storybook static build (${storybookBehaviorPlan.reasons.join('; ')})`,
+        ]
+      : []),
+    ...(visualNeedsStaticBuild
+      ? [`visual lane requires a Storybook static build (${visualPlan.reasons.join('; ')})`]
+      : []),
+  ];
+
+  if (fullMode) {
+    commands.push({
+      kind: 'run',
+      label: 'storybook-build',
+      command: 'pnpm',
+      args: ['storybook:build'],
+      weight: classifyCommandWeight({ label: 'storybook-build' }),
+      triggerReason: 'full-project release verification',
+    });
+  } else if (storybookStaticBuildReasons.length > 0) {
+    commands.push({
+      kind: 'run',
+      label: 'storybook-build',
+      command: 'pnpm',
+      args: ['storybook:build'],
+      weight: classifyCommandWeight({ label: 'storybook-build' }),
+      triggerReason: storybookStaticBuildReasons.join('; '),
+    });
+  } else {
+    commands.push({
+      kind: 'skipped',
+      label: 'storybook-build',
+      command: 'pnpm storybook:build',
+      reason: 'no storybook-relevant changes',
+    });
+  }
+
   if (storybookBehaviorPlan.mode === 'invalid') {
     commands.push({
       kind: 'failed',
@@ -1540,33 +1590,6 @@ export function buildCommands(
       label: 'visual',
       command: 'pnpm test:visual',
       reason: 'empty visual scope',
-    });
-  }
-
-  if (fullMode) {
-    commands.push({
-      kind: 'run',
-      label: 'storybook-build',
-      command: 'pnpm',
-      args: ['storybook:build'],
-      weight: classifyCommandWeight({ label: 'storybook-build' }),
-      triggerReason: 'full-project release verification',
-    });
-  } else if (storybookBuildPlan.mode === 'full') {
-    commands.push({
-      kind: 'run',
-      label: 'storybook-build',
-      command: 'pnpm',
-      args: ['storybook:build'],
-      weight: classifyCommandWeight({ label: 'storybook-build' }),
-      triggerReason: storybookBuildPlan.reasons.join('; '),
-    });
-  } else {
-    commands.push({
-      kind: 'skipped',
-      label: 'storybook-build',
-      command: 'pnpm storybook:build',
-      reason: 'no storybook-relevant changes',
     });
   }
 
@@ -1862,12 +1885,21 @@ export function printSummary(
 // check already produced a fresh artifact earlier in this same run.
 const ARTIFACT_REUSE_LABELS = new Set(['artifact', 'release-smoke']);
 
+// Storybook browser lanes whose webServer builds the Storybook static
+// artifact itself (see playwright.storybook.config.ts / playwright.visual.config.ts).
+// Reused only when the `storybook-build` check already produced a fresh
+// static build earlier in this same run.
+const STORYBOOK_STATIC_REUSE_LABELS = new Set(['storybook-behavior', 'visual']);
+
 /**
  * Resolve extra env for a command entry, based on prior results in this run.
  * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact`/`release-smoke`
  * release-only checks once the `build` check has already produced a fresh
  * production artifact in this same `pnpm verify` invocation, so a single
  * release gate does not rebuild the artifact once per check that needs it.
+ * Sets `STORYBOOK_STATIC_SKIP_BUILD=1` for the `storybook-behavior`/`visual`
+ * checks once the `storybook-build` check has already produced a fresh
+ * Storybook static build in this same invocation, for the same reason.
  * @param entry Command entry about to run.
  * @param priorResults Results already collected earlier in this run.
  * @returns Extra env to merge into the command's environment.
@@ -1876,13 +1908,25 @@ export function getExtraEnvForEntry(
   entry: { label: string },
   priorResults: readonly { label: string; status: string }[],
 ): NodeJS.ProcessEnv {
-  if (!ARTIFACT_REUSE_LABELS.has(entry.label)) {
-    return {};
+  const extraEnv: NodeJS.ProcessEnv = {};
+
+  if (ARTIFACT_REUSE_LABELS.has(entry.label)) {
+    const buildResult = priorResults.find((result) => result.label === 'build');
+
+    if (buildResult?.status === 'passed') {
+      extraEnv.RELEASE_ARTIFACT_SKIP_BUILD = '1';
+    }
   }
 
-  const buildResult = priorResults.find((result) => result.label === 'build');
+  if (STORYBOOK_STATIC_REUSE_LABELS.has(entry.label)) {
+    const storybookBuildResult = priorResults.find((result) => result.label === 'storybook-build');
 
-  return buildResult?.status === 'passed' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
+    if (storybookBuildResult?.status === 'passed') {
+      extraEnv.STORYBOOK_STATIC_SKIP_BUILD = '1';
+    }
+  }
+
+  return extraEnv;
 }
 
 /** Environment inputs for a verify child command. */

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -8,6 +9,7 @@ import { runLocalCommand } from './lib/runLocalCommand.ts';
 
 const defaultDeps = {
   applyProcessResult,
+  fileExists: existsSync,
   runGuardedExpensiveLocalCommand,
   runLocalCommand,
   spawnStorybook: runLocalCommand,
@@ -16,22 +18,51 @@ const defaultDeps = {
 /**
  * Run Storybook in explicit dev or build mode.
  * `dev` stays an unguarded manual server; `build` goes through the local safety policy.
+ *
+ * When `STORYBOOK_STATIC_SKIP_BUILD=1` is set for `build` mode, this reuses an existing
+ * Storybook static build instead of recompiling. `scripts/verify.ts` sets this for the
+ * `storybook-behavior`/`visual` checks only when an earlier `storybook-build` check already
+ * produced a fresh static build in the same run, so a single `pnpm verify` run does not
+ * compile Storybook once per browser lane that needs it. Standalone invocations (e.g.
+ * `pnpm storybook:build`, `pnpm verify --only storybook-behavior`) never set this flag and
+ * always build Storybook themselves.
  * @param [mode] Storybook mode.
  * @param [deps] Test seams for guarded execution and result handling.
+ * @param [env] Process environment, for the reuse-if-prebuilt test seam.
  */
-export async function runStorybook(mode = process.argv[2], deps = defaultDeps) {
+export async function runStorybook(mode = process.argv[2], deps = defaultDeps, env = process.env) {
   if (mode !== 'dev' && mode !== 'build') {
     console.error('Expected Storybook mode: dev or build.');
     process.exit(1);
   }
 
-  const { args, command, env } = getStorybookCommand(mode);
+  if (mode === 'build' && env.STORYBOOK_STATIC_SKIP_BUILD === '1') {
+    const fileExists = deps.fileExists ?? existsSync;
+    const staticDir = toolingConfig.storybook.staticDir;
+    const indexPath = join(staticDir, 'index.html');
+    const iframePath = join(staticDir, 'iframe.html');
+
+    if (!fileExists(indexPath) || !fileExists(iframePath)) {
+      console.error(
+        `STORYBOOK_STATIC_SKIP_BUILD=1 was set, but no existing Storybook static build was found at ${staticDir} ` +
+          `(expected both ${indexPath} and ${iframePath}). ` +
+          'Rerun without STORYBOOK_STATIC_SKIP_BUILD so this step builds Storybook itself.',
+      );
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`Reusing existing Storybook static build at ${staticDir}.`);
+    return;
+  }
+
+  const { args, command, env: commandEnv } = getStorybookCommand(mode);
 
   if (mode === 'dev') {
     const result = await deps.spawnStorybook({
       args,
       command,
-      env,
+      env: commandEnv,
     });
     deps.applyProcessResult(result);
     return;
@@ -42,7 +73,7 @@ export async function runStorybook(mode = process.argv[2], deps = defaultDeps) {
       args,
       command: `${command} ${args.join(' ')}`,
       executable: command,
-      env,
+      env: commandEnv,
       label: 'storybook:build',
     },
     deps,
