@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import type { FileSystemUnavailableRootRecovery } from '@shared/lib/fileSystem';
+import { DomainError } from '@shared/lib/error';
 import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 import { useLocalDirectoryReconnectAction } from './useLocalDirectoryReconnectAction';
 
@@ -67,6 +68,69 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(isReconnectPending.value).toBe(false);
     expect(reconnectDirectoryMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('wraps a non-cancel picker failure in a safe retryable DomainError instead of rejecting', async () => {
+    const pickerError = new DOMException('permission dismissed by the browser', 'NotAllowedError');
+    showDirectoryPickerMock.mockRejectedValueOnce(pickerError);
+    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+
+    const { isReconnectPending, reconnectFolder, reconnectMessage } =
+      useLocalDirectoryReconnectAction({ recovery });
+
+    await expect(reconnectFolder()).resolves.toBeUndefined();
+
+    expect(isReconnectPending.value).toBe(false);
+    expect(reconnectDirectoryMock).not.toHaveBeenCalled();
+    expect(reconnectMessage.value).toBe(
+      'Could not open the folder picker. Try again from this action.',
+    );
+    expect(reconnectMessage.value).not.toContain('permission dismissed by the browser');
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({
+      feature: 'localDirectoryRecovery',
+      action: 'reconnectFolder',
+    });
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError).toMatchObject({
+      message: 'Could not open the folder picker. Try again from this action.',
+      code: 'localDirectoryReconnect.pickerFailed',
+    });
+    expect(reportedError.cause).toBe(pickerError);
+    expect(reportedError.message).not.toContain('permission dismissed by the browser');
+  });
+
+  it('wraps an unexpected reconnectDirectory failure in a safe retryable DomainError instead of rejecting', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    const serviceError = new Error('vfs write conflict at /handles/Work.json');
+    reconnectDirectoryMock.mockRejectedValueOnce(serviceError);
+    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+
+    const { isReconnectPending, reconnectFolder, reconnectMessage } =
+      useLocalDirectoryReconnectAction({ recovery });
+
+    await expect(reconnectFolder()).resolves.toBeUndefined();
+
+    expect(isReconnectPending.value).toBe(false);
+    expect(reconnectMessage.value).toBe(
+      'Could not reconnect this folder. Try again from this action.',
+    );
+    expect(reconnectMessage.value).not.toContain('vfs write conflict');
+
+    expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
+    const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
+    expect(options).toEqual({
+      feature: 'localDirectoryRecovery',
+      action: 'reconnectFolder',
+    });
+    expect(reportedError).toBeInstanceOf(DomainError);
+    expect(reportedError).toMatchObject({
+      code: 'localDirectoryReconnect.reconnectFailed',
+    });
+    expect(reportedError.cause).toBe(serviceError);
   });
 
   it('reports a retryable message without a diagnostic exception on a confirmed mismatch', async () => {

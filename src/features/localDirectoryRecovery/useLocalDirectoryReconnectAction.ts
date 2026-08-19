@@ -2,8 +2,14 @@ import type { FileSystemUnavailableRootRecovery } from '@shared/lib/fileSystem';
 import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useFileSystem } from '@entity/mountedDirectories';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
+import { DomainError } from '@shared/lib/error';
 import { isFunction } from 'es-toolkit';
 import { computed, ref, watch, type Ref } from 'vue';
+
+enum LocalDirectoryReconnectErrorCode {
+  pickerFailed = 'localDirectoryReconnect.pickerFailed',
+  reconnectFailed = 'localDirectoryReconnect.reconnectFailed',
+}
 
 /**
  * Owns the explicit user-triggered reconnect action for a remembered local-directory root that
@@ -55,12 +61,20 @@ export const useLocalDirectoryReconnectAction = ({
         handle = await window.showDirectoryPicker({ mode: 'readwrite' });
       } catch (error) {
         if (!isUserFileSelectionCancel(error)) {
-          captureDiagnosticException(error, {
-            feature: 'localDirectoryRecovery',
-            action: 'reconnectFolder',
-          });
-          reconnectMessageOverride.value =
-            'Could not open the folder picker. Try again from this action.';
+          captureDiagnosticException(
+            new DomainError('Could not open the folder picker. Try again from this action.', {
+              cause: error,
+              code: LocalDirectoryReconnectErrorCode.pickerFailed,
+            }),
+            {
+              feature: 'localDirectoryRecovery',
+              action: 'reconnectFolder',
+            },
+          );
+          if (recovery.value === currentRecovery) {
+            reconnectMessageOverride.value =
+              'Could not open the folder picker. Try again from this action.';
+          }
         }
         return;
       }
@@ -69,10 +83,30 @@ export const useLocalDirectoryReconnectAction = ({
         return;
       }
 
-      const result = await reconnectDirectory({
-        handle,
-        spaceName: currentRecovery.spaceName,
-      });
+      let result: Awaited<ReturnType<typeof reconnectDirectory>>;
+
+      try {
+        result = await reconnectDirectory({
+          handle,
+          spaceName: currentRecovery.spaceName,
+        });
+      } catch (error) {
+        captureDiagnosticException(
+          new DomainError('Could not reconnect this folder. Try again from this action.', {
+            cause: error,
+            code: LocalDirectoryReconnectErrorCode.reconnectFailed,
+          }),
+          {
+            feature: 'localDirectoryRecovery',
+            action: 'reconnectFolder',
+          },
+        );
+        if (recovery.value === currentRecovery) {
+          reconnectMessageOverride.value =
+            'Could not reconnect this folder. Try again from this action.';
+        }
+        return;
+      }
 
       if (recovery.value !== currentRecovery) {
         return;
