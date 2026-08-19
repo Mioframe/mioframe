@@ -12,13 +12,13 @@ Verdict: blocked
 
 Owner: `src/shared/service`
 
-Problem: `persistAndMountReplacement()` currently remounts the provider and clears old access requests without coordinating cached Automerge repository state. The updated architecture now distinguishes two safe cases: proven same-entry reconnect must settle cached repository writes after remount; locator-different confirmed replacement must be rejected while a repository is cached under the mount.
+Problem: `persistAndMountReplacement()` currently remounts the provider and clears old access requests without coordinating cached Automerge repository state. The architecture now resolves the required split: proven same-entry reconnect must settle cached repository writes after remount; locator-different confirmed replacement must be rejected while a repository is cached under the mount.
 
 Evidence:
 
 - [File-system replacement](fileSystem/useFileSystemService.ts) — current replacement remounts and calls `registry.clearForSpace()` without settlement or a confirmed-replacement cache guard.
 - [Access-request registry](fileSystem/fileSystemAccessRequestRegistry.ts) — registered write-recovery handlers currently run only from permission `resolve()`.
-- [Repositories service](repositories/repositoriesService.ts) — cached `Repo` instances are keyed by VFS path and existing settlement already owns `flushPendingSaves()` + `repo.flush()`.
+- [Repositories service](repositories/repositoriesService.ts) — cached `Repo` instances are keyed by VFS path and existing settlement owns `flushPendingSaves()` + `repo.flush()`.
 - [Retrying storage adapter](../../lib/automergeAdapter/createRetryingStorageAdapter.ts) — access-blocked saves remain queued until settlement.
 
 Basis:
@@ -29,7 +29,7 @@ Basis:
 
 Risk: Same-entry reconnect can orphan queued saves when the old access request is cleared. Locator-different confirmed replacement can let an old cached Repo continue operating through the unchanged VFS path against a different physical Mioframe storage directory.
 
-Required final state: Implement the architecture contract without a direct `fileSystem` → `repositories` dependency: reuse the registered write-recovery handlers after proven same-entry remount; add a narrow service-internal confirmed-replacement guard registered by repositories; block confirmed replacement while the target mount has cached repository state; preserve zero mutation on that block.
+Required final state: Implement the ready handoff without a direct `fileSystem` → `repositories` dependency: reuse registered write-recovery handlers after proven same-entry remount; add the narrow service-internal confirmed-replacement guard registered by repositories; block confirmed replacement while the target mount has cached repository state; preserve zero mutation on that block.
 
 Verification: Focused cross-service proof must cover same-entry settlement success/non-flushed outcomes, stale old-request cleanup, exact/descendant cached-repository blocking for confirmed replacement, sibling isolation, and zero persistence/runtime mutation when replacement is blocked.
 
