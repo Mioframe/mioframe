@@ -53,17 +53,17 @@ Recover a remembered user-selected local directory when its saved root becomes u
 
 ## Ownership
 
-| Owner                                  | Responsibility                                                                                                                                                    |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error                                                                                          |
-| `src/shared/lib/automergeAdapter`      | Canonical marker filename and reusable marker-presence inspection policy                                                                                          |
-| `src/shared/service/fileSystem`        | Persisted-handle uniqueness, mounted-name allocation, same-entry reconnect, locator-different relocation, provider mount/unmount, request cleanup                 |
-| `src/shared/service/repositories`      | Repo/cache/retrying-storage lifecycle, VFS-identity-driven Repo retirement, generic write-recovery settlement; no local-directory relocation protocol             |
-| `src/entities/mountedDirectories`      | Narrow UI-facing reconnect/relocation mutations                                                                                                                   |
-| `src/features/localDirectoryRecovery`  | Permission-grant recovery action only                                                                                                                             |
+| Owner                                  | Responsibility                                                                                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error                                                                                            |
+| `src/shared/lib/automergeAdapter`      | Canonical marker filename and reusable marker-presence inspection policy                                                                                            |
+| `src/shared/service/fileSystem`        | Persisted-handle uniqueness, mounted-name allocation, same-entry reconnect, locator-different relocation, provider mount/unmount, request cleanup                   |
+| `src/shared/service/repositories`      | Repo/cache/retrying-storage lifecycle, VFS-identity-driven Repo retirement, generic write-recovery settlement; no local-directory relocation protocol               |
+| `src/entities/mountedDirectories`      | Narrow UI-facing reconnect/relocation mutations                                                                                                                     |
+| `src/features/localDirectoryRecovery`  | Permission-grant recovery action only                                                                                                                               |
 | `src/features/localDirectoryReconnect` | Unavailable-root parsing, picker, marker inspection, confirmation, reconnect/relocation action state, committed-result handling, feature-owned warning notification |
-| `src/widgets/RepositoryExplorerWidget` | Recovery branch precedence/rendering and navigation applicability after relocation; no provider-error parsing                                                     |
-| page/pane                              | No new responsibility                                                                                                                                             |
+| `src/widgets/RepositoryExplorerWidget` | Recovery branch precedence/rendering and navigation applicability after relocation; no provider-error parsing                                                       |
+| page/pane                              | No new responsibility                                                                                                                                               |
 
 ## Source of truth and state
 
@@ -231,30 +231,30 @@ Removing the old runtime root emits the VFS lifecycle transition that repositori
 
 ## Acceptance matrix
 
-| Scenario                                      | Required result                                                                                                        |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| permission `prompt`/`denied`                  | existing permission recovery                                                                                           |
-| granted root enumeration failure              | unavailable-root recovery                                                                                              |
-| picker/confirmation cancel                    | zero mutation                                                                                                          |
-| same entry                                    | same mounted/repository identity; persist/remount; same Repo remains eligible; settlement runs                         |
-| same entry, settlement fails                  | provider stays reconnected; service returns warning status; Snackbar shows warning                                    |
-| false/unverifiable identity                   | `confirmationRequired`; zero mutation before fallback                                                                  |
-| candidate lacks marker                        | reject; zero mutation                                                                                                  |
-| candidate already mounted elsewhere           | `alreadyMounted`; zero mutation; existing target can be opened                                                         |
-| confirmed unique candidate                    | old persisted record replaced by new unique mounted name/path; old runtime identity ends; new identity mounted         |
-| cached Repo under removed old root             | retired immediately from reuse; cannot issue new storage IO through a later identity at the old path                   |
-| same path recreated after identity end         | fresh Repo/resource; retired Repo is never returned                                                                     |
-| ordinary content write/create/delete file      | repository facts update; Repo identity is preserved                                                                     |
-| transient permission/read failure              | recoverable read state; Repo identity is not ended solely by the error                                                   |
-| candidate basename equals old name            | new unique mounted name differs from old path                                                                          |
-| relocation persistence fails                  | old persisted/runtime mount unchanged                                                                                  |
-| old path after relocation                     | cannot route repository reads/writes to selected storage                                                               |
-| new path after relocation                     | routes to selected handle and fresh repository resource on demand                                                      |
-| recovery disappears after committed mutation  | committed result still processed                                                                                        |
-| user navigates away while action is pending   | mutation result remains valid; no stale `clickPath`                                                                     |
-| nested provider failure                       | existing semantics                                                                                                     |
-| widget                                        | no provider recovery parsing                                                                                            |
-| repositories                                  | no local-directory relocation lease/reservation protocol                                                               |
+| Scenario                                     | Required result                                                                                                |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| permission `prompt`/`denied`                 | existing permission recovery                                                                                   |
+| granted root enumeration failure             | unavailable-root recovery                                                                                      |
+| picker/confirmation cancel                   | zero mutation                                                                                                  |
+| same entry                                   | same mounted/repository identity; persist/remount; same Repo remains eligible; settlement runs                 |
+| same entry, settlement fails                 | provider stays reconnected; service returns warning status; Snackbar shows warning                             |
+| false/unverifiable identity                  | `confirmationRequired`; zero mutation before fallback                                                          |
+| candidate lacks marker                       | reject; zero mutation                                                                                          |
+| candidate already mounted elsewhere          | `alreadyMounted`; zero mutation; existing target can be opened                                                 |
+| confirmed unique candidate                   | old persisted record replaced by new unique mounted name/path; old runtime identity ends; new identity mounted |
+| cached Repo under removed old root           | retired immediately from reuse; cannot issue new storage IO through a later identity at the old path           |
+| same path recreated after identity end       | fresh Repo/resource; retired Repo is never returned                                                            |
+| ordinary content write/create/delete file    | repository facts update; Repo identity is preserved                                                            |
+| transient permission/read failure            | recoverable read state; Repo identity is not ended solely by the error                                         |
+| candidate basename equals old name           | new unique mounted name differs from old path                                                                  |
+| relocation persistence fails                 | old persisted/runtime mount unchanged                                                                          |
+| old path after relocation                    | cannot route repository reads/writes to selected storage                                                       |
+| new path after relocation                    | routes to selected handle and fresh repository resource on demand                                              |
+| recovery disappears after committed mutation | committed result still processed                                                                               |
+| user navigates away while action is pending  | mutation result remains valid; no stale `clickPath`                                                            |
+| nested provider failure                      | existing semantics                                                                                             |
+| widget                                       | no provider recovery parsing                                                                                   |
+| repositories                                 | no local-directory relocation lease/reservation protocol                                                       |
 
 ## Required proof
 
