@@ -373,6 +373,112 @@ describe('fileSystemAccessRequestRegistry', () => {
     await expect(registry.cancel({ operation: 'read', spaceName: 'Missing' })).resolves.toBe(false);
   });
 
+  it('runWriteRecoveryHandlers runs registered handlers directly without a pending request', async () => {
+    const registry = createRegistry();
+    const writeHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    await expect(
+      registry.runWriteRecoveryHandlers({
+        mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({ status: 'flushed' });
+    expect(writeHandler).toHaveBeenCalledWith({
+      mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+      operation: 'write',
+      spaceName: 'Work',
+    });
+  });
+
+  it('runWriteRecoveryHandlers stops at the first non-flushed handler result', async () => {
+    const registry = createRegistry();
+    const firstHandler = vi.fn().mockResolvedValue({ status: 'stillBlocked' as const });
+    const secondHandler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+
+    registry.registerWriteRecoveryHandler(firstHandler);
+    registry.registerWriteRecoveryHandler(secondHandler);
+
+    await expect(
+      registry.runWriteRecoveryHandlers({
+        mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+        spaceName: 'Work',
+      }),
+    ).resolves.toEqual({ status: 'stillBlocked' });
+    expect(secondHandler).not.toHaveBeenCalled();
+  });
+
+  it('resolve uses the same handler execution semantics as a direct runWriteRecoveryHandlers call', async () => {
+    const registry = createRegistry();
+    const handle = createHandleMock();
+    const refreshProvider = vi.fn().mockResolvedValue(undefined);
+    const writeHandler = vi.fn().mockResolvedValue({ status: 'failed' as const });
+
+    registry.upsertRequest({ spaceName: 'Work', handle, mode: 'readwrite', refreshProvider });
+    registry.registerWriteRecoveryHandler(writeHandler);
+
+    const resolved = await registry.resolve({
+      operation: 'write',
+      spaceName: 'Work',
+      permissionState: 'granted',
+    });
+    const direct = await registry.runWriteRecoveryHandlers({
+      mountPath: PathUtils.join(deviceFilesPath, 'Work'),
+      spaceName: 'Work',
+    });
+
+    expect(resolved).toEqual({ status: 'grantedWithStorageFailures' });
+    expect(direct).toEqual({ status: 'failed' });
+    expect(writeHandler).toHaveBeenCalledTimes(2);
+  });
+
+  it('isConfirmedReplacementBlocked returns false when no guard is registered', async () => {
+    const registry = createRegistry();
+
+    await expect(
+      registry.isConfirmedReplacementBlocked(PathUtils.join(deviceFilesPath, 'Work')),
+    ).resolves.toBe(false);
+  });
+
+  it('isConfirmedReplacementBlocked returns true when a registered guard blocks the mount', async () => {
+    const registry = createRegistry();
+    const guard = vi.fn().mockResolvedValue(true);
+
+    registry.registerConfirmedReplacementGuard(guard);
+
+    const mountPath = PathUtils.join(deviceFilesPath, 'Work');
+
+    await expect(registry.isConfirmedReplacementBlocked(mountPath)).resolves.toBe(true);
+    expect(guard).toHaveBeenCalledWith({ mountPath });
+  });
+
+  it('isConfirmedReplacementBlocked stops checking after the first blocking guard', async () => {
+    const registry = createRegistry();
+    const firstGuard = vi.fn().mockResolvedValue(true);
+    const secondGuard = vi.fn().mockResolvedValue(false);
+
+    registry.registerConfirmedReplacementGuard(firstGuard);
+    registry.registerConfirmedReplacementGuard(secondGuard);
+
+    await expect(
+      registry.isConfirmedReplacementBlocked(PathUtils.join(deviceFilesPath, 'Work')),
+    ).resolves.toBe(true);
+    expect(secondGuard).not.toHaveBeenCalled();
+  });
+
+  it('unregistering a confirmed-replacement guard stops checking it', async () => {
+    const registry = createRegistry();
+    const guard = vi.fn().mockResolvedValue(true);
+
+    const unregister = registry.registerConfirmedReplacementGuard(guard);
+    unregister();
+
+    await expect(
+      registry.isConfirmedReplacementBlocked(PathUtils.join(deviceFilesPath, 'Work')),
+    ).resolves.toBe(false);
+  });
+
   it('read and write requests for the same space are independent', async () => {
     const registry = createRegistry();
     const handle = createHandleMock();

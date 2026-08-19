@@ -56,7 +56,12 @@ const isBrowserFileStateChangedError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'InvalidStateError';
 
 const setupRepositoriesService = () => {
-  const { directoryContent$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
+  const {
+    directoryContent$,
+    registerConfirmedReplacementGuard,
+    registerWriteAccessRecoveryHandler,
+    vfs,
+  } = useFileSystemService();
   const repoObservableCache = new Map<string, Observable<RepositoryCacheEntry>>();
 
   const shouldQueueFailedSave = (error: unknown) =>
@@ -334,6 +339,15 @@ const setupRepositoriesService = () => {
 
   registerWriteAccessRecoveryHandler(({ mountPath }) =>
     settleCachedRepositoriesUnderPath(mountPath),
+  );
+
+  // Blocks confirmed replacement only when the mount or a descendant is cached; never a sibling.
+  registerConfirmedReplacementGuard(({ mountPath }) =>
+    Promise.resolve(
+      Array.from(repoObservableCache.keys()).some((repoPath) =>
+        PathUtils.isSameOrDescendantOf(repoPath, mountPath),
+      ),
+    ),
   );
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {

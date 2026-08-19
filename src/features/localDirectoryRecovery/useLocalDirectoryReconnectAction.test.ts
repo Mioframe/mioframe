@@ -163,6 +163,28 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(reportedError.cause).toBe(serviceError);
   });
 
+  it('shows the pending-write warning and clears diagnostics for reconnectedWithWriteRecoveryFailure', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({
+      status: 'reconnectedWithWriteRecoveryFailure',
+      name: 'Work',
+    });
+    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
+      recovery,
+    });
+
+    await reconnectFolder();
+
+    expect(reconnectMessage.value).toBe(
+      'The folder is reconnected, but some pending changes could not be saved.',
+    );
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+    expect(inspectMioframeSpaceDirectoryMock).not.toHaveBeenCalled();
+  });
+
   it('reports missingRecord without a diagnostic exception', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
@@ -258,6 +280,27 @@ describe('useLocalDirectoryReconnectAction', () => {
 
     expect(replaceRememberedDirectoryMock).toHaveBeenCalledWith({ handle, spaceName: 'Work' });
     expect(reconnectMessage.value).toContain('Work');
+    expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the reload/retry message and reports no diagnostic exception for repositoryStateActive', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
+    confirmMock.mockResolvedValueOnce(true);
+    replaceRememberedDirectoryMock.mockResolvedValueOnce({ status: 'repositoryStateActive' });
+    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
+      recovery,
+    });
+
+    await reconnectFolder();
+
+    expect(reconnectMessage.value).toBe(
+      'Mioframe still has this space open in memory. Reload Mioframe, then reconnect the folder again.',
+    );
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 

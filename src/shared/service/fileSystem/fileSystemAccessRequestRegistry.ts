@@ -60,6 +60,29 @@ type WriteAccessRecoveryContext = {
 };
 
 /**
+ * Safe service-internal context describing the mount a confirmed locator-different replacement
+ * targets.
+ */
+export interface ConfirmedReplacementGuardContext {
+  /** Absolute VFS mount path the confirmed replacement would target. */
+  mountPath: string;
+}
+
+/**
+ * Callback checked before a confirmed locator-different directory replacement mutates any
+ * persisted or runtime state for a mount.
+ *
+ * Registered guards run in registration order and stop at the first block. Guards must not
+ * expose handles, paths outside the given context, raw errors, document ids, file names, or
+ * bytes.
+ * @param context - {@link ConfirmedReplacementGuardContext} for the target mount.
+ * @returns `true` when the replacement must be blocked, `false` otherwise.
+ */
+export type ConfirmedReplacementGuard = (
+  context: ConfirmedReplacementGuardContext,
+) => Promise<boolean>;
+
+/**
  * Callback invoked by the registry after write permission is granted for a space.
  *
  * The registry calls each registered handler in sequence with a safe, service-internal
@@ -228,6 +251,39 @@ export interface FileSystemAccessRequestRegistry {
    * @returns An unregister function; calling it removes the handler from the registry.
    */
   registerWriteRecoveryHandler: (handler: WriteAccessRecoveryHandler) => () => void;
+
+  /**
+   * Runs currently registered write recovery handlers directly for a mount, without requiring
+   * a pending permission request.
+   *
+   * Shares the exact handler execution semantics used by {@link resolve}: handlers run in
+   * registration order and execution stops at the first non-flushed result. Used by same-entry
+   * reconnect to settle repository writes after a proven-identical provider replacement.
+   * @param params - Mount path and space name to run registered handlers for.
+   * @returns A promise resolving to the {@link WriteAccessRecoveryResult} of the run.
+   */
+  runWriteRecoveryHandlers: (params: {
+    mountPath: string;
+    spaceName: string;
+  }) => Promise<WriteAccessRecoveryResult>;
+
+  /**
+   * Registers a guard checked before a confirmed locator-different directory replacement
+   * mutates persisted or runtime state.
+   * @param guard - The {@link ConfirmedReplacementGuard} to register.
+   * @returns An unregister function; calling it removes the guard from the registry.
+   */
+  registerConfirmedReplacementGuard: (guard: ConfirmedReplacementGuard) => () => void;
+
+  /**
+   * Checks currently registered confirmed-replacement guards for a mount.
+   *
+   * Guards run in registration order and checking stops at the first guard that reports
+   * `true`.
+   * @param mountPath - Absolute VFS mount path the confirmed replacement would target.
+   * @returns A promise resolving to `true` when any registered guard blocks the replacement.
+   */
+  isConfirmedReplacementBlocked: (mountPath: string) => Promise<boolean>;
 }
 
 const operationToMode = (operation: FileSystemAccessOperation): WebFileSystemAccessMode =>
@@ -247,6 +303,7 @@ export const createFileSystemAccessRequestRegistry = ({
 }: FileSystemAccessRequestRegistryOptions): FileSystemAccessRequestRegistry => {
   const pendingRequests = new Map<string, DeviceDirectoryAccessRequest>();
   const writeRecoveryHandlers = new Set<WriteAccessRecoveryHandler>();
+  const confirmedReplacementGuards = new Set<ConfirmedReplacementGuard>();
 
   const deleteRequest = (key: DeviceDirectoryAccessRequestKey) =>
     pendingRequests.delete(makeRequestKey(key));
@@ -299,6 +356,25 @@ export const createFileSystemAccessRequestRegistry = ({
     );
   };
 
+  const runWriteRecoveryHandlers = async ({
+    mountPath,
+    spaceName,
+  }: {
+    mountPath: string;
+    spaceName: string;
+  }): Promise<WriteAccessRecoveryResult> => {
+    for (const handler of writeRecoveryHandlers) {
+      // eslint-disable-next-line no-await-in-loop -- recovery handlers may depend on prior flush attempts
+      const result = await handler({ mountPath, operation: 'write', spaceName });
+
+      if (result.status !== 'flushed') {
+        return result;
+      }
+    }
+
+    return { status: 'flushed' };
+  };
+
   const resolve = async ({
     operation,
     permissionState,
@@ -326,18 +402,14 @@ export const createFileSystemAccessRequestRegistry = ({
     }
 
     const mountPath = PathUtils.join(deviceFilesPath, spaceName);
+    const result = await runWriteRecoveryHandlers({ mountPath, spaceName });
 
-    for (const handler of writeRecoveryHandlers) {
-      // eslint-disable-next-line no-await-in-loop -- recovery handlers may depend on prior flush attempts
-      const result = await handler({ mountPath, operation: 'write', spaceName });
+    if (result.status === 'stillBlocked') {
+      return { status: 'grantedWithReplayFailures', replay: result.replay };
+    }
 
-      if (result.status === 'stillBlocked') {
-        return { status: 'grantedWithReplayFailures', replay: result.replay };
-      }
-
-      if (result.status === 'failed') {
-        return { status: 'grantedWithStorageFailures', replay: result.replay };
-      }
+    if (result.status === 'failed') {
+      return { status: 'grantedWithStorageFailures', replay: result.replay };
     }
 
     return { status: 'granted' };
@@ -355,6 +427,26 @@ export const createFileSystemAccessRequestRegistry = ({
     };
   };
 
+  const registerConfirmedReplacementGuard = (guard: ConfirmedReplacementGuard) => {
+    confirmedReplacementGuards.add(guard);
+    return () => {
+      confirmedReplacementGuards.delete(guard);
+    };
+  };
+
+  const isConfirmedReplacementBlocked = async (mountPath: string): Promise<boolean> => {
+    for (const guard of confirmedReplacementGuards) {
+      // eslint-disable-next-line no-await-in-loop -- checking stops at the first blocking guard
+      const blocked = await guard({ mountPath });
+
+      if (blocked) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   return {
     upsertRequest,
     clearForSpace,
@@ -363,5 +455,8 @@ export const createFileSystemAccessRequestRegistry = ({
     resolve,
     cancel,
     registerWriteRecoveryHandler,
+    runWriteRecoveryHandlers,
+    registerConfirmedReplacementGuard,
+    isConfirmedReplacementBlocked,
   };
 };

@@ -18,6 +18,10 @@ const INSPECT_FAILED_MESSAGE = 'Could not inspect this folder. Try again from th
 const NOT_A_MIOFRAME_SPACE_MESSAGE =
   'That folder does not contain a Mioframe space. Choose the moved or renamed Mioframe folder.';
 const MISSING_RECORD_MESSAGE = 'Mioframe no longer remembers this folder.';
+const REPOSITORY_STATE_ACTIVE_MESSAGE =
+  'Mioframe still has this space open in memory. Reload Mioframe, then reconnect the folder again.';
+const WRITE_RECOVERY_FAILURE_MESSAGE =
+  'The folder is reconnected, but some pending changes could not be saved.';
 
 /**
  * Owns the explicit user-triggered reconnect action for a remembered local-directory root that
@@ -135,6 +139,11 @@ export const useLocalDirectoryReconnectAction = ({
         return;
       }
 
+      if (result.status === 'reconnectedWithWriteRecoveryFailure') {
+        reconnectMessageOverride.value = WRITE_RECOVERY_FAILURE_MESSAGE;
+        return;
+      }
+
       if (result.status === 'missingRecord') {
         reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
         return;
@@ -206,8 +215,13 @@ export const useLocalDirectoryReconnectAction = ({
         return;
       }
 
-      reconnectMessageOverride.value =
-        replaceResult.status === 'reconnected' ? undefined : MISSING_RECORD_MESSAGE;
+      if (replaceResult.status === 'reconnected') {
+        reconnectMessageOverride.value = undefined;
+      } else if (replaceResult.status === 'repositoryStateActive') {
+        reconnectMessageOverride.value = REPOSITORY_STATE_ACTIVE_MESSAGE;
+      } else {
+        reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+      }
     } finally {
       isReconnectPending.value = false;
     }

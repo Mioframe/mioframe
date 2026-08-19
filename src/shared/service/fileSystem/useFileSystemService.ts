@@ -309,15 +309,19 @@ const setupFileSystemService = () => {
     };
   };
 
-  // Shared by the same-entry fast path and the explicit confirmed replacement so persistence-
-  // first ordering, provider replacement, and stale pending-request cleanup cannot drift apart.
+  type PersistedReplacementResult = Exclude<
+    ReplaceRememberedDeviceDirectoryResult,
+    { status: 'repositoryStateActive' }
+  >;
+
+  // Shared persist+mount+cleanup step; callers decide `repositoryStateActive` before calling it.
   const persistAndMountReplacement = async ({
     handle,
     spaceName,
   }: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
-  }): Promise<ReplaceRememberedDeviceDirectoryResult> => {
+  }): Promise<PersistedReplacementResult> => {
     const records = await getRecordList();
     const existingRecord = records.find((record) => record.name === spaceName);
 
@@ -374,7 +378,18 @@ const setupFileSystemService = () => {
       return { status: 'confirmationRequired' };
     }
 
-    return persistAndMountReplacement({ handle, spaceName });
+    const replacement = await persistAndMountReplacement({ handle, spaceName });
+
+    if (replacement.status !== 'reconnected') {
+      return replacement;
+    }
+
+    const mountPath = PathUtils.join(deviceFilesPath, spaceName);
+    const settlement = await registry.runWriteRecoveryHandlers({ mountPath, spaceName });
+    const status =
+      settlement.status === 'flushed' ? 'reconnected' : 'reconnectedWithWriteRecoveryFailure';
+
+    return { status, name: replacement.name };
   };
 
   const replaceRememberedDeviceDirectory = async ({
@@ -385,6 +400,19 @@ const setupFileSystemService = () => {
     spaceName: string;
   }): Promise<ReplaceRememberedDeviceDirectoryResult> => {
     await deviceFilesReady;
+
+    const records = await getRecordList();
+    const existingRecord = records.find((record) => record.name === spaceName);
+
+    if (!existingRecord) {
+      return { status: 'missingRecord' };
+    }
+
+    const mountPath = PathUtils.join(deviceFilesPath, spaceName);
+
+    if (await registry.isConfirmedReplacementBlocked(mountPath)) {
+      return { status: 'repositoryStateActive' };
+    }
 
     return persistAndMountReplacement({ handle, spaceName });
   };
@@ -429,6 +457,7 @@ const setupFileSystemService = () => {
     getFileSystemAccessRequest: registry.getRequest,
     getTemporaryFileSystemAccessHandle: registry.prepareHandle,
     registerWriteAccessRecoveryHandler: registry.registerWriteRecoveryHandler,
+    registerConfirmedReplacementGuard: registry.registerConfirmedReplacementGuard,
     resolveFileSystemAccessRequest: registry.resolve,
     cancelFileSystemAccessRequest: registry.cancel,
     deviceFiles: fromObservable(activeDeviceFiles$),
