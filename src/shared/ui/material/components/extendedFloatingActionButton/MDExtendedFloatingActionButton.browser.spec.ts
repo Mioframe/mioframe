@@ -28,6 +28,7 @@ test('MDExtendedFloatingActionButton accepts real hover, Tab focus, and pointer 
     'material-3-components-extended-floating-action-button-mdextendedfloatingactionbutton--behavior-contracts',
   );
 
+  const focusOrigin = page.getByTestId('behavior-extended-fab-focus-origin');
   const fab = page.getByRole('button', { name: 'Create a new note' });
   const clickCount = page.locator('#md-extended-fab-click-count');
 
@@ -36,9 +37,15 @@ test('MDExtendedFloatingActionButton accepts real hover, Tab focus, and pointer 
 
   await page.mouse.move(0, 0);
 
+  // The browser's implicit initial-focus state is not a deterministic Tab-order origin (it
+  // reproducibly raced the transition below in isolated runs). Focus a dedicated native fixture
+  // immediately before the FAB in tab order instead, so the following Tab press always starts
+  // from the same place.
+  await focusOrigin.focus();
+  await expect(focusOrigin).toBeFocused();
+
   // @m3e/web sets the FAB role during connectedCallback but establishes tabindex through the
-  // later Lit update lifecycle. Waiting for the real platform tab-order state before pressing
-  // Tab avoids racing that lifecycle and permanently missing the focus transition below.
+  // later Lit update lifecycle; keep this as an explicit target-focusability precondition.
   await expect(fab).toHaveJSProperty('tabIndex', 0);
 
   await page.keyboard.press('Tab');
