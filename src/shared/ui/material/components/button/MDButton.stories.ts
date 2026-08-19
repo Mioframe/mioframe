@@ -224,23 +224,28 @@ export const LegacySurfaceColorOwnership: Story = {
     components: { MDButton, MDLoadingIndicator },
     template: `
       <div
-        data-testid="visual-md-button-legacy-surface"
-        class="md visual-checker-backdrop"
+        class="md"
         style="--md-container-color: #fff8f7; --md-content-color: #b3261e;"
       >
-        <p data-testid="legacy-surface-text">Surface-owned ordinary text</p>
-        <div class="visual-row">
-          <MDButton label="Surface filled" color="filled" />
-          <MDButton label="Surface outlined" color="outlined" />
-          <MDButton label="Surface text" color="text" />
+        <div
+          data-testid="visual-md-button-legacy-surface"
+          class="md visual-checker-backdrop"
+          style="--md-container-color: #fff8f7; --md-content-color: #b3261e;"
+        >
+          <p data-testid="legacy-surface-text">Surface-owned ordinary text</p>
+          <div class="visual-row">
+            <MDButton label="Surface filled" color="filled" />
+            <MDButton label="Surface outlined" color="outlined" />
+            <MDButton label="Surface text" color="text" />
+          </div>
+          <div class="visual-row">
+            <MDButton label="Surface icon" color="outlined">
+              <template #icon><span data-testid="legacy-surface-button-icon">+</span></template>
+            </MDButton>
+            <MDButton label="Surface loading" color="text" loading />
+          </div>
         </div>
-        <div class="visual-row">
-          <MDButton label="Surface icon" color="outlined">
-            <template #icon><span data-testid="legacy-surface-button-icon">+</span></template>
-          </MDButton>
-          <MDButton label="Surface loading" color="text" loading />
-          <MDLoadingIndicator label="Surface standalone loading" />
-        </div>
+        <MDLoadingIndicator label="Surface standalone loading" />
       </div>
     `,
   }),

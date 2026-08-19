@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openStory } from '../storybook';
+import { openStory } from '../../../../../../tests/e2e/visual/storybook';
 
 test('MDButton variants and disabled states match the canonical baseline', async ({ page }) => {
   await openStory(page, 'material-3-components-buttons-mdbutton--visual-states');
