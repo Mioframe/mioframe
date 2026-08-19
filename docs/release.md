@@ -288,12 +288,21 @@ focused and the full gate, and tag pushes never rerun the full gate:
     pipeline (`pnpm ci:autofix`) — see `Same-repository CI materialization`
     above;
   - `verification-static` runs format, oxlint, eslint, type-check, unit tests,
-    Storybook build, and mutation through verifier-managed focused lanes;
-  - `verification-browser` expands application E2E, Storybook behavior, and visual
-    verification into independent matrix jobs, each retaining `pnpm verify` risk
-    selection and changed-file scope;
-  - aggregate `verification` succeeds only when the static job and the complete
-    browser matrix succeed, and owns whether deployable PR source is valid;
+    and mutation through verifier-managed focused lanes;
+  - `storybook-build` is the single Storybook static-build producer for
+    implementation verification. It runs the verifier-owned `storybook-build`
+    check when the existing Storybook build/behavior/visual plans require the
+    artifact, validates complete `index.html`/`iframe.html` output, and uploads
+    that deterministic output as a run-scoped artifact when present;
+  - `verification-browser (e2e)` remains an independent application E2E job
+    that depends only on `autofix` and never waits for the Storybook producer;
+  - Storybook behavior and visual remain independent parallel
+    `verification-browser (...)` jobs. They depend on the Storybook producer
+    and reuse its run-scoped static artifact when it was built, while retaining
+    their own verifier risk selection and proof ownership;
+  - aggregate `verification` succeeds only when static verification, the
+    Storybook producer, application E2E, and the complete Storybook browser
+    matrix succeed, and owns whether deployable PR source is valid;
   - PR-only `release-version` enforces the exact label-selected version for an
     ordinary `develop` PR and the exact inherited direct-base version for an
     intermediate dependent PR;
@@ -302,8 +311,10 @@ focused and the full gate, and tag pushes never rerun the full gate:
 
   `deploy-preview` depends only on `verification`: an incorrect PR version blocks
   merge through `verify` but does not block the application and Storybook demo.
-  Implementation verification failures still block the preview. `deploy-develop`
-  also depends on `verification` for pushes to `develop` — see
+  Implementation verification failures still block the preview. Its Storybook
+  build remains separate because the preview uses the base-specific
+  `/pr/<number>/storybook/` deployment path. `deploy-develop` also depends on
+  `verification` for pushes to `develop` — see
   `docs/release.md#organization-pages-deployment-model`.
 
 - **`release` workflow** (`.github/workflows/release.yml`): PRs into `main`
@@ -818,10 +829,11 @@ same build script and base-path contract the release gate validates.
 - Locally: `.verify/logs/<label>.log`, one file per check
   (see `pnpm verify:status`).
 - In GitHub Actions: the failing step's inline log. For the ordinary `verify`
-  workflow, failed/cancelled static verification uploads `verify-static-logs`
-  and each failed/cancelled browser matrix lane uploads
-  `verify-<lane>-logs`; the `release` workflow uploads `release-logs` on
-  failure or cancellation (Actions run page -> Summary -> Artifacts).
+  workflow, failed/cancelled static verification uploads `verify-static-logs`,
+  the Storybook producer uploads `verify-storybook-build-logs`, application
+  E2E uploads `verify-e2e-logs`, and failed/cancelled Storybook browser lanes
+  upload `verify-<lane>-logs`; the `release` workflow uploads `release-logs`
+  on failure or cancellation (Actions run page -> Summary -> Artifacts).
 
 See `docs/release-checklist.md` for the step-by-step promotion/hotfix
 checklist.
