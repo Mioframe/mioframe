@@ -155,11 +155,13 @@ V2 must preserve the rule that unknown **relevant** impact fails closed to the f
 
 V3 optimizes both elapsed verification time and aggregate compute after planner precision is stable.
 
-The first application-E2E optimization is persistent spec-level project applicability: source impact still chooses product specs, while each root application spec declares whether it requires desktop, mobile, or both Playwright projects. The audited matrix preserves the existing two projects, one application E2E invocation, one build, and serial execution while eliminating project executions that do not prove an additional platform contract. Metadata validation fails closed, and unclassified specs remain fail-safe to both projects for direct Playwright collection.
+Implemented V3 optimizations:
+
+- **V3A — application E2E project applicability:** source impact still chooses product specs, while each root application spec declares whether it requires desktop, mobile, or both Playwright projects. The audited matrix preserves the existing two projects, one application E2E invocation, one build, and serial execution while eliminating project executions that do not prove an additional platform contract. Metadata validation fails closed, and unclassified specs remain fail-safe to both projects for direct Playwright collection.
+- **V3B — Storybook static build reuse:** the existing `storybook-build`, `storybook-behavior`, and `visual` plans remain independent, but a runnable Storybook browser/visual lane makes the same deterministic static build a shared prerequisite. One automatic local `pnpm verify` builds `storybook-static` once before those consumers and reuses it through the explicit fail-closed prebuilt contract. GitHub implementation verification uses one run-scoped Storybook build producer and keeps behavior and visual as separate parallel proof lanes consuming that artifact; application E2E stays independent. Standalone focused browser/visual commands remain self-contained when no prebuilt contract is supplied, and the PR preview keeps its separate base-specific Storybook build.
 
 Further V3 work should consider, in order:
 
-- reuse of one deterministic Storybook build artifact by browser/visual consumers when equivalence and ownership are proven;
 - elimination of other repeated setup/proof where a deterministic result can be reused safely;
 - optimization of expensive necessary tests after duplicate work is removed;
 - additional jobs, workers, or parallelism only for irreducible remaining work when measured wall-clock benefit justifies the added aggregate resource cost and complexity.
