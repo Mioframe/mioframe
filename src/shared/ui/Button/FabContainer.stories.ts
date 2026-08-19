@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { defineComponent, h, ref } from 'vue';
+import { MDExtendedFloatingActionButton } from '@shared/ui/material';
 import FabContainer from './FabContainer.vue';
-import MDExtendedFab from './MDExtendedFab.vue';
 import { definePaneScrollContainer } from '../Layout';
 
 /**
@@ -51,11 +51,11 @@ const meta = {
         component: [
           '**Project-specific placement infrastructure.** `FabContainer` is not an official Material 3 component; it does not appear under any `components/*` Material 3 page and owns no FAB visual tokens or colors.',
           '',
-          'It composes existing Material foundations (`shared/ui/Overlay` teleport/positioning, `shared/ui/Layout` pane-scroll context) to anchor a single `MDFab` or `MDExtendedFab` action to the bottom of the nearest scrollable pane, matching the Material floating-action-button placement guidance without reimplementing FAB anatomy.',
+          'It composes existing Material foundations (`shared/ui/Overlay` teleport/positioning, `shared/ui/Layout` pane-scroll context) to anchor a single `MDFab` or `MDExtendedFloatingActionButton` action to the bottom of the nearest scrollable pane, matching the Material floating-action-button placement guidance without reimplementing FAB anatomy.',
           '',
           '**Props**: `autoHide` (hides the floating action while scrolling down, restores on scroll up or focus-within).',
           '',
-          '**Slots**: `default` (a single `MDFab` or `MDExtendedFab`).',
+          '**Slots**: `default` (a single `MDFab` or `MDExtendedFloatingActionButton`).',
           '',
           'Consumers own placement decisions (whether to use it at all) and the FAB action itself; `FabContainer` only owns the floating/overlay geometry.',
         ].join('\n'),
@@ -70,13 +70,20 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => ({
-    components: { FabContainer, MDExtendedFab, StoryPaneHost },
+    components: { FabContainer, MDExtendedFloatingActionButton, StoryPaneHost },
     template: `
       <div class="visual-checker-backdrop">
         <StoryPaneHost>
           <div style="height: 200px;" />
           <FabContainer>
-            <MDExtendedFab label="Add" md-symbol="add" />
+            <MDExtendedFloatingActionButton>
+              <template #icon>
+                <svg aria-hidden="true" fill="currentColor" focusable="false" viewBox="0 0 24 24">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z" />
+                </svg>
+              </template>
+              Add
+            </MDExtendedFloatingActionButton>
           </FabContainer>
         </StoryPaneHost>
       </div>
@@ -94,7 +101,7 @@ export const Default: Story = {
  */
 export const PaneAnchoringLoadingTransition: Story = {
   render: () => ({
-    components: { FabContainer, MDExtendedFab, StoryPaneHost },
+    components: { FabContainer, MDExtendedFloatingActionButton, StoryPaneHost },
     setup() {
       const isLoading = ref(true);
       const loadContent = () => {
@@ -118,7 +125,14 @@ export const PaneAnchoringLoadingTransition: Story = {
             </div>
           </template>
           <FabContainer>
-            <MDExtendedFab label="Add" md-symbol="add" />
+            <MDExtendedFloatingActionButton>
+              <template #icon>
+                <svg aria-hidden="true" fill="currentColor" focusable="false" viewBox="0 0 24 24">
+                  <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z" />
+                </svg>
+              </template>
+              Add
+            </MDExtendedFloatingActionButton>
           </FabContainer>
         </StoryPaneHost>
         <button id="fab-load-content" type="button" @click="loadContent">Load content</button>
@@ -138,7 +152,7 @@ export const PaneAnchoringLoadingTransition: Story = {
  */
 export const TwoPaneLayout: Story = {
   render: () => ({
-    components: { FabContainer, MDExtendedFab, StoryPaneHost },
+    components: { FabContainer, MDExtendedFloatingActionButton, StoryPaneHost },
     setup() {
       const isLoading = ref(true);
       const loadContent = () => {
@@ -172,7 +186,14 @@ export const TwoPaneLayout: Story = {
               </div>
             </template>
             <FabContainer>
-              <MDExtendedFab label="Add" md-symbol="add" />
+              <MDExtendedFloatingActionButton>
+                <template #icon>
+                  <svg aria-hidden="true" fill="currentColor" focusable="false" viewBox="0 0 24 24">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z" />
+                  </svg>
+                </template>
+                Add
+              </MDExtendedFloatingActionButton>
             </FabContainer>
           </StoryPaneHost>
         </div>

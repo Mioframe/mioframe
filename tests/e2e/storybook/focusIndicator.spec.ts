@@ -118,21 +118,3 @@ test('MDIconButton focus indicator follows real keyboard focus and is not clippe
 
   await assertFocusIndicatorFollowsHost(page, indicator, host);
 });
-
-test('MDExtendedFab focus indicator follows real keyboard focus and is not clipped', async ({
-  page,
-}) => {
-  await openStory(page, 'material-3-components-buttons-mdextendedfab--focus-indicator-target');
-
-  const host = page.getByRole('button', { name: 'Focus target', exact: true });
-  const indicator = page.locator('.md-focus-indicator');
-
-  await expect(host).toBeVisible();
-
-  await page.keyboard.press('Tab');
-  await expect(host).toBeFocused();
-  expect(await host.evaluate((el) => el.matches(':focus-visible'))).toBe(true);
-  await expect(indicator).toHaveCSS('opacity', '1');
-
-  await assertFocusIndicatorFollowsHost(page, indicator, host);
-});

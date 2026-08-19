@@ -19,7 +19,8 @@ const props = defineProps<{
 
 defineSlots<{
   /**
-   * A single `MDFab` or `MDExtendedFab` action rendered in the floating overlay surface.
+   * A single `MDFab` or `MDExtendedFloatingActionButton` action rendered in the floating
+   * overlay surface.
    * `FabContainer` owns placement/visibility only; the FAB action and its color/size are
    * consumer-owned.
    */

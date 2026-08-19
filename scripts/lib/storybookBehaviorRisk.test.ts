@@ -636,16 +636,6 @@ describe('resolveStorybookBehaviorPlan', () => {
     ]);
   });
 
-  it('selects the local LegacyButton spec and the central focus-indicator spec for an MDExtendedFab component or story change', () => {
-    expect(resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDExtendedFab.vue']).specs).toEqual([
-      LEGACY_BUTTON_BROWSER_SPEC,
-      FOCUS_INDICATOR_SPEC,
-    ]);
-    expect(
-      resolveStorybookBehaviorPlan(['src/shared/ui/Button/MDExtendedFab.stories.ts']).specs,
-    ).toEqual([LEGACY_BUTTON_BROWSER_SPEC, FOCUS_INDICATOR_SPEC]);
-  });
-
   it('selects the local MDButton spec and the central focus-indicator spec for a colocated Button story fixture change', () => {
     const plan = resolveStorybookBehaviorPlan([
       'src/shared/ui/material/components/button/MDButtonTargetHitVisualStory.vue',
