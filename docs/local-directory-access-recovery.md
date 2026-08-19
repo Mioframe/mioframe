@@ -159,8 +159,8 @@ If persistence fails, the old runtime provider remains mounted.
 
 ### Feature result handling
 
-- `repositoryStateActive`: expected, no diagnostic exception; show a safe message such as `Mioframe still has this space open in memory. Reload Mioframe, then reconnect the folder again.`
-- `reconnectedWithWriteRecoveryFailure`: expected service outcome; show that the folder is reconnected but some pending changes could not be saved. Do not report a second feature exception when repository/file-system diagnostics already own the failure.
+- `repositoryStateActive`: expected, no diagnostic exception; show `Mioframe still has this space open in memory. Reload Mioframe, then reconnect the folder again.`
+- `reconnectedWithWriteRecoveryFailure`: expected service outcome; show `The folder is reconnected, but some pending changes could not be saved.` Do not report a second feature exception when repository/file-system diagnostics already own the failure.
 - Existing picker/inspection/proxy unexpected failures keep the privacy-safe `DomainError` wrapping already defined for the feature.
 
 ## Rejected approaches
