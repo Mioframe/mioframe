@@ -72,7 +72,7 @@ As applicable verify:
 
 Do not duplicate standalone Material behavior/token tests at the product layer.
 
-Follow the root rules and `.agents/skills/verification/SKILL.md`; exact-head GitHub CI remains architect-owned and does not replace the local coding-agent handoff gate.
+Follow the root rules and `.agents/skills/verification/SKILL.md`; verifier invocation/environment handling is owned only by that skill, and exact-head GitHub CI remains architect-owned. Do not add Material-specific verifier environment handling or ask the operator to run verifier commands.
 
 ## Report
 
@@ -97,5 +97,5 @@ result: complete | blocked | return-to-api-contract | return-to-token-contract |
 - Preserving legacy aliases by default.
 - Moving product/business behavior into Material.
 - Migrating unrelated families for cleanup.
-- Asking the operator to run verifier/Podman commands.
+- Asking the operator to run verifier commands.
 - Updating roadmap, PR, CI, review, or merge status.
