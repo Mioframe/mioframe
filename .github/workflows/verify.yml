@@ -195,12 +195,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # Single run-scoped producer for the Storybook static build: behavior and
-  # visual are independent parallel proof lanes, but the static compilation
-  # they both preview is only a shared prerequisite, not proof itself. This
-  # job builds it at most once per workflow run and hands it to both lanes as
-  # a run-scoped GitHub Actions artifact (never a cross-run cache). E2E does
-  # not depend on this job — it needs no Storybook artifact.
+  # Single run-scoped producer for the Storybook static build. It remains the
+  # verifier-owned `storybook-build` proof whenever that plan selects it and
+  # also serves as the shared prerequisite for independent parallel behavior
+  # and visual proof. The job builds at most once per workflow run and hands
+  # the result to both consumers as a run-scoped GitHub Actions artifact
+  # (never a cross-run cache). E2E does not depend on this job.
   storybook-build:
     needs:
       - autofix
