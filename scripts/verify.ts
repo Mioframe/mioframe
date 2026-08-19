@@ -19,6 +19,10 @@ import {
 import { createChildSignalForwarder } from './lib/signalForward.ts';
 import { resolveAppE2EPlan, type AppE2EPlan } from './lib/e2eRisk.ts';
 import {
+  validateE2EProjectApplicability,
+  type E2EProjectApplicabilityValidation,
+} from './lib/e2eProjectApplicability.ts';
+import {
   resolveStorybookBehaviorPlan,
   type StorybookBehaviorPlan,
 } from './lib/storybookBehaviorRisk.ts';
@@ -1245,6 +1249,7 @@ export interface BuildCommandsOptions {
   packageJsonOldRef?: string | null;
   fixMode?: FixMode;
   appE2EPlan?: AppE2EPlan | null;
+  projectApplicabilityValidation?: E2EProjectApplicabilityValidation | null;
   storybookBehaviorPlan?: StorybookBehaviorPlan | null;
   storybookBuildPlan?: StorybookBuildPlan | null;
   visualPlan?: BuildCommandsVisualPlan | null;
@@ -1263,6 +1268,7 @@ export function buildCommands(
     packageJsonOldRef = null,
     fixMode = currentVerifyInvocation?.fixMode ?? 'none',
     appE2EPlan: appE2EPlanOverride = null,
+    projectApplicabilityValidation: projectApplicabilityValidationOverride = null,
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
     storybookBuildPlan: storybookBuildPlanOverride = null,
     visualPlan: visualPlanOverride = null,
@@ -1280,6 +1286,8 @@ export function buildCommands(
   );
   const vitestScope = getVitestScope(changedFiles);
   const appE2EPlan = appE2EPlanOverride ?? resolveAppE2EPlan(changedFiles, { packageJsonOldRef });
+  const projectApplicabilityValidation =
+    projectApplicabilityValidationOverride ?? validateE2EProjectApplicability();
   const storybookBehaviorPlan =
     storybookBehaviorPlanOverride ??
     resolveStorybookBehaviorPlan(changedFiles, { packageJsonOldRef });
@@ -1429,13 +1437,18 @@ export function buildCommands(
     });
   }
 
-  if (appE2EPlan.mode === 'invalid') {
+  const e2eInvalidReasons = [
+    ...(appE2EPlan.mode === 'invalid' ? appE2EPlan.reasons : []),
+    ...(projectApplicabilityValidation.valid ? [] : projectApplicabilityValidation.errors),
+  ];
+
+  if (e2eInvalidReasons.length > 0) {
     commands.push(createE2EInstallCommand('app e2e scope is invalid; e2e check fails closed'));
     commands.push({
       kind: 'failed',
       label: 'e2e',
       command: 'pnpm e2e:container',
-      reason: `invalid app e2e scenario registry state: ${appE2EPlan.reasons.join('; ')}`,
+      reason: `invalid app e2e scenario registry state: ${e2eInvalidReasons.join('; ')}`,
     });
   } else if (fullMode) {
     addE2ECommands(commands, createE2ECommand([], 'full-project release verification'));

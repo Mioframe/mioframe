@@ -103,11 +103,11 @@ API runs first. Token and behavior may use completed `contract.ts` only as the s
 
 ## Verification ownership
 
-Follow the root rules and `.agents/skills/verification/SKILL.md`; do not define a second Material-specific verification protocol.
+Follow the root rules and `.agents/skills/verification/SKILL.md`; do not define a second Material-specific verification protocol or environment model.
 
 Focused `pnpm verify --only ...` commands are optional implementation/diagnostic feedback. Before a coding worker hands edited repository state back, it must satisfy the repository-required final automatic `pnpm verify` gate unless the `verification` skill permits an exact partial/environment-blocked result.
 
-If sandbox or Podman restrictions block canonical `pnpm verify ...`, use the `verification` skill's narrowly scoped command approval/escalation path. Do not ask the operator to run verifier commands.
+Verifier invocation, permission handling, and environment failures are owned exclusively by the `verification` skill. Do not preflight verifier internals or ask the operator to run verifier commands.
 
 Exact-head GitHub CI remains architect-owned and does not replace required local proof or the coding-agent handoff gate.
 
@@ -153,7 +153,7 @@ next action: hand to architect | rerun material-component <name> | <genuine exte
 - Adding a workflow-history database, completion manifest, token-contract identity marker, or permanent legacy compatibility layer.
 - Combining contract, implementation, or migration responsibilities in one worker context.
 - Rerunning completed current-workflow owners without an actual route.
-- Asking the operator to run verifier/Podman commands.
+- Asking the operator to run verifier commands.
 - Reintroducing a coding-agent Material review stage.
 - Letting m3e, legacy code, or current consumer demand define Material contracts.
 - Updating roadmap/PR/CI/merge status as coding-agent completion.

@@ -183,9 +183,11 @@ For the cleanup diff at verification time, `pnpm verify --only e2e` used local-b
 
 Audit visual relevance, deterministic owner moves, docs/instructions/type-only paths, and remaining broad visual fallbacks separately.
 
-### Stage V3 — CI execution performance
+### Stage V3 — execution performance
 
-After planner precision is stable, measure CI wall-clock and separately evaluate isolated desktop/mobile E2E jobs and, only if justified, Storybook artifact reuse.
+The first V3 application-E2E optimization is now implemented separately from V2A: persistent spec-level desktop/mobile/both applicability removes duplicate project executions that do not protect an additional platform contract while preserving one E2E invocation, one application build, both existing Playwright projects, serial execution, and fail-closed metadata validation.
+
+Remaining V3 work should first target deterministic reuse of repeated setup/proof such as a shareable Storybook build, then optimize expensive necessary tests. Additional jobs/workers/parallelism are later options only when irreducible work remains and measured wall-clock benefit justifies the extra aggregate resource use and complexity.
 
 ## Forbidden
 

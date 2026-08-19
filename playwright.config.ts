@@ -1,5 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 import toolingConfig from './config/tooling.json' with { type: 'json' };
+import {
+  DESKTOP_PROJECT_NAME,
+  getProjectIgnoredSpecs,
+  MOBILE_PROJECT_NAME,
+} from './scripts/lib/e2eProjectApplicability.ts';
+
+const SHARED_TEST_IGNORE = ['storybook/**', 'visual/**', 'release/**'];
 
 const host = toolingConfig.localServer.host;
 const port = toolingConfig.appPreview.port;
@@ -12,7 +19,6 @@ const previewURLPattern = new RegExp(
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testIgnore: ['storybook/**', 'visual/**', 'release/**'],
   // Tests share origin-bound OPFS state, so file-level parallelism is intentionally disabled.
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
@@ -47,14 +53,16 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   projects: [
     {
-      name: 'chromium',
+      name: DESKTOP_PROJECT_NAME,
+      testIgnore: [...SHARED_TEST_IGNORE, ...getProjectIgnoredSpecs(DESKTOP_PROJECT_NAME)],
       use: {
         ...devices['Desktop Chrome'],
         channel: 'chromium',
       },
     },
     {
-      name: 'Mobile Chrome',
+      name: MOBILE_PROJECT_NAME,
+      testIgnore: [...SHARED_TEST_IGNORE, ...getProjectIgnoredSpecs(MOBILE_PROJECT_NAME)],
       use: {
         ...devices['Pixel 5'],
         channel: 'chromium',

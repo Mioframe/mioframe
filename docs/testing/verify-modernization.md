@@ -151,15 +151,20 @@ After V1 is merged and timing/fallback data is observable, audit avoidable full-
 
 V2 must preserve the rule that unknown **relevant** impact fails closed to the full owning lane. It must not redefine proof ownership inside resolver code.
 
-### Stage V3 — CI execution performance
+### Stage V3 — execution performance
 
-Only after planner precision is stable, measure and consider:
+V3 optimizes both elapsed verification time and aggregate compute after planner precision is stable.
 
-- separate desktop/mobile application-E2E jobs while keeping each origin-bound project serial;
-- reuse of one deterministic Storybook build artifact by browser/visual consumers where equivalence is proven;
-- further CI parallelism only when isolation and coverage are explicit.
+The first application-E2E optimization is persistent spec-level project applicability: source impact still chooses product specs, while each root application spec declares whether it requires desktop, mobile, or both Playwright projects. The audited matrix preserves the existing two projects, one application E2E invocation, one build, and serial execution while eliminating project executions that do not prove an additional platform contract. Metadata validation fails closed, and unclassified specs remain fail-safe to both projects for direct Playwright collection.
 
-V2 and V3 are not part of Stage V1.
+Further V3 work should consider, in order:
+
+- reuse of one deterministic Storybook build artifact by browser/visual consumers when equivalence and ownership are proven;
+- elimination of other repeated setup/proof where a deterministic result can be reused safely;
+- optimization of expensive necessary tests after duplicate work is removed;
+- additional jobs, workers, or parallelism only for irreducible remaining work when measured wall-clock benefit justifies the added aggregate resource cost and complexity.
+
+Do not optimize GitHub Actions only for runner elapsed time. Free CI capacity is still a project resource: compare both wall-clock time and total executions/compute, and prefer the simpler lower-resource solution when coverage is equivalent.
 
 ## Rejected approaches
 

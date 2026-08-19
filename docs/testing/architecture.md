@@ -49,7 +49,7 @@ The workspace may encode:
 - lane relevance and full-lane fallback paths;
 - justified infrastructure/standalone specs;
 - release-sensitive source-to-check mappings;
-- persistent project applicability metadata when introduced;
+- persistent project applicability metadata;
 - persistent mutation targets;
 - persistent performance checks for durable budgets.
 
@@ -303,6 +303,8 @@ Application E2E remains centralized because product scenarios cross owners. Stab
 
 Broad application bootstrap, worker/service protocol, E2E infrastructure, and unknown relevant product source use full application E2E fallback.
 
+Project applicability is a separate persistent spec-level contract. Every root `tests/e2e/*.spec.ts` application spec is explicitly classified as `desktop`, `mobile`, or `both`; verifier validation fails closed when the inventory and applicability metadata diverge. Source impact still chooses specs, while Playwright project filtering applies only after that selection. An unclassified spec must not be silently omitted by direct Playwright collection; fail-safe behavior is to run it in both projects until verifier validation is corrected.
+
 ### Visual
 
 The durable target uses owner-local colocated `*.visual.spec.ts` and deterministic colocated baseline ownership for ordinary UI owners, with explicit mappings only for non-local and cross-cutting visible impact.
@@ -327,7 +329,9 @@ Known local impact may select exact checks. Shared release infrastructure or unk
 
 Source impact chooses specs. Project applicability belongs to persistent test metadata, not changed-file paths or agent prose.
 
-Do not narrow the current application E2E desktop/mobile matrix until a separate audited migration classifies every scenario, preserves mobile-risk coverage, and measures the benefit.
+Application E2E project applicability is implemented as explicit spec-level `desktop | mobile | both` metadata. Narrowing is allowed only when the scenario's required platform semantics are audited; mobile-risk coverage must remain explicit rather than inferred from viewport coincidence. Applicability metadata is fail-closed under `verify`, while unknown specs remain fail-safe to both projects under direct Playwright collection.
+
+Optimize the remaining required matrix for both wall-clock time and aggregate executions/resources. Prefer eliminating inapplicable duplicate project runs before adding jobs, workers, build duplication, artifact plumbing, or parallelism. Parallel execution is justified only for irreducible remaining work when its resource overhead is measured and worthwhile.
 
 ## Mutation impact
 

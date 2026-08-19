@@ -45,6 +45,7 @@
 - Application and Storybook source TypeScript exclude `src/**/*.visual.spec.ts`; Node/tooling TypeScript and Playwright own those test files.
 - All other visual specs/baselines remain in the legacy central location (`tests/e2e/visual/**`) with full-lane fallback until a later S4 group or the owning canonical Material migration moves or removes them directly.
 - Unmigrated visual-relevant shared UI/story changes with no resolvable colocated visual owner preserve safe full visual fallback rather than silently losing visual coverage.
+- Application E2E project applicability is implemented in `scripts/lib/e2eProjectApplicability.ts`: every root `tests/e2e/*.spec.ts` application spec is explicitly `desktop`, `mobile`, or `both`; verifier validation fails closed for missing, stale, duplicate, or invalid metadata, while direct Playwright leaves an unclassified spec eligible for both projects.
 
 ### Still transitional
 
@@ -484,7 +485,8 @@ Application E2E stays centralized by design.
 - stable product source-to-scenario impact remains explicit;
 - bootstrap, cross-cutting service/worker protocols, E2E infrastructure, and unknown relevant product source use full fallback;
 - common helpers default to full E2E unless every consumer is explicit and validated;
-- desktop/mobile coverage must not be narrowed without a separate audited project-applicability migration.
+- project applicability is persistent spec-level metadata, independent from source-impact selection; every root application E2E spec is classified as `desktop`, `mobile`, or `both`; verifier validation fails closed on inventory/metadata drift, while direct Playwright leaves an unclassified spec eligible for both projects;
+- changing an existing spec's applicability requires a dedicated audited reclassification that preserves its required platform semantics and explicit mobile-risk coverage.
 
 ### Release impact
 
@@ -514,6 +516,7 @@ The testing migration is complete when:
 - Storybook infrastructure proof is explicitly justified, and component-owned proof is not mislabeled as infrastructure smoke;
 - visual baseline ownership handles add/modify/delete/rename safely;
 - application E2E remains centralized and fail closed for unknown relevant product impact;
+- application E2E project applicability remains explicit, validated, and independent from source-impact selection;
 - proof ownership contains no known behavior-in-visual or product-in-component duplication;
-- focused release proof, persistent mutation ownership, and any later project filtering satisfy their own acceptance gates;
+- focused release proof, persistent mutation ownership, and any later project-applicability narrowing satisfy their own acceptance gates;
 - target and current executable state are no longer different, allowing transitional Storybook location notes to be removed.
