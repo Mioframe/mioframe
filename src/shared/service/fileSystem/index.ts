@@ -4,4 +4,7 @@ export {
   type DeviceFileDisplayRecord,
   type ReadDirectoryOptions,
 } from './useFileSystemService';
-export type { ReconnectDeviceDirectoryResult } from './fileSystemContracts';
+export type {
+  ReconnectDeviceDirectoryResult,
+  ReplaceRememberedDeviceDirectoryResult,
+} from './fileSystemContracts';

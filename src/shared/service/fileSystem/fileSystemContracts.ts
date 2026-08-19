@@ -12,14 +12,23 @@ export interface ReadDirectoryOptions {
 }
 
 /**
- * Explicit outcome of a remembered local-directory root reconnect attempt.
- * - `reconnected` — the persisted handle was replaced and the mounted provider now uses it.
+ * Explicit outcome of a remembered local-directory root safe reconnect attempt.
+ * - `reconnected` — `isSameEntry()` confirmed identity; the persisted handle was replaced and
+ *   the mounted provider now uses it.
+ * - `confirmationRequired` — locator equality was false or could not be established; no
+ *   persistence, runtime, registry, or display mutation occurred.
  * - `missingRecord` — no persisted record exists for the given mounted `spaceName`.
- * - `mismatch` — the selected directory is confirmed to differ from the remembered one.
- * - `identityUnverified` — entry identity could not be confirmed; no replacement was made.
  */
 export type ReconnectDeviceDirectoryResult =
   | { status: 'reconnected'; name: string }
-  | { status: 'missingRecord' }
-  | { status: 'mismatch' }
-  | { status: 'identityUnverified' };
+  | { status: 'confirmationRequired' }
+  | { status: 'missingRecord' };
+
+/**
+ * Explicit outcome of a user-confirmed remembered local-directory root replacement.
+ * - `reconnected` — the persisted handle was replaced and the mounted provider now uses it.
+ * - `missingRecord` — the remembered record disappeared before replacement; no new mount was created.
+ */
+export type ReplaceRememberedDeviceDirectoryResult =
+  | { status: 'reconnected'; name: string }
+  | { status: 'missingRecord' };

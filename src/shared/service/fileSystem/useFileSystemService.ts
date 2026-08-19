@@ -5,7 +5,11 @@ import {
   type DeviceFileDisplayRecord,
   type MountedDeviceFileRecord,
 } from '@shared/lib/deviceFileSystemProvider';
-import type { ReadDirectoryOptions, ReconnectDeviceDirectoryResult } from './fileSystemContracts';
+import type {
+  ReadDirectoryOptions,
+  ReconnectDeviceDirectoryResult,
+  ReplaceRememberedDeviceDirectoryResult,
+} from './fileSystemContracts';
 import {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
@@ -305,34 +309,20 @@ const setupFileSystemService = () => {
     };
   };
 
-  const reconnectDeviceDirectory = async ({
+  // Shared by the same-entry fast path and the explicit confirmed replacement so persistence-
+  // first ordering, provider replacement, and stale pending-request cleanup cannot drift apart.
+  const persistAndMountReplacement = async ({
     handle,
     spaceName,
   }: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
-  }): Promise<ReconnectDeviceDirectoryResult> => {
-    await deviceFilesReady;
-
+  }): Promise<ReplaceRememberedDeviceDirectoryResult> => {
     const records = await getRecordList();
     const existingRecord = records.find((record) => record.name === spaceName);
 
     if (!existingRecord) {
       return { status: 'missingRecord' };
-    }
-
-    let isSameEntry: boolean;
-    try {
-      if (typeof existingRecord.handle.isSameEntry !== 'function') {
-        return { status: 'identityUnverified' };
-      }
-      isSameEntry = await existingRecord.handle.isSameEntry(handle);
-    } catch {
-      return { status: 'identityUnverified' };
-    }
-
-    if (!isSameEntry) {
-      return { status: 'mismatch' };
     }
 
     const nextRecord = {
@@ -352,6 +342,51 @@ const setupFileSystemService = () => {
     syncActiveDeviceFiles();
 
     return { status: 'reconnected', name: nextRecord.name };
+  };
+
+  const reconnectDeviceDirectory = async ({
+    handle,
+    spaceName,
+  }: {
+    handle: FileSystemDirectoryHandle;
+    spaceName: string;
+  }): Promise<ReconnectDeviceDirectoryResult> => {
+    await deviceFilesReady;
+
+    const records = await getRecordList();
+    const existingRecord = records.find((record) => record.name === spaceName);
+
+    if (!existingRecord) {
+      return { status: 'missingRecord' };
+    }
+
+    let isSameEntry: boolean;
+    try {
+      if (typeof existingRecord.handle.isSameEntry !== 'function') {
+        return { status: 'confirmationRequired' };
+      }
+      isSameEntry = await existingRecord.handle.isSameEntry(handle);
+    } catch {
+      return { status: 'confirmationRequired' };
+    }
+
+    if (!isSameEntry) {
+      return { status: 'confirmationRequired' };
+    }
+
+    return persistAndMountReplacement({ handle, spaceName });
+  };
+
+  const replaceRememberedDeviceDirectory = async ({
+    handle,
+    spaceName,
+  }: {
+    handle: FileSystemDirectoryHandle;
+    spaceName: string;
+  }): Promise<ReplaceRememberedDeviceDirectoryResult> => {
+    await deviceFilesReady;
+
+    return persistAndMountReplacement({ handle, spaceName });
   };
 
   const removeDeviceDirectory = async (name: string): Promise<void> => {
@@ -390,6 +425,7 @@ const setupFileSystemService = () => {
     addDeviceDirectory,
     removeDeviceDirectory,
     reconnectDeviceDirectory,
+    replaceRememberedDeviceDirectory,
     getFileSystemAccessRequest: registry.getRequest,
     getTemporaryFileSystemAccessHandle: registry.prepareHandle,
     registerWriteAccessRecoveryHandler: registry.registerWriteRecoveryHandler,

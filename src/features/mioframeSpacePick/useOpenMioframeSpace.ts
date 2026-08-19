@@ -5,7 +5,7 @@ import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPromp
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ref, toRef } from 'vue';
-import { inspectMioframeSpaceDirectory } from './mioframeSpacePick.helpers';
+import { inspectMioframeSpaceDirectory } from '@shared/lib/fileSystem';
 import {
   isDirectoryPickerSupported,
   pickWritableDirectory,

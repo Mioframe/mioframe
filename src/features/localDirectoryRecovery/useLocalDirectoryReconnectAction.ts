@@ -1,21 +1,31 @@
 import type { FileSystemUnavailableRootRecovery } from '@shared/lib/fileSystem';
-import { isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import { inspectMioframeSpaceDirectory, isUserFileSelectionCancel } from '@shared/lib/fileSystem';
 import { useFileSystem } from '@entity/mountedDirectories';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
+import { useDialog } from '@shared/ui/Dialog';
 import { isFunction } from 'es-toolkit';
 import { computed, ref, watch, type Ref } from 'vue';
 
 enum LocalDirectoryReconnectErrorCode {
   pickerFailed = 'localDirectoryReconnect.pickerFailed',
   reconnectFailed = 'localDirectoryReconnect.reconnectFailed',
+  inspectFailed = 'localDirectoryReconnect.inspectFailed',
 }
+
+const RECONNECT_FAILED_MESSAGE = 'Could not reconnect this folder. Try again from this action.';
+const INSPECT_FAILED_MESSAGE = 'Could not inspect this folder. Try again from this action.';
+const NOT_A_MIOFRAME_SPACE_MESSAGE =
+  'That folder does not contain a Mioframe space. Choose the moved or renamed Mioframe folder.';
+const MISSING_RECORD_MESSAGE = 'Mioframe no longer remembers this folder.';
 
 /**
  * Owns the explicit user-triggered reconnect action for a remembered local-directory root that
- * can no longer be enumerated. Keeps the directory picker call, identity-result messaging, and
- * pending state out of widgets/pages. Reconnect never falls back to mounting a new directory;
- * a confirmed-different selection or unverifiable identity performs no replacement.
+ * can no longer be enumerated. Keeps the directory picker call, safe-attempt/confirmation
+ * orchestration, and pending state out of widgets/pages. `isSameEntry() === true` reconnects
+ * immediately; otherwise the selection is inspected for the Mioframe storage marker and, when it
+ * looks like an existing Mioframe space, the user must explicitly confirm before the remembered
+ * location is replaced. A non-Mioframe selection is rejected without mutation.
  * @param recovery - Current unavailable-root recovery request exposed by the detecting layer.
  * @returns Explicit reconnect action handler and UI-facing state for the recovery controls.
  */
@@ -24,7 +34,8 @@ export const useLocalDirectoryReconnectAction = ({
 }: {
   recovery: Ref<FileSystemUnavailableRootRecovery | undefined>;
 }) => {
-  const { reconnectDirectory } = useFileSystem();
+  const { reconnectDirectory, replaceRememberedDirectory } = useFileSystem();
+  const { confirm } = useDialog();
   const isReconnectPending = ref(false);
   const reconnectMessageOverride = ref<string>();
 
@@ -39,6 +50,14 @@ export const useLocalDirectoryReconnectAction = ({
     },
     { immediate: true },
   );
+
+  const confirmReplaceRememberedLocation = (spaceName: string) =>
+    confirm({
+      headline: 'Reconnect this Mioframe space?',
+      supportingText: `Mioframe can't verify that this is the same folder it remembers. Continue only if you moved or renamed the original space. The selected folder will replace the remembered location for "${spaceName}".`,
+      confirmLabel: 'Replace location',
+      cancelLabel: 'Cancel',
+    });
 
   const reconnectFolder = async (): Promise<void> => {
     const currentRecovery = recovery.value;
@@ -92,7 +111,7 @@ export const useLocalDirectoryReconnectAction = ({
         });
       } catch (error) {
         captureDiagnosticException(
-          new DomainError('Could not reconnect this folder. Try again from this action.', {
+          new DomainError(RECONNECT_FAILED_MESSAGE, {
             cause: error,
             code: LocalDirectoryReconnectErrorCode.reconnectFailed,
           }),
@@ -102,8 +121,7 @@ export const useLocalDirectoryReconnectAction = ({
           },
         );
         if (recovery.value === currentRecovery) {
-          reconnectMessageOverride.value =
-            'Could not reconnect this folder. Try again from this action.';
+          reconnectMessageOverride.value = RECONNECT_FAILED_MESSAGE;
         }
         return;
       }
@@ -117,12 +135,79 @@ export const useLocalDirectoryReconnectAction = ({
         return;
       }
 
+      if (result.status === 'missingRecord') {
+        reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+        return;
+      }
+
+      // result.status === 'confirmationRequired': locator equality is false or unverifiable.
+      // Inspect the selection for the Mioframe storage marker before asking for confirmation.
+      let inspection: Awaited<ReturnType<typeof inspectMioframeSpaceDirectory>>;
+
+      try {
+        inspection = await inspectMioframeSpaceDirectory(handle);
+      } catch (error) {
+        captureDiagnosticException(
+          new DomainError(INSPECT_FAILED_MESSAGE, {
+            cause: error,
+            code: LocalDirectoryReconnectErrorCode.inspectFailed,
+          }),
+          {
+            feature: 'localDirectoryRecovery',
+            action: 'reconnectFolder',
+          },
+        );
+        if (recovery.value === currentRecovery) {
+          reconnectMessageOverride.value = INSPECT_FAILED_MESSAGE;
+        }
+        return;
+      }
+
+      if (recovery.value !== currentRecovery) {
+        return;
+      }
+
+      if (!inspection.looksLikeExistingSpace) {
+        reconnectMessageOverride.value = NOT_A_MIOFRAME_SPACE_MESSAGE;
+        return;
+      }
+
+      const confirmed = await confirmReplaceRememberedLocation(currentRecovery.spaceName);
+
+      if (recovery.value !== currentRecovery || !confirmed) {
+        return;
+      }
+
+      let replaceResult: Awaited<ReturnType<typeof replaceRememberedDirectory>>;
+
+      try {
+        replaceResult = await replaceRememberedDirectory({
+          handle,
+          spaceName: currentRecovery.spaceName,
+        });
+      } catch (error) {
+        captureDiagnosticException(
+          new DomainError(RECONNECT_FAILED_MESSAGE, {
+            cause: error,
+            code: LocalDirectoryReconnectErrorCode.reconnectFailed,
+          }),
+          {
+            feature: 'localDirectoryRecovery',
+            action: 'reconnectFolder',
+          },
+        );
+        if (recovery.value === currentRecovery) {
+          reconnectMessageOverride.value = RECONNECT_FAILED_MESSAGE;
+        }
+        return;
+      }
+
+      if (recovery.value !== currentRecovery) {
+        return;
+      }
+
       reconnectMessageOverride.value =
-        result.status === 'mismatch'
-          ? 'That folder is different from the one Mioframe remembers. Choose the original folder to reconnect.'
-          : result.status === 'identityUnverified'
-            ? 'Mioframe could not confirm this is the same folder. Try again from this action.'
-            : 'Mioframe no longer remembers this folder.';
+        replaceResult.status === 'reconnected' ? undefined : MISSING_RECORD_MESSAGE;
     } finally {
       isReconnectPending.value = false;
     }
