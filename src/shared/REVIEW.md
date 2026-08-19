@@ -4,58 +4,57 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Cross-boundary VFS/repository identity lifecycle and required integration proof for PR #211.
+- Cross-boundary VFS route identity / repository lifecycle implementation and required integration proof for PR #211.
 
 ## Blockers
 
-### B1 — Repository retirement is not a hard VFS identity boundary
+### B1 — Current implementation does not implement the ready VFS route-identity contract
 
-Owner: `src/shared` architecture boundary between `lib/virtualFileSystem` and `service/repositories`
+Owner: `src/shared/lib/virtualFileSystem` first; then `src/shared/lib/deviceFileSystemProvider`, `src/shared/lib/automergeAdapter`, and `src/shared/service/repositories` consume that lower-level contract.
 
-Problem: the new repository retirement gate only checks `retired` before delegating an adapter operation to the path-based VFS adapter. A save that starts before retirement can already have delegated into `vfs.writeFile()` but still be waiting in the VFS path lock. VFS resolves the owning provider only after that wait. If the old identity is removed and the same path is recreated before the queued callback runs, the old Repo operation can resolve the later provider and write into a different storage identity. Retirement also removes the path cache and calls `Repo.shutdown()`, but active `getRepo$` subscribers remain attached to the old `concat(of(repo), NEVER)` observable. With the locked `@automerge/automerge-repo` 2.5.6 API, `shutdown()` disconnects network adapters and flushes; it does not unload/remove DocHandles or detach their storage-save listeners. The retired adapter then turns later stale-handle storage operations into successful no-ops, so stale in-memory edits can be silently discarded rather than the resource being observably retired.
+Problem: architecture is now resolved, but current code still uses a repository-local boolean/no-op gate plus raw `DELETE`/`RENAME` cache retirement. The gate can be passed before an operation waits in `LockManager`; VFS may then resolve the same path after its backing route changed. It also treats arbitrary directory lifecycle as Repo identity, while the reviewed contract now scopes Repo identity to `(repository path, VFS storage-route lifetime)`.
 
 Evidence:
 
-- [Repository retirement gate](service/repositories/repositoryLifecycle.ts) — each operation checks `retired` only before calling the underlying adapter.
-- [Repositories service](service/repositories/repositoriesService.ts) — retirement gates storage, deletes the reusable cache entry and calls `repo.shutdown()`, but does not terminate existing shared observable subscribers.
-- [VFS-backed Automerge adapter](lib/automergeAdapter/createVFSAdapter.ts) — every storage operation is routed by path through the live `VirtualFileSystem`.
-- [VirtualFileSystem](lib/virtualFileSystem/VirtualFileSystem.ts) — `writeFile()` resolves the provider inside the path-lock callback, after any earlier queued operation finishes.
-- [LockManager](lib/virtualFileSystem/LockManager.ts) — an operation may wait in the per-path promise queue before its callback executes.
-- [Locked Automerge Repo version](../../pnpm-lock.yaml) and [upstream 2.5.6 Repo implementation](https://github.com/automerge/automerge-repo/blob/v2.5.6/packages/automerge-repo/src/Repo.ts) — `shutdown()` does not retire DocHandles or their save listeners.
+- [Repository retirement gate](service/repositories/repositoryLifecycle.ts) — stale operations become no-ops before delegating to the live path adapter.
+- [Repositories service](service/repositories/repositoriesService.ts) — raw directory `DELETE`/`RENAME` events drive retirement and the shared Repo observable remains path-cache based.
+- [VFS-backed Automerge adapter](lib/automergeAdapter/createVFSAdapter.ts) — every operation resolves through the current VFS path with no route binding.
+- [VirtualFileSystem](lib/virtualFileSystem/VirtualFileSystem.ts) and [LockManager](lib/virtualFileSystem/LockManager.ts) — provider resolution for lock-delayed operations happens after waiting.
+- [DeviceFileSystemProvider](lib/deviceFileSystemProvider/DeviceFileSystemProvider.ts) — mounted records currently have no stable runtime route identity that survives identity-preserving provider refresh and changes on remove/re-add.
 
 Basis:
 
-- [Local-directory recovery handoff](../../docs/local-directory-access-recovery.md) — retirement must prevent old repository operations from reaching a later identity at the same path and must terminate/finalize the active Repo resource.
-- [CRDT/storage workflow](../../.agents/skills/crdt-storage/SKILL.md) — repositories, handles, subscriptions and caches are lifecycle-managed resources with explicit cleanup/invalidation requirements.
+- [Ready local-directory recovery handoff](../../docs/local-directory-access-recovery.md) — defines `VfsRouteIdentity`, `bindRoute(path)`, stale-route fencing, nested Device Files route identity, Automerge binding ownership, and Repo observable retirement.
+- [CRDT/storage workflow](../../.agents/skills/crdt-storage/SKILL.md) — storage adapters, Repo/DocHandle resources, subscriptions, and caches require explicit lifecycle and invalidation semantics.
 
-Risk: an old Repo can write Automerge bytes into a different physical storage directory that later reuses the same VFS path. Separately, stale DocHandles can remain usable after identity retirement while their storage writes are silently discarded. Both violate the storage-identity/data-safety invariant this PR is intended to establish.
+Risk: a stale or queued old Repo operation can still reach a later backing provider at the same VFS path, or stale DocHandle storage can appear to succeed through the current no-op gate. Conversely, retiring on arbitrary directory events expands lifecycle semantics beyond what this PR needs.
 
-Required final state: repository identity retirement must form an atomic hard boundary at the point where a VFS operation selects/uses its backing identity. An operation owned by an ended identity, including one that began before retirement but had not yet resolved its provider, must never access a later identity at the same path. Existing subscribers must stop observing the retired Repo as a live reusable resource, and stale DocHandle changes must not silently appear successfully persisted. Proven same-entry refresh must continue preserving the same identity. The VFS/repository ownership and API needed for this fence must be resolved in architecture before another coding correction.
+Required final state: implement the ready handoff exactly. VFS owns opaque route identity and an identity-bound IO primitive; delayed VFS operations revalidate route identity before provider resolution; Device Files same-entry refresh preserves nested route identity while remove/re-add changes it; the Automerge adapter uses the binding; repositories retire the cache/observable from binding invalidation and stale retained storage operations reject `FileSystemError.StaleIdentity` rather than succeeding or reaching a later route. Ordinary content/access changes preserve the Repo.
 
-Verification: add deterministic proof that holds an old Repo write before provider resolution, ends the identity, recreates the same path with a different provider, releases the held operation, and proves the new provider receives no old write. Also prove active Repo subscribers transition away from the retired resource, stale DocHandles cannot silently persist/no-op as if still live, same-path recreation creates a fresh Repo, siblings remain unaffected, and proven same-entry refresh preserves the current Repo.
+Verification: deterministic VFS lock-queue replacement proof, identity-preserving remount proof, Device nested-route identity proof, bound Automerge adapter proof, repository observable/cache retirement proof, stale retained Repo/DocHandle storage rejection proof, same-path fresh Repo proof, and sibling/unchanged-route proof.
 
-### B2 — Required relocation/repository lifecycle integration proof is still missing
+### B2 — Required relocation/repository route-lifecycle integration proof is missing
 
 Owner: `src/shared/service`
 
-Problem: the handoff requires a cross-service proof that real fileSystem relocation removes the old mounted root, repository retirement follows only from the resulting VFS event, and repository access at the relocated path creates a different Repo. The current integration tests cover same-entry reconnect/write settlement only. File-system relocation tests and repository lifecycle tests prove their halves separately, but not the required seam.
+Problem: the handoff requires one real cross-service proof that locator-different fileSystem relocation ends the old Device Files route identity, repository retirement follows through the VFS binding/event seam only, and repository access at the relocated path creates a fresh Repo. Current integration tests cover same-entry reconnect/write settlement only.
 
 Evidence:
 
-- [Same-entry integration](service/fileSystemRepositoriesReconnect.integration.test.ts) — covers real fileSystem/repositories registration for queued-write settlement, not locator-different relocation.
-- [Repositories/fileSystem integration](service/repositories/repositoriesFileSystemIntegration.test.ts) — covers same-entry `repo.flush()` outcome with a mocked Repo, not relocation-driven retirement.
-- [Repository lifecycle tests](service/repositories/repositoriesService.test.ts) — inject VFS lifecycle events directly rather than exercising the relocation event path.
+- [Same-entry integration](service/fileSystemRepositoriesReconnect.integration.test.ts) — proves same-entry queued-write settlement.
+- [Repositories/fileSystem integration](service/repositories/repositoriesFileSystemIntegration.test.ts) — proves same-entry `repo.flush()` result mapping.
+- [File-system relocation tests](service/fileSystem/useFileSystemService.test.ts) and [repository lifecycle tests](service/repositories/repositoriesService.test.ts) — prove separate halves, not the real relocation-to-repository seam.
 
 Basis:
 
-- [Local-directory recovery handoff](../../docs/local-directory-access-recovery.md) — explicitly requires relocation/repository integration proof with no direct fileSystem→repositories coordination.
-- [Testing architecture](../../docs/testing/architecture.md) — required cross-boundary behavior must be proven at the lowest environment that faithfully reproduces the integration seam.
+- [Ready local-directory recovery handoff](../../docs/local-directory-access-recovery.md) — explicitly requires real relocation -> old route invalidation -> repository retirement -> fresh new-path Repo proof without direct fileSystem/repositories coordination.
+- [Testing architecture](../../docs/testing/architecture.md) — cross-owner behavior requires the lowest faithful integration proof.
 
-Risk: unit tests can stay green while the actual nested provider → outer VFS event forwarding, retirement matching, or new-path Repo creation is wired incorrectly.
+Risk: component tests can remain green while nested route identity forwarding, binding invalidation, or fresh Repo creation is wired incorrectly.
 
-Required final state: after the lifecycle architecture is corrected, one deterministic integration proof must exercise real fileSystem relocation together with real repository lifecycle wiring and establish old-identity retirement plus fresh repository creation at the new path without direct service coordination.
+Required final state: after B1 is implemented, add one deterministic integration test using real fileSystem and repositories wiring that proves old route retirement and fresh Repo construction at the relocated path.
 
-Verification: add the required deterministic integration test without arbitrary sleeps.
+Verification: no arbitrary sleeps; assert identity/resource effects directly.
 
 ## Major issues
 
@@ -71,8 +70,8 @@ None.
 
 ## Items not required
 
-None.
+- Inode/entry identity for arbitrary nested directory delete/recreate inside one unchanged provider route is outside PR #211. Do not add hierarchical locks or provider-wide cancellation to solve it here.
 
 ## Unresolved questions
 
-- The current handoff does not yet define a VFS identity/fencing primitive that can protect operations already delegated into VFS but not yet resolved to a provider. Architecture must resolve that boundary before the next coding task.
+None. Architecture is ready; implementation remains blocked on B1/B2.
