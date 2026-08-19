@@ -1,4 +1,4 @@
-import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import { storageAdapterMarkerFileName } from './storageAdapterMarkerFileName';
 
 /**
  * Summary of the folder inspection used by Mioframe space selection.

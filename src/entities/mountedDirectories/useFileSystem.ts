@@ -7,7 +7,7 @@ import {
   DEVICE_FILES_ROOT_NAME,
   type DeviceFileDisplayRecord,
   type ReconnectDeviceDirectoryResult,
-  type ReplaceRememberedDeviceDirectoryResult,
+  type RelocateRememberedDeviceDirectoryResult,
 } from '@shared/service';
 import { useObservable } from '@shared/lib/useObservable';
 import { OPFSName } from '@shared/service';
@@ -46,7 +46,7 @@ const setupFileSystem = () => {
       addDeviceDirectory,
       removeDeviceDirectory,
       reconnectDeviceDirectory,
-      replaceRememberedDeviceDirectory,
+      relocateRememberedDeviceDirectory,
       deviceFiles,
     },
   } = useMainServiceClient();
@@ -94,10 +94,10 @@ const setupFileSystem = () => {
     spaceName: string;
   }): Promise<ReconnectDeviceDirectoryResult> => reconnectDeviceDirectory(params);
 
-  const replaceRememberedDirectory = (params: {
+  const relocateRememberedDirectory = (params: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
-  }): Promise<ReplaceRememberedDeviceDirectoryResult> => replaceRememberedDeviceDirectory(params);
+  }): Promise<RelocateRememberedDeviceDirectoryResult> => relocateRememberedDeviceDirectory(params);
 
   return {
     rootDirectory,
@@ -109,7 +109,7 @@ const setupFileSystem = () => {
     createDirectory,
     disconnectDeviceFile,
     reconnectDirectory,
-    replaceRememberedDirectory,
+    relocateRememberedDirectory,
 
     move,
     remove,

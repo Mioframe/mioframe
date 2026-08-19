@@ -8,7 +8,7 @@ import {
 import type {
   ReadDirectoryOptions,
   ReconnectDeviceDirectoryResult,
-  ReplaceRememberedDeviceDirectoryResult,
+  RelocateRememberedDeviceDirectoryResult,
 } from './fileSystemContracts';
 import {
   createMountedWebFileSystemProvider,
@@ -35,47 +35,6 @@ import {
 import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
 import { addWebFileSystemReadDiagnosticStepBreadcrumb } from './webFileSystemReadDiagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
-import { DomainError } from '@shared/lib/error';
-import { FileSystemServiceErrorCode } from './fileSystemServiceErrorCode';
-
-/**
- * Safe service-internal context describing the mount a confirmed locator-different replacement
- * targets.
- *
- * Internal service-to-service contract only. Not exported through `./index`, `@shared/service`,
- * or the worker/client surface.
- */
-export interface ConfirmedReplacementLeaseContext {
-  /** Absolute VFS mount path the confirmed replacement would target. */
-  mountPath: string;
-}
-
-/**
- * Outcome of a confirmed-replacement lease acquisition attempt.
- * - `acquired` — the mount was reserved; call `release()` unconditionally once the replacement
- *   critical section (persistence, remount, cleanup, display sync) completes or fails.
- * - `repositoryStateActive` — a repository is already cached at or under the mount; the
- *   replacement must be rejected with zero mutation.
- *
- * Internal service-to-service contract only. Not exported through `./index`, `@shared/service`,
- * or the worker/client surface.
- */
-export type ConfirmedReplacementLeaseAcquisition =
-  | { status: 'acquired'; release: () => void }
-  | { status: 'repositoryStateActive' };
-
-/**
- * Repository-owned provider that atomically checks its cache and reserves a mount before a
- * confirmed locator-different directory replacement mutates persisted or runtime state.
- *
- * Internal service-to-service contract only. Not exported through `./index`, `@shared/service`,
- * or the worker/client surface.
- * @param context - {@link ConfirmedReplacementLeaseContext} for the target mount.
- * @returns A promise resolving to the {@link ConfirmedReplacementLeaseAcquisition} outcome.
- */
-export type ConfirmedReplacementLeaseProvider = (
-  context: ConfirmedReplacementLeaseContext,
-) => Promise<ConfirmedReplacementLeaseAcquisition>;
 
 export { DEVICE_FILES_ROOT_NAME };
 export type { DeviceFileDisplayRecord, ReadDirectoryOptions, WriteAccessRecoveryHandler };
@@ -103,23 +62,6 @@ const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const deviceFilesPath = PathUtils.join('/', DEVICE_FILES_ROOT_NAME);
   const registry = createFileSystemAccessRequestRegistry({ deviceFilesPath });
-
-  // Repositories registers the one confirmed-replacement lease provider at service setup.
-  // This is a narrow service-internal registration, kept out of the access-request registry
-  // (which stays focused on access requests and write-recovery execution) and out of the
-  // published worker/client surface.
-  let confirmedReplacementLeaseProvider: ConfirmedReplacementLeaseProvider | undefined;
-
-  const registerConfirmedReplacementLeaseProvider = (
-    provider: ConfirmedReplacementLeaseProvider,
-  ) => {
-    confirmedReplacementLeaseProvider = provider;
-    return () => {
-      if (confirmedReplacementLeaseProvider === provider) {
-        confirmedReplacementLeaseProvider = undefined;
-      }
-    };
-  };
   const deviceFileSystemProvider = DeviceFileSystemProvider({
     createProvider: (record) => {
       if (record.kind !== 'localDirectory') {
@@ -367,9 +309,8 @@ const setupFileSystemService = () => {
     };
   };
 
-  // Shared persist+mount+cleanup step; callers already resolved the existing record and, for
-  // locator-different replacement, already hold the confirmed-replacement lease.
-  const persistAndMountReplacement = async ({
+  // Persists and remounts a proven same-entry replacement handle under its existing mounted name.
+  const persistAndRemountSameEntry = async ({
     existingRecord,
     handle,
     records,
@@ -427,7 +368,7 @@ const setupFileSystemService = () => {
       return { status: 'confirmationRequired' };
     }
 
-    const replacement = await persistAndMountReplacement({ handle, records, existingRecord });
+    const replacement = await persistAndRemountSameEntry({ handle, records, existingRecord });
 
     const mountPath = PathUtils.join(deviceFilesPath, spaceName);
     const settlement = await registry.runWriteRecoveryHandlers({ mountPath, spaceName });
@@ -437,13 +378,18 @@ const setupFileSystemService = () => {
     return { status, name: replacement.name };
   };
 
-  const replaceRememberedDeviceDirectory = async ({
+  // Relocates a remembered record whose locator-different candidate was explicitly confirmed by
+  // the user. Allocates a new mounted name (the old name still counts as occupied, so the new
+  // name always differs from it), persists the replaced record list first, and only after
+  // persistence succeeds unmounts the old runtime path and mounts the selected handle under the
+  // new name. The selected storage never becomes reachable through the old VFS path.
+  const relocateRememberedDeviceDirectory = async ({
     handle,
     spaceName,
   }: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
-  }): Promise<ReplaceRememberedDeviceDirectoryResult> => {
+  }): Promise<RelocateRememberedDeviceDirectoryResult> => {
     await deviceFilesReady;
 
     const records = await getRecordList();
@@ -453,27 +399,31 @@ const setupFileSystemService = () => {
       return { status: 'missingRecord' };
     }
 
-    if (!confirmedReplacementLeaseProvider) {
-      // Repository exclusion is a data-safety invariant: never proceed without it.
-      throw new DomainError('Folder replacement is temporarily unavailable', {
-        code: FileSystemServiceErrorCode.confirmedReplacementLeaseUnavailable,
-      });
+    const otherRecords = records.filter((record) => record !== existingRecord);
+    const matchedOtherRecord = await findRecordByHandle(otherRecords, handle);
+
+    if (matchedOtherRecord) {
+      return { status: 'alreadyMounted', name: matchedOtherRecord.name };
     }
 
-    const mountPath = PathUtils.join(deviceFilesPath, spaceName);
-    const lease = await confirmedReplacementLeaseProvider({ mountPath });
+    // The old target name still counts as occupied because `existingRecord` remains in `records`
+    // here, so the allocated name always differs from the old mounted name.
+    const newName = getUniqueDeviceDirectoryName(handle.name, records);
+    const nextRecord = { name: newName, handle } satisfies PersistedDeviceDirectoryRecord;
+    const nextRecords = records.map((record) => (record === existingRecord ? nextRecord : record));
 
-    if (lease.status === 'repositoryStateActive') {
-      return { status: 'repositoryStateActive' };
-    }
+    await updateRecordList(nextRecords);
 
-    try {
-      // Consume the already-read records/existingRecord; no second persisted-record read
-      // after lease acquisition.
-      return await persistAndMountReplacement({ handle, records, existingRecord });
-    } finally {
-      lease.release();
-    }
+    deviceFileSystemProvider.removeRecord(existingRecord.name);
+    deviceFileSystemProvider.upsertRecord({
+      name: newName,
+      kind: 'localDirectory',
+      handle,
+    });
+    registry.clearForSpace(existingRecord.name);
+    syncActiveDeviceFiles();
+
+    return { status: 'relocated', name: newName };
   };
 
   const removeDeviceDirectory = async (name: string): Promise<void> => {
@@ -512,11 +462,10 @@ const setupFileSystemService = () => {
     addDeviceDirectory,
     removeDeviceDirectory,
     reconnectDeviceDirectory,
-    replaceRememberedDeviceDirectory,
+    relocateRememberedDeviceDirectory,
     getFileSystemAccessRequest: registry.getRequest,
     getTemporaryFileSystemAccessHandle: registry.prepareHandle,
     registerWriteAccessRecoveryHandler: registry.registerWriteRecoveryHandler,
-    registerConfirmedReplacementLeaseProvider,
     resolveFileSystemAccessRequest: registry.resolve,
     cancelFileSystemAccessRequest: registry.cancel,
     deviceFiles: fromObservable(activeDeviceFiles$),

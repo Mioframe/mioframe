@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-assertions -- DOM File System Access API mocks need structural casting in tests. */
 import { describe, expect, it, vi } from 'vitest';
 import { inspectMioframeSpaceDirectory } from './mioframeSpaceDirectoryInspection';
-import { storageAdapterMarkerFileName } from '@shared/lib/automergeAdapter';
+import { storageAdapterMarkerFileName } from './storageAdapterMarkerFileName';
 
 const createDirectoryHandle = ({
   name,

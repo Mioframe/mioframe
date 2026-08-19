@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { computed, effectScope, ref } from 'vue';
-import type { FileSystemAccessRecovery } from '@shared/lib/fileSystem';
 
 const requestAccessMock = vi.fn();
 
@@ -15,9 +14,23 @@ const flushMicrotasks = async () => {
   await Promise.resolve();
 };
 
-const mountAction = async (recovery: FileSystemAccessRecovery | undefined) => {
+const createSerializedRecoveryError = ({
+  mode,
+  spaceName,
+}: {
+  mode: 'read' | 'readwrite';
+  spaceName: string;
+}) =>
+  Object.assign(new Error('Permission required to open this remembered local space'), {
+    code: 'web-file-system-access-required',
+    mode,
+    name: 'WebFileSystemAccessRequiredError',
+    spaceName,
+  });
+
+const mountAction = async (initialErrors: unknown[]) => {
   const scope = effectScope();
-  const recoveryRef = ref<FileSystemAccessRecovery | undefined>(recovery);
+  const errorsRef = ref<unknown[]>(initialErrors);
   let action:
     | ReturnType<typeof import('./useLocalDirectoryRecoveryAction').useLocalDirectoryRecoveryAction>
     | undefined;
@@ -26,7 +39,7 @@ const mountAction = async (recovery: FileSystemAccessRecovery | undefined) => {
 
   scope.run(() => {
     action = useLocalDirectoryRecoveryAction({
-      recovery: computed(() => recoveryRef.value),
+      errors: computed(() => errorsRef.value),
     });
   });
 
@@ -36,7 +49,7 @@ const mountAction = async (recovery: FileSystemAccessRecovery | undefined) => {
 
   return {
     action,
-    recoveryRef,
+    errorsRef,
     scope,
   };
 };
@@ -46,12 +59,33 @@ describe('useLocalDirectoryRecoveryAction', () => {
     requestAccessMock.mockReset();
   });
 
+  it('derives read-access recovery from the supplied error candidates', async () => {
+    const { action, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    ]);
+
+    expect(action.hasLocalDirectoryRecovery.value).toBe(true);
+    expect(action.localDirectoryRecoveryMessage.value).toContain('Work');
+
+    scope.stop();
+  });
+
+  it('ignores write-mode access errors and unrelated errors', async () => {
+    const { action, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'readwrite', spaceName: 'Work' }),
+      new Error('unrelated failure'),
+    ]);
+
+    expect(action.hasLocalDirectoryRecovery.value).toBe(false);
+
+    scope.stop();
+  });
+
   it('requests read permission explicitly from the secondary action', async () => {
     requestAccessMock.mockResolvedValue({ status: 'granted' });
-    const { action, scope } = await mountAction({
-      operation: 'read',
-      spaceName: 'Work',
-    });
+    const { action, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    ]);
 
     await expect(action.grantReadOnlyAccess()).resolves.toEqual({ status: 'granted' });
 
@@ -66,10 +100,9 @@ describe('useLocalDirectoryRecoveryAction', () => {
 
   it('requests readwrite permission explicitly from the primary action', async () => {
     requestAccessMock.mockResolvedValue({ status: 'granted' });
-    const { action, scope } = await mountAction({
-      operation: 'read',
-      spaceName: 'Work',
-    });
+    const { action, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    ]);
 
     await expect(action.grantFullAccess()).resolves.toEqual({ status: 'granted' });
 
@@ -90,10 +123,9 @@ describe('useLocalDirectoryRecoveryAction', () => {
           resolveRequest = resolve;
         }),
     );
-    const { action, scope } = await mountAction({
-      operation: 'read',
-      spaceName: 'Work',
-    });
+    const { action, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    ]);
 
     const requestPromise = action.grantFullAccess();
     await flushMicrotasks();
@@ -121,10 +153,9 @@ describe('useLocalDirectoryRecoveryAction', () => {
 
   it('keeps a safe denied message and clears it when recovery changes', async () => {
     requestAccessMock.mockResolvedValue({ status: 'denied' });
-    const { action, recoveryRef, scope } = await mountAction({
-      operation: 'read',
-      spaceName: 'Work',
-    });
+    const { action, errorsRef, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    ]);
 
     await action.grantFullAccess();
 
@@ -132,10 +163,7 @@ describe('useLocalDirectoryRecoveryAction', () => {
       'Mioframe still cannot open this space because your browser did not grant permission.',
     );
 
-    recoveryRef.value = {
-      operation: 'read',
-      spaceName: 'Archive',
-    };
+    errorsRef.value = [createSerializedRecoveryError({ mode: 'read', spaceName: 'Archive' })];
     await flushMicrotasks();
 
     expect(action.localDirectoryRecoveryMessage.value).toBe(
@@ -153,15 +181,14 @@ describe('useLocalDirectoryRecoveryAction', () => {
           resolveRequest = resolve;
         }),
     );
-    const { action, recoveryRef, scope } = await mountAction({
-      operation: 'read',
-      spaceName: 'Work',
-    });
+    const { action, errorsRef, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    ]);
 
     const requestPromise = action.grantFullAccess();
     await flushMicrotasks();
 
-    recoveryRef.value = { operation: 'read', spaceName: 'Archive' };
+    errorsRef.value = [createSerializedRecoveryError({ mode: 'read', spaceName: 'Archive' })];
     await flushMicrotasks();
 
     resolveRequest?.({ status: 'denied' });
@@ -182,15 +209,14 @@ describe('useLocalDirectoryRecoveryAction', () => {
           resolveRequest = resolve;
         }),
     );
-    const { action, recoveryRef, scope } = await mountAction({
-      operation: 'read',
-      spaceName: 'Work',
-    });
+    const { action, errorsRef, scope } = await mountAction([
+      createSerializedRecoveryError({ mode: 'read', spaceName: 'Work' }),
+    ]);
 
     const requestPromise = action.grantFullAccess();
     await flushMicrotasks();
 
-    recoveryRef.value = { operation: 'read', spaceName: 'Archive' };
+    errorsRef.value = [createSerializedRecoveryError({ mode: 'read', spaceName: 'Archive' })];
     await flushMicrotasks();
 
     resolveRequest?.({ status: 'error' });
@@ -204,7 +230,7 @@ describe('useLocalDirectoryRecoveryAction', () => {
   });
 
   it('returns error without calling the broker when recovery is missing', async () => {
-    const { action, scope } = await mountAction(undefined);
+    const { action, scope } = await mountAction([]);
 
     await expect(action.grantFullAccess()).resolves.toEqual({ status: 'error' });
     expect(requestAccessMock).not.toHaveBeenCalled();

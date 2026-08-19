@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
-import type { FileSystemUnavailableRootRecovery } from '@shared/lib/fileSystem';
 import { DomainError } from '@shared/lib/error';
 import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
+import { WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE } from '@shared/lib/webFileSystemProvider';
 import { useLocalDirectoryReconnectAction } from './useLocalDirectoryReconnectAction';
 
 const {
@@ -10,21 +10,21 @@ const {
   confirmMock,
   inspectMioframeSpaceDirectoryMock,
   reconnectDirectoryMock,
-  replaceRememberedDirectoryMock,
+  relocateRememberedDirectoryMock,
   showDirectoryPickerMock,
 } = vi.hoisted(() => ({
   captureDiagnosticExceptionMock: vi.fn(),
   confirmMock: vi.fn(),
   inspectMioframeSpaceDirectoryMock: vi.fn(),
   reconnectDirectoryMock: vi.fn(),
-  replaceRememberedDirectoryMock: vi.fn(),
+  relocateRememberedDirectoryMock: vi.fn(),
   showDirectoryPickerMock: vi.fn(),
 }));
 
 vi.mock('@entity/mountedDirectories', () => ({
   useFileSystem: () => ({
     reconnectDirectory: reconnectDirectoryMock,
-    replaceRememberedDirectory: replaceRememberedDirectoryMock,
+    relocateRememberedDirectory: relocateRememberedDirectoryMock,
   }),
 }));
 
@@ -38,8 +38,8 @@ vi.mock('@shared/ui/Dialog', () => ({
   }),
 }));
 
-vi.mock('@shared/lib/fileSystem', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@shared/lib/fileSystem')>();
+vi.mock('@shared/lib/automergeAdapter', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/automergeAdapter')>();
   return {
     ...actual,
     inspectMioframeSpaceDirectory: inspectMioframeSpaceDirectoryMock,
@@ -48,13 +48,23 @@ vi.mock('@shared/lib/fileSystem', async (importOriginal) => {
 
 const createHandle = () => createDirectoryHandleMock({ name: 'Work' });
 
+const createSerializedUnavailableRootError = (spaceName: string) =>
+  Object.assign(new Error('Mioframe cannot open this remembered folder anymore.'), {
+    code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
+    name: 'WebFileSystemUnavailableRootError',
+    spaceName,
+  });
+
+const errorsFor = (spaceName: string) =>
+  ref<unknown[]>([createSerializedUnavailableRootError(spaceName)]);
+
 describe('useLocalDirectoryReconnectAction', () => {
   beforeEach(() => {
     captureDiagnosticExceptionMock.mockReset();
     confirmMock.mockReset();
     inspectMioframeSpaceDirectoryMock.mockReset();
     reconnectDirectoryMock.mockReset();
-    replaceRememberedDirectoryMock.mockReset();
+    relocateRememberedDirectoryMock.mockReset();
     showDirectoryPickerMock.mockReset();
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
@@ -62,18 +72,37 @@ describe('useLocalDirectoryReconnectAction', () => {
     });
   });
 
-  it('reconnects and clears the message on a confirmed same-entry selection', async () => {
+  it('derives unavailable-root recovery from the supplied error candidates', () => {
+    const errors = errorsFor('Work');
+
+    const { hasUnavailableRootRecovery, reconnectMessage } = useLocalDirectoryReconnectAction({
+      errors,
+    });
+
+    expect(hasUnavailableRootRecovery.value).toBe(true);
+    expect(reconnectMessage.value).toContain('Work');
+  });
+
+  it('ignores unrelated errors', () => {
+    const errors = ref<unknown[]>([new Error('unrelated failure')]);
+
+    const { hasUnavailableRootRecovery } = useLocalDirectoryReconnectAction({ errors });
+
+    expect(hasUnavailableRootRecovery.value).toBe(false);
+  });
+
+  it('reconnects, clears the message, and returns undefined on a confirmed same-entry selection', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'reconnected', name: 'Work' });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
     const { isReconnectPending, reconnectFolder, reconnectMessage } =
-      useLocalDirectoryReconnectAction({ recovery });
+      useLocalDirectoryReconnectAction({ errors });
 
     const promise = reconnectFolder();
     expect(isReconnectPending.value).toBe(true);
-    await promise;
+    await expect(promise).resolves.toBeUndefined();
 
     expect(isReconnectPending.value).toBe(false);
     expect(showDirectoryPickerMock).toHaveBeenCalledWith({ mode: 'readwrite' });
@@ -82,18 +111,16 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
     expect(inspectMioframeSpaceDirectoryMock).not.toHaveBeenCalled();
     expect(confirmMock).not.toHaveBeenCalled();
-    expect(replaceRememberedDirectoryMock).not.toHaveBeenCalled();
+    expect(relocateRememberedDirectoryMock).not.toHaveBeenCalled();
   });
 
   it('leaves persisted and runtime state untouched when the picker is cancelled', async () => {
     showDirectoryPickerMock.mockRejectedValueOnce(new DOMException('cancelled', 'AbortError'));
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { isReconnectPending, reconnectFolder } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { isReconnectPending, reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
 
-    await reconnectFolder();
+    await expect(reconnectFolder()).resolves.toBeUndefined();
 
     expect(isReconnectPending.value).toBe(false);
     expect(reconnectDirectoryMock).not.toHaveBeenCalled();
@@ -103,10 +130,10 @@ describe('useLocalDirectoryReconnectAction', () => {
   it('wraps a non-cancel picker failure in a safe retryable DomainError instead of rejecting', async () => {
     const pickerError = new DOMException('permission dismissed by the browser', 'NotAllowedError');
     showDirectoryPickerMock.mockRejectedValueOnce(pickerError);
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
     const { isReconnectPending, reconnectFolder, reconnectMessage } =
-      useLocalDirectoryReconnectAction({ recovery });
+      useLocalDirectoryReconnectAction({ errors });
 
     await expect(reconnectFolder()).resolves.toBeUndefined();
 
@@ -120,7 +147,7 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
     const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     expect(options).toEqual({
-      feature: 'localDirectoryRecovery',
+      feature: 'localDirectoryReconnect',
       action: 'reconnectFolder',
     });
     expect(reportedError).toBeInstanceOf(DomainError);
@@ -137,10 +164,10 @@ describe('useLocalDirectoryReconnectAction', () => {
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     const serviceError = new Error('vfs write conflict at /handles/Work.json');
     reconnectDirectoryMock.mockRejectedValueOnce(serviceError);
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
     const { isReconnectPending, reconnectFolder, reconnectMessage } =
-      useLocalDirectoryReconnectAction({ recovery });
+      useLocalDirectoryReconnectAction({ errors });
 
     await expect(reconnectFolder()).resolves.toBeUndefined();
 
@@ -153,7 +180,7 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
     const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     expect(options).toEqual({
-      feature: 'localDirectoryRecovery',
+      feature: 'localDirectoryReconnect',
       action: 'reconnectFolder',
     });
     expect(reportedError).toBeInstanceOf(DomainError);
@@ -170,13 +197,11 @@ describe('useLocalDirectoryReconnectAction', () => {
       status: 'reconnectedWithWriteRecoveryFailure',
       name: 'Work',
     });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
-    await reconnectFolder();
+    await expect(reconnectFolder()).resolves.toBeUndefined();
 
     expect(reconnectMessage.value).toBe(
       'The folder is reconnected, but some pending changes could not be saved.',
@@ -185,17 +210,15 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(inspectMioframeSpaceDirectoryMock).not.toHaveBeenCalled();
   });
 
-  it('reports missingRecord without a diagnostic exception', async () => {
+  it('reports missingRecord without a diagnostic exception when the same-entry reconnect target disappeared', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'missingRecord' });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
-    await reconnectFolder();
+    await expect(reconnectFolder()).resolves.toBeUndefined();
 
     expect(reconnectMessage.value).toBe('Mioframe no longer remembers this folder.');
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
@@ -206,118 +229,111 @@ describe('useLocalDirectoryReconnectAction', () => {
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: false });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
-    await reconnectFolder();
+    await expect(reconnectFolder()).resolves.toBeUndefined();
 
     expect(inspectMioframeSpaceDirectoryMock).toHaveBeenCalledWith(handle);
     expect(confirmMock).not.toHaveBeenCalled();
-    expect(replaceRememberedDirectoryMock).not.toHaveBeenCalled();
+    expect(relocateRememberedDirectoryMock).not.toHaveBeenCalled();
     expect(reconnectMessage.value).toBe(
       'That folder does not contain a Mioframe space. Choose the moved or renamed Mioframe folder.',
     );
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('opens explicit confirmation after confirmationRequired when the candidate is an existing Mioframe space', async () => {
+  it('opens explicit confirmation with the reconnect-as-new-location copy after confirmationRequired', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
     confirmMock.mockResolvedValueOnce(false);
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
 
     await reconnectFolder();
 
-    expect(confirmMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        confirmLabel: 'Replace location',
-        cancelLabel: 'Cancel',
-      }),
-    );
-    const [confirmOptions] = confirmMock.mock.calls[0] ?? [];
-    expect(confirmOptions.supportingText).toContain('"Work"');
+    expect(confirmMock).toHaveBeenCalledWith({
+      headline: 'Reconnect this Mioframe space?',
+      supportingText:
+        "Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect it as a new location and remove the unavailable remembered location. Unsaved in-memory changes from the unavailable location cannot be transferred.",
+      confirmLabel: 'Reconnect',
+      cancelLabel: 'Cancel',
+    });
   });
 
-  it('performs no replacement and no diagnostic exception when confirmation is cancelled', async () => {
+  it('performs no relocation and no diagnostic exception when confirmation is cancelled', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
     confirmMock.mockResolvedValueOnce(false);
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder } = useLocalDirectoryReconnectAction({ recovery });
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
 
-    await reconnectFolder();
+    await expect(reconnectFolder()).resolves.toBeUndefined();
 
-    expect(replaceRememberedDirectoryMock).not.toHaveBeenCalled();
+    expect(relocateRememberedDirectoryMock).not.toHaveBeenCalled();
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('calls replaceRememberedDirectory with the selected handle and current spaceName after confirmation', async () => {
+  it('calls relocateRememberedDirectory with the selected handle and current spaceName after confirmation, returning the new mounted name', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
     confirmMock.mockResolvedValueOnce(true);
-    replaceRememberedDirectoryMock.mockResolvedValueOnce({ status: 'reconnected', name: 'Work' });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
-
-    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
-      recovery,
+    relocateRememberedDirectoryMock.mockResolvedValueOnce({
+      status: 'relocated',
+      name: 'Work (2)',
     });
+    const errors = errorsFor('Work');
 
-    await reconnectFolder();
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
-    expect(replaceRememberedDirectoryMock).toHaveBeenCalledWith({ handle, spaceName: 'Work' });
+    await expect(reconnectFolder()).resolves.toBe('Work (2)');
+
+    expect(relocateRememberedDirectoryMock).toHaveBeenCalledWith({ handle, spaceName: 'Work' });
     expect(reconnectMessage.value).toContain('Work');
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('shows the reload/retry message and reports no diagnostic exception for repositoryStateActive', async () => {
+  it('returns the existing mounted name and reports no diagnostic exception for alreadyMounted', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
     confirmMock.mockResolvedValueOnce(true);
-    replaceRememberedDirectoryMock.mockResolvedValueOnce({ status: 'repositoryStateActive' });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
-
-    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
-      recovery,
+    relocateRememberedDirectoryMock.mockResolvedValueOnce({
+      status: 'alreadyMounted',
+      name: 'Archive',
     });
+    const errors = errorsFor('Work');
 
-    await reconnectFolder();
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
-    expect(reconnectMessage.value).toBe(
-      'Mioframe still has this space open in memory. Reload Mioframe, then reconnect the folder again.',
-    );
+    await expect(reconnectFolder()).resolves.toBe('Archive');
+
+    expect(reconnectMessage.value).toContain('Archive');
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
   });
 
-  it('reports missingRecord after a confirmed replacement whose remembered record disappeared', async () => {
+  it('reports missingRecord after a confirmed relocation whose remembered record disappeared', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
     confirmMock.mockResolvedValueOnce(true);
-    replaceRememberedDirectoryMock.mockResolvedValueOnce({ status: 'missingRecord' });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    relocateRememberedDirectoryMock.mockResolvedValueOnce({ status: 'missingRecord' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
-    await reconnectFolder();
+    await expect(reconnectFolder()).resolves.toBeUndefined();
 
     expect(reconnectMessage.value).toBe('Mioframe no longer remembers this folder.');
     expect(captureDiagnosticExceptionMock).not.toHaveBeenCalled();
@@ -329,11 +345,9 @@ describe('useLocalDirectoryReconnectAction', () => {
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     const inspectionError = new DOMException('permission denied at /handles/Work', 'SecurityError');
     inspectMioframeSpaceDirectoryMock.mockRejectedValueOnce(inspectionError);
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
 
     await expect(reconnectFolder()).resolves.toBeUndefined();
 
@@ -346,7 +360,7 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(captureDiagnosticExceptionMock).toHaveBeenCalledTimes(1);
     const [reportedError, options] = captureDiagnosticExceptionMock.mock.calls[0] ?? [];
     expect(options).toEqual({
-      feature: 'localDirectoryRecovery',
+      feature: 'localDirectoryReconnect',
       action: 'reconnectFolder',
     });
     expect(reportedError).toBeInstanceOf(DomainError);
@@ -356,18 +370,18 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(reportedError.cause).toBe(inspectionError);
   });
 
-  it('safely handles an unexpected confirmed-replacement rejection without escaping the action promise', async () => {
+  it('safely handles an unexpected relocation rejection without escaping the action promise', async () => {
     const handle = createHandle();
     showDirectoryPickerMock.mockResolvedValueOnce(handle);
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
     inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
     confirmMock.mockResolvedValueOnce(true);
     const serviceError = new Error('vfs write conflict at /handles/Work.json');
-    replaceRememberedDirectoryMock.mockRejectedValueOnce(serviceError);
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    relocateRememberedDirectoryMock.mockRejectedValueOnce(serviceError);
+    const errors = errorsFor('Work');
 
     const { isReconnectPending, reconnectFolder, reconnectMessage } =
-      useLocalDirectoryReconnectAction({ recovery });
+      useLocalDirectoryReconnectAction({ errors });
 
     await expect(reconnectFolder()).resolves.toBeUndefined();
 
@@ -396,17 +410,17 @@ describe('useLocalDirectoryReconnectAction', () => {
         resolveInspection = resolve;
       }),
     );
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder } = useLocalDirectoryReconnectAction({ recovery });
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
 
     const promise = reconnectFolder();
-    recovery.value = { spaceName: 'Archive' };
+    errors.value = [createSerializedUnavailableRootError('Archive')];
     resolveInspection({ looksLikeExistingSpace: true });
     await promise;
 
     expect(confirmMock).not.toHaveBeenCalled();
-    expect(replaceRememberedDirectoryMock).not.toHaveBeenCalled();
+    expect(relocateRememberedDirectoryMock).not.toHaveBeenCalled();
   });
 
   it('ignores a stale recovery target that changed while confirmation was pending', async () => {
@@ -420,16 +434,16 @@ describe('useLocalDirectoryReconnectAction', () => {
         resolveConfirm = resolve;
       }),
     );
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder } = useLocalDirectoryReconnectAction({ recovery });
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
 
     const promise = reconnectFolder();
-    recovery.value = { spaceName: 'Archive' };
+    errors.value = [createSerializedUnavailableRootError('Archive')];
     resolveConfirm(true);
     await promise;
 
-    expect(replaceRememberedDirectoryMock).not.toHaveBeenCalled();
+    expect(relocateRememberedDirectoryMock).not.toHaveBeenCalled();
   });
 
   it('resets pending state and ignores a stale result after the recovery target changes mid-flight', async () => {
@@ -439,14 +453,12 @@ describe('useLocalDirectoryReconnectAction', () => {
         resolvePicker = resolve;
       }),
     );
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { isReconnectPending, reconnectFolder } = useLocalDirectoryReconnectAction({
-      recovery,
-    });
+    const { isReconnectPending, reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
 
     const promise = reconnectFolder();
-    recovery.value = { spaceName: 'Archive' };
+    errors.value = [createSerializedUnavailableRootError('Archive')];
     resolvePicker(createHandle());
     await promise;
 
@@ -462,9 +474,9 @@ describe('useLocalDirectoryReconnectAction', () => {
       }),
     );
     reconnectDirectoryMock.mockResolvedValueOnce({ status: 'reconnected', name: 'Work' });
-    const recovery = ref<FileSystemUnavailableRootRecovery | undefined>({ spaceName: 'Work' });
+    const errors = errorsFor('Work');
 
-    const { reconnectFolder } = useLocalDirectoryReconnectAction({ recovery });
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
 
     const firstAttempt = reconnectFolder();
     await reconnectFolder();

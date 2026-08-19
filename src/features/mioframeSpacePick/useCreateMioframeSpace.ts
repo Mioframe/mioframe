@@ -7,7 +7,7 @@ import { useSnackbar } from '@shared/ui/Snackbar';
 import { PathUtils } from '@shared/lib/virtualFileSystem';
 import { ref, toValue, type MaybeRefOrGetter } from 'vue';
 import { MioframeSpacePickErrorCode } from './mioframeSpacePick.errors';
-import { inspectMioframeSpaceDirectory } from '@shared/lib/fileSystem';
+import { inspectMioframeSpaceDirectory } from '@shared/lib/automergeAdapter';
 
 const EXISTING_ORDINARY_FOLDER_ERROR =
   'A folder with this name already exists. Choose another name.';

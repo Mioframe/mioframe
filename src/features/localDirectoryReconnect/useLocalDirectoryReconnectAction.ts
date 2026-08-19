@@ -1,5 +1,8 @@
-import type { FileSystemUnavailableRootRecovery } from '@shared/lib/fileSystem';
-import { inspectMioframeSpaceDirectory, isUserFileSelectionCancel } from '@shared/lib/fileSystem';
+import {
+  isUserFileSelectionCancel,
+  parseFileSystemUnavailableRootRecovery,
+} from '@shared/lib/fileSystem';
+import { inspectMioframeSpaceDirectory } from '@shared/lib/automergeAdapter';
 import { useFileSystem } from '@entity/mountedDirectories';
 import { captureDiagnosticException } from '@shared/lib/diagnostics';
 import { DomainError } from '@shared/lib/error';
@@ -18,30 +21,40 @@ const INSPECT_FAILED_MESSAGE = 'Could not inspect this folder. Try again from th
 const NOT_A_MIOFRAME_SPACE_MESSAGE =
   'That folder does not contain a Mioframe space. Choose the moved or renamed Mioframe folder.';
 const MISSING_RECORD_MESSAGE = 'Mioframe no longer remembers this folder.';
-const REPOSITORY_STATE_ACTIVE_MESSAGE =
-  'Mioframe still has this space open in memory. Reload Mioframe, then reconnect the folder again.';
 const WRITE_RECOVERY_FAILURE_MESSAGE =
   'The folder is reconnected, but some pending changes could not be saved.';
+const alreadyMountedMessage = (name: string) =>
+  `Mioframe already has this folder open as "${name}".`;
 
 /**
  * Owns the explicit user-triggered reconnect action for a remembered local-directory root that
- * can no longer be enumerated. Keeps the directory picker call, safe-attempt/confirmation
- * orchestration, and pending state out of widgets/pages. `isSameEntry() === true` reconnects
- * immediately; otherwise the selection is inspected for the Mioframe storage marker and, when it
- * looks like an existing Mioframe space, the user must explicitly confirm before the remembered
- * location is replaced. A non-Mioframe selection is rejected without mutation.
- * @param recovery - Current unavailable-root recovery request exposed by the detecting layer.
+ * can no longer be enumerated. Derives its own unavailable-root recovery from the supplied error
+ * candidates, so widgets never parse local-directory provider payloads. Keeps the directory
+ * picker call, safe-attempt/confirmation orchestration, and pending state out of widgets/pages.
+ * `isSameEntry() === true` reconnects immediately; otherwise the selection is inspected for the
+ * Mioframe storage marker and, when it looks like an existing Mioframe space, the user must
+ * explicitly confirm before it is reconnected as a new mounted location. A non-Mioframe selection
+ * is rejected without mutation.
+ * @param errors - Recovery-relevant error candidates collected by the detecting layer.
  * @returns Explicit reconnect action handler and UI-facing state for the recovery controls.
  */
-export const useLocalDirectoryReconnectAction = ({
-  recovery,
-}: {
-  recovery: Ref<FileSystemUnavailableRootRecovery | undefined>;
-}) => {
-  const { reconnectDirectory, replaceRememberedDirectory } = useFileSystem();
+export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unknown[]> }) => {
+  const { reconnectDirectory, relocateRememberedDirectory } = useFileSystem();
   const { confirm } = useDialog();
   const isReconnectPending = ref(false);
   const reconnectMessageOverride = ref<string>();
+
+  const recovery = computed(() => {
+    for (const error of errors.value) {
+      const candidate = parseFileSystemUnavailableRootRecovery(error);
+
+      if (candidate) {
+        return candidate;
+      }
+    }
+
+    return undefined;
+  });
 
   const isReconnectSupported = computed(
     () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
@@ -55,24 +68,30 @@ export const useLocalDirectoryReconnectAction = ({
     { immediate: true },
   );
 
-  const confirmReplaceRememberedLocation = (spaceName: string) =>
+  const confirmReconnectAsNewLocation = () =>
     confirm({
       headline: 'Reconnect this Mioframe space?',
-      supportingText: `Mioframe can't verify that this is the same folder it remembers. Continue only if you moved or renamed the original space. The selected folder will replace the remembered location for "${spaceName}".`,
-      confirmLabel: 'Replace location',
+      supportingText:
+        "Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect it as a new location and remove the unavailable remembered location. Unsaved in-memory changes from the unavailable location cannot be transferred.",
+      confirmLabel: 'Reconnect',
       cancelLabel: 'Cancel',
     });
 
-  const reconnectFolder = async (): Promise<void> => {
+  /**
+   * Runs the reconnect action for the current unavailable-root recovery target.
+   * @returns The mounted name the widget should navigate to, or `undefined` when the current
+   * mounted path should be kept (same-entry reconnect) or no mutation occurred.
+   */
+  const reconnectFolder = async (): Promise<string | undefined> => {
     const currentRecovery = recovery.value;
 
     if (!currentRecovery || isReconnectPending.value) {
-      return;
+      return undefined;
     }
 
     if (!isReconnectSupported.value) {
       reconnectMessageOverride.value = 'Your browser does not support reconnecting folders.';
-      return;
+      return undefined;
     }
 
     isReconnectPending.value = true;
@@ -90,7 +109,7 @@ export const useLocalDirectoryReconnectAction = ({
               code: LocalDirectoryReconnectErrorCode.pickerFailed,
             }),
             {
-              feature: 'localDirectoryRecovery',
+              feature: 'localDirectoryReconnect',
               action: 'reconnectFolder',
             },
           );
@@ -99,11 +118,11 @@ export const useLocalDirectoryReconnectAction = ({
               'Could not open the folder picker. Try again from this action.';
           }
         }
-        return;
+        return undefined;
       }
 
       if (recovery.value !== currentRecovery) {
-        return;
+        return undefined;
       }
 
       let result: Awaited<ReturnType<typeof reconnectDirectory>>;
@@ -120,33 +139,33 @@ export const useLocalDirectoryReconnectAction = ({
             code: LocalDirectoryReconnectErrorCode.reconnectFailed,
           }),
           {
-            feature: 'localDirectoryRecovery',
+            feature: 'localDirectoryReconnect',
             action: 'reconnectFolder',
           },
         );
         if (recovery.value === currentRecovery) {
           reconnectMessageOverride.value = RECONNECT_FAILED_MESSAGE;
         }
-        return;
+        return undefined;
       }
 
       if (recovery.value !== currentRecovery) {
-        return;
+        return undefined;
       }
 
       if (result.status === 'reconnected') {
         reconnectMessageOverride.value = undefined;
-        return;
+        return undefined;
       }
 
       if (result.status === 'reconnectedWithWriteRecoveryFailure') {
         reconnectMessageOverride.value = WRITE_RECOVERY_FAILURE_MESSAGE;
-        return;
+        return undefined;
       }
 
       if (result.status === 'missingRecord') {
         reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
-        return;
+        return undefined;
       }
 
       // result.status === 'confirmationRequired': locator equality is false or unverifiable.
@@ -162,35 +181,35 @@ export const useLocalDirectoryReconnectAction = ({
             code: LocalDirectoryReconnectErrorCode.inspectFailed,
           }),
           {
-            feature: 'localDirectoryRecovery',
+            feature: 'localDirectoryReconnect',
             action: 'reconnectFolder',
           },
         );
         if (recovery.value === currentRecovery) {
           reconnectMessageOverride.value = INSPECT_FAILED_MESSAGE;
         }
-        return;
+        return undefined;
       }
 
       if (recovery.value !== currentRecovery) {
-        return;
+        return undefined;
       }
 
       if (!inspection.looksLikeExistingSpace) {
         reconnectMessageOverride.value = NOT_A_MIOFRAME_SPACE_MESSAGE;
-        return;
+        return undefined;
       }
 
-      const confirmed = await confirmReplaceRememberedLocation(currentRecovery.spaceName);
+      const confirmed = await confirmReconnectAsNewLocation();
 
       if (recovery.value !== currentRecovery || !confirmed) {
-        return;
+        return undefined;
       }
 
-      let replaceResult: Awaited<ReturnType<typeof replaceRememberedDirectory>>;
+      let relocateResult: Awaited<ReturnType<typeof relocateRememberedDirectory>>;
 
       try {
-        replaceResult = await replaceRememberedDirectory({
+        relocateResult = await relocateRememberedDirectory({
           handle,
           spaceName: currentRecovery.spaceName,
         });
@@ -201,33 +220,39 @@ export const useLocalDirectoryReconnectAction = ({
             code: LocalDirectoryReconnectErrorCode.reconnectFailed,
           }),
           {
-            feature: 'localDirectoryRecovery',
+            feature: 'localDirectoryReconnect',
             action: 'reconnectFolder',
           },
         );
         if (recovery.value === currentRecovery) {
           reconnectMessageOverride.value = RECONNECT_FAILED_MESSAGE;
         }
-        return;
+        return undefined;
       }
 
       if (recovery.value !== currentRecovery) {
-        return;
+        return undefined;
       }
 
-      if (replaceResult.status === 'reconnected') {
+      if (relocateResult.status === 'relocated') {
         reconnectMessageOverride.value = undefined;
-      } else if (replaceResult.status === 'repositoryStateActive') {
-        reconnectMessageOverride.value = REPOSITORY_STATE_ACTIVE_MESSAGE;
-      } else {
-        reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+        return relocateResult.name;
       }
+
+      if (relocateResult.status === 'alreadyMounted') {
+        reconnectMessageOverride.value = alreadyMountedMessage(relocateResult.name);
+        return relocateResult.name;
+      }
+
+      reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+      return undefined;
     } finally {
       isReconnectPending.value = false;
     }
   };
 
   return {
+    hasUnavailableRootRecovery: computed(() => !!recovery.value),
     isReconnectDisabled: computed(() => !recovery.value || isReconnectPending.value),
     isReconnectPending,
     reconnectFolder,

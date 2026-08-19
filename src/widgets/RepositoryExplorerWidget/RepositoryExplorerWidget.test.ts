@@ -61,22 +61,34 @@ vi.mock('@entity/fsEntry', () => ({
   }),
 }));
 
+type RecoveryActionInput = { errors: { value: unknown[] } };
+
+const hasLocalDirectoryRecoveryRef = ref(false);
+const hasUnavailableRootRecoveryRef = ref(false);
+const useLocalDirectoryRecoveryActionMock = vi.fn((_input: RecoveryActionInput) => ({
+  grantFullAccess: grantFullAccessMock,
+  grantReadOnlyAccess: grantReadOnlyAccessMock,
+  hasLocalDirectoryRecovery: computed(() => hasLocalDirectoryRecoveryRef.value),
+  isGrantLocalDirectoryAccessPending: computed(() => isGrantLocalDirectoryAccessPendingRef.value),
+  isGrantLocalDirectoryAccessDisabled: computed(() => isGrantLocalDirectoryAccessDisabledRef.value),
+  localDirectoryRecoveryMessage: computed(() => localDirectoryRecoveryMessageRef.value),
+}));
+const useLocalDirectoryReconnectActionMock = vi.fn((_input: RecoveryActionInput) => ({
+  hasUnavailableRootRecovery: computed(() => hasUnavailableRootRecoveryRef.value),
+  isReconnectDisabled: computed(() => isReconnectDisabledRef.value),
+  isReconnectPending: computed(() => isReconnectPendingRef.value),
+  reconnectFolder: reconnectFolderMock,
+  reconnectMessage: computed(() => reconnectMessageRef.value),
+}));
+
 vi.mock('@feature/localDirectoryRecovery', () => ({
-  useLocalDirectoryRecoveryAction: () => ({
-    grantFullAccess: grantFullAccessMock,
-    grantReadOnlyAccess: grantReadOnlyAccessMock,
-    isGrantLocalDirectoryAccessPending: computed(() => isGrantLocalDirectoryAccessPendingRef.value),
-    isGrantLocalDirectoryAccessDisabled: computed(
-      () => isGrantLocalDirectoryAccessDisabledRef.value,
-    ),
-    localDirectoryRecoveryMessage: computed(() => localDirectoryRecoveryMessageRef.value),
-  }),
-  useLocalDirectoryReconnectAction: () => ({
-    isReconnectDisabled: computed(() => isReconnectDisabledRef.value),
-    isReconnectPending: computed(() => isReconnectPendingRef.value),
-    reconnectFolder: reconnectFolderMock,
-    reconnectMessage: computed(() => reconnectMessageRef.value),
-  }),
+  useLocalDirectoryRecoveryAction: (input: RecoveryActionInput) =>
+    useLocalDirectoryRecoveryActionMock(input),
+}));
+
+vi.mock('@feature/localDirectoryReconnect', () => ({
+  useLocalDirectoryReconnectAction: (input: RecoveryActionInput) =>
+    useLocalDirectoryReconnectActionMock(input),
 }));
 
 vi.mock('@shared/service', async (importOriginal) => {
@@ -347,6 +359,10 @@ describe('RepositoryExplorerWidget', () => {
     isReconnectPendingRef.value = false;
     isReconnectDisabledRef.value = false;
     reconnectMessageRef.value = '';
+    hasLocalDirectoryRecoveryRef.value = false;
+    hasUnavailableRootRecoveryRef.value = false;
+    useLocalDirectoryRecoveryActionMock.mockClear();
+    useLocalDirectoryReconnectActionMock.mockClear();
     document.body.innerHTML = '';
   });
 
@@ -371,6 +387,7 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
+    hasLocalDirectoryRecoveryRef.value = true;
 
     const wrapper = await mountWidget();
 
@@ -392,11 +409,13 @@ describe('RepositoryExplorerWidget', () => {
     expect(grantReadOnlyAccessMock).not.toHaveBeenCalled();
   });
 
-  it('detects read recovery from the directory stat error through the generic parser', async () => {
-    directoryStatErrorRef.value = createSerializedRecoveryError({
+  it('merges the directory stat error into the candidates passed to the local-directory features', async () => {
+    const statError = createSerializedRecoveryError({
       spaceName: 'Archive',
       mode: 'read',
     });
+    directoryStatErrorRef.value = statError;
+    hasLocalDirectoryRecoveryRef.value = true;
     localDirectoryRecoveryMessageRef.value =
       'Mioframe remembers "Archive", but your browser requires permission before opening it.';
 
@@ -412,6 +431,19 @@ describe('RepositoryExplorerWidget', () => {
     expect(
       wrapper.findAll('button').filter((button) => button.text() === 'Read only'),
     ).toHaveLength(1);
+
+    const recoveryCallArgs = useLocalDirectoryRecoveryActionMock.mock.calls[0];
+    const reconnectCallArgs = useLocalDirectoryReconnectActionMock.mock.calls[0];
+
+    if (!recoveryCallArgs || !reconnectCallArgs) {
+      throw new Error('Expected both local-directory features to be invoked');
+    }
+
+    const [{ errors: recoveryErrorsArg }] = recoveryCallArgs;
+    const [{ errors: reconnectErrorsArg }] = reconnectCallArgs;
+
+    expect(recoveryErrorsArg.value).toContain(statError);
+    expect(reconnectErrorsArg.value).toContain(statError);
   });
 
   it('calls the feature read-only recovery action without retrying the route after grant', async () => {
@@ -421,6 +453,7 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
+    hasLocalDirectoryRecoveryRef.value = true;
     grantReadOnlyAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountWidget();
@@ -444,6 +477,7 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
+    hasLocalDirectoryRecoveryRef.value = true;
     grantFullAccessMock.mockResolvedValue({ status: 'granted' });
 
     const wrapper = await mountWidget();
@@ -469,6 +503,7 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
+    hasLocalDirectoryRecoveryRef.value = true;
     localDirectoryRecoveryMessageRef.value =
       'Could not request browser permission. Try again from this action.';
 
@@ -486,6 +521,7 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
+    hasLocalDirectoryRecoveryRef.value = true;
     isGrantLocalDirectoryAccessDisabledRef.value = true;
     isGrantLocalDirectoryAccessPendingRef.value = true;
     localDirectoryRecoveryMessageRef.value =
@@ -514,6 +550,7 @@ describe('RepositoryExplorerWidget', () => {
         mode: 'read',
       }),
     ];
+    hasLocalDirectoryRecoveryRef.value = true;
     isGrantLocalDirectoryAccessDisabledRef.value = true;
     isGrantLocalDirectoryAccessPendingRef.value = false;
     localDirectoryRecoveryMessageRef.value =
@@ -589,7 +626,7 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.get('[data-testid="after-slot"]').text()).toBe('reachable');
   });
 
-  it('does not treat write access recovery as a folder-open recovery screen', async () => {
+  it('renders no local-directory recovery UI when neither feature reports recovery', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedRecoveryError({
         spaceName: 'Work',
@@ -604,12 +641,14 @@ describe('RepositoryExplorerWidget', () => {
     expect(wrapper.text()).not.toContain('Grant full access');
     expect(wrapper.text()).not.toContain('Read only');
     expect(wrapper.text()).not.toContain('Permission required');
+    expect(wrapper.text()).not.toContain('Reconnect folder');
   });
 
   it('shows reconnect recovery with a Reconnect folder action for an unavailable-root error', async () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedUnavailableRootError({ spaceName: 'Work' }),
     ];
+    hasUnavailableRootRecoveryRef.value = true;
     reconnectMessageRef.value = 'Mioframe can\'t open "Work" anymore.';
 
     const wrapper = await mountWidget();
@@ -628,6 +667,7 @@ describe('RepositoryExplorerWidget', () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedUnavailableRootError({ spaceName: 'Work' }),
     ];
+    hasUnavailableRootRecoveryRef.value = true;
 
     const wrapper = await mountWidget();
 
@@ -645,6 +685,7 @@ describe('RepositoryExplorerWidget', () => {
     repositoryRecoveryErrorsRef.value = [
       createSerializedUnavailableRootError({ spaceName: 'Work' }),
     ];
+    hasUnavailableRootRecoveryRef.value = true;
     isReconnectDisabledRef.value = true;
     isReconnectPendingRef.value = true;
     reconnectMessageRef.value = 'Waiting for the folder picker.';
@@ -664,11 +705,47 @@ describe('RepositoryExplorerWidget', () => {
       createSerializedUnavailableRootError({ spaceName: 'Work' }),
       createSerializedRecoveryError({ spaceName: 'Work', mode: 'read' }),
     ];
+    hasLocalDirectoryRecoveryRef.value = true;
+    hasUnavailableRootRecoveryRef.value = true;
 
     const wrapper = await mountWidget();
 
     expect(wrapper.text()).toContain('Permission required');
     expect(wrapper.text()).not.toContain('Reconnect folder');
+  });
+
+  it('navigates to the relocated mounted path after reconnectFolder resolves with a new name', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedUnavailableRootError({ spaceName: 'Work' }),
+    ];
+    hasUnavailableRootRecoveryRef.value = true;
+    reconnectFolderMock.mockResolvedValueOnce('Work (2)');
+
+    const wrapper = await mountWidget();
+    const reconnectButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reconnect folder');
+
+    await reconnectButton?.trigger('click');
+
+    expect(wrapper.emitted('clickPath')).toEqual([['/Device Files/Work (2)']]);
+  });
+
+  it('does not navigate when reconnectFolder resolves without a mounted name (same-entry reconnect)', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedUnavailableRootError({ spaceName: 'Work' }),
+    ];
+    hasUnavailableRootRecoveryRef.value = true;
+    reconnectFolderMock.mockResolvedValueOnce(undefined);
+
+    const wrapper = await mountWidget();
+    const reconnectButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reconnect folder');
+
+    await reconnectButton?.trigger('click');
+
+    expect(wrapper.emitted('clickPath')).toBeUndefined();
   });
 
   it('falls back to the generic folder error for an unrelated failure', async () => {

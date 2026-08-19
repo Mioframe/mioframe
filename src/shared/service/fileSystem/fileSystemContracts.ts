@@ -30,14 +30,16 @@ export type ReconnectDeviceDirectoryResult =
   | { status: 'missingRecord' };
 
 /**
- * Explicit outcome of a user-confirmed remembered local-directory root replacement.
- * - `reconnected` — the persisted handle was replaced and the mounted provider now uses it.
- * - `repositoryStateActive` — a repository is cached at or under the mounted path; the
- *   replacement was blocked with zero persistence, runtime, registry, or display mutation.
- *   The user must reload Mioframe before retrying.
- * - `missingRecord` — the remembered record disappeared before replacement; no new mount was created.
+ * Explicit outcome of a user-confirmed locator-different remembered local-directory relocation.
+ * - `relocated` — the target remembered record was moved to a new mounted identity: the
+ *   selected handle is now mounted under `name`, which always differs from the old mounted name.
+ *   The old mounted path no longer routes to any physical directory.
+ * - `alreadyMounted` — the selected physical directory is already represented by another
+ *   persisted mount named `name`; zero persistence, runtime, registry, or display mutation
+ *   occurred.
+ * - `missingRecord` — the remembered record disappeared before relocation; no new mount was created.
  */
-export type ReplaceRememberedDeviceDirectoryResult =
-  | { status: 'reconnected'; name: string }
-  | { status: 'repositoryStateActive' }
+export type RelocateRememberedDeviceDirectoryResult =
+  | { status: 'relocated'; name: string }
+  | { status: 'alreadyMounted'; name: string }
   | { status: 'missingRecord' };

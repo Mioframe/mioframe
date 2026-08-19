@@ -23,7 +23,7 @@ export {
   type DeviceFileDisplayRecord,
   type ReadDirectoryOptions,
   type ReconnectDeviceDirectoryResult,
-  type ReplaceRememberedDeviceDirectoryResult,
+  type RelocateRememberedDeviceDirectoryResult,
 } from './fileSystem/fileSystemContracts';
 export {
   GOOGLE_DRIVE_ROOT_NAME,

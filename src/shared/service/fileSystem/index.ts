@@ -6,5 +6,5 @@ export {
 } from './useFileSystemService';
 export type {
   ReconnectDeviceDirectoryResult,
-  ReplaceRememberedDeviceDirectoryResult,
+  RelocateRememberedDeviceDirectoryResult,
 } from './fileSystemContracts';

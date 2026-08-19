@@ -4,16 +4,14 @@ import { next as A } from '@automerge/automerge';
 import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 
 /**
- * Real, non-mutually-mocked proof for the fileSystem/repositories confirmed-replacement
- * lease and same-entry write-recovery wiring described in
- * `docs/local-directory-access-recovery.md`.
+ * Real, non-mutually-mocked proof for the fileSystem/repositories same-entry reconnect and
+ * write-recovery wiring described in `docs/local-directory-access-recovery.md`.
  *
  * Both `useFileSystemService()` and `useRepositoriesService()` are exercised for real, using
- * their actual same-runtime registration (repositories registers its real write-recovery
- * handler and confirmed-replacement lease provider with the real fileSystem service). Only
- * genuine external boundaries are mocked: the IndexedDB-backed persisted directory-handle
- * record store, OPFS root lookup, and the browser `FileSystemDirectoryHandle` itself (unavailable
- * outside a real browser).
+ * their actual same-runtime registration (repositories registers its real write-recovery handler
+ * with the real fileSystem service). Only genuine external boundaries are mocked: the
+ * IndexedDB-backed persisted directory-handle record store, OPFS root lookup, and the browser
+ * `FileSystemDirectoryHandle` itself (unavailable outside a real browser).
  */
 
 const getRecordListMock = vi.fn();
@@ -27,9 +25,7 @@ vi.mock('./fileSystem/setupFileSystemDirectoryHandleService', () => ({
   }),
 }));
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-describe('fileSystem/repositories confirmed-replacement integration', () => {
+describe('fileSystem/repositories same-entry reconnect integration', () => {
   beforeEach(() => {
     vi.resetModules();
     getRecordListMock.mockReset();
@@ -75,8 +71,9 @@ describe('fileSystem/repositories confirmed-replacement integration', () => {
     const handle = repo.create<{ hello: string; updated?: boolean }>({ hello: 'world' });
     const documentId = handle.documentId;
 
-    // Let the healthy initial background marker/document save settle before breaking access.
-    await wait(250);
+    // Deterministic barrier: wait for the initial marker/document save to settle through the real
+    // storage subsystem before breaking access, instead of an arbitrary fixed sleep.
+    await repo.flush();
 
     // Break write access on the mounted root, mirroring a lost browser permission grant.
     workHandle.queryPermissionMock?.mockImplementation((descriptor) =>
@@ -102,8 +99,15 @@ describe('fileSystem/repositories confirmed-replacement integration', () => {
       fileSystemService.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
     ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
 
-    // No dangling automatic save lands unexpectedly afterward.
-    await wait(250);
+    // Direct observable storage effect: the queued write actually landed through the rebound
+    // handle, not the old (now-broken) one.
+    const persistedDoc = await repo.storageSubsystem?.loadDoc<{
+      hello: string;
+      updated?: boolean;
+    }>(documentId);
+
+    expect(persistedDoc?.updated).toBe(true);
+    expect(reconnectedHandle.getFileHandleMock.mock.calls.length).toBeGreaterThan(0);
   });
 
   it('reports reconnectedWithWriteRecoveryFailure when the rebound same-entry mount still cannot flush a real queued write', async () => {
@@ -127,7 +131,7 @@ describe('fileSystem/repositories confirmed-replacement integration', () => {
     const handle = repo.create<{ hello: string; updated?: boolean }>({ hello: 'world' });
     const documentId = handle.documentId;
 
-    await wait(250);
+    await repo.flush();
 
     workHandle.queryPermissionMock?.mockImplementation((descriptor) =>
       Promise.resolve(descriptor?.mode === 'read' ? 'granted' : 'prompt'),
@@ -153,131 +157,5 @@ describe('fileSystem/repositories confirmed-replacement integration', () => {
     await expect(
       fileSystemService.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
     ).resolves.toEqual({ status: 'reconnectedWithWriteRecoveryFailure', name: 'Work' });
-
-    await wait(250);
-  });
-
-  it('gates real repository access under an active confirmed-replacement lease and resumes it against the new mount only after release', async () => {
-    const workHandle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'granted',
-      sameEntryKey: 'work',
-    });
-    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
-
-    const { fileSystemService, repositoriesService } = await createServices();
-
-    await vi.waitFor(async () => {
-      await expect(fileSystemService.deviceFiles.fetch()).resolves.toEqual([
-        { canDisconnect: true, name: 'Work' },
-      ]);
-    });
-
-    const replacementHandle = createDirectoryHandleMock({
-      name: 'Work (new)',
-      permissionState: 'granted',
-      sameEntryKey: 'a-different-physical-entry',
-    });
-
-    let resolvePersist!: () => void;
-    updateRecordListMock.mockImplementationOnce(
-      () =>
-        new Promise<void>((resolve) => {
-          resolvePersist = resolve;
-        }),
-    );
-
-    const replacementPromise = fileSystemService.replaceRememberedDeviceDirectory({
-      handle: replacementHandle,
-      spaceName: 'Work',
-    });
-
-    // Let lease acquisition and the deferred persistence call start.
-    await wait(20);
-
-    let repoAccessSettled = false;
-    const repoAccessPromise = repositoriesService
-      .initializeRepository('/Device Files/Work')
-      .then(() => {
-        repoAccessSettled = true;
-      });
-
-    await wait(20);
-    expect(repoAccessSettled).toBe(false);
-    expect(replacementHandle.getDirectoryHandleMock).not.toHaveBeenCalled();
-    expect(replacementHandle.getFileHandleMock).not.toHaveBeenCalled();
-
-    resolvePersist();
-
-    await expect(replacementPromise).resolves.toEqual({ status: 'reconnected', name: 'Work' });
-    await repoAccessPromise;
-    expect(repoAccessSettled).toBe(true);
-
-    // Repository access resumed against the new physical storage, not the old one.
-    await vi.waitFor(() => {
-      expect(
-        replacementHandle.getDirectoryHandleMock.mock.calls.length +
-          replacementHandle.getFileHandleMock.mock.calls.length,
-      ).toBeGreaterThan(0);
-    });
-  });
-
-  it('leaves the old mount reachable and does not create a Repo under it when confirmed replacement fails to persist', async () => {
-    const workHandle = createDirectoryHandleMock({
-      name: 'Work',
-      permissionState: 'granted',
-      sameEntryKey: 'work',
-    });
-    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
-
-    const { fileSystemService, repositoriesService } = await createServices();
-
-    await vi.waitFor(async () => {
-      await expect(fileSystemService.deviceFiles.fetch()).resolves.toEqual([
-        { canDisconnect: true, name: 'Work' },
-      ]);
-    });
-
-    const replacementHandle = createDirectoryHandleMock({
-      name: 'Work (new)',
-      permissionState: 'granted',
-      sameEntryKey: 'another-different-physical-entry',
-    });
-
-    let rejectPersist!: (error: Error) => void;
-    updateRecordListMock.mockImplementationOnce(
-      () =>
-        new Promise<void>((_resolve, reject) => {
-          rejectPersist = reject;
-        }),
-    );
-
-    const replacementPromise = fileSystemService.replaceRememberedDeviceDirectory({
-      handle: replacementHandle,
-      spaceName: 'Work',
-    });
-
-    await wait(20);
-
-    let repoAccessSettled = false;
-    const repoAccessPromise = repositoriesService
-      .initializeRepository('/Device Files/Work')
-      .then(() => {
-        repoAccessSettled = true;
-      });
-
-    await wait(20);
-    expect(repoAccessSettled).toBe(false);
-
-    rejectPersist(new Error('persisted record write failed'));
-
-    await expect(replacementPromise).rejects.toThrow('persisted record write failed');
-
-    // The lease is released even on failure, so blocked repository access resumes — against the
-    // unchanged old mount, since the replacement never completed.
-    await repoAccessPromise;
-    expect(repoAccessSettled).toBe(true);
-    expect(replacementHandle.getDirectoryHandleMock).not.toHaveBeenCalled();
-    expect(replacementHandle.getFileHandleMock).not.toHaveBeenCalled();
   });
 });

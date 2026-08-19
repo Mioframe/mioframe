@@ -1,4 +1,4 @@
-import type { FileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
 import {
   useFileSystemAccessPermissionBroker,
   type FileSystemAccessPermissionRequest,
@@ -11,17 +11,26 @@ type RequestAccessResult = Awaited<
 >;
 
 /**
- * Owns the user-triggered permission recovery action for remembered local directories.
- * Keeps browser permission mode selection and pending state out of widgets/pages.
- * @param recovery - Current local-directory recovery request exposed by the detecting layer.
+ * Owns the user-triggered permission recovery action for remembered local directories. Derives
+ * its own read-access recovery from the supplied error candidates, so widgets never parse
+ * local-directory permission payloads. Keeps browser permission mode selection and pending state
+ * out of widgets/pages.
+ * @param errors - Recovery-relevant error candidates collected by the detecting layer.
  * @returns Explicit action handlers and UI-facing state for the recovery controls.
  */
-export const useLocalDirectoryRecoveryAction = ({
-  recovery,
-}: {
-  recovery: Ref<FileSystemAccessRecovery | undefined>;
-}) => {
+export const useLocalDirectoryRecoveryAction = ({ errors }: { errors: Ref<unknown[]> }) => {
   const { requestAccess } = useFileSystemAccessPermissionBroker();
+  const recovery = computed(() => {
+    for (const error of errors.value) {
+      const candidate = getFileSystemAccessRecovery(error, { operation: 'read' });
+
+      if (candidate) {
+        return candidate;
+      }
+    }
+
+    return undefined;
+  });
   const activeRequestedMode = ref<RequestedMode>();
   const recoveryMessageOverride = ref<string>();
   const isGrantLocalDirectoryAccessPending = computed(
@@ -75,6 +84,7 @@ export const useLocalDirectoryRecoveryAction = ({
   return {
     grantFullAccess: () => grantAccess('readwrite'),
     grantReadOnlyAccess: () => grantAccess('read'),
+    hasLocalDirectoryRecovery: computed(() => !!recovery.value),
     isGrantLocalDirectoryAccessPending,
     isGrantLocalDirectoryAccessDisabled: computed(
       () => !recovery.value || isGrantLocalDirectoryAccessPending.value,

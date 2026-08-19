@@ -36,8 +36,3 @@ export {
   parseFileSystemUnavailableRootRecovery,
   type FileSystemUnavailableRootRecovery,
 } from './fileSystemUnavailableRootRecovery';
-export {
-  inspectMioframeSpaceDirectory,
-  isMissingMioframeSpaceMarkerError,
-  type MioframeSpaceInspection,
-} from './mioframeSpaceDirectoryInspection';

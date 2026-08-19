@@ -9,6 +9,8 @@ import { MDNavigationPath } from '@shared/ui/NavigationPath';
 import type { AMDocumentId } from '@shared/lib/automerge/automergeTypes';
 import { MDCircularProgressIndicator } from '@shared/ui/ProgressIndicators';
 import { useImportDocumentAction } from '@feature/importDocument';
+import { DEVICE_FILES_ROOT_NAME } from '@shared/service';
+import { PathUtils } from '@shared/lib/virtualFileSystem';
 import RepositoryExplorerDocumentsSection from './RepositoryExplorerDocumentsSection.vue';
 import RepositoryExplorerFilesSection from './RepositoryExplorerFilesSection.vue';
 import { useRepositoryExplorerDirectoryState } from './useRepositoryExplorerDirectoryState';
@@ -90,8 +92,12 @@ const onClickGrantFullAccess = () => {
   void grantFullAccess();
 };
 
-const onClickReconnectFolder = () => {
-  void reconnectFolder();
+const onClickReconnectFolder = async () => {
+  const mountedName = await reconnectFolder();
+
+  if (mountedName) {
+    onClickPath(PathUtils.join('/', DEVICE_FILES_ROOT_NAME, mountedName));
+  }
 };
 
 const onRetryAuthorizationClick = () => {

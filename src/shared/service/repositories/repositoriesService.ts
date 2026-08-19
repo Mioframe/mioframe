@@ -56,64 +56,8 @@ const isBrowserFileStateChangedError = (error: unknown): boolean =>
   error instanceof DOMException && error.name === 'InvalidStateError';
 
 const setupRepositoriesService = () => {
-  const {
-    directoryContent$,
-    registerConfirmedReplacementLeaseProvider,
-    registerWriteAccessRecoveryHandler,
-    vfs,
-  } = useFileSystemService();
+  const { directoryContent$, registerWriteAccessRecoveryHandler, vfs } = useFileSystemService();
   const repoObservableCache = new Map<string, Observable<RepositoryCacheEntry>>();
-
-  // Mounts currently under an active confirmed-replacement lease, keyed by mount path. The gate
-  // promise resolves when the lease is released, so repository access started during the lease
-  // can wait for it before performing the normal cache lookup/create path.
-  const reservedMountReleaseGates = new Map<string, Promise<void>>();
-
-  const findReservedMountFor = (path: string): string | undefined =>
-    Array.from(reservedMountReleaseGates.keys()).find((mountPath) =>
-      PathUtils.isSameOrDescendantOf(path, mountPath),
-    );
-
-  const isRepositoryStateActiveAt = (mountPath: string): boolean =>
-    Array.from(repoObservableCache.keys()).some((repoPath) =>
-      PathUtils.isSameOrDescendantOf(repoPath, mountPath),
-    );
-
-  /**
-   * Atomically checks the repository cache and reserves `mountPath` against new Repo
-   * creation/caching, for the confirmed locator-different replacement critical section.
-   *
-   * Reports `repositoryStateActive` when a Repo is already cached at or under the mount;
-   * otherwise records the reservation synchronously before returning control, so `repoByPath$()`
-   * never creates or caches a Repo under the mount until the returned lease is released.
-   * @param mountPath - Absolute VFS mount path the confirmed replacement targets.
-   * @returns The lease acquisition outcome.
-   */
-  const acquireConfirmedReplacementLease = ({
-    mountPath,
-  }: {
-    mountPath: string;
-  }): Promise<
-    { status: 'acquired'; release: () => void } | { status: 'repositoryStateActive' }
-  > => {
-    if (isRepositoryStateActiveAt(mountPath)) {
-      return Promise.resolve({ status: 'repositoryStateActive' });
-    }
-
-    let releaseGate!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      releaseGate = resolve;
-    });
-
-    reservedMountReleaseGates.set(mountPath, gate);
-
-    const release = () => {
-      reservedMountReleaseGates.delete(mountPath);
-      releaseGate();
-    };
-
-    return Promise.resolve({ status: 'acquired', release });
-  };
 
   const shouldQueueFailedSave = (error: unknown) =>
     !!getFileSystemAccessRecovery(error, {
@@ -256,16 +200,6 @@ const setupRepositoriesService = () => {
   };
 
   const repoByPath$ = (path: string): Observable<RepositoryCacheEntry> => {
-    const reservedMountPath = findReservedMountFor(path);
-
-    if (reservedMountPath) {
-      const gate = reservedMountReleaseGates.get(reservedMountPath);
-
-      // Wait for the active confirmed-replacement lease to release, then retry the normal
-      // cache lookup/create path. No Repo is created or cached under the mount while reserved.
-      return defer(() => gate ?? Promise.resolve()).pipe(switchMap(() => repoByPath$(path)));
-    }
-
     let repo$ = repoObservableCache.get(path);
 
     if (!repo$) {
@@ -401,8 +335,6 @@ const setupRepositoriesService = () => {
   registerWriteAccessRecoveryHandler(({ mountPath }) =>
     settleCachedRepositoriesUnderPath(mountPath),
   );
-
-  registerConfirmedReplacementLeaseProvider(acquireConfirmedReplacementLease);
 
   const deleteDocument = async (path: string, id: AMDocumentId) => {
     const documentStorageFiles = await getDocumentStorageFiles(vfs, path, id);
