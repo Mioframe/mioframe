@@ -46,17 +46,17 @@ When a remembered local directory can no longer be read, Mioframe must distingui
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error |
-| `src/shared/lib/fileSystem` | Canonical Mioframe marker inspection |
-| `src/shared/service/fileSystem` | Persisted handle replacement, provider remount, access-request cleanup, service-internal reconnect lifecycle hooks |
-| `src/shared/service/repositories` | Source of truth for cached repository presence; repository settlement after proven same-entry remount |
-| `src/entities/mountedDirectories` | Narrow UI-facing reconnect/replacement mutations |
-| `src/features/localDirectoryRecovery` | Picker, marker inspection, confirmation, pending/result/error UX |
-| `src/widgets/RepositoryExplorerWidget` | Recovery precedence/rendering only |
-| page/pane | No change |
-| shared UI | No API/primitive change |
+| Owner                                  | Responsibility                                                                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error                                           |
+| `src/shared/lib/fileSystem`            | Canonical Mioframe marker inspection                                                                               |
+| `src/shared/service/fileSystem`        | Persisted handle replacement, provider remount, access-request cleanup, service-internal reconnect lifecycle hooks |
+| `src/shared/service/repositories`      | Source of truth for cached repository presence; repository settlement after proven same-entry remount              |
+| `src/entities/mountedDirectories`      | Narrow UI-facing reconnect/replacement mutations                                                                   |
+| `src/features/localDirectoryRecovery`  | Picker, marker inspection, confirmation, pending/result/error UX                                                   |
+| `src/widgets/RepositoryExplorerWidget` | Recovery precedence/rendering only                                                                                 |
+| page/pane                              | No change                                                                                                          |
+| shared UI                              | No API/primitive change                                                                                            |
 
 `fileSystem` must not import `repositories`. Cross-service coordination uses narrow service-internal registration, following the existing write-recovery-handler direction: repositories register lifecycle behavior with fileSystem.
 
@@ -180,23 +180,23 @@ None. Reuse existing dialog, `MDButton`, and `MDEmptyState` APIs.
 
 ## Acceptance matrix
 
-| Scenario | Required result |
-| --- | --- |
-| permission `prompt`/`denied` | existing permission recovery |
-| granted root enumeration failure | unavailable-folder recovery |
-| picker cancelled | no mutation |
-| same entry, no cached writes | reconnected |
-| same entry with queued/cached writes, settlement succeeds | reconnected; writes flushed through new handle |
-| same entry, settlement not fully flushed | provider remains reconnected; explicit write-recovery warning/result |
-| locator differs/unverifiable | `confirmationRequired`; zero mutation |
-| fallback candidate lacks marker | reject; zero mutation |
-| confirmation cancelled | zero mutation |
-| confirmed fallback with cached repository | `repositoryStateActive`; zero mutation |
-| confirmed fallback after clean reload/no cached repository | persisted handle/provider replaced under same name |
-| persistence failure | old runtime provider remains mounted |
-| remembered record missing | `missingRecord`; no new mount |
-| stale feature recovery target | no replacement/state overwrite |
-| nested child failure | original semantics |
+| Scenario                                                   | Required result                                                      |
+| ---------------------------------------------------------- | -------------------------------------------------------------------- |
+| permission `prompt`/`denied`                               | existing permission recovery                                         |
+| granted root enumeration failure                           | unavailable-folder recovery                                          |
+| picker cancelled                                           | no mutation                                                          |
+| same entry, no cached writes                               | reconnected                                                          |
+| same entry with queued/cached writes, settlement succeeds  | reconnected; writes flushed through new handle                       |
+| same entry, settlement not fully flushed                   | provider remains reconnected; explicit write-recovery warning/result |
+| locator differs/unverifiable                               | `confirmationRequired`; zero mutation                                |
+| fallback candidate lacks marker                            | reject; zero mutation                                                |
+| confirmation cancelled                                     | zero mutation                                                        |
+| confirmed fallback with cached repository                  | `repositoryStateActive`; zero mutation                               |
+| confirmed fallback after clean reload/no cached repository | persisted handle/provider replaced under same name                   |
+| persistence failure                                        | old runtime provider remains mounted                                 |
+| remembered record missing                                  | `missingRecord`; no new mount                                        |
+| stale feature recovery target                              | no replacement/state overwrite                                       |
+| nested child failure                                       | original semantics                                                   |
 
 ## Risk matrix
 
