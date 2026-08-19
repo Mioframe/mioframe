@@ -43,16 +43,16 @@ When a remembered local directory can no longer be read, Mioframe must distingui
 
 ## Boundaries and ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `src/shared/lib/webFileSystemProvider` | Permission checks, root-directory read semantics, provider-owned unavailable-root error, raw cause preservation |
-| `src/shared/lib/fileSystem` | Canonical browser-handle inspection for the Mioframe/Automerge storage marker; no feature-to-feature import or duplicated marker algorithm |
-| `src/shared/service/fileSystem` | Persisted handle lookup, `isSameEntry()` fast-path classification, explicit remembered-handle replacement, mounted provider replacement, stale recovery-request cleanup |
-| `src/entities/mountedDirectories` | Narrow UI-facing access to reconnect classification and explicit confirmed replacement mutations |
-| `src/features/localDirectoryRecovery` | Picker action, marker-inspection orchestration, explicit confirmation UI, pending/cancel/result/error state |
-| `src/widgets/RepositoryExplorerWidget` | Recovery precedence and rendering only |
-| page/pane | No change |
-| shared UI | No primitive/API change; reuse the existing dialog and Material controls |
+| Owner                                  | Responsibility                                                                                                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/lib/webFileSystemProvider` | Permission checks, root-directory read semantics, provider-owned unavailable-root error, raw cause preservation                                                         |
+| `src/shared/lib/fileSystem`            | Canonical browser-handle inspection for the Mioframe/Automerge storage marker; no feature-to-feature import or duplicated marker algorithm                              |
+| `src/shared/service/fileSystem`        | Persisted handle lookup, `isSameEntry()` fast-path classification, explicit remembered-handle replacement, mounted provider replacement, stale recovery-request cleanup |
+| `src/entities/mountedDirectories`      | Narrow UI-facing access to reconnect classification and explicit confirmed replacement mutations                                                                        |
+| `src/features/localDirectoryRecovery`  | Picker action, marker-inspection orchestration, explicit confirmation UI, pending/cancel/result/error state                                                             |
+| `src/widgets/RepositoryExplorerWidget` | Recovery precedence and rendering only                                                                                                                                  |
+| page/pane                              | No change                                                                                                                                                               |
+| shared UI                              | No primitive/API change; reuse the existing dialog and Material controls                                                                                                |
 
 Move the existing `inspectMioframeSpaceDirectory()` implementation out of `src/features/mioframeSpacePick` into `src/shared/lib/fileSystem/mioframeSpaceDirectoryInspection.ts`, export it from `@shared/lib/fileSystem`, and move its focused tests with it. `mioframeSpacePick` and `localDirectoryRecovery` must consume this one shared helper. Preserve its current marker-present / marker-missing / unexpected-browser-failure semantics.
 
@@ -184,22 +184,22 @@ No shared UI contract change. Reuse the existing dialog API, `MDButton`, and `MD
 
 ## Acceptance matrix
 
-| Scenario | Required result |
-| --- | --- |
-| read permission `prompt` | existing `Permission required`; no generic folder error |
-| read permission `denied` | existing `Permission required`; no generic folder error |
-| granted + root enumeration failure + permission still granted | `Folder unavailable` with `Reconnect folder` |
-| permission revoked between pre-check and failed root read | existing permission recovery, not reconnect recovery |
-| picker cancelled | remembered record and runtime mount unchanged |
-| same locator selected (`isSameEntry() === true`) | reconnect immediately; no marker fallback dialog; same mounted name |
-| locator differs or equality cannot be verified | no mutation; service returns `confirmationRequired` |
-| fallback candidate has no Mioframe marker | reject with retryable message; no mutation |
-| fallback candidate is a Mioframe directory; confirmation cancelled | no persisted/runtime replacement |
-| fallback candidate is a Mioframe directory; confirmation accepted | selected handle becomes remembered handle under the same mounted name; provider replaced; reads invalidate/retry |
-| confirmed replacement persistence fails | old runtime provider remains mounted; safe retryable error shown |
-| remembered record disappears before safe attempt/replacement | `missingRecord`; no new mount created |
-| recovery target changes while picker/inspection/confirmation is pending | stale action must not replace or overwrite state for the new recovery target |
-| nested file/path error while root remains usable | original non-reconnect error semantics |
+| Scenario                                                                | Required result                                                                                                  |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| read permission `prompt`                                                | existing `Permission required`; no generic folder error                                                          |
+| read permission `denied`                                                | existing `Permission required`; no generic folder error                                                          |
+| granted + root enumeration failure + permission still granted           | `Folder unavailable` with `Reconnect folder`                                                                     |
+| permission revoked between pre-check and failed root read               | existing permission recovery, not reconnect recovery                                                             |
+| picker cancelled                                                        | remembered record and runtime mount unchanged                                                                    |
+| same locator selected (`isSameEntry() === true`)                        | reconnect immediately; no marker fallback dialog; same mounted name                                              |
+| locator differs or equality cannot be verified                          | no mutation; service returns `confirmationRequired`                                                              |
+| fallback candidate has no Mioframe marker                               | reject with retryable message; no mutation                                                                       |
+| fallback candidate is a Mioframe directory; confirmation cancelled      | no persisted/runtime replacement                                                                                 |
+| fallback candidate is a Mioframe directory; confirmation accepted       | selected handle becomes remembered handle under the same mounted name; provider replaced; reads invalidate/retry |
+| confirmed replacement persistence fails                                 | old runtime provider remains mounted; safe retryable error shown                                                 |
+| remembered record disappears before safe attempt/replacement            | `missingRecord`; no new mount created                                                                            |
+| recovery target changes while picker/inspection/confirmation is pending | stale action must not replace or overwrite state for the new recovery target                                     |
+| nested file/path error while root remains usable                        | original non-reconnect error semantics                                                                           |
 
 ## Risk matrix
 
