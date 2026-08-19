@@ -394,6 +394,59 @@ describe('buildCommands visual compatibility', () => {
   });
 });
 
+describe('buildCommands e2e project applicability', () => {
+  it('fails closed when the project applicability registry is invalid', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      projectApplicabilityValidation: {
+        valid: false,
+        errors: ['app e2e spec tests/e2e/newSpec.spec.ts has no project applicability entry'],
+      },
+    });
+
+    expect(commands.find((entry) => entry.label === 'e2e')).toEqual({
+      kind: 'failed',
+      label: 'e2e',
+      command: 'pnpm e2e:container',
+      reason:
+        'invalid app e2e scenario registry state: app e2e spec tests/e2e/newSpec.spec.ts has no project applicability entry',
+    });
+  });
+
+  it('combines an invalid app e2e scenario registry and an invalid project applicability registry', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      appE2EPlan: { mode: 'invalid', specs: [], reasons: ['broken scenario registry'] },
+      projectApplicabilityValidation: {
+        valid: false,
+        errors: ['broken applicability registry'],
+      },
+    });
+
+    expect(commands.find((entry) => entry.label === 'e2e')).toEqual({
+      kind: 'failed',
+      label: 'e2e',
+      command: 'pnpm e2e:container',
+      reason:
+        'invalid app e2e scenario registry state: broken scenario registry; broken applicability registry',
+    });
+  });
+
+  it('runs e2e normally when the project applicability registry is valid', () => {
+    const commands = buildCommands([], {
+      fullMode: false,
+      appE2EPlan: { mode: 'skip', specs: [], reasons: ['empty e2e scope'] },
+      projectApplicabilityValidation: { valid: true, errors: [] },
+    });
+
+    expect(commands.find((entry) => entry.label === 'e2e')).toMatchObject({
+      kind: 'skipped',
+      label: 'e2e',
+      reason: 'empty e2e scope',
+    });
+  });
+});
+
 describe('buildCommands type-check applicability', () => {
   it.each([
     'scripts/verify.ts',
@@ -534,7 +587,9 @@ describe('buildCommands package.json app e2e relevance', () => {
     });
     const e2eEntry = requireRunEntry(commands, 'e2e');
 
-    expect(e2eEntry.triggerReason).toContain('low-level path src/shared/service/serviceWorker.ts');
+    expect(e2eEntry.triggerReason).toContain(
+      'unmapped application-E2E-relevant path src/shared/service/serviceWorker.ts',
+    );
   });
 });
 

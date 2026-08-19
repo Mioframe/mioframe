@@ -19,7 +19,11 @@
     // this single explicit entry is enough for `config/plugins/pwa.ts` to
     // import it without pulling the application's `tsconfig.app.json`
     // project into this one.
-    "src/shared/service/appUpdate/channelContract.ts"
+    "src/shared/service/appUpdate/channelContract.ts",
+    // playwright.config.ts resolves per-project testIgnore from this
+    // verifier-owned module; explicit entry needed for the same reason as
+    // channelContract.ts above.
+    "scripts/lib/e2eProjectApplicability.ts"
   ],
   "compilerOptions": {
     "composite": true,
