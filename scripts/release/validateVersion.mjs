@@ -69,6 +69,14 @@ export function resolveVersionContext(env = process.env, argv = process.argv.sli
   }
 
   if (env.GITHUB_EVENT_NAME === 'pull_request' && env.GITHUB_BASE_REF) {
+    if (env.GITHUB_BASE_REF !== 'develop' && env.GITHUB_BASE_REF !== 'main') {
+      return {
+        kind: 'stacked-pr',
+        baseRef: `origin/${env.GITHUB_BASE_REF}`,
+        targetBranch: env.GITHUB_BASE_REF,
+      };
+    }
+
     return {
       kind: 'compare',
       baseRef: `origin/${env.GITHUB_BASE_REF}`,
@@ -158,11 +166,13 @@ function resolveDevelopVersionImpact(argv, env, deps) {
 /**
  * Validate release/version metadata: `package.json` version format, an exact
  * label-selected bump against the PR base branch for ordinary `develop` PRs,
- * a tag-matches-version check on tag pushes, and release notes/checklist
- * existence ahead of a `main` promotion. A narrow same-version exception
- * applies to release sync-back PRs from `main` into `develop` (see
- * `isReleaseSyncBackBranch` and `docs/release.md#release-sync-back`). See
- * `docs/release.md` for the full policy this enforces.
+ * exact version inheritance (no label required) for a stacked PR into any
+ * other branch, a tag-matches-version check on tag pushes, and release
+ * notes/checklist existence ahead of a `main` promotion. A narrow
+ * same-version exception applies to release sync-back PRs from `main` into
+ * `develop` (see `isReleaseSyncBackBranch` and
+ * `docs/release.md#release-sync-back`). See `docs/release.md` for the full
+ * policy this enforces.
  * @param [options] Validation inputs.
  * @param [options.argv] Raw CLI arguments.
  * @param [options.env] Process environment.
@@ -270,6 +280,34 @@ export function validateRelease({
         } else {
           errors.push(
             `Version must increase for this PR: package.json is ${currentVersionRaw}, ${context.baseRef} is ${baseVersionRaw}. Bump package.json version (docs/release.md#choosing-patch--minor--major).`,
+          );
+        }
+      }
+    }
+  } else if (context.kind === 'stacked-pr') {
+    const baseVersionRaw = readVersionAtRef(context.baseRef, 'package.json', spawn);
+
+    if (baseVersionRaw === null) {
+      errors.push(
+        `Unable to read package.json version at ${context.baseRef}. Fetch the base branch and rerun (git fetch --no-tags origin <base branch>).`,
+      );
+    } else {
+      const baseVersion = parseSemver(baseVersionRaw);
+
+      if (!baseVersion) {
+        errors.push(
+          `${context.baseRef} package.json version "${baseVersionRaw}" is not valid SemVer.`,
+        );
+      } else {
+        const cmp = compareSemver(currentVersion, baseVersion);
+
+        if (cmp === 0) {
+          notices.push(
+            `stacked PR into "${context.targetBranch}": package.json version inherited from ${context.baseRef} (${currentVersionRaw}); no version-impact label required (docs/release.md#pr-level-version-bump-policy).`,
+          );
+        } else {
+          errors.push(
+            `Stacked PR into "${context.targetBranch}" must inherit the exact base version: package.json is ${currentVersionRaw}, ${context.baseRef} is ${baseVersionRaw}. Set package.json version to match its base branch exactly; a stacked PR does not bump the version (docs/release.md#pr-level-version-bump-policy).`,
           );
         }
       }

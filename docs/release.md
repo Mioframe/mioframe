@@ -78,6 +78,11 @@ Rebase merge is forbidden. Synchronization PRs preserve shared ancestry; ordinar
   **exact equality**: `package.json` version must equal the one value the
   label selects, not merely be any larger version. A missing label, more than
   one label, or a version belonging to a different impact class all fail.
+- **A dependent PR targeting an intermediate branch inherits that branch's
+  version exactly**. It does not declare a separate release bump, does not
+  require a `version:*` label, and is not version-materialized. Both a higher
+  and a lower `package.json` version fail `release-version`; see
+  `Stacked/dependent PR version inheritance` below.
 - **Every PR into `main`** (promotion or hotfix) must also carry a version
   strictly above the version currently on `main`, with one narrow exception:
   see `Pre-tag release repair` below. `main` versioning stays manual — labels
@@ -131,6 +136,11 @@ unsupported** — `release-version` still validates the declared label against
 the exact `package.json` version, so a maintainer or contributor must
 prepare the expected version on the fork branch by hand before merge.
 
+For a PR targeting an intermediate branch rather than `develop`,
+`materializePrVersion.mjs` exits without changing `package.json`. The child
+branch therefore keeps the exact version already present on its direct base;
+the independent `release-version` gate validates that inheritance instead.
+
 When materialization changes `package.json`, the existing autofix
 commit/push mechanism commits it (together with any ordinary autofix output)
 and pushes to the PR branch, which triggers a new `synchronize` run — the
@@ -153,6 +163,33 @@ prevents the second from merging until it is synchronized with the new
 `develop` head, which reruns materialization and produces the next correct
 version and a fresh exact-head verification run. This existing repository
 invariant is relied on directly rather than duplicated in code.
+
+### Stacked/dependent PR version inheritance
+
+A dependent PR may temporarily target another feature/refactor branch so its
+diff contains only the child change. That intermediate PR is not a separate
+release boundary: it inherits the version already selected by its direct base
+branch.
+
+For a GitHub Actions PR whose target branch is neither `develop` nor `main`:
+
+- `scripts/release/materializePrVersion.mjs` does not change `package.json`;
+- no `version:patch`, `version:minor`, or `version:major` label is required or
+  interpreted by `release-version`;
+- the `release-version` job fetches the PR's direct base branch and requires
+  the child `package.json` version to equal that base version exactly;
+- a child version above or below the direct base version fails;
+- no branch-name prefix, special stacked-PR label, persistent reservation, or
+  second materializer is used to identify or manage this case.
+
+When the child is later retargeted directly to `develop`, it stops using the
+inheritance rule and becomes an ordinary `develop` PR: exactly one
+`version:*` release-intent label is required, CI materializes the exact bump
+from current `develop`, and `release-version` validates that result.
+
+Explicit local `--base` / `--target` validation keeps its generic compare
+semantics; the stacked/dependent classification is specific to GitHub Actions
+`pull_request` context.
 
 ### Pre-tag release repair
 
@@ -257,8 +294,9 @@ focused and the full gate, and tag pushes never rerun the full gate:
     selection and changed-file scope;
   - aggregate `verification` succeeds only when the static job and the complete
     browser matrix succeed, and owns whether deployable PR source is valid;
-  - PR-only `release-version` independently enforces the exact label-selected
-    version;
+  - PR-only `release-version` enforces the exact label-selected version for an
+    ordinary `develop` PR and the exact inherited direct-base version for an
+    intermediate dependent PR;
   - aggregate `verify` preserves the required merge check and succeeds only when
     `verification` and, for PRs, `release-version` both succeed.
 
