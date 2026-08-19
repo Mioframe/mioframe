@@ -1,12 +1,6 @@
 import { addTechnicalBreadcrumb } from '@shared/lib/diagnostics';
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
-const getSafeErrorClass = (error: unknown): string => {
-  if (error instanceof DOMException) return 'DOMException';
-  if (error instanceof Error) return 'Error';
-  return 'unknown';
-};
-
 const messageByStepResult: Record<
   string,
   Partial<Record<WebFileSystemDiagnosticStep['result'], string>>
@@ -32,15 +26,13 @@ export const addWebFileSystemReadDiagnosticStepBreadcrumb = (
     return;
   }
 
-  const errorClass = event.error !== undefined ? getSafeErrorClass(event.error) : undefined;
-
   addTechnicalBreadcrumb({
     category: 'webFileSystem.read',
     data: {
       provider: 'webFileSystem',
       result: event.result,
       step: event.step,
-      ...(errorClass !== undefined ? { errorClass } : {}),
+      ...(event.permission !== undefined ? { permission: event.permission } : {}),
     },
     level: event.result === 'failed' && event.step === 'rootRead' ? 'warning' : 'info',
     message,

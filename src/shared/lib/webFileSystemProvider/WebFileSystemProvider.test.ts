@@ -75,6 +75,28 @@ describe('WebFileSystemProvider', () => {
     expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
   });
 
+  it('throws a typed access-required DomainError with mode:read when readDirectory("/") read permission is denied', async () => {
+    const { rootHandle } = createRootHandle('denied');
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work' }));
+    const provider = WebFileSystemProvider(rootHandle, {
+      permissionPolicy: 'userSelectedDirectory',
+      onAccessRequired: ({ mode }) => ({
+        spaceName: 'Work',
+        mode,
+      }),
+      onUnavailableRoot,
+    });
+
+    await expect(provider.readDirectory('/')).rejects.toMatchObject({
+      code: WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE,
+      mode: 'read',
+      name: 'WebFileSystemAccessRequiredError',
+      spaceName: 'Work',
+    });
+    expect(onUnavailableRoot).not.toHaveBeenCalled();
+    expect(rootHandle.requestPermissionMock).not.toHaveBeenCalled();
+  });
+
   it('throws a typed access-required DomainError with mode:readwrite for write operations when permission is denied', async () => {
     const { rootHandle } = createRootHandle('denied');
     const provider = WebFileSystemProvider(rootHandle, {
@@ -1412,6 +1434,7 @@ describe('WebFileSystemProvider', () => {
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
       step: 'rootReadPermissionRecheck',
       result: 'succeeded',
+      permission: 'granted',
     });
   });
 

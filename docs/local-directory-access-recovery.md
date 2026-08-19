@@ -103,6 +103,7 @@ Persist before replacing runtime state so a storage-write failure cannot leave a
 Keep diagnostics thin and privacy-safe:
 
 - record technical breadcrumbs for the root-read stage and permission state;
+- root-read breadcrumbs use the actual safe permission state (`granted`/`denied`/`prompt`) observed at that step when known; they must not emit a derived `errorClass`, `domExceptionName`, or equivalent synthetic classifier;
 - preserve the real caught `DOMException`/`Error` so native exception type/name remains available to diagnostics when an unexpected provider failure is captured by the owning upper boundary;
 - do not add custom `domExceptionName`, raw message, path, filename, handle, or folder-name diagnostic fields;
 - expected picker cancellation, identity mismatch, and permission-required states are not diagnostic exceptions.

@@ -60,6 +60,8 @@ export interface WebFileSystemProviderOptions {
 export interface WebFileSystemDiagnosticStep {
   /** Raw error value when the milestone failed. The caller is responsible for sanitization. */
   error?: unknown;
+  /** Actual safe permission state observed at this milestone, when known. */
+  permission?: PermissionState;
   /** Technical milestone outcome. */
   result: 'failed' | 'missing' | 'started' | 'succeeded';
   /** Technical milestone name emitted by the provider. */
@@ -502,6 +504,7 @@ export const WebFileSystemProvider = (
     reportDiagnosticStep({
       step: 'rootReadPermissionRecheck',
       result: recheckedPermission === 'granted' ? 'succeeded' : 'failed',
+      ...(recheckedPermission !== undefined ? { permission: recheckedPermission } : {}),
     });
 
     if (recheckedPermission !== 'granted') {

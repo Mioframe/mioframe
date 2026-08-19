@@ -33,12 +33,7 @@ import { addWebFileSystemReadDiagnosticStepBreadcrumb } from './webFileSystemRea
 import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 export { DEVICE_FILES_ROOT_NAME };
-export type {
-  DeviceFileDisplayRecord,
-  ReadDirectoryOptions,
-  ReconnectDeviceDirectoryResult,
-  WriteAccessRecoveryHandler,
-};
+export type { DeviceFileDisplayRecord, ReadDirectoryOptions, WriteAccessRecoveryHandler };
 
 const didPersistedDeviceDirectoryRecordsChange = (
   nextRecords: PersistedDeviceDirectoryRecord[],

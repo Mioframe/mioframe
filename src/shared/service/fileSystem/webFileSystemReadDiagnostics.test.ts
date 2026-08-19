@@ -28,21 +28,22 @@ describe('webFileSystemReadDiagnostics', () => {
         provider: 'webFileSystem',
         result: 'failed',
         step: 'rootRead',
-        errorClass: 'DOMException',
       },
       level: 'warning',
       message: 'root directory read failed',
     });
   });
 
-  it('adds info breadcrumbs for the permission recheck outcome', () => {
+  it('adds info breadcrumbs for the permission recheck outcome with the actual permission state', () => {
     addWebFileSystemReadDiagnosticStepBreadcrumb({
       step: 'rootReadPermissionRecheck',
       result: 'succeeded',
+      permission: 'granted',
     });
     addWebFileSystemReadDiagnosticStepBreadcrumb({
       step: 'rootReadPermissionRecheck',
       result: 'failed',
+      permission: 'denied',
     });
 
     expect(addTechnicalBreadcrumb).toHaveBeenNthCalledWith(1, {
@@ -51,6 +52,7 @@ describe('webFileSystemReadDiagnostics', () => {
         provider: 'webFileSystem',
         result: 'succeeded',
         step: 'rootReadPermissionRecheck',
+        permission: 'granted',
       },
       level: 'info',
       message: 'root read permission recheck still granted',
@@ -61,10 +63,22 @@ describe('webFileSystemReadDiagnostics', () => {
         provider: 'webFileSystem',
         result: 'failed',
         step: 'rootReadPermissionRecheck',
+        permission: 'denied',
       },
       level: 'info',
       message: 'root read permission recheck no longer granted',
     });
+  });
+
+  it('omits the permission field on a recheck breadcrumb when the state is unknown', () => {
+    addWebFileSystemReadDiagnosticStepBreadcrumb({
+      step: 'rootReadPermissionRecheck',
+      result: 'succeeded',
+    });
+
+    const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
+    const data = call?.[0]?.data ?? {};
+    expect(data).not.toHaveProperty('permission');
   });
 
   it('drops milestones that should not become breadcrumbs', () => {
@@ -83,21 +97,11 @@ describe('webFileSystemReadDiagnostics', () => {
 
     const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
     const data = call?.[0]?.data ?? {};
-    const allowedKeys = new Set(['provider', 'result', 'step', 'errorClass']);
+    const allowedKeys = new Set(['provider', 'result', 'step', 'permission']);
     for (const key of Object.keys(data)) {
       expect(allowedKeys).toContain(key);
     }
-    expect(JSON.stringify(data)).not.toContain('/private/documents/secret');
-  });
-
-  it('does not include error metadata when no error is provided', () => {
-    addWebFileSystemReadDiagnosticStepBreadcrumb({
-      step: 'rootReadPermissionRecheck',
-      result: 'succeeded',
-    });
-
-    const call = vi.mocked(addTechnicalBreadcrumb).mock.calls[0];
-    const data = call?.[0]?.data ?? {};
     expect(data).not.toHaveProperty('errorClass');
+    expect(JSON.stringify(data)).not.toContain('/private/documents/secret');
   });
 });
