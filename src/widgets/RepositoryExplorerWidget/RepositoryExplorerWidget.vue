@@ -48,9 +48,14 @@ const {
   grantReadOnlyAccess,
   hasGoogleDriveRecovery,
   hasLocalDirectoryRecovery,
+  hasUnavailableRootRecovery,
   isGrantLocalDirectoryAccessDisabled,
   isGrantLocalDirectoryAccessPending,
+  isReconnectDisabled,
+  isReconnectPending,
   localDirectoryRecoveryMessage,
+  reconnectFolder,
+  reconnectMessage,
 } = useRepositoryExplorerRecovery({
   directoryPath,
   directoryStatError,
@@ -83,6 +88,10 @@ const onClickGrantReadOnlyAccess = () => {
 
 const onClickGrantFullAccess = () => {
   void grantFullAccess();
+};
+
+const onClickReconnectFolder = () => {
+  void reconnectFolder();
 };
 
 const onRetryAuthorizationClick = () => {
@@ -126,6 +135,29 @@ const onRetryAuthorizationClick = () => {
             label="Grant full access"
             :disabled="isGrantLocalDirectoryAccessDisabled"
             @click="onClickGrantFullAccess"
+          />
+        </template>
+      </MDEmptyState>
+
+      <MDEmptyState
+        v-else-if="hasUnavailableRootRecovery"
+        class="repository-explorer-widget__recovery"
+        headline="Folder unavailable"
+        :supporting-text="reconnectMessage"
+        :supporting-text-status="isReconnectPending"
+      >
+        <template #icon>
+          <MDSymbol
+            name="folder_off"
+            class="repository-explorer-widget__local-directory-recovery-icon"
+          />
+        </template>
+
+        <template #actions>
+          <MDButton
+            label="Reconnect folder"
+            :disabled="isReconnectDisabled"
+            @click="onClickReconnectFolder"
           />
         </template>
       </MDEmptyState>

@@ -5,7 +5,10 @@ import type { ClientObject } from '../proxyService';
 import { VfsError } from '../virtualFileSystem';
 import { GoogleDriveError } from '../googleDrive';
 import { GoogleClientConfigError } from '../googleApi';
-import { WebFileSystemAccessRequiredError } from '../webFileSystemProvider';
+import {
+  WebFileSystemAccessRequiredError,
+  WebFileSystemUnavailableRootError,
+} from '../webFileSystemProvider';
 import { GoogleAuthError } from '../googleAuth';
 
 /** Shared worker/client transformer registry for service transport. */
@@ -58,6 +61,10 @@ export const transformers = [
   defineCustomErrorTransformer(
     'WebFileSystemAccessRequiredError',
     WebFileSystemAccessRequiredError,
+  ),
+  defineCustomErrorTransformer(
+    'WebFileSystemUnavailableRootError',
+    WebFileSystemUnavailableRootError,
   ),
   defineCustomErrorTransformer('DomainError', DomainError),
   defineCustomErrorTransformer('VfsError', VfsError),

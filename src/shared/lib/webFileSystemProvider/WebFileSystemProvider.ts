@@ -22,6 +22,8 @@ import type {
 } from './WebFileSystemAccessRequiredError';
 import { WebFileSystemAccessRequiredError } from './WebFileSystemAccessRequiredError';
 import { createWebFileSystemWriteStartFailedError } from './WebFileSystemWriteStartFailedError';
+import type { WebFileSystemUnavailableRootDetails } from './WebFileSystemUnavailableRootError';
+import { WebFileSystemUnavailableRootError } from './WebFileSystemUnavailableRootError';
 
 /**
  * Access request context passed back to the owning service when provider permission is missing.
@@ -43,6 +45,11 @@ export interface WebFileSystemProviderOptions {
   onAccessRequired?: (
     context: WebFileSystemProviderAccessRequiredContext,
   ) => WebFileSystemAccessRequiredDetails;
+  /**
+   * Called when the mounted root can no longer be enumerated despite granted read permission.
+   * Returns undefined details fall back to rethrowing the original enumeration failure.
+   */
+  onUnavailableRoot?: () => WebFileSystemUnavailableRootDetails | undefined;
   /** Called with safe write-side milestones for diagnostics. */
   onDiagnosticStep?: (event: WebFileSystemDiagnosticStep) => void;
 }
@@ -69,7 +76,7 @@ export const WebFileSystemProvider = (
   rootHandle: FileSystemDirectoryHandle,
   options: WebFileSystemProviderOptions,
 ): IFileSystemProvider & { notifyAccessChanged: () => Promise<void> } => {
-  const { onAccessRequired, onDiagnosticStep, permissionPolicy } = options;
+  const { onAccessRequired, onDiagnosticStep, onUnavailableRoot, permissionPolicy } = options;
   const events = new EventEmitter();
   const currentRootHandle = rootHandle;
 
@@ -483,16 +490,62 @@ export const WebFileSystemProvider = (
     writeOptions: WriteOptions,
   ): Promise<WriteFileResult> => writeFileImpl(path, content, writeOptions);
 
+  /**
+   * Recovers from a root-directory enumeration failure that occurred after a granted read
+   * pre-check. Re-queries root read permission once: a revoked permission produces the existing
+   * access-required error, while a still-granted permission produces the unavailable-root error.
+   * @param cause - Original enumeration failure caught while reading the mounted root.
+   * @returns Never resolves; always throws the recovered or original error.
+   */
+  const recoverFromRootReadFailure = async (cause: unknown): Promise<never> => {
+    const recheckedPermission = await queryModePermission(currentRootHandle, 'read');
+    reportDiagnosticStep({
+      step: 'rootReadPermissionRecheck',
+      result: recheckedPermission === 'granted' ? 'succeeded' : 'failed',
+    });
+
+    if (recheckedPermission !== 'granted') {
+      const accessRequiredDetails = onAccessRequired?.({
+        handle: currentRootHandle,
+        mode: 'read',
+      });
+
+      if (accessRequiredDetails) {
+        throw new WebFileSystemAccessRequiredError(accessRequiredDetails);
+      }
+
+      throw new VfsError(FileSystemError.NoPermissions, 'Permission required');
+    }
+
+    const unavailableRootDetails = onUnavailableRoot?.();
+
+    if (unavailableRootDetails) {
+      throw new WebFileSystemUnavailableRootError({ ...unavailableRootDetails, cause });
+    }
+
+    throw cause;
+  };
+
   const readDirectory = async (path: string): Promise<[string, FSNodeStat][]> => {
     await ensureAccess('read');
+    const isRootPath = PathUtils.normalize(path) === '/';
     const directoryHandle = await getHandle(path, false, 'directory');
     const entries: [string, FSNodeStat][] = [];
 
-    for await (const [name, childHandle] of directoryHandle.entries()) {
-      entries.push([
-        name,
-        { type: childHandle.kind === 'file' ? FSNodeType.File : FSNodeType.Directory },
-      ]);
+    try {
+      for await (const [name, childHandle] of directoryHandle.entries()) {
+        entries.push([
+          name,
+          { type: childHandle.kind === 'file' ? FSNodeType.File : FSNodeType.Directory },
+        ]);
+      }
+    } catch (error) {
+      if (!isRootPath || permissionPolicy !== 'userSelectedDirectory') {
+        throw error;
+      }
+
+      reportDiagnosticStep({ step: 'rootRead', result: 'failed', error });
+      return recoverFromRootReadFailure(error);
     }
 
     return entries;

@@ -3,7 +3,11 @@ import { useMainServiceClient } from '@shared/service';
 import { computed, toValue } from 'vue';
 import { isUndefined } from 'es-toolkit';
 import { useObservableQuery } from '@shared/lib/useObservableQuery';
-import { DEVICE_FILES_ROOT_NAME, type DeviceFileDisplayRecord } from '@shared/service';
+import {
+  DEVICE_FILES_ROOT_NAME,
+  type DeviceFileDisplayRecord,
+  type ReconnectDeviceDirectoryResult,
+} from '@shared/service';
 import { useObservable } from '@shared/lib/useObservable';
 import { OPFSName } from '@shared/service';
 
@@ -40,6 +44,7 @@ const setupFileSystem = () => {
       directoryContent,
       addDeviceDirectory,
       removeDeviceDirectory,
+      reconnectDeviceDirectory,
       deviceFiles,
     },
   } = useMainServiceClient();
@@ -82,6 +87,11 @@ const setupFileSystem = () => {
     await removeDeviceDirectory(typeof deviceFile === 'string' ? deviceFile : deviceFile.name);
   };
 
+  const reconnectDirectory = (params: {
+    handle: FileSystemDirectoryHandle;
+    spaceName: string;
+  }): Promise<ReconnectDeviceDirectoryResult> => reconnectDeviceDirectory(params);
+
   return {
     rootDirectory,
     deviceFiles: mountedDirectories,
@@ -91,6 +101,7 @@ const setupFileSystem = () => {
     addDeviceDirectory,
     createDirectory,
     disconnectDeviceFile,
+    reconnectDirectory,
 
     move,
     remove,

@@ -28,6 +28,10 @@ const grantReadOnlyAccessMock = vi.fn();
 const isGrantLocalDirectoryAccessPendingRef = ref(false);
 const isGrantLocalDirectoryAccessDisabledRef = ref(false);
 const localDirectoryRecoveryMessageRef = ref('');
+const reconnectFolderMock = vi.fn();
+const isReconnectPendingRef = ref(false);
+const isReconnectDisabledRef = ref(false);
+const reconnectMessageRef = ref('');
 
 const createSerializedRecoveryError = ({
   mode,
@@ -40,6 +44,13 @@ const createSerializedRecoveryError = ({
     code: 'web-file-system-access-required',
     mode,
     name: 'WebFileSystemAccessRequiredError',
+    spaceName,
+  });
+
+const createSerializedUnavailableRootError = ({ spaceName }: { spaceName: string }) =>
+  Object.assign(new Error('Mioframe cannot open this remembered folder anymore.'), {
+    code: 'web-file-system-unavailable-root',
+    name: 'WebFileSystemUnavailableRootError',
     spaceName,
   });
 
@@ -59,6 +70,12 @@ vi.mock('@feature/localDirectoryRecovery', () => ({
       () => isGrantLocalDirectoryAccessDisabledRef.value,
     ),
     localDirectoryRecoveryMessage: computed(() => localDirectoryRecoveryMessageRef.value),
+  }),
+  useLocalDirectoryReconnectAction: () => ({
+    isReconnectDisabled: computed(() => isReconnectDisabledRef.value),
+    isReconnectPending: computed(() => isReconnectPendingRef.value),
+    reconnectFolder: reconnectFolderMock,
+    reconnectMessage: computed(() => reconnectMessageRef.value),
   }),
 }));
 
@@ -326,6 +343,10 @@ describe('RepositoryExplorerWidget', () => {
     isGrantLocalDirectoryAccessPendingRef.value = false;
     isGrantLocalDirectoryAccessDisabledRef.value = false;
     localDirectoryRecoveryMessageRef.value = '';
+    reconnectFolderMock.mockReset();
+    isReconnectPendingRef.value = false;
+    isReconnectDisabledRef.value = false;
+    reconnectMessageRef.value = '';
     document.body.innerHTML = '';
   });
 
@@ -582,6 +603,85 @@ describe('RepositoryExplorerWidget', () => {
     expect(grantReadOnlyAccessMock).not.toHaveBeenCalled();
     expect(wrapper.text()).not.toContain('Grant full access');
     expect(wrapper.text()).not.toContain('Read only');
+    expect(wrapper.text()).not.toContain('Permission required');
+  });
+
+  it('shows reconnect recovery with a Reconnect folder action for an unavailable-root error', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedUnavailableRootError({ spaceName: 'Work' }),
+    ];
+    reconnectMessageRef.value = 'Mioframe can\'t open "Work" anymore.';
+
+    const wrapper = await mountWidget();
+
+    expect(wrapper.text()).toContain('Folder unavailable');
+    expect(wrapper.text()).toContain('Mioframe can\'t open "Work" anymore.');
+    const reconnectButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reconnect folder');
+
+    expect(reconnectButton).toBeDefined();
+    expect(wrapper.text()).not.toContain('Permission required');
+  });
+
+  it('opens the picker only from the explicit Reconnect folder click', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedUnavailableRootError({ spaceName: 'Work' }),
+    ];
+
+    const wrapper = await mountWidget();
+
+    expect(reconnectFolderMock).not.toHaveBeenCalled();
+
+    const reconnectButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reconnect folder');
+    await reconnectButton?.trigger('click');
+
+    expect(reconnectFolderMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the Reconnect folder action while a reconnect attempt is pending', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedUnavailableRootError({ spaceName: 'Work' }),
+    ];
+    isReconnectDisabledRef.value = true;
+    isReconnectPendingRef.value = true;
+    reconnectMessageRef.value = 'Waiting for the folder picker.';
+
+    const wrapper = await mountWidget();
+    const reconnectButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Reconnect folder');
+    const pendingStatus = wrapper.get('[role="status"]');
+
+    expect(reconnectButton?.attributes('disabled')).toBeDefined();
+    expect(pendingStatus.text()).toBe('Waiting for the folder picker.');
+  });
+
+  it('shows permission recovery instead of reconnect recovery when both errors are present', async () => {
+    repositoryRecoveryErrorsRef.value = [
+      createSerializedUnavailableRootError({ spaceName: 'Work' }),
+      createSerializedRecoveryError({ spaceName: 'Work', mode: 'read' }),
+    ];
+
+    const wrapper = await mountWidget();
+
+    expect(wrapper.text()).toContain('Permission required');
+    expect(wrapper.text()).not.toContain('Reconnect folder');
+  });
+
+  it('falls back to the generic folder error for an unrelated failure', async () => {
+    errorMessageRef.value = 'Could not read this folder';
+    repositoryRecoveryErrorsRef.value = [new Error('boom')];
+
+    const wrapper = await mountWidget();
+
+    expect(wrapper.text()).toContain('Could not open this folder');
+    expect(wrapper.text()).toContain('Could not read this folder');
+    expect(
+      wrapper.findAll('button').find((button) => button.text() === 'Reconnect folder'),
+    ).toBeUndefined();
     expect(wrapper.text()).not.toContain('Permission required');
   });
 

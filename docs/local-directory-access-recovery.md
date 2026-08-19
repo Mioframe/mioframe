@@ -35,15 +35,15 @@ When a remembered local directory can no longer be read, Mioframe must distingui
 
 ## Boundaries and ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `src/shared/lib/webFileSystemProvider` | Permission checks, root-directory read semantics, provider-owned typed unavailable-root error, raw cause preservation |
-| `src/shared/service/fileSystem` | Persisted handle lookup/replacement, `isSameEntry()` identity verification, mounted provider replacement, stale recovery-request cleanup |
-| `src/entities/mountedDirectories` | Narrow UI-facing access to the reconnect service mutation |
-| `src/features/localDirectoryRecovery` | Explicit picker action, pending/cancel/result state, user-facing reconnect outcome |
-| `src/widgets/RepositoryExplorerWidget` | Recovery precedence and rendering only |
-| page/pane | No change |
-| shared UI | No change |
+| Owner                                  | Responsibility                                                                                                                           |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/lib/webFileSystemProvider` | Permission checks, root-directory read semantics, provider-owned typed unavailable-root error, raw cause preservation                    |
+| `src/shared/service/fileSystem`        | Persisted handle lookup/replacement, `isSameEntry()` identity verification, mounted provider replacement, stale recovery-request cleanup |
+| `src/entities/mountedDirectories`      | Narrow UI-facing access to the reconnect service mutation                                                                                |
+| `src/features/localDirectoryRecovery`  | Explicit picker action, pending/cancel/result state, user-facing reconnect outcome                                                       |
+| `src/widgets/RepositoryExplorerWidget` | Recovery precedence and rendering only                                                                                                   |
+| page/pane                              | No change                                                                                                                                |
+| shared UI                              | No change                                                                                                                                |
 
 ## Source of truth
 
@@ -122,18 +122,18 @@ None. Reuse existing Material button and empty-state components. No `src/shared/
 
 ## Acceptance matrix
 
-| Scenario | Required result |
-| --- | --- |
-| read permission `prompt` | existing `Permission required`; no generic folder error |
-| read permission `denied` | existing `Permission required`; no generic folder error |
-| granted + root enumeration failure + permission still granted | unavailable-folder state with `Reconnect folder` |
-| permission revoked between pre-check and failed root read | existing permission recovery, not reconnect recovery |
-| picker cancelled | remembered record and mount unchanged |
-| same entry selected | persisted handle replaced under same name; provider replaced; reads retry through existing invalidation |
-| different entry selected | no persisted/runtime replacement; retryable mismatch message |
-| identity API unavailable/fails to confirm | fail closed; no replacement |
-| nested file/path error while root remains usable | original non-reconnect error semantics |
-| reconnect storage update fails | old runtime provider remains mounted; error is surfaced safely |
+| Scenario                                                      | Required result                                                                                         |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| read permission `prompt`                                      | existing `Permission required`; no generic folder error                                                 |
+| read permission `denied`                                      | existing `Permission required`; no generic folder error                                                 |
+| granted + root enumeration failure + permission still granted | unavailable-folder state with `Reconnect folder`                                                        |
+| permission revoked between pre-check and failed root read     | existing permission recovery, not reconnect recovery                                                    |
+| picker cancelled                                              | remembered record and mount unchanged                                                                   |
+| same entry selected                                           | persisted handle replaced under same name; provider replaced; reads retry through existing invalidation |
+| different entry selected                                      | no persisted/runtime replacement; retryable mismatch message                                            |
+| identity API unavailable/fails to confirm                     | fail closed; no replacement                                                                             |
+| nested file/path error while root remains usable              | original non-reconnect error semantics                                                                  |
+| reconnect storage update fails                                | old runtime provider remains mounted; error is surfaced safely                                          |
 
 ## Risk matrix
 

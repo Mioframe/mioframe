@@ -1,8 +1,14 @@
 import { computed, type Ref } from 'vue';
 import { isNotNil } from 'es-toolkit';
-import { getFileSystemAccessRecovery } from '@shared/lib/fileSystem';
+import {
+  getFileSystemAccessRecovery,
+  parseFileSystemUnavailableRootRecovery,
+} from '@shared/lib/fileSystem';
 import { useGoogleDriveRecovery } from '@feature/googleDriveRecovery';
-import { useLocalDirectoryRecoveryAction } from '@feature/localDirectoryRecovery';
+import {
+  useLocalDirectoryReconnectAction,
+  useLocalDirectoryRecoveryAction,
+} from '@feature/localDirectoryRecovery';
 import { getGoogleDriveAccessRecoveryError } from '@entity/googleDriveAccess';
 
 /**
@@ -35,6 +41,17 @@ export const useRepositoryExplorerRecovery = ({
 
     return undefined;
   });
+  const unavailableRootRecovery = computed(() => {
+    for (const error of recoveryErrors.value) {
+      const recovery = parseFileSystemUnavailableRootRecovery(error);
+
+      if (recovery) {
+        return recovery;
+      }
+    }
+
+    return undefined;
+  });
   const hasGoogleDriveRecovery = computed(
     () =>
       !!errorMessage.value &&
@@ -52,17 +69,26 @@ export const useRepositoryExplorerRecovery = ({
   } = useLocalDirectoryRecoveryAction({
     recovery: localDirectoryRecovery,
   });
+  const { isReconnectDisabled, isReconnectPending, reconnectFolder, reconnectMessage } =
+    useLocalDirectoryReconnectAction({
+      recovery: unavailableRootRecovery,
+    });
 
   return {
     grantFullAccess,
     grantReadOnlyAccess,
     hasLocalDirectoryRecovery: computed(() => !!localDirectoryRecovery.value),
+    hasUnavailableRootRecovery: computed(() => !!unavailableRootRecovery.value),
     googleDriveRecovery,
     hasGoogleDriveRecovery,
     isGrantLocalDirectoryAccessDisabled,
     isGrantLocalDirectoryAccessPending,
+    isReconnectDisabled,
+    isReconnectPending,
     localDirectoryRecovery,
     localDirectoryRecoveryMessage,
+    reconnectFolder,
+    reconnectMessage,
     recoveryErrors,
   };
 };

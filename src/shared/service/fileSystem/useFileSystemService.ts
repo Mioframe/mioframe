@@ -5,7 +5,7 @@ import {
   type DeviceFileDisplayRecord,
   type MountedDeviceFileRecord,
 } from '@shared/lib/deviceFileSystemProvider';
-import type { ReadDirectoryOptions } from './fileSystemContracts';
+import type { ReadDirectoryOptions, ReconnectDeviceDirectoryResult } from './fileSystemContracts';
 import {
   createMountedWebFileSystemProvider,
   createOriginPrivateStorageProvider,
@@ -29,9 +29,16 @@ import {
   type WriteAccessRecoveryHandler,
 } from './fileSystemAccessRequestRegistry';
 import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
+import { addWebFileSystemReadDiagnosticStepBreadcrumb } from './webFileSystemReadDiagnostics';
+import type { WebFileSystemDiagnosticStep } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider';
 
 export { DEVICE_FILES_ROOT_NAME };
-export type { DeviceFileDisplayRecord, ReadDirectoryOptions, WriteAccessRecoveryHandler };
+export type {
+  DeviceFileDisplayRecord,
+  ReadDirectoryOptions,
+  ReconnectDeviceDirectoryResult,
+  WriteAccessRecoveryHandler,
+};
 
 const didPersistedDeviceDirectoryRecordsChange = (
   nextRecords: PersistedDeviceDirectoryRecord[],
@@ -46,6 +53,11 @@ const didPersistedDeviceDirectoryRecordsChange = (
       record.handle !== previousRecord.handle
     );
   });
+
+const reportWebFileSystemDiagnosticStep = (event: WebFileSystemDiagnosticStep): void => {
+  addWebFileSystemDiagnosticStepBreadcrumb(event);
+  addWebFileSystemReadDiagnosticStepBreadcrumb(event);
+};
 
 const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
@@ -72,7 +84,8 @@ const setupFileSystemService = () => {
             mode,
             refreshProvider: () => notifyHolder.fn(),
           }),
-        onDiagnosticStep: addWebFileSystemDiagnosticStepBreadcrumb,
+        onUnavailableRoot: () => ({ spaceName: record.name }),
+        onDiagnosticStep: reportWebFileSystemDiagnosticStep,
       });
 
       notifyHolder.fn = () => provider.notifyAccessChanged();
@@ -297,6 +310,55 @@ const setupFileSystemService = () => {
     };
   };
 
+  const reconnectDeviceDirectory = async ({
+    handle,
+    spaceName,
+  }: {
+    handle: FileSystemDirectoryHandle;
+    spaceName: string;
+  }): Promise<ReconnectDeviceDirectoryResult> => {
+    await deviceFilesReady;
+
+    const records = await getRecordList();
+    const existingRecord = records.find((record) => record.name === spaceName);
+
+    if (!existingRecord) {
+      return { status: 'missingRecord' };
+    }
+
+    let isSameEntry: boolean;
+    try {
+      if (typeof existingRecord.handle.isSameEntry !== 'function') {
+        return { status: 'identityUnverified' };
+      }
+      isSameEntry = await existingRecord.handle.isSameEntry(handle);
+    } catch {
+      return { status: 'identityUnverified' };
+    }
+
+    if (!isSameEntry) {
+      return { status: 'mismatch' };
+    }
+
+    const nextRecord = {
+      name: existingRecord.name,
+      handle,
+    } satisfies PersistedDeviceDirectoryRecord;
+    const nextRecords = records.map((record) => (record === existingRecord ? nextRecord : record));
+
+    await updateRecordList(nextRecords);
+
+    deviceFileSystemProvider.upsertRecord({
+      name: nextRecord.name,
+      kind: 'localDirectory',
+      handle: nextRecord.handle,
+    });
+    registry.clearForSpace(nextRecord.name);
+    syncActiveDeviceFiles();
+
+    return { status: 'reconnected', name: nextRecord.name };
+  };
+
   const removeDeviceDirectory = async (name: string): Promise<void> => {
     if (name === OPFSName) {
       return;
@@ -332,6 +394,7 @@ const setupFileSystemService = () => {
     remove,
     addDeviceDirectory,
     removeDeviceDirectory,
+    reconnectDeviceDirectory,
     getFileSystemAccessRequest: registry.getRequest,
     getTemporaryFileSystemAccessHandle: registry.prepareHandle,
     registerWriteAccessRecoveryHandler: registry.registerWriteRecoveryHandler,

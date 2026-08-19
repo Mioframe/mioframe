@@ -32,3 +32,7 @@ export {
   type FileSystemAccessOperation,
   type FileSystemAccessRecovery,
 } from './fileSystemAccessRecovery';
+export {
+  parseFileSystemUnavailableRootRecovery,
+  type FileSystemUnavailableRootRecovery,
+} from './fileSystemUnavailableRootRecovery';

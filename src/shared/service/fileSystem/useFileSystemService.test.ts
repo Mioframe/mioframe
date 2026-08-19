@@ -562,6 +562,196 @@ describe('useFileSystemService', () => {
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
 
+  it('reconnects the persisted handle under the same mounted name when the selection is confirmed as the same entry', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work (moved)',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const events: Array<{ source: string; type: string }> = [];
+    const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
+      events.push({ source: event.source, type: event.type });
+    });
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+    ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
+    unsubscribe();
+
+    expect(updateRecordListMock).toHaveBeenCalledWith([
+      { name: 'Work', handle: reconnectedHandle },
+    ]);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Work' },
+    ]);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'provider', type: 'unmount' }),
+        expect.objectContaining({ source: 'provider', type: 'mount' }),
+      ]),
+    );
+  });
+
+  it('clears a pending access request for the space after a successful reconnect', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Work' }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Work' });
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+    ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Work' }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('does not replace the persisted handle when the selected directory is a different entry', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const otherHandle = createDirectoryHandleMock({
+      name: 'Other',
+      permissionState: 'granted',
+      sameEntryKey: 'other',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: otherHandle, spaceName: 'Work' }),
+    ).resolves.toEqual({ status: 'mismatch' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Work' },
+    ]);
+  });
+
+  it('fails closed and performs no replacement when identity cannot be verified', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    workHandle.isSameEntry = vi.fn(() => Promise.reject(new Error('identity check failed')));
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Candidate',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+    ).resolves.toEqual({ status: 'identityUnverified' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the remembered handle exposes no isSameEntry check', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    Object.defineProperty(workHandle, 'isSameEntry', {
+      configurable: true,
+      value: undefined,
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Candidate',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+    ).resolves.toEqual({ status: 'identityUnverified' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('returns missingRecord when no persisted record matches the mounted space name', async () => {
+    getRecordListMock.mockResolvedValue([]);
+    const service = await createService();
+    const candidateHandle = createDirectoryHandleMock({ name: 'Candidate' });
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Missing' }),
+    ).resolves.toEqual({ status: 'missingRecord' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves the previous runtime provider mounted when persisting the reconnect fails', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    updateRecordListMock.mockRejectedValueOnce(new Error('storage write failed'));
+    const events: Array<{ source: string; type: string }> = [];
+    const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
+      events.push({ source: event.source, type: event.type });
+    });
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+    ).rejects.toThrow('storage write failed');
+    unsubscribe();
+
+    expect(events).toEqual([]);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Work' },
+    ]);
+  });
+
   it('returns undefined for an unknown file-system access request key', async () => {
     const service = await createService();
 
