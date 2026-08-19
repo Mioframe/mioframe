@@ -45,17 +45,17 @@ Recover a remembered user-selected local directory when its saved root becomes u
 
 ## Ownership
 
-| Owner | Responsibility |
-| --- | --- |
-| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error |
-| `src/shared/lib/automergeAdapter` | Canonical marker filename and reusable marker-presence inspection policy |
-| `src/shared/service/fileSystem` | Persisted-handle uniqueness, mounted-name allocation, same-entry reconnect, locator-different relocation, provider mount/unmount, request cleanup |
-| `src/shared/service/repositories` | Existing Repo/cache/retrying-storage behavior and generic write-recovery settlement only; no relocation knowledge |
-| `src/entities/mountedDirectories` | Narrow UI-facing reconnect/relocation mutations |
-| `src/features/localDirectoryRecovery` | Permission-grant recovery action only |
-| `src/features/localDirectoryReconnect` | Unavailable-root parsing, picker, marker inspection, confirmation, reconnect/relocation action state and result |
-| `src/widgets/RepositoryExplorerWidget` | Recovery branch precedence/rendering and navigation after relocation; no provider-error parsing |
-| page/pane | No new responsibility |
+| Owner                                  | Responsibility                                                                                                                                    |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/lib/webFileSystemProvider` | Permission/root-read semantics and provider-owned unavailable-root error                                                                          |
+| `src/shared/lib/automergeAdapter`      | Canonical marker filename and reusable marker-presence inspection policy                                                                          |
+| `src/shared/service/fileSystem`        | Persisted-handle uniqueness, mounted-name allocation, same-entry reconnect, locator-different relocation, provider mount/unmount, request cleanup |
+| `src/shared/service/repositories`      | Existing Repo/cache/retrying-storage behavior and generic write-recovery settlement only; no relocation knowledge                                 |
+| `src/entities/mountedDirectories`      | Narrow UI-facing reconnect/relocation mutations                                                                                                   |
+| `src/features/localDirectoryRecovery`  | Permission-grant recovery action only                                                                                                             |
+| `src/features/localDirectoryReconnect` | Unavailable-root parsing, picker, marker inspection, confirmation, reconnect/relocation action state and result                                   |
+| `src/widgets/RepositoryExplorerWidget` | Recovery branch precedence/rendering and navigation after relocation; no provider-error parsing                                                   |
+| page/pane                              | No new responsibility                                                                                                                             |
 
 ## Source of truth and state
 
@@ -168,25 +168,25 @@ Do not call or coordinate repositories during relocation. Old Repo/DocHandle ins
 
 ## Acceptance matrix
 
-| Scenario | Required result |
-| --- | --- |
-| permission `prompt`/`denied` | existing permission recovery |
-| granted root enumeration failure | unavailable-root recovery |
-| picker/confirmation cancel | zero mutation |
-| same entry | same mounted path; persist/remount; settlement runs |
-| same entry, settlement fails | provider stays reconnected; explicit warning |
-| false/unverifiable identity | `confirmationRequired`; zero mutation before fallback |
-| candidate lacks marker | reject; zero mutation |
-| candidate already mounted elsewhere | `alreadyMounted`; zero mutation; existing target can be opened |
-| confirmed unique candidate | old persisted record replaced by new unique mounted name/path; old runtime path removed; new path mounted |
-| candidate basename equals old name | new unique mounted name differs from old path |
-| relocation persistence fails | old persisted/runtime mount unchanged |
-| old path after relocation | cannot route reads/writes to selected storage |
-| new path after relocation | routes to selected handle |
-| stale feature target | no navigation/state overwrite |
-| nested provider failure | existing semantics |
-| widget | no provider recovery parsing |
-| repositories | no confirmed-replacement lease/reservation/relocation logic |
+| Scenario                            | Required result                                                                                           |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| permission `prompt`/`denied`        | existing permission recovery                                                                              |
+| granted root enumeration failure    | unavailable-root recovery                                                                                 |
+| picker/confirmation cancel          | zero mutation                                                                                             |
+| same entry                          | same mounted path; persist/remount; settlement runs                                                       |
+| same entry, settlement fails        | provider stays reconnected; explicit warning                                                              |
+| false/unverifiable identity         | `confirmationRequired`; zero mutation before fallback                                                     |
+| candidate lacks marker              | reject; zero mutation                                                                                     |
+| candidate already mounted elsewhere | `alreadyMounted`; zero mutation; existing target can be opened                                            |
+| confirmed unique candidate          | old persisted record replaced by new unique mounted name/path; old runtime path removed; new path mounted |
+| candidate basename equals old name  | new unique mounted name differs from old path                                                             |
+| relocation persistence fails        | old persisted/runtime mount unchanged                                                                     |
+| old path after relocation           | cannot route reads/writes to selected storage                                                             |
+| new path after relocation           | routes to selected handle                                                                                 |
+| stale feature target                | no navigation/state overwrite                                                                             |
+| nested provider failure             | existing semantics                                                                                        |
+| widget                              | no provider recovery parsing                                                                              |
+| repositories                        | no confirmed-replacement lease/reservation/relocation logic                                               |
 
 ## Required proof
 
