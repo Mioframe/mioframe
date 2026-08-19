@@ -120,6 +120,39 @@ describe('resolveVersionContext', () => {
       ),
     ).toEqual({ kind: 'ci-other' });
   });
+
+  it('detects a stacked PR into an intermediate branch in GitHub Actions', () => {
+    expect(
+      resolveVersionContext(
+        {
+          GITHUB_ACTIONS: 'true',
+          GITHUB_EVENT_NAME: 'pull_request',
+          GITHUB_BASE_REF: 'feature/parent-branch',
+        },
+        [],
+      ),
+    ).toEqual({
+      kind: 'stacked-pr',
+      baseRef: 'origin/feature/parent-branch',
+      targetBranch: 'feature/parent-branch',
+    });
+  });
+
+  it('does not treat an explicit local --base with a non-develop/main --target as a stacked PR', () => {
+    expect(
+      resolveVersionContext({}, [
+        '--base',
+        'origin/feature/parent-branch',
+        '--target',
+        'feature/parent-branch',
+      ]),
+    ).toEqual({
+      kind: 'compare',
+      baseRef: 'origin/feature/parent-branch',
+      targetBranch: 'feature/parent-branch',
+      headBranch: undefined,
+    });
+  });
 });
 
 describe('validateRelease', () => {
@@ -337,6 +370,71 @@ describe('validateRelease', () => {
         );
       },
     );
+  });
+
+  describe('stacked/dependent PRs into an intermediate branch', () => {
+    const stackedEnv = {
+      GITHUB_ACTIONS: 'true',
+      GITHUB_EVENT_NAME: 'pull_request',
+      GITHUB_BASE_REF: 'feature/parent-branch',
+    };
+
+    it('passes when the version matches the intermediate base branch, without a version-impact label', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({ argv: [], env: stackedEnv, deps });
+      expect(result).toBe(true);
+      expect(deps.logError).not.toHaveBeenCalled();
+    });
+
+    it('fails when the version is greater than the intermediate base branch', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.3.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({ argv: [], env: stackedEnv, deps });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('must inherit the exact base version'),
+      );
+    });
+
+    it('fails when the version is lower than the intermediate base branch', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.1.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({ argv: [], env: stackedEnv, deps });
+      expect(result).toBe(false);
+      expect(deps.logError).toHaveBeenCalledWith(
+        expect.stringContaining('must inherit the exact base version'),
+      );
+    });
+
+    it('does not require or read PR version-impact label metadata', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.0' }));
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      // No GITHUB_EVENT_PATH set: reading PR labels here would throw, since
+      // readPrLabelNames requires it.
+      const result = validateRelease({
+        argv: [],
+        env: { ...stackedEnv, GITHUB_EVENT_PATH: undefined },
+        deps,
+      });
+      expect(result).toBe(true);
+      expect(deps.logError).not.toHaveBeenCalled();
+    });
+
+    it('does not require release notes for an intermediate base PR', () => {
+      const deps = baseDeps();
+      deps.readFile = vi.fn().mockReturnValue(JSON.stringify({ version: '0.2.0' }));
+      deps.fileExists = vi.fn(
+        (filePath) => filePath === 'docs/release-checklist.md' || filePath === 'docs/release.md',
+      );
+      deps.spawn = makeCompareSpawn({ baseVersion: '0.2.0', tagFound: false });
+      const result = validateRelease({ argv: [], env: stackedEnv, deps });
+      expect(result).toBe(true);
+    });
   });
 
   it('passes a same-version PR-to-main context as a pre-tag release repair when the tag does not exist yet', () => {
