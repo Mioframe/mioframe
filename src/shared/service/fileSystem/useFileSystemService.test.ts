@@ -126,6 +126,17 @@ const isAccessErrorWithRecoveryKey = (
   'toJSON' in error &&
   typeof error.toJSON === 'function';
 
+/**
+ * A confirmed-replacement lease provider mock that always acquires the mount immediately.
+ * @returns The lease provider mock and its `release` spy.
+ */
+const createAcquiringLeaseProvider = () => {
+  const release = vi.fn();
+  const provider = vi.fn().mockResolvedValue({ status: 'acquired' as const, release });
+
+  return { provider, release };
+};
+
 describe('useFileSystemService', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -805,6 +816,8 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const { provider, release } = createAcquiringLeaseProvider();
+    service.registerConfirmedReplacementLeaseProvider(provider);
     const events: Array<{ source: string; type: string }> = [];
     const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
       events.push({ source: event.source, type: event.type });
@@ -827,6 +840,51 @@ describe('useFileSystemService', () => {
         expect.objectContaining({ source: 'provider', type: 'mount' }),
       ]),
     );
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('replaceRememberedDeviceDirectory acquires the lease before persisting and does not read persisted records again after acquisition', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work (moved)',
+      permissionState: 'granted',
+      sameEntryKey: 'moved',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+    const getRecordListCallsBeforeReplacement = getRecordListMock.mock.calls.length;
+
+    const callOrder: string[] = [];
+    const release = vi.fn(() => {
+      callOrder.push('release');
+    });
+    const provider = vi.fn().mockImplementation(() => {
+      callOrder.push('acquire');
+      return Promise.resolve({ status: 'acquired' as const, release });
+    });
+    service.registerConfirmedReplacementLeaseProvider(provider);
+    updateRecordListMock.mockImplementationOnce(() => {
+      callOrder.push('persist');
+      return Promise.resolve(undefined);
+    });
+
+    await expect(
+      service.replaceRememberedDeviceDirectory({ handle: replacementHandle, spaceName: 'Work' }),
+    ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
+
+    expect(callOrder).toEqual(['acquire', 'persist', 'release']);
+    expect(provider).toHaveBeenCalledWith({ mountPath: '/Device Files/Work' });
+    expect(getRecordListMock.mock.calls.length - getRecordListCallsBeforeReplacement).toBe(1);
   });
 
   it('replaceRememberedDeviceDirectory clears a pending access request for the space', async () => {
@@ -843,6 +901,8 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
 
     const service = await createService();
+    const { provider } = createAcquiringLeaseProvider();
+    service.registerConfirmedReplacementLeaseProvider(provider);
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -863,7 +923,7 @@ describe('useFileSystemService', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('replaceRememberedDeviceDirectory returns repositoryStateActive and performs zero mutation when a confirmed-replacement guard blocks the mount', async () => {
+  it('replaceRememberedDeviceDirectory returns repositoryStateActive and performs zero mutation when the lease provider reports active repository state', async () => {
     const workHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'granted',
@@ -883,8 +943,8 @@ describe('useFileSystemService', () => {
       ]);
     });
 
-    const guard = vi.fn().mockResolvedValue(true);
-    service.registerConfirmedReplacementGuard(guard);
+    const provider = vi.fn().mockResolvedValue({ status: 'repositoryStateActive' as const });
+    service.registerConfirmedReplacementLeaseProvider(provider);
 
     const events: Array<{ source: string; type: string }> = [];
     const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
@@ -896,7 +956,7 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({ status: 'repositoryStateActive' });
     unsubscribe();
 
-    expect(guard).toHaveBeenCalledWith({ mountPath: '/Device Files/Work' });
+    expect(provider).toHaveBeenCalledWith({ mountPath: '/Device Files/Work' });
     expect(updateRecordListMock).not.toHaveBeenCalled();
     expect(events).toEqual([]);
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
@@ -934,6 +994,8 @@ describe('useFileSystemService', () => {
         { canDisconnect: true, name: 'Work' },
       ]);
     });
+    const { provider, release } = createAcquiringLeaseProvider();
+    service.registerConfirmedReplacementLeaseProvider(provider);
     updateRecordListMock.mockRejectedValueOnce(new Error('storage write failed'));
     const events: Array<{ source: string; type: string }> = [];
     const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
@@ -946,6 +1008,37 @@ describe('useFileSystemService', () => {
     unsubscribe();
 
     expect(events).toEqual([]);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Work' },
+    ]);
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed and mutates nothing when no confirmed-replacement lease provider is registered', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'moved',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    await expect(
+      service.replaceRememberedDeviceDirectory({ handle: replacementHandle, spaceName: 'Work' }),
+    ).rejects.toThrow('Folder replacement is temporarily unavailable');
+
+    expect(updateRecordListMock).not.toHaveBeenCalled();
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       { canDisconnect: true, name: 'Work' },
     ]);

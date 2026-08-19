@@ -433,52 +433,6 @@ describe('fileSystemAccessRequestRegistry', () => {
     expect(writeHandler).toHaveBeenCalledTimes(2);
   });
 
-  it('isConfirmedReplacementBlocked returns false when no guard is registered', async () => {
-    const registry = createRegistry();
-
-    await expect(
-      registry.isConfirmedReplacementBlocked(PathUtils.join(deviceFilesPath, 'Work')),
-    ).resolves.toBe(false);
-  });
-
-  it('isConfirmedReplacementBlocked returns true when a registered guard blocks the mount', async () => {
-    const registry = createRegistry();
-    const guard = vi.fn().mockResolvedValue(true);
-
-    registry.registerConfirmedReplacementGuard(guard);
-
-    const mountPath = PathUtils.join(deviceFilesPath, 'Work');
-
-    await expect(registry.isConfirmedReplacementBlocked(mountPath)).resolves.toBe(true);
-    expect(guard).toHaveBeenCalledWith({ mountPath });
-  });
-
-  it('isConfirmedReplacementBlocked stops checking after the first blocking guard', async () => {
-    const registry = createRegistry();
-    const firstGuard = vi.fn().mockResolvedValue(true);
-    const secondGuard = vi.fn().mockResolvedValue(false);
-
-    registry.registerConfirmedReplacementGuard(firstGuard);
-    registry.registerConfirmedReplacementGuard(secondGuard);
-
-    await expect(
-      registry.isConfirmedReplacementBlocked(PathUtils.join(deviceFilesPath, 'Work')),
-    ).resolves.toBe(true);
-    expect(secondGuard).not.toHaveBeenCalled();
-  });
-
-  it('unregistering a confirmed-replacement guard stops checking it', async () => {
-    const registry = createRegistry();
-    const guard = vi.fn().mockResolvedValue(true);
-
-    const unregister = registry.registerConfirmedReplacementGuard(guard);
-    unregister();
-
-    await expect(
-      registry.isConfirmedReplacementBlocked(PathUtils.join(deviceFilesPath, 'Work')),
-    ).resolves.toBe(false);
-  });
-
   it('read and write requests for the same space are independent', async () => {
     const registry = createRegistry();
     const handle = createHandleMock();

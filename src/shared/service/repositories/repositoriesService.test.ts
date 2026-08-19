@@ -23,7 +23,7 @@ const directoryContentByPath = vi.hoisted(
 );
 const repoInstances = vi.hoisted(() => new Map<string, MockRepoInstance[]>());
 const registerWriteAccessRecoveryHandlerMock = vi.hoisted(() => vi.fn());
-const registerConfirmedReplacementGuardMock = vi.hoisted(() => vi.fn());
+const registerConfirmedReplacementLeaseProviderMock = vi.hoisted(() => vi.fn());
 const getMockAdapterPath = (adapter: unknown) =>
   typeof adapter === 'object' &&
   adapter !== null &&
@@ -135,7 +135,7 @@ vi.mock('../fileSystem', () => ({
       delete: vfsDelete,
     },
     registerWriteAccessRecoveryHandler: registerWriteAccessRecoveryHandlerMock,
-    registerConfirmedReplacementGuard: registerConfirmedReplacementGuardMock,
+    registerConfirmedReplacementLeaseProvider: registerConfirmedReplacementLeaseProviderMock,
   }),
 }));
 
@@ -188,8 +188,8 @@ describe('useRepositoriesService', () => {
     repoInstances.clear();
     registerWriteAccessRecoveryHandlerMock.mockReset();
     registerWriteAccessRecoveryHandlerMock.mockReturnValue(() => undefined);
-    registerConfirmedReplacementGuardMock.mockReset();
-    registerConfirmedReplacementGuardMock.mockReturnValue(() => undefined);
+    registerConfirmedReplacementLeaseProviderMock.mockReset();
+    registerConfirmedReplacementLeaseProviderMock.mockReturnValue(() => undefined);
     createRetryingStorageAdapterMock.mockReset();
     createRetryingStorageAdapterMock.mockImplementation((adapter: unknown) => ({
       ...(typeof adapter === 'object' && adapter !== null ? adapter : {}),
@@ -329,60 +329,109 @@ describe('useRepositoriesService', () => {
     expect(registerWriteAccessRecoveryHandlerMock).toHaveBeenCalledTimes(1);
   });
 
-  it('registers one confirmed-replacement guard with the file-system service', async () => {
+  it('registers one confirmed-replacement lease provider with the file-system service', async () => {
     createDirectoryContentSubject('/repo', []);
     const { useRepositoriesService } = await import('./repositoriesService');
 
     useRepositoriesService();
 
-    expect(registerConfirmedReplacementGuardMock).toHaveBeenCalledTimes(1);
+    expect(registerConfirmedReplacementLeaseProviderMock).toHaveBeenCalledTimes(1);
   });
 
-  it('confirmed-replacement guard blocks the exact cached mount path', async () => {
+  it('confirmed-replacement lease acquisition reports repositoryStateActive for the exact cached mount path', async () => {
     createDirectoryContentSubject('/Device Files/Work', []);
     const { useRepositoriesService } = await import('./repositoriesService');
     const service = useRepositoriesService();
 
     await service.initializeRepository('/Device Files/Work');
 
-    const [guard] = registerConfirmedReplacementGuardMock.mock.calls[0] ?? [];
+    const [acquire] = registerConfirmedReplacementLeaseProviderMock.mock.calls[0] ?? [];
 
-    await expect(guard({ mountPath: '/Device Files/Work' })).resolves.toBe(true);
+    await expect(acquire({ mountPath: '/Device Files/Work' })).resolves.toEqual({
+      status: 'repositoryStateActive',
+    });
   });
 
-  it('confirmed-replacement guard blocks a descendant of a cached repository path', async () => {
+  it('confirmed-replacement lease acquisition reports repositoryStateActive for a descendant of a cached repository path', async () => {
     createDirectoryContentSubject('/Device Files/Work/nested', []);
     const { useRepositoriesService } = await import('./repositoriesService');
     const service = useRepositoriesService();
 
     await service.initializeRepository('/Device Files/Work/nested');
 
-    const [guard] = registerConfirmedReplacementGuardMock.mock.calls[0] ?? [];
+    const [acquire] = registerConfirmedReplacementLeaseProviderMock.mock.calls[0] ?? [];
 
-    await expect(guard({ mountPath: '/Device Files/Work' })).resolves.toBe(true);
+    await expect(acquire({ mountPath: '/Device Files/Work' })).resolves.toEqual({
+      status: 'repositoryStateActive',
+    });
   });
 
-  it('confirmed-replacement guard does not block a sibling mount', async () => {
+  it('confirmed-replacement lease acquisition is unaffected by a sibling cached mount', async () => {
     createDirectoryContentSubject('/Device Files/Elsewhere', []);
     const { useRepositoriesService } = await import('./repositoriesService');
     const service = useRepositoriesService();
 
     await service.initializeRepository('/Device Files/Elsewhere');
 
-    const [guard] = registerConfirmedReplacementGuardMock.mock.calls[0] ?? [];
+    const [acquire] = registerConfirmedReplacementLeaseProviderMock.mock.calls[0] ?? [];
+    const acquisition = await acquire({ mountPath: '/Device Files/Work' });
 
-    await expect(guard({ mountPath: '/Device Files/Work' })).resolves.toBe(false);
+    expect(acquisition).toMatchObject({ status: 'acquired' });
   });
 
-  it('confirmed-replacement guard does not block when nothing is cached', async () => {
+  it('confirmed-replacement lease acquisition succeeds synchronously when nothing is cached', async () => {
     createDirectoryContentSubject('/Device Files/Work', []);
     const { useRepositoriesService } = await import('./repositoriesService');
 
     useRepositoriesService();
 
-    const [guard] = registerConfirmedReplacementGuardMock.mock.calls[0] ?? [];
+    const [acquire] = registerConfirmedReplacementLeaseProviderMock.mock.calls[0] ?? [];
+    const acquisition = await acquire({ mountPath: '/Device Files/Work' });
 
-    await expect(guard({ mountPath: '/Device Files/Work' })).resolves.toBe(false);
+    expect(acquisition).toMatchObject({ status: 'acquired', release: expect.any(Function) });
+  });
+
+  it('repository access under a reserved mount does not create/cache a Repo before the lease releases', async () => {
+    createDirectoryContentSubject('/Device Files/Work', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    const [acquire] = registerConfirmedReplacementLeaseProviderMock.mock.calls[0] ?? [];
+    const acquisition = await acquire({ mountPath: '/Device Files/Work' });
+
+    if (acquisition.status !== 'acquired') {
+      throw new Error('Expected the lease to be acquired');
+    }
+
+    let settled = false;
+    const initializePromise = service.initializeRepository('/Device Files/Work').then(() => {
+      settled = true;
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(settled).toBe(false);
+    expect(repoInstances.get('/Device Files/Work')).toBeUndefined();
+
+    acquisition.release();
+    await initializePromise;
+
+    expect(settled).toBe(true);
+    expect(repoInstances.get('/Device Files/Work')).toHaveLength(1);
+  });
+
+  it('repository access on a sibling mount is unaffected while a different mount is reserved', async () => {
+    createDirectoryContentSubject('/Device Files/Elsewhere', []);
+    const { useRepositoriesService } = await import('./repositoriesService');
+    const service = useRepositoriesService();
+
+    const [acquire] = registerConfirmedReplacementLeaseProviderMock.mock.calls[0] ?? [];
+    await acquire({ mountPath: '/Device Files/Work' });
+
+    await service.initializeRepository('/Device Files/Elsewhere');
+
+    expect(repoInstances.get('/Device Files/Elsewhere')).toHaveLength(1);
   });
 
   it('flushes pending saves only for cached repos inside the granted mount path', async () => {
