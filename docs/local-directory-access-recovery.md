@@ -9,8 +9,6 @@ Recover remembered local Mioframe directories safely across asynchronous browser
 ## Confirmed current behavior and evidence
 
 - Persisted local-directory records are `{ name, handle }`; the mounted `name` is a display/path locator and can be reused.
-- Remembered local-directory handles are stored in ordinary IndexedDB-backed application storage; Mioframe does not namespace those records by PWA install state, release channel, or URL path.
-- Chrome install state does not create a second Mioframe storage/reconnect model, but it does change one browser-owned File System Access behavior: installed web apps automatically persist granted File System Access permissions. Installed-PWA proof is therefore relevant to permission persistence/revocation, not a reason to duplicate the whole reconnect matrix. See [Chrome persistent File System Access permissions](https://developer.chrome.com/blog/persistent-permissions-for-the-file-system-access-api/).
 - `DeviceFileSystemProvider` owns the provider currently mounted under a name. A new handle object for the same name creates a new provider instance.
 - `WebFileSystemProvider` may await `queryPermission()` before reporting access recovery; old provider operations are not cancelled by unmount/replacement.
 - Browser `requestPermission()` must remain on the main thread in `serviceClient/fileSystem`.
@@ -206,5 +204,5 @@ None. Existing Material/UI contracts and copy remain unchanged except already-de
 - Post-return feature retry semantics: explicitly ordinary current-path VFS behavior; no recovery lease.
 - Unresolved architecture blockers: none.
 - Architecture-defined implementation: complete on the reviewed PR head; granted permission resolution now uses the existing topology queue through refresh/write settlement.
-- Remaining acceptance gates: exact-head GitHub CI and the narrow real-Chrome File System Access proof defined above, plus cleanup of any active review-only quality findings before merge.
+- Remaining acceptance gates: none; semantic review, operator acceptance, and exact-head GitHub CI are complete.
 - Verdict: **ready**.
