@@ -4,31 +4,31 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- File-system-owned local-directory recovery identity, confirmed relocation, duplicate-mount handling, and recovery-key lifecycle for PR #211 after the latest correction.
+- File-system-owned local-directory recovery identity, confirmed relocation, duplicate-mount handling, and same-runtime mounted-directory topology mutations for PR #211.
 
 ## Blockers
 
-### B1 — duplicate-mount result is derived from a stale preflight snapshot
+### B1 — mounted-directory topology mutations are not serialized
 
 Owner: `src/shared/service/fileSystem`
 
-Problem: `relocateRememberedDeviceDirectory()` now revalidates the marker and initiating recovery target before returning `alreadyMounted`, but `matchedOtherRecord` is still computed from the initial `records` snapshot before those asynchronous checks and then reused afterwards. The duplicate decision itself is therefore not based on current mounted-directory state.
+Problem: `relocateRememberedDeviceDirectory()` performs asynchronous marker inspection, recovery validation, and duplicate-handle detection while `addDeviceDirectory()`, `removeDeviceDirectory()`, same-entry reconnect commit, and relocation can independently change the same mounted-directory topology. The current implementation therefore cannot guarantee that its final `alreadyMounted` versus unique-relocation decision reflects the current same-runtime topology.
 
 Evidence:
 
-- [File-system service](useFileSystemService.ts) — `otherRecords` / `matchedOtherRecord` are derived before `inspectMioframeSpaceCandidate()` and the later `getRecordList()` recheck; the old `matchedOtherRecord` is returned after those awaits.
-- [File-system service tests](useFileSystemService.test.ts) — current regressions cover invalid marker and stale initiating target, but do not cover the duplicate mount disappearing/replacement or a previously unique candidate becoming mounted while relocation preflight is pending.
+- [File-system service](useFileSystemService.ts) — `matchedOtherRecord` is derived from the initial persisted-record snapshot and reused after later asynchronous marker and recovery checks; service-owned add/remove/reconnect/relocation mutations are not serialized with this preflight/commit sequence.
+- [File-system service tests](useFileSystemService.test.ts) — current regressions cover invalid marker and stale initiating recovery target, but not a duplicate disappearing/replacement or a previously unique candidate becoming mounted during relocation preflight.
 
 Basis:
 
-- [Local-directory recovery handoff](../../../../docs/local-directory-access-recovery.md) — a confirmed candidate already mounted elsewhere must return/open that existing mount, while a confirmed unique candidate may be relocated; confirmed relocation must make terminal decisions only after asynchronous preflight and current recovery validation.
-- [Service rules](../AGENTS.md) — service mutation contracts must be deterministic about parameters, lifecycle, invalidation, and current canonical storage state.
+- [Local-directory recovery handoff](../../../../docs/local-directory-access-recovery.md) — same-runtime mounted-directory topology mutations must use one fileSystem-local async mutation queue; confirmed relocation must run marker revalidation, current recovery validation, duplicate detection, and commit within one serialized mutation turn.
+- [Service rules](../AGENTS.md) — services own lifecycle/canonical storage state and mutation contracts must be deterministic about invalidation and missing/current data behavior.
 
-Risk: if the initially matched mount is removed/replaced during marker/recovery revalidation, the service can return `alreadyMounted` with a stale name; if no duplicate existed initially but the candidate becomes mounted during the same interval, relocation can persist a second mount for the same physical directory. Both violate the required duplicate/unique relocation scenarios.
+Risk: a removed/replaced duplicate can still produce stale `alreadyMounted` navigation, or a candidate mounted concurrently by another service-owned mutation can be persisted again as a duplicate mount.
 
-Required final state: the `alreadyMounted` versus unique-relocation decision must be derived from current service-owned mounted-directory state after the confirmation pause and required marker validation. No duplicate result may be carried across asynchronous preflight without proving that the matched mounted provider is still current, and a candidate that becomes mounted before persistence must not be duplicated. Keep the solution local to the existing fileSystem recovery/provider state; do not introduce persistent IDs, repository lifecycle, or general locking infrastructure.
+Required final state: serialize service-owned mounted-directory topology mutations within the current fileSystem service instance through one runtime-only async queue. User picker/confirmation remains outside the queue. Confirmed relocation enters the queue only after confirmation and performs marker revalidation, current recovery validation, duplicate detection, and persistence/runtime commit within that mutation turn. Add/remove and the topology-changing same-entry reconnect commit use the same queue. The queue releases after success and failure; write-recovery settlement does not hold it after reconnect has committed.
 
-Verification: focused service tests must cover (1) a duplicate mount that is removed/replaced while relocation preflight is pending and must not yield a stale `alreadyMounted`, and (2) a candidate that becomes mounted while relocation preflight is pending and must not be persisted as another mount. Preserve valid `alreadyMounted`, invalid marker, stale recovery, and unique relocation behavior.
+Verification: focused service tests prove both orderings: (1) a queued remove/replace that runs before relocation is observed by relocation and cannot yield a stale `alreadyMounted`; (2) a queued add of the candidate that runs before relocation causes current `alreadyMounted` rather than duplicate persistence. Also prove that topology mutations do not interleave with a relocation turn, queue failure does not block later mutations, and existing reconnect/settlement/relocation behavior remains unchanged.
 
 ## Major issues
 
@@ -44,7 +44,7 @@ None.
 
 ## Items not required
 
-- General directory loading/refresh state, external filesystem observation, persistent mounted-record IDs, VFS route identity, repository retirement/generations, general locking, and generic cross-runtime mounted-record synchronization remain outside PR #211.
+- General directory loading/refresh state, external filesystem observation, persistent mounted-record IDs, VFS route identity, repository retirement/generations, hierarchical/cross-runtime locking, and generic cross-runtime mounted-record synchronization remain outside PR #211.
 
 ## Unresolved questions
 
