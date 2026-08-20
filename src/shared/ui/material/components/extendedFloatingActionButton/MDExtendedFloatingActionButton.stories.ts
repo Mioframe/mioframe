@@ -48,6 +48,7 @@ export const BehaviorContracts: Story = {
     },
     template: `
       <div data-testid="md-extended-fab-behavior-contracts">
+        <button type="button" data-testid="behavior-extended-fab-focus-origin">Focus origin</button>
         <MDExtendedFloatingActionButton @click="onClick">
           <template #icon><AddIcon data-testid="behavior-extended-fab-icon" /></template>
           Create a new note

@@ -693,8 +693,23 @@ function printHelp(): void {
   console.log('  --profile <name>    Override the verify runtime profile.');
   console.log(`                      Env alternative: ${VERIFY_PROFILE_ENV}=local|github-actions.`);
   console.log('  --only <label>      Run one focused verification check.');
+  console.log('  --storybook-build-ci-fallback');
+  console.log(
+    '                      With `--only storybook-build` (not `--full`): build only when the',
+  );
+  console.log(
+    '                      ordinary storybook-build plan requires it and neither storybook-behavior',
+  );
+  console.log('                      nor visual will run. See .github/workflows/verify.yml.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log('                      Cannot be combined with --full.');
+  console.log(
+    '  --repeat <count>    With `--only storybook-behavior` and `--files` (integer 2-20):',
+  );
+  console.log(
+    '                      repeat the selected Storybook behavior tests this many times within',
+  );
+  console.log('                      one invocation, for deterministic flake diagnosis.');
   console.log(
     '  --full              Unconditional full-project release scope: do not resolve changed paths,',
   );
@@ -724,6 +739,10 @@ function printHelp(): void {
   console.log(`  ${VERIFY_PROFILE_ENV}=github-actions pnpm verify --only visual`);
   console.log('  pnpm verify --verbose --only type-check');
   console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
+  console.log('  pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback');
+  console.log(
+    '  pnpm verify --only storybook-behavior --files src/foo.browser.spec.ts --repeat 10',
+  );
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
   console.log('  pnpm verify --full');
@@ -1253,6 +1272,26 @@ export interface BuildCommandsOptions {
   storybookBehaviorPlan?: StorybookBehaviorPlan | null;
   storybookBuildPlan?: StorybookBuildPlan | null;
   visualPlan?: BuildCommandsVisualPlan | null;
+  /**
+   * Dedicated GitHub Actions fallback contract for the `storybook-build` label only (see
+   * `.github/workflows/verify.yml`): storybook-behavior and visual run as separate
+   * self-contained CI jobs that build their own Storybook when selected, so this narrows the
+   * `storybook-build` trigger to the ordinary storybook-build plan alone, skipping whenever a
+   * self-contained browser lane will already supply the equivalent static-build prerequisite.
+   * Has no effect on any other label and does not change `--full` or the ordinary (non-CI)
+   * `--only storybook-build` reuse-aware trigger. Sourced from the resolved
+   * `VerifyInvocation.storybookBuildCiFallback` (the `--storybook-build-ci-fallback` CLI flag);
+   * defaults to `false`.
+   */
+  storybookBuildCiFallback?: boolean;
+  /**
+   * Storybook behavior stability repeat count from `--repeat`. Applies only
+   * to a runnable `storybook-behavior` command: appends the equivalent
+   * Playwright repeated-execution argument (`--repeat-each`) to that
+   * command's args. Has no effect on any other label. Null for an ordinary
+   * invocation.
+   */
+  repeat?: number | null;
 }
 
 /**
@@ -1272,6 +1311,8 @@ export function buildCommands(
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
     storybookBuildPlan: storybookBuildPlanOverride = null,
     visualPlan: visualPlanOverride = null,
+    storybookBuildCiFallback = false,
+    repeat = currentVerifyInvocation?.repeat ?? null,
   }: BuildCommandsOptions = {},
 ): CommandEntry[] {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1466,32 +1507,134 @@ export function buildCommands(
     });
   }
 
-  if (storybookBehaviorPlan.mode === 'invalid') {
+  // Locally, the shared Storybook static build is a prerequisite for both
+  // storybook-behavior and visual, not an independent proof owner. Schedule
+  // it before either lane so a successful build result is already available
+  // in `results` (see `getExtraEnvForEntry`) when they run, and derive the
+  // requirement from the three existing plans only: no separate impact
+  // registry. `invalid` behavior/visual plans fail closed on their own lane
+  // below and must not, by themselves, force an otherwise-unneeded build.
+  // In GitHub Actions, storybook-behavior and visual are separate
+  // self-contained jobs that never reuse this lane's output (see
+  // `storybookBuildCiFallback` below), so this reuse-aware trigger applies
+  // only to `--full` and to the ordinary (non-CI-fallback) `--only
+  // storybook-build` invocation (i.e. without `--storybook-build-ci-fallback`).
+  const storybookBehaviorNeedsStaticBuild =
+    storybookBehaviorPlan.mode === 'full' || storybookBehaviorPlan.mode === 'focused';
+  const visualNeedsStaticBuild =
+    visualPlan !== null && (visualPlan.mode === 'full' || visualPlan.mode === 'focused');
+  const storybookStaticBuildReasons = [
+    ...(storybookBuildPlan.mode === 'full' ? storybookBuildPlan.reasons : []),
+    ...(storybookBehaviorNeedsStaticBuild
+      ? [
+          `storybook-behavior lane requires a Storybook static build (${storybookBehaviorPlan.reasons.join('; ')})`,
+        ]
+      : []),
+    ...(visualNeedsStaticBuild
+      ? [`visual lane requires a Storybook static build (${visualPlan.reasons.join('; ')})`]
+      : []),
+  ];
+
+  if (fullMode) {
     commands.push({
+      kind: 'run',
+      label: 'storybook-build',
+      command: 'pnpm',
+      args: ['storybook:build'],
+      weight: classifyCommandWeight({ label: 'storybook-build' }),
+      triggerReason: 'full-project release verification',
+    });
+  } else if (storybookBuildCiFallback) {
+    // Narrow CI-only fallback contract: fires only for the ordinary
+    // storybook-build plan, and only when neither self-contained browser
+    // lane will already build an equivalent static Storybook output.
+    if (
+      storybookBuildPlan.mode === 'full' &&
+      !storybookBehaviorNeedsStaticBuild &&
+      !visualNeedsStaticBuild
+    ) {
+      commands.push({
+        kind: 'run',
+        label: 'storybook-build',
+        command: 'pnpm',
+        args: ['storybook:build'],
+        weight: classifyCommandWeight({ label: 'storybook-build' }),
+        triggerReason: storybookBuildPlan.reasons.join('; '),
+      });
+    } else {
+      commands.push({
+        kind: 'skipped',
+        label: 'storybook-build',
+        command: 'pnpm storybook:build',
+        reason:
+          storybookBehaviorNeedsStaticBuild || visualNeedsStaticBuild
+            ? 'CI fallback: a self-contained Storybook browser lane already supplies the static build prerequisite'
+            : 'no storybook-relevant changes',
+      });
+    }
+  } else if (storybookStaticBuildReasons.length > 0) {
+    commands.push({
+      kind: 'run',
+      label: 'storybook-build',
+      command: 'pnpm',
+      args: ['storybook:build'],
+      weight: classifyCommandWeight({ label: 'storybook-build' }),
+      triggerReason: storybookStaticBuildReasons.join('; '),
+    });
+  } else {
+    commands.push({
+      kind: 'skipped',
+      label: 'storybook-build',
+      command: 'pnpm storybook:build',
+      reason: 'no storybook-relevant changes',
+    });
+  }
+
+  let storybookBehaviorEntry: CommandEntry;
+
+  if (storybookBehaviorPlan.mode === 'invalid') {
+    storybookBehaviorEntry = {
       kind: 'failed',
       label: 'storybook-behavior',
       command: 'pnpm test:storybook-behavior',
       reason: `invalid Storybook behavior scenario registry state: ${storybookBehaviorPlan.reasons.join('; ')}`,
-    });
+    };
   } else if (fullMode) {
-    commands.push(createStorybookBehaviorCommand([], 'full-project release verification'));
+    storybookBehaviorEntry = createStorybookBehaviorCommand(
+      [],
+      'full-project release verification',
+    );
   } else if (storybookBehaviorPlan.mode === 'full') {
-    commands.push(createStorybookBehaviorCommand([], storybookBehaviorPlan.reasons.join('; ')));
+    storybookBehaviorEntry = createStorybookBehaviorCommand(
+      [],
+      storybookBehaviorPlan.reasons.join('; '),
+    );
   } else if (storybookBehaviorPlan.mode === 'focused') {
-    commands.push(
-      createStorybookBehaviorCommand(
-        storybookBehaviorPlan.specs,
-        storybookBehaviorPlan.reasons.join('; '),
-      ),
+    storybookBehaviorEntry = createStorybookBehaviorCommand(
+      storybookBehaviorPlan.specs,
+      storybookBehaviorPlan.reasons.join('; '),
     );
   } else {
-    commands.push({
+    storybookBehaviorEntry = {
       kind: 'skipped',
       label: 'storybook-behavior',
       command: 'pnpm test:storybook-behavior',
       reason: 'empty storybook behavior scope',
-    });
+    };
   }
+
+  // Narrow repeated-execution stability contract (`--repeat`): only ever
+  // resolved for `--only storybook-behavior --files ...` (see
+  // resolveVerifyInvocation's assertModeCombination), so it applies only to
+  // this runnable entry and never to another label's command.
+  if (repeat !== null && storybookBehaviorEntry.kind === 'run') {
+    storybookBehaviorEntry = {
+      ...storybookBehaviorEntry,
+      args: [...storybookBehaviorEntry.args, '--repeat-each', String(repeat)],
+    };
+  }
+
+  commands.push(storybookBehaviorEntry);
 
   if (fullMode) {
     commands.push({
@@ -1540,33 +1683,6 @@ export function buildCommands(
       label: 'visual',
       command: 'pnpm test:visual',
       reason: 'empty visual scope',
-    });
-  }
-
-  if (fullMode) {
-    commands.push({
-      kind: 'run',
-      label: 'storybook-build',
-      command: 'pnpm',
-      args: ['storybook:build'],
-      weight: classifyCommandWeight({ label: 'storybook-build' }),
-      triggerReason: 'full-project release verification',
-    });
-  } else if (storybookBuildPlan.mode === 'full') {
-    commands.push({
-      kind: 'run',
-      label: 'storybook-build',
-      command: 'pnpm',
-      args: ['storybook:build'],
-      weight: classifyCommandWeight({ label: 'storybook-build' }),
-      triggerReason: storybookBuildPlan.reasons.join('; '),
-    });
-  } else {
-    commands.push({
-      kind: 'skipped',
-      label: 'storybook-build',
-      command: 'pnpm storybook:build',
-      reason: 'no storybook-relevant changes',
     });
   }
 
@@ -1862,12 +1978,21 @@ export function printSummary(
 // check already produced a fresh artifact earlier in this same run.
 const ARTIFACT_REUSE_LABELS = new Set(['artifact', 'release-smoke']);
 
+// Storybook browser lanes whose webServer builds the Storybook static
+// artifact itself (see playwright.storybook.config.ts / playwright.visual.config.ts).
+// Reused only when the `storybook-build` check already produced a fresh
+// static build earlier in this same run.
+const STORYBOOK_STATIC_REUSE_LABELS = new Set(['storybook-behavior', 'visual']);
+
 /**
  * Resolve extra env for a command entry, based on prior results in this run.
  * Sets `RELEASE_ARTIFACT_SKIP_BUILD=1` for the `artifact`/`release-smoke`
  * release-only checks once the `build` check has already produced a fresh
  * production artifact in this same `pnpm verify` invocation, so a single
  * release gate does not rebuild the artifact once per check that needs it.
+ * Sets `STORYBOOK_STATIC_SKIP_BUILD=1` for the `storybook-behavior`/`visual`
+ * checks once the `storybook-build` check has already produced a fresh
+ * Storybook static build in this same invocation, for the same reason.
  * @param entry Command entry about to run.
  * @param priorResults Results already collected earlier in this run.
  * @returns Extra env to merge into the command's environment.
@@ -1876,13 +2001,25 @@ export function getExtraEnvForEntry(
   entry: { label: string },
   priorResults: readonly { label: string; status: string }[],
 ): NodeJS.ProcessEnv {
-  if (!ARTIFACT_REUSE_LABELS.has(entry.label)) {
-    return {};
+  const extraEnv: NodeJS.ProcessEnv = {};
+
+  if (ARTIFACT_REUSE_LABELS.has(entry.label)) {
+    const buildResult = priorResults.find((result) => result.label === 'build');
+
+    if (buildResult?.status === 'passed') {
+      extraEnv.RELEASE_ARTIFACT_SKIP_BUILD = '1';
+    }
   }
 
-  const buildResult = priorResults.find((result) => result.label === 'build');
+  if (STORYBOOK_STATIC_REUSE_LABELS.has(entry.label)) {
+    const storybookBuildResult = priorResults.find((result) => result.label === 'storybook-build');
 
-  return buildResult?.status === 'passed' ? { RELEASE_ARTIFACT_SKIP_BUILD: '1' } : {};
+    if (storybookBuildResult?.status === 'passed') {
+      extraEnv.STORYBOOK_STATIC_SKIP_BUILD = '1';
+    }
+  }
+
+  return extraEnv;
 }
 
 /** Environment inputs for a verify child command. */
@@ -1996,6 +2133,12 @@ async function main(
       fullMode: invocation.scope.kind === 'full',
       packageJsonOldRef,
       fixMode: invocation.fixMode,
+      // `--storybook-build-ci-fallback` is only ever resolved to true alongside
+      // `--only storybook-build` outside `--full` (enforced by
+      // `resolveVerifyInvocation`), so this passes straight through (see
+      // `storybookBuildCiFallback` on BuildCommandsOptions).
+      storybookBuildCiFallback: invocation.storybookBuildCiFallback,
+      repeat: invocation.repeat,
     }),
     onlyLabel,
   );
