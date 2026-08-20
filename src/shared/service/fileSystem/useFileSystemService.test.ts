@@ -1349,6 +1349,76 @@ describe('useFileSystemService', () => {
     expect(events).toEqual([]);
   });
 
+  it('relocateRememberedDeviceDirectory returns invalidCandidate instead of alreadyMounted when the marker becomes invalid while duplicate-handle detection is pending', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const archiveHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Archive (moved)',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Work', handle: workHandle },
+      { name: 'Archive', handle: archiveHandle },
+    ]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+
+    let resolveDuplicateDetection: (() => void) | undefined;
+    const isSameEntryMock = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveDuplicateDetection = () => {
+            resolve(true);
+          };
+        }),
+    );
+    archiveHandle.isSameEntry = isSameEntryMock;
+
+    const events: Array<{ source: string; type: string }> = [];
+    const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
+      events.push({ source: event.source, type: event.type });
+    });
+
+    const relocatePromise = service.relocateRememberedDeviceDirectory({
+      handle: candidateHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
+
+    // Let relocation's turn start and reach the pending duplicate-handle detection before the
+    // candidate marker is invalidated.
+    await vi.waitFor(() => {
+      expect(isSameEntryMock).toHaveBeenCalled();
+    });
+
+    // While duplicate-handle detection is still pending, the candidate marker becomes invalid.
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: false });
+
+    // Duplicate-handle detection resolves (finding a duplicate); relocation must still perform the
+    // canonical marker inspection afterwards, as the final preflight, before any terminal decision.
+    resolveDuplicateDetection?.();
+
+    await expect(relocatePromise).resolves.toEqual({ status: 'invalidCandidate' });
+    unsubscribe();
+
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+  });
+
   it('relocateRememberedDeviceDirectory observes a queued remove that runs first instead of a stale alreadyMounted', async () => {
     const workHandle = createDirectoryHandleMock({
       name: 'Work',

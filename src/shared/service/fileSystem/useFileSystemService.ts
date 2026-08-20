@@ -510,17 +510,18 @@ const setupFileSystemService = () => {
         return { status: 'staleRecovery' };
       }
 
-      // Revalidate the canonical marker after the confirmation pause, immediately before any
-      // terminal decision: the candidate may no longer look like a Mioframe space by the time the
-      // user confirms.
+      // Duplicate-handle detection runs first, while the mutation queue keeps same-runtime
+      // topology stable. Canonical marker inspection runs last, immediately before any terminal
+      // decision: it is the final external asynchronous preflight, so a candidate that stopped
+      // looking like a Mioframe space while duplicate detection was pending cannot be accepted.
+      const otherRecords = records.filter((record) => record !== existingRecord);
+      const matchedOtherRecord = await findRecordByHandle(otherRecords, handle);
+
       const inspection = await inspectMioframeSpaceCandidate(handle);
 
       if (!inspection.looksLikeExistingSpace) {
         return { status: 'invalidCandidate' };
       }
-
-      const otherRecords = records.filter((record) => record !== existingRecord);
-      const matchedOtherRecord = await findRecordByHandle(otherRecords, handle);
 
       if (matchedOtherRecord) {
         return { status: 'alreadyMounted', name: matchedOtherRecord.name };
