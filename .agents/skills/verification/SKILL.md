@@ -15,6 +15,8 @@ A skipped or empty local lane is not evidence that the proof type is unnecessary
 
 Mioframe's canonical verifier entry points are `pnpm verify ...`, `pnpm verify:release`, `pnpm verify:status`, and `pnpm verify:resume`. Invoke these commands normally when required. They are the repository-owned verification boundary and own their execution environment and transitive tooling.
 
+Agent-facing verifier invocations must use those canonical commands directly. Do not prepend shell-level environment assignments such as `NAME=value pnpm verify ...` or `env NAME=value pnpm verify ...` to select verifier behavior. Any behavior a coding agent is expected to choose must be represented by a narrow verifier CLI option or resolved automatically by the verifier. Environment variables may remain internal verifier-to-child, CI-runtime, or host-context implementation details. If a required coding-agent verification mode can only be reached through an env prefix, treat that as a verifier interface gap and correct the verifier instead of asking for broader command approval.
+
 Do not preflight verifier internals or infer that a verifier command is unavailable from generic sandbox capabilities, tool availability visible inside the current shell, or knowledge of how a child check is implemented. Attempt the canonical verifier command first.
 
 Keep the coding-agent runtime's sandbox and permission system enabled. If the runtime itself rejects the verifier invocation, keep the command unchanged and use the runtime's normal command-scoped approval/escalation mechanism. Report an environment blocker only after an actual invocation still cannot run, using the exact visible failure.
