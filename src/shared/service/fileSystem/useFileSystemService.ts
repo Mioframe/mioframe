@@ -1,11 +1,18 @@
-import { isAutomergeStorageFileName } from '@shared/lib/automergeAdapter';
+import {
+  inspectMioframeSpaceDirectory,
+  isAutomergeStorageFileName,
+  type MioframeSpaceInspection,
+} from '@shared/lib/automergeAdapter';
 import {
   DEVICE_FILES_ROOT_NAME,
   DeviceFileSystemProvider,
   type DeviceFileDisplayRecord,
   type MountedDeviceFileRecord,
 } from '@shared/lib/deviceFileSystemProvider';
+import { DomainError } from '@shared/lib/error';
+import { FileSystemServiceErrorCode } from './fileSystemContracts';
 import type {
+  DeviceDirectoryRecoveryTarget,
   ReadDirectoryOptions,
   ReconnectDeviceDirectoryResult,
   RelocateRememberedDeviceDirectoryResult,
@@ -53,6 +60,9 @@ const didPersistedDeviceDirectoryRecordsChange = (
     );
   });
 
+const MARKER_INSPECTION_FAILED_MESSAGE =
+  'Could not inspect this folder. Try again from this action.';
+
 const reportWebFileSystemDiagnosticStep = (event: WebFileSystemDiagnosticStep): void => {
   addWebFileSystemDiagnosticStepBreadcrumb(event);
   addWebFileSystemReadDiagnosticStepBreadcrumb(event);
@@ -62,11 +72,24 @@ const setupFileSystemService = () => {
   const vfs = new VirtualFileSystem();
   const deviceFilesPath = PathUtils.join('/', DEVICE_FILES_ROOT_NAME);
   const registry = createFileSystemAccessRequestRegistry({ deviceFilesPath });
+
+  // Opaque runtime recovery key per mounted `localDirectory` provider instance, keyed by mounted
+  // name. Minted once per genuinely new provider (see `createProvider` below), which is exactly
+  // when a mounted name starts identifying a different provider instance. Runtime-only: never
+  // persisted, never exposed through display records or diagnostics.
+  const recoveryKeysByName = new Map<string, string>();
+
+  const isCurrentRecoveryTarget = ({ spaceName, recoveryKey }: DeviceDirectoryRecoveryTarget) =>
+    recoveryKeysByName.get(spaceName) === recoveryKey;
+
   const deviceFileSystemProvider = DeviceFileSystemProvider({
     createProvider: (record) => {
       if (record.kind !== 'localDirectory') {
         return createOriginPrivateStorageProvider(record.handle);
       }
+
+      const recoveryKey = crypto.randomUUID();
+      recoveryKeysByName.set(record.name, recoveryKey);
 
       // Use a holder so the refresh callback does not capture the provider variable
       // from the same expression that assigns it.
@@ -83,7 +106,7 @@ const setupFileSystemService = () => {
             mode,
             refreshProvider: () => notifyHolder.fn(),
           }),
-        onUnavailableRoot: () => ({ spaceName: record.name }),
+        onUnavailableRoot: () => ({ spaceName: record.name, recoveryKey }),
         onDiagnosticStep: reportWebFileSystemDiagnosticStep,
       });
 
@@ -338,12 +361,27 @@ const setupFileSystemService = () => {
     return { status: 'reconnected', name: nextRecord.name };
   };
 
+  const inspectMioframeSpaceCandidate = async (
+    handle: FileSystemDirectoryHandle,
+  ): Promise<MioframeSpaceInspection> => {
+    try {
+      return await inspectMioframeSpaceDirectory(handle);
+    } catch (error) {
+      throw new DomainError(MARKER_INSPECTION_FAILED_MESSAGE, {
+        cause: error,
+        code: FileSystemServiceErrorCode.markerInspectionFailed,
+      });
+    }
+  };
+
   const reconnectDeviceDirectory = async ({
     handle,
     spaceName,
+    recoveryKey,
   }: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
+    recoveryKey: string;
   }): Promise<ReconnectDeviceDirectoryResult> => {
     await deviceFilesReady;
 
@@ -354,28 +392,55 @@ const setupFileSystemService = () => {
       return { status: 'missingRecord' };
     }
 
+    if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
+      return { status: 'staleRecovery' };
+    }
+
     let isSameEntry: boolean;
     try {
-      if (typeof existingRecord.handle.isSameEntry !== 'function') {
-        return { status: 'confirmationRequired' };
-      }
-      isSameEntry = await existingRecord.handle.isSameEntry(handle);
+      isSameEntry =
+        typeof existingRecord.handle.isSameEntry === 'function' &&
+        (await existingRecord.handle.isSameEntry(handle));
     } catch {
-      return { status: 'confirmationRequired' };
+      isSameEntry = false;
     }
 
-    if (!isSameEntry) {
-      return { status: 'confirmationRequired' };
+    if (isSameEntry) {
+      // Revalidate immediately before mutation: the target may have been replaced while
+      // `isSameEntry()` was pending.
+      const recheckRecords = await getRecordList();
+      const recheckRecord = recheckRecords.find((record) => record.name === spaceName);
+
+      if (!recheckRecord) {
+        return { status: 'missingRecord' };
+      }
+      if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
+        return { status: 'staleRecovery' };
+      }
+
+      const replacement = await persistAndRemountSameEntry({
+        handle,
+        records: recheckRecords,
+        existingRecord: recheckRecord,
+      });
+
+      const mountPath = PathUtils.join(deviceFilesPath, spaceName);
+      const settlement = await registry.runWriteRecoveryHandlers({ mountPath, spaceName });
+      const status =
+        settlement.status === 'flushed' ? 'reconnected' : 'reconnectedWithWriteRecoveryFailure';
+
+      return { status, name: replacement.name };
     }
 
-    const replacement = await persistAndRemountSameEntry({ handle, records, existingRecord });
+    // Identity is false or unverifiable: canonical marker inspection decides whether this is an
+    // explainable candidate that still needs explicit user confirmation.
+    const inspection = await inspectMioframeSpaceCandidate(handle);
 
-    const mountPath = PathUtils.join(deviceFilesPath, spaceName);
-    const settlement = await registry.runWriteRecoveryHandlers({ mountPath, spaceName });
-    const status =
-      settlement.status === 'flushed' ? 'reconnected' : 'reconnectedWithWriteRecoveryFailure';
+    if (!inspection.looksLikeExistingSpace) {
+      return { status: 'invalidCandidate' };
+    }
 
-    return { status, name: replacement.name };
+    return { status: 'confirmationRequired' };
   };
 
   // Relocates a remembered record whose locator-different candidate was explicitly confirmed by
@@ -386,9 +451,11 @@ const setupFileSystemService = () => {
   const relocateRememberedDeviceDirectory = async ({
     handle,
     spaceName,
+    recoveryKey,
   }: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
+    recoveryKey: string;
   }): Promise<RelocateRememberedDeviceDirectoryResult> => {
     await deviceFilesReady;
 
@@ -399,6 +466,10 @@ const setupFileSystemService = () => {
       return { status: 'missingRecord' };
     }
 
+    if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
+      return { status: 'staleRecovery' };
+    }
+
     const otherRecords = records.filter((record) => record !== existingRecord);
     const matchedOtherRecord = await findRecordByHandle(otherRecords, handle);
 
@@ -406,21 +477,44 @@ const setupFileSystemService = () => {
       return { status: 'alreadyMounted', name: matchedOtherRecord.name };
     }
 
-    // The old target name still counts as occupied because `existingRecord` remains in `records`
-    // here, so the allocated name always differs from the old mounted name.
-    const newName = getUniqueDeviceDirectoryName(handle.name, records);
+    // Revalidate the canonical marker after all asynchronous preflight and after the confirmation
+    // pause, immediately before any mutation: the candidate may no longer look like a Mioframe
+    // space by the time the user confirms.
+    const inspection = await inspectMioframeSpaceCandidate(handle);
+
+    if (!inspection.looksLikeExistingSpace) {
+      return { status: 'invalidCandidate' };
+    }
+
+    // Revalidate the recovery target again immediately before mutation.
+    const recheckRecords = await getRecordList();
+    const recheckRecord = recheckRecords.find((record) => record.name === spaceName);
+
+    if (!recheckRecord) {
+      return { status: 'missingRecord' };
+    }
+    if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
+      return { status: 'staleRecovery' };
+    }
+
+    // The old target name still counts as occupied because `recheckRecord` remains in
+    // `recheckRecords` here, so the allocated name always differs from the old mounted name.
+    const newName = getUniqueDeviceDirectoryName(handle.name, recheckRecords);
     const nextRecord = { name: newName, handle } satisfies PersistedDeviceDirectoryRecord;
-    const nextRecords = records.map((record) => (record === existingRecord ? nextRecord : record));
+    const nextRecords = recheckRecords.map((record) =>
+      record === recheckRecord ? nextRecord : record,
+    );
 
     await updateRecordList(nextRecords);
 
-    deviceFileSystemProvider.removeRecord(existingRecord.name);
+    deviceFileSystemProvider.removeRecord(recheckRecord.name);
+    recoveryKeysByName.delete(recheckRecord.name);
     deviceFileSystemProvider.upsertRecord({
       name: newName,
       kind: 'localDirectory',
       handle,
     });
-    registry.clearForSpace(existingRecord.name);
+    registry.clearForSpace(recheckRecord.name);
     syncActiveDeviceFiles();
 
     return { status: 'relocated', name: newName };
@@ -442,6 +536,7 @@ const setupFileSystemService = () => {
 
     await updateRecordList(nextRecords);
     deviceFileSystemProvider.removeRecord(name);
+    recoveryKeysByName.delete(name);
     registry.clearForSpace(name);
     syncActiveDeviceFiles();
   };
@@ -463,6 +558,7 @@ const setupFileSystemService = () => {
     removeDeviceDirectory,
     reconnectDeviceDirectory,
     relocateRememberedDeviceDirectory,
+    inspectMioframeSpaceCandidate,
     getFileSystemAccessRequest: registry.getRequest,
     getTemporaryFileSystemAccessHandle: registry.prepareHandle,
     registerWriteAccessRecoveryHandler: registry.registerWriteRecoveryHandler,

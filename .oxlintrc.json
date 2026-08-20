@@ -19,6 +19,10 @@
   "rules": {
     "eslint/no-await-in-loop": "warn",
     "eslint/no-shadow": "warn",
+    "eslint/no-underscore-dangle": [
+      "warn",
+      { "allow": ["__isDomainError", "__sameEntryKey", "__writtenContent"] }
+    ],
     "eslint/no-unneeded-ternary": "warn",
     "eslint/no-useless-rename": "error",
     "oxc/no-accumulating-spread": "warn",

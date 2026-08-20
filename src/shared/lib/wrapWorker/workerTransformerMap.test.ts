@@ -176,6 +176,7 @@ describe('workerTransformerMap', () => {
       fail: () => {
         throw new WebFileSystemUnavailableRootError({
           spaceName: 'Work',
+          recoveryKey: 'recovery-key',
           cause: originalCause,
         });
       },
@@ -192,9 +193,11 @@ describe('workerTransformerMap', () => {
       expect(error).toMatchObject({
         code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
         spaceName: 'Work',
+        recoveryKey: 'recovery-key',
       });
       expect(parseFileSystemUnavailableRootRecovery(error)).toEqual({
         spaceName: 'Work',
+        recoveryKey: 'recovery-key',
       });
       if (!(error instanceof WebFileSystemUnavailableRootError)) return true;
       expect(JSON.stringify(error.toJSON())).not.toContain('I/O error');

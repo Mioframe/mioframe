@@ -1,4 +1,24 @@
 import { vi } from 'vitest';
+import { WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE } from './WebFileSystemUnavailableRootError';
+
+// Matches `DEVICE_FILES_ROOT_NAME` from `@shared/lib/deviceFileSystemProvider`. Not imported to
+// avoid a circular dependency back into this provider boundary from that consumer module.
+const DEVICE_FILES_ROOT_NAME = 'Device Files';
+
+/**
+ * Duck-types an unavailable-root error instead of using `instanceof`: callers that dynamically
+ * `import()` the fileSystem service after `vi.resetModules()` get a distinct module instance of
+ * `WebFileSystemUnavailableRootError`, so a class-identity check would spuriously fail even for a
+ * genuine unavailable-root error.
+ * @param error - Caught error value to check.
+ * @returns Whether `error` carries the unavailable-root code and a string `recoveryKey`.
+ */
+const isUnavailableRootErrorLike = (error: unknown): error is { recoveryKey: string } =>
+  error instanceof Error &&
+  'code' in error &&
+  error.code === WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE &&
+  'recoveryKey' in error &&
+  typeof error.recoveryKey === 'string';
 
 type BaseHandleOptions = {
   name: string;
@@ -24,7 +44,7 @@ type MockFileSystemFileHandle = FileSystemFileHandle & {
   >;
 };
 
-type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
+export type MockFileSystemDirectoryHandle = FileSystemDirectoryHandle & {
   __sameEntryKey: string;
   entriesMock: ReturnType<
     typeof vi.fn<
@@ -279,4 +299,61 @@ export const createDirectoryHandleMock = ({
   };
 
   return handle;
+};
+
+/**
+ * Waits until `spaceName` is hydrated/mounted, forces `handle` to report granted read permission
+ * and throw a granted-but-unreadable root failure, reads the mounted path (expecting it to reject
+ * with `WebFileSystemUnavailableRootError`), and returns the real opaque `recoveryKey` the
+ * fileSystem service minted for that mounted provider instance. Restores `handle.entries` and
+ * `handle.queryPermission` afterward so the fixture keeps its originally configured permission
+ * behavior for the rest of the test.
+ * @param options - The mock directory handle mounted for the target space, the fileSystem service
+ * instance (`useFileSystemService()`/`useMainServiceClient().fileSystem`), and the mounted space
+ * name to capture the key for.
+ * @returns The real `recoveryKey` minted for the currently mounted provider at that handle.
+ */
+export const captureRecoveryKeyFromUnavailableRoot = async ({
+  handle,
+  service,
+  spaceName,
+}: {
+  handle: MockFileSystemDirectoryHandle;
+  service: {
+    deviceFiles: { fetch: () => Promise<{ name: string }[] | undefined> };
+    vfs: { readDirectory: (path: string) => Promise<unknown> };
+  };
+  spaceName: string;
+}): Promise<string> => {
+  await vi.waitFor(async () => {
+    const files = await service.deviceFiles.fetch();
+    if (!files?.some((file) => file.name === spaceName)) {
+      throw new Error(`"${spaceName}" is not mounted yet`);
+    }
+  });
+
+  const originalEntries = handle.entries.bind(handle);
+  const originalQueryPermission = handle.queryPermission?.bind(handle);
+
+  handle.entries = () => {
+    throw new DOMException('I/O error', 'NotReadableError');
+  };
+  handle.queryPermission = () => Promise.resolve('granted');
+
+  try {
+    await service.vfs.readDirectory(`/${DEVICE_FILES_ROOT_NAME}/${spaceName}`);
+    throw new Error('Expected the directory read to throw WebFileSystemUnavailableRootError');
+  } catch (error) {
+    if (!isUnavailableRootErrorLike(error)) {
+      throw error;
+    }
+    return error.recoveryKey;
+  } finally {
+    handle.entries = originalEntries;
+    if (originalQueryPermission) {
+      handle.queryPermission = originalQueryPermission;
+    } else {
+      delete handle.queryPermission;
+    }
+  }
 };

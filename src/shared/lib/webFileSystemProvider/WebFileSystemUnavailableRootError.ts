@@ -15,6 +15,11 @@ const WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_MESSAGE =
 export interface WebFileSystemUnavailableRootDetails {
   /** Safe remembered-space name shown to the user. */
   spaceName: string;
+  /**
+   * Opaque, transfer-safe, runtime-only key identifying the mounted provider instance that
+   * emitted this error. Not a physical-directory identity and never persisted or displayed.
+   */
+  recoveryKey: string;
   /** Raw enumeration failure preserved as the trusted in-app cause. */
   cause?: unknown;
 }
@@ -31,6 +36,8 @@ export type SerializedWebFileSystemUnavailableRootError = {
   name: string;
   /** Remembered local-space name shown to the user. */
   spaceName: string;
+  /** Opaque runtime recovery key identifying the mounted provider instance. */
+  recoveryKey: string;
   /** Optional stack trace. */
   stack?: string | undefined;
 };
@@ -45,6 +52,7 @@ export class WebFileSystemUnavailableRootError extends DomainError<
   override name = 'WebFileSystemUnavailableRootError';
   override readonly code = WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE;
   readonly spaceName: string;
+  readonly recoveryKey: string;
 
   /**
    * Creates an unavailable-root error from runtime details or serialized transport data.
@@ -56,6 +64,7 @@ export class WebFileSystemUnavailableRootError extends DomainError<
     if ('name' in options) {
       super(options);
       this.spaceName = options.spaceName;
+      this.recoveryKey = options.recoveryKey;
       return;
     }
 
@@ -64,6 +73,7 @@ export class WebFileSystemUnavailableRootError extends DomainError<
       code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
     });
     this.spaceName = options.spaceName;
+    this.recoveryKey = options.recoveryKey;
   }
 
   /**
@@ -76,6 +86,7 @@ export class WebFileSystemUnavailableRootError extends DomainError<
       message: this.message,
       name: this.name,
       spaceName: this.spaceName,
+      recoveryKey: this.recoveryKey,
       stack: this.stack,
     };
   }

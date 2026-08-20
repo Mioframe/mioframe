@@ -6,6 +6,7 @@ import { useObservableQuery } from '@shared/lib/useObservableQuery';
 import {
   DEVICE_FILES_ROOT_NAME,
   type DeviceFileDisplayRecord,
+  type MioframeSpaceInspection,
   type ReconnectDeviceDirectoryResult,
   type RelocateRememberedDeviceDirectoryResult,
 } from '@shared/service';
@@ -47,6 +48,7 @@ const setupFileSystem = () => {
       removeDeviceDirectory,
       reconnectDeviceDirectory,
       relocateRememberedDeviceDirectory,
+      inspectMioframeSpaceCandidate,
       deviceFiles,
     },
   } = useMainServiceClient();
@@ -92,12 +94,18 @@ const setupFileSystem = () => {
   const reconnectDirectory = (params: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
+    recoveryKey: string;
   }): Promise<ReconnectDeviceDirectoryResult> => reconnectDeviceDirectory(params);
 
   const relocateRememberedDirectory = (params: {
     handle: FileSystemDirectoryHandle;
     spaceName: string;
+    recoveryKey: string;
   }): Promise<RelocateRememberedDeviceDirectoryResult> => relocateRememberedDeviceDirectory(params);
+
+  const inspectMioframeSpaceCandidateEntry = (
+    handle: FileSystemDirectoryHandle,
+  ): Promise<MioframeSpaceInspection> => inspectMioframeSpaceCandidate(handle);
 
   return {
     rootDirectory,
@@ -110,6 +118,7 @@ const setupFileSystem = () => {
     disconnectDeviceFile,
     reconnectDirectory,
     relocateRememberedDirectory,
+    inspectMioframeSpaceCandidate: inspectMioframeSpaceCandidateEntry,
 
     move,
     remove,

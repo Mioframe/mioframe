@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
+import {
+  captureRecoveryKeyFromUnavailableRoot,
+  createDirectoryHandleMock,
+} from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 
 /**
  * Real cross-service proof that `src/shared/service/fileSystem` and
@@ -87,10 +90,17 @@ describe('fileSystem/repositories same-entry integration', () => {
     expect(repo).toBeDefined();
     repo?.flush.mockRejectedValueOnce(new Error('disk full'));
 
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service: fileSystemService,
+      spaceName: 'Work',
+    });
+
     await expect(
       fileSystemService.reconnectDeviceDirectory({
         handle: reconnectedHandle,
         spaceName: 'Work',
+        recoveryKey,
       }),
     ).resolves.toEqual({ status: 'reconnectedWithWriteRecoveryFailure', name: 'Work' });
 
@@ -126,10 +136,17 @@ describe('fileSystem/repositories same-entry integration', () => {
 
     await repositoriesService.initializeRepository('/Device Files/Work');
 
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service: fileSystemService,
+      spaceName: 'Work',
+    });
+
     await expect(
       fileSystemService.reconnectDeviceDirectory({
         handle: reconnectedHandle,
         spaceName: 'Work',
+        recoveryKey,
       }),
     ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
   });

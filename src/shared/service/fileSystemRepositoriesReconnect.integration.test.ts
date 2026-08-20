@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import { next as A } from '@automerge/automerge';
-import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
+import {
+  captureRecoveryKeyFromUnavailableRoot,
+  createDirectoryHandleMock,
+} from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 
 /**
  * Real, non-mutually-mocked proof for the fileSystem/repositories same-entry reconnect and
@@ -66,6 +69,12 @@ describe('fileSystem/repositories same-entry reconnect integration', () => {
       ]);
     });
 
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service: fileSystemService,
+      spaceName: 'Work',
+    });
+
     const path = '/Device Files/Work';
     const repo = await firstValueFrom(repositoriesService.getRepo$(path, true));
     const handle = repo.create<{ hello: string; updated?: boolean }>({ hello: 'world' });
@@ -96,7 +105,11 @@ describe('fileSystem/repositories same-entry reconnect integration', () => {
 
     // Real remount + the real repositories write-recovery handler settles the queued save.
     await expect(
-      fileSystemService.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+      fileSystemService.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
 
     // Direct observable storage effect: the queued write actually landed through the rebound
@@ -124,6 +137,12 @@ describe('fileSystem/repositories same-entry reconnect integration', () => {
       await expect(fileSystemService.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
       ]);
+    });
+
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service: fileSystemService,
+      spaceName: 'Work',
     });
 
     const path = '/Device Files/Work';
@@ -155,7 +174,11 @@ describe('fileSystem/repositories same-entry reconnect integration', () => {
     );
 
     await expect(
-      fileSystemService.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+      fileSystemService.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'reconnectedWithWriteRecoveryFailure', name: 'Work' });
   });
 });

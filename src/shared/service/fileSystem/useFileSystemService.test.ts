@@ -7,16 +7,27 @@ import {
 } from '@shared/lib/automergeAdapter';
 import { WEB_FILE_SYSTEM_ACCESS_REQUIRED_CODE } from '@shared/lib/webFileSystemProvider';
 import {
+  captureRecoveryKeyFromUnavailableRoot,
   createDirectoryHandleMock,
   createFileHandleMock,
 } from '@shared/lib/webFileSystemProvider/WebFileSystemProvider.testUtils';
 import type { FSNodeStat, IFileSystemProvider, VfsEvent } from '@shared/lib/virtualFileSystem';
 import { FSNodeType, VfsEventSource } from '@shared/lib/virtualFileSystem';
 import { OPFSName } from '../directories';
+import { FileSystemServiceErrorCode } from './fileSystemContracts';
 
 const getRecordListMock = vi.fn();
 const updateRecordListMock = vi.fn();
 const getDirectoryMock = vi.fn();
+const inspectMioframeSpaceDirectoryMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@shared/lib/automergeAdapter', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/lib/automergeAdapter')>();
+  return {
+    ...actual,
+    inspectMioframeSpaceDirectory: inspectMioframeSpaceDirectoryMock,
+  };
+});
 
 vi.mock('./setupFileSystemDirectoryHandleService', () => ({
   useFileSystemDirectoryHandleService: () => ({
@@ -126,6 +137,9 @@ const isAccessErrorWithRecoveryKey = (
   'toJSON' in error &&
   typeof error.toJSON === 'function';
 
+const isDomainErrorLike = (error: unknown): error is Error & { cause?: unknown; code?: string } =>
+  error instanceof Error && '__isDomainError' in error && error.__isDomainError === true;
+
 describe('useFileSystemService', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -135,6 +149,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([]);
     updateRecordListMock.mockResolvedValue(undefined);
     getDirectoryMock.mockResolvedValue(undefined);
+    inspectMioframeSpaceDirectoryMock.mockReset();
+    // Most reconnect/relocate tests exercise the same-entry and identity-checking behavior, not
+    // the marker check itself; default the candidate to a valid Mioframe space so those tests
+    // reach `confirmationRequired`/`relocated` unchanged. Marker-specific tests override this.
+    inspectMioframeSpaceDirectoryMock.mockResolvedValue({ looksLikeExistingSpace: true });
     Object.defineProperty(navigator, 'storage', {
       value: {
         getDirectory: getDirectoryMock,
@@ -576,13 +595,22 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     const events: Array<{ source: string; type: string }> = [];
     const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
       events.push({ source: event.source, type: event.type });
     });
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
     unsubscribe();
 
@@ -600,6 +628,134 @@ describe('useFileSystemService', () => {
     );
   });
 
+  it('mints a fresh recoveryKey for the provider that replaces a same-entry reconnect target', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const firstKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    // A repeated unavailable-root error from the same still-mounted provider reuses the key.
+    const repeatedKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    expect(repeatedKey).toBe(firstKey);
+
+    await expect(
+      service.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey: firstKey,
+      }),
+    ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
+
+    const secondKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: reconnectedHandle,
+      service,
+      spaceName: 'Work',
+    });
+    expect(secondKey).not.toBe(firstKey);
+
+    // The old key no longer identifies the (now replaced) mounted provider.
+    await expect(
+      service.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey: firstKey,
+      }),
+    ).resolves.toEqual({ status: 'staleRecovery' });
+  });
+
+  it('reconnectDeviceDirectory returns staleRecovery with zero mutation for an old key after the provider was replaced', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const staleKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+
+    // Replace the mounted provider under the same name (e.g. a different device re-adds "Work").
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'replacement',
+    });
+    await service.removeDeviceDirectory('Work');
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: replacementHandle }]);
+    await service.addDeviceDirectory(replacementHandle);
+
+    updateRecordListMock.mockClear();
+    const candidateHandle = createDirectoryHandleMock({ name: 'Candidate' });
+
+    await expect(
+      service.reconnectDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey: staleKey,
+      }),
+    ).resolves.toEqual({ status: 'staleRecovery' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('relocateRememberedDeviceDirectory returns staleRecovery with zero mutation for an old key after the provider was replaced', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const staleKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'replacement',
+    });
+    await service.removeDeviceDirectory('Work');
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: replacementHandle }]);
+    await service.addDeviceDirectory(replacementHandle);
+
+    updateRecordListMock.mockClear();
+    const candidateHandle = createDirectoryHandleMock({ name: 'Candidate' });
+
+    await expect(
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey: staleKey,
+      }),
+    ).resolves.toEqual({ status: 'staleRecovery' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+    expect(inspectMioframeSpaceDirectoryMock).not.toHaveBeenCalled();
+  });
+
   it('clears a pending access request for the space after a successful reconnect', async () => {
     const promptHandle = createDirectoryHandleMock({
       name: 'Work',
@@ -614,6 +770,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: promptHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -626,7 +787,11 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({ operation: 'read', spaceName: 'Work' });
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
 
     await expect(
@@ -648,6 +813,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: promptHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -671,7 +841,11 @@ describe('useFileSystemService', () => {
     service.registerWriteAccessRecoveryHandler(handler);
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'reconnected', name: 'Work' });
 
     expect(callOrder).toEqual(['persist', 'settlement']);
@@ -699,6 +873,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -709,7 +888,11 @@ describe('useFileSystemService', () => {
     service.registerWriteAccessRecoveryHandler(handler);
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'reconnectedWithWriteRecoveryFailure', name: 'Work' });
 
     expect(updateRecordListMock).toHaveBeenCalledWith([
@@ -734,9 +917,14 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: otherHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({ handle: otherHandle, spaceName: 'Work', recoveryKey }),
     ).resolves.toEqual({ status: 'confirmationRequired' });
     expect(updateRecordListMock).not.toHaveBeenCalled();
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
@@ -750,7 +938,6 @@ describe('useFileSystemService', () => {
       permissionState: 'granted',
       sameEntryKey: 'work',
     });
-    workHandle.isSameEntry = vi.fn(() => Promise.reject(new Error('identity check failed')));
     const candidateHandle = createDirectoryHandleMock({
       name: 'Candidate',
       permissionState: 'granted',
@@ -759,9 +946,15 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    workHandle.isSameEntry = vi.fn(() => Promise.reject(new Error('identity check failed')));
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work', recoveryKey }),
     ).resolves.toEqual({ status: 'confirmationRequired' });
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
@@ -772,10 +965,6 @@ describe('useFileSystemService', () => {
       permissionState: 'granted',
       sameEntryKey: 'work',
     });
-    Object.defineProperty(workHandle, 'isSameEntry', {
-      configurable: true,
-      value: undefined,
-    });
     const candidateHandle = createDirectoryHandleMock({
       name: 'Candidate',
       permissionState: 'granted',
@@ -784,10 +973,85 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    Object.defineProperty(workHandle, 'isSameEntry', {
+      configurable: true,
+      value: undefined,
+    });
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work', recoveryKey }),
     ).resolves.toEqual({ status: 'confirmationRequired' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('reconnectDeviceDirectory returns invalidCandidate with zero mutation and no diagnostics when the marker is missing', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Candidate',
+      permissionState: 'granted',
+      sameEntryKey: 'not-work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: false });
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work', recoveryKey }),
+    ).resolves.toEqual({ status: 'invalidCandidate' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('reconnectDeviceDirectory wraps an unexpected marker-inspection failure in a safe DomainError preserving the raw cause', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Candidate',
+      permissionState: 'granted',
+      sameEntryKey: 'not-work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    const rawCause = new DOMException('permission denied while reading marker', 'SecurityError');
+    inspectMioframeSpaceDirectoryMock.mockRejectedValueOnce(rawCause);
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Work', recoveryKey }),
+    ).rejects.toSatisfy((error: unknown) => {
+      // `service` was loaded via a dynamic import after `vi.resetModules()`, so the thrown
+      // `DomainError` is a distinct module instance from this file's statically-imported
+      // `DomainError`; duck-type via the class's own marker field instead of `instanceof`.
+      if (!isDomainErrorLike(error)) {
+        return false;
+      }
+      expect(error.code).toBe(FileSystemServiceErrorCode.markerInspectionFailed);
+      expect(error.cause).toBe(rawCause);
+      expect(error.message).not.toContain('permission denied while reading marker');
+      return true;
+    });
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
 
@@ -805,6 +1069,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -816,7 +1085,11 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.relocateRememberedDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'relocated', name: 'Work (moved)' });
     unsubscribeOld();
 
@@ -853,6 +1126,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -860,7 +1138,11 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.relocateRememberedDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'relocated', name: 'Work (2)' });
     expect(updateRecordListMock).toHaveBeenCalledWith([
       { name: 'Work (2)', handle: candidateHandle },
@@ -881,6 +1163,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -898,7 +1185,11 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.relocateRememberedDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'relocated', name: 'Work (moved)' });
     unsubscribe();
 
@@ -928,6 +1219,11 @@ describe('useFileSystemService', () => {
     ]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual(
         expect.arrayContaining([{ canDisconnect: true, name: 'Work' }]),
@@ -939,12 +1235,18 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.relocateRememberedDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).resolves.toEqual({ status: 'alreadyMounted', name: 'Archive' });
     unsubscribe();
 
     expect(updateRecordListMock).not.toHaveBeenCalled();
     expect(events).toEqual([]);
+    // The duplicate is rejected before the canonical marker is even revalidated.
+    expect(inspectMioframeSpaceDirectoryMock).not.toHaveBeenCalled();
   });
 
   it('relocateRememberedDeviceDirectory aborts with zero mutation when handle-identity comparison against another record fails unexpectedly', async () => {
@@ -966,10 +1268,50 @@ describe('useFileSystemService', () => {
     ]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
 
     await expect(
-      service.relocateRememberedDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).rejects.toThrow('identity check failed');
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
+  it('relocateRememberedDeviceDirectory returns invalidCandidate with zero mutation when the marker disappeared before relocation', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Candidate',
+      permissionState: 'granted',
+      sameEntryKey: 'candidate',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: false });
+
+    await expect(
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
+    ).resolves.toEqual({ status: 'invalidCandidate' });
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
 
@@ -979,7 +1321,11 @@ describe('useFileSystemService', () => {
     const candidateHandle = createDirectoryHandleMock({ name: 'Candidate' });
 
     await expect(
-      service.relocateRememberedDeviceDirectory({ handle: candidateHandle, spaceName: 'Missing' }),
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Missing',
+        recoveryKey: 'irrelevant-key',
+      }),
     ).resolves.toEqual({ status: 'missingRecord' });
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
@@ -998,6 +1344,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -1010,7 +1361,11 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.relocateRememberedDeviceDirectory({ handle: candidateHandle, spaceName: 'Work' }),
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).rejects.toThrow('storage write failed');
     unsubscribe();
 
@@ -1026,7 +1381,11 @@ describe('useFileSystemService', () => {
     const candidateHandle = createDirectoryHandleMock({ name: 'Candidate' });
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: candidateHandle, spaceName: 'Missing' }),
+      service.reconnectDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Missing',
+        recoveryKey: 'irrelevant-key',
+      }),
     ).resolves.toEqual({ status: 'missingRecord' });
     expect(updateRecordListMock).not.toHaveBeenCalled();
   });
@@ -1045,6 +1404,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Work' },
@@ -1057,7 +1421,11 @@ describe('useFileSystemService', () => {
     });
 
     await expect(
-      service.reconnectDeviceDirectory({ handle: reconnectedHandle, spaceName: 'Work' }),
+      service.reconnectDeviceDirectory({
+        handle: reconnectedHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
     ).rejects.toThrow('storage write failed');
     unsubscribe();
 

@@ -77,7 +77,7 @@ describe('WebFileSystemProvider', () => {
 
   it('throws a typed access-required DomainError with mode:read when readDirectory("/") read permission is denied', async () => {
     const { rootHandle } = createRootHandle('denied');
-    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work' }));
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
       onAccessRequired: ({ mode }) => ({
@@ -1416,7 +1416,7 @@ describe('WebFileSystemProvider', () => {
     const onDiagnosticStep = vi.fn();
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onUnavailableRoot: () => ({ spaceName: 'Work' }),
+      onUnavailableRoot: () => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }),
       onDiagnosticStep,
     });
 
@@ -1424,6 +1424,7 @@ describe('WebFileSystemProvider', () => {
       code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
       name: 'WebFileSystemUnavailableRootError',
       spaceName: 'Work',
+      recoveryKey: 'recovery-key',
       cause: enumerationError,
     });
     expect(onDiagnosticStep.mock.calls.map(([event]) => event)).toContainEqual({
@@ -1452,7 +1453,7 @@ describe('WebFileSystemProvider', () => {
       configurable: true,
       value: queryPermissionMock,
     });
-    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work' }));
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
       onAccessRequired: ({ mode }) => ({ spaceName: 'Work', mode }),
@@ -1492,7 +1493,7 @@ describe('WebFileSystemProvider', () => {
       name: '',
       permissionState: 'granted',
     });
-    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work' }));
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
       onUnavailableRoot,
@@ -1508,7 +1509,7 @@ describe('WebFileSystemProvider', () => {
     rootHandle.entries = () => {
       throw enumerationError;
     };
-    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work' }));
+    const onUnavailableRoot = vi.fn(() => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }));
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'originPrivateStorage',
       onUnavailableRoot,
@@ -1525,7 +1526,7 @@ describe('WebFileSystemProvider', () => {
     };
     const provider = WebFileSystemProvider(rootHandle, {
       permissionPolicy: 'userSelectedDirectory',
-      onUnavailableRoot: () => ({ spaceName: 'Work' }),
+      onUnavailableRoot: () => ({ spaceName: 'Work', recoveryKey: 'recovery-key' }),
     });
 
     const thrownError = await provider
@@ -1540,6 +1541,7 @@ describe('WebFileSystemProvider', () => {
     expect(thrownError.toJSON()).toMatchObject({
       code: WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE,
       spaceName: 'Work',
+      recoveryKey: 'recovery-key',
     });
     expect(thrownError.toJSON()).not.toHaveProperty('cause');
     expect(JSON.stringify(thrownError.toJSON())).not.toContain('FileSystemDirectoryHandle');

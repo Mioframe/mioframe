@@ -4,7 +4,10 @@ export {
   type DeviceFileDisplayRecord,
   type ReadDirectoryOptions,
 } from './useFileSystemService';
-export type {
-  ReconnectDeviceDirectoryResult,
-  RelocateRememberedDeviceDirectoryResult,
+export {
+  FileSystemServiceErrorCode,
+  type DeviceDirectoryRecoveryTarget,
+  type MioframeSpaceInspection,
+  type ReconnectDeviceDirectoryResult,
+  type RelocateRememberedDeviceDirectoryResult,
 } from './fileSystemContracts';

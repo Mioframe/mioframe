@@ -5,7 +5,6 @@ import { useDiagnosticsErrorPromptTrigger } from '@feature/diagnosticsErrorPromp
 import { useDialog } from '@shared/ui/Dialog';
 import { useSnackbar } from '@shared/ui/Snackbar';
 import { ref, toRef } from 'vue';
-import { inspectMioframeSpaceDirectory } from '@shared/lib/automergeAdapter';
 import {
   isDirectoryPickerSupported,
   pickWritableDirectory,
@@ -24,7 +23,7 @@ export const useOpenMioframeSpace = () => {
   const loading = ref(false);
   const { confirm } = useDialog();
   const { addSnackbar } = useSnackbar();
-  const { addDeviceDirectory } = useFileSystem();
+  const { addDeviceDirectory, inspectMioframeSpaceCandidate } = useFileSystem();
   const { requestHomeDiagnosticsPromptAfterHandledError } = useDiagnosticsErrorPromptTrigger();
 
   const isSupported = toRef(isDirectoryPickerSupported);
@@ -65,16 +64,7 @@ export const useOpenMioframeSpace = () => {
         return;
       }
 
-      let inspection;
-
-      try {
-        inspection = await inspectMioframeSpaceDirectory(selectedHandle);
-      } catch (error) {
-        throw new DomainError('Could not open the Mioframe space', {
-          cause: error,
-          code: MioframeSpacePickErrorCode.openFailed,
-        });
-      }
+      const inspection = await inspectMioframeSpaceCandidate(selectedHandle);
 
       if (inspection.looksLikeExistingSpace) {
         return selectedHandle;

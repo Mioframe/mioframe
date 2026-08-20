@@ -10,11 +10,17 @@ import { zodSafeCheck } from '@shared/lib/validateZodScheme';
 export interface FileSystemUnavailableRootRecovery {
   /** Safe remembered-space name shown to the user. */
   spaceName: string;
+  /**
+   * Opaque, transfer-safe, runtime-only key identifying the mounted provider instance that
+   * emitted this recovery. Use this, not `spaceName`, as reconnect target identity.
+   */
+  recoveryKey: string;
 }
 
 const zodSerializedFileSystemUnavailableRootRecoveryPayload = object({
   code: literal(WEB_FILE_SYSTEM_UNAVAILABLE_ROOT_CODE),
   spaceName: string(),
+  recoveryKey: string(),
 });
 
 type SerializedFileSystemUnavailableRootRecoveryPayload = output<
@@ -23,8 +29,10 @@ type SerializedFileSystemUnavailableRootRecoveryPayload = output<
 
 const toFileSystemUnavailableRootRecovery = ({
   spaceName,
+  recoveryKey,
 }: SerializedFileSystemUnavailableRootRecoveryPayload): FileSystemUnavailableRootRecovery => ({
   spaceName,
+  recoveryKey,
 });
 
 /**
