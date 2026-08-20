@@ -14,12 +14,13 @@ describe('resolveVerifyInvocation', () => {
         GITHUB_BASE_REF: 'develop',
       }),
     ).toEqual({
-      version: 2,
+      version: 3,
       scope: { kind: 'github-base', baseRef: 'origin/develop' },
       profile: 'github-actions',
       onlyLabel: 'unit-tests',
       verbose: false,
       fixMode: 'none',
+      storybookBuildCiFallback: false,
     });
   });
 
@@ -52,12 +53,13 @@ describe('resolveVerifyInvocation', () => {
         VERIFY_BASE: 'origin/other',
       }),
     ).toEqual({
-      version: 2,
+      version: 3,
       scope: { kind: 'full' },
       profile: 'github-actions',
       onlyLabel: null,
       verbose: false,
       fixMode: 'none',
+      storybookBuildCiFallback: false,
     });
   });
 
@@ -114,6 +116,55 @@ describe('resolveVerifyInvocation', () => {
       'Use either --fix or --fix-only, not both.',
     );
   });
+
+  it('resolves --storybook-build-ci-fallback to true with --only storybook-build', () => {
+    expect(
+      resolveVerifyInvocation(['--only', 'storybook-build', '--storybook-build-ci-fallback'], {})
+        .storybookBuildCiFallback,
+    ).toBe(true);
+  });
+
+  it('resolves storybookBuildCiFallback to false for an ordinary invocation', () => {
+    expect(
+      resolveVerifyInvocation(['--only', 'storybook-build'], {}).storybookBuildCiFallback,
+    ).toBe(false);
+    expect(resolveVerifyInvocation([], {}).storybookBuildCiFallback).toBe(false);
+  });
+
+  it('rejects --storybook-build-ci-fallback without --only storybook-build', () => {
+    expect(() => resolveVerifyInvocation(['--storybook-build-ci-fallback'], {})).toThrow(
+      '--storybook-build-ci-fallback requires --only storybook-build',
+    );
+  });
+
+  it('rejects --storybook-build-ci-fallback with another --only label', () => {
+    expect(() =>
+      resolveVerifyInvocation(['--only', 'visual', '--storybook-build-ci-fallback'], {}),
+    ).toThrow('--storybook-build-ci-fallback requires --only storybook-build');
+  });
+
+  it('rejects --storybook-build-ci-fallback with --full', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--full', '--only', 'storybook-build', '--storybook-build-ci-fallback'],
+        {},
+      ),
+    ).toThrow('cannot be combined with --full');
+  });
+
+  it('rejects a duplicate --storybook-build-ci-fallback flag', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        [
+          '--only',
+          'storybook-build',
+          '--storybook-build-ci-fallback',
+          '--storybook-build-ci-fallback',
+        ],
+        {},
+      ),
+    ).toThrow('Duplicate verify option: --storybook-build-ci-fallback');
+  });
 });
 
 describe('formatVerifyInvocationCommand', () => {
@@ -140,6 +191,19 @@ describe('formatVerifyInvocationCommand', () => {
     );
   });
 
+  it('preserves --storybook-build-ci-fallback in the rendered rerun command', () => {
+    const invocation = resolveVerifyInvocation(
+      ['--verbose', '--only', 'storybook-build', '--storybook-build-ci-fallback'],
+      {},
+    );
+    const command = formatVerifyInvocationCommand(invocation);
+
+    expect(command.startsWith('pnpm verify')).toBe(true);
+    expect(command).toBe(
+      'pnpm verify --verbose --profile local --only storybook-build --storybook-build-ci-fallback',
+    );
+  });
+
   it('single-quotes substitutions, backticks, and embedded single quotes', () => {
     const backtick = String.fromCharCode(96);
     const unsafePath =
@@ -155,15 +219,16 @@ describe('formatVerifyInvocationCommand', () => {
 
 describe('isResolvedVerifyInvocation', () => {
   it('rejects corrupted and legacy persisted metadata', () => {
-    expect(isResolvedVerifyInvocation({ version: 2, scope: { kind: 'local' } })).toBe(false);
+    expect(isResolvedVerifyInvocation({ version: 3, scope: { kind: 'local' } })).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 1,
+        version: 2,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: null,
         verbose: false,
         fixMode: 'none',
+        storybookBuildCiFallback: false,
       }),
     ).toBe(false);
   });
@@ -171,23 +236,77 @@ describe('isResolvedVerifyInvocation', () => {
   it('rejects persisted invalid mode and label combinations', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 2,
+        version: 3,
         scope: { kind: 'full' },
         profile: 'local',
         onlyLabel: 'mutation',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: false,
+      }),
+    ).toBe(false);
+    expect(
+      isResolvedVerifyInvocation({
+        version: 3,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: 'type-check',
+        verbose: false,
+        fixMode: 'fix-only',
+        storybookBuildCiFallback: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects a missing or mistyped storybookBuildCiFallback field', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 3,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: null,
         verbose: false,
         fixMode: 'none',
       }),
     ).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 2,
+        version: 3,
         scope: { kind: 'local' },
         profile: 'local',
-        onlyLabel: 'type-check',
+        onlyLabel: null,
         verbose: false,
-        fixMode: 'fix-only',
+        fixMode: 'none',
+        storybookBuildCiFallback: 'true',
       }),
     ).toBe(false);
+  });
+
+  it('rejects a persisted storybookBuildCiFallback that requires --only storybook-build', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 3,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: 'visual',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: true,
+      }),
+    ).toBe(false);
+  });
+
+  it('accepts a persisted storybookBuildCiFallback with --only storybook-build', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 3,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: 'storybook-build',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: true,
+      }),
+    ).toBe(true);
   });
 });

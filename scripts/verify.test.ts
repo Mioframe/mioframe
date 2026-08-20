@@ -933,6 +933,37 @@ describe('buildCommands storybook-build CI fallback', () => {
       'storybook-behavior lane requires a Storybook static build',
     );
   });
+
+  it('ignores STORYBOOK_BUILD_CI_FALLBACK in the process environment', () => {
+    vi.stubEnv('STORYBOOK_BUILD_CI_FALLBACK', '1');
+
+    try {
+      // storybook-build itself does not require a build, but storybook-behavior does; the
+      // ordinary (non-CI-fallback) reuse-aware trigger runs the build here. If the removed
+      // STORYBOOK_BUILD_CI_FALLBACK env var still had any effect, this would instead skip with
+      // the CI-fallback-specific reason since the flag defaults to false.
+      const commands = buildCommands([], {
+        fullMode: false,
+        storybookBuildPlan: { mode: 'skip', reasons: ['no storybook-relevant changes'] },
+        storybookBehaviorPlan: {
+          mode: 'focused',
+          specs: ['tests/e2e/storybook/colorOwnership.spec.ts'],
+          reasons: [
+            'scenario shared color ownership -> tests/e2e/storybook/colorOwnership.spec.ts',
+          ],
+        },
+        visualPlan: skipVisualPlan,
+      });
+
+      const entry = requireRunEntry(commands, 'storybook-build');
+
+      expect(entry.triggerReason).toContain(
+        'storybook-behavior lane requires a Storybook static build',
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
 });
 
 describe('buildCommands visual relevance for src/app/styles/base.css', () => {

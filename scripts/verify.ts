@@ -693,6 +693,14 @@ function printHelp(): void {
   console.log('  --profile <name>    Override the verify runtime profile.');
   console.log(`                      Env alternative: ${VERIFY_PROFILE_ENV}=local|github-actions.`);
   console.log('  --only <label>      Run one focused verification check.');
+  console.log('  --storybook-build-ci-fallback');
+  console.log(
+    '                      With `--only storybook-build` (not `--full`): build only when the',
+  );
+  console.log(
+    '                      ordinary storybook-build plan requires it and neither storybook-behavior',
+  );
+  console.log('                      nor visual will run. See .github/workflows/verify.yml.');
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log('                      Cannot be combined with --full.');
   console.log(
@@ -724,6 +732,7 @@ function printHelp(): void {
   console.log(`  ${VERIFY_PROFILE_ENV}=github-actions pnpm verify --only visual`);
   console.log('  pnpm verify --verbose --only type-check');
   console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
+  console.log('  pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback');
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
   console.log('  pnpm verify --full');
@@ -1260,8 +1269,9 @@ export interface BuildCommandsOptions {
    * `storybook-build` trigger to the ordinary storybook-build plan alone, skipping whenever a
    * self-contained browser lane will already supply the equivalent static-build prerequisite.
    * Has no effect on any other label and does not change `--full` or the ordinary (non-CI)
-   * `--only storybook-build` reuse-aware trigger. Defaults to
-   * `STORYBOOK_BUILD_CI_FALLBACK=1` in the process environment.
+   * `--only storybook-build` reuse-aware trigger. Sourced from the resolved
+   * `VerifyInvocation.storybookBuildCiFallback` (the `--storybook-build-ci-fallback` CLI flag);
+   * defaults to `false`.
    */
   storybookBuildCiFallback?: boolean;
 }
@@ -1283,7 +1293,7 @@ export function buildCommands(
     storybookBehaviorPlan: storybookBehaviorPlanOverride = null,
     storybookBuildPlan: storybookBuildPlanOverride = null,
     visualPlan: visualPlanOverride = null,
-    storybookBuildCiFallback = process.env.STORYBOOK_BUILD_CI_FALLBACK === '1',
+    storybookBuildCiFallback = false,
   }: BuildCommandsOptions = {},
 ): CommandEntry[] {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1489,7 +1499,7 @@ export function buildCommands(
   // self-contained jobs that never reuse this lane's output (see
   // `storybookBuildCiFallback` below), so this reuse-aware trigger applies
   // only to `--full` and to the ordinary (non-CI-fallback) `--only
-  // storybook-build` invocation.
+  // storybook-build` invocation (i.e. without `--storybook-build-ci-fallback`).
   const storybookBehaviorNeedsStaticBuild =
     storybookBehaviorPlan.mode === 'full' || storybookBehaviorPlan.mode === 'focused';
   const visualNeedsStaticBuild =
@@ -2085,12 +2095,11 @@ async function main(
       fullMode: invocation.scope.kind === 'full',
       packageJsonOldRef,
       fixMode: invocation.fixMode,
-      // Only the explicit `--only storybook-build` invocation can meaningfully act on the
-      // CI fallback env contract; every other invocation ignores it (see
+      // `--storybook-build-ci-fallback` is only ever resolved to true alongside
+      // `--only storybook-build` outside `--full` (enforced by
+      // `resolveVerifyInvocation`), so this passes straight through (see
       // `storybookBuildCiFallback` on BuildCommandsOptions).
-      storybookBuildCiFallback:
-        invocation.onlyLabel === 'storybook-build' &&
-        process.env.STORYBOOK_BUILD_CI_FALLBACK === '1',
+      storybookBuildCiFallback: invocation.storybookBuildCiFallback,
     }),
     onlyLabel,
   );
