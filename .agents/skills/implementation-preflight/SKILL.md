@@ -27,6 +27,14 @@ Do not begin implementation when:
 
 Resolve the upstream technical contract first.
 
+## Source-resolution discipline
+
+- Resolve implementation details from the ready handoff, current workspace, applicable rules, project history available in the repository, code, tests, and documented project commands before asking the operator anything.
+- Read-only repository inspection is ordinary source reading and does not require operator confirmation merely because it uses Git. Use narrow read-only commands such as `git status`, `git diff`, `git log`, `git show`, `git rev-parse`, `git merge-base`, and `git ls-files` when they are the simplest way to establish the current or pre-change source state.
+- Read-only inspection must not modify refs, index, working tree, configuration, hooks, remotes, or repository state. Repository-mutating Git operations remain outside this rule and require the task/workflow to authorize them.
+- Do not ask the operator to choose between implementation options, provide a baseline, or confirm a repository fact when authoritative workspace evidence can resolve it.
+- Ask only when a required product/architecture decision or external input is genuinely unavailable from the accepted contract and readable sources. If an execution environment actually rejects a read-only inspection command, use another available read mechanism where practical and report the concrete blocker rather than asking for speculative permission.
+
 ## Required preflight record
 
 Record compactly:
