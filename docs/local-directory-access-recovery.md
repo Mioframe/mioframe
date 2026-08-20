@@ -35,7 +35,7 @@ Recover a remembered local-directory root that can no longer be opened without c
 7. Same-entry settlement failure -> reconnect stays committed; return warning status and show Snackbar.
 8. False/missing/throwing `isSameEntry()` + missing Mioframe marker -> expected invalid candidate, zero mutation.
 9. False/unverifiable identity + valid marker -> explicit confirmation.
-10. Marker disappears during confirmation -> relocation rejects with zero mutation.
+10. Marker disappears after confirmation but before the confirmed relocation terminal decision or persistence begins -> relocation rejects with zero mutation.
 11. Confirmed candidate already mounted elsewhere -> zero mutation; return/open that existing current mount.
 12. Confirmed unique candidate -> replace the remembered record with a new unique mounted name/path; selected storage is never reachable through the old path.
 13. A same-runtime mounted-directory add/remove/replace starts while confirmed relocation is running -> mutations are serialized so relocation cannot decide from a stale duplicate/unique snapshot.
@@ -88,7 +88,8 @@ Recover a remembered local-directory root that can no longer be opened without c
 - `reconnectDeviceDirectory` owns the first canonical marker inspection when `isSameEntry()` is false/unavailable: missing marker returns `invalidCandidate`; valid marker returns `confirmationRequired`.
 - User confirmation is completed before entering the final relocation mutation. The service does not hold a mutation queue across picker or confirmation UI.
 - Service-owned mounted-directory topology mutations (`addDeviceDirectory`, `removeDeviceDirectory`, same-entry reconnect commit, and confirmed relocation commit/preflight) are serialized within the current fileSystem service instance using one simple async mutation queue. The queue must release on both success and failure.
-- After confirmation, `relocateRememberedDeviceDirectory` runs its marker revalidation, current recovery-target validation, duplicate-handle detection, and persistence/runtime commit within that serialized mutation scope. The `alreadyMounted` versus unique-relocation decision must therefore reflect the current same-runtime mounted-directory topology for that mutation turn; a stale `matchedOtherRecord` from an earlier snapshot must not cross asynchronous preflight.
+- After confirmation, `relocateRememberedDeviceDirectory` performs its current recovery-target validation and duplicate-handle detection within that serialized mutation scope, then performs the canonical marker inspection as the final external asynchronous preflight before any terminal relocation decision or persistence begins. Because the queue keeps same-runtime topology stable while marker inspection is pending, the duplicate/unique decision remains current; because marker inspection is last, a marker that disappears during earlier duplicate detection cannot be accepted.
+- After that final marker inspection: invalid marker -> `invalidCandidate`; valid current duplicate -> `alreadyMounted`; valid current unique candidate -> persist the replacement first, then update runtime mounts. No duplicate/unique decision may be carried from outside the serialized mutation turn.
 - Cross-runtime/other-window IndexedDB synchronization remains outside this PR; the runtime queue protects only mutations owned by the current fileSystem service instance.
 - Unexpected marker-inspection failures are wrapped at the fileSystem boundary in a privacy-safe `DomainError` with a service-local stable code and raw cause. Features may report an already-safe `DomainError`; they must not expose raw browser messages.
 - After a mutating service result is returned (`reconnected`, `reconnectedWithWriteRecoveryFailure`, `relocated`), that committed result is authoritative even if recovery disappears because of the mutation. `alreadyMounted`, `invalidCandidate`, `staleRecovery`, and `missingRecord` are zero-mutation outcomes and apply target-local feedback/navigation only while the initiating `recoveryKey` is still current.
@@ -105,6 +106,7 @@ Recover a remembered local-directory root that can no longer be opened without c
 - Marker validation in feature/UI: violates storage ownership and leaves commit-time revalidation outside the service.
 - Marker as physical-directory identity: it proves only that the candidate looks like a Mioframe space.
 - Repeated snapshot/recheck logic without same-runtime mutation serialization: each asynchronous `isSameEntry()` / marker step opens another window for service-owned topology mutation, so carrying or recomputing snapshots alone does not provide a complete terminal duplicate/unique decision.
+- Marker inspection before asynchronous duplicate detection: the mutation queue stabilizes service topology but cannot stabilize external filesystem contents, so a marker checked too early can become stale before the terminal decision.
 - VFS route binding, Repo generation/lease/tombstone, hierarchical locking, or cross-runtime locking: broader than the required fileSystem-local mutation invariant.
 
 ## Confirmation copy
@@ -119,7 +121,7 @@ Recover a remembered local-directory root that can no longer be opened without c
 - Provider/transport: same provider -> stable `recoveryKey`; replacement provider, including same-name replacement -> different/stale key; serialization never exposes handles/raw paths.
 - File-system service: stale key before same-entry reconnect -> zero mutation; stale key before relocation -> zero mutation; same-entry behavior/settlement unchanged.
 - Marker ownership: service inspection reports marker present/absent; unexpected inspection failure is a safe `DomainError`; no reconnect/picker feature imports marker-file logic.
-- Confirmation boundary: valid marker -> confirmation required; marker removed before confirmed relocation -> `invalidCandidate`, zero mutation.
+- Confirmation boundary: valid marker -> confirmation required; marker removed after confirmation or while duplicate detection is pending -> final relocation marker inspection returns `invalidCandidate`, zero mutation.
 - Relocation: current duplicate physical mount -> `alreadyMounted`, zero mutation; current unique candidate persists first and is reachable only under the new path.
 - Same-runtime topology serialization: while confirmed relocation is in its serialized mutation turn, add/remove/replace operations cannot invalidate the duplicate/unique decision; when queued mutations run first, relocation observes their resulting current topology instead of an earlier snapshot.
 - Feature: identity/lifetime checks use `recoveryKey`; same key re-emission continues and preserves feedback; same `spaceName` with a new key aborts; zero-mutation stale/invalid/missing/already-mounted results cannot overwrite or navigate a newer target; committed mutation results/Snackbar remain authoritative.
@@ -147,7 +149,7 @@ Recover a remembered local-directory root that can no longer be opened without c
 - persistent IDs/schema migration for this correction;
 - exposing `recoveryKey` in ordinary mounted-directory display data or diagnostics;
 - feature/widget marker-file inspection or direct storage-protocol inference;
-- mutating relocation without marker revalidation after the confirmation pause;
+- mutating relocation without final marker revalidation after the confirmation pause and after topology-dependent asynchronous preflight;
 - carrying a duplicate/unique decision across asynchronous relocation preflight without same-runtime topology stability;
 - VFS route-binding/identity infrastructure, repository retirement, fileSystem -> repositories lease/guard, same-path locator-different replacement, hierarchical/cross-runtime locking, or directory-reactivity redesign.
 
@@ -156,7 +158,7 @@ Recover a remembered local-directory root that can no longer be opened without c
 - Product behavior: resolved.
 - Dependency on directory-state redesign: none.
 - Recovery target identity: resolved as fileSystem-owned runtime `recoveryKey`.
-- Marker ownership/commit-time validation: resolved at fileSystem service.
+- Marker ownership/commit-time validation: resolved at fileSystem service; the final marker check follows topology-dependent async preflight.
 - Same-runtime mounted-directory mutation atomicity: resolved as one fileSystem-local async mutation queue; no cross-runtime lock or persistent identity.
 - Unresolved architecture blockers: none.
 - Verdict: **ready**.
