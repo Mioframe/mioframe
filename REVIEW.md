@@ -12,11 +12,11 @@ None.
 
 ## Major issues
 
-### M1 — PR weakens the global Oxlint rule to accommodate test-only sentinel fields
+### M1 — PR changes global Oxlint policy for a test-local implementation detail
 
 Owner: repository tooling/configuration
 
-Problem: the final correction adds repository-wide `eslint/no-underscore-dangle` allow-list entries for `__isDomainError`, `__sameEntryKey`, and `__writtenContent`. This changes lint policy for every source file even though the new need is confined to test helpers and the correction task explicitly forbade weakening verifier/lint configuration.
+Problem: the final correction adds repository-wide `eslint/no-underscore-dangle` allow-list entries for `__isDomainError`, `__sameEntryKey`, and `__writtenContent`. The recovery feature does not require a global lint-policy change; the newly allowed names are used only by test/helper implementation details.
 
 Evidence:
 
@@ -25,12 +25,12 @@ Evidence:
 
 Basis:
 
-- [Root repository rules](AGENTS.md) require preserving verifier checks and prohibit weakening existing checks to make a correction pass.
-- The current correction contract forbids weakening existing tests or verifier configuration; PR #211 does not require a repository-wide lint-policy change.
+- [Root repository rules](AGENTS.md) require task scope to stay task-relevant, prefer the minimum complete design, and require verifier/fix-only changes to be inspected rather than retained implicitly.
+- [Local-directory recovery handoff](docs/local-directory-access-recovery.md) defines the required recovery state/API/ownership changes and does not require repository-wide lint-policy changes.
 
-Risk: unrelated production/test code can now introduce these underscore-prefixed properties without the previous warning, expanding project-wide lint policy for a feature-local test implementation detail and creating unnecessary configuration drift.
+Risk: unrelated production/test code can now introduce these underscore-prefixed properties without the previous warning, expanding project-wide policy for a feature-local test detail and creating unnecessary configuration drift.
 
-Required final state: restore `.oxlintrc.json` to its pre-PR rule configuration. Make the affected test/helper code comply with the existing lint rule using the narrowest local solution consistent with repository conventions; do not add another repository-wide exception.
+Required final state: restore `.oxlintrc.json` to its pre-PR rule configuration. Make affected test/helper code comply with the existing lint rule using the narrowest local solution consistent with repository conventions; do not add another repository-wide exception.
 
 Verification: final `pnpm verify` passes with no new global lint-rule relaxation and the reconnect/test contracts remain green.
 
