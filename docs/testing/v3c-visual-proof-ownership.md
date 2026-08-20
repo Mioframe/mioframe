@@ -32,12 +32,12 @@ V3C does not:
 
 ## Normal proof ownership
 
-| Observable contract | Primary proof owner |
-| --- | --- |
-| Vue props/emits/slots, native owner, attributes, ARIA and deterministic semantic state | colocated component `*.test.ts` |
-| Real focus, keyboard, pointer/touch, hit testing, browser layout/overflow and browser-observable state transitions | owner-local `*.browser.spec.ts` |
-| Bounded accepted stable appearance | visual proof in the currently authorized location |
-| Complete product scenario crossing product/service/navigation/persistence boundaries | application E2E |
+| Observable contract                                                                                                | Primary proof owner                               |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| Vue props/emits/slots, native owner, attributes, ARIA and deterministic semantic state                             | colocated component `*.test.ts`                   |
+| Real focus, keyboard, pointer/touch, hit testing, browser layout/overflow and browser-observable state transitions | owner-local `*.browser.spec.ts`                   |
+| Bounded accepted stable appearance                                                                                 | visual proof in the currently authorized location |
+| Complete product scenario crossing product/service/navigation/persistence boundaries                               | application E2E                                   |
 
 Private DOM/classes/custom properties and renderer internals are not independent contracts.
 
@@ -89,13 +89,13 @@ The implementation achieved the main V3C-A objectives:
 
 Measured browser proof cost changed from the V3 baseline to the corrected V3C-A result as follows:
 
-| Metric | V3 baseline | Corrected V3C-A |
-| --- | ---: | ---: |
-| Visual executions | 201 | 87 |
-| Storybook behavior executions | 76 | 134 |
-| Visual + behavior executions | 277 | 221 |
-| Visual local elapsed | about 8m21 verifier baseline | about 3.1m reported locally |
-| Storybook behavior local elapsed | about 4m+ baseline | about 3.1m reported locally |
+| Metric                           |                  V3 baseline |             Corrected V3C-A |
+| -------------------------------- | ---------------------------: | --------------------------: |
+| Visual executions                |                          201 |                          87 |
+| Storybook behavior executions    |                           76 |                         134 |
+| Visual + behavior executions     |                          277 |                         221 |
+| Visual local elapsed             | about 8m21 verifier baseline | about 3.1m reported locally |
+| Storybook behavior local elapsed |           about 4m+ baseline | about 3.1m reported locally |
 
 This is a material reduction in both the previously dominant visual lane and aggregate browser executions.
 
