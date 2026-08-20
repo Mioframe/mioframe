@@ -38,7 +38,7 @@ Required final state:
 - If granted resolution enters first, queued add/remove/reconnect/relocation waits for refresh/settlement completion.
 - `denied`/`prompt` resolution remains outside the queue because it does not delete, refresh, settle, or mutate topology.
 - Queue failure handling remains unchanged: later turns must continue after flushed, non-flushed, or rejected resolution work.
-- Do not carry a queue/lease across the browser prompt or across a feature retry after recovery returns.
+- Recovery topology stability ends when this service resolution returns. Do not carry a queue/lease across the browser prompt or across a later feature retry; that retry is a new ordinary VFS/repository command under existing current-path semantics.
 
 Verification:
 
