@@ -9,6 +9,8 @@ Recover remembered local Mioframe directories safely across asynchronous browser
 ## Confirmed current behavior and evidence
 
 - Persisted local-directory records are `{ name, handle }`; the mounted `name` is a display/path locator and can be reused.
+- Remembered local-directory handles are stored in ordinary IndexedDB-backed application storage; Mioframe does not namespace those records by PWA install state, release channel, or URL path.
+- Chrome install state does not create a second Mioframe storage/reconnect model, but it does change one browser-owned File System Access behavior: installed web apps automatically persist granted File System Access permissions. Installed-PWA proof is therefore relevant to permission persistence/revocation, not a reason to duplicate the whole reconnect matrix. See [Chrome persistent File System Access permissions](https://developer.chrome.com/blog/persistent-permissions-for-the-file-system-access-api/).
 - `DeviceFileSystemProvider` owns the provider currently mounted under a name. A new handle object for the same name creates a new provider instance.
 - `WebFileSystemProvider` may await `queryPermission()` before reporting access recovery; old provider operations are not cancelled by unmount/replacement.
 - Browser `requestPermission()` must remain on the main thread in `serviceClient/fileSystem`.
@@ -170,7 +172,9 @@ None. Existing Material/UI contracts and copy remain unchanged except already-de
 - serviceClient tests proving one-shot handle/key round-trip while public feature request/response contracts remain key-free.
 - Real fileSystem/repositories integration proof for queued Automerge write settlement through the intended mounted provider.
 - Existing reconnect/relocation/feature/widget tests remain required.
-- Final real Chrome/PWA operator proof remains required for File System Access browser behavior and the complete user recovery matrix.
+- Real Chrome operator proof is required only for browser-owned File System Access behavior that mocks cannot faithfully establish: persisted-handle permission persistence/revocation, granted-but-unavailable detection, picker cancellation, and real `isSameEntry()` behavior where practically reproducible.
+- A deployed PR preview is valid proof for reconnect behavior that does not depend on install state. Installed-PWA coverage is additionally required only for permission persistence/revocation because Chrome changes that browser behavior for installed web apps.
+- Synthetic race, settlement-failure, invalid/duplicate-candidate, stale-action, and navigation scenarios remain owned by deterministic automated tests and do not require manual duplication in an installed PWA.
 
 ## Required verification
 
@@ -179,7 +183,7 @@ None. Existing Material/UI contracts and copy remain unchanged except already-de
 - final coding-agent `pnpm verify`;
 - complete PR `project-review` after implementation;
 - exact-head GitHub CI;
-- final real Chrome/PWA operator proof.
+- final real Chrome File System Access operator proof at the browser-specific scope defined above.
 
 ## Forbidden
 
@@ -202,5 +206,5 @@ None. Existing Material/UI contracts and copy remain unchanged except already-de
 - Post-return feature retry semantics: explicitly ordinary current-path VFS behavior; no recovery lease.
 - Unresolved architecture blockers: none.
 - Architecture-defined implementation: complete on the reviewed PR head; granted permission resolution now uses the existing topology queue through refresh/write settlement.
-- Remaining acceptance gates: exact-head GitHub CI and final real Chrome/PWA operator proof, plus cleanup of any active review-only quality findings before merge.
+- Remaining acceptance gates: exact-head GitHub CI and the narrow real-Chrome File System Access proof defined above, plus cleanup of any active review-only quality findings before merge.
 - Verdict: **ready**.
