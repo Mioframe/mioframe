@@ -14,13 +14,14 @@ describe('resolveVerifyInvocation', () => {
         GITHUB_BASE_REF: 'develop',
       }),
     ).toEqual({
-      version: 3,
+      version: 4,
       scope: { kind: 'github-base', baseRef: 'origin/develop' },
       profile: 'github-actions',
       onlyLabel: 'unit-tests',
       verbose: false,
       fixMode: 'none',
       storybookBuildCiFallback: false,
+      repeat: null,
     });
   });
 
@@ -53,13 +54,14 @@ describe('resolveVerifyInvocation', () => {
         VERIFY_BASE: 'origin/other',
       }),
     ).toEqual({
-      version: 3,
+      version: 4,
       scope: { kind: 'full' },
       profile: 'github-actions',
       onlyLabel: null,
       verbose: false,
       fixMode: 'none',
       storybookBuildCiFallback: false,
+      repeat: null,
     });
   });
 
@@ -165,6 +167,122 @@ describe('resolveVerifyInvocation', () => {
       ),
     ).toThrow('Duplicate verify option: --storybook-build-ci-fallback');
   });
+
+  it('resolves --repeat 10 to repeat: 10 with --only storybook-behavior and --files', () => {
+    expect(
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '10'],
+        {},
+      ).repeat,
+    ).toBe(10);
+  });
+
+  it('resolves repeat to null for an ordinary invocation', () => {
+    expect(resolveVerifyInvocation([], {}).repeat).toBeNull();
+    expect(resolveVerifyInvocation(['--only', 'storybook-behavior'], {}).repeat).toBeNull();
+  });
+
+  it('rejects a missing value for --repeat', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat'],
+        {},
+      ),
+    ).toThrow('Missing value for --repeat');
+  });
+
+  it('rejects a non-integer --repeat value', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '10.5'],
+        {},
+      ),
+    ).toThrow('Invalid value for --repeat: 10.5');
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', 'abc'],
+        {},
+      ),
+    ).toThrow('Invalid value for --repeat: abc');
+  });
+
+  it('rejects --repeat values of zero or one', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '0'],
+        {},
+      ),
+    ).toThrow('Invalid value for --repeat: 0');
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '1'],
+        {},
+      ),
+    ).toThrow('Invalid value for --repeat: 1');
+  });
+
+  it('rejects a negative --repeat value', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '-1'],
+        {},
+      ),
+    ).toThrow('Invalid value for --repeat: -1');
+  });
+
+  it('rejects a --repeat value above the bound of 20', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '21'],
+        {},
+      ),
+    ).toThrow('Invalid value for --repeat: 21');
+  });
+
+  it('rejects a duplicate --repeat flag', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        [
+          '--only',
+          'storybook-behavior',
+          '--files',
+          'src/foo.browser.spec.ts',
+          '--repeat',
+          '10',
+          '--repeat',
+          '5',
+        ],
+        {},
+      ),
+    ).toThrow('Duplicate verify option: --repeat');
+  });
+
+  it('rejects --repeat without --only storybook-behavior', () => {
+    expect(() =>
+      resolveVerifyInvocation(['--files', 'src/foo.browser.spec.ts', '--repeat', '10'], {}),
+    ).toThrow('--repeat requires --only storybook-behavior');
+  });
+
+  it('rejects --repeat with another --only label', () => {
+    expect(() =>
+      resolveVerifyInvocation(
+        ['--only', 'visual', '--files', 'src/foo.browser.spec.ts', '--repeat', '10'],
+        {},
+      ),
+    ).toThrow('--repeat requires --only storybook-behavior');
+  });
+
+  it('rejects --repeat without --files', () => {
+    expect(() =>
+      resolveVerifyInvocation(['--only', 'storybook-behavior', '--repeat', '10'], {}),
+    ).toThrow('--repeat requires --files');
+  });
+
+  it('rejects --repeat with --full', () => {
+    expect(() =>
+      resolveVerifyInvocation(['--full', '--only', 'storybook-behavior', '--repeat', '10'], {}),
+    ).toThrow('--repeat cannot be combined with --full.');
+  });
 });
 
 describe('formatVerifyInvocationCommand', () => {
@@ -204,6 +322,23 @@ describe('formatVerifyInvocationCommand', () => {
     );
   });
 
+  it('preserves --repeat 10 in the rendered command, including a read-only rerun', () => {
+    const invocation = resolveVerifyInvocation(
+      ['--only', 'storybook-behavior', '--files', 'src/foo.browser.spec.ts', '--repeat', '10'],
+      {},
+    );
+    const command = formatVerifyInvocationCommand(invocation);
+
+    expect(command.startsWith('pnpm verify')).toBe(true);
+    expect(command).toBe(
+      'pnpm verify --files src/foo.browser.spec.ts --profile local --only storybook-behavior --repeat 10',
+    );
+
+    const rerunCommand = formatVerifyInvocationCommand(invocation, { readOnly: true });
+
+    expect(rerunCommand).toContain('--repeat 10');
+  });
+
   it('single-quotes substitutions, backticks, and embedded single quotes', () => {
     const backtick = String.fromCharCode(96);
     const unsafePath =
@@ -219,16 +354,17 @@ describe('formatVerifyInvocationCommand', () => {
 
 describe('isResolvedVerifyInvocation', () => {
   it('rejects corrupted and legacy persisted metadata', () => {
-    expect(isResolvedVerifyInvocation({ version: 3, scope: { kind: 'local' } })).toBe(false);
+    expect(isResolvedVerifyInvocation({ version: 4, scope: { kind: 'local' } })).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 2,
+        version: 3,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: null,
         verbose: false,
         fixMode: 'none',
         storybookBuildCiFallback: false,
+        repeat: null,
       }),
     ).toBe(false);
   });
@@ -236,24 +372,26 @@ describe('isResolvedVerifyInvocation', () => {
   it('rejects persisted invalid mode and label combinations', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 3,
+        version: 4,
         scope: { kind: 'full' },
         profile: 'local',
         onlyLabel: 'mutation',
         verbose: false,
         fixMode: 'none',
         storybookBuildCiFallback: false,
+        repeat: null,
       }),
     ).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 3,
+        version: 4,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: 'type-check',
         verbose: false,
         fixMode: 'fix-only',
         storybookBuildCiFallback: false,
+        repeat: null,
       }),
     ).toBe(false);
   });
@@ -261,23 +399,25 @@ describe('isResolvedVerifyInvocation', () => {
   it('rejects a missing or mistyped storybookBuildCiFallback field', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 3,
+        version: 4,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: null,
         verbose: false,
         fixMode: 'none',
+        repeat: null,
       }),
     ).toBe(false);
     expect(
       isResolvedVerifyInvocation({
-        version: 3,
+        version: 4,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: null,
         verbose: false,
         fixMode: 'none',
         storybookBuildCiFallback: 'true',
+        repeat: null,
       }),
     ).toBe(false);
   });
@@ -285,13 +425,14 @@ describe('isResolvedVerifyInvocation', () => {
   it('rejects a persisted storybookBuildCiFallback that requires --only storybook-build', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 3,
+        version: 4,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: 'visual',
         verbose: false,
         fixMode: 'none',
         storybookBuildCiFallback: true,
+        repeat: null,
       }),
     ).toBe(false);
   });
@@ -299,13 +440,97 @@ describe('isResolvedVerifyInvocation', () => {
   it('accepts a persisted storybookBuildCiFallback with --only storybook-build', () => {
     expect(
       isResolvedVerifyInvocation({
-        version: 3,
+        version: 4,
         scope: { kind: 'local' },
         profile: 'local',
         onlyLabel: 'storybook-build',
         verbose: false,
         fixMode: 'none',
         storybookBuildCiFallback: true,
+        repeat: null,
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects a missing or mistyped repeat field', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 4,
+        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        profile: 'local',
+        onlyLabel: 'storybook-behavior',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: false,
+      }),
+    ).toBe(false);
+    expect(
+      isResolvedVerifyInvocation({
+        version: 4,
+        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        profile: 'local',
+        onlyLabel: 'storybook-behavior',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: false,
+        repeat: '10',
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects a persisted repeat that requires --only storybook-behavior and --files', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 4,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: 'visual',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: false,
+        repeat: 10,
+      }),
+    ).toBe(false);
+    expect(
+      isResolvedVerifyInvocation({
+        version: 4,
+        scope: { kind: 'local' },
+        profile: 'local',
+        onlyLabel: 'storybook-behavior',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: false,
+        repeat: 10,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects a persisted repeat outside the bound of 2-20', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 4,
+        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        profile: 'local',
+        onlyLabel: 'storybook-behavior',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: false,
+        repeat: 21,
+      }),
+    ).toBe(false);
+  });
+
+  it('accepts a persisted repeat with --only storybook-behavior and --files', () => {
+    expect(
+      isResolvedVerifyInvocation({
+        version: 4,
+        scope: { kind: 'explicit-files', files: ['src/foo.browser.spec.ts'] },
+        profile: 'local',
+        onlyLabel: 'storybook-behavior',
+        verbose: false,
+        fixMode: 'none',
+        storybookBuildCiFallback: false,
+        repeat: 10,
       }),
     ).toBe(true);
   });

@@ -704,6 +704,13 @@ function printHelp(): void {
   console.log('  --files <paths...>  Override changed-file detection with an explicit file list.');
   console.log('                      Cannot be combined with --full.');
   console.log(
+    '  --repeat <count>    With `--only storybook-behavior` and `--files` (integer 2-20):',
+  );
+  console.log(
+    '                      repeat the selected Storybook behavior tests this many times within',
+  );
+  console.log('                      one invocation, for deterministic flake diagnosis.');
+  console.log(
     '  --full              Unconditional full-project release scope: do not resolve changed paths,',
   );
   console.log('                      run full proof plus release-version/release-config/build/');
@@ -733,6 +740,9 @@ function printHelp(): void {
   console.log('  pnpm verify --verbose --only type-check');
   console.log('  pnpm verify --only eslint --files src/foo.ts src/bar.vue');
   console.log('  pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback');
+  console.log(
+    '  pnpm verify --only storybook-behavior --files src/foo.browser.spec.ts --repeat 10',
+  );
   console.log('  pnpm verify --fix');
   console.log('  pnpm verify --fix-only');
   console.log('  pnpm verify --full');
@@ -1274,6 +1284,14 @@ export interface BuildCommandsOptions {
    * defaults to `false`.
    */
   storybookBuildCiFallback?: boolean;
+  /**
+   * Storybook behavior stability repeat count from `--repeat`. Applies only
+   * to a runnable `storybook-behavior` command: appends the equivalent
+   * Playwright repeated-execution argument (`--repeat-each`) to that
+   * command's args. Has no effect on any other label. Null for an ordinary
+   * invocation.
+   */
+  repeat?: number | null;
 }
 
 /**
@@ -1294,6 +1312,7 @@ export function buildCommands(
     storybookBuildPlan: storybookBuildPlanOverride = null,
     visualPlan: visualPlanOverride = null,
     storybookBuildCiFallback = false,
+    repeat = currentVerifyInvocation?.repeat ?? null,
   }: BuildCommandsOptions = {},
 ): CommandEntry[] {
   const applyFixers = fixMode === 'fix' || fixMode === 'fix-only';
@@ -1571,32 +1590,51 @@ export function buildCommands(
     });
   }
 
+  let storybookBehaviorEntry: CommandEntry;
+
   if (storybookBehaviorPlan.mode === 'invalid') {
-    commands.push({
+    storybookBehaviorEntry = {
       kind: 'failed',
       label: 'storybook-behavior',
       command: 'pnpm test:storybook-behavior',
       reason: `invalid Storybook behavior scenario registry state: ${storybookBehaviorPlan.reasons.join('; ')}`,
-    });
+    };
   } else if (fullMode) {
-    commands.push(createStorybookBehaviorCommand([], 'full-project release verification'));
+    storybookBehaviorEntry = createStorybookBehaviorCommand(
+      [],
+      'full-project release verification',
+    );
   } else if (storybookBehaviorPlan.mode === 'full') {
-    commands.push(createStorybookBehaviorCommand([], storybookBehaviorPlan.reasons.join('; ')));
+    storybookBehaviorEntry = createStorybookBehaviorCommand(
+      [],
+      storybookBehaviorPlan.reasons.join('; '),
+    );
   } else if (storybookBehaviorPlan.mode === 'focused') {
-    commands.push(
-      createStorybookBehaviorCommand(
-        storybookBehaviorPlan.specs,
-        storybookBehaviorPlan.reasons.join('; '),
-      ),
+    storybookBehaviorEntry = createStorybookBehaviorCommand(
+      storybookBehaviorPlan.specs,
+      storybookBehaviorPlan.reasons.join('; '),
     );
   } else {
-    commands.push({
+    storybookBehaviorEntry = {
       kind: 'skipped',
       label: 'storybook-behavior',
       command: 'pnpm test:storybook-behavior',
       reason: 'empty storybook behavior scope',
-    });
+    };
   }
+
+  // Narrow repeated-execution stability contract (`--repeat`): only ever
+  // resolved for `--only storybook-behavior --files ...` (see
+  // resolveVerifyInvocation's assertModeCombination), so it applies only to
+  // this runnable entry and never to another label's command.
+  if (repeat !== null && storybookBehaviorEntry.kind === 'run') {
+    storybookBehaviorEntry = {
+      ...storybookBehaviorEntry,
+      args: [...storybookBehaviorEntry.args, '--repeat-each', String(repeat)],
+    };
+  }
+
+  commands.push(storybookBehaviorEntry);
 
   if (fullMode) {
     commands.push({
@@ -2100,6 +2138,7 @@ async function main(
       // `resolveVerifyInvocation`), so this passes straight through (see
       // `storybookBuildCiFallback` on BuildCommandsOptions).
       storybookBuildCiFallback: invocation.storybookBuildCiFallback,
+      repeat: invocation.repeat,
     }),
     onlyLabel,
   );

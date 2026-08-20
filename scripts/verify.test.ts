@@ -681,6 +681,55 @@ describe('buildCommands storybook-behavior lane', () => {
   });
 });
 
+describe('buildCommands storybook-behavior repeat', () => {
+  it('appends exactly one Playwright repeat argument to a focused storybook-behavior command', () => {
+    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+      fullMode: false,
+      repeat: 10,
+    });
+    const entry = requireRunEntry(commands, 'storybook-behavior');
+
+    expect(entry.args).toEqual([
+      'test:storybook-behavior',
+      'tests/e2e/storybook/colorOwnership.spec.ts',
+      '--repeat-each',
+      '10',
+    ]);
+  });
+
+  it('leaves an ordinary storybook-behavior command without a repeat argument', () => {
+    const commands = buildCommands(['tests/e2e/storybook/colorOwnership.spec.ts'], {
+      fullMode: false,
+      repeat: null,
+    });
+    const entry = requireRunEntry(commands, 'storybook-behavior');
+
+    expect(entry.args).toEqual([
+      'test:storybook-behavior',
+      'tests/e2e/storybook/colorOwnership.spec.ts',
+    ]);
+  });
+
+  it('does not add a repeat argument to a skipped storybook-behavior command', () => {
+    const commands = buildCommands(['src/app/main.ts'], { fullMode: false, repeat: 10 });
+    const entry = requireSkippedEntry(commands, 'storybook-behavior');
+
+    expect(entry.reason).toBe('empty storybook behavior scope');
+  });
+
+  it('does not leak the repeat argument to any other label', () => {
+    const commands = buildCommands([], { fullMode: true, repeat: 10 });
+
+    for (const entry of commands) {
+      if (entry.kind !== 'run' || entry.label === 'storybook-behavior') {
+        continue;
+      }
+
+      expect(entry.args).not.toContain('--repeat-each');
+    }
+  });
+});
+
 describe('buildCommands storybook-build lane', () => {
   beforeEach(() => {
     isPackageJsonRuntimeRelevantChange.mockReset();
