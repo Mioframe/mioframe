@@ -82,6 +82,27 @@ const setupFileSystemService = () => {
   const isCurrentRecoveryTarget = ({ spaceName, recoveryKey }: DeviceDirectoryRecoveryTarget) =>
     recoveryKeysByName.get(spaceName) === recoveryKey;
 
+  // Serializes fileSystem-owned mounted-directory topology mutations (`addDeviceDirectory`,
+  // `removeDeviceDirectory`, the topology-changing commit portion of same-entry reconnect, and
+  // confirmed relocation) within this service instance, so a mutation turn always observes the
+  // current topology instead of a snapshot taken before an earlier turn committed. Runtime-only:
+  // not a persisted lock, VFS lock, or cross-runtime synchronization mechanism. Releases after both
+  // success and failure so a rejected mutation cannot block later mutations.
+  let mutationQueueTail: Promise<void> = Promise.resolve();
+
+  const enqueueMutation = <T>(task: () => Promise<T>): Promise<T> => {
+    // `mutationQueueTail` always fulfills (see below), so chaining with a single `onFulfilled`
+    // handler is sufficient to run `task` after the previous mutation turn settles either way.
+    const result = mutationQueueTail.then(task);
+
+    mutationQueueTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+
+    return result;
+  };
+
   const deviceFileSystemProvider = DeviceFileSystemProvider({
     createProvider: (record) => {
       if (record.kind !== 'localDirectory') {
@@ -302,35 +323,37 @@ const setupFileSystemService = () => {
   ): Promise<{ name: string }> => {
     await deviceFilesReady;
 
-    const records = await getRecordList();
-    const existingRecord = await findRecordByHandle(records, handle);
-    const nextRecord = {
-      name: getUniqueDeviceDirectoryName(handle.name, records, existingRecord),
-      kind: 'localDirectory',
-      handle,
-    } satisfies MountedDeviceFileRecord;
-    const nextPersistedRecord = {
-      name: nextRecord.name,
-      handle: nextRecord.handle,
-    } satisfies PersistedDeviceDirectoryRecord;
+    return enqueueMutation(async () => {
+      const records = await getRecordList();
+      const existingRecord = await findRecordByHandle(records, handle);
+      const nextRecord = {
+        name: getUniqueDeviceDirectoryName(handle.name, records, existingRecord),
+        kind: 'localDirectory',
+        handle,
+      } satisfies MountedDeviceFileRecord;
+      const nextPersistedRecord = {
+        name: nextRecord.name,
+        handle: nextRecord.handle,
+      } satisfies PersistedDeviceDirectoryRecord;
 
-    const nextRecords = existingRecord
-      ? records.map((record) => (record === existingRecord ? nextPersistedRecord : record))
-      : [...records, nextPersistedRecord];
+      const nextRecords = existingRecord
+        ? records.map((record) => (record === existingRecord ? nextPersistedRecord : record))
+        : [...records, nextPersistedRecord];
 
-    await updateRecordList(nextRecords);
+      await updateRecordList(nextRecords);
 
-    if (existingRecord && existingRecord.name !== nextRecord.name) {
-      deviceFileSystemProvider.removeRecord(existingRecord.name);
-      recoveryKeysByName.delete(existingRecord.name);
-    }
+      if (existingRecord && existingRecord.name !== nextRecord.name) {
+        deviceFileSystemProvider.removeRecord(existingRecord.name);
+        recoveryKeysByName.delete(existingRecord.name);
+      }
 
-    deviceFileSystemProvider.upsertRecord(nextRecord);
-    syncActiveDeviceFiles();
+      deviceFileSystemProvider.upsertRecord(nextRecord);
+      syncActiveDeviceFiles();
 
-    return {
-      name: nextRecord.name,
-    };
+      return {
+        name: nextRecord.name,
+      };
+    });
   };
 
   // Persists and remounts a proven same-entry replacement handle under its existing mounted name.
@@ -407,30 +430,40 @@ const setupFileSystemService = () => {
     }
 
     if (isSameEntry) {
-      // Revalidate immediately before mutation: the target may have been replaced while
-      // `isSameEntry()` was pending.
-      const recheckRecords = await getRecordList();
-      const recheckRecord = recheckRecords.find((record) => record.name === spaceName);
+      // Revalidate immediately before mutation, inside the serialized mutation turn: the target
+      // may have been replaced by another queued mutation while `isSameEntry()` was pending.
+      const commitResult = await enqueueMutation(async () => {
+        const recheckRecords = await getRecordList();
+        const recheckRecord = recheckRecords.find((record) => record.name === spaceName);
 
-      if (!recheckRecord) {
-        return { status: 'missingRecord' };
-      }
-      if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
-        return { status: 'staleRecovery' };
-      }
+        if (!recheckRecord) {
+          return { status: 'missingRecord' as const };
+        }
+        if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
+          return { status: 'staleRecovery' as const };
+        }
 
-      const replacement = await persistAndRemountSameEntry({
-        handle,
-        records: recheckRecords,
-        existingRecord: recheckRecord,
+        const replacement = await persistAndRemountSameEntry({
+          handle,
+          records: recheckRecords,
+          existingRecord: recheckRecord,
+        });
+
+        return { status: 'committed' as const, replacement };
       });
 
+      if (commitResult.status !== 'committed') {
+        return commitResult;
+      }
+
+      // Write-recovery settlement runs after the mutation queue is released: it does not need to
+      // hold the queue once the reconnect has committed.
       const mountPath = PathUtils.join(deviceFilesPath, spaceName);
       const settlement = await registry.runWriteRecoveryHandlers({ mountPath, spaceName });
       const status =
         settlement.status === 'flushed' ? 'reconnected' : 'reconnectedWithWriteRecoveryFailure';
 
-      return { status, name: replacement.name };
+      return { status, name: commitResult.replacement.name };
     }
 
     // Identity is false or unverifiable: canonical marker inspection decides whether this is an
@@ -460,67 +493,61 @@ const setupFileSystemService = () => {
   }): Promise<RelocateRememberedDeviceDirectoryResult> => {
     await deviceFilesReady;
 
-    const records = await getRecordList();
-    const existingRecord = records.find((record) => record.name === spaceName);
+    // The entire confirmed-relocation decision runs inside one serialized mutation turn: no other
+    // service-owned topology mutation (add/remove/reconnect commit/another relocation) can read or
+    // write mounted-directory topology while this turn is in progress, so the `alreadyMounted`
+    // versus unique-relocation decision below always reflects the current topology instead of a
+    // snapshot taken before an earlier mutation committed.
+    return enqueueMutation(async () => {
+      const records = await getRecordList();
+      const existingRecord = records.find((record) => record.name === spaceName);
 
-    if (!existingRecord) {
-      return { status: 'missingRecord' };
-    }
+      if (!existingRecord) {
+        return { status: 'missingRecord' };
+      }
 
-    if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
-      return { status: 'staleRecovery' };
-    }
+      if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
+        return { status: 'staleRecovery' };
+      }
 
-    const otherRecords = records.filter((record) => record !== existingRecord);
-    const matchedOtherRecord = await findRecordByHandle(otherRecords, handle);
+      // Revalidate the canonical marker after the confirmation pause, immediately before any
+      // terminal decision: the candidate may no longer look like a Mioframe space by the time the
+      // user confirms.
+      const inspection = await inspectMioframeSpaceCandidate(handle);
 
-    // Revalidate the canonical marker after all asynchronous preflight and after the confirmation
-    // pause, immediately before any terminal decision: the candidate may no longer look like a
-    // Mioframe space by the time the user confirms.
-    const inspection = await inspectMioframeSpaceCandidate(handle);
+      if (!inspection.looksLikeExistingSpace) {
+        return { status: 'invalidCandidate' };
+      }
 
-    if (!inspection.looksLikeExistingSpace) {
-      return { status: 'invalidCandidate' };
-    }
+      const otherRecords = records.filter((record) => record !== existingRecord);
+      const matchedOtherRecord = await findRecordByHandle(otherRecords, handle);
 
-    // Revalidate the recovery target again immediately before any terminal decision, including
-    // `alreadyMounted`: the target may have gone missing or been replaced during the preceding
-    // asynchronous preflight.
-    const recheckRecords = await getRecordList();
-    const recheckRecord = recheckRecords.find((record) => record.name === spaceName);
+      if (matchedOtherRecord) {
+        return { status: 'alreadyMounted', name: matchedOtherRecord.name };
+      }
 
-    if (!recheckRecord) {
-      return { status: 'missingRecord' };
-    }
-    if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
-      return { status: 'staleRecovery' };
-    }
+      // The old target name still counts as occupied because `existingRecord` remains in
+      // `records` here, so the allocated name always differs from the old mounted name.
+      const newName = getUniqueDeviceDirectoryName(handle.name, records);
+      const nextRecord = { name: newName, handle } satisfies PersistedDeviceDirectoryRecord;
+      const nextRecords = records.map((record) =>
+        record === existingRecord ? nextRecord : record,
+      );
 
-    if (matchedOtherRecord) {
-      return { status: 'alreadyMounted', name: matchedOtherRecord.name };
-    }
+      await updateRecordList(nextRecords);
 
-    // The old target name still counts as occupied because `recheckRecord` remains in
-    // `recheckRecords` here, so the allocated name always differs from the old mounted name.
-    const newName = getUniqueDeviceDirectoryName(handle.name, recheckRecords);
-    const nextRecord = { name: newName, handle } satisfies PersistedDeviceDirectoryRecord;
-    const nextRecords = recheckRecords.map((record) =>
-      record === recheckRecord ? nextRecord : record,
-    );
+      deviceFileSystemProvider.removeRecord(existingRecord.name);
+      recoveryKeysByName.delete(existingRecord.name);
+      deviceFileSystemProvider.upsertRecord({
+        name: newName,
+        kind: 'localDirectory',
+        handle,
+      });
+      registry.clearForSpace(existingRecord.name);
+      syncActiveDeviceFiles();
 
-    await updateRecordList(nextRecords);
-
-    deviceFileSystemProvider.removeRecord(recheckRecord.name);
-    recoveryKeysByName.delete(recheckRecord.name);
-    deviceFileSystemProvider.upsertRecord({
-      name: newName,
-      kind: 'localDirectory',
-      handle,
+      return { status: 'relocated', name: newName };
     });
-    registry.clearForSpace(recheckRecord.name);
-    syncActiveDeviceFiles();
-
-    return { status: 'relocated', name: newName };
   };
 
   const removeDeviceDirectory = async (name: string): Promise<void> => {
@@ -530,18 +557,20 @@ const setupFileSystemService = () => {
 
     await deviceFilesReady;
 
-    const records = await getRecordList();
-    const nextRecords = records.filter((record) => record.name !== name);
+    return enqueueMutation(async () => {
+      const records = await getRecordList();
+      const nextRecords = records.filter((record) => record.name !== name);
 
-    if (nextRecords.length === records.length) {
-      return;
-    }
+      if (nextRecords.length === records.length) {
+        return;
+      }
 
-    await updateRecordList(nextRecords);
-    deviceFileSystemProvider.removeRecord(name);
-    recoveryKeysByName.delete(name);
-    registry.clearForSpace(name);
-    syncActiveDeviceFiles();
+      await updateRecordList(nextRecords);
+      deviceFileSystemProvider.removeRecord(name);
+      recoveryKeysByName.delete(name);
+      registry.clearForSpace(name);
+      syncActiveDeviceFiles();
+    });
   };
 
   return {

@@ -1349,7 +1349,7 @@ describe('useFileSystemService', () => {
     expect(events).toEqual([]);
   });
 
-  it('relocateRememberedDeviceDirectory does not return alreadyMounted with zero mutation when recovery goes stale while duplicate detection is pending', async () => {
+  it('relocateRememberedDeviceDirectory observes a queued remove that runs first instead of a stale alreadyMounted', async () => {
     const workHandle = createDirectoryHandleMock({
       name: 'Work',
       permissionState: 'granted',
@@ -1365,10 +1365,15 @@ describe('useFileSystemService', () => {
       permissionState: 'granted',
       sameEntryKey: 'archive',
     });
-    getRecordListMock.mockResolvedValue([
+    let persistedRecords: Array<{ name: string; handle: FileSystemDirectoryHandle }> = [
       { name: 'Work', handle: workHandle },
       { name: 'Archive', handle: archiveHandle },
-    ]);
+    ];
+    getRecordListMock.mockImplementation(() => Promise.resolve(persistedRecords));
+    updateRecordListMock.mockImplementation((nextRecords) => {
+      persistedRecords = nextRecords;
+      return Promise.resolve(undefined);
+    });
 
     const service = await createService();
     const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
@@ -1376,46 +1381,181 @@ describe('useFileSystemService', () => {
       service,
       spaceName: 'Work',
     });
-
-    // The `Work` recovery target's provider is replaced (e.g. a different device re-adds "Work")
-    // while duplicate-handle detection against `Archive` is still pending, so the initiating
-    // `recoveryKey` is stale by the time detection resolves.
-    const originalArchiveIsSameEntry = archiveHandle.isSameEntry.bind(archiveHandle);
-    archiveHandle.isSameEntry = vi.fn((other: FileSystemHandle) => {
-      // Restore first: the nested `addDeviceDirectory` call below also runs duplicate-handle
-      // detection over `archiveHandle`, and must not recurse back into this override.
-      archiveHandle.isSameEntry = originalArchiveIsSameEntry;
-
-      return (async () => {
-        const replacementWorkHandle = createDirectoryHandleMock({
-          name: 'Work',
-          permissionState: 'granted',
-          sameEntryKey: 'replacement-work',
-        });
-        await service.removeDeviceDirectory('Work');
-        getRecordListMock.mockResolvedValue([
-          { name: 'Archive', handle: archiveHandle },
-          { name: 'Work', handle: replacementWorkHandle },
-        ]);
-        await service.addDeviceDirectory(replacementWorkHandle);
-
-        return originalArchiveIsSameEntry(other);
-      })();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual(
+        expect.arrayContaining([{ canDisconnect: true, name: 'Work' }]),
+      );
     });
 
-    updateRecordListMock.mockClear();
+    // Queue the remove first (without awaiting it), then queue relocation immediately after: the
+    // mutation queue guarantees the remove's turn commits before relocation's turn starts, so
+    // relocation must observe the resulting current topology instead of the topology at call time.
+    const removePromise = service.removeDeviceDirectory('Archive');
+    const relocatePromise = service.relocateRememberedDeviceDirectory({
+      handle: candidateHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
 
-    await expect(
-      service.relocateRememberedDeviceDirectory({
-        handle: candidateHandle,
-        spaceName: 'Work',
-        recoveryKey,
-      }),
-    ).resolves.toEqual({ status: 'staleRecovery' });
+    await expect(removePromise).resolves.toBeUndefined();
+    await expect(relocatePromise).resolves.toEqual({
+      status: 'relocated',
+      name: 'Archive (moved)',
+    });
+  });
 
-    // Only the interleaved `removeDeviceDirectory`/`addDeviceDirectory` calls mutate; relocation
-    // itself performs zero mutation once the target has gone stale.
-    expect(updateRecordListMock).toHaveBeenCalledTimes(2);
+  it('relocateRememberedDeviceDirectory returns current alreadyMounted instead of persisting a duplicate mount when a queued add commits the candidate first', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const addedHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-physical-entry',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Archive (moved)',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-physical-entry',
+    });
+    let persistedRecords: Array<{ name: string; handle: FileSystemDirectoryHandle }> = [
+      { name: 'Work', handle: workHandle },
+    ];
+    getRecordListMock.mockImplementation(() => Promise.resolve(persistedRecords));
+    updateRecordListMock.mockImplementation((nextRecords) => {
+      persistedRecords = nextRecords;
+      return Promise.resolve(undefined);
+    });
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual(
+        expect.arrayContaining([{ canDisconnect: true, name: 'Work' }]),
+      );
+    });
+
+    // Queue the add first (without awaiting it), then queue relocation immediately after: by the
+    // time relocation's turn starts, the candidate is already persisted under `Archive`.
+    const addPromise = service.addDeviceDirectory(addedHandle);
+    const relocatePromise = service.relocateRememberedDeviceDirectory({
+      handle: candidateHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
+
+    await expect(addPromise).resolves.toEqual({ name: 'Archive' });
+    await expect(relocatePromise).resolves.toEqual({ status: 'alreadyMounted', name: 'Archive' });
+    // Only the add persisted; relocation performed zero mutation once it observed the duplicate.
+    expect(updateRecordListMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let a queued add start reading topology until a relocation mutation turn releases the queue', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const addedHandle = createDirectoryHandleMock({
+      name: 'Extra',
+      permissionState: 'granted',
+      sameEntryKey: 'extra',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Work (moved)',
+      permissionState: 'granted',
+      sameEntryKey: 'moved',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    let releaseInspection: (() => void) | undefined;
+    inspectMioframeSpaceDirectoryMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseInspection = () => {
+            resolve({ looksLikeExistingSpace: true });
+          };
+        }),
+    );
+    getRecordListMock.mockClear();
+
+    const relocatePromise = service.relocateRememberedDeviceDirectory({
+      handle: candidateHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
+
+    // Let relocation's turn actually start (its own initial topology read) and reach the pending
+    // marker inspection before queuing the add behind it.
+    await vi.waitFor(() => {
+      expect(getRecordListMock).toHaveBeenCalledTimes(1);
+    });
+
+    const addPromise = service.addDeviceDirectory(addedHandle);
+
+    // Flush several microtask turns: if the queue failed to serialize, the add's own topology
+    // read would run during these ticks even though relocation has not released the queue yet.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getRecordListMock).toHaveBeenCalledTimes(1);
+
+    releaseInspection?.();
+
+    await expect(relocatePromise).resolves.toEqual({ status: 'relocated', name: 'Work (moved)' });
+    await expect(addPromise).resolves.toEqual({ name: 'Extra' });
+    expect(getRecordListMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not block a queued mutation behind a failed mutation', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const archiveHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    updateRecordListMock.mockRejectedValueOnce(new Error('storage write failed'));
+
+    // Queue a failing mutation, then queue a second mutation immediately behind it (before the
+    // first has even rejected): the second must still run once the queue releases.
+    const failingAddPromise = service.addDeviceDirectory(archiveHandle);
+    const removePromise = service.removeDeviceDirectory('Work');
+
+    await expect(failingAddPromise).rejects.toThrow('storage write failed');
+    await expect(removePromise).resolves.toBeUndefined();
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
   });
 
   it('relocateRememberedDeviceDirectory aborts with zero mutation when handle-identity comparison against another record fails unexpectedly', async () => {
