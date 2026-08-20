@@ -4,7 +4,7 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Final unavailable-root reconnect UX and required real-browser proof for PR #211.
+- Local-directory reconnect feature behavior and final browser proof for PR #211.
 
 ## Blockers
 
@@ -12,57 +12,46 @@ Verdict: blocked
 
 Owner: `src/features/localDirectoryReconnect`
 
-Problem: mocked File System Access handles cannot prove the browser behavior that originally invalidated the strict `isSameEntry()` design. The final implementation has not yet been operator-verified in real Chrome/PWA.
+Problem: mocked File System Access handles cannot prove the browser behavior that motivated the fallback from strict `isSameEntry()` identity.
 
-Evidence:
+Required final state: after code corrections, verify the final head in real Chrome/PWA for permission loss, granted-but-unavailable remembered root, picker/confirmation cancel, proven same-entry reconnect, locator-different confirmed relocation, invalid marker, already-mounted candidate, navigation, and same-entry settlement warning.
 
-- [Local-directory recovery handoff](../../../docs/local-directory-access-recovery.md) — final real Chrome/PWA proof is a merge gate.
-- [Reconnect action](useLocalDirectoryReconnectAction.ts) — picker identity, unavailable-root recovery, and confirmed relocation depend on real File System Access behavior.
-
-Basis:
-
-- [Project review workflow](../../../.agents/skills/project-review/SKILL.md) — required but missing risk-specific proof blocks acceptance.
-
-Risk: persisted-handle, permission, picker, or installed-PWA behavior can still differ from mocks in the scenario that motivated the PR.
-
-Required final state: after code/architecture findings are resolved, verify the final head in real Chrome/PWA: revoked permission; granted-but-unavailable root; picker/confirmation cancellation; proven same-entry reconnect; locator-different confirmed relocation; invalid marker; already-mounted candidate; navigation to the recovered mount; and same-entry settlement warning behavior.
-
-Verification: operator proof against the final implementation/head; any discrepancy is a product/architecture finding rather than a UI workaround.
+Verification: operator proof against the final implementation/head.
 
 ## Major issues
 
-### M1 — Production confirmation copy does not match the canonical handoff
+### M1 — Pre-commit staleness uses recovery object identity instead of the stable recovery key
 
 Owner: `src/features/localDirectoryReconnect`
 
-Problem: the implementation and its tests use a shorter confirmation sentence (`Mioframe will reconnect the selected space...`) instead of the exact copy now defined by the canonical handoff. The current text no longer falsely promises unconditional removal, but it omits the required safe-mounted-location explanation and conditional replacement behavior.
+Problem: `parseFileSystemUnavailableRootRecovery()` creates a transfer-safe `{ spaceName }` value, but the action currently compares `recovery.value === currentRecovery`. A reactive reread can emit a new Error/recovery object for the same remembered mount and unnecessarily cancel the in-progress action even though the target is unchanged.
 
 Evidence:
 
-- [Reconnect action](useLocalDirectoryReconnectAction.ts) — current supporting text differs from the canonical contract.
-- [Reconnect feature tests](useLocalDirectoryReconnectAction.test.ts) — assert the same noncanonical shorter text.
+- [Reconnect action](useLocalDirectoryReconnectAction.ts) uses reference equality around picker, inspection, confirmation, and error-message applicability.
+- [Unavailable-root recovery parser](../../shared/lib/fileSystem/fileSystemUnavailableRootRecovery.ts) defines `spaceName` as the transfer-safe recovery identity.
 
 Basis:
 
-- [Local-directory recovery handoff](../../../docs/local-directory-access-recovery.md) — defines the exact headline, supporting text, confirm label and cancel label for this explicit storage-recovery confirmation.
+- [Local-directory recovery handoff](../../../docs/local-directory-access-recovery.md) defines action validity by the stable `spaceName` target and intentionally keeps recovery independent of the future directory-state implementation.
 
-Risk: user-facing behavior and its proof diverge from the reviewed product contract, and the confirmation does not explain the conditional `alreadyMounted` versus relocation outcomes as specified.
+Required final state:
 
-Required final state: use the exact confirmation copy from the current handoff and keep `alreadyMounted` zero-mutation/non-diagnostic behavior unchanged.
+- pre-mutation checks verify that the current unavailable-root recovery still targets the same `spaceName`;
+- semantically identical re-emissions for the same mount do not cancel the action;
+- a missing recovery or a different `spaceName` still aborts before mutation;
+- committed service results remain authoritative after the mutation returns;
+- keep the current concise confirmation copy; no copy correction is required.
 
-Verification: focused feature test asserts the exact canonical copy and retains the `alreadyMounted` outcome proof.
+Verification: deterministic feature tests replace the recovery Error/object with a new equivalent recovery for the same `spaceName` while picker/inspection is pending and prove the action continues; a different/missing `spaceName` still aborts before mutation.
 
 ## Minor issues
 
 None.
 
-## Accepted risks
+## Accepted risks / deferred work
 
-None.
-
-## Items not required
-
-None.
+- General directory loading/refresh state and external filesystem observation are separate work.
 
 ## Unresolved questions
 
