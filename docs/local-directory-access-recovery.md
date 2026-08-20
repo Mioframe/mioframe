@@ -4,227 +4,200 @@ This document is the implementation contract for PR #211.
 
 ## Goal
 
-Recover a remembered local-directory root that can no longer be opened without changing the general directory/reactivity architecture, applying a confirmation to the wrong mounted provider, exposing an unverifiable replacement through the old live path, settling cached writes against a different provider that later reuses the same mounted path, letting permission recovery from a removed provider remain actionable after replacement, or letting a successfully correlated permission resolution lose provider/topology identity before its refresh and cached-write settlement complete.
+Recover remembered local Mioframe directories safely across asynchronous browser/provider work without allowing a stale provider action to mutate its replacement or allowing recovery settlement to write through a mounted path after that path has been reassigned.
 
 ## Confirmed current behavior and evidence
 
-- `directoryContent$` already surfaces directory read failures and re-reads after VFS/provider events; its broader loading/refresh model is separate work.
-- Persisted local-directory records are `{ name, handle }`; `name` is a mounted display/path locator, not immutable identity.
-- `DeviceFileSystemProvider` keys active mounted roots by name, so a removed name can later identify a different provider.
-- Automerge repositories use a VFS adapter bound to a textual repository path; each storage IO resolves the provider currently mounted at that path rather than retaining a provider instance.
-- Current reconnect/relocation re-find a record by `spaceName`, which is insufficient across picker/confirmation pauses.
-- Canonical Mioframe marker interpretation belongs behind the fileSystem service boundary; features do not own storage marker facts.
-- Locator-different relocation allocates a new name while the old name is still occupied, persists first, then removes the old runtime mount and mounts the selected folder only at the new path.
-- Web File System permission recovery awaits browser work before invoking its provider-bound `onAccessRequired` callback. Unmounting/replacing a provider does not cancel an already-started provider operation, so a callback from the removed provider can arrive after the topology mutation commits.
-- Pending access requests are keyed by `{ spaceName, mode }`; a late stale callback for a reused `spaceName` can overwrite a request that belongs to the current provider unless fileSystem rejects the stale callback before registry mutation.
-- The main-thread permission broker prepares a temporary handle, awaits `handle.requestPermission()`, then resolves the service request. A provider can be replaced while that browser prompt is pending, so the prepared request needs provider-instance correlation when resolution returns to the service.
-- The current registry now stores and round-trips the existing runtime `recoveryKey`, rejects late registration from stale providers, and rejects a stale prepared prompt before mutating a replacement request.
-- A successful current-provider `resolve(granted)` still deletes the request, awaits `refreshProvider()`, and for write recovery invokes registered repository settlement without participating in the fileSystem topology queue. The refresh await and repository settlement therefore create a new window in which `removeDeviceDirectory`, `addDeviceDirectory`, reconnect, or relocation can change the mounted path after identity was checked.
-- Repository write-recovery settlement is path-based: cached repositories write through the VFS path, and each storage IO resolves the provider currently mounted there. The same data-integrity reason that requires same-entry reconnect settlement to stay inside the topology queue also applies to a successfully correlated write-permission settlement.
+- Persisted local-directory records are `{ name, handle }`; the mounted `name` is a display/path locator and can be reused.
+- `DeviceFileSystemProvider` owns the provider currently mounted under a name. A new handle object for the same name creates a new provider instance.
+- `WebFileSystemProvider` may await `queryPermission()` before reporting access recovery; old provider operations are not cancelled by unmount/replacement.
+- Browser `requestPermission()` must remain on the main thread in `serviceClient/fileSystem`.
+- Automerge repository storage is VFS-path based: storage IO resolves the provider currently mounted for that textual path.
+- Repository write-recovery settlement is already exposed to fileSystem through the registered write-recovery-handler contract.
+- Current permission-recovery consumers either refresh current UI/save state or perform a later ordinary VFS/repository command after `requestAccess()` returns.
 
 ## Non-goals
 
-- redesigning `directoryContent$`, loading/refreshing state, external rclone observation, or Repository Explorer query composition;
-- VFS route identity/binding, `StaleIdentity`, hierarchical or cross-runtime locking, provider cancellation, repository retirement, Repo generations, or document lifecycle changes;
-- persistent UUID/schema migration for mounted-directory records;
-- general cross-runtime synchronization of the IndexedDB mounted-directory list;
-- fixing unrelated future reuse of a textual VFS path by a cached Repo outside the bounded recovery settlement intervals described here;
-- marker-format changes, Google Drive/OPFS changes, or shared UI changes.
+- redesign `directoryContent$`, loading/refresh state, stale query completion, or rclone/external-filesystem observation;
+- generic binding of every VFS operation to a provider generation or historical mount;
+- holding topology stability across a feature callback after a recovery API has returned;
+- generic stale cached-Repo handling after a removed textual path is reused later;
+- provider cancellation, persistent mounted IDs/schema migration, VFS route identity, repository retirement/generations/leases, hierarchical or cross-runtime locking;
+- general multi-window synchronization of persisted mounted-directory records;
+- marker format, Google Drive, OPFS, or shared-UI redesign.
 
 ## Affected user scenarios
 
 1. Missing/revoked permission -> existing `Permission required` recovery.
-2. Permission granted but remembered root enumeration fails -> `Folder unavailable` + `Reconnect folder`.
-3. Picker/confirmation cancel -> zero mutation.
-4. Same mounted provider emits equivalent unavailable-root errors -> one logical recovery target.
-5. Provider is removed/replaced, including reuse of the same `spaceName`, while picker/confirmation is pending -> old action becomes stale and cannot mutate the replacement.
-6. `isSameEntry() === true` -> persist/remount under the same mounted name/path, clear stale requests, and settle existing cached repository writes while that mounted path cannot be reassigned by another same-runtime topology mutation.
-7. Same-entry settlement failure -> reconnect stays committed; return warning status and show Snackbar. The topology queue is released after the settlement attempt completes.
-8. False/missing/throwing `isSameEntry()` + missing Mioframe marker -> expected invalid candidate, zero mutation.
-9. False/unverifiable identity + valid marker -> explicit confirmation.
-10. Marker disappears after confirmation but before the confirmed relocation terminal decision or persistence begins -> relocation rejects with zero mutation.
-11. Confirmed candidate already mounted elsewhere -> zero mutation; return/open that existing current mount.
-12. Confirmed unique candidate -> replace the remembered record with a new unique mounted name/path; selected storage is never reachable through the old path.
-13. A same-runtime mounted-directory add/remove/replace starts while confirmed relocation is running -> mutations are serialized so relocation cannot decide from a stale duplicate/unique snapshot.
-14. A same-runtime mounted-directory add/remove/replace starts while same-entry write settlement is running -> it waits until settlement completes, so cached writes cannot be routed to another physical provider that reuses the same mounted path.
-15. A mounted provider is removed or replaced by `addDeviceDirectory()` -> provider-owned recovery state for the removed/replaced provider, including pending permission requests and `recoveryKey`, is invalidated after the replacement commits.
-16. An access check started by the old provider is still pending when that provider is removed/replaced -> when the old check later completes as non-granted, its callback must not create or overwrite a pending permission request for the removed provider. If the current provider has already registered its own request under the reused name/mode, that current request remains authoritative.
-17. A permission prompt was already prepared from the old provider when that provider is removed/replaced -> when the old handle's prompt later resolves, that result is stale. It must not resolve, delete, refresh, or run write-recovery handlers for a current same-name provider request; the current request must remain actionable and resolvable by its own prompt.
-18. A permission prompt resolves for the still-current provider and service-side resolution begins -> once the current request is accepted for a granted resolution, no same-runtime mounted-directory topology mutation may reassign/remove that mounted path until provider refresh and any registered write-recovery settlement complete. If a topology mutation was queued first, resolution observes the resulting current request/key instead.
+2. Provider operation completes its permission check after that provider was removed/replaced -> no actionable stale request.
+3. Permission prompt was prepared for provider A, then provider A was replaced -> the old prompt result cannot consume provider B's request.
+4. Current-provider permission grant -> refresh and write settlement complete against stable same-runtime topology.
+5. Denied/dismissed permission -> request remains retryable; no topology lock is needed.
+6. Granted-but-unreadable remembered root -> `Folder unavailable` + explicit reconnect.
+7. `isSameEntry() === true` reconnect -> persist/remount at the same path and settle cached writes while topology is stable.
+8. Locator-different reconnect candidate -> marker validation + confirmation + serialized relocation to a new unique mounted path.
+9. Provider removal/replacement -> all service-owned actionable recovery for the removed provider becomes stale.
+10. A feature starts another VFS/repository command after recovery returns -> that command follows ordinary current-path VFS semantics; recovery does not create a cross-feature topology lease.
 
 ## Boundaries and ownership
 
-- `webFileSystemProvider`: permission vs unavailable-root classification; transfer-safe unavailable-root payload. It may let its owner decline an access-recovery callback when the provider is no longer an actionable recovery target.
-- `fileSystem` service: mounted-provider recovery identity, persisted records, canonical marker inspection orchestration, same-entry reconnect, relocation, stale-target validation, mounted-directory mutation serialization, and the complete pending permission-request lifecycle. It owns whether provider-bound registration and later resolution still refer to the current provider, and it owns topology stability while an accepted granted resolution refreshes/settles that provider.
-- `serviceClient/fileSystem`: main-thread user-activation boundary. It fetches an ephemeral handle plus the service-issued runtime provider correlation key for one explicit permission action, calls `requestPermission()`, then returns the same key to the service when resolving. It does not invent identity, hold topology stability, or expose the key to feature/UI callers.
-- `automergeAdapter`: low-level canonical marker-file inspection algorithm and VFS-backed storage adapter only; no recovery orchestration or UI ownership.
-- `mountedDirectories` entity: typed facade for service inspection/reconnect actions.
-- `localDirectoryReconnect` feature: picker, confirmation, action-local pending/feedback state, Snackbar; no marker parsing or storage identity inference.
-- `mioframeSpacePick` feature: consumes service/entity marker inspection instead of reading the marker directly.
-- `repositories`: existing Repo cache semantics plus generic write-recovery settlement only. Repository code performs the settlement; it does not own mounted-directory topology or locking.
-- `RepositoryExplorerWidget`: branch rendering and post-action navigation applicability.
+| Owner | Responsibility |
+| --- | --- |
+| `webFileSystemProvider` | Browser handle operations, permission classification, unavailable-root detection, provider-local errors. |
+| `service/fileSystem` | Mounted-provider runtime identity, persisted mount records, provider lifecycle, pending access registry, topology serialization, reconnect/relocation, granted-resolution stability. |
+| `serviceClient/fileSystem` | One-shot temporary handle use and user-activation-bound `requestPermission()`; round-trip service-issued correlation only. |
+| `service/repositories` | Pending Automerge save and `repo.flush()` settlement behind the existing handler contract. |
+| `automergeAdapter` | Canonical marker inspection algorithm and VFS-backed storage adapter. |
+| `mountedDirectories` entity | Typed service facade. |
+| features | User action, picker/confirmation, loading/feedback, and any later ordinary retry command. No provider identity/source of truth. |
+| widget/page | Composition/navigation only. |
 
 ## Source of truth and state shape
 
-- `spaceName` is a safe mounted display/path locator only.
-- Unavailable-root recovery carries `{ spaceName, recoveryKey }`.
-- `recoveryKey` is an opaque, transfer-safe, runtime-only key owned by the fileSystem service for the specific mounted local-directory provider instance that emitted the recovery error.
-- The key is not persisted, not shown in ordinary directory listings, and not a physical-directory identity.
-- Equivalent errors from the same mounted provider reuse the same key. Provider removal/replacement creates or exposes a different current key, even when the mounted name is reused.
-- Feature-local reconnect target state is keyed by `recoveryKey`; `spaceName` is used only for copy/path arguments.
-- Pending permission requests also belong to one mounted provider instance. Internally the registry stores the owning provider `recoveryKey` together with `{ spaceName, mode, handle, refreshProvider }`.
-- The serviceClient may receive that key only as an ephemeral correlation value paired with the temporary handle and must return it unchanged to `resolveFileSystemAccessRequest`. It is not feature state, UI data, persisted data, or diagnostic context.
-- Within one fileSystem service instance, service-owned mounted-directory topology mutations are serialized through one runtime-only mutation queue. This is not a persisted identity, VFS lock, or cross-runtime synchronization mechanism.
-- The same queue also protects two bounded storage-settlement intervals: same-entry reconnect after remount, and a successfully correlated granted permission resolution while provider refresh/write settlement run. Both require this because cached repositories write through VFS paths that resolve the currently mounted provider on each IO.
-- `clearForSpace()` removes permission requests that are already registered when a provider is committed out of topology, but point-in-time cleanup is not sufficient by itself because an operation begun on the old provider can finish later and a previously prepared browser prompt can resolve later still.
-- A provider-bound access-recovery callback may mutate the pending-request registry only while that callback's provider `recoveryKey` is still current for its mounted `spaceName`.
-- A permission resolution may select a pending request only when the correlation `recoveryKey` returned by the broker matches the key stored on the currently pending request for that `{ spaceName, mode }`. A mismatch is stale and must leave the current request untouched.
-- Once a matching `granted` resolution is accepted, provider refresh and registered write-recovery settlement must execute while the same-runtime topology queue prevents that mounted path from being removed/reassigned. Identity correlation alone is not sufficient after the first asynchronous await.
+- `spaceName`: reusable mounted display/path locator; never sufficient provider identity.
+- `recoveryKey`: opaque runtime-only identity for one mounted local-directory provider instance.
+- `recoveryKeysByName`: fileSystem-owned current provider identity map for this runtime.
+- Pending permission request: `{ spaceName, mode, handle, refreshProvider, recoveryKey }` inside fileSystem only.
+- `recoveryKey` is not persisted, diagnostic context, ordinary display data, or feature/UI permission state.
+- One fileSystem-local topology queue serializes service-owned mounted-directory topology decisions and bounded recovery settlement that depends on a stable mounted path.
+
+## Provider lifecycle invariants
+
+1. **One provider identity.** Every mounted local provider instance has exactly one runtime `recoveryKey`; replacing/removing the provider makes that key non-current.
+2. **Stale results are non-authoritative.** Any asynchronous result originating from a provider may create or consume actionable recovery only while its provider identity is still current or still owns the pending request being resolved.
+3. **User waits do not hold topology.** Picker, confirmation, `queryPermission()` completion, temporary-handle preparation, and browser `requestPermission()` may outlive a provider. They rely on identity revalidation, not a long-lived lock.
+4. **Stable commit/settlement.** Once service-side recovery accepts a current target and starts asynchronous work whose correctness depends on the mounted path remaining bound to that provider, the existing topology queue stays held until that bounded work completes.
+5. **Replacement invalidates recovery atomically at runtime.** After persistence succeeds, provider replacement/removal updates runtime topology, current `recoveryKey`, and already-registered pending requests without an asynchronous gap between those runtime mutations. Failed persistence leaves the old runtime/provider recovery state intact.
+6. **A stale action never mutates replacement-owned state.** It cannot overwrite/delete a replacement request, refresh the replacement provider, run write settlement on its behalf, or perform reconnect/relocation mutation.
+7. **Recovery has an explicit end.** When a recovery service/client call returns, its topology-stability interval is over. A later feature retry is a new normal VFS/repository operation and resolves current topology according to existing VFS semantics. Extending historical provider identity across arbitrary feature operations would require a different general VFS contract and is outside this PR.
+8. **External filesystem state is not lockable.** For locator-different relocation, canonical marker inspection remains the final external asynchronous preflight before the terminal relocation decision/persistence.
 
 ## Public API / entry points
 
-- unavailable-root transport/parser exposes `{ spaceName, recoveryKey }`.
-- `reconnectDeviceDirectory({ handle, spaceName, recoveryKey })` returns one of:
-  - `reconnected`;
-  - `reconnectedWithWriteRecoveryFailure`;
-  - `confirmationRequired`;
-  - `invalidCandidate`;
-  - `staleRecovery`;
-  - `missingRecord`.
-- `relocateRememberedDeviceDirectory({ handle, spaceName, recoveryKey })` returns one of:
-  - `relocated`;
-  - `alreadyMounted`;
-  - `invalidCandidate`;
-  - `staleRecovery`;
-  - `missingRecord`.
-- fileSystem exposes a typed Mioframe-space inspection action for existing picker flows; UI does not import marker-file logic directly.
-- The existing UI-facing permission action remains `{ operation, spaceName, requestedMode }`; features do not receive or supply provider identity.
-- `getTemporaryFileSystemAccessHandle({ operation, spaceName })` returns the one-shot handle payload enriched with the owning runtime `recoveryKey` for internal serviceClient correlation.
-- `resolveFileSystemAccessRequest(...)` receives that same `recoveryKey` together with the existing operation/space/permission result. Missing request or key mismatch uses the existing stale/missing outcome and performs no mutation of any current request.
+- Unavailable-root transport exposes transfer-safe `{ spaceName, recoveryKey }`.
+- `reconnectDeviceDirectory({ handle, spaceName, recoveryKey })` returns `reconnected`, `reconnectedWithWriteRecoveryFailure`, `confirmationRequired`, `invalidCandidate`, `staleRecovery`, or `missingRecord`.
+- `relocateRememberedDeviceDirectory({ handle, spaceName, recoveryKey })` returns `relocated`, `alreadyMounted`, `invalidCandidate`, `staleRecovery`, or `missingRecord`.
+- UI-facing permission request remains `{ operation, spaceName, requestedMode }`; features do not receive `recoveryKey`.
+- `getTemporaryFileSystemAccessHandle({ operation, spaceName })` may return `{ handle, operation, spaceName, recoveryKey }` only to the main-thread serviceClient.
+- `resolveFileSystemAccessRequest(...)` receives the same `recoveryKey` back from serviceClient.
+- Ordinary mounted-directory display records remain handle/key-free.
 
 ## Minimum sufficient design
 
-- Keep the existing directory query/state flow unchanged.
-- When a mounted local-directory provider is created, fileSystem assigns it an opaque runtime recovery key and uses that same key for unavailable-root errors and provider-owned permission recovery. Removal/replacement invalidates/replaces the current key for that mounted name.
-- The provider-bound `onAccessRequired` callback closes over that same runtime key. Before it registers a pending request, fileSystem synchronously verifies that `{ spaceName, recoveryKey }` is still the current mounted provider. If stale, the callback declines actionable recovery and does not call `registry.upsertRequest()`. The provider then fails closed through its ordinary non-actionable permission error path.
-- This late-callback guard applies to both read and write access recovery because both modes share the same provider-bound callback. It must protect a current same-name provider request from being overwritten by a late callback from the removed provider.
-- A successfully registered request stores its owning `recoveryKey` inside the fileSystem request registry. The ordinary request-discovery surface may stay `{ operation, spaceName }`; provider identity is required only for the one-shot prepare/resolve correlation.
-- `prepareHandle()` returns the stored request's handle and owning `recoveryKey`. The main-thread broker keeps both only for that user action, calls `requestPermission()` on the returned handle, and passes the same key back to service resolution.
-- Registry resolution re-reads the pending request for `{ spaceName, mode }` and compares its stored `recoveryKey` with the supplied correlation key before deleting anything or invoking `refreshProvider`/write recovery handlers. If no request exists or the key differs, it returns the existing `missing` result and leaves any current same-name request untouched.
-- A stale old prompt therefore cannot consume or resolve a request registered later by a replacement provider. That current request remains available for a later prepare/prompt/resolve cycle using its own key.
-- The browser permission prompt is never held inside the topology queue. It completes on the main thread first; only the returned service-side resolution is topology-sensitive.
-- For a `permissionState !== 'granted'` resolution, no provider refresh, request deletion, or write settlement occurs, so the existing direct registry outcome may remain outside the topology queue.
-- For a correlated `permissionState === 'granted'` resolution, fileSystem must execute the registry resolution inside the existing mounted-directory mutation queue. The queue turn includes the request/key validation, deletion, provider refresh, and any registered write-recovery settlement. This makes ordering deterministic: if replacement/removal was queued first, the later resolve sees missing/stale state; if resolve was queued first, topology cannot change until its bounded refresh/settlement finishes.
-- Do not implement this as a recheck after `refreshProvider()`: a later topology mutation could still race the write-recovery handler after that recheck. Do not add a second queue, lease, generation, or VFS identity. Reuse the existing fileSystem topology queue.
-- `clearForSpace()` remains required at committed provider removal/replacement to invalidate requests already present at commit time; the registration currentness guard, prepare/resolve correlation, and granted-resolution topology turn close the asynchronous windows around that cleanup.
-- Do not expose `recoveryKey` through `FileSystemAccessPermissionRequest`, feature state, UI copy, diagnostics, ordinary mounted-directory display data, or persistence.
-- No new registry generation type, persistent identity, provider cancellation, second lifecycle manager, or cross-runtime protocol is required. Reuse the existing runtime `recoveryKey` as the single provider identity fact.
-- Feature validity checks for unavailable-root reconnect compare `recoveryKey`, not Error object identity or `spaceName`. Same-key re-emissions preserve target-local feedback; a missing/different key aborts unfinished work.
-- Service validates the supplied reconnect `{ spaceName, recoveryKey }` before reconnect work and again immediately before any persisted/runtime mutation. A stale pair returns `staleRecovery` with zero mutation.
-- `reconnectDeviceDirectory` owns the first canonical marker inspection when `isSameEntry()` is false/unavailable: missing marker returns `invalidCandidate`; valid marker returns `confirmationRequired`.
-- User confirmation is completed before entering the final relocation mutation. The service does not hold a mutation queue across picker or confirmation UI.
-- Service-owned mounted-directory topology mutations (`addDeviceDirectory`, `removeDeviceDirectory`, same-entry reconnect, confirmed relocation, and the service-side granted permission resolution) are serialized within the current fileSystem service instance using the same simple async mutation queue. The queue must release on both success and failure.
-- After confirmation, `relocateRememberedDeviceDirectory` performs its current recovery-target validation and duplicate-handle detection within that serialized mutation scope, then performs the canonical marker inspection as the final external asynchronous preflight before any terminal relocation decision or persistence begins. Because the queue keeps same-runtime topology stable while marker inspection is pending, the duplicate/unique decision remains current; because marker inspection is last, a marker that disappears during earlier duplicate detection cannot be accepted.
-- After that final marker inspection: invalid marker -> `invalidCandidate`; valid current duplicate -> `alreadyMounted`; valid current unique candidate -> persist the replacement first, then update runtime mounts. No duplicate/unique decision may be carried from outside the serialized mutation turn.
-- Same-entry reconnect proves physical identity before entering its serialized mutation turn. Inside that turn it revalidates the recovery target, persists/remounts the proven-identical handle at the same mounted path, clears stale provider recovery requests, and then invokes the registered repository write-recovery settlement while the same topology queue is still held. The queue is released only after the settlement attempt completes, whether it flushes or returns a non-flushed result.
-- Holding the existing queue through either settlement path is a topology-stability boundary, not repository ownership transfer: repository code still owns queued saves and `repo.flush()`, and fileSystem still interacts only through the existing registered recovery-handler contract.
-- Failed settlement, including rejecting `repo.flush()` as normalized by the repository handler, remains a non-flushed safe result for the owning recovery flow; the queue releases after the attempt instead of being poisoned.
-- A successful `addDeviceDirectory()` that removes or replaces an existing provider invalidates the old provider's runtime recovery state together: old `recoveryKey` and already-registered pending access requests must not survive the committed provider replacement. Failed persistence must leave the previous provider/recovery state intact.
-- Cross-runtime/other-window IndexedDB synchronization remains outside this PR; the runtime queue and provider-identity checks protect only state owned by the current fileSystem service instance.
-- Unexpected marker-inspection failures are wrapped at the fileSystem boundary in a privacy-safe `DomainError` with a service-local stable code and raw cause. Features may report an already-safe `DomainError`; they must not expose raw browser messages.
-- After a mutating reconnect service result is returned (`reconnected`, `reconnectedWithWriteRecoveryFailure`, `relocated`), that committed result is authoritative even if recovery disappears because of the mutation. `alreadyMounted`, `invalidCandidate`, `staleRecovery`, and `missingRecord` are zero-mutation outcomes and apply target-local feedback/navigation only while the initiating `recoveryKey` is still current.
-- Locator-different relocation keeps the old name occupied while allocating the new name, persists the replacement first, then removes the old runtime mount and mounts the selected handle only under the new path.
-- Repository cache/lifecycle stays at the pre-PR model; no retirement/no-op gate or VFS DELETE/RENAME retirement.
+### Permission detection and registration
+
+- A mounted local provider closes over its own `recoveryKey`.
+- Before `onAccessRequired` calls `registry.upsertRequest()`, fileSystem synchronously checks that `{ spaceName, recoveryKey }` is still current.
+- If stale, the callback returns no actionable recovery details and the provider fails closed through its ordinary non-actionable permission error.
+- `clearForSpace()` remains commit-time cleanup for requests already registered when a provider is removed/replaced.
+
+### Prepare, browser prompt, and resolution
+
+- Registry stores the owning `recoveryKey` on each request.
+- `prepareHandle()` returns the request handle plus that key for one explicit user action.
+- serviceClient calls `requestPermission()` outside the topology queue and returns the same key unchanged to service resolution.
+- Registry resolution first compares the supplied key with the current pending request's stored key. Missing/mismatch -> existing `missing` outcome and zero mutation of any current request.
+- `denied`/`prompt` with matching identity remains a direct non-mutating registry outcome; the pending request stays retryable.
+- `granted` resolution is routed by fileSystem through the existing topology queue. Inside the same turn: request/key validation -> request deletion -> provider refresh -> registered write-recovery settlement. Queue release occurs after flushed, non-flushed, or rejected completion.
+- If a topology mutation was queued first, it commits first and the later old-key resolve observes missing/stale state. If granted resolve entered first, add/remove/reconnect/relocation wait until refresh/settlement finishes.
+
+### Remembered-root reconnect
+
+- Feature target validity uses unavailable-root `recoveryKey`, not `spaceName` or Error-object identity.
+- `isSameEntry() === true` is the only in-place physical identity proof. It may run before the queue, but fileSystem revalidates `{ spaceName, recoveryKey }` inside the queued commit.
+- Same-entry commit: persist replacement handle -> remount same path -> clear old pending requests -> settle registered cached writes while the same topology turn is held. Settlement failure is a committed warning, not rollback.
+- False/unverifiable identity: service-owned canonical marker inspection; invalid marker -> zero mutation; valid marker -> confirmation required.
+- Confirmation occurs outside the queue.
+- Confirmed relocation runs current-target validation and duplicate-handle detection inside the queue, then performs marker inspection as the final external asynchronous preflight. Invalid -> `invalidCandidate`; valid duplicate -> `alreadyMounted`; valid unique -> persist first, remove old runtime mount, mount selected handle only under a new unique name.
+
+### Mounted-directory mutations
+
+- `addDeviceDirectory`, `removeDeviceDirectory`, same-entry reconnect commit/settlement, confirmed relocation, and granted permission resolution share the same topology queue.
+- No second queue, lease, generation, or provider-lifecycle manager is introduced.
+- Normal VFS reads/writes are not globally serialized by this queue.
+
+## Simplest viable alternative comparison
+
+- `recoveryKey` is required because `spaceName` is reusable and browser/serviceClient waits can outlive provider replacement.
+- The existing topology queue is required only where asynchronous service work depends on a stable mounted path.
+- A unified provider manager, persistent ID, VFS route binding, provider cancellation, or cross-feature lease would add state/ownership without a current scenario that requires it.
+- A recheck after `refreshProvider()` is insufficient for write settlement because topology could change during the later asynchronous flush.
 
 ## Rejected approaches
 
-- `spaceName` as recovery identity: names are reusable locators.
-- Error/recovery object identity: reactive rereads create new objects for the same provider.
-- Confirmation token created only after the first service call: it does not protect the picker gap before that call.
-- Persistent mounted-record UUID/schema migration: stronger than required; runtime provider identity is sufficient for this user action.
-- Marker validation in feature/UI: violates storage ownership and leaves commit-time revalidation outside the service.
-- Marker as physical-directory identity: it proves only that the candidate looks like a Mioframe space.
-- Repeated snapshot/recheck logic without same-runtime mutation serialization: each asynchronous `isSameEntry()` / marker step opens another window for service-owned topology mutation, so carrying or recomputing snapshots alone does not provide a complete terminal duplicate/unique decision.
-- Marker inspection before asynchronous duplicate detection: the mutation queue stabilizes service topology but cannot stabilize external filesystem contents, so a marker checked too early can become stale before the terminal decision.
-- Releasing the topology queue immediately after same-entry remount and settling cached repositories afterward: unsafe because the repository storage adapter resolves the current VFS mount on each IO; a remove/add sequence can reuse the same textual path while settlement is still writing.
-- `clearForSpace()` as the complete provider-removal recovery fix: it is only a point-in-time cleanup and cannot prevent an already-started old-provider permission check from calling back after replacement, nor can it invalidate a permission prompt whose old handle was prepared before replacement and resolves afterward.
-- Guarding only `onAccessRequired`: necessary but incomplete. It prevents late stale registration, but it cannot stop the result of an already-prepared old-provider browser prompt from resolving a newer same-name request.
-- Resolving permission only by `{ operation, spaceName }`: insufficient because names are reusable and the browser prompt may outlive provider replacement.
-- Correlating `prepare` and `resolve` by `recoveryKey` but releasing topology immediately after the key match: incomplete for granted resolution because `refreshProvider()` and path-based write settlement are asynchronous and can outlive that check.
-- Rechecking provider identity only after refresh and before settlement: still leaves a race while settlement itself performs path-based asynchronous writes.
-- Comparing temporary handle object references on resolve: worker/service transport does not make JS reference identity an appropriate provider-lifecycle contract, and asynchronous `isSameEntry()` is unnecessary when the service already owns a runtime provider key.
-- Holding the fileSystem mutation queue across the browser `requestPermission()` prompt: unnecessarily blocks topology across user interaction and crosses the main-thread user-activation boundary. The queue begins only when the prompt result returns to service-side resolution.
-- Cancelling all old provider operations, adding a second provider-generation system, or introducing another lifecycle manager: broader than required. The existing per-provider runtime recovery key plus the existing topology queue provide the required identity and stability facts.
-- Binding cached repositories to provider generations/leases or introducing VFS route identity for this recovery: broader than required. Holding the existing same-runtime topology queue for the bounded settlement intervals provides the needed invariant with fewer concepts.
-- VFS route binding, Repo generation/lease/tombstone, hierarchical locking, or cross-runtime locking: broader than the required fileSystem-local mutation invariant.
+- `spaceName` or Error object identity as provider identity.
+- request-specific generated identity separate from the existing provider `recoveryKey`.
+- marker validation in feature/widget or marker as physical identity.
+- `clearForSpace()` without late-callback and prompt-resolution identity guards.
+- key comparison without topology stability through granted refresh/write settlement.
+- holding the queue across browser prompts, pickers, or confirmation.
+- carrying a topology lease across feature return/retry.
+- provider generations, persistent UUIDs, VFS route identity, repository retirement/leases, provider cancellation, hierarchical/cross-runtime locking.
 
-## Confirmation copy
+## Shared UI blast radius
 
-- headline: `Reconnect this Mioframe space?`
-- supporting text: `Mioframe can't verify that this is the same folder it remembers. Continue only if you recognize the selected Mioframe space. Mioframe will reconnect the selected space without transferring unsaved in-memory changes from the unavailable location.`
-- confirm: `Reconnect`
-- cancel: `Cancel`
+None. Existing Material/UI contracts and copy remain unchanged except already-defined reconnect/confirmation feedback.
 
-## Acceptance matrix / required proof
+## Acceptance matrix
 
-- Provider/transport: same provider -> stable `recoveryKey`; replacement provider, including same-name replacement -> different/stale key; serialization never exposes handles/raw paths.
-- File-system service: stale key before same-entry reconnect -> zero mutation; stale key before relocation -> zero mutation; same-entry behavior/settlement unchanged apart from the required topology-stability interval.
-- Provider recovery lifecycle — registration: successful remove/rename/replacement clears already-registered recovery state owned by the removed provider; failed persistence does not clear the still-current provider's recovery state. If an old provider's deferred permission check completes after removal/replacement, its callback cannot create a stale request or overwrite a request already registered by the current same-name provider.
-- Provider recovery lifecycle — prompt/resolve identity: if the old provider's request was prepared before replacement and its `requestPermission()` resolves only after a new same-name provider request exists, the old resolution returns stale/missing, does not delete or refresh the current request, and does not invoke current write-recovery handlers. A subsequent prepare/resolve of the current request uses the current handle/key and succeeds normally.
-- Provider recovery lifecycle — granted resolve atomicity: after a current key is accepted with `permissionState: 'granted'`, a queued same-runtime remove/add/replace/reconnect/relocation cannot change that mounted topology until `refreshProvider()` and write-recovery settlement complete. If topology mutation runs first, resolution observes the resulting missing/different request and does not settle the old path.
-- Permission recovery modes: the provider-identity invariant applies to both read and readwrite requests; ordinary current-provider granted/denied/cancelled behavior and safe UI statuses remain unchanged.
-- Permission write settlement: while a current granted write resolution has a recovery handler pending, a remove followed by reuse of the same displayed mounted name cannot start its topology turns; after flushed, non-flushed, or rejected settlement completes, the queue releases for later mutations.
-- Marker ownership: service inspection reports marker present/absent; unexpected inspection failure is a safe `DomainError`; no reconnect/picker feature imports marker-file logic.
-- Confirmation boundary: valid marker -> confirmation required; marker removed after confirmation or while duplicate detection is pending -> final relocation marker inspection returns `invalidCandidate`, zero mutation.
-- Relocation: current duplicate physical mount -> `alreadyMounted`, zero mutation; current unique candidate persists first and is reachable only under the new path.
-- Same-runtime topology serialization: while confirmed relocation is in its serialized mutation turn, add/remove/replace operations cannot invalidate the duplicate/unique decision; when queued mutations run first, relocation observes their resulting current topology instead of an earlier snapshot.
-- Same-entry settlement atomicity: after the proven-identical remount commits, a queued remove/add/replace operation cannot begin its topology turn until registered write-recovery settlement has completed. Settlement failure still releases the queue and returns the existing committed-warning outcome.
-- Feature: identity/lifetime checks use `recoveryKey`; same key re-emission continues and preserves feedback; same `spaceName` with a new key aborts; zero-mutation stale/invalid/missing/already-mounted results cannot overwrite or navigate a newer target; committed mutation results/Snackbar remain authoritative.
-- Existing Mioframe space open/create flows preserve behavior while consuming service/entity marker inspection.
-- Widget: navigate only if initiating `directoryPath` is still current.
-- Final real Chrome/PWA proof: permission loss, granted-unavailable root, cancel, same-entry, locator-different confirmation/relocation, invalid marker, already-mounted candidate, navigation, settlement warning, and same-name stale-action safety where practically reproducible.
+- Same provider re-emission -> stable unavailable-root `recoveryKey`; provider replacement -> old key stale.
+- Deferred old-provider read/write permission check after replacement -> cannot create/overwrite actionable request.
+- Old prepared prompt resolves after same-name replacement -> `missing`; replacement request remains intact; no replacement refresh/write settlement.
+- Current read/readwrite prompt -> broker round-trips current key; feature/UI request type contains no key.
+- Granted resolution while settlement is pending -> queued add/remove/reconnect/relocation cannot begin topology mutation.
+- Topology mutation queued before granted old-key resolution -> old resolution returns `missing` and runs no settlement.
+- Non-flushed/rejected granted settlement -> topology queue still releases; existing safe result/error mapping remains intact.
+- Committed provider replacement clears old current key and already-registered requests; failed persistence preserves them.
+- Same-entry reconnect -> persist/remount + settlement under one topology turn; queued topology mutation waits.
+- Relocation -> current duplicate/unique decision and final marker preflight under one topology turn; persistence precedes runtime relocation.
+- Picker/confirmation/browser-prompt cancel -> zero topology mutation.
+- No `recoveryKey` in persistence, ordinary display DTOs, UI copy, or diagnostics.
 
-## Risks
+## Risk matrix
 
-- Runtime recovery keys, the service-local mutation queue, and permission provider-identity checks intentionally do not solve general multi-window/worker synchronization of the persisted record list; that is a pre-existing broader storage-lifecycle concern.
-- The queue protects topology mutations owned by this fileSystem service instance; it cannot prevent the external filesystem itself from changing independently while browser handles are in use.
-- An already-started stale provider read may still complete after replacement as part of the broader directory-query race that this PR explicitly does not redesign. The required invariant here is narrower: stale provider completion must not create actionable permission recovery, and a stale browser permission result must not consume or resolve a current provider request.
-- A temporary handle prepared while a provider is current can theoretically become stale before the main thread actually invokes the browser permission prompt. Preventing the browser prompt itself from ever targeting that just-replaced handle would require cross-boundary topology leasing across user activation. This PR instead guarantees that stale registration/result is non-authoritative and cannot mutate, refresh, or settle the replacement provider. No topology queue is held across the browser prompt.
-- The key is action/provider-runtime identity only, not proof that two filesystem handles are physically identical; `isSameEntry() === true` remains the only in-place physical-identity proof.
+- **Cross-runtime/multi-window topology:** intentionally not protected; existing broader storage-lifecycle issue.
+- **External filesystem/remount changes:** cannot be serialized by app queue; final marker preflight and browser errors are the bounded protection available here.
+- **Later feature retry after recovery returns:** uses ordinary current VFS path semantics; no historical provider lease is promised.
+- **Generic stale cached Repo after future path reuse:** separate repository/VFS lifecycle problem; this PR only protects cached writes executed inside its explicit recovery settlement intervals.
+
+## Required test proof
+
+- Deterministic provider/service tests for stale late registration, stale prepared prompt, request ownership, committed replacement cleanup, and failed persistence preservation.
+- Deterministic service concurrency tests for queue ordering around granted resolution, same-entry settlement, add/remove, and relocation.
+- Registry tests for current/stale `recoveryKey`, denied/prompt retention, read/readwrite independence, and write-handler behavior.
+- serviceClient tests proving one-shot handle/key round-trip while public feature request/response contracts remain key-free.
+- Real fileSystem/repositories integration proof for queued Automerge write settlement through the intended mounted provider.
+- Existing reconnect/relocation/feature/widget tests remain required.
+- Final real Chrome/PWA operator proof remains required for File System Access browser behavior and the complete user recovery matrix.
 
 ## Required verification
 
 - implementation preflight;
-- focused verifier-managed service/serviceClient tests during implementation as useful;
+- focused verifier-managed tests during correction as useful;
 - final coding-agent `pnpm verify`;
-- complete PR `project-review` after correction;
+- complete PR `project-review` after implementation;
 - exact-head GitHub CI;
 - final real Chrome/PWA operator proof.
 
 ## Forbidden
 
-- using `spaceName` as the sole reconnect or permission-resolution target identity;
-- persistent IDs/schema migration for this correction;
-- exposing `recoveryKey` in ordinary mounted-directory display data, feature/UI permission request contracts, UI copy, persistence, or diagnostics;
-- feature/widget marker-file inspection or direct storage-protocol inference;
-- mutating relocation without final marker revalidation after the confirmation pause and after topology-dependent asynchronous preflight;
-- carrying a duplicate/unique decision across asynchronous relocation preflight without same-runtime topology stability;
-- releasing same-runtime topology stability between a committed same-entry remount and completion of its registered write-recovery settlement;
-- registering or overwriting a pending access request from a provider whose runtime recovery key is no longer current for that mounted name;
-- resolving, deleting, refreshing, or replaying a current pending access request using a correlation key prepared from a different/removed provider;
-- accepting a current granted permission resolution and then allowing same-runtime mounted topology to change before its provider refresh/write settlement completes;
-- holding the fileSystem topology queue across the browser `requestPermission()` prompt;
-- VFS route-binding/identity infrastructure, repository retirement, fileSystem -> repositories lease/guard, same-path locator-different replacement, provider-cancellation infrastructure, a second provider-generation/lifecycle subsystem, hierarchical/cross-runtime locking, or directory-reactivity redesign.
+- using `spaceName` as sole reconnect/provider-resolution identity;
+- exposing/logging/persisting permission correlation `recoveryKey` outside the defined internal boundaries;
+- a second provider identity/generation/token system;
+- a second topology queue or topology lease across browser/UI waits;
+- releasing topology stability while same-entry or granted-permission registered write settlement is still running;
+- feature/widget marker parsing or provider-state ownership;
+- VFS route binding, repository retirement/lease/generation, provider cancellation, persistent mounted IDs, hierarchical/cross-runtime locking, or directory-reactivity redesign.
 
 ## Implementation readiness
 
 - Product behavior: resolved.
-- Dependency on directory-state redesign: none.
-- Recovery target/provider identity: resolved as the existing fileSystem-owned runtime `recoveryKey`.
-- Marker ownership/commit-time validation: resolved at fileSystem service; the final marker check follows topology-dependent async preflight.
-- Same-runtime mounted-directory mutation atomicity: resolved as one fileSystem-local async mutation queue; no cross-runtime lock or persistent identity.
-- Same-entry settlement topology safety: resolved by keeping the existing fileSystem mutation turn active through registered settlement; no repository/provider generation or lease is required.
-- Provider permission-recovery lifecycle: resolved architecturally as one identity/stability invariant across (1) provider-bound registration currentness, (2) registry ownership, (3) prepare/prompt/resolve correlation using the same existing runtime `recoveryKey`, and (4) same-runtime topology stability from acceptance of a current granted resolution through refresh/write settlement. Point-in-time cleanup, a registration guard, or a key check alone is insufficient.
-- Current implementation has completed registration and prepare/resolve identity correlation, but still needs granted-resolution topology stabilization through the existing fileSystem mutation queue.
+- Ownership/source of truth: resolved.
+- Provider lifecycle identity: resolved as existing runtime `recoveryKey`.
+- Browser wait boundary: resolved outside topology queue with identity revalidation afterward.
+- Stable service commit/settlement boundary: resolved using the existing topology queue.
+- Reconnect/relocation marker and mutation ordering: resolved.
+- Post-return feature retry semantics: explicitly ordinary current-path VFS behavior; no recovery lease.
 - Unresolved architecture blockers: none.
+- Current implementation gap: granted permission resolution is not yet routed through the existing topology queue for refresh/write settlement.
 - Verdict: **ready**.
