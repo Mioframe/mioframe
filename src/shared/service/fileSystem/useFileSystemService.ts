@@ -322,6 +322,7 @@ const setupFileSystemService = () => {
 
     if (existingRecord && existingRecord.name !== nextRecord.name) {
       deviceFileSystemProvider.removeRecord(existingRecord.name);
+      recoveryKeysByName.delete(existingRecord.name);
     }
 
     deviceFileSystemProvider.upsertRecord(nextRecord);
@@ -473,20 +474,18 @@ const setupFileSystemService = () => {
     const otherRecords = records.filter((record) => record !== existingRecord);
     const matchedOtherRecord = await findRecordByHandle(otherRecords, handle);
 
-    if (matchedOtherRecord) {
-      return { status: 'alreadyMounted', name: matchedOtherRecord.name };
-    }
-
     // Revalidate the canonical marker after all asynchronous preflight and after the confirmation
-    // pause, immediately before any mutation: the candidate may no longer look like a Mioframe
-    // space by the time the user confirms.
+    // pause, immediately before any terminal decision: the candidate may no longer look like a
+    // Mioframe space by the time the user confirms.
     const inspection = await inspectMioframeSpaceCandidate(handle);
 
     if (!inspection.looksLikeExistingSpace) {
       return { status: 'invalidCandidate' };
     }
 
-    // Revalidate the recovery target again immediately before mutation.
+    // Revalidate the recovery target again immediately before any terminal decision, including
+    // `alreadyMounted`: the target may have gone missing or been replaced during the preceding
+    // asynchronous preflight.
     const recheckRecords = await getRecordList();
     const recheckRecord = recheckRecords.find((record) => record.name === spaceName);
 
@@ -495,6 +494,10 @@ const setupFileSystemService = () => {
     }
     if (!isCurrentRecoveryTarget({ spaceName, recoveryKey })) {
       return { status: 'staleRecovery' };
+    }
+
+    if (matchedOtherRecord) {
+      return { status: 'alreadyMounted', name: matchedOtherRecord.name };
     }
 
     // The old target name still counts as occupied because `recheckRecord` remains in

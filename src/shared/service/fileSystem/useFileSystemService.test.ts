@@ -425,6 +425,58 @@ describe('useFileSystemService', () => {
     expect(updateRecordListMock).toHaveBeenCalledWith([{ name: 'Archive', handle: renamedHandle }]);
   });
 
+  it('addDeviceDirectory invalidates the recovery key for the mounted name it renames away from', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    const renamedHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Projects', handle: oldHandle }]);
+
+    const service = await createService();
+    const staleKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: oldHandle,
+      service,
+      spaceName: 'Projects',
+    });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }]);
+
+    await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
+      name: 'Archive',
+    });
+
+    // A later persisted-store read reports a "Projects" record again for a different physical
+    // directory without this service instance ever remounting a provider for it. The stale key
+    // captured for the renamed-away "Projects" provider must not validate against it.
+    const reoccupyingHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'granted',
+      sameEntryKey: 'other',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Archive', handle: renamedHandle },
+      { name: 'Projects', handle: reoccupyingHandle },
+    ]);
+    updateRecordListMock.mockClear();
+
+    await expect(
+      service.reconnectDeviceDirectory({
+        handle: reoccupyingHandle,
+        spaceName: 'Projects',
+        recoveryKey: staleKey,
+      }),
+    ).resolves.toEqual({ status: 'staleRecovery' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+  });
+
   it('replaces only the matching persisted record when a remembered handle is renamed', async () => {
     const workHandle = createDirectoryHandleMock({
       name: 'Projects',
@@ -1246,8 +1298,124 @@ describe('useFileSystemService', () => {
 
     expect(updateRecordListMock).not.toHaveBeenCalled();
     expect(events).toEqual([]);
-    // The duplicate is rejected before the canonical marker is even revalidated.
-    expect(inspectMioframeSpaceDirectoryMock).not.toHaveBeenCalled();
+    // `alreadyMounted` is accepted only after the candidate marker and recovery target are
+    // revalidated, so the marker inspection still runs even though the candidate is a duplicate.
+    expect(inspectMioframeSpaceDirectoryMock).toHaveBeenCalledWith(candidateHandle);
+  });
+
+  it('relocateRememberedDeviceDirectory does not return alreadyMounted with zero mutation when the duplicate candidate marker is no longer valid', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const archiveHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Archive (moved)',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Work', handle: workHandle },
+      { name: 'Archive', handle: archiveHandle },
+    ]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: false });
+    const events: Array<{ source: string; type: string }> = [];
+    const unsubscribe = service.vfs.watch('/Device Files/Work', (event) => {
+      events.push({ source: event.source, type: event.type });
+    });
+
+    await expect(
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
+    ).resolves.toEqual({ status: 'invalidCandidate' });
+    unsubscribe();
+
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
+  });
+
+  it('relocateRememberedDeviceDirectory does not return alreadyMounted with zero mutation when recovery goes stale while duplicate detection is pending', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const archiveHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+    const candidateHandle = createDirectoryHandleMock({
+      name: 'Archive (moved)',
+      permissionState: 'granted',
+      sameEntryKey: 'archive',
+    });
+    getRecordListMock.mockResolvedValue([
+      { name: 'Work', handle: workHandle },
+      { name: 'Archive', handle: archiveHandle },
+    ]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+
+    // The `Work` recovery target's provider is replaced (e.g. a different device re-adds "Work")
+    // while duplicate-handle detection against `Archive` is still pending, so the initiating
+    // `recoveryKey` is stale by the time detection resolves.
+    const originalArchiveIsSameEntry = archiveHandle.isSameEntry.bind(archiveHandle);
+    archiveHandle.isSameEntry = vi.fn((other: FileSystemHandle) => {
+      // Restore first: the nested `addDeviceDirectory` call below also runs duplicate-handle
+      // detection over `archiveHandle`, and must not recurse back into this override.
+      archiveHandle.isSameEntry = originalArchiveIsSameEntry;
+
+      return (async () => {
+        const replacementWorkHandle = createDirectoryHandleMock({
+          name: 'Work',
+          permissionState: 'granted',
+          sameEntryKey: 'replacement-work',
+        });
+        await service.removeDeviceDirectory('Work');
+        getRecordListMock.mockResolvedValue([
+          { name: 'Archive', handle: archiveHandle },
+          { name: 'Work', handle: replacementWorkHandle },
+        ]);
+        await service.addDeviceDirectory(replacementWorkHandle);
+
+        return originalArchiveIsSameEntry(other);
+      })();
+    });
+
+    updateRecordListMock.mockClear();
+
+    await expect(
+      service.relocateRememberedDeviceDirectory({
+        handle: candidateHandle,
+        spaceName: 'Work',
+        recoveryKey,
+      }),
+    ).resolves.toEqual({ status: 'staleRecovery' });
+
+    // Only the interleaved `removeDeviceDirectory`/`addDeviceDirectory` calls mutate; relocation
+    // itself performs zero mutation once the target has gone stale.
+    expect(updateRecordListMock).toHaveBeenCalledTimes(2);
   });
 
   it('relocateRememberedDeviceDirectory aborts with zero mutation when handle-identity comparison against another record fails unexpectedly', async () => {
