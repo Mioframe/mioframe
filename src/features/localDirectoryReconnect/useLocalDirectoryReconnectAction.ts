@@ -1,6 +1,7 @@
 import {
   isUserFileSelectionCancel,
   parseFileSystemUnavailableRootRecovery,
+  type FileSystemUnavailableRootRecovery,
 } from '@shared/lib/fileSystem';
 import { inspectMioframeSpaceDirectory } from '@shared/lib/automergeAdapter';
 import { useFileSystem } from '@entity/mountedDirectories';
@@ -57,6 +58,11 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
 
     return undefined;
   });
+
+  // Recovery identity is the transfer-safe `spaceName`, not object identity: a reactive reread
+  // can emit a new recovery object for the same remembered folder without changing the target.
+  const isCurrentTarget = (target: FileSystemUnavailableRootRecovery) =>
+    recovery.value?.spaceName === target.spaceName;
 
   const isReconnectSupported = computed(
     () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
@@ -115,7 +121,7 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
               action: 'reconnectFolder',
             },
           );
-          if (recovery.value === currentRecovery) {
+          if (isCurrentTarget(currentRecovery)) {
             reconnectMessageOverride.value =
               'Could not open the folder picker. Try again from this action.';
           }
@@ -123,7 +129,7 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
         return undefined;
       }
 
-      if (recovery.value !== currentRecovery) {
+      if (!isCurrentTarget(currentRecovery)) {
         return undefined;
       }
 
@@ -145,7 +151,7 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
             action: 'reconnectFolder',
           },
         );
-        if (recovery.value === currentRecovery) {
+        if (isCurrentTarget(currentRecovery)) {
           reconnectMessageOverride.value = RECONNECT_FAILED_MESSAGE;
         }
         return undefined;
@@ -185,13 +191,13 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
             action: 'reconnectFolder',
           },
         );
-        if (recovery.value === currentRecovery) {
+        if (isCurrentTarget(currentRecovery)) {
           reconnectMessageOverride.value = INSPECT_FAILED_MESSAGE;
         }
         return undefined;
       }
 
-      if (recovery.value !== currentRecovery) {
+      if (!isCurrentTarget(currentRecovery)) {
         return undefined;
       }
 
@@ -202,7 +208,7 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
 
       const confirmed = await confirmReconnectAsNewLocation();
 
-      if (recovery.value !== currentRecovery || !confirmed) {
+      if (!isCurrentTarget(currentRecovery) || !confirmed) {
         return undefined;
       }
 
@@ -224,7 +230,7 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
             action: 'reconnectFolder',
           },
         );
-        if (recovery.value === currentRecovery) {
+        if (isCurrentTarget(currentRecovery)) {
           reconnectMessageOverride.value = RECONNECT_FAILED_MESSAGE;
         }
         return undefined;

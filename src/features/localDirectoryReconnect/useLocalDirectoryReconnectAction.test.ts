@@ -501,6 +501,81 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(reportedError.cause).toBe(serviceError);
   });
 
+  it('continues past the picker checkpoint when a new recovery object for the same spaceName is emitted', async () => {
+    let resolvePicker: (handle: FileSystemDirectoryHandle) => void = () => {};
+    showDirectoryPickerMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePicker = resolve;
+      }),
+    );
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'reconnected', name: 'Work' });
+    const errors = errorsFor('Work');
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    const promise = reconnectFolder();
+    // A reactive reread re-emits a semantically identical recovery for the same remembered
+    // folder; it must not be treated as a stale-target change.
+    errors.value = [createSerializedUnavailableRootError('Work')];
+    resolvePicker(createHandle());
+    await promise;
+
+    expect(reconnectDirectoryMock).toHaveBeenCalledWith({
+      handle: expect.anything(),
+      spaceName: 'Work',
+    });
+  });
+
+  it('continues past the marker-inspection checkpoint when a new recovery object for the same spaceName is emitted', async () => {
+    let resolveInspection: (inspection: { looksLikeExistingSpace: boolean }) => void = () => {};
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveInspection = resolve;
+      }),
+    );
+    confirmMock.mockResolvedValueOnce(false);
+    const errors = errorsFor('Work');
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    const promise = reconnectFolder();
+    errors.value = [createSerializedUnavailableRootError('Work')];
+    resolveInspection({ looksLikeExistingSpace: true });
+    await promise;
+
+    expect(confirmMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues past the confirmation checkpoint when a new recovery object for the same spaceName is emitted', async () => {
+    let resolveConfirm: (confirmed: boolean) => void = () => {};
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
+    confirmMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveConfirm = resolve;
+      }),
+    );
+    relocateRememberedDirectoryMock.mockResolvedValueOnce({
+      status: 'relocated',
+      name: 'Work (2)',
+    });
+    const errors = errorsFor('Work');
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    const promise = reconnectFolder();
+    errors.value = [createSerializedUnavailableRootError('Work')];
+    resolveConfirm(true);
+    await expect(promise).resolves.toBe('Work (2)');
+
+    expect(relocateRememberedDirectoryMock).toHaveBeenCalledWith({ handle, spaceName: 'Work' });
+  });
+
   it('ignores a stale recovery target that changed during marker inspection', async () => {
     let resolveInspection: (inspection: { looksLikeExistingSpace: boolean }) => void = () => {};
     const handle = createHandle();

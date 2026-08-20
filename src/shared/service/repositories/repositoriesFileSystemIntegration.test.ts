@@ -11,7 +11,6 @@ import { createDirectoryHandleMock } from '@shared/lib/webFileSystemProvider/Web
 
 type MockRepoInstance = {
   flush: ReturnType<typeof vi.fn<() => Promise<void>>>;
-  shutdown: ReturnType<typeof vi.fn<() => Promise<void>>>;
 };
 
 const repoInstances = vi.hoisted((): MockRepoInstance[] => []);
@@ -32,7 +31,6 @@ vi.mock('@automerge/automerge-repo', async (importOriginal) => {
     readonly create = vi.fn();
     readonly delete = vi.fn();
     readonly flush = vi.fn().mockResolvedValue(undefined);
-    readonly shutdown = vi.fn().mockResolvedValue(undefined);
 
     constructor() {
       repoInstances.push(this);
