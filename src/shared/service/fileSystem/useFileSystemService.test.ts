@@ -569,6 +569,11 @@ describe('useFileSystemService', () => {
     getRecordListMock.mockResolvedValue([{ name: 'Projects', handle: oldHandle }]);
 
     const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: oldHandle,
+      service,
+      spaceName: 'Projects',
+    });
     await vi.waitFor(async () => {
       await expect(service.deviceFiles.fetch()).resolves.toEqual([
         { canDisconnect: true, name: 'Projects' },
@@ -590,6 +595,127 @@ describe('useFileSystemService', () => {
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       { canDisconnect: true, name: 'Projects' },
     ]);
+
+    // The recoveryKey captured before the failed persistence remains current for the same target:
+    // a different candidate against it still reaches the ordinary confirmation path instead of
+    // `staleRecovery`, proving currency through public reconnect behavior rather than internals.
+    const otherHandle = createDirectoryHandleMock({ name: 'Other', sameEntryKey: 'other' });
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: otherHandle, spaceName: 'Projects', recoveryKey }),
+    ).resolves.toEqual({ status: 'confirmationRequired' });
+  });
+
+  it('addDeviceDirectory() treats a same-name different-handle representing the same physical entry as provider replacement', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    // Same mounted name as `oldHandle`, but a distinct handle object. This exercises the
+    // `existingRecord.handle !== nextRecord.handle` half of `isProviderReplacement` in isolation
+    // from any name change.
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Projects', handle: oldHandle }]);
+
+    const service = await createService();
+    const staleKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: oldHandle,
+      service,
+      spaceName: 'Projects',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Projects' },
+      ]);
+    });
+    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Projects' });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }]);
+
+    await expect(service.addDeviceDirectory(replacementHandle)).resolves.toEqual({
+      name: 'Projects',
+    });
+
+    // The old pending request can no longer be fetched through the same mounted name.
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toBeUndefined();
+
+    // The old recoveryKey no longer identifies the (now replaced) mounted provider.
+    const probeHandle = createDirectoryHandleMock({ name: 'Probe' });
+    updateRecordListMock.mockClear();
+
+    await expect(
+      service.reconnectDeviceDirectory({
+        handle: probeHandle,
+        spaceName: 'Projects',
+        recoveryKey: staleKey,
+      }),
+    ).resolves.toEqual({ status: 'staleRecovery' });
+    expect(updateRecordListMock).not.toHaveBeenCalled();
+
+    // The replacement remains mounted under the same name.
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Projects' },
+    ]);
+  });
+
+  it('addDeviceDirectory() treats re-adding the exact same handle reference as a true non-replacement, preserving the pending request and recovery identity', async () => {
+    const sharedHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Projects', handle: sharedHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: sharedHandle,
+      service,
+      spaceName: 'Projects',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Projects' },
+      ]);
+    });
+    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Projects' });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Projects', handle: sharedHandle }])
+      .mockResolvedValueOnce([{ name: 'Projects', handle: sharedHandle }]);
+
+    await expect(service.addDeviceDirectory(sharedHandle)).resolves.toEqual({
+      name: 'Projects',
+    });
+
+    // The still-valid pending request survives the true non-replacement.
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Projects' });
+
+    // The existing recovery identity remains current: a different candidate against the still-live
+    // key reaches the ordinary confirmation path instead of `staleRecovery`.
+    const otherHandle = createDirectoryHandleMock({ name: 'Other', sameEntryKey: 'other' });
+
+    await expect(
+      service.reconnectDeviceDirectory({ handle: otherHandle, spaceName: 'Projects', recoveryKey }),
+    ).resolves.toEqual({ status: 'confirmationRequired' });
   });
 
   it('keeps the previous mounted name when re-adding the same handle name', async () => {
