@@ -68,8 +68,14 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
     () => 'showDirectoryPicker' in window && isFunction(window.showDirectoryPicker),
   );
 
+  // Keyed on `spaceName`, not the recovery object, so a reactive reread that re-emits an
+  // equivalent recovery for the same remembered folder does not clear an in-progress
+  // picker/inspection/validation/retry message. Feedback is cleared only when the target
+  // actually changes to a different `spaceName` or disappears.
+  const currentTargetSpaceName = computed(() => recovery.value?.spaceName);
+
   watch(
-    recovery,
+    currentTargetSpaceName,
     () => {
       reconnectMessageOverride.value = undefined;
     },
@@ -170,7 +176,11 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
       }
 
       if (result.status === 'missingRecord') {
-        reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+        // `missingRecord` is not a committed mutation result: only apply it while the
+        // initiating target is still current, so it cannot overwrite a newer target's feedback.
+        if (isCurrentTarget(currentRecovery)) {
+          reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+        }
         return undefined;
       }
 
@@ -248,7 +258,11 @@ export const useLocalDirectoryReconnectAction = ({ errors }: { errors: Ref<unkno
         return relocateResult.name;
       }
 
-      reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+      // `missingRecord` is not a committed mutation result: only apply it while the initiating
+      // target is still current, so it cannot overwrite a newer target's feedback.
+      if (isCurrentTarget(currentRecovery)) {
+        reconnectMessageOverride.value = MISSING_RECORD_MESSAGE;
+      }
       return undefined;
     } finally {
       isReconnectPending.value = false;

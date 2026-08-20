@@ -501,6 +501,110 @@ describe('useLocalDirectoryReconnectAction', () => {
     expect(reportedError.cause).toBe(serviceError);
   });
 
+  it('preserves target-local feedback when an equivalent recovery object for the same spaceName is re-emitted', async () => {
+    const pickerError = new DOMException('permission dismissed by the browser', 'NotAllowedError');
+    showDirectoryPickerMock.mockRejectedValueOnce(pickerError);
+    const errors = errorsFor('Work');
+
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
+
+    await reconnectFolder();
+    expect(reconnectMessage.value).toBe(
+      'Could not open the folder picker. Try again from this action.',
+    );
+
+    // A reactive reread re-emits a semantically identical recovery for the same remembered
+    // folder; it must not clear the existing retry message.
+    errors.value = [createSerializedUnavailableRootError('Work')];
+
+    expect(reconnectMessage.value).toBe(
+      'Could not open the folder picker. Try again from this action.',
+    );
+  });
+
+  it('prevents reconnectDirectory() when the recovery target disappears while the picker is pending', async () => {
+    let resolvePicker: (handle: FileSystemDirectoryHandle) => void = () => {};
+    showDirectoryPickerMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePicker = resolve;
+      }),
+    );
+    const errors = errorsFor('Work');
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    const promise = reconnectFolder();
+    errors.value = [];
+    resolvePicker(createHandle());
+    await promise;
+
+    expect(reconnectDirectoryMock).not.toHaveBeenCalled();
+  });
+
+  it('prevents relocateRememberedDirectory() when the recovery target disappears while confirmation is pending', async () => {
+    let resolveConfirm: (confirmed: boolean) => void = () => {};
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
+    confirmMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveConfirm = resolve;
+      }),
+    );
+    const errors = errorsFor('Work');
+
+    const { reconnectFolder } = useLocalDirectoryReconnectAction({ errors });
+
+    const promise = reconnectFolder();
+    errors.value = [];
+    resolveConfirm(true);
+    await promise;
+
+    expect(relocateRememberedDirectoryMock).not.toHaveBeenCalled();
+  });
+
+  it('does not apply a delayed missingRecord result from reconnectDirectory() after the target changes', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    const errors = errorsFor('Work');
+
+    reconnectDirectoryMock.mockImplementationOnce(() => {
+      // The initiating target changes to another spaceName while this zero-mutation result is
+      // still in flight.
+      errors.value = [createSerializedUnavailableRootError('Archive')];
+      return Promise.resolve({ status: 'missingRecord' });
+    });
+
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
+
+    await reconnectFolder();
+
+    expect(reconnectMessage.value).not.toBe('Mioframe no longer remembers this folder.');
+    expect(reconnectMessage.value).toContain('Archive');
+  });
+
+  it('does not apply a delayed missingRecord result from relocateRememberedDirectory() after the target changes', async () => {
+    const handle = createHandle();
+    showDirectoryPickerMock.mockResolvedValueOnce(handle);
+    reconnectDirectoryMock.mockResolvedValueOnce({ status: 'confirmationRequired' });
+    inspectMioframeSpaceDirectoryMock.mockResolvedValueOnce({ looksLikeExistingSpace: true });
+    confirmMock.mockResolvedValueOnce(true);
+    const errors = errorsFor('Work');
+
+    relocateRememberedDirectoryMock.mockImplementationOnce(() => {
+      errors.value = [createSerializedUnavailableRootError('Archive')];
+      return Promise.resolve({ status: 'missingRecord' });
+    });
+
+    const { reconnectFolder, reconnectMessage } = useLocalDirectoryReconnectAction({ errors });
+
+    await reconnectFolder();
+
+    expect(reconnectMessage.value).not.toBe('Mioframe no longer remembers this folder.');
+    expect(reconnectMessage.value).toContain('Archive');
+  });
+
   it('continues past the picker checkpoint when a new recovery object for the same spaceName is emitted', async () => {
     let resolvePicker: (handle: FileSystemDirectoryHandle) => void = () => {};
     showDirectoryPickerMock.mockReturnValueOnce(
