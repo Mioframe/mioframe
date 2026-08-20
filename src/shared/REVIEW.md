@@ -4,61 +4,50 @@ Verdict: blocked
 
 ## Scope reviewed
 
-- Cross-boundary VFS route identity / repository lifecycle implementation and required integration proof for PR #211.
+- Cross-boundary VFS route binding, repository lifetime, and active document-handle retirement for PR #211.
 
 ## Blockers
 
-### B1 — Current implementation does not implement the ready VFS route-identity contract
+### B1 — Current code does not implement the ready VFS route-binding contract
 
-Owner: `src/shared/lib/virtualFileSystem` first; then `src/shared/lib/deviceFileSystemProvider`, `src/shared/lib/automergeAdapter`, and `src/shared/service/repositories` consume that lower-level contract.
+Owner: `src/shared` across `lib/virtualFileSystem`, `lib/deviceFileSystemProvider`, `lib/automergeAdapter`, `service/repositories`, and `service/document`
 
-Problem: architecture is now resolved, but current code still uses a repository-local boolean/no-op gate plus raw `DELETE`/`RENAME` cache retirement. The gate can be passed before an operation waits in `LockManager`; VFS may then resolve the same path after its backing route changed. It also treats arbitrary directory lifecycle as Repo identity, while the reviewed contract now scopes Repo identity to `(repository path, VFS storage-route lifetime)`.
+Problem: current production code still relies on `(vfs, path)` Automerge IO plus a repository-local retirement boolean. That cannot fence an operation already queued inside VFS before provider resolution. It also removes a Repo from reuse without forcing the application read-model to stop observing a previously issued `DocHandle`: `useDocumentService` creates a long-lived `repo.find()` branch, so upstream Repo completion alone is insufficient.
 
-Evidence:
+Required final state:
 
-- [Repository retirement gate](service/repositories/repositoryLifecycle.ts) — stale operations become no-ops before delegating to the live path adapter.
-- [Repositories service](service/repositories/repositoriesService.ts) — raw directory `DELETE`/`RENAME` events drive retirement and the shared Repo observable remains path-cache based.
-- [VFS-backed Automerge adapter](lib/automergeAdapter/createVFSAdapter.ts) — every operation resolves through the current VFS path with no route binding.
-- [VirtualFileSystem](lib/virtualFileSystem/VirtualFileSystem.ts) and [LockManager](lib/virtualFileSystem/LockManager.ts) — provider resolution for lock-delayed operations happens after waiting.
-- [DeviceFileSystemProvider](lib/deviceFileSystemProvider/DeviceFileSystemProvider.ts) — mounted records currently have no stable runtime route identity that survives identity-preserving provider refresh and changes on remove/re-add.
+- `VirtualFileSystem.bindRoute(path)` returns an identity-bearing route binding; no separate public identity token is required.
+- Bound IO revalidates after lock wait and executes against the captured route target rather than resolving a later route by path.
+- Stale bound IO rejects `FileSystemError.StaleIdentity`, never succeeds as a no-op.
+- `DeviceFileSystemProvider` exposes the nested mounted-root route to outer VFS binding and distinguishes explicit identity-preserving refresh from remove/re-add.
+- `createVFSAdapter` consumes the route binding.
+- Repository invalidation removes the exact cache entry and publishes an inactive Repo state so active downstream consumers switch away from the old Repo.
+- `shared/service/document` cancels its old `repo.find()`/DocHandle observation when that inactive state arrives and detaches listeners through observable teardown.
+- `Repo.shutdown()` remains best-effort cleanup only; storage safety comes from the stale route binding.
+- Proven same-entry refresh preserves the same binding/Repo; locator-different remove/re-add invalidates the old binding.
 
-Basis:
+Verification:
 
-- [Ready local-directory recovery handoff](../../docs/local-directory-access-recovery.md) — defines `VfsRouteIdentity`, `bindRoute(path)`, stale-route fencing, nested Device Files route identity, Automerge binding ownership, and Repo observable retirement.
-- [CRDT/storage workflow](../../.agents/skills/crdt-storage/SKILL.md) — storage adapters, Repo/DocHandle resources, subscriptions, and caches require explicit lifecycle and invalidation semantics.
+- deterministic queued-old-operation vs same-path new-route proof;
+- composite Device Files nested-route proof, including an inner-lock wait;
+- same-entry refresh preserves binding/Repo proof;
+- stale retained Repo/DocHandle storage rejects without replacement-provider IO;
+- active document read-model retires old handle/listeners;
+- same-path new route creates a fresh Repo while siblings and same-route idle reuse remain unaffected.
 
-Risk: a stale or queued old Repo operation can still reach a later backing provider at the same VFS path, or stale DocHandle storage can appear to succeed through the current no-op gate. Conversely, retiring on arbitrary directory events expands lifecycle semantics beyond what this PR needs.
-
-Required final state: implement the ready handoff exactly. VFS owns opaque route identity and an identity-bound IO primitive; delayed VFS operations revalidate route identity before provider resolution; Device Files same-entry refresh preserves nested route identity while remove/re-add changes it; the Automerge adapter uses the binding; repositories retire the cache/observable from binding invalidation and stale retained storage operations reject `FileSystemError.StaleIdentity` rather than succeeding or reaching a later route. Ordinary content/access changes preserve the Repo.
-
-Verification: deterministic VFS lock-queue replacement proof, identity-preserving remount proof, Device nested-route identity proof, bound Automerge adapter proof, repository observable/cache retirement proof, stale retained Repo/DocHandle storage rejection proof, same-path fresh Repo proof, and sibling/unchanged-route proof.
-
-### B2 — Required relocation/repository route-lifecycle integration proof is missing
+### B2 — Required real relocation/repository/document integration proof is missing
 
 Owner: `src/shared/service`
 
-Problem: the handoff requires one real cross-service proof that locator-different fileSystem relocation ends the old Device Files route identity, repository retirement follows through the VFS binding/event seam only, and repository access at the relocated path creates a fresh Repo. Current integration tests cover same-entry reconnect/write settlement only.
+Problem: existing tests cover fileSystem relocation and repository lifecycle separately, while the handoff requires the real seam from fileSystem relocation through VFS route invalidation to repository/document retirement and fresh new-path Repo creation.
 
-Evidence:
+Required final state: one deterministic integration proof exercises real fileSystem relocation together with real VFS binding, repository lifecycle wiring, and document-handle retirement, with no direct fileSystem -> repositories coordination.
 
-- [Same-entry integration](service/fileSystemRepositoriesReconnect.integration.test.ts) — proves same-entry queued-write settlement.
-- [Repositories/fileSystem integration](service/repositories/repositoriesFileSystemIntegration.test.ts) — proves same-entry `repo.flush()` result mapping.
-- [File-system relocation tests](service/fileSystem/useFileSystemService.test.ts) and [repository lifecycle tests](service/repositories/repositoriesService.test.ts) — prove separate halves, not the real relocation-to-repository seam.
-
-Basis:
-
-- [Ready local-directory recovery handoff](../../docs/local-directory-access-recovery.md) — explicitly requires real relocation -> old route invalidation -> repository retirement -> fresh new-path Repo proof without direct fileSystem/repositories coordination.
-- [Testing architecture](../../docs/testing/architecture.md) — cross-owner behavior requires the lowest faithful integration proof.
-
-Risk: component tests can remain green while nested route identity forwarding, binding invalidation, or fresh Repo creation is wired incorrectly.
-
-Required final state: after B1 is implemented, add one deterministic integration test using real fileSystem and repositories wiring that proves old route retirement and fresh Repo construction at the relocated path.
-
-Verification: no arbitrary sleeps; assert identity/resource effects directly.
+Verification: prove old route invalidates, active old Repo/document state retires, old stale IO cannot reach selected storage, and repository access at the relocated path creates a fresh Repo.
 
 ## Major issues
 
-None.
+None in this owner scope.
 
 ## Minor issues
 
@@ -70,8 +59,9 @@ None.
 
 ## Items not required
 
-- Inode/entry identity for arbitrary nested directory delete/recreate inside one unchanged provider route is outside PR #211. Do not add hierarchical locks or provider-wide cancellation to solve it here.
+- Arbitrary nested directory inode identity inside an unchanged provider route.
+- Hierarchical filesystem locking or provider-wide cancellation.
 
 ## Unresolved questions
 
-None. Architecture is ready; implementation remains blocked on B1/B2.
+None. `docs/local-directory-access-recovery.md` now contains a ready architecture contract.

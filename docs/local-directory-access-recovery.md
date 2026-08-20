@@ -4,34 +4,36 @@ This document is the implementation contract for PR #211.
 
 ## Goal
 
-Recover a remembered user-selected local directory whose saved root is unavailable, without ever routing a live or stale repository through a different VFS storage route, while preserving proven same-entry reconnect in place.
+Recover a remembered user-selected local directory whose saved root is unavailable without ever routing an existing Automerge repository resource through a different physical storage route, while preserving proven same-entry reconnect in place.
 
 ## Confirmed current behavior
 
-- `WebFileSystemProvider` already separates missing read permission from granted-but-unreadable mounted-root access.
-- Real Chrome/PWA behavior proved `FileSystemHandle.isSameEntry()` can be false/unverifiable for the intended moved/renamed recovery folder.
-- Repository facts/document lists are reactive through `directoryContent$`/`vfs.watch()`.
-- A stateful Automerge `Repo` is cached by path and may survive subscriber gaps for 60 seconds.
-- The current repository-local retirement gate is insufficient: a VFS operation can pass the gate, wait in `LockManager`, then resolve the same path after its backing route changed.
-- `Repo.shutdown()` in the locked Automerge Repo 2.5.6 does not revoke already-issued `DocHandle` objects; storage safety therefore cannot rely on shutdown alone.
+- `WebFileSystemProvider` already separates missing read permission from a granted-but-unreadable mounted root.
+- Real Chrome/PWA behavior proved `FileSystemHandle.isSameEntry()` can be false or unverifiable for the intended moved/renamed recovery folder.
+- Repository facts/document lists already react to VFS content changes.
+- Stateful Automerge `Repo` instances are cached by path and may survive subscriber gaps for 60 seconds.
+- A repository-local boolean gate cannot fence an operation that already delegated into VFS and is waiting in `LockManager`, because provider resolution happens later.
+- `Repo.shutdown()` in the locked Automerge Repo 2.5.6 does not revoke already-issued `DocHandle` objects.
+- `useDocumentService` keeps a `repo.find()` handle observable alive after a Repo emission, so merely completing the upstream Repo observable is not sufficient to detach an already-issued handle.
 
 ## Non-goals
 
-- persistent new space IDs, persisted-record schema changes, or marker-format changes;
-- inode/entry identity for arbitrary nested directory delete/recreate inside one unchanged provider route;
-- hierarchical filesystem locking or cancellation across every provider;
+- persistent new space/storage IDs or persisted-record schema changes;
+- inode/entry identity for arbitrary nested delete/recreate inside one unchanged provider route;
+- hierarchical filesystem locking or provider-wide cancellation;
 - repository/fileSystem leases, guards, reservations, or callbacks;
-- migrating/replaying old in-memory Repo state into locator-different storage;
-- changing Google Drive, OPFS, shared Material primitives, or unrelated repository behavior.
+- replaying/migrating old in-memory Repo state into locator-different storage;
+- changing Google Drive, OPFS, marker format, shared Material primitives, or unrelated repository behavior.
 
 ## Ownership
 
 | Owner | Responsibility |
 | --- | --- |
-| `shared/lib/virtualFileSystem` | runtime VFS route identity, identity-bound IO, stale-route fencing after lock waits |
-| `shared/lib/deviceFileSystemProvider` | stable nested mounted-root route identity; identity-preserving provider refresh vs remove/re-add |
-| `shared/lib/automergeAdapter` | adapt an identity-bound VFS route to Automerge storage; marker policy |
-| `shared/service/repositories` | Repo/cache lifetime, subscription retirement, retrying-storage diagnostics, write settlement |
+| `shared/lib/virtualFileSystem` | identity-bound route capability and stale-route fencing around VFS locks |
+| `shared/lib/deviceFileSystemProvider` | mounted-root route lifetime; explicit identity-preserving refresh vs remove/re-add |
+| `shared/lib/automergeAdapter` | Automerge storage over a bound VFS route; marker policy |
+| `shared/service/repositories` | Repo/cache lifetime, invalidation signal, retrying-storage diagnostics, write settlement |
+| `shared/service/document` | stop observing a `DocHandle` when its owning Repo resource is retired |
 | `shared/service/fileSystem` | persisted handles, mounted names, same-entry reconnect, locator-different relocation |
 | `features/localDirectoryReconnect` | picker, marker inspection, confirmation, committed-result handling, Snackbar warning |
 | `RepositoryExplorerWidget` | recovery composition and post-action navigation applicability |
@@ -40,69 +42,90 @@ Recover a remembered user-selected local directory whose saved root is unavailab
 
 - Remembered local mounts: persisted `{ name, handle }` records.
 - Physical same-entry proof: `isSameEntry() === true` only.
-- Candidate validity fallback: Automerge marker presence; never identity proof.
-- **VFS route identity:** opaque runtime identity of the backing route selected for a path. A route identity may survive provider-object refresh, but remove/re-add or identity-changing mount replacement creates a different identity.
-- Repo resource identity: `(repository path, VFS route identity)`.
-- FileSystem never reads or invalidates repository cache directly.
+- Candidate validity fallback: canonical Automerge marker presence; never identity proof.
+- A repository resource belongs to one **VFS route lifetime**: the backing route selected for its repository path.
+- The identity-bearing object exposed to consumers is the route binding itself; no separate public `VfsRouteIdentity` token is required.
+- Repo resource identity is `(repository path, VfsRouteBinding lifetime)`.
+- FileSystem never reads, locks, reserves, or invalidates repository cache directly.
 
-## Public/low-level contracts
+## Minimum sufficient design
 
-### VFS route identity
+### VFS route binding
 
-`VirtualFileSystem` owns an opaque runtime `VfsRouteIdentity` and exposes `bindRoute(path): VfsRouteBinding`.
+`VirtualFileSystem.bindRoute(path)` returns a root-scoped `VfsRouteBinding` for the current backing route.
 
-`VfsRouteBinding` is root-scoped and exposes only the IO needed by storage adapters (`readFile`, `readDirectory`, `writeFile`, `delete`), `onInvalidated(callback)`, and `dispose()`.
+The binding exposes only the IO needed by Automerge storage (`readFile`, `readDirectory`, `writeFile`, `delete`), plus invalidation subscription and disposal.
 
 Required semantics:
 
-1. `bindRoute(path)` captures the current route identity; binding a missing route fails.
-2. A bound operation succeeds only while the current route identity still equals the captured identity.
-3. A stale bound operation rejects with `VfsError(FileSystemError.StaleIdentity)`; it never becomes a successful no-op.
-4. VFS lock-delayed operations capture route identity at invocation and re-check immediately after waiting and before provider resolution. Therefore an operation queued before route replacement cannot resolve the replacement provider.
-5. Operations that already entered provider execution before route identity changed may finish against that provider; VFS does not attempt cross-provider cancellation after execution has begun.
-6. Plain mounted providers use the VFS mount identity. Composite providers may expose the more specific nested route identity for a path through a narrow provider contract.
-7. Replacing a mounted provider while explicitly retaining the same route identity is atomic from the binding's perspective: the route is never observed as ended between old and new provider objects.
+1. Binding a missing route fails.
+2. The binding itself is the identity-bearing capability for one route lifetime.
+3. Plain VFS mount/unmount creates/ends route lifetimes normally; no generic identity-preserving remount API is added for this PR.
+4. Every bound operation enters the normal VFS lock/activity path, then revalidates its captured route immediately after lock wait and before backing-provider execution.
+5. A stale binding rejects with `VfsError(FileSystemError.StaleIdentity)`; stale IO is never a successful no-op.
+6. A queued old operation cannot resolve a provider from a later route lifetime at the same path.
+7. Once backing-provider execution has actually begun, that operation may finish against the provider it already entered; this PR does not add cross-provider cancellation.
+8. Bound execution must use the captured route target after revalidation, not call the ordinary path resolver again and thereby select a later route.
 
-### Device Files nested routes
+### Composite provider boundary
 
-Each `DeviceFileSystemProvider` mounted-root record owns one runtime route identity.
+A composite provider that can dynamically route one VFS mount to different nested backing providers may expose a narrow route-binding hook. `DeviceFileSystemProvider` is the only implementation required by this PR.
 
-- first add -> fresh identity;
-- proven identity-preserving same-name refresh -> keep identity while replacing the provider object;
-- remove -> identity ends;
-- later add under the same name -> fresh identity;
-- locator-different recovery never refreshes the old identity: it removes the old record and mounts the selected storage under the newly allocated name.
+For `/Device Files/<name>/...`, the outer VFS binding must bind the mounted-root record route, not merely the long-lived `/Device Files` provider object. Bound IO must therefore remain fenced even if the composite provider has its own internal VFS/locks.
 
-The composite provider must expose its mounted-root identity to the outer VFS so `/Device Files/<name>/...` binds to the nested root identity, not merely to the long-lived `/Device Files` provider object.
+Each mounted-root record owns one runtime route cell/lifetime:
 
-### Automerge adapter and Repo lifecycle
+- first add -> fresh route lifetime;
+- explicit same-entry refresh -> preserve the same route lifetime while replacing the current backing provider/handle;
+- remove -> invalidate that route lifetime synchronously;
+- later add under the same name -> fresh route lifetime;
+- locator-different relocation uses remove old + add new name and never refreshes the old lifetime.
 
-`createVFSAdapter` consumes a `VfsRouteBinding`; it does not implement its own boolean retirement/no-op gate.
+Prefer explicit add/refresh/remove semantics over an ambiguous same-name upsert that could accidentally preserve identity for a different physical directory.
 
-For each cached Repo, repositories owns the binding and subscribes to `onInvalidated`:
+### Automerge adapter
 
-1. synchronously remove the cache entry from reuse;
-2. complete/retire the shared Repo observable so active service consumers stop observing that Repo as current;
-3. keep the binding permanently stale so any retained old `Repo`/`DocHandle` storage operation rejects `StaleIdentity` rather than reaching a later route or silently succeeding;
-4. run best-effort Repo cleanup; teardown failure caused by the already-ended route is not a reconnect rollback;
-5. later access to the same path binds the current route and creates a fresh Repo.
+`createVFSAdapter` consumes a `VfsRouteBinding`, not `(vfs, path)` plus a repository-local retirement gate.
 
-The existing 60-second idle reuse remains unchanged while the route identity remains current.
+All storage operations go through the binding. When the binding is stale, Automerge storage rejects `StaleIdentity`; it never reaches a later provider and never reports stale writes as successfully persisted.
 
-Ordinary content events and transient permission/read failures do not change route identity and do not recreate the Repo.
+### Repository lifecycle
 
-## Recovery behavior
+Each cached repository entry owns its binding and listens for binding invalidation.
+
+On invalidation, repositories must synchronously:
+
+1. remove that exact cache entry from reuse;
+2. make the active repository stream publish an inactive state (`undefined` is sufficient) so downstream `switchMap` consumers cancel work based on the old Repo;
+3. keep the old binding permanently stale;
+4. run best-effort Repo cleanup; `Repo.shutdown()` is cleanup only, not the safety boundary;
+5. allow later access to the same path to bind the then-current route and create a fresh Repo.
+
+`getRepo$` may therefore become `Observable<Repo | undefined>` (or an equivalent existing-state shape), but do not introduce a new generic repository-resource manager only for this flow.
+
+The existing 60-second idle reuse remains unchanged while the binding remains current. Ordinary file content events and transient permission/read failures do not invalidate the binding or recreate the Repo.
+
+### Document-handle retirement
+
+`shared/service/document` must treat the inactive Repo emission as authoritative lifecycle state:
+
+- cancel the active `repo.find()` branch;
+- emit no current handle for the retired resource;
+- detach existing `change`/`delete` listeners through normal observable teardown;
+- a later fresh Repo emission for the same path may create/find a fresh handle.
+
+This prevents the application read-model from continuing to present a retired `DocHandle` as current. Any independently retained stale handle remains storage-safe because its old binding rejects `StaleIdentity`.
 
 ### Same-entry reconnect
 
 1. Resolve persisted record and require `isSameEntry() === true`; false/missing/throw -> `confirmationRequired`, zero mutation.
-2. Persist replacement handle first under the same mounted name.
-3. Refresh that mounted provider **with the existing VFS route identity**.
+2. Persist the replacement handle first under the same mounted name.
+3. Perform the explicit mounted-root refresh that preserves its current route lifetime.
 4. Clear stale access requests and sync display state.
 5. Run registered repository write-recovery settlement.
 6. Any expected settlement failure, including `repo.flush()` rejection, returns `reconnectedWithWriteRecoveryFailure`; the committed reconnect is not rolled back.
 
-This is the only path that preserves both mounted path and Repo identity.
+This is the only recovery path that preserves both mounted path and Repo resource lifetime.
 
 ### Locator-different/unverifiable recovery
 
@@ -110,10 +133,10 @@ This is the only path that preserves both mounted path and Repo identity.
 2. `confirmationRequired` -> inspect canonical Automerge marker.
 3. Missing marker -> expected rejection, zero mutation.
 4. Marker present -> explicit confirmation.
-5. Confirmed candidate already mounted elsewhere -> `alreadyMounted`, zero mutation, return existing mounted name.
-6. Confirmed unique candidate -> allocate a name different from the old mounted name, persist record replacement first, then remove old runtime route and mount selected storage only under the new name.
-7. Removing the old route invalidates all Repo bindings below it through VFS route identity; no fileSystem->repositories coordination.
-8. No old in-memory Repo/DocHandle state is transferred to the selected locator-different storage.
+5. Candidate already mounted elsewhere -> `alreadyMounted`, zero mutation, return existing mounted name.
+6. Confirmed unique candidate -> allocate a name different from the old mounted name, persist the record replacement first, then remove the old mounted-root route and add the selected storage under the new name.
+7. Removing the old route invalidates old Repo bindings through VFS only; no fileSystem -> repositories coordination.
+8. No old in-memory Repo/DocHandle state is transferred to locator-different storage.
 
 Confirmation copy:
 
@@ -128,45 +151,42 @@ Confirmation copy:
 
 Committed service results remain authoritative after recovery state disappears. Widget navigation occurs only if `directoryPath` still equals the initiating path.
 
-## Rejected approaches
+## Simpler alternatives considered and rejected
 
-- hard fail for `isSameEntry() !== true`;
-- marker presence/value as physical identity proof;
-- locator-different live replacement under the old VFS path;
-- repository/fileSystem lease or reservation;
-- repository-local boolean/no-op storage gate without VFS fencing;
-- treating every file/directory event as Repo identity replacement;
-- hierarchical VFS locks or provider-wide cancellation for arbitrary nested inode identity;
-- runtime mount-name tombstones to avoid fixing route identity;
-- reload-only recovery.
+- **Never reuse a path / mount-name tombstones:** feature-specific, leaks lifecycle policy into naming, and does not retire active `DocHandle` state.
+- **Repository generation/boolean gate:** cannot fence work already queued inside VFS before provider resolution.
+- **Capture one provider object in the Automerge adapter:** breaks proven same-entry reconnect because the same Repo must follow the refreshed provider for the same physical directory.
+- **Make mount/unmount participate in hierarchical file locks:** much larger VFS concurrency redesign and still does not by itself retire active Repo/DocHandle consumers.
+- **fileSystem -> repositories invalidation/lease:** wrong dependency direction and duplicates the route owner.
+- **Separate public identity token plus binding:** unnecessary; the binding lifetime itself is sufficient identity.
 
 ## Acceptance matrix
 
 | Scenario | Required result |
 | --- | --- |
 | permission missing | existing `Permission required` recovery |
-| granted root unavailable | `Folder unavailable` + explicit reconnect |
-| picker/confirmation cancel | zero mutation |
-| proven same entry | same path, same VFS route identity, same Repo, settlement runs |
+| granted root unavailable | `Folder unavailable` + reconnect |
+| proven same entry | same route binding lifetime, same Repo, settlement runs |
 | same-entry settlement fails | reconnect stays committed; warning status + Snackbar |
-| false/unverifiable entry | confirmation fallback; no mutation before confirmation |
-| confirmed candidate already mounted | zero mutation; existing mount returned |
-| confirmed unique candidate | old route ends; selected storage mounted only under new unique path |
-| old Repo call after route end | rejects `StaleIdentity`; no storage IO |
-| old operation queued before route end | fails before resolving a later route/provider |
-| same old path later receives a new route | old binding stays stale; new access creates fresh Repo |
-| ordinary content/access change | route identity and Repo remain current |
+| locator-different unique candidate | old binding invalidates; selected storage exists only under new route/path |
+| old operation queued before route end | `StaleIdentity`; replacement provider receives no old IO |
+| stale retained Repo/DocHandle write | `StaleIdentity`; no later-route IO and no silent success |
+| active document read-model on route end | old handle branch is cancelled and no longer presented as current |
+| same old path later gets a new route | fresh binding + fresh Repo |
+| ordinary content/access change | binding and Repo remain current |
 | user navigates away during recovery | committed mutation remains; no stale navigation |
 
 ## Required proof
 
-- VFS unit proof: hold an operation in the lock queue, change route identity, release it, assert `StaleIdentity` and zero calls to the replacement provider.
-- VFS unit proof: identity-preserving remount keeps the binding current and queued operation may continue through the refreshed provider.
-- Device provider proof: same-record refresh preserves nested route identity; remove/re-add same name creates a new one.
-- Automerge adapter proof: all storage operations use the bound route and stale binding never becomes a no-op.
-- Repository lifecycle proof: binding invalidation evicts cache, completes active Repo observable, stale retained Repo storage rejects, sibling/unchanged routes survive, and same-path new identity gets a fresh Repo.
-- Existing deterministic same-entry fileSystem/repositories integration remains effect-based and proves Repo preservation + queued-write settlement.
-- Add real relocation integration: fileSystem relocation -> old route invalidation -> repository retirement -> new path fresh Repo, with no direct service coordination.
+- VFS: hold a bound operation in the lock queue, end route, recreate same path, release; assert `StaleIdentity` and zero replacement-provider IO.
+- VFS: same bound operation across an explicit identity-preserving Device root refresh remains valid and uses the refreshed provider.
+- Device provider: add -> refresh preserves route binding; remove/re-add same name invalidates old binding and creates a fresh one.
+- Composite-route proof: bound `/Device Files/<name>/...` IO cannot escape into a later nested record through inner VFS locking.
+- Automerge adapter: all storage operations use binding; stale binding rejects and never no-ops.
+- Repositories: invalidation evicts exact cache entry, emits inactive Repo state, preserves sibling/same-route idle reuse, and same-path new route creates fresh Repo.
+- Document service: inactive Repo state cancels the old `repo.find()`/DocHandle observation and detaches listeners; fresh Repo can later produce a fresh handle.
+- Existing deterministic same-entry fileSystem/repositories settlement proof remains effect-based.
+- Add real relocation integration: fileSystem relocation -> old binding invalidation -> Repo/document retirement -> new-path fresh Repo, with no direct service coordination.
 - Feature/widget focused proof for committed results, Snackbar, exact confirmation copy, and stale navigation.
 - Final real Chrome/PWA operator matrix remains mandatory.
 
@@ -178,17 +198,20 @@ Implementation preflight determines focused impact. Final coding handoff runs `p
 
 - fileSystem -> repositories invalidation/lease/guard;
 - silent stale storage no-ops;
+- path tombstones as a substitute for route identity;
 - persistent identity/schema migration;
 - marker as identity proof;
 - same-path locator-different live rebind;
 - generic hierarchical locking/cancellation introduced only for this recovery;
-- changing nested directory/inode identity semantics as part of PR #211;
+- changing arbitrary nested inode identity semantics in PR #211;
+- relying on `Repo.shutdown()` alone to revoke DocHandles;
 - weakening privacy-safe diagnostics or provider permission behavior.
 
 ## Implementation readiness
 
 - Product behavior: resolved.
-- Ownership and route-identity boundary: resolved.
+- Ownership and route-binding boundary: resolved.
+- Active Repo/DocHandle retirement propagation: resolved.
 - Required proof: resolved.
 - Unresolved blockers: none at architecture level.
 - Verdict: **ready**.
