@@ -108,6 +108,8 @@ Do not repeat the same algorithm matrix, browser behavior, foundation behavior, 
 
 Do not hide defects with arbitrary sleeps, `force`, broad retries, repeated action delivery, silent recovery, or helpers that accept missing required state.
 
+A known intermittent failure is a defect and blocks acceptance until its cause is corrected and the required stability proof passes. Retries may collect diagnostics only when a retry-pass/flaky classification still fails the owning gate; a retry-pass is never accepted as green proof.
+
 ## Proof types
 
 | Proof type                | Owns                                                                                                                                                                              |

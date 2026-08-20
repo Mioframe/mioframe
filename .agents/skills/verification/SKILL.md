@@ -25,6 +25,8 @@ Never ask the operator to execute verifier commands, broaden approval to generic
 
 Do not diagnose repository or host-file corruption from sandbox-visible protected-path representations alone. Attribute a failure to the verifier only when verifier output or other direct evidence supports that conclusion.
 
+Known flaky behavior is failed proof, not an accepted warning. A retry-pass/flaky classification never counts as green evidence; retries may remain enabled only for diagnostics when the owning runner or gate still fails on flaky classification. Correct the root cause and rerun the required faithful proof instead of weakening assertions, timeouts, retry policy, or input fidelity.
+
 ## Local verification purpose
 
 Local verification exists to give the coding agent fast, relevant feedback while implementing or correcting code and to produce one canonical agent-facing summary before handoff.
@@ -58,12 +60,15 @@ pnpm verify --only eslint --files <paths...>
 pnpm verify --only type-check
 pnpm verify --only unit-tests --files <paths...>
 pnpm verify --only storybook-behavior --files <paths...>
+pnpm verify --only storybook-behavior --files <spec...> --repeat <2..20>
 pnpm verify --only e2e --files <paths...>
 pnpm verify --only visual --files <paths...>
 pnpm verify --only mutation --files <paths...>
 ```
 
 `--files` names readable existing paths. Removed, moved, or uncertain ownership must be handled by automatic status-aware planning or a full owning-lane fallback, not by passing nonexistent paths.
+
+`--repeat` is a bounded Storybook-behavior stability diagnostic. It requires `--only storybook-behavior` plus explicit `--files`, accepts only integer counts from 2 through 20, and repeats the selected behavior scope inside one verifier-managed Playwright invocation. It is not a routine final handoff checklist item, does not change automatic planning, and is not part of normal CI unless an implementation contract explicitly requires a risk-specific stability proof.
 
 Do not use `--only` to reconstruct the final verification plan manually. The automatic `pnpm verify` planner owns that decision for handoff.
 
@@ -77,6 +82,7 @@ Raw Vitest, Playwright, ESLint, Oxlint, Oxfmt, type-check, visual, E2E, or mutat
 - `pnpm verify --full` / `pnpm verify:release` is not the normal coding-agent handoff path unless the task explicitly requires release/full-project proof.
 - Release-only labels require `--full`.
 - Mutation is targeted and is not available as `--full --only mutation`.
+- `--repeat` is available only with `--only storybook-behavior --files ...` and is bounded to 2–20.
 - Fix modes are limited to checks that actually own safe automatic fixes.
 
 ## Automatic scope

@@ -289,11 +289,11 @@ focused and the full gate, and tag pushes never rerun the full gate:
     above;
   - `verification-static` runs format, oxlint, eslint, type-check, unit tests,
     and mutation through verifier-managed focused lanes, then invokes
-    `pnpm verify --verbose --only storybook-build` with
-    `STORYBOOK_BUILD_CI_FALLBACK=1`. That narrow verifier-owned fallback performs
-    a real static Storybook build only when the ordinary build plan requires one
-    and neither Storybook browser lane will run; otherwise it skips inside the
-    already-provisioned static job. It produces no cross-job Storybook artifact;
+    `pnpm verify --verbose --only storybook-build --storybook-build-ci-fallback`.
+    That narrow verifier-owned fallback performs a real static Storybook build only
+    when the ordinary build plan requires one and neither Storybook browser lane
+    will run; otherwise it skips inside the already-provisioned static job. It
+    produces no cross-job Storybook artifact;
   - `verification-browser (e2e)` remains an independent application E2E job
     that depends only on `autofix`;
   - Storybook behavior and visual are independent, self-contained parallel
