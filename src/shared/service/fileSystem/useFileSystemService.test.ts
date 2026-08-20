@@ -2912,6 +2912,354 @@ describe('useFileSystemService', () => {
     ).resolves.toEqual({ status: 'missing' });
   });
 
+  it('does not let queued removeDeviceDirectory/addDeviceDirectory topology mutations reassign the mounted path while a granted write resolution settlement is pending, and releases them once settlement completes', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'other-physical-directory',
+    });
+
+    // A stateful persisted-store stand-in: the queued remove and add below run back-to-back
+    // without an intervening `await`, so a static mocked return value could not reflect the
+    // remove's effect on what the add subsequently reads.
+    let persistedRecords: Array<{ name: string; handle: FileSystemDirectoryHandle }> = [
+      { name: 'Work', handle: promptHandle },
+    ];
+    getRecordListMock.mockImplementation(() => Promise.resolve(persistedRecords));
+    updateRecordListMock.mockImplementation((nextRecords) => {
+      persistedRecords = nextRecords;
+      return Promise.resolve(undefined);
+    });
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: createError.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
+    let releaseSettlement: (() => void) | undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<{ status: 'flushed' }>((resolve) => {
+          releaseSettlement = () => {
+            resolve({ status: 'flushed' });
+          };
+        }),
+    );
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    const resolvePromise = service.resolveFileSystemAccessRequest({
+      operation: 'write',
+      permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
+      spaceName: 'Work',
+    });
+
+    // Let the granted resolution's queued turn actually reach the pending settlement handler
+    // before queuing the topology mutations behind it.
+    await vi.waitFor(() => {
+      expect(handler).toHaveBeenCalled();
+    });
+
+    const callsBeforeQueuedOps = getRecordListMock.mock.calls.length;
+    const removePromise = service.removeDeviceDirectory('Work');
+    const addPromise = service.addDeviceDirectory(replacementHandle);
+
+    // Flush several microtask turns: if the queue released before settlement completed, the
+    // queued remove/add would already have read topology during these ticks even though
+    // settlement is still pending.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getRecordListMock.mock.calls.length).toBe(callsBeforeQueuedOps);
+
+    releaseSettlement?.();
+
+    await expect(resolvePromise).resolves.toEqual({ status: 'granted' });
+    await expect(removePromise).resolves.toBeUndefined();
+    await expect(addPromise).resolves.toEqual({ name: 'Work' });
+    expect(getRecordListMock.mock.calls.length).toBeGreaterThan(callsBeforeQueuedOps);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Work' },
+    ]);
+  });
+
+  it('releases the topology queue after a non-flushed granted write-recovery settlement, preserving the existing grantedWithReplayFailures result mapping, and lets a queued topology mutation proceed afterward', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: createError.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
+    let releaseSettlement: (() => void) | undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<{ status: 'stillBlocked' }>((resolve) => {
+          releaseSettlement = () => {
+            resolve({ status: 'stillBlocked' });
+          };
+        }),
+    );
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    const resolvePromise = service.resolveFileSystemAccessRequest({
+      operation: 'write',
+      permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
+      spaceName: 'Work',
+    });
+
+    await vi.waitFor(() => {
+      expect(handler).toHaveBeenCalled();
+    });
+
+    const callsBeforeRemove = getRecordListMock.mock.calls.length;
+    const removePromise = service.removeDeviceDirectory('Work');
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getRecordListMock.mock.calls.length).toBe(callsBeforeRemove);
+
+    releaseSettlement?.();
+
+    await expect(resolvePromise).resolves.toEqual({ status: 'grantedWithReplayFailures' });
+    await expect(removePromise).resolves.toBeUndefined();
+    expect(getRecordListMock.mock.calls.length).toBeGreaterThan(callsBeforeRemove);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
+  });
+
+  it('rejects the granted write resolution when a recovery handler throws, without poisoning the topology queue for a later queued mutation', async () => {
+    const promptHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: promptHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: createError.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
+    const handler = vi.fn().mockRejectedValue(new Error('write recovery handler exploded'));
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    const resolvePromise = service.resolveFileSystemAccessRequest({
+      operation: 'write',
+      permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
+      spaceName: 'Work',
+    });
+    const removePromise = service.removeDeviceDirectory('Work');
+
+    await expect(resolvePromise).rejects.toThrow('write recovery handler exploded');
+    await expect(removePromise).resolves.toBeUndefined();
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
+  });
+
+  it('queues a granted write resolution behind an in-flight removeDeviceDirectory topology mutation; after that mutation commits, the old-key resolution returns the existing missing outcome without any refresh or write-recovery settlement', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      readPermissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const createError = await service
+      .createDirectory('/Device Files/Work/new-directory')
+      .catch((error: unknown) => error);
+
+    if (!isAccessErrorWithRecoveryKey(createError)) {
+      throw new Error('Expected access error');
+    }
+
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'write',
+      spaceName: createError.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
+    const handler = vi.fn().mockResolvedValue({ status: 'flushed' as const });
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    // Hold `removeDeviceDirectory`'s persistence step pending so its mutation turn is guaranteed
+    // to already be holding the topology queue when the old-key granted resolution below is
+    // enqueued: it must be queued behind the in-flight removal, not race ahead of it.
+    let releaseRemovePersist: (() => void) | undefined;
+    updateRecordListMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseRemovePersist = () => {
+            resolve(undefined);
+          };
+        }),
+    );
+
+    const removePromise = service.removeDeviceDirectory('Work');
+
+    await vi.waitFor(() => {
+      expect(updateRecordListMock).toHaveBeenCalled();
+    });
+
+    const resolvePromise = service.resolveFileSystemAccessRequest({
+      operation: 'write',
+      permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
+      spaceName: 'Work',
+    });
+
+    releaseRemovePersist?.();
+
+    await expect(removePromise).resolves.toBeUndefined();
+    await expect(resolvePromise).resolves.toEqual({ status: 'missing' });
+    expect(handler).not.toHaveBeenCalled();
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
+  });
+
+  it('routes granted read resolution through the same topology queue: an in-flight removeDeviceDirectory topology mutation that commits first makes an old-key read resolution observe the existing missing outcome', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'prompt',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    const error = await service.directoryContent.fetch({ path: '/Device Files/Work' });
+
+    if (!isAccessErrorWithRecoveryKey(error)) {
+      throw new Error('Expected access error');
+    }
+
+    const prepared = await service.getTemporaryFileSystemAccessHandle({
+      operation: 'read',
+      spaceName: error.spaceName,
+    });
+
+    if (!prepared) {
+      throw new Error('Expected a pending access request');
+    }
+
+    let releaseRemovePersist: (() => void) | undefined;
+    updateRecordListMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseRemovePersist = () => {
+            resolve(undefined);
+          };
+        }),
+    );
+
+    const removePromise = service.removeDeviceDirectory('Work');
+
+    await vi.waitFor(() => {
+      expect(updateRecordListMock).toHaveBeenCalled();
+    });
+
+    const resolvePromise = service.resolveFileSystemAccessRequest({
+      operation: 'read',
+      permissionState: 'granted',
+      recoveryKey: prepared.recoveryKey,
+      spaceName: 'Work',
+    });
+
+    releaseRemovePersist?.();
+
+    await expect(removePromise).resolves.toBeUndefined();
+    await expect(resolvePromise).resolves.toEqual({ status: 'missing' });
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
+  });
+
   it('a deferred old-provider access check completing after same-name replacement cannot overwrite the current provider request', async () => {
     const oldHandle = createDirectoryHandleMock({
       name: 'Work',

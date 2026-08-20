@@ -37,6 +37,7 @@ import {
 } from './setupFileSystemDirectoryHandleService';
 import {
   createFileSystemAccessRequestRegistry,
+  type FileSystemAccessRequestRegistry,
   type WriteAccessRecoveryHandler,
 } from './fileSystemAccessRequestRegistry';
 import { addWebFileSystemDiagnosticStepBreadcrumb } from './webFileSystemWriteDiagnostics';
@@ -602,6 +603,16 @@ const setupFileSystemService = () => {
     });
   };
 
+  // Only a `granted` resolution deletes the request, refreshes the provider, and may run
+  // registered write-recovery settlement (see `registry.resolve`) — asynchronous work whose
+  // correctness depends on the mounted path staying bound to the current provider, so it must
+  // run inside the same topology queue as `addDeviceDirectory`/`removeDeviceDirectory`/reconnect/
+  // relocation. `denied`/`prompt` resolution never mutates topology and stays outside the queue.
+  const resolveFileSystemAccessRequest: FileSystemAccessRequestRegistry['resolve'] = (params) =>
+    params.permissionState === 'granted'
+      ? enqueueMutation(() => registry.resolve(params))
+      : registry.resolve(params);
+
   return {
     vfs,
 
@@ -623,7 +634,7 @@ const setupFileSystemService = () => {
     getFileSystemAccessRequest: registry.getRequest,
     getTemporaryFileSystemAccessHandle: registry.prepareHandle,
     registerWriteAccessRecoveryHandler: registry.registerWriteRecoveryHandler,
-    resolveFileSystemAccessRequest: registry.resolve,
+    resolveFileSystemAccessRequest,
     cancelFileSystemAccessRequest: registry.cancel,
     deviceFiles: fromObservable(activeDeviceFiles$),
   };
