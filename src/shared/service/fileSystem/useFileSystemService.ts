@@ -342,9 +342,22 @@ const setupFileSystemService = () => {
 
       await updateRecordList(nextRecords);
 
-      if (existingRecord && existingRecord.name !== nextRecord.name) {
-        deviceFileSystemProvider.removeRecord(existingRecord.name);
-        recoveryKeysByName.delete(existingRecord.name);
+      if (existingRecord) {
+        // A rename always replaces the provider (`DeviceFileSystemProvider.upsertRecord` looks up
+        // its internal reuse check by name, so a new name never matches); a same-name add only
+        // replaces it when the handle reference differs, since that is exactly when `createProvider`
+        // (and the recoveryKey it mints) runs again. A literal same-reference re-add is a true
+        // non-replacement and must leave the still-current provider's recovery state untouched.
+        const isProviderReplacement =
+          existingRecord.name !== nextRecord.name || existingRecord.handle !== nextRecord.handle;
+
+        if (isProviderReplacement) {
+          if (existingRecord.name !== nextRecord.name) {
+            deviceFileSystemProvider.removeRecord(existingRecord.name);
+          }
+          recoveryKeysByName.delete(existingRecord.name);
+          registry.clearForSpace(existingRecord.name);
+        }
       }
 
       deviceFileSystemProvider.upsertRecord(nextRecord);
@@ -449,21 +462,25 @@ const setupFileSystemService = () => {
           existingRecord: recheckRecord,
         });
 
-        return { status: 'committed' as const, replacement };
+        // Settlement runs while this mutation turn still holds the topology queue: cached
+        // repositories resolve their mounted provider from the textual VFS path on each IO, so a
+        // queued remove/add/replace operation must not be able to reuse this mounted path until
+        // settlement has completed, whether it flushes or returns a non-flushed result.
+        const mountPath = PathUtils.join(deviceFilesPath, spaceName);
+        const settlement = await registry.runWriteRecoveryHandlers({ mountPath, spaceName });
+        const settledStatus =
+          settlement.status === 'flushed'
+            ? ('reconnected' as const)
+            : ('reconnectedWithWriteRecoveryFailure' as const);
+
+        return { status: 'committed' as const, replacement, settledStatus };
       });
 
       if (commitResult.status !== 'committed') {
         return commitResult;
       }
 
-      // Write-recovery settlement runs after the mutation queue is released: it does not need to
-      // hold the queue once the reconnect has committed.
-      const mountPath = PathUtils.join(deviceFilesPath, spaceName);
-      const settlement = await registry.runWriteRecoveryHandlers({ mountPath, spaceName });
-      const status =
-        settlement.status === 'flushed' ? 'reconnected' : 'reconnectedWithWriteRecoveryFailure';
-
-      return { status, name: commitResult.replacement.name };
+      return { status: commitResult.settledStatus, name: commitResult.replacement.name };
     }
 
     // Identity is false or unverifiable: canonical marker inspection decides whether this is an

@@ -506,6 +506,92 @@ describe('useFileSystemService', () => {
     ]);
   });
 
+  it('successful addDeviceDirectory() rename/replacement clears the pending access request owned by the removed provider', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    const renamedHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Projects', handle: oldHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Projects' },
+      ]);
+    });
+    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Projects' });
+
+    getRecordListMock
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }])
+      .mockResolvedValueOnce([{ name: 'Projects', handle: oldHandle }]);
+
+    await expect(service.addDeviceDirectory(renamedHandle)).resolves.toEqual({
+      name: 'Archive',
+    });
+
+    // The stale request can no longer be fetched, prepared, or resolved through the old identity.
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.getTemporaryFileSystemAccessHandle({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.resolveFileSystemAccessRequest({
+        operation: 'read',
+        spaceName: 'Projects',
+        permissionState: 'granted',
+      }),
+    ).resolves.toEqual({ status: 'missing' });
+  });
+
+  it('failed persistence during addDeviceDirectory() preserves the current provider pending request and recovery identity', async () => {
+    const oldHandle = createDirectoryHandleMock({
+      name: 'Projects',
+      permissionState: 'prompt',
+      sameEntryKey: 'shared-handle',
+    });
+    const renamedHandle = createDirectoryHandleMock({
+      name: 'Archive',
+      permissionState: 'granted',
+      sameEntryKey: 'shared-handle',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Projects', handle: oldHandle }]);
+
+    const service = await createService();
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Projects' },
+      ]);
+    });
+    await service.directoryContent.fetch({ path: '/Device Files/Projects' });
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Projects' });
+
+    updateRecordListMock.mockRejectedValueOnce(new Error('storage write failed'));
+
+    await expect(service.addDeviceDirectory(renamedHandle)).rejects.toThrow('storage write failed');
+
+    await expect(
+      service.getFileSystemAccessRequest({ operation: 'read', spaceName: 'Projects' }),
+    ).resolves.toEqual({ operation: 'read', spaceName: 'Projects' });
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Projects' },
+    ]);
+  });
+
   it('keeps the previous mounted name when re-adding the same handle name', async () => {
     const oldHandle = createDirectoryHandleMock({
       name: 'Projects',
@@ -951,6 +1037,226 @@ describe('useFileSystemService', () => {
     expect(updateRecordListMock).toHaveBeenCalledWith([
       { name: 'Work', handle: reconnectedHandle },
     ]);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([
+      { canDisconnect: true, name: 'Work' },
+    ]);
+  });
+
+  it('does not let a queued removeDeviceDirectory begin its topology mutation while same-entry write-recovery settlement is pending, and releases the queue once settlement flushes', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    let releaseSettlement: (() => void) | undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<{ status: 'flushed' }>((resolve) => {
+          releaseSettlement = () => {
+            resolve({ status: 'flushed' });
+          };
+        }),
+    );
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    const reconnectPromise = service.reconnectDeviceDirectory({
+      handle: reconnectedHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
+
+    // Let reconnect's mutation turn actually reach the pending settlement handler before queuing
+    // the remove behind it.
+    await vi.waitFor(() => {
+      expect(handler).toHaveBeenCalled();
+    });
+
+    const callsBeforeRemove = getRecordListMock.mock.calls.length;
+    const removePromise = service.removeDeviceDirectory('Work');
+
+    // Flush several microtask turns: if the queue released before settlement completed, remove's
+    // own topology read would run during these ticks even though settlement is still pending.
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getRecordListMock.mock.calls.length).toBe(callsBeforeRemove);
+
+    releaseSettlement?.();
+
+    await expect(reconnectPromise).resolves.toEqual({ status: 'reconnected', name: 'Work' });
+    await expect(removePromise).resolves.toBeUndefined();
+    expect(getRecordListMock.mock.calls.length).toBeGreaterThan(callsBeforeRemove);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
+  });
+
+  it('releases the mutation queue for a queued mutation after non-flushed same-entry settlement, without rolling back the committed reconnect', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    getRecordListMock.mockResolvedValue([{ name: 'Work', handle: workHandle }]);
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    let releaseSettlement: (() => void) | undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<{ status: 'stillBlocked' }>((resolve) => {
+          releaseSettlement = () => {
+            resolve({ status: 'stillBlocked' });
+          };
+        }),
+    );
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    const reconnectPromise = service.reconnectDeviceDirectory({
+      handle: reconnectedHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
+
+    await vi.waitFor(() => {
+      expect(handler).toHaveBeenCalled();
+    });
+
+    const callsBeforeRemove = getRecordListMock.mock.calls.length;
+    const removePromise = service.removeDeviceDirectory('Work');
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getRecordListMock.mock.calls.length).toBe(callsBeforeRemove);
+
+    releaseSettlement?.();
+
+    // Non-flushed settlement still returns the committed warning result; the remount is not
+    // rolled back, and the queue releases so the next mutation proceeds.
+    await expect(reconnectPromise).resolves.toEqual({
+      status: 'reconnectedWithWriteRecoveryFailure',
+      name: 'Work',
+    });
+    await expect(removePromise).resolves.toBeUndefined();
+    expect(getRecordListMock.mock.calls.length).toBeGreaterThan(callsBeforeRemove);
+    await expect(service.deviceFiles.fetch()).resolves.toEqual([]);
+  });
+
+  it('keeps a queued add from reassigning the recovered mounted path until same-entry write-recovery settlement completes', async () => {
+    const workHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const reconnectedHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'work',
+    });
+    const replacementHandle = createDirectoryHandleMock({
+      name: 'Work',
+      permissionState: 'granted',
+      sameEntryKey: 'other-physical-directory',
+    });
+
+    // A stateful persisted-store stand-in: the queued remove and add below run back-to-back
+    // without an intervening `await`, so a static mocked return value could not reflect the
+    // remove's effect on what the add subsequently reads.
+    let persistedRecords: Array<{ name: string; handle: FileSystemDirectoryHandle }> = [
+      { name: 'Work', handle: workHandle },
+    ];
+    getRecordListMock.mockImplementation(() => Promise.resolve(persistedRecords));
+    updateRecordListMock.mockImplementation((nextRecords) => {
+      persistedRecords = nextRecords;
+      return Promise.resolve(undefined);
+    });
+
+    const service = await createService();
+    const recoveryKey = await captureRecoveryKeyFromUnavailableRoot({
+      handle: workHandle,
+      service,
+      spaceName: 'Work',
+    });
+    await vi.waitFor(async () => {
+      await expect(service.deviceFiles.fetch()).resolves.toEqual([
+        { canDisconnect: true, name: 'Work' },
+      ]);
+    });
+
+    let releaseSettlement: (() => void) | undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<{ status: 'flushed' }>((resolve) => {
+          releaseSettlement = () => {
+            resolve({ status: 'flushed' });
+          };
+        }),
+    );
+    service.registerWriteAccessRecoveryHandler(handler);
+
+    const reconnectPromise = service.reconnectDeviceDirectory({
+      handle: reconnectedHandle,
+      spaceName: 'Work',
+      recoveryKey,
+    });
+
+    await vi.waitFor(() => {
+      expect(handler).toHaveBeenCalled();
+    });
+
+    // Free the mounted "Work" path, then immediately queue an add for a different physical
+    // directory behind it: both must wait for settlement before either can run, so the new
+    // directory cannot take over "Work" while cached writes to the recovered mount are pending.
+    const callsBeforeQueuedOps = getRecordListMock.mock.calls.length;
+    const removePromise = service.removeDeviceDirectory('Work');
+    const addPromise = service.addDeviceDirectory(replacementHandle);
+
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getRecordListMock.mock.calls.length).toBe(callsBeforeQueuedOps);
+
+    releaseSettlement?.();
+
+    await expect(reconnectPromise).resolves.toEqual({ status: 'reconnected', name: 'Work' });
+    await expect(removePromise).resolves.toBeUndefined();
+    await expect(addPromise).resolves.toEqual({ name: 'Work' });
     await expect(service.deviceFiles.fetch()).resolves.toEqual([
       { canDisconnect: true, name: 'Work' },
     ]);
